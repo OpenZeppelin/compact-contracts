@@ -4,7 +4,8 @@
         "compact",
         "contracts/initializable/*",
         "contracts/erc20/*",
-        "contracts/erc721/*"
+        "contracts/erc721/*",
+        "contracts/utils/*"
     ],
     "scripts": {
         "compact": "turbo run compact",

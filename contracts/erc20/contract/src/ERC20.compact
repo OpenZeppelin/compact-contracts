@@ -22,6 +22,7 @@ pragma language_version >= 0.14.0;
  */
 module ERC20 {
   import CompactStandardLibrary;
+  import "../node_modules/@openzeppelin-midnight-contracts/utils-contract/dist/Utils" prefix Utils_;
 
   /// Public state
   export ledger _name: Maybe<Opaque<"string">>;
@@ -191,8 +192,8 @@ module ERC20 {
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
-    assert !isZero(owner) "ERC20: invalid owner";
-    assert !isZero(spender) "ERC20: invalid spender";
+    assert !Utils_isZero(owner) "ERC20: invalid owner";
+    assert !Utils_isZero(spender) "ERC20: invalid spender";
     if (!_allowances.member(owner)) {
       // If owner doesn't exist, create and insert a new sub-map directly
       _allowances.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
@@ -215,8 +216,8 @@ module ERC20 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
-    assert !isZero(from) "ERC20: invalid sender";
-    assert !isZero(to) "ERC20: invalid receiver";
+    assert !Utils_isZero(from) "ERC20: invalid sender";
+    assert !Utils_isZero(to) "ERC20: invalid receiver";
 
     _update(from, to, value);
   }
@@ -233,7 +234,7 @@ module ERC20 {
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
-    assert !isZero(account) "ERC20: invalid receiver";
+    assert !Utils_isZero(account) "ERC20: invalid receiver";
     // Using the contract variant of 0
     // TODO: Look into if this matters
     const zero_address = right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ pad(32, "") });
@@ -253,7 +254,7 @@ module ERC20 {
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
-    assert !isZero(account) "ERC20: invalid sender";
+    assert !Utils_isZero(account) "ERC20: invalid sender";
     // Using the contract variant of 0
     // TODO: Look into if this matters
     const zero_address = right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ pad(32, "") });
@@ -275,7 +276,7 @@ module ERC20 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
-    if (isZero(from)) {
+    if (Utils_isZero(from)) {
       // Mint
       const MAX_UINT128 = 340282366920938463463374607431768211455;
       assert MAX_UINT128 - _totalSupply >= value "ERC20: arithmetic overflow";
@@ -287,7 +288,7 @@ module ERC20 {
       _balances.insert(from, fromBal - value as Uint<128>);
     }
 
-    if (isZero(to)) {
+    if (Utils_isZero(to)) {
       // Burn
       _totalSupply = _totalSupply - value as Uint<128>;
     } else {
@@ -319,23 +320,6 @@ module ERC20 {
     if (currentAllowance < MAX_UINT128) {
       assert currentAllowance >= value "ERC20: insufficient allowance";
       _approve(owner, spender, currentAllowance - value as Uint<128>);
-    }
-  }
-
-  /**
-   * @description Returns whether `keyOrAddress` is the zero address.
-   * @todo Move to a utils contract since this will likely be reused.
-   *
-   * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is zero.
-   */
-  export pure circuit isZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    const zero = pad(32, "");
-
-    if (keyOrAddress.is_left) {
-      return keyOrAddress == left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey{ zero });
-    } else {
-      return keyOrAddress == right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ zero });
     }
   }
 }
