@@ -80,7 +80,7 @@ export class InitializableSimulator
 
     /**
    * @description Returns true if the state is initialized.
-   * @returns {boolean} - whether the contract has been initialized.
+   * @returns Whether the contract has been initialized.
    */
   public isInitialized(): boolean {
     return this.contract.impureCircuits.isInitialized(this.circuitContext).result;
