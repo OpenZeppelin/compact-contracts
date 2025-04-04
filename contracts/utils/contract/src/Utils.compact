@@ -7,7 +7,6 @@ module Utils {
 
   /**
    * @description Returns whether `keyOrAddress` is the zero address.
-   * @todo Move to a utils contract since this will likely be reused.
    *
    * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
