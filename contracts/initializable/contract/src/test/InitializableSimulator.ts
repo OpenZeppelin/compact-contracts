@@ -70,10 +70,18 @@ export class InitializableSimulator
     return this.circuitContext.originalState;
   }
 
+    /**
+   * @description Initializes the state.
+   * @returns None.
+   */
   public initialize() {
     this.circuitContext = this.contract.impureCircuits.initialize(this.circuitContext).context;
   }
 
+    /**
+   * @description Returns true if the state is initialized.
+   * @returns {boolean} - whether the contract has been initialized.
+   */
   public isInitialized(): boolean {
     return this.contract.impureCircuits.isInitialized(this.circuitContext).result;
   }

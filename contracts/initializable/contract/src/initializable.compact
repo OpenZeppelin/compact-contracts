@@ -13,7 +13,7 @@ module Initializable{
   export ledger state: STATE;
 
   /**
-   * @description Sets `STATE` to initialized thus ensuring the calling circuit can only be called once.
+   * @description Initializes the state thus ensuring the calling circuit can only be called once.
    *
    * @returns None.
    */
