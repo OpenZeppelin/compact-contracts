@@ -1,8 +1,8 @@
 import { UtilsContractSimulator } from './UtilsSimulator';
-import * as utils from './utils.js';
+import * as contractUtils from './utils';
 
-const Z_OWNER = utils.createEitherTestUser('OWNER');
-const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
+const Z_OWNER = contractUtils.createEitherTestUser('OWNER');
+const SOME_CONTRACT = contractUtils.createEitherTestContractAddress('SOME_CONTRACT');
 
 let contract: UtilsContractSimulator;
 
@@ -11,8 +11,8 @@ describe('Utils', () => {
 
   describe('isZero', () => {
     it('should return zero for the zero address', () => {
-      expect(contract.isZero(utils.ZERO_KEY)).toBeTruthy;
-      expect(contract.isZero(utils.ZERO_ADDRESS)).toBeTruthy;
+      expect(contract.isZero(contractUtils.ZERO_KEY)).toBeTruthy;
+      expect(contract.isZero(contractUtils.ZERO_ADDRESS)).toBeTruthy;
     });
 
     it('should not return zero for nonzero addresses', () => {
