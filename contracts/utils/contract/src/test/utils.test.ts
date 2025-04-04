@@ -9,7 +9,7 @@ let contract: UtilsContractSimulator;
 describe('Utils', () => {
   contract = new UtilsContractSimulator();
 
-  describe('isZero', () => {
+  describe('isKeyOrAddressZero', () => {
     it('should return zero for the zero address', () => {
       expect(contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBeTruthy;
       expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBeTruthy;
