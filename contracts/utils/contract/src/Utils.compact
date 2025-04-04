@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+module Utils {
+  import CompactStandardLibrary;
+
+  /**
+   * @description Returns whether `keyOrAddress` is the zero address.
+   * @todo Move to a utils contract since this will likely be reused.
+   *
+   * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
+   * @return {Boolean} - Returns true if `keyOrAddress` is zero.
+   */
+  export pure circuit isZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    const zero = pad(32, "");
+
+    if (keyOrAddress.is_left) {
+      return keyOrAddress == left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey{ zero });
+    } else {
+      return keyOrAddress == right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ zero });
+    }
+  }
+}

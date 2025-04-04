@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+import Utils prefix Utils_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+export pure circuit isZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    return Utils_isZero(keyOrAddress);
+}
