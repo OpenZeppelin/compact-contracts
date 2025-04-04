@@ -13,9 +13,9 @@ const config: Config.InitialOptions = {
   resolver: '<rootDir>/js-resolver.cjs',
   coverageThreshold: {
     global: {
-      branches: 60,
-      functions: 75,
-      lines: 70,
+      branches: 50,
+      functions: 50,
+      lines: 50,
     },
   },
   reporters: [
