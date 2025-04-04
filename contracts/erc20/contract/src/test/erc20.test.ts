@@ -70,11 +70,11 @@ describe('ERC20', () => {
   })
 
   describe('balanceOf', () => {
-    it('returns zero when requested account has no balance', () => {
+    it('should return zero when requested account has no balance', () => {
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
     });
 
-    it('returns balance when requested account has tokens', () => {
+    it('should return balance when requested account has tokens', () => {
       token._mint(Z_OWNER, AMOUNT);
       expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
     });
@@ -135,6 +135,22 @@ describe('ERC20', () => {
         token.transfer(utils.ZERO_ADDRESS, AMOUNT, caller);
       }).toThrow('ERC20: invalid receiver');
     });
+
+    it('should allow transfer of 0 tokens', () => {
+      const txSuccess = token.transfer(Z_RECIPIENT, 0n, caller);
+
+      expect(txSuccess).toBeTruthy();
+      expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
+      expect(token.balanceOf(Z_RECIPIENT)).toEqual(0n);
+    });
+
+    it('should handle transfer with empty _balances', () => {
+      caller = SPENDER;
+      
+      expect(() => {
+        token.transfer(Z_RECIPIENT, 1n, caller);
+      }).toThrow('ERC20: insufficient balance');
+    });
   });
 
   describe('approve', () => {
@@ -175,6 +191,30 @@ describe('ERC20', () => {
       expect(() => {
         token.approve(utils.ZERO_ADDRESS, AMOUNT, caller);
       }).toThrow('ERC20: invalid spender');
+    });
+
+    it('should transfer exact allowance and fail subsequent transfer', () => {
+      token._mint(Z_OWNER, AMOUNT);
+      caller = OWNER;
+      token.approve(Z_SPENDER, AMOUNT, caller);
+
+      caller = SPENDER;
+      token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
+      expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
+
+      expect(() => {
+        token.transferFrom(Z_OWNER, Z_RECIPIENT, 1n, caller);
+      }).toThrow('ERC20: insufficient allowance');
+    });
+
+    it('should allow approve of 0 tokens', () => {
+      caller = OWNER;
+      token.approve(Z_SPENDER, 0n, caller);
+      expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
+    });
+
+    it('should handle allowance with empty _allowances', () => {
+      expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
     });
   });
 
@@ -291,7 +331,7 @@ describe('ERC20', () => {
 
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(partialAmt);
-    })
+    });
   })
 
   describe('_mint', () => {
@@ -313,6 +353,12 @@ describe('ERC20', () => {
       expect(() => {
         token._mint(utils.ZERO_ADDRESS, AMOUNT);
       }).toThrow('ERC20: invalid receiver');
+    });
+
+    it('should allow mint of 0 tokens', () => {
+      token._mint(Z_OWNER, 0n);
+      expect(token.totalSupply()).toEqual(0n);
+      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
     });
   });
 
@@ -339,6 +385,12 @@ describe('ERC20', () => {
       expect(() => {
         token._burn(Z_OWNER, AMOUNT + 1n);
       }).toThrow('ERC20: insufficient balance');
+    });
+
+    it('should allow burn of 0 tokens', () => {
+      token._burn(Z_OWNER, 0n);
+      expect(token.totalSupply()).toEqual(AMOUNT);
+      expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
     });
   });
 
@@ -387,6 +439,23 @@ describe('ERC20', () => {
     it('should not return zero for nonzero addresses', () => {
       expect(token.isZero(Z_OWNER)).toBeFalsy;
       expect(token.isZero(SOME_CONTRACT)).toBeFalsy;
+    });
+  });
+
+  describe('Multiple Operations', () => {
+    it('should handle mint → transfer → burn sequence', () => {
+      token._mint(Z_OWNER, AMOUNT);
+      expect(token.totalSupply()).toEqual(AMOUNT);
+      expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
+
+      caller = OWNER;
+      token.transfer(Z_RECIPIENT, AMOUNT - 1n, caller);
+      expect(token.balanceOf(Z_OWNER)).toEqual(1n);
+      expect(token.balanceOf(Z_RECIPIENT)).toEqual(AMOUNT - 1n);
+
+      token._burn(Z_OWNER, 1n);
+      expect(token.totalSupply()).toEqual(AMOUNT - 1n);
+      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
     });
   });
 });
