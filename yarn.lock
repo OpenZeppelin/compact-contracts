@@ -1119,6 +1119,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils/contract":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils/contract"
+  dependencies:
+    "@midnight-ntwrk/compact": "workspace:*"
+    eslint: "npm:^8.52.0"
+    jest: "npm:^29.7.0"
+    typescript: "npm:^5.2.2"
+  languageName: unknown
+  linkType: soft
+
 "@pkgjs/parseargs@npm:^0.11.0":
   version: 0.11.0
   resolution: "@pkgjs/parseargs@npm:0.11.0"
