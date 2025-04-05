@@ -98,7 +98,7 @@ describe('ERC20', () => {
       caller = OWNER;
       const txSuccess = token.transfer(Z_RECIPIENT, partialAmt, caller);
 
-      expect(txSuccess).toBeTruthy;
+      expect(txSuccess).toBeTruthy();
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(partialAmt);
     });
@@ -107,7 +107,7 @@ describe('ERC20', () => {
       caller = OWNER;
       const txSuccess = token.transfer(Z_RECIPIENT, AMOUNT, caller);
 
-      expect(txSuccess).toBeTruthy;
+      expect(txSuccess).toBeTruthy();
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(AMOUNT);
     });
@@ -146,7 +146,7 @@ describe('ERC20', () => {
 
     it('should handle transfer with empty _balances', () => {
       caller = SPENDER;
-      
+
       expect(() => {
         token.transfer(Z_RECIPIENT, 1n, caller);
       }).toThrow('ERC20: insufficient balance');
@@ -235,7 +235,7 @@ describe('ERC20', () => {
       const partialAmt = AMOUNT - 1n;
 
       const txSuccess = token.transferFrom(Z_OWNER, Z_RECIPIENT, partialAmt, caller);
-      expect(txSuccess).toBeTruthy;
+      expect(txSuccess).toBeTruthy();
 
       // Check balances
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
@@ -248,7 +248,7 @@ describe('ERC20', () => {
       caller = SPENDER;
 
       const txSuccess = token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
-      expect(txSuccess).toBeTruthy;
+      expect(txSuccess).toBeTruthy();
 
       // Check balances
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
@@ -263,7 +263,7 @@ describe('ERC20', () => {
 
       caller = SPENDER;
       const txSuccess = token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
-      expect(txSuccess).toBeTruthy;
+      expect(txSuccess).toBeTruthy();
 
       // Check balances
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
@@ -456,13 +456,13 @@ describe('ERC20', () => {
 
   describe('isZero', () => {
     it('should return zero for the zero address', () => {
-      expect(token.isZero(utils.ZERO_KEY)).toBeTruthy;
-      expect(token.isZero(utils.ZERO_ADDRESS)).toBeTruthy;
+      expect(token.isZero(utils.ZERO_KEY)).toBeTruthy();
+      expect(token.isZero(utils.ZERO_ADDRESS)).toBeTruthy();
     });
 
     it('should not return zero for nonzero addresses', () => {
-      expect(token.isZero(Z_OWNER)).toBeFalsy;
-      expect(token.isZero(SOME_CONTRACT)).toBeFalsy;
+      expect(token.isZero(Z_OWNER)).toBeFalsy();
+      expect(token.isZero(SOME_CONTRACT)).toBeFalsy();
     });
   });
 
