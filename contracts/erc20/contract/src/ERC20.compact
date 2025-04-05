@@ -245,6 +245,7 @@ module ERC20 {
   /**
    * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
    * (or `to`) is the zero address.
+   * @dev Checks for a mint overflow in order to output a more readable error message.
    *
    * @param {from} - The original owner of the tokens moved (which is 0 if tokens are minted).
    * @param {to} - The recipient of the tokens moved (which is 0 if tokens are burned).
@@ -258,6 +259,9 @@ module ERC20 {
   ): [] {
     if (isZero(from)) {
       // Mint
+      const MAX_UINT128 = 340282366920938463463374607431768211455;
+      assert MAX_UINT128 - _totalSupply >= value "ERC20: arithmetic overflow";
+
       _totalSupply = _totalSupply + value as Uint<128>;
     } else {
       const fromBal = balanceOf(from);
@@ -270,7 +274,7 @@ module ERC20 {
       _totalSupply = _totalSupply - value as Uint<128>;
     } else {
       const toBal = balanceOf(to);
-          _balances.insert(to, toBal + value as Uint<128>);
+      _balances.insert(to, toBal + value as Uint<128>);
     }
   }
 
@@ -293,8 +297,8 @@ module ERC20 {
 
     const currentAllowance = _allowances.lookup(owner).lookup(spender);
     // TODO: improve readability of max_u128
-    const max_u128 = 340282366920938463463374607431768211455;
-    if (currentAllowance < max_u128) {
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    if (currentAllowance < MAX_UINT128) {
       assert currentAllowance >= value "ERC20: insufficient allowance";
       _approve(owner, spender, currentAllowance - value as Uint<128>);
     }
