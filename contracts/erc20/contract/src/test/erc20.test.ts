@@ -343,6 +343,14 @@ describe('ERC20', () => {
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(AMOUNT);
     });
 
+    it('should catch mint overflow', () => {
+      token._mint(Z_RECIPIENT, MAX_UINT128);
+
+      expect(() => {
+        token._mint(Z_RECIPIENT, 1n);
+      }).toThrow('ERC20: arithmetic overflow');
+    });
+
     it('should not mint to zero pubkey', () => {
       expect(() => {
         token._mint(utils.ZERO_KEY, AMOUNT);
@@ -405,6 +413,14 @@ describe('ERC20', () => {
       expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
     });
 
+    it('should catch overflow from zero to non-zero (mint)', () => {
+      token._update(utils.ZERO_KEY, Z_OWNER, MAX_UINT128);
+
+      expect(() => {
+        token._update(utils.ZERO_KEY, Z_OWNER, 1n);
+      }).toThrow('ERC20: arithmetic overflow');
+    });
+
     describe('with minted tokens', () => {
       beforeEach(() => {
         token._update(utils.ZERO_ADDRESS, Z_OWNER, AMOUNT);
@@ -418,6 +434,14 @@ describe('ERC20', () => {
 
         expect(token.totalSupply()).toEqual(0n);
         expect(token.balanceOf(Z_OWNER)).toEqual(0n);
+      });
+
+      it('should catch overflow from non-zero to zero (burn)', () => {
+        token._update(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
+
+        expect(() => {
+          token._update(Z_OWNER, utils.ZERO_ADDRESS, 1n);
+        }).toThrow('ERC20: insufficient balance');
       });
 
       it('should update from non-zero to non-zero (transfer)', () => {
