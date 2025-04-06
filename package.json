@@ -3,6 +3,7 @@
     "workspaces": [
         "compact",
         "contracts/initializable/*",
+        "contracts/pausable/*",
         "contracts/utils/*"
     ],
     "scripts": {

@@ -1,0 +1,96 @@
+import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
+import { Contract as MockPausable, type Ledger, ledger } from '../artifacts/MockPausable/contract/index.cjs';
+import type { IContractSimulator } from './types';
+import { PausablePrivateState, PausableWitnesses } from '../witnesses';
+
+/**
+ * @description A simulator implementation of an utils contract for testing purposes.
+ * @template P - The private state type, fixed to UtilsPrivateState.
+ * @template L - The ledger type, fixed to Contract.Ledger.
+ */
+export class PausableSimulator
+  implements IContractSimulator<PausablePrivateState, Ledger>
+{
+  /** @description The underlying contract instance managing contract logic. */
+  readonly contract: MockPausable<PausablePrivateState>;
+
+  /** @description The deployed address of the contract. */
+  readonly contractAddress: string;
+
+  /** @description The current circuit context, updated by contract operations. */
+  circuitContext: CircuitContext<PausablePrivateState>;
+
+  /**
+   * @description Initializes the mock contract.
+   */
+  constructor() {
+    this.contract = new MockPausable<PausablePrivateState>(
+      PausableWitnesses,
+    );
+    const {
+      currentPrivateState,
+      currentContractState,
+      currentZswapLocalState,
+    } = this.contract.initialState(
+      constructorContext({}, '0'.repeat(64))
+    );
+    this.circuitContext = {
+      currentPrivateState,
+      currentZswapLocalState,
+      originalState: currentContractState,
+      transactionContext: new QueryContext(
+        currentContractState.data,
+        sampleContractAddress(),
+      ),
+    };
+    this.contractAddress = this.circuitContext.transactionContext.address;
+  }
+
+  /**
+   * @description Retrieves the current public ledger state of the contract.
+   * @returns The ledger state as defined by the contract.
+   */
+  public getCurrentPublicState(): Ledger {
+    return ledger(this.circuitContext.transactionContext.state);
+  }
+
+  /**
+   * @description Retrieves the current private state of the contract.
+   * @returns The private state of type UtilsPrivateState.
+   */
+  public getCurrentPrivateState(): PausablePrivateState {
+    return this.circuitContext.currentPrivateState;
+  }
+
+  /**
+   * @description Retrieves the current contract state.
+   * @returns The contract state object.
+   */
+  public getCurrentContractState(): ContractState {
+    return this.circuitContext.originalState;
+  }
+
+    /**
+   * @description Initializes the state.
+   * @returns None.
+   */
+  public isPaused() {
+    return this.contract.impureCircuits.isPaused(this.circuitContext).result;
+  }
+
+  public pause() {
+    this.circuitContext = this.contract.impureCircuits.pause(this.circuitContext).context;
+  }
+
+  public unpause() {
+    this.circuitContext = this.contract.impureCircuits.unpause(this.circuitContext).context;
+  }
+
+  public assertPaused() {
+    this.circuitContext = this.contract.impureCircuits.assertPaused(this.circuitContext).context;
+  }
+
+  public assertNotPaused() {
+    this.circuitContext = this.contract.impureCircuits.assertNotPaused(this.circuitContext).context;
+  }
+}
