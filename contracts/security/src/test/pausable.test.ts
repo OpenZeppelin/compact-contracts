@@ -1,5 +1,5 @@
 import { it, describe, expect } from '@jest/globals';
-import { PausableSimulator } from './PausableSimulator.js';
+import { PausableSimulator } from './simulators/PausableSimulator.js';
 
 let pausable: PausableSimulator;
 
