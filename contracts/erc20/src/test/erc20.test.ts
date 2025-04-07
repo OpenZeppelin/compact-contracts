@@ -452,18 +452,6 @@ describe('ERC20', () => {
     });
   });
 
-  describe('isZero', () => {
-    it('should return zero for the zero address', () => {
-      expect(token.isZero(utils.ZERO_KEY)).toBeTruthy();
-      expect(token.isZero(utils.ZERO_ADDRESS)).toBeTruthy();
-    });
-
-    it('should not return zero for nonzero addresses', () => {
-      expect(token.isZero(Z_OWNER)).toBeFalsy();
-      expect(token.isZero(SOME_CONTRACT)).toBeFalsy();
-    });
-  });
-
   describe('Multiple Operations', () => {
     it('should handle mint → transfer → burn sequence', () => {
       token._mint(Z_OWNER, AMOUNT);

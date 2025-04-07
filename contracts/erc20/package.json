@@ -20,6 +20,9 @@
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+  },
   "devDependencies": {
     "@midnight-ntwrk/compact": "workspace:*",
     "eslint": "^8.52.0",

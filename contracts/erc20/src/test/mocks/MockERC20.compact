@@ -104,7 +104,3 @@ export circuit _spendAllowance(
 ): [] {
     return ERC20__spendAllowance(owner, spender, value);
 }
-
-export pure circuit isZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    return ERC20_isZero(keyOrAddress);
-}

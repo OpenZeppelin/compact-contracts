@@ -296,13 +296,4 @@ export class ERC20Simulator
   ) {
     this.circuitContext = this.contract.impureCircuits._spendAllowance(this.circuitContext, owner, spender, value).context;
   }
-
-  /**
-   * @description Returns whether `keyOrAddress` is the zero address.
-   * @param keyOrAddress The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @returns Returns true if `keyOrAddress` is zero.
-   */
-  public isZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
-    return this.contract.circuits.isZero(this.circuitContext, keyOrAddress).result;
-  }
 }
