@@ -1,5 +1,5 @@
 import { it, describe, expect } from '@jest/globals';
-import { InitializableSimulator } from './simulators/InitializableSimulator.js';
+import { InitializableSimulator } from './simulators';
 import { Initializable_STATE as STATE } from '../artifacts/MockInitializable/contract/index.cjs';
 
 let initializable: InitializableSimulator;
