@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+/// Public state
+export sealed ledger name: Maybe<Opaque<"string">>;
+export sealed ledger symbol: Maybe<Opaque<"string">>;
+export ledger owners: Map<Uint<222>, Either<ZswapCoinPublicKey, ContractAddress>>;
+export ledger balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<256>>;
+export ledger tokenApprovals: Map<Uint<222>, Either<ZswapCoinPublicKey, ContractAddress>>;
+export ledger operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, >;
+
+/**
+ * @description Initializes the contract.
+ * @dev Move logic to initializer to set this as a base contract.
+ *
+ * @param _name - The name of the token.
+ * @param _symbol - The symbol of the token.
+ * @param _decimals - The number of decimals used to get the user representation.
+ */
+constructor(
+  _name: Maybe<Opaque<"string">>,
+  _symbol: Maybe<Opaque<"string">>,
+) {
+  name = _name;
+  symbol = _symbol;
+}
+
+
