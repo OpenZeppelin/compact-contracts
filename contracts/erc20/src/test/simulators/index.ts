@@ -1,1 +1,1 @@
-export { ERC20Simulator } from './ERC20Simulator.js';
+export { ERC20Simulator } from './ERC20Simulator';
