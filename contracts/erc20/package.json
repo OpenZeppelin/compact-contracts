@@ -1,0 +1,32 @@
+{
+  "name": "@openzeppelin-midnight-contracts/erc20-contract",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "compact": "find src -name '*.compact' -exec sh -c 'run-compactc \"{}\" \"src/artifacts/$(basename \"{}\" .compact)\"' \\;",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "prepack": "yarn build",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/artifacts ./dist/artifacts && cp ./src/ERC20.compact ./dist",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/compact": "workspace:*",
+    "eslint": "^8.52.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.2.2"
+  }
+}
