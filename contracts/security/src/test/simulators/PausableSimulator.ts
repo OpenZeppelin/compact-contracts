@@ -70,27 +70,43 @@ export class PausableSimulator
     return this.circuitContext.originalState;
   }
 
-    /**
-   * @description Initializes the state.
-   * @returns None.
+  /**
+   * @description Returns true if the contract is paused, and false otherwise.
+   * @returns True if paused.
    */
   public isPaused() {
     return this.contract.impureCircuits.isPaused(this.circuitContext).result;
   }
 
-  public pause() {
-    this.circuitContext = this.contract.impureCircuits.pause(this.circuitContext).context;
-  }
-
-  public unpause() {
-    this.circuitContext = this.contract.impureCircuits.unpause(this.circuitContext).context;
-  }
-
+  /**
+   * @description Makes a circuit only callable when the contract is paused.
+   * @returns None.
+   */
   public assertPaused() {
     this.circuitContext = this.contract.impureCircuits.assertPaused(this.circuitContext).context;
   }
 
+  /**
+   * @description Makes a circuit only callable when the contract is not paused.
+   * @returns None.
+   */
   public assertNotPaused() {
     this.circuitContext = this.contract.impureCircuits.assertNotPaused(this.circuitContext).context;
+  }
+
+  /**
+   * @description Triggers a stopped state.
+   * @returns None.
+   */
+  public pause() {
+    this.circuitContext = this.contract.impureCircuits.pause(this.circuitContext).context;
+  }
+
+  /**
+   * @description Lifts the pause on the contract.
+   * @returns None.
+   */
+  public unpause() {
+    this.circuitContext = this.contract.impureCircuits.unpause(this.circuitContext).context;
   }
 }
