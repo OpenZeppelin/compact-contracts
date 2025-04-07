@@ -74,7 +74,7 @@ export class PausableSimulator
    * @description Returns true if the contract is paused, and false otherwise.
    * @returns True if paused.
    */
-  public isPaused() {
+  public isPaused(): boolean {
     return this.contract.impureCircuits.isPaused(this.circuitContext).result;
   }
 
