@@ -1,0 +1,14 @@
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+import Initializable prefix Initializable_;
+
+export { Initializable_state, Initializable_STATE };
+
+export circuit initialize(): [] {
+    return Initializable_initialize();
+}
+
+export circuit isInitialized(): Boolean {
+    return Initializable_isInitialized();
+}

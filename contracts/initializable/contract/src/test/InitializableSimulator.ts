@@ -1,0 +1,88 @@
+import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
+import { Contract as MockInitializable, type Ledger, ledger } from '../artifacts/MockInitializable/contract/index.cjs';
+import type { IContractSimulator } from './types';
+import { InitializablePrivateState, InitializableWitnesses } from '../witnesses';
+
+/**
+ * @description A simulator implementation of an utils contract for testing purposes.
+ * @template P - The private state type, fixed to UtilsPrivateState.
+ * @template L - The ledger type, fixed to Contract.Ledger.
+ */
+export class InitializableSimulator
+  implements IContractSimulator<InitializablePrivateState, Ledger>
+{
+  /** @description The underlying contract instance managing contract logic. */
+  readonly contract: MockInitializable<InitializablePrivateState>;
+
+  /** @description The deployed address of the contract. */
+  readonly contractAddress: string;
+
+  /** @description The current circuit context, updated by contract operations. */
+  circuitContext: CircuitContext<InitializablePrivateState>;
+
+  /**
+   * @description Initializes the mock contract.
+   */
+  constructor() {
+    this.contract = new MockInitializable<InitializablePrivateState>(
+      InitializableWitnesses,
+    );
+    const {
+      currentPrivateState,
+      currentContractState,
+      currentZswapLocalState,
+    } = this.contract.initialState(
+      constructorContext({}, '0'.repeat(64))
+    );
+    this.circuitContext = {
+      currentPrivateState,
+      currentZswapLocalState,
+      originalState: currentContractState,
+      transactionContext: new QueryContext(
+        currentContractState.data,
+        sampleContractAddress(),
+      ),
+    };
+    this.contractAddress = this.circuitContext.transactionContext.address;
+  }
+
+  /**
+   * @description Retrieves the current public ledger state of the contract.
+   * @returns The ledger state as defined by the contract.
+   */
+  public getCurrentPublicState(): Ledger {
+    return ledger(this.circuitContext.transactionContext.state);
+  }
+
+  /**
+   * @description Retrieves the current private state of the contract.
+   * @returns The private state of type UtilsPrivateState.
+   */
+  public getCurrentPrivateState(): InitializablePrivateState {
+    return this.circuitContext.currentPrivateState;
+  }
+
+  /**
+   * @description Retrieves the current contract state.
+   * @returns The contract state object.
+   */
+  public getCurrentContractState(): ContractState {
+    return this.circuitContext.originalState;
+  }
+
+    /**
+   * @description Initializes the state.
+   * @returns None.
+   */
+  public initialize() {
+    this.circuitContext = this.contract.impureCircuits.initialize(this.circuitContext).context;
+  }
+
+    /**
+   * @description Returns true if the state is initialized.
+   * @returns Whether the contract has been initialized.
+   */
+  public isInitialized(): boolean {
+    return this.contract.impureCircuits.isInitialized(this.circuitContext).result;
+  }
+}

@@ -1,5 +1,5 @@
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import * as Compact from '../artifacts/MockERC20/contract/index.cjs';
+import * as Compact from '../../artifacts/MockUtils/contract/index.cjs';
 import { convert_bigint_to_Uint8Array, encodeCoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 
 const PREFIX_ADDRESS = "0200";
