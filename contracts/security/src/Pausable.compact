@@ -2,7 +2,7 @@
 pragma language_version >= 0.14.0;
 
 /**
- * @module Pausable.
+ * @module Pausable
  * @description Pausable allows the implementing contract to implement
  * an emergency stop mechanism. Only circuits that call `assertPaused`
  * or `assertNotPaused` will be affected by this mechanism.
