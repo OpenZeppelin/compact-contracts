@@ -3,7 +3,8 @@
     "workspaces": [
         "compact",
         "contracts/initializable/*",
-        "contracts/erc20/*"
+        "contracts/erc20/*",
+        "contracts/erc721/*"
     ],
     "scripts": {
         "compact": "turbo run compact",
