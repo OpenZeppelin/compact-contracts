@@ -1,8 +1,7 @@
 import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { ERC20ContractSimulator } from './ERC20Simulator';
-import { MaybeString } from './types.js';
-import * as utils from './utils.js';
-import { after } from 'node:test';
+import { ERC20Simulator } from './simulators';
+import { MaybeString } from './types';
+import * as utils from './utils';
 
 const NO_STRING: MaybeString = {
   is_some: false,
@@ -31,13 +30,13 @@ const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
 const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
 
-let token: ERC20ContractSimulator;
+let token: ERC20Simulator;
 let caller: CoinPublicKey;
 
 describe('ERC20', () => {
   describe('initializer and metadata', () => {
     it('should initialize metadata', () => {
-      token = new ERC20ContractSimulator(NAME, SYMBOL, DECIMALS);
+      token = new ERC20Simulator(NAME, SYMBOL, DECIMALS);
 
       expect(token.name()).toEqual(NAME);
       expect(token.symbol()).toEqual(SYMBOL);
@@ -46,7 +45,7 @@ describe('ERC20', () => {
 
     it('should initialize empty metadata', () => {
       const NO_DECIMALS = 0n;
-      token = new ERC20ContractSimulator(NO_STRING, NO_STRING, NO_DECIMALS);
+      token = new ERC20Simulator(NO_STRING, NO_STRING, NO_DECIMALS);
 
       expect(token.name()).toEqual(NO_STRING);
       expect(token.symbol()).toEqual(NO_STRING);
@@ -55,7 +54,7 @@ describe('ERC20', () => {
   });
 
   beforeEach(() => {
-    token = new ERC20ContractSimulator(NAME, SYMBOL, DECIMALS);
+    token = new ERC20Simulator(NAME, SYMBOL, DECIMALS);
   });
 
   describe('totalSupply', () => {
@@ -90,7 +89,6 @@ describe('ERC20', () => {
 
     afterEach(() => {
       expect(token.totalSupply()).toEqual(AMOUNT);
-      //expect(token.getCurrentPublicState().eRC20_TotalSupply).toEqual(AMOUNT);
     });
 
     it('should transfer partial', () => {

@@ -2,6 +2,7 @@
     "packageManager": "yarn@4.1.0",
     "workspaces": [
         "compact",
+        "contracts/erc20/",
         "contracts/initializable/",
         "contracts/utils/"
     ],
