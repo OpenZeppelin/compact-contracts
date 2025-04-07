@@ -1110,7 +1110,7 @@ __metadata:
 
 "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable/contract":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable/contract"
+  resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
     eslint: "npm:^8.52.0"
@@ -1119,9 +1119,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils/contract":
+"@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils/contract"
+  resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
     eslint: "npm:^8.52.0"
