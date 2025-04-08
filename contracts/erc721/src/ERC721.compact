@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+/**
+ * @module ERC721
+ * @description An unshielded ERC721 library.
+ *
+ * @notice ADD  
+ *
+ * @notice Further discussion and consideration required:
+ *
+ * - Consider changing the underscore in the internal methods to `unsafe` or
+ * adopting dot notation for prefixing imports.
+ * - Revise logic once contract-to-contract interactions are available on midnight.
+ * - Consider implementing an introspection mechanism for transfers to contracts.
+ * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
+ */
+module ERC721 {
+  import CompactStandardLibrary;
+  import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
+
+  /// Public state
+  export sealed ledger _name: Maybe<Opaque<"string">>;
+  export sealed ledger _symbol: Maybe<Opaque<"string">>;
+  export ledger _owners: Map<Field, Either<ZswapCoinPublicKey, ContractAddress>>;
+  export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
+  export ledger _tokenApprovals: Map<Field, Either<ZswapCoinPublicKey, ContractAddress>>;
+  export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+
+  /**
+    * @description Initializes the contract by setting the name and symbol.
+    *
+    * @param name_ - The name of the token.
+    * @param symbol_ - The symbol of the token.
+    */
+  export circuit initializer(
+    name_: Maybe<Opaque<"string">>,
+    symbol_: Maybe<Opaque<"string">>
+  ): [] {
+    _name = name_;
+    _symbol = symbol_;
+  }
+
+  /**
+   * @description Returns the token name.
+   *
+   * @return {Maybe<Opaque<"string">>} - The token name.
+   */
+  export circuit name(): Maybe<Opaque<"string">> {
+    return _name;
+  }
+
+  /**
+   * @description Returns the symbol of the token.
+   *
+   * @return {Maybe<Opaque<"string">>} - The token name.
+   */
+  export circuit symbol(): Maybe<Opaque<"string">> {
+    return _symbol;
+  }
+
+
+  /**
+   * @description Returns the value of tokens owned by `account`.
+   *
+   * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
+   *
+   * @param {account} - The public key or contract address to query.
+   * @return {Uint<128>} - The account's token balance.
+   */
+  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+    if (!_balances.member(account)) {
+      return 0;
+    }
+
+    return _balances.lookup(account);
+  }
+
+  export circuit ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    return _requireOwned(tokenId);
+  }
+
+  circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    const owner = _ownerOf(tokenId);
+    assert !Utils_isKeyOrAddressZero(owner) "ERC721: Invalid Owner";
+    return owner;
+  }
+
+  circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    if (!_owners.member(tokenId)) {
+      // If tokenId doesn't exist, create and insert a default value
+      // What is default value?? 
+      _owners.insert(tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    }
+    return _owners.lookup(tokenId);
+  }
+
+}
+

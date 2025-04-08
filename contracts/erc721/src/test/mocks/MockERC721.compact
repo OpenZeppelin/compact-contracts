@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+import "../../ERC721" prefix ERC721_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+constructor(
+  _name: Maybe<Opaque<"string">>,
+  _symbol: Maybe<Opaque<"string">> 
+) {
+  ERC721_initializer(_name, _symbol);
+}
+
+export circuit name(): Maybe<Opaque<"string">> {
+  return ERC721_name();
+}
+
+export circuit symbol(): Maybe<Opaque<"string">> {
+  return ERC721_symbol();
+}
+
+export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+  return ERC721_balanceOf(account);
+}
+
+export circuit ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+  return ERC721_ownerOf(tokenId);
+}
