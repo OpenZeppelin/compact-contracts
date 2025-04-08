@@ -40,6 +40,7 @@ module ERC20 {
    * @param name_ - The name of the token.
    * @param symbol_ - The symbol of the token.
    * @param decimals_ - The number of decimals used to get the user representation.
+   * @return {[]} - None.
    */
   export circuit initializer(
     name_: Maybe<Opaque<"string">>,
