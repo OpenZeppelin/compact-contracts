@@ -1114,6 +1114,7 @@ __metadata:
   resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
+    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
     typescript: "npm:^5.2.2"
