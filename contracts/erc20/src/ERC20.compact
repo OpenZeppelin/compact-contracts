@@ -25,19 +25,24 @@ module ERC20 {
   import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
 
   /// Public state
-  export ledger _name: Maybe<Opaque<"string">>;
-  export ledger _symbol: Maybe<Opaque<"string">>;
-  export ledger _decimals: Uint<8>;
+  export sealed ledger _name: Maybe<Opaque<"string">>;
+  export sealed ledger _symbol: Maybe<Opaque<"string">>;
+  export sealed ledger _decimals: Uint<8>;
   export ledger _totalSupply: Uint<128>;
   export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
   export ledger _allowances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
 
   /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
+
+   * @dev This MUST be called in the implementing contract's constructor. Failure to do so
+   * can lead to an irreparable contract.
    *
    * @param name_ - The name of the token.
    * @param symbol_ - The symbol of the token.
    * @param decimals_ - The number of decimals used to get the user representation.
+
+   * @return {[]} - None.
    */
   export circuit initializer(
     name_: Maybe<Opaque<"string">>,

@@ -1097,6 +1097,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+
 "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
@@ -1108,18 +1109,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/erc721-contract@workspace:contracts/erc721/contract":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/erc721-contract@workspace:contracts/erc721/contract"
-  dependencies:
-    "@midnight-ntwrk/compact": "workspace:*"
-    eslint: "npm:^8.52.0"
-    jest: "npm:^29.7.0"
-    typescript: "npm:^5.2.2"
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable/contract":
+"@openzeppelin-midnight-contracts/utils-contract@workspace:^, @openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils"
   dependencies:
