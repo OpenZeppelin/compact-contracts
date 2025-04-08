@@ -5,9 +5,7 @@
 > ## ⚠️ WARNING! ⚠️
 >
 > This repo contains highly experimental code.
->
 > Expect rapid iteration.
->
 > **Use at your own risk.**
 
 ## Development
