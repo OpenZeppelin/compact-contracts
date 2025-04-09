@@ -241,5 +241,13 @@ module ERC721 {
     return _getApproved(tokenId);
   }
 
+  export circuit approve(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field
+  ): [] {
+    _approve(to, tokenId, own_public_key());
+  }
+
+
 }
 
