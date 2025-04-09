@@ -290,5 +290,21 @@ module ERC721 {
 
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender"
   }
+
+  circuit _safeMint(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field  
+  ): [] {
+    _safeMint(to, tokenId, "");
+  }
+
+  circuit _safeMint(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field,
+    data: Opaque<"string">
+  ): [] {
+    _mint(to, tokenId);
+    // ERC721Utils_checkOnERC721Received
+  }
 }
 
