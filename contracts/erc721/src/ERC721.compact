@@ -234,5 +234,12 @@ module ERC721 {
       _operatorApprovals.lookup(owner).insert(operator, approved);
     }
   }
+
+  export circuit getApproved(tokenId: Field) {
+    _requireOwned(tokenId);
+
+    return _getApproved(tokenId);
+  }
+
 }
 
