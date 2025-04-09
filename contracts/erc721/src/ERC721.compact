@@ -311,5 +311,18 @@ module ERC721 {
     const previousOwner = _update(burn_address(), tokenId, burn_address());
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
   }
+
+  circuit _transfer(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver"
+
+    const previousOwner = _update(to, tokenId, burn_address());
+
+    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token"
+    assert previousOwner != from "ERC721: Incorrect Owner"
+  }
 }
 
