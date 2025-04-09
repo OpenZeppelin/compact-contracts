@@ -28,6 +28,9 @@ module ERC721 {
   export ledger _tokenApprovals: Map<Field, Either<ZswapCoinPublicKey, ContractAddress>>;
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
 
+  /// Private state
+  witness computeTokenURI(baseURI: Opaque<"string">): Opaque<string>;
+
   /**
     * @description Initializes the contract by setting the name and symbol.
     *
@@ -246,6 +249,17 @@ module ERC721 {
     tokenId: Field
   ): [] {
     _approve(to, tokenId, own_public_key());
+  }
+
+  export circuit tokenURI(tokenId: Field): Opaque<"string"> {
+    _requireOwned(tokenId);
+
+    const baseURI = _baseURI();
+    return computeTokenURI(baseURI);
+  }
+
+  circuit _baseURI(): Opaque<"string"> {
+    return "";
   }
 
 
