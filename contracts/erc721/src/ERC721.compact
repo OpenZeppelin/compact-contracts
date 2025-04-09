@@ -306,5 +306,10 @@ module ERC721 {
     _mint(to, tokenId);
     // ERC721Utils_checkOnERC721Received
   }
+
+  circuit _burn(tokenId: Field): [] {
+    const previousOwner = _update(burn_address(), tokenId, burn_address());
+    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
+  }
 }
 
