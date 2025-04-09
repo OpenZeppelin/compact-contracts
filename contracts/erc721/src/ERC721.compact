@@ -210,7 +210,29 @@ module ERC721 {
     // ERC721Utils_checkOnERC721Received
   }
 
+  export circuit setApprovalForAll(
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    approved: Boolean
+  ): [] {
+    _setApprovalForAll(own_public_key(), operator, approved);
+  }
+  
+  circuit _setApprovalForAll(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    approved: Boolean
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(operator) "ERC721: Invalid Operator";
 
-
+    if (!_operatorApprovals.member(owner)) {
+      _operatorApprovals.insert(
+        owner, 
+        default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
+      );
+      _operatorApprovals.lookup(owner).insert(operator, approved);
+    } else {
+      _operatorApprovals.lookup(owner).insert(operator, approved);
+    }
+  }
 }
 
