@@ -82,17 +82,14 @@ module ERC721 {
   }
 
   circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
-    const owner = _ownerOf(tokenId);
+    assert _owners.member(tokenId) "ERC721: Nonexistent Token";
+    const owner = _owners.lookup(tokenId);
+
     assert !Utils_isKeyOrAddressZero(owner) "ERC721: Invalid Owner";
     return owner;
   }
 
   circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
-    if (!_owners.member(tokenId)) {
-      // If tokenId doesn't exist, create and insert a default value
-      // What is default value?? 
-      _owners.insert(tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
-    }
     return _owners.lookup(tokenId);
   }
 
