@@ -80,6 +80,14 @@ module ERC721 {
     return _balances.lookup(account);
   }
 
+  /**
+   * @description Returns the owner of the `tokenId` token.
+   *
+   * @dev Tokens assigned to zero address are considered invalid, and queries about them do throw.
+   *
+   * @param {tokenId} - The identifier for a token.
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The public key or contract that owns the token.
+   */
   export circuit ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
     return _requireOwned(tokenId);
   }
@@ -262,6 +270,12 @@ module ERC721 {
     return "";
   }
 
-
+  circuit _increaseBalance(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: Uint<128>
+  ): [] {
+    const newValue = _balances.lookup(account) + value;
+    _balances.insert(account, newValue);
+  }
 }
 
