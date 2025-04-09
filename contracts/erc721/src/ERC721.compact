@@ -195,5 +195,24 @@ module ERC721 {
     return _tokenApprovals.lookup(tokenId);
   }
 
+
+  export circuit safeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field
+  ): [] {
+    safeTransferFrom(from, to, tokenId, "");
+  }
+
+  export circuit safeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field,
+    data: Opaque<"string">
+  ): [] {
+    transferFrom(from, to, tokenId);
+    // TODO: Impl rest
+  }
+
 }
 
