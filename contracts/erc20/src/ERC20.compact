@@ -325,21 +325,4 @@ module ERC20 {
       _approve(owner, spender, currentAllowance - value as Uint<128>);
     }
   }
-
-  /**
-   * @description Returns whether `keyOrAddress` is the zero address.
-   * @todo Move to a utils contract since this will likely be reused.
-   *
-   * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is zero.
-   */
-  //export pure circuit Utils_isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-  //  const zero = pad(32, "");
-//
-  //  if (keyOrAddress.is_left) {
-  //    return keyOrAddress == left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey{ zero });
-  //  } else {
-  //    return keyOrAddress == right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ zero });
-  //  }
-  //}
 }
