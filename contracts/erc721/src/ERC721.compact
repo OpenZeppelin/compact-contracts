@@ -143,17 +143,12 @@ module ERC721 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Field,
     auth: Either<ZswapCoinPublicKey, ContractAddress>,
-    emitEvent: Boolean
   ): [] {
-    if (emitEvent || !Utils_isKeyOrAddressZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(auth)) {
       owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
-      assert (!Utils_isKeyOrAddressZero(auth) && owner != auth && !isApprovedForAll(owner, auth)) "ERC721 Invalid Approver"
-
-      // if (emitEvent) {
-      // impl event here when available
-      // }
+      assert (!Utils_isKeyOrAddressZero(auth) && owner != auth && !isApprovedForAll(owner, auth)) "ERC721 Invalid Approver";
     }
 
     _tokenApprovals.insert(tokenId, to);
@@ -211,8 +206,11 @@ module ERC721 {
     data: Opaque<"string">
   ): [] {
     transferFrom(from, to, tokenId);
-    // TODO: Impl rest
+    // See https://github.com/OpenZeppelin/midnight-contracts/issues/25
+    // ERC721Utils_checkOnERC721Received
   }
+
+
 
 }
 
