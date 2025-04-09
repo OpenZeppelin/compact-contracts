@@ -277,5 +277,18 @@ module ERC721 {
     const newValue = _balances.lookup(account) + value;
     _balances.insert(account, newValue);
   }
+
+  circuit _mint(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field 
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invald Receiver"
+
+    // Assumes burn_address == zero address 
+    // May want to define as default<ContractAddress>
+    const previousOwner = _update(to, tokenId, burn_address());
+
+    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender"
+  }
 }
 
