@@ -124,7 +124,7 @@ module ERC721 {
     tokenId: Field,
     auth: Either<ZswapCoinPublicKey, ContractAddress>
   ): Either<ZswapCoinPublicKey, ContractAddress> {
-    from = _ownerOf(tokenId);
+    const from = _ownerOf(tokenId);
 
     // Perform (optional) operator check
     if (!Utils_isKeyOrAddressZero(auth)) {
