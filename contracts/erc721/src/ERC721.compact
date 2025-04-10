@@ -30,6 +30,7 @@ module ERC721 {
 
   /// Private state
   witness computeTokenURI(baseURI: Opaque<"string">): Opaque<"string">;
+  witness baseURI(): Opaque<"string">;
 
   /**
     * @description Initializes the contract by setting the name and symbol.
