@@ -76,7 +76,8 @@ export circuit safeTransferFrom(
   return ERC721_safeTransferFrom(from, to, tokenId);
 }
 
-export circuit safeTransferFrom(
+// Two functions with the same name are not allowed as top-level exports
+export circuit _safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Field,
@@ -159,7 +160,9 @@ export circuit _safeMint(
   return ERC721__safeMint(to, tokenId);
 }
 
-export circuit _safeMint(
+
+// Two functions with the same name are not allowed as top-level exports
+export circuit __safeMint(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Field,
   data: Opaque<"string">
