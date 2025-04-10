@@ -92,16 +92,54 @@ module ERC721 {
     return _requireOwned(tokenId);
   }
 
-  circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
-    assert _owners.member(tokenId) "ERC721: Nonexistent Token";
-    const owner = _owners.lookup(tokenId);
+  export circuit tokenURI(tokenId: Field): Opaque<"string"> {
+    _requireOwned(tokenId);
 
-    assert !Utils_isKeyOrAddressZero(owner) "ERC721: Invalid Owner";
-    return owner;
+    const baseURI = _baseURI();
+    return computeTokenURI(baseURI);
   }
 
-  circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
-    return _owners.lookup(tokenId);
+  circuit _baseURI(): Opaque<"string"> {
+    return default<Opaque<"string">>;
+  }
+
+  export circuit approve(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field
+  ): [] {
+    _approve(
+      to, 
+      tokenId,
+      left<ZswapCoinPublicKey, ContractAddress>(own_public_key())
+    );
+  }
+
+  export circuit getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    _requireOwned(tokenId);
+
+    return _getApproved(tokenId);
+  }
+
+  export circuit setApprovalForAll(
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    approved: Boolean
+  ): [] {
+    _setApprovalForAll(
+      left<ZswapCoinPublicKey, ContractAddress>(own_public_key()),
+      operator,
+      approved
+    );
+  }
+
+  export circuit isApprovedForAll(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Boolean {
+    if (_operatorApprovals.member(owner) && _operatorApprovals.lookup(owner).member(operator)) {
+      return _operatorApprovals.lookup(owner).lookup(operator);
+    } else {
+      return false;
+    }
   }
 
   export circuit transferFrom(
@@ -121,6 +159,37 @@ module ERC721 {
       left<ZswapCoinPublicKey, ContractAddress>(own_public_key())
     );
     assert previousOwner != from "ERC721: Incorrect Owner";
+  }
+
+  circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    assert _owners.member(tokenId) "ERC721: Nonexistent Token";
+    const owner = _owners.lookup(tokenId);
+
+    assert !Utils_isKeyOrAddressZero(owner) "ERC721: Invalid Owner";
+    return owner;
+  }
+
+  circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    return _owners.lookup(tokenId);
+  }
+
+  export circuit safeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field
+  ): [] {
+    safeTransferFrom(from, to, tokenId, default<Opaque<"string">>);
+  }
+
+  export circuit safeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Field,
+    data: Opaque<"string">
+  ): [] {
+    transferFrom(from, to, tokenId);
+    // See https://github.com/OpenZeppelin/midnight-contracts/issues/25
+    // ERC721Utils_checkOnERC721Received
   }
 
   circuit _update(
@@ -188,54 +257,12 @@ module ERC721 {
     return (!Utils_isKeyOrAddressZero(spender) && (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender));
   }
 
-  export circuit isApprovedForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Boolean {
-    if (_operatorApprovals.member(owner) && _operatorApprovals.lookup(owner).member(operator)) {
-      return _operatorApprovals.lookup(owner).lookup(operator);
-    } else {
-      return false;
-    }
-  }
-
   circuit _getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
     // I think this returns the 0 address if token doesn't exist
     // Make sure this doesn't cause problem in testing
     return _tokenApprovals.lookup(tokenId);
   }
 
-
-  export circuit safeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field
-  ): [] {
-    safeTransferFrom(from, to, tokenId, default<Opaque<"string">>);
-  }
-
-  export circuit safeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field,
-    data: Opaque<"string">
-  ): [] {
-    transferFrom(from, to, tokenId);
-    // See https://github.com/OpenZeppelin/midnight-contracts/issues/25
-    // ERC721Utils_checkOnERC721Received
-  }
-
-  export circuit setApprovalForAll(
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
-    approved: Boolean
-  ): [] {
-    _setApprovalForAll(
-      left<ZswapCoinPublicKey, ContractAddress>(own_public_key()),
-      operator,
-      approved
-    );
-  }
-  
   circuit _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -254,33 +281,9 @@ module ERC721 {
     }
   }
 
-  export circuit getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
-    _requireOwned(tokenId);
 
-    return _getApproved(tokenId);
-  }
 
-  export circuit approve(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field
-  ): [] {
-    _approve(
-      to, 
-      tokenId,
-      left<ZswapCoinPublicKey, ContractAddress>(own_public_key())
-    );
-  }
 
-  export circuit tokenURI(tokenId: Field): Opaque<"string"> {
-    _requireOwned(tokenId);
-
-    const baseURI = _baseURI();
-    return computeTokenURI(baseURI);
-  }
-
-  circuit _baseURI(): Opaque<"string"> {
-    return default<Opaque<"string">>;
-  }
 
   circuit _increaseBalance(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
