@@ -30,3 +30,151 @@ export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): 
 export circuit ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721_ownerOf(tokenId);
 }
+
+export circuit tokenURI(tokenId: Field): Opaque<"string"> {
+  return ERC721_tokenURI(tokenId);
+}
+
+export circuit approve(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field
+): [] {
+  return ERC721_approve(to, tokenId);
+}
+
+export circuit getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+  return ERC721_getApproved(tokenId);
+}
+
+export circuit setApprovalForAll(
+  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  approved: Boolean
+): [] {
+  return ERC721_setApprovalForAll(operator, approved);
+}
+
+export circuit isApprovedForAll(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  operator: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
+  return ERC721_isApprovedForAll(owner, operator);
+}
+
+export circuit transferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field
+): [] {
+  return ERC721_transferFrom(from, to, tokenId);
+}
+
+export circuit safeTransferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field
+): [] {
+  return ERC721_safeTransferFrom(from, to, tokenId);
+}
+
+export circuit safeTransferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field,
+  data: Opaque<"string">
+): [] {
+  return ERC721_safeTransferFrom(from, to, tokenId, data);
+}
+
+export circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+  return ERC721__requireOwned(tokenId);
+}
+
+export circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+  return ERC721__ownerOf(tokenId);
+}
+
+export circuit _update(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field,
+  auth: Either<ZswapCoinPublicKey, ContractAddress>
+): Either<ZswapCoinPublicKey, ContractAddress> {
+  return ERC721__update(to, tokenId, auth);
+}
+
+export circuit _approve(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field,
+  auth: Either<ZswapCoinPublicKey, ContractAddress>
+): [] {
+  return ERC721__approve(to, tokenId, auth);
+}
+
+export circuit _checkAuthorized(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  spender: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field
+): [] {
+  return ERC721__checkAuthorized(owner, spender, tokenId);
+}
+
+export circuit _isAuthorized(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  spender: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field
+): Boolean {
+  return ERC721__isAuthorized(owner, spender, tokenId);
+}
+
+
+export circuit _getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+  return ERC721__getApproved(tokenId);
+}
+
+export circuit _setApprovalForAll(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  approved: Boolean
+): [] {
+  return ERC721__setApprovalForAll(owner, operator, approved);
+}
+
+export circuit _increaseBalance(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>
+): [] {
+  return ERC721__increaseBalance(account, value);
+}
+
+export circuit _mint(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field 
+): [] {
+  return ERC721__mint(to, tokenId);
+}
+
+export circuit _safeMint(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field  
+): [] {
+  return ERC721__safeMint(to, tokenId);
+}
+
+export circuit _safeMint(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field,
+  data: Opaque<"string">
+): [] {
+  return ERC721__safeMint(to, tokenId, data);
+}
+
+export circuit _burn(tokenId: Field): [] {
+  return ERC271__burn(tokenId);
+}
+
+export circuit _transfer(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Field
+): [] {
+  return ERC721__transfer(from, to, tokenId);
+}
