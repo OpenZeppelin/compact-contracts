@@ -1097,9 +1097,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/erc721-contract@workspace:contracts/erc721/contract":
+"@openzeppelin-midnight-contracts/erc721-contract@workspace:contracts/erc721":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/erc721-contract@workspace:contracts/erc721/contract"
+  resolution: "@openzeppelin-midnight-contracts/erc721-contract@workspace:contracts/erc721"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
     "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
@@ -1109,7 +1109,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable/contract":
+"@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
   dependencies:
