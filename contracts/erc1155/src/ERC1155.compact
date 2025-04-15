@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+/**
+ * @module ERC1155
+ * @description An unshielded ERC1155 library.
+ */
+module ERC1155 {
+  import CompactStandardLibrary;
+  import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
+
+  /// Public state
+  export ledger _balances: Map<Field, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
+  export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+  // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
+  export ledger _uri: Maybe<Opaque<"string">>;
+
+  /**
+  @add me...
+   */
+  export circuit initializer(
+    uri_: Maybe<Opaque<"string">>
+  ): [] {
+    _uri = uri_;
+  }
+
+  /**
+  @add me...
+   */
+  export circuit uri(id: Field): Maybe<Opaque<"string">> {
+    return _uri;
+  }
+
+  /**
+  @add me...
+   */
+  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
+    if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
+      return 0;
+    }
+    return _balances.lookup(id).lookup(account);
+  }
+
+  /**
+  @add me...
+   */
+  export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    //_setApprovalForAll(caller, operator, approved);
+  }
+
+  /**
+  @add me...
+   */
+  export circuit isApprovedForAll(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Boolean {
+    if (!_operatorApprovals.member(account) || !_operatorApprovals.lookup(account).member(operator)) {
+      return false;
+    }
+
+    return _operatorApprovals.lookup(account).lookup(operator);
+  }
+
+  /**
+  @add me...
+   */
+  export circuit safeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: Field,
+    value: Uint<128>
+  ): [] {
+    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    if (from != caller) {
+      assert isApprovedForAll(from, caller) "ERC1155: unauthorized operator";
+    }
+
+    _safeTransferFrom(from, to, id, value);
+  }
+
+  /**
+  @add me...
+   */
+  export circuit _safeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: Field,
+    value: Uint<128>
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
+    assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
+    _update(from, to, id, value);
+  }
+
+  /**
+  @add me...
+   */
+  // Start with single
+  export circuit _update(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: Field,
+    value: Uint<128>
+  ): [] {
+    if (!Utils_isKeyOrAddressZero(from)) {
+      const fromBalance = balanceOf(from, id);
+      assert fromBalance >= value "ERC1155: insufficient balance";
+      const newBalance = fromBalance - value;
+      _balances.lookup(id).insert(from, newBalance);
+    }
+
+    if (!Utils_isKeyOrAddressZero(to)) {
+      // id not initialized
+      if (!_balances.member(id)) {
+        _balances.insert(id, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
+        _balances.lookup(id).insert(to, value as Uint<128>);
+      } else {
+        const toBalance = balanceOf(to, id);
+        _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
+      }
+    }
+  }
+
+  /**
+  @add me...
+   */
+  export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
+    _uri = newURI;
+  }
+
+  /**
+  @add me...
+   */
+  export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+    assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
+    // Using the contract variant of 0
+    // TODO: Look into if this matters
+    const zero_address = right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ pad(32, "") });
+    _update(zero_address, to, id, value);
+  }
+
+  /**
+  @add me...
+   */
+  export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+    assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
+    // Using the contract variant of 0
+    // TODO: Look into if this matters
+    const zero_address = right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ pad(32, "") });
+    _update(from, zero_address, id, value);
+  }
+
+}
