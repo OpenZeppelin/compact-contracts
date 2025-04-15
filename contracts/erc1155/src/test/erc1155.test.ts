@@ -266,4 +266,53 @@ describe('ERC1155', () => {
       });
     });
   });
+
+  describe('_safeTransferFrom', () => {
+    beforeEach(() => {
+      token._mint(Z_OWNER, TOKEN_ID, AMOUNT);
+
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
+      expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(0n);
+    });
+
+    it('should transfer whole', () => {
+      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
+
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
+      expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+    });
+
+    it('should transfer partial', () => {
+      const partialAmt = AMOUNT - 1n;
+      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt);
+
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
+      expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(partialAmt);
+    });
+
+    it('should allow transfer of 0 tokens', () => {
+      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n);
+
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
+      expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(0n);
+    });
+
+    it('should fail with unsufficient balance', () => {
+      expect(() => {
+        token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n);
+      }).toThrow('ERC1155: insufficient balance');
+    });
+
+    it('should fail when transfer from 0', () => {
+      expect(() => {
+        token._safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT);
+      }).toThrow('ERC1155: invalid sender');
+    });
+
+    it('should fail when transfer to 0', () => {
+      expect(() => {
+        token._safeTransferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+      }).toThrow('ERC1155: invalid receiver');
+    });
+  });
 });
