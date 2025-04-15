@@ -110,6 +110,7 @@ module ERC1155 {
     if (!Utils_isKeyOrAddressZero(from)) {
       const fromBalance = balanceOf(from, id);
       assert fromBalance >= value "ERC1155: insufficient balance";
+      // overflow not possible
       const newBalance = fromBalance - value;
       _balances.lookup(id).insert(from, newBalance);
     }
@@ -121,6 +122,8 @@ module ERC1155 {
         _balances.lookup(id).insert(to, value as Uint<128>);
       } else {
         const toBalance = balanceOf(to, id);
+        const MAX_UINT128 = 340282366920938463463374607431768211455;
+        assert MAX_UINT128 - toBalance >= value "ERC1155: arithmetic overflow";
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
       }
     }
