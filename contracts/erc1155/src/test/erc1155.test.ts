@@ -27,6 +27,7 @@ const MAX_UINT128 = BigInt(2**128) - BigInt(1);
 const TOKEN_ID: bigint = BigInt(1);
 const TOKEN_ID2: bigint = BigInt(22);
 const TOKEN_ID3: bigint = BigInt(333);
+const NONEXISTENT_ID: bigint = BigInt(987654321);
 const IDS = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
 const MAX_UINT256 = BigInt(2**256) - BigInt(1);
 
@@ -166,6 +167,12 @@ describe('ERC1155', () => {
         }).toThrow('ERC1155: insufficient balance');
       });
 
+      it('should fail with nonexistent id', () => {
+        expect(() => {
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
+        }).toThrow('ERC1155: insufficient balance');
+      });
+
       it('should fail with transfer from zero', () => {
         expect(() => {
           token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
@@ -217,6 +224,12 @@ describe('ERC1155', () => {
         }).toThrow('ERC1155: insufficient balance');
       });
 
+      it('should fail with nonexistent id', () => {
+        expect(() => {
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
+        }).toThrow('ERC1155: insufficient balance');
+      });
+
       it('should fail with transfer from zero', () => {
         expect(() => {
           token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
@@ -257,6 +270,12 @@ describe('ERC1155', () => {
       it('should fail with insufficient balance', () => {
         expect(() => {
           token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
+        }).toThrow('ERC1155: unauthorized operator');
+      });
+
+      it('should fail with nonexistent id', () => {
+        expect(() => {
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
         }).toThrow('ERC1155: unauthorized operator');
       });
 
@@ -303,6 +322,12 @@ describe('ERC1155', () => {
     it('should fail with unsufficient balance', () => {
       expect(() => {
         token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n);
+      }).toThrow('ERC1155: insufficient balance');
+    });
+
+    it('should fail with nonexistent id', () => {
+      expect(() => {
+        token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT);
       }).toThrow('ERC1155: insufficient balance');
     });
 
@@ -433,7 +458,13 @@ describe('ERC1155', () => {
         expect(() => {
           token._update(Z_OWNER, Z_RECIPIENT, ids[0], amts[0] + 1n);
         }).toThrow('ERC1155: insufficient balance');
-      })
+      });
+
+      it('should fail when transferring tokens of nonexistent id', () => {
+        expect(() => {
+          token._update(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT);
+        }).toThrow('ERC1155: insufficient balance');
+      });
     });
 
     describe('zero to zero (this does nothing)', () => {
@@ -460,6 +491,80 @@ describe('ERC1155', () => {
         expect(token.uri(TOKEN_ID)).toEqual(URIS[i]);
         expect(token.uri(TOKEN_ID2)).toEqual(URIS[i]);
       };
+    });
+  });
+
+  describe('_mint', () => {
+    it('should update balance when minting', () => {
+      token._mint(Z_RECIPIENT, TOKEN_ID, AMOUNT);
+
+      expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+    });
+
+    it('should update balance with multiple mints', () => {
+      for (let i = 0; i < 3; i++) {
+        token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
+      };
+
+      expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(3n);
+    });
+
+    it('should fail when overflowing uin128', () => {
+      token._mint(Z_RECIPIENT, TOKEN_ID, MAX_UINT128);
+
+      expect(() => {
+        token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
+      }).toThrow('ERC1155: arithmetic overflow');
+    });
+
+    it('should fail when minting to zero address', () => {
+      expect(() => {
+        token._mint(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+      }).toThrow('ERC1155: invalid receiver');
+    });
+  });
+
+  describe('_burn', () => {
+    beforeEach(() => {
+      token._mint(Z_OWNER, TOKEN_ID, AMOUNT);
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
+    });
+
+    it('should burn tokens', () => {
+      token._burn(Z_OWNER, TOKEN_ID, AMOUNT);
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
+    });
+
+    it('should burn partial', () => {
+      const partialAmt = 1n;
+      token._burn(Z_OWNER, TOKEN_ID, partialAmt);
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
+    });
+
+    it('should update balance with multiple burns', () => {
+      for (let i = 0; i < 3; i++) {
+        token._burn(Z_OWNER, TOKEN_ID, 1n);
+      };
+
+      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - 3n);
+    });
+
+    it('should fail when not enough balance to burn', () => {
+      expect(() => {
+        token._burn(Z_OWNER, TOKEN_ID, AMOUNT + 1n);
+      }).toThrow('ERC1155: insufficient balance');
+    });
+
+    it('should fail when burning the zero address tokens', () => {
+      expect(() => {
+        token._burn(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+      }).toThrow('ERC1155: invalid sender');
+    });
+
+    it('should fail when burning tokens from nonexistent id', () => {
+      expect(() => {
+        token._burn(Z_OWNER, NONEXISTENT_ID, AMOUNT);
+      }).toThrow('ERC1155: insufficient balance');
     });
   });
 });
