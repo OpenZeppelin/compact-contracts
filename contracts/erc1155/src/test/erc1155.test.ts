@@ -19,12 +19,15 @@ const NEW_URI: MaybeString = {
 // Amounts
 const AMOUNT: bigint = BigInt(250);
 const AMOUNT2: bigint = BigInt(9999);
+const AMOUNT3: bigint = BigInt(987654321);
+const AMOUNTS = [AMOUNT, AMOUNT2, AMOUNT3];
 const MAX_UINT128 = BigInt(2**128) - BigInt(1);
 
 // IDs
 const TOKEN_ID: bigint = BigInt(1);
 const TOKEN_ID2: bigint = BigInt(22);
 const TOKEN_ID3: bigint = BigInt(333);
+const IDS = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
 const MAX_UINT256 = BigInt(2**256) - BigInt(1);
 
 // PubKeys/addresses
@@ -313,6 +316,150 @@ describe('ERC1155', () => {
       expect(() => {
         token._safeTransferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
       }).toThrow('ERC1155: invalid receiver');
+    });
+  });
+
+  describe('_update', () => {
+    describe('zero to nonzero (mint)', () => {
+      it('should update balance', () => {
+        const ids = IDS;
+        const amts = AMOUNTS;
+        for (let i = 0; i < ids.length; i++) {
+          token._update(utils.ZERO_KEY, Z_RECIPIENT, ids[i], amts[i]);
+        };
+
+        for (let i = 0; i < ids.length; i++) {
+          expect(token.balanceOf(Z_RECIPIENT, ids[i])).toEqual(amts[i]);
+        };
+      });
+
+      it('should update balance with consecutive mints on same id', () => {
+        for (let i = 0; i < 3; i++) {
+          token._update(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, 1n);
+        };
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(3n);
+      })
+
+      it('should fail with uint128 overflow', () => {
+        token._update(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, MAX_UINT128);
+
+        expect(() => {
+          token._update(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, 1n);
+        }).toThrow('ERC1155: arithmetic overflow');
+      });
+    });
+
+    describe('nonzero to zero (burn)', () => {
+      beforeEach(() => {
+        const ids = IDS;
+        const amts = AMOUNTS;
+        for (let i = 0; i < ids.length; i++) {
+          token._update(utils.ZERO_KEY, Z_OWNER, ids[i], amts[i]);
+        };
+      })
+      it('should update balance', () => {
+        const ids = IDS;
+        const amts = AMOUNTS;
+        for (let i = 0; i < ids.length; i++) {
+          token._update(Z_OWNER, utils.ZERO_KEY, ids[i], amts[i]);
+        };
+
+        for (let i = 0; i < ids.length; i++) {
+          expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(0n);
+        };
+      });
+
+      it('should update balance partial', () => {
+        const ids = IDS;
+        const amts = AMOUNTS;
+        // burn 1 from each
+        for (let i = 0; i < ids.length; i++) {
+          token._update(Z_OWNER, utils.ZERO_KEY, ids[i], 1n);
+        };
+
+        for (let i = 0; i < ids.length; i++) {
+          expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(amts[i] - 1n);
+        }
+      });
+
+      it('should fail when burning with not enough balance', () => {
+        const ids = IDS;
+        const amts = AMOUNTS;
+        for (let i = 0; i < ids.length; i++) {
+          expect(() => {
+            token._update(Z_OWNER, utils.ZERO_KEY, ids[i], amts[i] + 1n);
+          }).toThrow('ERC1155: insufficient balance');
+        };
+      });
+    });
+
+    describe('nonzero to nonzero (transfer)', () => {
+      const ids = IDS;
+      const amts = AMOUNTS;
+
+      beforeEach(() => {
+        const ids = IDS;
+        const amts = AMOUNTS;
+        for (let i = 0; i < ids.length; i++) {
+          token._update(utils.ZERO_KEY, Z_OWNER, ids[i], amts[i]);
+        };
+      });
+
+      it('should transfer', () => {
+        // transfer all
+        for (let i = 0; i < ids.length; i++) {
+          token._update(Z_OWNER, Z_RECIPIENT, ids[i], amts[i]);
+        };
+
+        for (let i = 0; i < ids.length; i++) {
+          expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(0n);
+          expect(token.balanceOf(Z_RECIPIENT, ids[i])).toEqual(amts[i]);
+        }
+      });
+
+      it('should transfer partial', () => {
+        // transfer 1
+        for (let i = 0; i < ids.length; i++) {
+          token._update(Z_OWNER, Z_RECIPIENT, ids[i], 1n);
+        };
+
+        for (let i = 0; i < ids.length; i++) {
+          expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(amts[i] - 1n);
+          expect(token.balanceOf(Z_RECIPIENT, ids[i])).toEqual(1n);
+        };
+      });
+
+      it('should fail when transferring with not enough balance', () => {
+        expect(() => {
+          token._update(Z_OWNER, Z_RECIPIENT, ids[0], amts[0] + 1n);
+        }).toThrow('ERC1155: insufficient balance');
+      })
+    });
+
+    describe('zero to zero (this does nothing)', () => {
+      it('mints and burns', () => {
+        token._update(utils.ZERO_KEY, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+      });
+    });
+  });
+
+  describe('_setURI', () => {
+    it('sets a new URI', () => {
+      token._setURI(NEW_URI);
+
+      expect(token.uri(TOKEN_ID)).toEqual(NEW_URI);
+      expect(token.uri(TOKEN_ID2)).toEqual(NEW_URI);
+    });
+
+    it('sets an empty URI → newURI → empty URI → URI', () => {
+      const URIS = [NO_STRING, NEW_URI, NO_STRING, URI];
+
+      for (let i = 0; i < URIS.length; i++) {
+        token._setURI(URIS[i]);
+
+        expect(token.uri(TOKEN_ID)).toEqual(URIS[i]);
+        expect(token.uri(TOKEN_ID2)).toEqual(URIS[i]);
+      };
     });
   });
 });
