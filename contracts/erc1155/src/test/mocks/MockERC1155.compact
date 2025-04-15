@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+import "../../ERC1155" prefix ERC1155_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ERC1155__balances, ERC1155__operatorApprovals, ERC1155__uri };
+
+constructor(
+  _uri: Maybe<Opaque<"string">>
+) {
+  ERC1155_initializer(_uri);
+}
+
+export circuit uri(id: Field): Maybe<Opaque<"string">> {
+  return ERC1155_uri(id);
+}
+
+export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
+  return ERC1155_balanceOf(account, id);
+}
+
+export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+  return ERC1155_setApprovalForAll(operator, approved);
+}
+
+export circuit isApprovedForAll(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  operator: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
+  return ERC1155_isApprovedForAll(account, operator);
+}
+
+export circuit safeTransferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  id: Field,
+  value: Uint<128>
+): [] {
+  return ERC1155_safeTransferFrom(from, to, id, value);
+}
+
+export circuit _safeTransferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  id: Field,
+  value: Uint<128>
+): [] {
+  return ERC1155__safeTransferFrom(from, to, id, value);
+}
+
+export circuit _update(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  id: Field,
+  value: Uint<128>
+): [] {
+  return ERC1155__update(from, to, id, value);
+}
+
+export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
+  return ERC1155__setURI(newURI);
+}
+
+export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+  return ERC1155__mint(to, id, value);
+}
+
+export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+  return ERC1155__burn(from, id, value);
+}
