@@ -567,4 +567,29 @@ describe('ERC1155', () => {
       }).toThrow('ERC1155: insufficient balance');
     });
   });
+
+  describe('_setApprovalForAll', () => {
+    it('should return false when set to false', () => {
+
+      token._setApprovalForAll(Z_OWNER, Z_SPENDER, false);
+      expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
+    });
+
+    it('should fail when attempting to approve zero address as an operator', () => {
+      expect(() => {
+        token._setApprovalForAll(Z_OWNER, utils.ZERO_KEY, true);
+      }).toThrow('ERC1155: invalid operator');
+    });
+
+    it('should set → unset → set operator', () => {
+      token._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
+      expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
+
+      token._setApprovalForAll(Z_OWNER, Z_SPENDER, false);
+      expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
+
+      token._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
+      expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
+    });
+  })
 });
