@@ -48,7 +48,7 @@ module ERC1155 {
   export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-    //_setApprovalForAll(caller, operator, approved);
+    _setApprovalForAll(caller, operator, approved);
   }
 
   /**
@@ -155,4 +155,16 @@ module ERC1155 {
     _update(from, zero_address, id, value);
   }
 
+  export circuit _setApprovalForAll(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    approved: Boolean
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(operator) "ERC1155: invalid operator";
+    if (!_operatorApprovals.member(owner)) {
+      _operatorApprovals.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+    }
+
+    _operatorApprovals.lookup(owner).insert(operator, approved);
+  }
 }

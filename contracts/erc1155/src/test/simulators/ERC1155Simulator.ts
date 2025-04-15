@@ -193,4 +193,23 @@ export class ERC1155Simulator
   ) {
     this.circuitContext = this.contract.impureCircuits._burn(this.circuitContext, from, id, value).context;
   }
+
+  public _setApprovalForAll(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    approved: boolean,
+    sender?: CoinPublicKey
+) {
+    const res = this.contract.impureCircuits._setApprovalForAll({
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+        },
+        owner, operator, approved
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
 }

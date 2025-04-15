@@ -72,3 +72,11 @@ export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field,
 export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
   return ERC1155__burn(from, id, value);
 }
+
+export circuit _setApprovalForAll(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  approved: Boolean
+): [] {
+  return ERC1155__setApprovalForAll(owner, operator, approved);
+}
