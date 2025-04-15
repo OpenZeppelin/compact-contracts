@@ -1085,6 +1085,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin-midnight-contracts/erc1155-contract@workspace:contracts/erc1155":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-midnight-contracts/erc1155-contract@workspace:contracts/erc1155"
+  dependencies:
+    "@midnight-ntwrk/compact": "workspace:*"
+    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    eslint: "npm:^8.52.0"
+    jest: "npm:^29.7.0"
+    typescript: "npm:^5.2.2"
+  languageName: unknown
+  linkType: soft
+
 "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20"
