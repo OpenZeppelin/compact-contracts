@@ -40,15 +40,16 @@ export class ERC20Simulator
    * @description Initializes the mock contract.
    */
   constructor(name: MaybeString, symbol: MaybeString, decimals: bigint) {
-    this.contract = new MockERC20<ERC20PrivateState>(
-      ERC20Witnesses,
-    );
+    this.contract = new MockERC20<ERC20PrivateState>(ERC20Witnesses);
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)), name, symbol, decimals,
+      constructorContext({}, '0'.repeat(64)),
+      name,
+      symbol,
+      decimals,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -123,8 +124,11 @@ export class ERC20Simulator
    * @param account The public key or contract address to query.
    * @returns The account's token balance.
    */
-  public balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): bigint {
-    return this.contract.impureCircuits.balanceOf(this.circuitContext, account).result;
+  public balanceOf(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): bigint {
+    return this.contract.impureCircuits.balanceOf(this.circuitContext, account)
+      .result;
   }
 
   /**
@@ -136,9 +140,13 @@ export class ERC20Simulator
    */
   public allowance(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
   ): bigint {
-    return this.contract.impureCircuits.allowance(this.circuitContext, owner, spender).result;
+    return this.contract.impureCircuits.allowance(
+      this.circuitContext,
+      owner,
+      spender,
+    ).result;
   }
 
   /**
@@ -148,13 +156,20 @@ export class ERC20Simulator
    * @param sender The simulated caller.
    * @returns As per the IERC20 spec, this MUST return true.
    */
-  public transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint, sender?: CoinPublicKey): boolean {
-    const res = this.contract.impureCircuits.transfer({
+  public transfer(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ): boolean {
+    const res = this.contract.impureCircuits.transfer(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        }, to, value
+      },
+      to,
+      value,
     );
 
     this.circuitContext = res.context;
@@ -174,15 +189,18 @@ export class ERC20Simulator
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ): boolean {
-    const res = this.contract.impureCircuits.transferFrom({
+    const res = this.contract.impureCircuits.transferFrom(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        },
-        from, to, value
+      },
+      from,
+      to,
+      value,
     );
 
     this.circuitContext = res.context;
@@ -196,14 +214,20 @@ export class ERC20Simulator
    * @param sender The simulated caller.
    * @returns Returns a boolean value indicating whether the operation succeeded.
    */
-  public approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint, sender?: CoinPublicKey): boolean {
-    const res = this.contract.impureCircuits.approve({
+  public approve(
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ): boolean {
+    const res = this.contract.impureCircuits.approve(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        },
-        spender, value
+      },
+      spender,
+      value,
     );
 
     this.circuitContext = res.context;
@@ -226,9 +250,14 @@ export class ERC20Simulator
   public _approve(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint
+    value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._approve(this.circuitContext, owner, spender, value).context;
+    this.circuitContext = this.contract.impureCircuits._approve(
+      this.circuitContext,
+      owner,
+      spender,
+      value,
+    ).context;
   }
 
   /**
@@ -244,7 +273,12 @@ export class ERC20Simulator
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._transfer(this.circuitContext, from, to, value).context;
+    this.circuitContext = this.contract.impureCircuits._transfer(
+      this.circuitContext,
+      from,
+      to,
+      value,
+    ).context;
   }
 
   /**
@@ -253,8 +287,15 @@ export class ERC20Simulator
    * @param account The recipient of tokens minted.
    * @param value The amount of tokens minted.
    */
-  public _mint(account: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint) {
-    this.circuitContext = this.contract.impureCircuits._mint(this.circuitContext, account, value).context;
+  public _mint(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._mint(
+      this.circuitContext,
+      account,
+      value,
+    ).context;
   }
 
   /**
@@ -263,8 +304,15 @@ export class ERC20Simulator
    * @param account The target owner of tokens to burn.
    * @param value The amount of tokens to burn.
    */
-  public _burn(account: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint) {
-    this.circuitContext = this.contract.impureCircuits._burn(this.circuitContext, account, value).context;
+  public _burn(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._burn(
+      this.circuitContext,
+      account,
+      value,
+    ).context;
   }
 
   /**
@@ -277,9 +325,14 @@ export class ERC20Simulator
   public _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint
+    value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._update(this.circuitContext, from, to, value).context;
+    this.circuitContext = this.contract.impureCircuits._update(
+      this.circuitContext,
+      from,
+      to,
+      value,
+    ).context;
   }
 
   /**
@@ -292,8 +345,13 @@ export class ERC20Simulator
   public _spendAllowance(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint
+    value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._spendAllowance(this.circuitContext, owner, spender, value).context;
+    this.circuitContext = this.contract.impureCircuits._spendAllowance(
+      this.circuitContext,
+      owner,
+      spender,
+      value,
+    ).context;
   }
 }

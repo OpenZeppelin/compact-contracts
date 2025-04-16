@@ -1,14 +1,14 @@
-import type { Config } from "@jest/types";
+import type { Config } from '@jest/types';
 
 const config: Config.InitialOptions = {
-  preset: "ts-jest/presets/default-esm",
-  testEnvironment: "node",
+  preset: 'ts-jest/presets/default-esm',
+  testEnvironment: 'node',
   verbose: true,
-  roots: ["<rootDir>"],
-  modulePaths: ["<rootDir>"],
+  roots: ['<rootDir>'],
+  modulePaths: ['<rootDir>'],
   passWithNoTests: false,
-  testMatch: ["**/*.test.ts"],
-  extensionsToTreatAsEsm: [".ts"],
+  testMatch: ['**/*.test.ts'],
+  extensionsToTreatAsEsm: ['.ts'],
   collectCoverage: true,
   resolver: '<rootDir>/js-resolver.cjs',
   coverageThreshold: {
@@ -19,9 +19,9 @@ const config: Config.InitialOptions = {
     },
   },
   reporters: [
-    "default",
-    ["jest-junit", { outputDirectory: "reports", outputName: "report.xml" }],
-    ["jest-html-reporters", { publicPath: "reports", filename: "report.html" }],
+    'default',
+    ['jest-junit', { outputDirectory: 'reports', outputName: 'report.xml' }],
+    ['jest-html-reporters', { publicPath: 'reports', filename: 'report.html' }],
   ],
 };
 

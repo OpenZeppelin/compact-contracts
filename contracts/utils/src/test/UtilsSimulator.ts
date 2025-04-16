@@ -37,16 +37,12 @@ export class UtilsContractSimulator
    * @description Initializes the mock contract.
    */
   constructor() {
-    this.contract = new MockUtils<UtilsPrivateState>(
-      UtilsWitnesses,
-    );
+    this.contract = new MockUtils<UtilsPrivateState>(UtilsWitnesses);
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
+    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -88,7 +84,12 @@ export class UtilsContractSimulator
    * @param keyOrAddress The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @returns Returns true if `keyOrAddress` is zero.
    */
-  public isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
-    return this.contract.circuits.isKeyOrAddressZero(this.circuitContext, keyOrAddress).result;
+  public isKeyOrAddressZero(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.contract.circuits.isKeyOrAddressZero(
+      this.circuitContext,
+      keyOrAddress,
+    ).result;
   }
 }

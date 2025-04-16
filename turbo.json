@@ -1,12 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [
-    ".prettierrc.json"
-  ],
+  "globalDependencies": [".prettierrc.json"],
   "pipeline": {
     "typecheck": {
       "dependsOn": ["^build", "compact"],
-      "inputs": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.mts", "tsconfig.json"],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.mts",
+        "tsconfig.json"
+      ],
       "outputMode": "new-only",
       "outputs": []
     },
@@ -20,13 +23,33 @@
     "build": {
       "dependsOn": ["^build", "compact", "typecheck"],
       "outputMode": "new-only",
-      "inputs": ["src/**/*.ts", "src/**/*.mts", "src/**/*.tsx", "!src/**/*.test.ts", "!tests/**/*.ts", "tsconfig.json", "tsconfig.build.json", ".env"],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.mts",
+        "src/**/*.tsx",
+        "!src/**/*.test.ts",
+        "!tests/**/*.ts",
+        "tsconfig.json",
+        "tsconfig.build.json",
+        ".env"
+      ],
       "outputs": ["dist/**"]
     },
     "build-storybook": {
       "dependsOn": ["^build", "typecheck"],
       "outputMode": "new-only",
-      "inputs": ["src/**/*.ts", "src/**/*.mts", "src/**/*.tsx", "!src/**/*.test.ts", "!tests/**/*.ts", "tsconfig.json", "tsconfig.build.json", ".env", "vite.config.ts", ".storybook/**"],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.mts",
+        "src/**/*.tsx",
+        "!src/**/*.test.ts",
+        "!tests/**/*.ts",
+        "tsconfig.json",
+        "tsconfig.build.json",
+        ".env",
+        "vite.config.ts",
+        ".storybook/**"
+      ],
       "outputs": ["storybook-static/**"]
     },
     "lint": {
@@ -37,7 +60,15 @@
     "test": {
       "outputMode": "new-only",
       "dependsOn": ["^build", "compact", "typecheck"],
-      "inputs": ["src/**/*.ts", "src/**/*.mts", "src/**/*.tsx", "jest.config.ts", "tsconfig.json", "tsconfig.test.json", "test-compose.yml"],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.mts",
+        "src/**/*.tsx",
+        "jest.config.ts",
+        "tsconfig.json",
+        "tsconfig.test.json",
+        "test-compose.yml"
+      ],
       "outputs": ["reports/**"]
     },
     "check": {

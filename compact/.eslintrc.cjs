@@ -19,6 +19,6 @@ module.exports = {
     '@typescript-eslint/no-misused-promises': 'off', // https://github.com/typescript-eslint/typescript-eslint/issues/5807
     '@typescript-eslint/no-floating-promises': 'warn',
     '@typescript-eslint/promise-function-async': 'off',
-    '@typescript-eslint/no-redeclare': 'off'
+    '@typescript-eslint/no-redeclare': 'off',
   },
 };
