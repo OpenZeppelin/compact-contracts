@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/compact": "workspace:*",
-    "eslint": "^8.52.0",
     "jest": "^29.7.0",
     "typescript": "^5.2.2"
   }

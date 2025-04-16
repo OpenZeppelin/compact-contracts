@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const childProcess = require('child_process');
+const childProcess = require('node:child_process');
 const path = require('path');
 
 const [_node, _script, ...args] = process.argv;
