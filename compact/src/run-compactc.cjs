@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const childProcess = require('node:child_process');
-const path = require('path');
+const path = require('node:path');
 
 const [_node, _script, ...args] = process.argv;
 const COMPACT_HOME_ENV = process.env.COMPACT_HOME;

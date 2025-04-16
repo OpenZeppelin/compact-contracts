@@ -12,7 +12,7 @@ import {
 } from '../artifacts/MockInitializable/contract/index.cjs';
 import type { IContractSimulator } from './types';
 import {
-  InitializablePrivateState,
+  type InitializablePrivateState,
   InitializableWitnesses,
 } from '../witnesses';
 

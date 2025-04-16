@@ -1,6 +1,6 @@
-import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { ERC20Simulator } from './simulators';
-import { MaybeString } from './types';
+import type { MaybeString } from './types';
 import * as utils from './utils';
 
 const NO_STRING: MaybeString = {

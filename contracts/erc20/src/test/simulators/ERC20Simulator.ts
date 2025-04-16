@@ -1,6 +1,6 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
+  type CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
@@ -11,13 +11,13 @@ import {
   type Ledger,
   Contract as MockERC20,
   ledger,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
+  type Either,
+  type ZswapCoinPublicKey,
+  type ContractAddress,
 } from '../../artifacts/MockERC20/contract/index.cjs'; // Combined imports
-import { MaybeString } from '../types';
+import type { MaybeString } from '../types';
 import type { IContractSimulator } from './../types';
-import { ERC20PrivateState, ERC20Witnesses } from '../../witnesses';
+import { type ERC20PrivateState, ERC20Witnesses } from '../../witnesses';
 
 /**
  * @description A simulator implementation of an erc20 contract for testing purposes.

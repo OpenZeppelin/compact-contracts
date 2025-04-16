@@ -9,12 +9,12 @@ import {
   type Ledger,
   Contract as MockUtils,
   ledger,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
+  type Either,
+  type ZswapCoinPublicKey,
+  type ContractAddress,
 } from '../artifacts/MockUtils/contract/index.cjs'; // Combined imports
 import type { IContractSimulator } from './types';
-import { UtilsPrivateState, UtilsWitnesses } from '../witnesses';
+import { type UtilsPrivateState, UtilsWitnesses } from '../witnesses';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
