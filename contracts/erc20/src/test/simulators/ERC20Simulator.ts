@@ -8,16 +8,16 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type ContractAddress,
+  type Either,
   type Ledger,
   Contract as MockERC20,
-  ledger,
-  type Either,
   type ZswapCoinPublicKey,
-  type ContractAddress,
+  ledger,
 } from '../../artifacts/MockERC20/contract/index.cjs'; // Combined imports
+import { type ERC20PrivateState, ERC20Witnesses } from '../../witnesses';
 import type { MaybeString } from '../types';
 import type { IContractSimulator } from './../types';
-import { type ERC20PrivateState, ERC20Witnesses } from '../../witnesses';
 
 /**
  * @description A simulator implementation of an erc20 contract for testing purposes.

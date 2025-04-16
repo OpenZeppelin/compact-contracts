@@ -6,15 +6,15 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type ContractAddress,
+  type Either,
   type Ledger,
   Contract as MockUtils,
-  ledger,
-  type Either,
   type ZswapCoinPublicKey,
-  type ContractAddress,
+  ledger,
 } from '../artifacts/MockUtils/contract/index.cjs'; // Combined imports
-import type { IContractSimulator } from './types';
 import { type UtilsPrivateState, UtilsWitnesses } from '../witnesses';
+import type { IContractSimulator } from './types';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
