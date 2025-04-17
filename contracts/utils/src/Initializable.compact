@@ -37,6 +37,6 @@ module Initializable {
    * @throws Will throw "Initializable: Contract already initialized" if the contract is already initialized.
    */
   export circuit assertNotInitialized(): [] {
-    assert !_isInitialized "Initializable: Contract already initialized";
-  }    
+    assert !_isInitialized "Initializable: contract already initialized";
+  }
 }
