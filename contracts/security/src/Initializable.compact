@@ -5,12 +5,10 @@ pragma language_version >= 0.14.0;
  * @module Initializable
  * @description Initializable provides a simple mechanism that mimics the functionality of a constructor.
  */
-module Initializable{
+module Initializable {
   import CompactStandardLibrary;
 
-  export enum STATE { uninitialized, initialized }
-
-  export ledger state: STATE;
+  export ledger _isInitialized: Boolean;
 
   /**
    * @description Initializes the state thus ensuring the calling circuit can only be called once.
@@ -18,16 +16,27 @@ module Initializable{
    * @returns None.
    */
   export circuit initialize(): [] {
-    assert state == STATE.uninitialized "Contract already initialized";
-    state = STATE.initialized;
+    assertNotInitialized();
+    _isInitialized = true;
   }
 
   /**
-   * @description Returns true if the state is initialized.
+   * @description Asserts that the contract has been initialized, throwing an error if not.
    *
-   * @returns {Boolean} - whether the contract has been initialized.
+   * @returns None.
+   * @throws Will throw "Initializable: contract not initialized" if the contract is not initialized.
    */
-  export circuit isInitialized(): Boolean {
-    return (state == STATE.initialized);
+  export circuit assertInitialized(): [] {
+    assert _isInitialized "Initializable: contract not initialized";
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * @returns None.
+   * @throws Will throw "Initializable: Contract already initialized" if the contract is already initialized.
+   */
+  export circuit assertNotInitialized(): [] {
+    assert !_isInitialized "Initializable: Contract already initialized";
   }
 }
