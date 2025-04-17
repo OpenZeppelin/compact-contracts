@@ -1,4 +1,4 @@
-import { UtilsContractSimulator } from './UtilsSimulator';
+import { UtilsContractSimulator } from './simulators';
 import * as contractUtils from './utils';
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
