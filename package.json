@@ -2,7 +2,7 @@
     "packageManager": "yarn@4.1.0",
     "workspaces": [
         "compact",
-        "contracts/security",
+        "contracts/erc20/",
         "contracts/utils/"
     ],
     "scripts": {

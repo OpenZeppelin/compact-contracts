@@ -1085,18 +1085,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-midnight-contracts/security@workspace:contracts/security":
+"@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/security@workspace:contracts/security"
+  resolution: "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
+    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
     typescript: "npm:^5.2.2"
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils":
+"@openzeppelin-midnight-contracts/utils-contract@workspace:^, @openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils"
   dependencies:
