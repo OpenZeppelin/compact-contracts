@@ -1,97 +1,66 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".prettierrc.json"],
-  "pipeline": {
-    "typecheck": {
-      "dependsOn": ["^build", "compact"],
-      "inputs": [
-        "src/**/*.ts",
-        "src/**/*.tsx",
-        "src/**/*.mts",
-        "tsconfig.json"
-      ],
-      "outputMode": "new-only",
-      "outputs": []
-    },
+  "tasks": {
     "compact": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
-      "inputs": ["src/**/*.compact"],
-      "outputMode": "new-only",
-      "outputs": ["src/artifacts/**", "src/gen/**", "gen/**"]
+      "env": [
+        "COMPACT_HOME"
+      ],
+      "inputs": [
+        "src/**/*.compact"
+      ],
+      "outputLogs": "new-only",
+      "outputs": [
+        "src/artifacts/**",
+        "src/gen/**",
+        "gen/**"
+      ]
+    },
+    "test": {
+      "outputs": [],
+      "cache": false
     },
     "build": {
-      "dependsOn": ["^build", "compact", "typecheck"],
-      "outputMode": "new-only",
+      "dependsOn": [
+        "^build",
+        "compact"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
       "inputs": [
         "src/**/*.ts",
-        "src/**/*.mts",
-        "src/**/*.tsx",
         "!src/**/*.test.ts",
         "!tests/**/*.ts",
         "tsconfig.json",
         "tsconfig.build.json",
         ".env"
       ],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
-    "build-storybook": {
-      "dependsOn": ["^build", "typecheck"],
-      "outputMode": "new-only",
-      "inputs": [
-        "src/**/*.ts",
-        "src/**/*.mts",
-        "src/**/*.tsx",
-        "!src/**/*.test.ts",
-        "!tests/**/*.ts",
-        "tsconfig.json",
-        "tsconfig.build.json",
-        ".env",
-        "vite.config.ts",
-        ".storybook/**"
-      ],
-      "outputs": ["storybook-static/**"]
+    "types": {
+      "outputs": [],
+      "cache": false,
+      "dependsOn": [
+        "compact"
+      ]
+    },
+    "fmt": {
+      "outputs": [],
+      "cache": false
+    },
+    "fmt:fix": {
+      "outputs": [],
+      "cache": false
     },
     "lint": {
-      "outputMode": "new-only",
-      "dependsOn": ["compact", "^build", "typecheck"],
-      "inputs": ["src/**/*.ts", "src/**/*.mts", "src/**/*.tsx", ".eslintrc.cjs"]
+      "outputs": [],
+      "cache": false
     },
-    "test": {
-      "outputMode": "new-only",
-      "dependsOn": ["^build", "compact", "typecheck"],
-      "inputs": [
-        "src/**/*.ts",
-        "src/**/*.mts",
-        "src/**/*.tsx",
-        "jest.config.ts",
-        "tsconfig.json",
-        "tsconfig.test.json",
-        "test-compose.yml"
-      ],
-      "outputs": ["reports/**"]
-    },
-    "check": {
-      "outputMode": "new-only",
-      "dependsOn": ["build", "lint", "test", "build-storybook"]
-    },
-    "test-e2e": {
-      "outputMode": "new-only",
-      "dependsOn": ["build", "compact"]
-    },
-    "start": {
-      "cache": false,
-      "persistent": true,
-      "dependsOn": ["build"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "storybook": {
-      "cache": false,
-      "persistent": true,
-      "dependsOn": ["build"]
+    "lint:fix": {
+      "outputs": [],
+      "cache": false
     }
   }
 }
