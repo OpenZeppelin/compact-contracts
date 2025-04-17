@@ -15,9 +15,9 @@ import {
   ZswapCoinPublicKey,
   ContractAddress,
 } from '../../artifacts/MockERC20/contract/index.cjs'; // Combined imports
-import { MaybeString } from '../types';
-import type { IContractSimulator } from './../types';
-import { ERC20PrivateState, ERC20Witnesses } from '../../witnesses';
+import { MaybeString } from '../types/string';
+import type { IContractSimulator } from './../types/test';
+import { ERC20PrivateState, ERC20Witnesses } from '../../witnesses/ERC20Witnesses';
 
 /**
  * @description A simulator implementation of an erc20 contract for testing purposes.

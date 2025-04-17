@@ -1,5 +1,5 @@
 import { it, describe, expect } from '@jest/globals';
-import { PausableSimulator } from './simulators';
+import { PausableSimulator } from './simulators/PausableSimulator';
 
 let pausable: PausableSimulator;
 
@@ -10,7 +10,7 @@ describe('Pausable', () => {
 
   describe('when not paused', () => {
     it('should not be paused in initial state', () => {
-      expect(pausable.isPaused()).toBeFalsy();
+      expect(pausable.isPaused()).toBe(false);
     });
 
     it('should throw when calling assertPaused', () => {
@@ -25,7 +25,7 @@ describe('Pausable', () => {
 
     it('should pause from unpaused state', () => {
       pausable.pause();
-      expect(pausable.isPaused()).toBeTruthy();
+      expect(pausable.isPaused()).toBe(true);
     });
 
     it('should throw when unpausing in an unpaused state', () => {
@@ -52,7 +52,7 @@ describe('Pausable', () => {
 
     it('should unpause from paused state', () => {
       pausable.unpause();
-      expect(pausable.isPaused()).toBeFalsy();
+      expect(pausable.isPaused()).toBe(false);
     });
 
     it('should throw when pausing in an paused state', () => {
@@ -65,13 +65,13 @@ describe('Pausable', () => {
   describe('Multiple Operations', () => {
     it('should handle pause → unpause → pause sequence', () => {
       pausable.pause();
-      expect(pausable.isPaused()).toBeTruthy();
+      expect(pausable.isPaused()).toBe(true);
 
       pausable.unpause();
-      expect(pausable.isPaused()).toBeFalsy();
+      expect(pausable.isPaused()).toBe(false);
 
       pausable.pause();
-      expect(pausable.isPaused()).toBeTruthy();
+      expect(pausable.isPaused()).toBe(true);
     });
   });
 });

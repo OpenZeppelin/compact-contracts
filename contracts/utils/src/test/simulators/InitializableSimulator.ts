@@ -1,7 +1,7 @@
 import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
 import { Contract as MockInitializable, type Ledger, ledger } from '../../artifacts/MockInitializable/contract/index.cjs';
-import type { IContractSimulator } from '../types';
-import { InitializablePrivateState, InitializableWitnesses } from '../../witnesses';
+import type { IContractSimulator } from '../types/test';
+import { InitializablePrivateState, InitializableWitnesses } from '../../witnesses/InitializableWitnesses';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.

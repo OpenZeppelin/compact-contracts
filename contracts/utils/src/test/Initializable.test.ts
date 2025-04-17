@@ -1,6 +1,5 @@
 import { it, describe, expect } from '@jest/globals';
-//import { InitializableSimulator } from '../../../security/src/test/simulators';
-import { InitializableSimulator } from './simulators';
+import { InitializableSimulator } from './simulators/InitializableSimulator';
 
 let initializable: InitializableSimulator;
 
