@@ -901,7 +901,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact@workspace:*, @midnight-ntwrk/compact@workspace:compact":
+"@midnight-ntwrk/compact@workspace:compact":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact@workspace:compact"
   dependencies:
@@ -987,31 +987,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20"
   dependencies:
-    "@midnight-ntwrk/compact": "workspace:*"
     "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
-    jest: "npm:^29.7.0"
-    typescript: "npm:^5.2.2"
   languageName: unknown
   linkType: soft
 
 "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
-  dependencies:
-    "@midnight-ntwrk/compact": "workspace:*"
-    eslint: "npm:^8.52.0"
-    jest: "npm:^29.7.0"
-    typescript: "npm:^5.2.2"
   languageName: unknown
   linkType: soft
 
 "@openzeppelin-midnight-contracts/utils-contract@workspace:^, @openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils"
-  dependencies:
-    "@midnight-ntwrk/compact": "workspace:*"
-    jest: "npm:^29.7.0"
-    typescript: "npm:^5.2.2"
   languageName: unknown
   linkType: soft
 
