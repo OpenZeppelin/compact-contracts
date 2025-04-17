@@ -61,6 +61,10 @@
     "lint:fix": {
       "outputs": [],
       "cache": false
+    },
+    "clean": {
+      "outputs": [],
+      "cache": false
     }
   }
 }

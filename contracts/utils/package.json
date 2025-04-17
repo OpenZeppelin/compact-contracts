@@ -15,12 +15,12 @@
   "scripts": {
     "compact": "find src -name '*.compact' -exec sh -c 'run-compactc \"{}\" \"src/artifacts/$(basename \"{}\" .compact)\"' \\;",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "prepack": "yarn build",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/artifacts ./dist/artifacts && cp ./src/Utils.compact ./dist",
     "types": "tsc -p tsconfig.json --noEmit",
     "fmt": "biome format",
     "fmt:fix": "biome format --write",
     "lint": "biome lint",
-    "lint:fix": "biome check --write"
+    "lint:fix": "biome check --write",
+    "clean": "git clean -fXd"
   }
 }

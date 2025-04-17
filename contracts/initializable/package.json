@@ -21,6 +21,7 @@
     "fmt": "biome format",
     "fmt:fix": "biome format --write",
     "lint": "biome lint",
-    "lint:fix": "biome check --write"
+    "lint:fix": "biome check --write",
+    "clean": "git clean -fXd"
   }
 }

@@ -14,7 +14,8 @@
     "fmt:fix": "turbo run fmt:fix",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "types": "turbo run types"
+    "types": "turbo run types",
+    "clean": "git clean -fXd -e \\\\!node_modules -e \\\\!node_modules/**/*"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.7.0"
