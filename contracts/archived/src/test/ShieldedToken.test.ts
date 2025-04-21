@@ -63,7 +63,7 @@ describe('Shielded token', () => {
 
   describe('mint', () => {
     it('should mint', () => {
-      const res = token.mint(Z_OWNER, AMOUNT, OWNER);
+      const res = token.mint(Z_OWNER, AMOUNT);
       const thisNonce = token.getCurrentPublicState().shieldedToken_Nonce;
       const thisCoinInfo = {
         color: encodeTokenType(thisTokenType),
