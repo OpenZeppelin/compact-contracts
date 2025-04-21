@@ -158,6 +158,9 @@ module ERC1155 {
     _update(from, zero_address, id, value);
   }
 
+  /**
+  @add me...
+   */
   export circuit _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
