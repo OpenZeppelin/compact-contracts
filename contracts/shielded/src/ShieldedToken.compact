@@ -2,7 +2,7 @@
 pragma language_version >= 0.14.0;
 
 /**
- * @module ShieldedToken
+ * @module ShieldedToken (archived until further notice, DO NOT USE)
  * @description A shielded token module.
  *
  * @notice This module utilizes the existing coin infrastructure of Midnight.
@@ -29,7 +29,7 @@ pragma language_version >= 0.14.0;
  * - Enable the Shielded contract itself to transfer.
  * - Should this be a part of the Shielded module itself or as an extension?
  */
-module ShieldedToken {
+module ShieldedToken { // DO NOT USE!
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
 
@@ -126,6 +126,8 @@ module ShieldedToken {
   /**
    * @description Destroys `amount` of `coin` by sending it to the burn address.
    * @dev This circuit does not include access control meaning anyone can call it.
+   * @throws Will throw if `coin` color is not this contract's token type.
+   * @throws Will throw if `amount` is less than `coin` value.
    *
    * @param {coin} - The coin description that will be burned.
    * @param {amount} - The value of `coin` that will be burned.
