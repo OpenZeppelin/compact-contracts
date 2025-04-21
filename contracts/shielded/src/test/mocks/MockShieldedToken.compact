@@ -4,7 +4,7 @@ pragma language_version >= 0.14.0;
 
 import CompactStandardLibrary;
 
-import "../../Shielded" prefix Shielded_;
+import "../../ShieldedToken" prefix ShieldedToken_;
 
 export {
   ZswapCoinPublicKey,
@@ -16,9 +16,9 @@ export {
 };
 
 export {
-  Shielded__counter,
-  Shielded__nonce,
-  Shielded__domain
+  ShieldedToken__counter,
+  ShieldedToken__nonce,
+  ShieldedToken__domain
 };
 
 constructor(
@@ -27,29 +27,29 @@ constructor(
   _symbol: Maybe<Opaque<"string">>,
   _decimals:Uint<8>
 ) {
-  Shielded_initializer(_nonce, _name, _symbol, _decimals);
+  ShieldedToken_initializer(_nonce, _name, _symbol, _decimals);
 }
 
 export circuit name(): Maybe<Opaque<"string">> {
-  return Shielded_name();
+  return ShieldedToken_name();
 }
 
 export circuit symbol(): Maybe<Opaque<"string">> {
-  return Shielded_symbol();
+  return ShieldedToken_symbol();
 }
 
 export circuit decimals(): Uint<8> {
-  return Shielded_decimals();
+  return ShieldedToken_decimals();
 }
 
 export circuit totalSupply(): Uint<64> {
-  return Shielded_totalSupply();
+  return ShieldedToken_totalSupply();
 }
 
 export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: Uint<64>): CoinInfo {
-  return Shielded_mint(recipient, amount);
+  return ShieldedToken_mint(recipient, amount);
 }
 
 export circuit burn(coin: CoinInfo, amount: Uint<64>): SendResult {
-  return Shielded_burn(coin, amount);
+  return ShieldedToken_burn(coin, amount);
 }

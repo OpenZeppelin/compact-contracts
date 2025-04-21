@@ -1,2 +1,2 @@
-export * from '../artifacts/shielded/contract/index.cjs';
-export * from './ShieldedWitnesses.js';
+export * from '../artifacts/shieldedToken/contract/index.cjs';
+export * from './ShieldedTokenWitnesses.js';

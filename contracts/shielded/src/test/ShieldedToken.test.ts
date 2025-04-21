@@ -1,5 +1,5 @@
 import { TokenType, CoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { ShieldedSimulator } from './simulators';
+import { ShieldedTokenSimulator } from './simulators';
 import { MaybeString } from './types';
 import * as utils from './utils';
 import { encodeTokenType, encodeCoinInfo, tokenType, sampleContractAddress } from '@midnight-ntwrk/onchain-runtime';
@@ -18,7 +18,7 @@ const SYMBOL: MaybeString = {
 };
 const DECIMALS: bigint = 18n;
 const NONCE: Uint8Array = utils.pad('NONCE', 32);
-const DOMAIN: Uint8Array = utils.pad('Shielded', 32);
+const DOMAIN: Uint8Array = utils.pad('ShieldedToken', 32);
 
 const AMOUNT: bigint = BigInt(250);
 const MAX_UINT64 = BigInt(2**64) - BigInt(1);
@@ -26,13 +26,13 @@ const MAX_UINT64 = BigInt(2**64) - BigInt(1);
 const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(64, '0');
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 
-let token: ShieldedSimulator;
+let token: ShieldedTokenSimulator;
 let thisTokenType: TokenType;
 
 describe('Shielded token', () => {
   describe('initializer and metadata', () => {
     it('should initialize metadata', () => {
-      token = new ShieldedSimulator(NONCE, NAME, SYMBOL, DECIMALS);
+      token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
 
       expect(token.name()).toEqual(NAME);
       expect(token.symbol()).toEqual(SYMBOL);
@@ -40,7 +40,7 @@ describe('Shielded token', () => {
     });
 
     it('should initialize empty metadata', () => {
-      token = new ShieldedSimulator(NONCE, NO_STRING, NO_STRING, 0n);
+      token = new ShieldedTokenSimulator(NONCE, NO_STRING, NO_STRING, 0n);
 
       expect(token.name()).toEqual(NO_STRING);
       expect(token.symbol()).toEqual(NO_STRING);
@@ -48,23 +48,23 @@ describe('Shielded token', () => {
     });
 
     it('should set public state', () => {
-      token = new ShieldedSimulator(NONCE, NAME, SYMBOL, DECIMALS);
+      token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
 
-      expect(token.getCurrentPublicState().shielded_Counter).toEqual(0n);
-      expect(token.getCurrentPublicState().shielded_Domain).toEqual(DOMAIN);
-      expect(token.getCurrentPublicState().shielded_Counter).toEqual(0n);
+      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
+      expect(token.getCurrentPublicState().shieldedToken_Domain).toEqual(DOMAIN);
+      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
     });
   });
 
   beforeEach(() => {
-    token = new ShieldedSimulator(NONCE, NAME, SYMBOL, DECIMALS);
+    token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
     thisTokenType = tokenType(DOMAIN, token.contractAddress);
   });
 
   describe('mint', () => {
     it('should mint', () => {
       const res = token.mint(Z_OWNER, AMOUNT, OWNER);
-      const thisNonce = token.getCurrentPublicState().shielded_Nonce;
+      const thisNonce = token.getCurrentPublicState().shieldedToken_Nonce;
       const thisCoinInfo = {
         color: encodeTokenType(thisTokenType),
         nonce: thisNonce,
@@ -81,20 +81,20 @@ describe('Shielded token', () => {
     });
 
     it('should bump counter', () => {
-      expect(token.getCurrentPublicState().shielded_Counter).toEqual(0n);
+      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
       token.mint(Z_OWNER, AMOUNT);
 
-      expect(token.getCurrentPublicState().shielded_Counter).toEqual(1n);
+      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(1n);
     });
 
     it('should bump nonce', () => {
-      const initNonce = token.getCurrentPublicState().shielded_Nonce;
+      const initNonce = token.getCurrentPublicState().shieldedToken_Nonce;
       expect(initNonce).toEqual(NONCE);
 
       token.mint(Z_OWNER, AMOUNT);
 
       // TODO: create js equivalent of `evolve_nonce` circuit to derive correct value
-      expect(initNonce).not.toEqual(token.getCurrentPublicState().shielded_Nonce);
+      expect(initNonce).not.toEqual(token.getCurrentPublicState().shieldedToken_Nonce);
     });
 
     it('should fail when minting to the zero address', () => {

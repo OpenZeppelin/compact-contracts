@@ -1,1 +1,1 @@
-export { ShieldedSimulator } from './ShieldedSimulator';
+export { ShieldedTokenSimulator } from './ShieldedTokenSimulator';

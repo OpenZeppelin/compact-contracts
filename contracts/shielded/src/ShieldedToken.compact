@@ -29,7 +29,7 @@ pragma language_version >= 0.14.0;
  * - Enable the Shielded contract itself to transfer.
  * - Should this be a part of the Shielded module itself or as an extension?
  */
-module Shielded {
+module ShieldedToken {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
 

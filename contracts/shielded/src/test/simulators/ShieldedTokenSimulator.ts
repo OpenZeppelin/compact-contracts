@@ -17,34 +17,34 @@ import {
   ZswapCoinPublicKey,
   ContractAddress,
   SendResult
-} from '../../artifacts/MockShielded/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
 import { MaybeString } from '../types';
 import type { IContractSimulator } from '../types';
-import { ShieldedPrivateState, ShieldedWitnesses } from '../../witnesses/ShieldedWitnesses';
+import { ShieldedTokenPrivateState, ShieldedTokenWitnesses } from '../../witnesses/ShieldedTokenWitnesses';
 
 /**
- * @description A simulator implementation of an erc20 contract for testing purposes.
- * @template P - The private state type, fixed to ERC20PrivateState.
+ * @description A simulator implementation of a shielded token contract for testing purposes.
+ * @template P - The private state type, fixed to ShieldedTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class ShieldedSimulator
-  implements IContractSimulator<ShieldedPrivateState, Ledger>
+export class ShieldedTokenSimulator
+  implements IContractSimulator<ShieldedTokenPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockShielded<ShieldedPrivateState>;
+  readonly contract: MockShielded<ShieldedTokenPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<ShieldedPrivateState>;
+  circuitContext: CircuitContext<ShieldedTokenPrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
   constructor(nonce: Uint8Array, name: MaybeString, symbol: MaybeString, decimals: bigint) {
-    this.contract = new MockShielded<ShieldedPrivateState>(
-      ShieldedWitnesses,
+    this.contract = new MockShielded<ShieldedTokenPrivateState>(
+      ShieldedTokenWitnesses,
     );
     const {
       currentPrivateState,
@@ -75,9 +75,9 @@ export class ShieldedSimulator
 
   /**
    * @description Retrieves the current private state of the contract.
-   * @returns The private state of type ERC20PrivateState.
+   * @returns The private state of type ShieldedTokenPrivateState.
    */
-  public getCurrentPrivateState(): ShieldedPrivateState {
+  public getCurrentPrivateState(): ShieldedTokenPrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
@@ -121,7 +121,7 @@ export class ShieldedSimulator
     return this.contract.impureCircuits.totalSupply(this.circuitContext).result;
   }
 
-  public mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: bigint, sender?: CoinPublicKey): CircuitResults<ShieldedPrivateState, CoinInfo> {
+  public mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: bigint, sender?: CoinPublicKey): CircuitResults<ShieldedTokenPrivateState, CoinInfo> {
     const res = this.contract.impureCircuits.mint({
       ...this.circuitContext,
       currentZswapLocalState: sender
@@ -134,7 +134,7 @@ export class ShieldedSimulator
     return res;
   }
 
-  public burn(coin: CoinInfo, amount: bigint, sender?: CoinPublicKey): CircuitResults<ShieldedPrivateState, SendResult> {
+  public burn(coin: CoinInfo, amount: bigint, sender?: CoinPublicKey): CircuitResults<ShieldedTokenPrivateState, SendResult> {
     const res = this.contract.impureCircuits.burn({
       ...this.circuitContext,
       currentZswapLocalState: sender
