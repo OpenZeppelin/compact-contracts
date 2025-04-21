@@ -69,7 +69,7 @@ describe('Shielded token', () => {
         color: encodeTokenType(thisTokenType),
         nonce: thisNonce,
         value: AMOUNT
-      }
+      };
 
       // Check circuit result
       expect(res.result).toEqual(thisCoinInfo);
@@ -201,7 +201,6 @@ describe('Shielded token', () => {
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
-      // Burn
       expect(() => {
         token.burn(encoded_coin_info, AMOUNT);
       }).toThrow('Shielded: token not created from this contract');
@@ -218,7 +217,6 @@ describe('Shielded token', () => {
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
-      // Burn
       expect(() => {
         token.burn(encoded_coin_info, AMOUNT);
       }).toThrow('Shielded: token not created from this contract');
@@ -234,7 +232,6 @@ describe('Shielded token', () => {
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
-      // Burn
       expect(() => {
         token.burn(encoded_coin_info, AMOUNT + 1n);
       }).toThrow('Shielded: insufficient token amount to burn');
