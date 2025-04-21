@@ -100,7 +100,7 @@ describe('Shielded token', () => {
     it('should fail when minting to the zero address', () => {
       expect(() => {
         token.mint(utils.ZERO_KEY, AMOUNT);
-      }).toThrow('Shielded: invalid recipient');
+      }).toThrow('ShieldedToken: invalid recipient');
     });
 
    it('should fail when minting overflow uint64', () => {
@@ -108,7 +108,7 @@ describe('Shielded token', () => {
 
      expect(() => {
        token.mint(Z_OWNER, 1n);
-     }).toThrow('arithmetic overflow');
+     }).toThrow('arithmetic overflow'); // fix me
    });
   });
 
@@ -203,7 +203,7 @@ describe('Shielded token', () => {
 
       expect(() => {
         token.burn(encoded_coin_info, AMOUNT);
-      }).toThrow('Shielded: token not created from this contract');
+      }).toThrow('ShieldedToken: token not created from this contract');
     });
 
     it('should fail with incorrect address', () => {
@@ -219,7 +219,7 @@ describe('Shielded token', () => {
 
       expect(() => {
         token.burn(encoded_coin_info, AMOUNT);
-      }).toThrow('Shielded: token not created from this contract');
+      }).toThrow('ShieldedToken: token not created from this contract');
     });
 
     it('should fail when not enough balance', () => {
@@ -234,7 +234,7 @@ describe('Shielded token', () => {
 
       expect(() => {
         token.burn(encoded_coin_info, AMOUNT + 1n);
-      }).toThrow('Shielded: insufficient token amount to burn');
+      }).toThrow('ShieldedToken: insufficient token amount to burn');
     });
   });
 });

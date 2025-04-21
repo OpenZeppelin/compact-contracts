@@ -55,7 +55,7 @@ module ShieldedToken {
     decimals_ :Uint<8>
   ): [] {
     _nonce = initNonce;
-    _domain = pad(32, "Shielded");
+    _domain = pad(32, "ShieldedToken");
     _name = name_;
     _symbol = symbol_;
     _decimals = decimals_;
@@ -111,9 +111,9 @@ module ShieldedToken {
    * @return {CoinInfo} - The description of the newly created coin.
    */
   export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: Uint<64>): CoinInfo {
-    assert !Utils_isKeyOrAddressZero(recipient) "Shielded: invalid recipient";
+    assert !Utils_isKeyOrAddressZero(recipient) "ShieldedToken: invalid recipient";
     const MAX_UINT64 = 18446744073709552000;
-    assert MAX_UINT64 - _totalSupply >= amount "Shieldedd: arithmetic overflow";
+    assert MAX_UINT64 - _totalSupply >= amount "ShieldedToken: arithmetic overflow";
 
     _counter.increment(1);
     const newNonce = evolve_nonce(_counter, _nonce);
@@ -133,8 +133,8 @@ module ShieldedToken {
    * spending the output if available.
    */
   export circuit burn(coin: CoinInfo, amount: Uint<64>): SendResult {
-    assert coin.color == token_type(_domain, kernel.self()) "Shielded: token not created from this contract";
-    assert coin.value >= amount "Shielded: insufficient token amount to burn";
+    assert coin.color == token_type(_domain, kernel.self()) "ShieldedToken: token not created from this contract";
+    assert coin.value >= amount "ShieldedToken: insufficient token amount to burn";
 
     receive(coin);
     _totalSupply = _totalSupply - amount;
