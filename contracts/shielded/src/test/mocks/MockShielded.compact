@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+import "../../Shielded" prefix Shielded_;
+
+export {
+  ZswapCoinPublicKey,
+  ContractAddress,
+  Either,
+  Maybe,
+  CoinInfo,
+  SendResult
+};
+
+export {
+  Shielded__counter,
+  Shielded__nonce,
+  Shielded__domain
+};
+
+constructor(
+  _nonce: Bytes<32>,
+  _name: Maybe<Opaque<"string">>,
+  _symbol: Maybe<Opaque<"string">>,
+  _decimals:Uint<8>
+) {
+  Shielded_initializer(_nonce, _name, _symbol, _decimals);
+}
+
+export circuit name(): Maybe<Opaque<"string">> {
+  return Shielded_name();
+}
+
+export circuit symbol(): Maybe<Opaque<"string">> {
+  return Shielded_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return Shielded_decimals();
+}
+
+export circuit totalSupply(): Uint<64> {
+  return Shielded_totalSupply();
+}
+
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: Uint<64>): CoinInfo {
+  return Shielded_mint(recipient, amount);
+}
+
+export circuit burn(coin: CoinInfo, amount: Uint<64>): SendResult {
+  return Shielded_burn(coin, amount);
+}
