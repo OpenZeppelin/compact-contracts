@@ -190,7 +190,7 @@ describe('Shielded token', () => {
       expect(token.totalSupply()).toEqual(1n);
     });
 
-    it('should fail with incorrect token type', () => {
+    it('should fail with incorrect domain', () => {
       const nonceStr = NONCE.filter(x => x !== 0).join('').padStart(64, '0');
       const badDomain = utils.pad('badDomain', 32)
       const badTokeType = tokenType(badDomain, token.contractAddress);
