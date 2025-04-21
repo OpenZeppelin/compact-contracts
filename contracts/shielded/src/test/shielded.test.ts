@@ -10,11 +10,11 @@ const NO_STRING: MaybeString = {
 };
 const NAME: MaybeString = {
   is_some: true,
-  value: "NAME"
+  value: 'NAME'
 };
 const SYMBOL: MaybeString = {
   is_some: true,
-  value: "SYMBOL"
+  value: 'SYMBOL'
 };
 const DECIMALS: bigint = 18n;
 const NONCE: Uint8Array = utils.pad('NONCE', 32);
@@ -23,7 +23,7 @@ const DOMAIN: Uint8Array = utils.pad('Shielded', 32);
 const AMOUNT: bigint = BigInt(250);
 const MAX_UINT64 = BigInt(2**64) - BigInt(1);
 
-const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64, '0');
+const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(64, '0');
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 
 let token: ShieldedSimulator;
