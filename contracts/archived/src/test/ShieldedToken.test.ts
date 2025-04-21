@@ -108,7 +108,7 @@ describe('Shielded token', () => {
 
      expect(() => {
        token.mint(Z_OWNER, 1n);
-     }).toThrow('arithmetic overflow'); // fix me
+     }).toThrow('arithmetic overflow');
    });
   });
 

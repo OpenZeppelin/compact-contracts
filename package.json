@@ -2,9 +2,9 @@
     "packageManager": "yarn@4.1.0",
     "workspaces": [
         "compact",
+        "contracts/archived/",
         "contracts/erc20/",
         "contracts/initializable/",
-        "contracts/shielded/",
         "contracts/utils/"
     ],
     "scripts": {

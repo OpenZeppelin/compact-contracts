@@ -1085,6 +1085,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin-midnight-contracts/archived@workspace:contracts/archived":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-midnight-contracts/archived@workspace:contracts/archived"
+  dependencies:
+    "@midnight-ntwrk/compact": "workspace:*"
+    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    eslint: "npm:^8.52.0"
+    jest: "npm:^29.7.0"
+    typescript: "npm:^5.2.2"
+  languageName: unknown
+  linkType: soft
+
 "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20"
@@ -1102,18 +1114,6 @@ __metadata:
   resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
-    eslint: "npm:^8.52.0"
-    jest: "npm:^29.7.0"
-    typescript: "npm:^5.2.2"
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-midnight-contracts/shielded-contract@workspace:contracts/shielded":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/shielded-contract@workspace:contracts/shielded"
-  dependencies:
-    "@midnight-ntwrk/compact": "workspace:*"
-    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
     typescript: "npm:^5.2.2"

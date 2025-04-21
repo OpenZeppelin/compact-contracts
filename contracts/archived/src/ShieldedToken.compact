@@ -104,7 +104,6 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
   /**
    * @description Mints `amount` of tokens to `recipient`.
    * @dev This circuit does not include access control meaning anyone can call it.
-   * @throws Will throw if `amount` + `_totalSupply` overflows Uint<64>.
    *
    * @param {recipient} - The ZswapCoinPublicKey or ContractAddress that receives the minted tokens.
    * @param {amount} - The value of tokens minted.
@@ -112,8 +111,6 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
    */
   export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: Uint<64>): CoinInfo {
     assert !Utils_isKeyOrAddressZero(recipient) "ShieldedToken: invalid recipient";
-    const MAX_UINT64 = 18446744073709552000;
-    assert MAX_UINT64 - _totalSupply >= amount "ShieldedToken: arithmetic overflow";
 
     _counter.increment(1);
     const newNonce = evolve_nonce(_counter, _nonce);

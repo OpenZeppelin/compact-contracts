@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight-contracts/shielded-contract",
+  "name": "@openzeppelin-midnight-contracts/archived",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
