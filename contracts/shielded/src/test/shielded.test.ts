@@ -1,8 +1,8 @@
-import { CoinPublicKey, TokenType, CoinInfo, transientHash, convert_Uint8Array_to_bigint } from '@midnight-ntwrk/compact-runtime';
+import { TokenType, CoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { ShieldedSimulator } from './simulators';
 import { MaybeString } from './types';
 import * as utils from './utils';
-import { decodeCoinInfo, encodeTokenType, encodeCoinInfo, tokenType, sampleContractAddress } from '@midnight-ntwrk/onchain-runtime';
+import { encodeTokenType, encodeCoinInfo, tokenType, sampleContractAddress } from '@midnight-ntwrk/onchain-runtime';
 
 const NO_STRING: MaybeString = {
   is_some: false,
