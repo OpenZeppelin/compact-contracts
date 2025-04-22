@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma language_version >= 0.14.0;
 
 /**
@@ -17,7 +16,10 @@ module ERC1155 {
   export ledger _uri: Maybe<Opaque<"string">>;
 
   /**
-  @add me...
+   * @description Initializes the contract by setting the base URI for all tokens.
+   *
+   * @param {uri_} - The base URI for all token URIs.
+   * @return {[]} None.
    */
   export circuit initializer(
     uri_: Maybe<Opaque<"string">>
@@ -26,14 +28,25 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description This implementation returns the same URI for *all* token types. It relies
+   * on the token type ID substitution mechanism defined in the EIP:
+   * https://eips.ethereum.org/EIPS/eip-1155#metadata.
+   * Clients calling this function must replace the `\{id\}` substring with the
+   * actual token type ID.
+   *
+   * @param {id} - The token identifier to query.
+   * return {Maybe<Opaque<"string">>} - The base URI for all tokens.
    */
   export circuit uri(id: Field): Maybe<Opaque<"string">> {
     return _uri;
   }
 
   /**
-  @add me...
+   * @description Returns the amount of `id` tokens owned by `account`.
+   *
+   * @param {account} - The account balance to query.
+   * @param {id} - The token identifier to query.
+   * return {Uint<128>} - The quantity of `id` tokens that `account` owns.
    */
   export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
     if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
@@ -43,7 +56,13 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   *
+   * @param {operator} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
+   * caller's assets.
+   * @param {approved} - The boolean value determining if the operator may or may not handle the
+   * caller's assets.
+   * @return {[]} None.
    */
   export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
@@ -52,7 +71,11 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Queries if `operator` is an authorized operator for `owner`.
+   *
+   * @param {account} - The queried possessor of assets.
+   * @param {operator} - The queried handler of `account`'s assets.
+   * @return {Boolean} - Whether or not `operator` has permission to handle `account`'s assets.
    */
   export circuit isApprovedForAll(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -66,7 +89,15 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Transfers ownership of `value` amount of `token_id` from `from` to `to`.
+   * @notice This circuit checks that the caller is either `from` or is approved
+   * to transfer on behalf of `from`.
+   *
+   * @param {from} - The owner from which the transfer originates.
+   * @param {to} - The recipient of the transferred assets.
+   * @param {id} - The unique identifier of the asset type.
+   * @param {value} - The quantity of `id` tokens to transfer.
+   * @return {[]} None.
    */
   export circuit safeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -84,7 +115,15 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Internal circuit that transfers ownership of `value` amount of `token_id` from `from` to `to`.
+   * @notice This internal circuit does not check for access permissions but can be useful as a building block
+   * for more complex contract logic.
+   *
+   * @param {from} - The owner from which the transfer originates.
+   * @param {to} - The recipient of the transferred assets.
+   * @param {id} - The unique identifier of the asset type.
+   * @param {value} - The quantity of `id` tokens to transfer.
+   * @return {[]} None.
    */
   export circuit _safeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -98,9 +137,15 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Transfers a value amount of tokens of type id from from to to.
+   * This circuit will mint (or burn) if `from` (or `to`) is the zero address.
+   *
+   * @param {from} - The origin of the transfer.
+   * @param {to} - The destination of the transfer.
+   * @param {id} - The unique identifier of the asset type.
+   * @param {value} - The quantity of `id` tokens to transfer.
+   * @return {[]} None.
    */
-  // Start with single
   export circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -130,14 +175,33 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Sets a new URI for all token types, by relying on the token type ID
+   * substitution mechanism defined in the ERC1155 standard.
+   * See https://eips.ethereum.org/EIPS/eip-1155#metadata.
+   *
+   * @notice By this mechanism, any occurrence of the `\{id\}` substring in either the
+   * URI or any of the values in the JSON file at said URI will be replaced by
+   * clients with the token type ID.
+   *
+   * For example, the `https://token-cdn-domain/\{id\}.json` URI would be
+   * interpreted by clients as
+   * `https://token-cdn-domain/000000000000000000000000000000000000000000000000000000000004cce0.json`
+   * for token type ID 0x4cce0.
+   *
+   * @param {newURI} - The new base URI for all tokens.
+   * @return {[]} - None.
    */
   export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
     _uri = newURI;
   }
 
   /**
-  @add me...
+   * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   *
+   * @param {to} - The recipient of the minted tokens.
+   * @param {id} - The unique identifier for the token type.
+   * @param {value} - The quantity of `id` tokens that are minted to `to`.
+   * @return {[]} - None.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
     assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
@@ -148,7 +212,12 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Destroys a `value` amount of tokens of type `token_id` from `from`.
+   *
+   * @param {from} - The owner whose tokens will be destroyed.
+   * @param {id} - The unique identifier of the token type.
+   * @param {value} - The quantity of `id` tokens that will be destroyed from `from`.
+   * @return {[]} - None.
    */
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
     assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
@@ -159,7 +228,16 @@ module ERC1155 {
   }
 
   /**
-  @add me...
+   * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   * @notice This internal circuit does not check for access permissions but can be useful as a building block
+   * for more complex contract logic.
+   *
+   * @param {owner} - The ZswapCoinPublicKey or ContractAddress of the target owner.
+   * @param {operator} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
+   * `owner`'s assets.
+   * @param {approved} - The boolean value determining if the operator may or may not handle the
+   * `owner`'s assets.
+   * @return {[]} None.
    */
   export circuit _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
