@@ -56,6 +56,28 @@ module ERC1155 {
   }
 
   /**
+   * @description Get the balance of multiple account/token pairs.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of pairs to check. Some ideas:
+   * - Define one `balanceOfBatch` with a max value for n that must not be exceeded. Any
+   * unused pair elements in the vector can be padded.
+   * - Define multiple `balanceOfBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining pairs.
+   *
+   * @param {accounts} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
+   * caller's assets.
+   * @param {ids} - The boolean value determining if the operator may or may not handle the
+   * caller's assets.
+   * @return {Vector<n, Field>} Returns n balances of account/token id pairs.
+   */
+  export circuit balanceOfBatch<#n>(
+    accounts: Vector<n, Either<ZswapCoinPublicKey, ContractAddress>>,
+    ids: Vector<n, Field>
+  ): Vector<n, Uint<128>> {
+    return map(balanceOf, accounts, ids);
+  }
+
+  /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
    *
    * @param {operator} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
@@ -112,6 +134,18 @@ module ERC1155 {
     }
 
     _safeTransferFrom(from, to, id, value);
+  }
+
+  export circuit safeBatchTransferFrom<#n>(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Field>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    assert from == caller || isApprovedForAll(from, caller) "ERC1155: missing approval for all";
+
+    _safeBatchTransferFrom<n>(from, to, ids, values);
   }
 
   /**
@@ -172,6 +206,19 @@ module ERC1155 {
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
       }
     }
+  }
+
+  export circuit _safeBatchTransferFrom<#n>(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Field>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    assert Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
+    assert Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
+
+    // doesn't work when all args aren't vectors of n len
+    // map(_update, from, to, ids, values);
   }
 
   /**

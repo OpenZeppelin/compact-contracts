@@ -95,11 +95,19 @@ export class ERC1155Simulator
   }
 
   /**
-   * @description Returns the value of tokens in existence.
-   * @returns The total supply of tokens.
+   * @description
+   * @returns
    */
   public balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: bigint): bigint {
     return this.contract.impureCircuits.balanceOf(this.circuitContext, account, id).result;
+  }
+
+  /**
+   * @description
+   * @returns
+   */
+  public balanceOfBatch_10(accounts: Array<Either<ZswapCoinPublicKey, ContractAddress>>, ids: Array<bigint>): Array<bigint> {
+    return this.contract.impureCircuits.balanceOfBatch_10(this.circuitContext, accounts, ids).result;
   }
 
   public setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: boolean, sender?: CoinPublicKey) {
