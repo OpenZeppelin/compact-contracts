@@ -23,6 +23,13 @@ export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, i
   return ERC1155_balanceOf(account, id);
 }
 
+export circuit balanceOfBatch_10(
+  accounts: Vector<10, Either<ZswapCoinPublicKey, ContractAddress>>,
+  ids: Vector<10, Field>
+): Vector<10, Uint<128>> {
+  return ERC1155_balanceOfBatch<10>(accounts, ids);
+}
+
 export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
   return ERC1155_setApprovalForAll(operator, approved);
 }
@@ -41,6 +48,15 @@ export circuit safeTransferFrom(
   value: Uint<128>
 ): [] {
   return ERC1155_safeTransferFrom(from, to, id, value);
+}
+
+export circuit safeBatchTransferFrom_10(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  ids: Vector<10, Field>,
+  values: Vector<10, Uint<128>>
+): [] {
+  return ERC1155_safeBatchTransferFrom<10>(from, to, ids, values);
 }
 
 export circuit _safeTransferFrom(
