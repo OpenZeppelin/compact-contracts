@@ -136,6 +136,9 @@ module ERC1155 {
     _safeTransferFrom(from, to, id, value);
   }
 
+  /**
+   * @description add me...
+   */
   export circuit safeBatchTransferFrom<#n>(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -208,6 +211,9 @@ module ERC1155 {
     }
   }
 
+  /**
+   * @description add me...
+   */
   export circuit _safeBatchTransferFrom<#n>(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
