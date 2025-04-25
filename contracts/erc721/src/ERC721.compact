@@ -29,8 +29,15 @@ module ERC721 {
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
 
   /// Private state
-  witness computeTokenURI(baseURI: Opaque<"string">): Opaque<"string">;
-  export witness baseURI(): Opaque<"string">;
+  /**
+    * @description Computes a tokenURI given a `baseURI` and `tokenId`
+    * 
+    * @param baseURI - baseURI of the final tokenURI, defaults to the empty string
+    * @param tokenId - The token identifier
+    *
+    * @return {Opaque<"string">} - The final URI of the provided token identifier
+    */
+  witness computeTokenURI(baseURI: Opaque<"string">, tokenId: Field): Opaque<"string">;
 
   /**
     * @description Initializes the contract by setting the name and symbol.
@@ -97,7 +104,7 @@ module ERC721 {
     _requireOwned(tokenId);
 
     const baseURI = _baseURI();
-    return disclose(computeTokenURI(baseURI));
+    return disclose(computeTokenURI(baseURI, tokenId));
   }
 
   export circuit _baseURI(): Opaque<"string"> {
