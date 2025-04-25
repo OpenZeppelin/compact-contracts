@@ -969,23 +969,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20":
+"@openzeppelin-midnight/erc20@workspace:contracts/erc20":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/erc20-contract@workspace:contracts/erc20"
+  resolution: "@openzeppelin-midnight/erc20@workspace:contracts/erc20"
   dependencies:
-    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    "@openzeppelin-midnight/utils": "workspace:^"
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable":
+"@openzeppelin-midnight/initializable@workspace:contracts/initializable":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/initializable-contract@workspace:contracts/initializable"
+  resolution: "@openzeppelin-midnight/initializable@workspace:contracts/initializable"
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight-contracts/utils-contract@workspace:^, @openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils":
+"@openzeppelin-midnight/utils@workspace:^, @openzeppelin-midnight/utils@workspace:contracts/utils":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight-contracts/utils-contract@workspace:contracts/utils"
+  resolution: "@openzeppelin-midnight/utils@workspace:contracts/utils"
   languageName: unknown
   linkType: soft
 

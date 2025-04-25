@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight-contracts/initializable-contract",
+  "name": "@openzeppelin-midnight/initializable",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",

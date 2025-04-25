@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight-contracts/erc20-contract",
+  "name": "@openzeppelin-midnight/erc20",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -24,6 +24,6 @@
     "clean": "git clean -fXd"
   },
   "dependencies": {
-    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    "@openzeppelin-midnight/utils": "workspace:^"
   }
 }

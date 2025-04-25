@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight-contracts/utils-contract",
+  "name": "@openzeppelin-midnight/utils",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
