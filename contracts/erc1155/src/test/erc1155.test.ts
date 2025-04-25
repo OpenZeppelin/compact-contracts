@@ -138,19 +138,20 @@ describe('ERC1155', () => {
       const owner2 = Z_RECIPIENT;
       const ownerNoBal = Z_OTHER;
 
-      // pks
+      // pks - add padding
       let pks = [owner1, ownerNoBal, owner2];
       const pk_padding = utils.ZERO_KEY;
       for (let i = pks.length; i < 10; i++) { pks.push(pk_padding) };
 
-      // ids
+      // ids - add padding
       let ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
-      const id_padding = 0n;
+      const id_padding = 0n
       for (let i = ids.length; i < 10; i++) { ids.push(id_padding) };
 
-      // amounts
+      // amounts - add padding
       let amounts = [AMOUNT, 0n, AMOUNT2];
-      for (let i = amounts.length; i < 10; i++) { amounts.push(0n) };
+      const amt_padding = 0n;
+      for (let i = amounts.length; i < 10; i++) { amounts.push(amt_padding) };
 
       // mint
       token._mint(pks[0], ids[0], amounts[0]); // owner1 => TOKEN_ID => AMOUNT
