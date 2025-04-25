@@ -119,13 +119,15 @@ module ERC1155 {
    * @param {to} - The recipient of the transferred assets.
    * @param {id} - The unique identifier of the asset type.
    * @param {value} - The quantity of `id` tokens to transfer.
+   * @param {data} - Additional data with no specified format.
    * @return {[]} None.
    */
-  export circuit safeTransferFrom(
+  export circuit safeTransferFrom<#d>(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Field,
-    value: Uint<128>
+    value: Uint<128>,
+    data: Bytes<d>
   ): [] {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
@@ -133,7 +135,7 @@ module ERC1155 {
       assert isApprovedForAll(from, caller) "ERC1155: unauthorized operator";
     }
 
-    _safeTransferFrom(from, to, id, value);
+    _safeTransferFrom<d>(from, to, id, value, data);
   }
 
   /**
@@ -160,13 +162,15 @@ module ERC1155 {
    * @param {to} - The recipient of the transferred assets.
    * @param {id} - The unique identifier of the asset type.
    * @param {value} - The quantity of `id` tokens to transfer.
+   * @param {data} - Additional data with no specified format.
    * @return {[]} None.
    */
-  export circuit _safeTransferFrom(
+  export circuit _safeTransferFrom<#d>(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Field,
-    value: Uint<128>
+    value: Uint<128>,
+    data: Bytes<d>
   ): [] {
     assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
     assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
