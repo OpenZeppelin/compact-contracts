@@ -81,6 +81,85 @@ describe('ERC1155', () => {
     });
   });
 
+  describe('balanceOfBatch_10', () => {
+    it('should return zero when requested account has no balance', () => {
+      // pks
+      let pks = [Z_OWNER, Z_OTHER]
+      const pk_padding = utils.ZERO_KEY;
+      for (let i = pks.length; i < 10; i++) { pks.push(pk_padding) };
+
+      // ids
+      let ids = [1n, 2n, 3n];
+      const id_padding = 0n;
+      for (let i = ids.length; i < 10; i++) { ids.push(id_padding) };
+
+      const noBalances10 = new Array(10).fill(0n, 0, 10);
+      expect(token.balanceOfBatch_10(pks, ids)).toEqual(noBalances10);
+    });
+
+    it('should return balance when requested accounts have tokens (no padding)', () => {
+      const owner1 = Z_OWNER;
+      const owner2 = Z_RECIPIENT;
+      const ownerNoBal = Z_OTHER;
+
+      // pks
+      let pks = [
+        owner1, owner1, owner1,
+        ownerNoBal, ownerNoBal, ownerNoBal,
+        owner2, owner2, owner2,
+        owner1
+      ];
+
+      // ids
+      let ids = [
+        TOKEN_ID, TOKEN_ID2, TOKEN_ID3,
+        TOKEN_ID, TOKEN_ID2, TOKEN_ID3,
+        TOKEN_ID, TOKEN_ID2, TOKEN_ID3,
+        NONEXISTENT_ID
+      ];
+
+      // amounts
+      const amounts = [
+        AMOUNT, AMOUNT2, AMOUNT3,
+        0n, 0n, 0n,
+        AMOUNT, AMOUNT2, AMOUNT3,
+        0n
+      ]
+
+      for (let i = 0; i < ids.length; i++) {
+        token._mint(pks[i], ids[i], amounts[i]);
+      }
+
+      expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
+    });
+
+    it('should return balance when requested accounts have tokens (with padding)', () => {
+      const owner1 = Z_OWNER;
+      const owner2 = Z_RECIPIENT;
+      const ownerNoBal = Z_OTHER;
+
+      // pks
+      let pks = [owner1, ownerNoBal, owner2];
+      const pk_padding = utils.ZERO_KEY;
+      for (let i = pks.length; i < 10; i++) { pks.push(pk_padding) };
+
+      // ids
+      let ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
+      const id_padding = 0n;
+      for (let i = ids.length; i < 10; i++) { ids.push(id_padding) };
+
+      // amounts
+      let amounts = [AMOUNT, 0n, AMOUNT2];
+      for (let i = amounts.length; i < 10; i++) { amounts.push(0n) };
+
+      // mint
+      token._mint(pks[0], ids[0], amounts[0]); // owner1 => TOKEN_ID => AMOUNT
+      token._mint(pks[2], ids[2], amounts[2]); // owner2 => TOKEN_ID2 => AMOUNT2
+
+      expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
+    });
+  });
+
   describe('isApprovedForAll', () => {
     it('should return false when not set', () => {
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
