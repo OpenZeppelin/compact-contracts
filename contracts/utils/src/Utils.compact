@@ -24,4 +24,25 @@ module Utils {
       return keyOrAddress == right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ zero });
     }
   }
+
+  /**
+   * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey 
+   * and a ContractAddress can never be equal
+   *
+   * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
+   * @param {other} - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
+   * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
+   */
+  export pure circuit isKeyOrAddressEqual(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    other: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Boolean {
+    if (keyOrAddress.is_left && other.is_left) {
+      return keyOrAddress.left == other.left;
+    } else if (!keyOrAddress.is_left && !other.is_left) {
+      return keyOrAddress.right == other.right;
+    } else {
+      return false;
+    }
+  }
 }
