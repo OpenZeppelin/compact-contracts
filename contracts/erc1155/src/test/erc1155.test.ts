@@ -154,6 +154,7 @@ describe('ERC1155', () => {
 
       // mint
       token._mint(pks[0], ids[0], amounts[0]); // owner1 => TOKEN_ID => AMOUNT
+      token._mint(pks[1], ids[1], amounts[1]); // ownerNoBal => TOKEN_ID2 => 0n
       token._mint(pks[2], ids[2], amounts[2]); // owner2 => TOKEN_ID2 => AMOUNT2
 
       expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
