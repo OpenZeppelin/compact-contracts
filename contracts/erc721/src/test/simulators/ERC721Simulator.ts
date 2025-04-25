@@ -14,6 +14,7 @@ import {
   Either,
   ZswapCoinPublicKey,
   ContractAddress,
+  pureCircuits
 } from '../../artifacts/MockERC721/contract/index.cjs'; // Combined imports
 import { MaybeString } from '../types';
 import type { IContractSimulator } from '../types';
@@ -47,7 +48,7 @@ export class ERC721Simulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)), name, symbol,
+      constructorContext({ tokenURI: "https://www.mynft.test/" }, '0'.repeat(64)), name, symbol,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -117,6 +118,98 @@ export class ERC721Simulator
    */
   public ownerOf(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits.ownerOf(this.circuitContext, tokenId).result;
+  }
+
+  public tokenURI(tokenId: bigint): string {
+    return this.contract.impureCircuits.tokenURI(this.circuitContext, tokenId).result;
+  }
+
+  public _baseURI(): string {
+    return pureCircuits._baseURI();
+  }
+
+  public approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits.approve(this.circuitContext, to, tokenId).result;
+  }
+
+  public getApproved(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.contract.impureCircuits.getApproved(this.circuitContext, tokenId).result;
+  }
+
+  public setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: boolean): [] {
+    return this.contract.impureCircuits.setApprovalForAll(this.circuitContext, operator, approved).result;
+  }
+
+  public isApprovedForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
+    return this.contract.impureCircuits.isApprovedForAll(this.circuitContext, owner, operator).result;
+  }
+
+  public transferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits.transferFrom(this.circuitContext, from, to, tokenId).result;
+  }
+
+  public safeTransferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits.safeTransferFrom(this.circuitContext, from, to, tokenId).result;
+  }
+
+  public _safeTransferFromWith(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, data: string): [] {
+    return this.contract.impureCircuits._safeTransferFrom(this.circuitContext, from, to, tokenId, data).result;
+  }
+
+  public _requireOwned(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.contract.impureCircuits._requireOwned(this.circuitContext, tokenId).result;
+  }
+
+  public _ownerOf(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.contract.impureCircuits._ownerOf(this.circuitContext, tokenId).result;
+  }
+
+  public _update(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, auth: Either<ZswapCoinPublicKey, ContractAddress>): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.contract.impureCircuits._update(this.circuitContext, to, tokenId, auth).result;
+  }
+
+  public _approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, auth: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    return this.contract.impureCircuits._approve(this.circuitContext, to, tokenId, auth).result;
+  }
+
+  public _checkAuthorized(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits._checkAuthorized(this.circuitContext, owner, spender, tokenId).result;
+  }
+
+  public _isAuthorized(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): boolean {
+    return this.contract.impureCircuits._isAuthorized(this.circuitContext, owner, spender, tokenId).result;
+  }
+
+  public _getApproved(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.contract.impureCircuits._getApproved(this.circuitContext, tokenId).result;
+  }
+
+  public _setApprovalForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: boolean): [] {
+    return this.contract.impureCircuits._setApprovalForAll(this.circuitContext, owner, operator, approved).result;
+  }
+
+  public _increaseBalance(account: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint): [] {
+    return this.contract.impureCircuits._increaseBalance(this.circuitContext, account, value).result;
+  }
+
+  public _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits._mint(this.circuitContext, to, tokenId).result;
+  }
+
+  public _safeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits._safeMint(this.circuitContext, to, tokenId).result;
+  }
+
+  public __safeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, data: string): [] {
+    return this.contract.impureCircuits.__safeMint(this.circuitContext, to, tokenId, data).result;
+  }
+
+  public _burn(tokenId: bigint): [] {
+    return this.contract.impureCircuits._burn(this.circuitContext, tokenId).result;
+  }
+
+  public _transfer(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+    return this.contract.impureCircuits._transfer(this.circuitContext, from, to, tokenId).result;
   }
 }
 

@@ -181,3 +181,7 @@ export circuit _transfer(
 ): [] {
   return ERC721__transfer(from, to, tokenId);
 }
+
+export circuit _baseURI(): Opaque<"string"> {
+  return ERC721__baseURI();
+}

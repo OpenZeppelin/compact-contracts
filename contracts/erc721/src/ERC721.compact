@@ -115,10 +115,12 @@ module ERC721 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Field
   ): [] {
+    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    const auth = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _approve(
       to, 
       tokenId,
-      left<ZswapCoinPublicKey, ContractAddress>(own_public_key())
+      auth
     );
   }
 
@@ -132,8 +134,10 @@ module ERC721 {
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: Boolean
   ): [] {
+    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _setApprovalForAll(
-      left<ZswapCoinPublicKey, ContractAddress>(own_public_key()),
+      owner,
       operator,
       approved
     );
