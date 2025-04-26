@@ -977,12 +977,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/initializable@workspace:contracts/initializable":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/initializable@workspace:contracts/initializable"
-  languageName: unknown
-  linkType: soft
-
 "@openzeppelin-midnight/utils@workspace:^, @openzeppelin-midnight/utils@workspace:contracts/utils":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/utils@workspace:contracts/utils"

@@ -1,6 +1,6 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { ERC20Simulator } from './simulators';
-import type { MaybeString } from './types';
+import { ERC20Simulator } from './simulators/ERC20Simulator';
+import type { MaybeString } from './types/string';
 import * as utils from './utils';
 
 const NO_STRING: MaybeString = {
@@ -103,7 +103,7 @@ describe('ERC20', () => {
       caller = OWNER;
       const txSuccess = token.transfer(Z_RECIPIENT, partialAmt, caller);
 
-      expect(txSuccess).toBeTruthy();
+      expect(txSuccess).toBe(true);
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(partialAmt);
     });
@@ -112,7 +112,7 @@ describe('ERC20', () => {
       caller = OWNER;
       const txSuccess = token.transfer(Z_RECIPIENT, AMOUNT, caller);
 
-      expect(txSuccess).toBeTruthy();
+      expect(txSuccess).toBe(true);
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(AMOUNT);
     });
@@ -144,7 +144,7 @@ describe('ERC20', () => {
     it('should allow transfer of 0 tokens', () => {
       const txSuccess = token.transfer(Z_RECIPIENT, 0n, caller);
 
-      expect(txSuccess).toBeTruthy();
+      expect(txSuccess).toBe(true);
       expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(0n);
     });
@@ -245,7 +245,7 @@ describe('ERC20', () => {
         partialAmt,
         caller,
       );
-      expect(txSuccess).toBeTruthy();
+      expect(txSuccess).toBe(true);
 
       // Check balances
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
@@ -263,7 +263,7 @@ describe('ERC20', () => {
         AMOUNT,
         caller,
       );
-      expect(txSuccess).toBeTruthy();
+      expect(txSuccess).toBe(true);
 
       // Check balances
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
@@ -283,7 +283,7 @@ describe('ERC20', () => {
         AMOUNT,
         caller,
       );
-      expect(txSuccess).toBeTruthy();
+      expect(txSuccess).toBe(true);
 
       // Check balances
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);

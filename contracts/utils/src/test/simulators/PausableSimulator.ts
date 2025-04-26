@@ -7,39 +7,37 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import {
   type Ledger,
-  Contract as MockInitializable,
+  Contract as MockPausable,
   ledger,
-} from '../artifacts/MockInitializable/contract/index.cjs';
+} from '../../artifacts/MockPausable/contract/index.cjs';
 import {
-  type InitializablePrivateState,
-  InitializableWitnesses,
-} from '../witnesses';
-import type { IContractSimulator } from './types';
+  type PausablePrivateState,
+  PausableWitnesses,
+} from '../../witnesses/PausableWitnesses';
+import type { IContractSimulator } from '../types/test';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
  * @template P - The private state type, fixed to UtilsPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class InitializableSimulator
-  implements IContractSimulator<InitializablePrivateState, Ledger>
+export class PausableSimulator
+  implements IContractSimulator<PausablePrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockInitializable<InitializablePrivateState>;
+  readonly contract: MockPausable<PausablePrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<InitializablePrivateState>;
+  circuitContext: CircuitContext<PausablePrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
   constructor() {
-    this.contract = new MockInitializable<InitializablePrivateState>(
-      InitializableWitnesses,
-    );
+    this.contract = new MockPausable<PausablePrivateState>(PausableWitnesses);
     const {
       currentPrivateState,
       currentContractState,
@@ -69,7 +67,7 @@ export class InitializableSimulator
    * @description Retrieves the current private state of the contract.
    * @returns The private state of type UtilsPrivateState.
    */
-  public getCurrentPrivateState(): InitializablePrivateState {
+  public getCurrentPrivateState(): PausablePrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
@@ -82,21 +80,50 @@ export class InitializableSimulator
   }
 
   /**
-   * @description Initializes the state.
+   * @description Returns true if the contract is paused, and false otherwise.
+   * @returns True if paused.
+   */
+  public isPaused(): boolean {
+    return this.contract.impureCircuits.isPaused(this.circuitContext).result;
+  }
+
+  /**
+   * @description Makes a circuit only callable when the contract is paused.
    * @returns None.
    */
-  public initialize() {
-    this.circuitContext = this.contract.impureCircuits.initialize(
+  public assertPaused() {
+    this.circuitContext = this.contract.impureCircuits.assertPaused(
       this.circuitContext,
     ).context;
   }
 
   /**
-   * @description Returns true if the state is initialized.
-   * @returns Whether the contract has been initialized.
+   * @description Makes a circuit only callable when the contract is not paused.
+   * @returns None.
    */
-  public isInitialized(): boolean {
-    return this.contract.impureCircuits.isInitialized(this.circuitContext)
-      .result;
+  public assertNotPaused() {
+    this.circuitContext = this.contract.impureCircuits.assertNotPaused(
+      this.circuitContext,
+    ).context;
+  }
+
+  /**
+   * @description Triggers a stopped state.
+   * @returns None.
+   */
+  public pause() {
+    this.circuitContext = this.contract.impureCircuits.pause(
+      this.circuitContext,
+    ).context;
+  }
+
+  /**
+   * @description Lifts the pause on the contract.
+   * @returns None.
+   */
+  public unpause() {
+    this.circuitContext = this.contract.impureCircuits.unpause(
+      this.circuitContext,
+    ).context;
   }
 }

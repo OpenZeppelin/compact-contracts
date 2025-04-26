@@ -4,7 +4,7 @@ pragma language_version >= 0.14.0;
 
 import CompactStandardLibrary;
 
-import Utils prefix Utils_;
+import "../../Utils" prefix Utils_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either };
 
