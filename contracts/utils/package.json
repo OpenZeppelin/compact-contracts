@@ -16,7 +16,7 @@
     "compact": "find src -name '*.compact' -exec sh -c 'run-compactc \"{}\" \"src/artifacts/$(basename \"{}\" .compact)\"' \\;",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "prepack": "yarn build",
-    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/artifacts ./dist/artifacts && cp ./src/Utils.compact ./dist",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/artifacts ./dist/artifacts && cp ./src/{Initializable,Pausable,Utils}.compact ./dist",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
