@@ -4,7 +4,6 @@
         "compact",
         "contracts/archived/",
         "contracts/erc20/",
-        "contracts/initializable/",
         "contracts/utils/"
     ],
     "scripts": {
