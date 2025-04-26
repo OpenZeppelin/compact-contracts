@@ -1,15 +1,15 @@
-import { UtilsContractSimulator } from './UtilsSimulator';
-import * as contractUtils from './utils';
+import { UtilsSimulator } from './simulators/UtilsSimulator';
+import * as contractUtils from './utils/address';
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
 const Z_OTHER_KEY = contractUtils.createEitherTestUser('OTHER_KEY');
 const SOME_CONTRACT = contractUtils.createEitherTestContractAddress('SOME_CONTRACT');
 const OTHER_CONTRACT = contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
 
-let contract: UtilsContractSimulator;
+let contract: UtilsSimulator;
 
 describe('Utils', () => {
-  contract = new UtilsContractSimulator();
+  contract = new UtilsSimulator();
 
   describe('isKeyOrAddressZero', () => {
     it('should return zero for the zero address', () => {
@@ -18,8 +18,14 @@ describe('Utils', () => {
     });
 
     it('should not return zero for nonzero addresses', () => {
-      expect(contract.isKeyOrAddressZero(Z_SOME_KEY)).toBeFalsy;
-      expect(contract.isKeyOrAddressZero(SOME_CONTRACT)).toBeFalsy;
+      expect(contract.isKeyOrAddressZero(Z_SOME_KEY)).toBe(false);
+      expect(contract.isKeyOrAddressZero(SOME_CONTRACT)).toBe(false);
+    });
+
+    it('should return false for two different address types', () => {
+      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT)).toBe(false);
+      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBe(true);
+      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(true);
     });
   });
 
@@ -38,10 +44,6 @@ describe('Utils', () => {
 
     it('should return false for two different contract addresses', () => {
       expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT)).toBeFalsy();
-    });
-
-    it('should return false for two different address types', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT)).toBeFalsy();
     });
   });
 });

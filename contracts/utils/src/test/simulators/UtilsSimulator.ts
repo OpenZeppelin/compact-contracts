@@ -12,17 +12,23 @@ import {
   Either,
   ZswapCoinPublicKey,
   ContractAddress,
-} from '../artifacts/MockUtils/contract/index.cjs'; // Combined imports
-import type { IContractSimulator } from './types';
-import { UtilsPrivateState, UtilsWitnesses } from '../witnesses';
+} from '../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
+import type { IContractSimulator } from '../types/test';
+import { UtilsPrivateState, UtilsWitnesses } from '../../witnesses/UtilsWitnesses';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
  * @template P - The private state type, fixed to UtilsPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
+<<<<<<< HEAD:contracts/utils/src/test/UtilsSimulator.ts
 export class UtilsContractSimulator
   implements IContractSimulator<UtilsPrivateState, Ledger> {
+=======
+export class UtilsSimulator
+  implements IContractSimulator<UtilsPrivateState, Ledger>
+{
+>>>>>>> b6f5215 (Add pausable (#22)):contracts/utils/src/test/simulators/UtilsSimulator.ts
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockUtils<UtilsPrivateState>;
 
