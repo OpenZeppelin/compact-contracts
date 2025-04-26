@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PausableSimulator } from './simulators/PausableSimulator.js';
+=======
+import { it, describe, expect } from '@jest/globals';
+import { PausableSimulator } from './simulators/PausableSimulator';
+>>>>>>> b6f5215 (Add pausable (#22))
 
 let pausable: PausableSimulator;
 
@@ -41,7 +46,11 @@ describe('Pausable', () => {
     });
 
     it('should not throw when calling assertPaused', () => {
+<<<<<<< HEAD
       pausable.assertPaused();
+=======
+        pausable.assertPaused();
+>>>>>>> b6f5215 (Add pausable (#22))
     });
 
     it('should throw when calling assertNotPaused', () => {

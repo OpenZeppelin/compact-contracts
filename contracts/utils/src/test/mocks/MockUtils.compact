@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 pragma language_version >= 0.15.0;
+=======
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+>>>>>>> b6f5215 (Add pausable (#22))
 
 import CompactStandardLibrary;
 
@@ -7,6 +13,7 @@ import "../../Utils" prefix Utils_;
 export { ZswapCoinPublicKey, ContractAddress, Either };
 
 export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+<<<<<<< HEAD
   return Utils_isKeyOrAddressZero(keyOrAddress);
 }
 
@@ -27,4 +34,7 @@ export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, C
 
 export pure circuit emptyString(): Opaque<"string"> {
   return Utils_emptyString();
+=======
+    return Utils_isKeyOrAddressZero(keyOrAddress);
+>>>>>>> b6f5215 (Add pausable (#22))
 }

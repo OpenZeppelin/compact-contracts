@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 import { describe, expect, it } from 'vitest';
 import { UtilsSimulator } from './simulators/UtilsSimulator.js';
 import * as contractUtils from './utils/address.js';
+=======
+import { UtilsSimulator } from './simulators/UtilsSimulator';
+import * as contractUtils from './utils/address';
+>>>>>>> b6f5215 (Add pausable (#22))
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
 const Z_OTHER_KEY = contractUtils.createEitherTestUser('OTHER_KEY');
@@ -9,8 +14,11 @@ const SOME_CONTRACT =
 const OTHER_CONTRACT =
   contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
 
+<<<<<<< HEAD
 const EMPTY_STRING = '';
 
+=======
+>>>>>>> b6f5215 (Add pausable (#22))
 let contract: UtilsSimulator;
 
 describe('Utils', () => {
@@ -19,14 +27,19 @@ describe('Utils', () => {
   describe('isKeyOrAddressZero', () => {
     it('should return zero for the zero address', () => {
       expect(contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBe(true);
+<<<<<<< HEAD
       expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(
         true,
       );
+=======
+      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(true);
+>>>>>>> b6f5215 (Add pausable (#22))
     });
 
     it('should not return zero for nonzero addresses', () => {
       expect(contract.isKeyOrAddressZero(Z_SOME_KEY)).toBe(false);
       expect(contract.isKeyOrAddressZero(SOME_CONTRACT)).toBe(false);
+<<<<<<< HEAD
     });
   });
 
@@ -91,6 +104,8 @@ describe('Utils', () => {
   describe('emptyString', () => {
     it('should return the empty string', () => {
       expect(contract.emptyString()).toBe(EMPTY_STRING);
+=======
+>>>>>>> b6f5215 (Add pausable (#22))
     });
   });
 });

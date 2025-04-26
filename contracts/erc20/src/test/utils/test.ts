@@ -6,7 +6,11 @@ import {
   QueryContext,
   emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
+<<<<<<< HEAD
 import type { IContractSimulator } from '../types/test.js';
+=======
+import type { IContractSimulator } from '../types/test';
+>>>>>>> b6f5215 (Add pausable (#22))
 
 /**
  * Constructs a `CircuitContext` from the given state and sender information.
