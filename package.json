@@ -1,11 +1,12 @@
 {
   "packageManager": "yarn@4.1.0",
   "workspaces": [
-    "compact",
+    "compact/",
     "contracts/erc20/",
     "contracts/utils/"
   ],
   "scripts": {
+    "prepare": "npx tsc -p ./compact && yarn rebuild",
     "compact": "turbo run compact",
     "build": "turbo run build",
     "test": "turbo run test",
