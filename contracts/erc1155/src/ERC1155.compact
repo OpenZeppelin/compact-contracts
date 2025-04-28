@@ -7,7 +7,7 @@ pragma language_version >= 0.14.0;
  *
  * @notice One notable difference regarding this implementation and the EIP1155 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
- * cannot be supported.
+ * cannot be supported. This is true for both token IDs and for amounts.
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
  *
@@ -45,7 +45,7 @@ module ERC1155 {
   import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
 
   /// Public state
-  export ledger _balances: Map<Field, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
+  export ledger _balances: Map<Uint<128>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
   // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
   export ledger _uri: Maybe<Opaque<"string">>;
@@ -72,7 +72,7 @@ module ERC1155 {
    * @param {id} - The token identifier to query.
    * return {Maybe<Opaque<"string">>} - The base URI for all tokens.
    */
-  export circuit uri(id: Field): Maybe<Opaque<"string">> {
+  export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
     return _uri;
   }
 
@@ -83,7 +83,7 @@ module ERC1155 {
    * @param {id} - The token identifier to query.
    * return {Uint<128>} - The quantity of `id` tokens that `account` owns.
    */
-  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
+  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
     if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
       return 0;
     }
@@ -103,11 +103,11 @@ module ERC1155 {
    * caller's assets.
    * @param {ids} - The boolean value determining if the operator may or may not handle the
    * caller's assets.
-   * @return {Vector<n, Field>} Returns n balances of account/token id pairs.
+   * @return {Vector<n, Uint<128>>} Returns n balances of account/token id pairs.
    */
   export circuit balanceOfBatch<#n>(
     accounts: Vector<n, Either<ZswapCoinPublicKey, ContractAddress>>,
-    ids: Vector<n, Field>
+    ids: Vector<n, Uint<128>>
   ): Vector<n, Uint<128>> {
     return map(balanceOf, accounts, ids);
   }
@@ -159,7 +159,7 @@ module ERC1155 {
   export circuit safeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Field,
+    id: Uint<128>,
     value: Uint<128>
   ): [] {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
@@ -185,7 +185,7 @@ module ERC1155 {
   export circuit _safeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Field,
+    id: Uint<128>,
     value: Uint<128>
   ): [] {
     assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
@@ -206,7 +206,7 @@ module ERC1155 {
   export circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Field,
+    id: Uint<128>,
     value: Uint<128>
   ): [] {
     if (!Utils_isKeyOrAddressZero(from)) {
@@ -260,7 +260,7 @@ module ERC1155 {
    * @param {value} - The quantity of `id` tokens that are minted to `to`.
    * @return {[]} - None.
    */
-  export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+  export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
     // Using the contract variant of 0
     // TODO: Look into if this matters
@@ -276,7 +276,7 @@ module ERC1155 {
    * @param {value} - The quantity of `id` tokens that will be destroyed from `from`.
    * @return {[]} - None.
    */
-  export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+  export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
     // Using the contract variant of 0
     // TODO: Look into if this matters
