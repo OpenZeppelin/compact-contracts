@@ -4,6 +4,26 @@ pragma language_version >= 0.14.0;
 /**
  * @module ERC1155
  * @description An unshielded ERC1155 library.
+ *
+ * @notice One notable difference regarding this implementation and the EIP1155 spec
+ * consists of the token size. Uint<128> is used as the token size because Uint<256>
+ * cannot be supported.
+ * This is due to encoding limits on the midnight circuit backend:
+ * https://github.com/midnightntwrk/compactc/issues/929
+ * Note that token IDs use `Field`
+ *
+ * @notice Some features defined in th EIP1155 spec are NOT included.
+ * Such features include:
+ *
+ * 1.
+ *
+ * @notice Further discussion and consideration required:
+ *
+ * - Consider changing the underscore in the internal methods to `unsafe` or
+ * adopting dot notation for prefixing imports.
+ * - Revise logic once contract-to-contract interactions are available on midnight.
+ * - Consider implementing an introspection mechanism for transfers to contracts.
+ * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
 module ERC1155 {
   import CompactStandardLibrary;
@@ -119,15 +139,13 @@ module ERC1155 {
    * @param {to} - The recipient of the transferred assets.
    * @param {id} - The unique identifier of the asset type.
    * @param {value} - The quantity of `id` tokens to transfer.
-   * @param {data} - Additional data with no specified format.
    * @return {[]} None.
    */
-  export circuit safeTransferFrom<#d>(
+  export circuit safeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Field,
-    value: Uint<128>,
-    data: Bytes<d>
+    value: Uint<128>
   ): [] {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
@@ -135,7 +153,7 @@ module ERC1155 {
       assert isApprovedForAll(from, caller) "ERC1155: unauthorized operator";
     }
 
-    _safeTransferFrom<d>(from, to, id, value, data);
+    _safeTransferFrom(from, to, id, value);
   }
 
   /**
@@ -162,15 +180,13 @@ module ERC1155 {
    * @param {to} - The recipient of the transferred assets.
    * @param {id} - The unique identifier of the asset type.
    * @param {value} - The quantity of `id` tokens to transfer.
-   * @param {data} - Additional data with no specified format.
    * @return {[]} None.
    */
-  export circuit _safeTransferFrom<#d>(
+  export circuit _safeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Field,
-    value: Uint<128>,
-    data: Bytes<d>
+    value: Uint<128>
   ): [] {
     assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
     assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";

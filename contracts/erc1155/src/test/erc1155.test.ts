@@ -42,8 +42,6 @@ const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
 const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
 
-const DATA: Uint8Array = utils.pad('DATA', 32);
-
 let token: ERC1155Simulator;
 let caller: CoinPublicKey;
 
@@ -223,7 +221,7 @@ describe('ERC1155', () => {
       });
 
       it('should transfer whole', () => {
-        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA, caller);
+        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
@@ -231,14 +229,14 @@ describe('ERC1155', () => {
 
       it('should transfer partial', () => {
         const partialAmt = AMOUNT - 1n;
-        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, DATA, caller);
+        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, caller);
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(partialAmt);
       });
 
       it('should allow transfer of 0 tokens', () => {
-        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, DATA, caller);
+        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, caller);
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(0n);
@@ -246,25 +244,25 @@ describe('ERC1155', () => {
 
       it('should fail with insufficient balance', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with nonexistent id', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with transfer from zero', () => {
         expect(() => {
-          token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
         }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with transfer to zero', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT, caller);
         }).toThrow('ERC1155: invalid receiver');
       });
     });
@@ -280,7 +278,7 @@ describe('ERC1155', () => {
       });
 
       it('should transfer whole', () => {
-        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA, caller);
+        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
@@ -288,14 +286,14 @@ describe('ERC1155', () => {
 
       it('should transfer partial', () => {
         const partialAmt = AMOUNT - 1n;
-        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, DATA, caller);
+        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, caller);
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(partialAmt);
       });
 
       it('should allow transfer of 0 tokens', () => {
-        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, DATA, caller);
+        token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, caller);
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(0n);
@@ -303,25 +301,25 @@ describe('ERC1155', () => {
 
       it('should fail with insufficient balance', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with nonexistent id', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with transfer from zero', () => {
         expect(() => {
-          token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
         }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with transfer to zero', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT, caller);
         }).toThrow('ERC1155: invalid receiver');
       });
     });
@@ -333,32 +331,32 @@ describe('ERC1155', () => {
 
       it('should fail when transfer whole', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
         }).toThrow('ERC1155: unauthorized operator')
       });
 
       it('should fail when transfer partial', () => {
         expect(() => {
           const partialAmt = AMOUNT - 1n;
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, caller);
         }).toThrow('ERC1155: unauthorized operator')
       });
 
       it('should fail when transfer zero', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, caller);
         }).toThrow('ERC1155: unauthorized operator')
       });
 
       it('should fail with insufficient balance', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
         }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with nonexistent id', () => {
         expect(() => {
-          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
         }).toThrow('ERC1155: unauthorized operator');
       });
 
@@ -366,7 +364,7 @@ describe('ERC1155', () => {
         caller = ZERO;
 
         expect(() => {
-          token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA, caller);
+          token.safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
         }).toThrow('ERC1155: invalid sender');
       });
     });
@@ -381,7 +379,7 @@ describe('ERC1155', () => {
     });
 
     it('should transfer whole', () => {
-      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA);
+      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
 
       expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
       expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
@@ -389,14 +387,14 @@ describe('ERC1155', () => {
 
     it('should transfer partial', () => {
       const partialAmt = AMOUNT - 1n;
-      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, DATA);
+      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt);
 
       expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
       expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(partialAmt);
     });
 
     it('should allow transfer of 0 tokens', () => {
-      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, DATA);
+      token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n);
 
       expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
       expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(0n);
@@ -404,25 +402,25 @@ describe('ERC1155', () => {
 
     it('should fail with unsufficient balance', () => {
       expect(() => {
-        token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, DATA);
+        token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n);
       }).toThrow('ERC1155: insufficient balance');
     });
 
     it('should fail with nonexistent id', () => {
       expect(() => {
-        token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, DATA);
+        token._safeTransferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT);
       }).toThrow('ERC1155: insufficient balance');
     });
 
     it('should fail when transfer from 0', () => {
       expect(() => {
-        token._safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, DATA);
+        token._safeTransferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT);
       }).toThrow('ERC1155: invalid sender');
     });
 
     it('should fail when transfer to 0', () => {
       expect(() => {
-        token._safeTransferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT, DATA);
+        token._safeTransferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
       }).toThrow('ERC1155: invalid receiver');
     });
   });
