@@ -136,7 +136,6 @@ export class ERC1155Simulator
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
-    data: Uint8Array,
     sender?: CoinPublicKey
   ) {
     const res = this.contract.impureCircuits.safeTransferFrom({
@@ -145,7 +144,7 @@ export class ERC1155Simulator
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
         },
-        from, to, id, value, data
+        from, to, id, value
     );
 
     this.circuitContext = res.context;
@@ -157,7 +156,6 @@ export class ERC1155Simulator
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
-    data: Uint8Array,
     sender?: CoinPublicKey
   ) {
     const res = this.contract.impureCircuits._safeTransferFrom({
@@ -166,7 +164,7 @@ export class ERC1155Simulator
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
         },
-        from, to, id, value, data
+        from, to, id, value
     );
 
     this.circuitContext = res.context;

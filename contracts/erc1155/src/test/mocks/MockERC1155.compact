@@ -45,10 +45,9 @@ export circuit safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Field,
-  value: Uint<128>,
-  data: Bytes<32>
+  value: Uint<128>
 ): [] {
-  return ERC1155_safeTransferFrom<32>(from, to, id, value, data);
+  return ERC1155_safeTransferFrom(from, to, id, value);
 }
 
 export circuit safeBatchTransferFrom_10(
@@ -64,10 +63,9 @@ export circuit _safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Field,
-  value: Uint<128>,
-  data: Bytes<32>
+  value: Uint<128>
 ): [] {
-  return ERC1155__safeTransferFrom<32>(from, to, id, value, data);
+  return ERC1155__safeTransferFrom(from, to, id, value);
 }
 
 export circuit _update(
