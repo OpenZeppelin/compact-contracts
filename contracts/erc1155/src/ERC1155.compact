@@ -10,19 +10,34 @@ pragma language_version >= 0.14.0;
  * cannot be supported.
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
- * Note that token IDs use `Field`
+ *
+ * @notice Querying balanceOfBatch is currently supported; however,
+ * the number of balances to query is set as a generic `n` number.
+ * The implementing contract must define the size(s) that the contract
+ * is going to expose and queries must then be padded if queries < `n`.
  *
  * @notice Some features defined in th EIP1155 spec are NOT included.
  * Such features include:
  *
- * 1.
+ * 1. Batch mint, burn, transfer - Without support for dynamic arrays,
+ * batching transfers is difficult to do without a hacky solution.
+ * For instance, we could change the `to` and `from` parameters to be
+ * vectors. This would change the signature and would be both difficult
+ * to use and easy to misuse.
+ *
+ * 2. Introspect - Compact currently cannot support contract-to-contract
+ * queries for introspection. ERC165 (or an equivalent thereof) is NOT
+ * included in the contract.
+ *
+ * 3. Safe transfers - The lack of an introspection mechanism means
+ * safe transfers of any kind can not be supported.
+ * BE AWARE: Tokens sent to a contract address MAY be lost forever.
  *
  * @notice Further discussion and consideration required:
  *
  * - Consider changing the underscore in the internal methods to `unsafe` or
  * adopting dot notation for prefixing imports.
  * - Revise logic once contract-to-contract interactions are available on midnight.
- * - Consider implementing an introspection mechanism for transfers to contracts.
  * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
 module ERC1155 {
@@ -157,21 +172,6 @@ module ERC1155 {
   }
 
   /**
-   * @description add me...
-   */
-  export circuit safeBatchTransferFrom<#n>(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    ids: Vector<n, Field>,
-    values: Vector<n, Uint<128>>
-  ): [] {
-    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-    assert from == caller || isApprovedForAll(from, caller) "ERC1155: missing approval for all";
-
-    _safeBatchTransferFrom<n>(from, to, ids, values);
-  }
-
-  /**
    * @description Internal circuit that transfers ownership of `value` amount of `token_id` from `from` to `to`.
    * @notice This internal circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
@@ -229,22 +229,6 @@ module ERC1155 {
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
       }
     }
-  }
-
-  /**
-   * @description add me...
-   */
-  export circuit _safeBatchTransferFrom<#n>(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    ids: Vector<n, Field>,
-    values: Vector<n, Uint<128>>
-  ): [] {
-    assert Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
-    assert Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
-
-    // doesn't work when all args aren't vectors of n len
-    // map(_update, from, to, ids, values);
   }
 
   /**
