@@ -1,10 +1,10 @@
 import {
-    type CircuitContext,
-    type CoinPublicKey,
-    type ContractAddress,
-    type ContractState,
-    QueryContext,
-    emptyZswapLocalState,
+  type CircuitContext,
+  type CoinPublicKey,
+  type ContractAddress,
+  type ContractState,
+  QueryContext,
+  emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import type { IContractSimulator } from '../types/test';
 
@@ -50,10 +50,11 @@ export function useCircuitContext<P>(
  * @returns A new `CircuitContext` with the sender and updated context values.
  * @todo TODO: Move this utility to a generic package for broader reuse across contracts.
  */
-export function useCircuitContextSender<P, L, C extends IContractSimulator<P, L>>(
-  contract: C,
-  sender: CoinPublicKey,
-): CircuitContext<P> {
+export function useCircuitContextSender<
+  P,
+  L,
+  C extends IContractSimulator<P, L>,
+>(contract: C, sender: CoinPublicKey): CircuitContext<P> {
   const currentPrivateState = contract.getCurrentPrivateState();
   const originalState = contract.getCurrentContractState();
   const contractAddress = contract.contractAddress;

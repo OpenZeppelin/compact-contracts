@@ -1,8 +1,11 @@
+import {
+  convert_bigint_to_Uint8Array,
+  encodeCoinPublicKey,
+} from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import * as Compact from '../../artifacts/MockUtils/contract/index.cjs';
-import { convert_bigint_to_Uint8Array, encodeCoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import type * as Compact from '../../artifacts/MockUtils/contract/index.cjs';
 
-const PREFIX_ADDRESS = "0200";
+const PREFIX_ADDRESS = '0200';
 
 export const pad = (s: string, n: number): Uint8Array => {
   const encoder = new TextEncoder();
@@ -13,7 +16,7 @@ export const pad = (s: string, n: number): Uint8Array => {
   const paddedArray = new Uint8Array(n);
   paddedArray.set(utf8Bytes);
   return paddedArray;
-}
+};
 
 /**
  * @description Generates ZswapCoinPublicKey from `str` for testing purposes.
@@ -23,7 +26,7 @@ export const pad = (s: string, n: number): Uint8Array => {
 export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => {
   const toHex = Buffer.from(str, 'ascii').toString('hex');
   return { bytes: encodeCoinPublicKey(String(toHex).padStart(64, '0')) };
-}
+};
 
 /**
  * @description Generates ContractAddress from `str` for testing purposes.
@@ -35,7 +38,7 @@ export const encodeToAddress = (str: string): Compact.ContractAddress => {
   const toHex = Buffer.from(str, 'ascii').toString('hex');
   const fullAddress = PREFIX_ADDRESS + String(toHex).padStart(64, '0');
   return { bytes: encodeContractAddress(fullAddress) };
-}
+};
 
 /**
  * @description Generates an Either object for ZswapCoinPublicKey for testing.
@@ -47,9 +50,9 @@ export const createEitherTestUser = (str: string) => {
   return {
     is_left: true,
     left: encodeToPK(str),
-    right: encodeToAddress('')
-  }
-}
+    right: encodeToAddress(''),
+  };
+};
 
 /**
  * @description Generates an Either object for ContractAddress for testing.
@@ -61,18 +64,18 @@ export const createEitherTestContractAddress = (str: string) => {
   return {
     is_left: false,
     left: encodeToPK(''),
-    right: encodeToAddress(str)
-  }
-}
+    right: encodeToAddress(str),
+  };
+};
 
 export const ZERO_KEY = {
   is_left: true,
   left: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
-  right: encodeToAddress('')
-}
+  right: encodeToAddress(''),
+};
 
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
-  right: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) }
-}
+  right: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+};

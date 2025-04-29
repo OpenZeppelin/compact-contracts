@@ -1,7 +1,20 @@
-import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
-import { Contract as MockPausable, type Ledger, ledger } from '../../artifacts/MockPausable/contract/index.cjs';
+import {
+  type CircuitContext,
+  type ContractState,
+  QueryContext,
+  constructorContext,
+  sampleContractAddress,
+} from '@midnight-ntwrk/compact-runtime';
+import {
+  type Ledger,
+  Contract as MockPausable,
+  ledger,
+} from '../../artifacts/MockPausable/contract/index.cjs';
+import {
+  type PausablePrivateState,
+  PausableWitnesses,
+} from '../../witnesses/PausableWitnesses';
 import type { IContractSimulator } from '../types/test';
-import { PausablePrivateState, PausableWitnesses } from '../../witnesses/PausableWitnesses';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -24,16 +37,12 @@ export class PausableSimulator
    * @description Initializes the mock contract.
    */
   constructor() {
-    this.contract = new MockPausable<PausablePrivateState>(
-      PausableWitnesses,
-    );
+    this.contract = new MockPausable<PausablePrivateState>(PausableWitnesses);
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
+    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -83,7 +92,9 @@ export class PausableSimulator
    * @returns None.
    */
   public assertPaused() {
-    this.circuitContext = this.contract.impureCircuits.assertPaused(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.assertPaused(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -91,7 +102,9 @@ export class PausableSimulator
    * @returns None.
    */
   public assertNotPaused() {
-    this.circuitContext = this.contract.impureCircuits.assertNotPaused(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.assertNotPaused(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -99,7 +112,9 @@ export class PausableSimulator
    * @returns None.
    */
   public pause() {
-    this.circuitContext = this.contract.impureCircuits.pause(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.pause(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -107,6 +122,8 @@ export class PausableSimulator
    * @returns None.
    */
   public unpause() {
-    this.circuitContext = this.contract.impureCircuits.unpause(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.unpause(
+      this.circuitContext,
+    ).context;
   }
 }
