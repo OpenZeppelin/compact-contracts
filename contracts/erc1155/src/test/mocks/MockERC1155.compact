@@ -15,11 +15,11 @@ constructor(
   ERC1155_initializer(_uri);
 }
 
-export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
+export circuit uri(id: Field): Maybe<Opaque<"string">> {
   return ERC1155_uri(id);
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
+export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
   return ERC1155_balanceOf(account, id);
 }
 
@@ -44,7 +44,7 @@ export circuit isApprovedForAll(
 export circuit safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Uint<128>,
+  id: Field,
   value: Uint<128>
 ): [] {
   return ERC1155_safeTransferFrom(from, to, id, value);
@@ -53,7 +53,7 @@ export circuit safeTransferFrom(
 export circuit _safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Uint<128>,
+  id: Field,
   value: Uint<128>
 ): [] {
   return ERC1155__safeTransferFrom(from, to, id, value);
@@ -62,7 +62,7 @@ export circuit _safeTransferFrom(
 export circuit _update(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Uint<128>,
+  id: Field,
   value: Uint<128>
 ): [] {
   return ERC1155__update(from, to, id, value);
@@ -72,11 +72,11 @@ export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
   return ERC1155__setURI(newURI);
 }
 
-export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
   return ERC1155__mint(to, id, value);
 }
 
-export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
   return ERC1155__burn(from, id, value);
 }
 
