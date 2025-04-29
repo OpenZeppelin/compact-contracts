@@ -22,11 +22,13 @@ import type { IContractSimulator } from '../types/test.js';
 =======
   type Ledger,
   Contract as MockUtils,
+  type ZswapCoinPublicKey,
   ledger,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
 } from '../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
+import {
+  type UtilsPrivateState,
+  UtilsWitnesses,
+} from '../../witnesses/UtilsWitnesses';
 import type { IContractSimulator } from '../types/test';
 import { UtilsPrivateState, UtilsWitnesses } from '../../witnesses/UtilsWitnesses';
 >>>>>>> b6f5215 (Add pausable (#22))

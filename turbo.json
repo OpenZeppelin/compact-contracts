@@ -2,20 +2,37 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "compact": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
-      "inputs": ["src/**/*.compact"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
+      "inputs": [
+        "src/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["src/artifacts/**", "src/gen/**", "gen/**"]
+      "outputs": [
+        "src/artifacts/**",
+        "src/gen/**",
+        "gen/**"
+      ]
     },
     "test": {
-      "dependsOn": ["^build", "compact"],
+      "dependsOn": [
+        "^build",
+        "compact"
+      ],
       "outputs": [],
       "cache": false
     },
     "build": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
       "inputs": [
         "src/**/*.ts",
         "!src/**/*.test.ts",
@@ -24,10 +41,14 @@
         "tsconfig.build.json",
         ".env"
       ],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
     "types": {
-      "dependsOn": ["compact"],
+      "dependsOn": [
+        "compact"
+      ],
       "outputs": [],
       "cache": false
     },

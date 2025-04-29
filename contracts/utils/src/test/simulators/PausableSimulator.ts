@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import {
   type CircuitContext,
   type ContractState,
@@ -16,12 +15,6 @@ import {
   PausableWitnesses,
 } from '../../witnesses/PausableWitnesses.js';
 import type { IContractSimulator } from '../types/test.js';
-=======
-import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
-import { Contract as MockPausable, type Ledger, ledger } from '../../artifacts/MockPausable/contract/index.cjs';
-import type { IContractSimulator } from '../types/test';
-import { PausablePrivateState, PausableWitnesses } from '../../witnesses/PausableWitnesses';
->>>>>>> b6f5215 (Add pausable (#22))
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -29,8 +22,7 @@ import { PausablePrivateState, PausableWitnesses } from '../../witnesses/Pausabl
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class PausableSimulator
-  implements IContractSimulator<PausablePrivateState, Ledger>
-{
+  implements IContractSimulator<PausablePrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockPausable<PausablePrivateState>;
 
@@ -44,24 +36,13 @@ export class PausableSimulator
    * @description Initializes the mock contract.
    */
   constructor() {
-<<<<<<< HEAD
     this.contract = new MockPausable<PausablePrivateState>(PausableWitnesses);
-=======
-    this.contract = new MockPausable<PausablePrivateState>(
-      PausableWitnesses,
-    );
->>>>>>> b6f5215 (Add pausable (#22))
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-<<<<<<< HEAD
     } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
-=======
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
->>>>>>> b6f5215 (Add pausable (#22))
+
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -111,13 +92,7 @@ export class PausableSimulator
    * @returns None.
    */
   public assertPaused() {
-<<<<<<< HEAD
-    this.circuitContext = this.contract.impureCircuits.assertPaused(
-      this.circuitContext,
-    ).context;
-=======
     this.circuitContext = this.contract.impureCircuits.assertPaused(this.circuitContext).context;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 
   /**
@@ -125,13 +100,7 @@ export class PausableSimulator
    * @returns None.
    */
   public assertNotPaused() {
-<<<<<<< HEAD
-    this.circuitContext = this.contract.impureCircuits.assertNotPaused(
-      this.circuitContext,
-    ).context;
-=======
     this.circuitContext = this.contract.impureCircuits.assertNotPaused(this.circuitContext).context;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 
   /**
@@ -139,13 +108,7 @@ export class PausableSimulator
    * @returns None.
    */
   public pause() {
-<<<<<<< HEAD
-    this.circuitContext = this.contract.impureCircuits.pause(
-      this.circuitContext,
-    ).context;
-=======
     this.circuitContext = this.contract.impureCircuits.pause(this.circuitContext).context;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 
   /**
@@ -153,12 +116,6 @@ export class PausableSimulator
    * @returns None.
    */
   public unpause() {
-<<<<<<< HEAD
-    this.circuitContext = this.contract.impureCircuits.unpause(
-      this.circuitContext,
-    ).context;
-=======
     this.circuitContext = this.contract.impureCircuits.unpause(this.circuitContext).context;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 }

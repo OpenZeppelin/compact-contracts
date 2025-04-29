@@ -3,8 +3,7 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import * as Compact from '../../artifacts/MockUtils/contract/index.cjs';
-import { convert_bigint_to_Uint8Array, encodeCoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import type * as Compact from '../../artifacts/MockUtils/contract/index.cjs';
 
 const PREFIX_ADDRESS = '0200';
 

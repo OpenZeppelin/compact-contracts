@@ -1,11 +1,20 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "build": {
-      "outputs": ["dist/**"],
-      "inputs": ["src/**/*.ts", "tsconfig.json"],
-      "env": ["COMPACT_HOME"],
+      "outputs": [
+        "dist/**"
+      ],
+      "inputs": [
+        "src/**/*.ts",
+        "tsconfig.json"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
       "cache": true
     }
   }
