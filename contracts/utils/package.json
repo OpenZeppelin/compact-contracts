@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight-contracts/utils-contract",
+  "name": "@openzeppelin-midnight/utils",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -15,15 +15,12 @@
   "scripts": {
     "compact": "find src -name '*.compact' -exec sh -c 'run-compactc \"{}\" \"src/artifacts/$(basename \"{}\" .compact)\"' \\;",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "prepack": "yarn build",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/artifacts ./dist/artifacts && cp ./src/{Initializable,Pausable,Utils}.compact ./dist",
-    "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "devDependencies": {
-    "@midnight-ntwrk/compact": "workspace:*",
-    "eslint": "^8.52.0",
-    "jest": "^29.7.0",
-    "typescript": "^5.2.2"
+    "types": "tsc -p tsconfig.json --noEmit",
+    "fmt": "biome format",
+    "fmt:fix": "biome format --write",
+    "lint": "biome lint",
+    "lint:fix": "biome check --write",
+    "clean": "git clean -fXd"
   }
 }

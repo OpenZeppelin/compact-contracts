@@ -1,11 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
-  "pipeline": {
+  "tasks": {
     "build": {
       "outputs": ["compactc/**"],
       "env": ["COMPACT_HOME"],
-      "inputs": ["src/**"],
+      "inputs": ["src/**.cjs"],
       "cache": true
     }
   }

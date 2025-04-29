@@ -1,4 +1,4 @@
-import { it, describe, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { PausableSimulator } from './simulators/PausableSimulator';
 
 let pausable: PausableSimulator;
@@ -41,7 +41,7 @@ describe('Pausable', () => {
     });
 
     it('should not throw when calling assertPaused', () => {
-        pausable.assertPaused();
+      pausable.assertPaused();
     });
 
     it('should throw when calling assertNotPaused', () => {
