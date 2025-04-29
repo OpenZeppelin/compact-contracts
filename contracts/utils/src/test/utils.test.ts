@@ -13,8 +13,10 @@ describe('Utils', () => {
 
   describe('isKeyOrAddressZero', () => {
     it('should return zero for the zero address', () => {
-      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBeTruthy;
-      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBeTruthy;
+      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBe(true);
+      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(
+        true,
+      );
     });
 
     it('should not return zero for nonzero addresses', () => {

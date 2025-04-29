@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const childProcess = require('child_process');
-const path = require('path');
+const childProcess = require('node:child_process');
+const path = require('node:path');
 
 const [_node, _script, ...args] = process.argv;
 const COMPACT_HOME_ENV = process.env.COMPACT_HOME;
@@ -9,15 +9,19 @@ const COMPACT_HOME_ENV = process.env.COMPACT_HOME;
 let compactPath;
 if (COMPACT_HOME_ENV != null) {
   compactPath = COMPACT_HOME_ENV;
-  console.log(`COMPACT_HOME env variable is set; using Compact from ${compactPath}`);
+  console.log(
+    `COMPACT_HOME env variable is set; using Compact from ${compactPath}`,
+  );
 } else {
   compactPath = path.resolve(__dirname, '..', 'compactc');
-  console.log(`COMPACT_HOME env variable is not set; using fetched compact from ${compactPath}`);
+  console.log(
+    `COMPACT_HOME env variable is not set; using fetched compact from ${compactPath}`,
+  );
 }
 
 // yarn runs everything with node...
 const child = childProcess.spawn(path.resolve(compactPath, 'compactc'), args, {
-  stdio: 'inherit'
+  stdio: 'inherit',
 });
 child.on('exit', (code, signal) => {
   if (code === 0) {
@@ -25,4 +29,4 @@ child.on('exit', (code, signal) => {
   } else {
     process.exit(code ?? signal);
   }
-})
+});
