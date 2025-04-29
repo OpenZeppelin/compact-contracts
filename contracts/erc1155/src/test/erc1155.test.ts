@@ -29,7 +29,6 @@ const TOKEN_ID2: bigint = BigInt(22);
 const TOKEN_ID3: bigint = BigInt(333);
 const NONEXISTENT_ID: bigint = BigInt(987654321);
 const IDS = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
-const MAX_UINT256 = BigInt(2**256) - BigInt(1);
 
 // PubKeys/addresses
 const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64, '0');
@@ -40,7 +39,6 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
-const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
 
 let token: ERC1155Simulator;
 let caller: CoinPublicKey;
