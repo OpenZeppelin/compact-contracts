@@ -131,14 +131,14 @@ export class ERC1155Simulator
     return this.contract.impureCircuits.isApprovedForAll(this.circuitContext, account, operator).result;
   }
 
-  public safeTransferFrom(
+  public transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
     sender?: CoinPublicKey
   ) {
-    const res = this.contract.impureCircuits.safeTransferFrom({
+    const res = this.contract.impureCircuits.transferFrom({
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
@@ -151,14 +151,14 @@ export class ERC1155Simulator
     return res.result;
   }
 
-  public _safeTransferFrom(
+  public _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
     sender?: CoinPublicKey
   ) {
-    const res = this.contract.impureCircuits._safeTransferFrom({
+    const res = this.contract.impureCircuits._transferFrom({
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)

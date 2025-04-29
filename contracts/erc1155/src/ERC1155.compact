@@ -156,7 +156,7 @@ module ERC1155 {
    * @param {value} - The quantity of `id` tokens to transfer.
    * @return {[]} None.
    */
-  export circuit safeTransferFrom(
+  export circuit transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Field,
@@ -168,7 +168,7 @@ module ERC1155 {
       assert isApprovedForAll(from, caller) "ERC1155: unauthorized operator";
     }
 
-    _safeTransferFrom(from, to, id, value);
+    _transferFrom(from, to, id, value);
   }
 
   /**
@@ -182,7 +182,7 @@ module ERC1155 {
    * @param {value} - The quantity of `id` tokens to transfer.
    * @return {[]} None.
    */
-  export circuit _safeTransferFrom(
+  export circuit _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Field,

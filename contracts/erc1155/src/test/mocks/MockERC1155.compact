@@ -41,22 +41,22 @@ export circuit isApprovedForAll(
   return ERC1155_isApprovedForAll(account, operator);
 }
 
-export circuit safeTransferFrom(
+export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Field,
   value: Uint<128>
 ): [] {
-  return ERC1155_safeTransferFrom(from, to, id, value);
+  return ERC1155_transferFrom(from, to, id, value);
 }
 
-export circuit _safeTransferFrom(
+export circuit _transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Field,
   value: Uint<128>
 ): [] {
-  return ERC1155__safeTransferFrom(from, to, id, value);
+  return ERC1155__transferFrom(from, to, id, value);
 }
 
 export circuit _update(
