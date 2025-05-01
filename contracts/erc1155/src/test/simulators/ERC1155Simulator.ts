@@ -1,6 +1,6 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
+  type CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
@@ -8,16 +8,16 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type ContractAddress,
+  type Either,
   type Ledger,
   Contract as MockERC1155,
+  type ZswapCoinPublicKey,
   ledger,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
 } from '../../artifacts/MockERC1155/contract/index.cjs'; // Combined imports
-import { MaybeString } from '../types';
+import { type ERC1155PrivateState, ERC1155Witnesses } from '../../witnesses';
+import type { MaybeString } from '../types';
 import type { IContractSimulator } from '../types';
-import { ERC1155PrivateState, ERC1155Witnesses } from '../../witnesses';
 
 /**
  * @description A simulator implementation of an erc1155 contract for testing purposes.
@@ -143,7 +143,7 @@ export class ERC1155Simulator
   public isApprovedForAll(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Boolean {
+  ): boolean {
     return this.contract.impureCircuits.isApprovedForAll(
       this.circuitContext,
       account,
