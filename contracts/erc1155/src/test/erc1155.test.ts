@@ -1,6 +1,6 @@
-import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { ERC1155Simulator } from './simulators';
-import { MaybeString } from './types';
+import type { MaybeString } from './types';
 import * as utils from './utils';
 
 const NO_STRING: MaybeString = {
@@ -89,14 +89,14 @@ describe('ERC1155', () => {
   describe('balanceOfBatch_10', () => {
     it('should return zero when requested account has no balance', () => {
       // pks
-      let pks = [Z_OWNER, Z_OTHER];
+      const pks = [Z_OWNER, Z_OTHER];
       const pk_padding = utils.ZERO_KEY;
       for (let i = pks.length; i < 10; i++) {
         pks.push(pk_padding);
       }
 
       // ids
-      let ids = [1n, 2n, 3n];
+      const ids = [1n, 2n, 3n];
       const id_padding = 0n;
       for (let i = ids.length; i < 10; i++) {
         ids.push(id_padding);
@@ -112,7 +112,7 @@ describe('ERC1155', () => {
       const ownerNoBal = Z_OTHER;
 
       // pks
-      let pks = [
+      const pks = [
         owner1,
         owner1,
         owner1,
@@ -126,7 +126,7 @@ describe('ERC1155', () => {
       ];
 
       // ids
-      let ids = [
+      const ids = [
         TOKEN_ID,
         TOKEN_ID2,
         TOKEN_ID3,
@@ -166,21 +166,21 @@ describe('ERC1155', () => {
       const ownerNoBal = Z_OTHER;
 
       // pks - add padding
-      let pks = [owner1, ownerNoBal, owner2];
+      const pks = [owner1, ownerNoBal, owner2];
       const pk_padding = utils.ZERO_KEY;
       for (let i = pks.length; i < 10; i++) {
         pks.push(pk_padding);
       }
 
       // ids - add padding
-      let ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
+      const ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
       const id_padding = 0n;
       for (let i = ids.length; i < 10; i++) {
         ids.push(id_padding);
       }
 
       // amounts - add padding
-      let amounts = [AMOUNT, 0n, AMOUNT2];
+      const amounts = [AMOUNT, 0n, AMOUNT2];
       const amt_padding = 0n;
       for (let i = amounts.length; i < 10; i++) {
         amounts.push(amt_padding);
