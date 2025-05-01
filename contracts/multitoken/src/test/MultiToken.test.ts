@@ -1,5 +1,5 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { ERC1155Simulator } from './simulators';
+import { MultiTokenSimulator } from './simulators';
 import type { MaybeString } from './types';
 import * as utils from './utils';
 
@@ -47,28 +47,28 @@ const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
 
-let token: ERC1155Simulator;
+let token: MultiTokenSimulator;
 let caller: CoinPublicKey;
 
-describe('ERC1155', () => {
+describe('MultiToken', () => {
   describe('initializer and metadata', () => {
     it('should initialize metadata', () => {
       expect(1).toEqual(1);
-      token = new ERC1155Simulator(URI);
+      token = new MultiTokenSimulator(URI);
 
       expect(token.uri(TOKEN_ID)).toEqual(URI);
     });
 
     it('should initialize empty metadata', () => {
       const NO_DECIMALS = 0n;
-      token = new ERC1155Simulator(NO_STRING);
+      token = new MultiTokenSimulator(NO_STRING);
 
       expect(token.uri(TOKEN_ID)).toEqual(NO_STRING);
     });
   });
 
   beforeEach(() => {
-    token = new ERC1155Simulator(URI);
+    token = new MultiTokenSimulator(URI);
   });
 
   describe('balanceOf', () => {
@@ -214,7 +214,7 @@ describe('ERC1155', () => {
 
       expect(() => {
         token.setApprovalForAll(utils.ZERO_KEY, true);
-      }).toThrow('ERC1155: invalid operator');
+      }).toThrow('MultiToken: invalid operator');
     });
 
     describe('when spender is approved as an operator', () => {
@@ -284,7 +284,7 @@ describe('ERC1155', () => {
             AMOUNT + 1n,
             caller,
           );
-        }).toThrow('ERC1155: insufficient balance');
+        }).toThrow('MultiToken: insufficient balance');
       });
 
       it('should fail with nonexistent id', () => {
@@ -296,7 +296,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: insufficient balance');
+        }).toThrow('MultiToken: insufficient balance');
       });
 
       it('should fail with transfer from zero', () => {
@@ -308,7 +308,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail with transfer to zero', () => {
@@ -320,7 +320,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: invalid receiver');
+        }).toThrow('MultiToken: invalid receiver');
       });
     });
 
@@ -365,7 +365,7 @@ describe('ERC1155', () => {
             AMOUNT + 1n,
             caller,
           );
-        }).toThrow('ERC1155: insufficient balance');
+        }).toThrow('MultiToken: insufficient balance');
       });
 
       it('should fail with nonexistent id', () => {
@@ -377,7 +377,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: insufficient balance');
+        }).toThrow('MultiToken: insufficient balance');
       });
 
       it('should fail with transfer from zero', () => {
@@ -389,7 +389,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail with transfer to zero', () => {
@@ -401,7 +401,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: invalid receiver');
+        }).toThrow('MultiToken: invalid receiver');
       });
     });
 
@@ -413,7 +413,7 @@ describe('ERC1155', () => {
       it('should fail when transfer whole', () => {
         expect(() => {
           token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail when transfer partial', () => {
@@ -426,13 +426,13 @@ describe('ERC1155', () => {
             partialAmt,
             caller,
           );
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail when transfer zero', () => {
         expect(() => {
           token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, caller);
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail with insufficient balance', () => {
@@ -444,7 +444,7 @@ describe('ERC1155', () => {
             AMOUNT + 1n,
             caller,
           );
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail with nonexistent id', () => {
@@ -456,7 +456,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: unauthorized operator');
+        }).toThrow('MultiToken: unauthorized operator');
       });
 
       it('should fail with transfer from zero', () => {
@@ -470,7 +470,7 @@ describe('ERC1155', () => {
             AMOUNT,
             caller,
           );
-        }).toThrow('ERC1155: invalid sender');
+        }).toThrow('MultiToken: invalid sender');
       });
     });
   });
@@ -508,25 +508,25 @@ describe('ERC1155', () => {
     it('should fail with unsufficient balance', () => {
       expect(() => {
         token._transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n);
-      }).toThrow('ERC1155: insufficient balance');
+      }).toThrow('MultiToken: insufficient balance');
     });
 
     it('should fail with nonexistent id', () => {
       expect(() => {
         token._transferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT);
-      }).toThrow('ERC1155: insufficient balance');
+      }).toThrow('MultiToken: insufficient balance');
     });
 
     it('should fail when transfer from 0', () => {
       expect(() => {
         token._transferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT);
-      }).toThrow('ERC1155: invalid sender');
+      }).toThrow('MultiToken: invalid sender');
     });
 
     it('should fail when transfer to 0', () => {
       expect(() => {
         token._transferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
-      }).toThrow('ERC1155: invalid receiver');
+      }).toThrow('MultiToken: invalid receiver');
     });
   });
 
@@ -556,7 +556,7 @@ describe('ERC1155', () => {
 
         expect(() => {
           token._update(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, 1n);
-        }).toThrow('ERC1155: arithmetic overflow');
+        }).toThrow('MultiToken: arithmetic overflow');
       });
     });
 
@@ -599,7 +599,7 @@ describe('ERC1155', () => {
         for (let i = 0; i < ids.length; i++) {
           expect(() => {
             token._update(Z_OWNER, utils.ZERO_KEY, ids[i], amts[i] + 1n);
-          }).toThrow('ERC1155: insufficient balance');
+          }).toThrow('MultiToken: insufficient balance');
         }
       });
     });
@@ -643,13 +643,13 @@ describe('ERC1155', () => {
       it('should fail when transferring with not enough balance', () => {
         expect(() => {
           token._update(Z_OWNER, Z_RECIPIENT, ids[0], amts[0] + 1n);
-        }).toThrow('ERC1155: insufficient balance');
+        }).toThrow('MultiToken: insufficient balance');
       });
 
       it('should fail when transferring tokens of nonexistent id', () => {
         expect(() => {
           token._update(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT);
-        }).toThrow('ERC1155: insufficient balance');
+        }).toThrow('MultiToken: insufficient balance');
       });
     });
 
@@ -700,13 +700,13 @@ describe('ERC1155', () => {
 
       expect(() => {
         token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
-      }).toThrow('ERC1155: arithmetic overflow');
+      }).toThrow('MultiToken: arithmetic overflow');
     });
 
     it('should fail when minting to zero address', () => {
       expect(() => {
         token._mint(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
-      }).toThrow('ERC1155: invalid receiver');
+      }).toThrow('MultiToken: invalid receiver');
     });
   });
 
@@ -738,19 +738,19 @@ describe('ERC1155', () => {
     it('should fail when not enough balance to burn', () => {
       expect(() => {
         token._burn(Z_OWNER, TOKEN_ID, AMOUNT + 1n);
-      }).toThrow('ERC1155: insufficient balance');
+      }).toThrow('MultiToken: insufficient balance');
     });
 
     it('should fail when burning the zero address tokens', () => {
       expect(() => {
         token._burn(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
-      }).toThrow('ERC1155: invalid sender');
+      }).toThrow('MultiToken: invalid sender');
     });
 
     it('should fail when burning tokens from nonexistent id', () => {
       expect(() => {
         token._burn(Z_OWNER, NONEXISTENT_ID, AMOUNT);
-      }).toThrow('ERC1155: insufficient balance');
+      }).toThrow('MultiToken: insufficient balance');
     });
   });
 
@@ -763,7 +763,7 @@ describe('ERC1155', () => {
     it('should fail when attempting to approve zero address as an operator', () => {
       expect(() => {
         token._setApprovalForAll(Z_OWNER, utils.ZERO_KEY, true);
-      }).toThrow('ERC1155: invalid operator');
+      }).toThrow('MultiToken: invalid operator');
     });
 
     it('should set → unset → set operator', () => {

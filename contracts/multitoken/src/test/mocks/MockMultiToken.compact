@@ -4,41 +4,41 @@ pragma language_version >= 0.14.0;
 
 import CompactStandardLibrary;
 
-import "../../ERC1155" prefix ERC1155_;
+import "../../MultiToken" prefix MultiToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
-export { ERC1155__balances, ERC1155__operatorApprovals, ERC1155__uri };
+export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
 
 constructor(
   _uri: Maybe<Opaque<"string">>
 ) {
-  ERC1155_initializer(_uri);
+  MultiToken_initializer(_uri);
 }
 
 export circuit uri(id: Field): Maybe<Opaque<"string">> {
-  return ERC1155_uri(id);
+  return MultiToken_uri(id);
 }
 
 export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
-  return ERC1155_balanceOf(account, id);
+  return MultiToken_balanceOf(account, id);
 }
 
 export circuit balanceOfBatch_10(
   accounts: Vector<10, Either<ZswapCoinPublicKey, ContractAddress>>,
   ids: Vector<10, Uint<128>>
 ): Vector<10, Uint<128>> {
-  return ERC1155_balanceOfBatch<10>(accounts, ids);
+  return MultiToken_balanceOfBatch<10>(accounts, ids);
 }
 
 export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
-  return ERC1155_setApprovalForAll(operator, approved);
+  return MultiToken_setApprovalForAll(operator, approved);
 }
 
 export circuit isApprovedForAll(
   account: Either<ZswapCoinPublicKey, ContractAddress>,
   operator: Either<ZswapCoinPublicKey, ContractAddress>
 ): Boolean {
-  return ERC1155_isApprovedForAll(account, operator);
+  return MultiToken_isApprovedForAll(account, operator);
 }
 
 export circuit transferFrom(
@@ -47,7 +47,7 @@ export circuit transferFrom(
   id: Field,
   value: Uint<128>
 ): [] {
-  return ERC1155_transferFrom(from, to, id, value);
+  return MultiToken_transferFrom(from, to, id, value);
 }
 
 export circuit _transferFrom(
@@ -56,7 +56,7 @@ export circuit _transferFrom(
   id: Field,
   value: Uint<128>
 ): [] {
-  return ERC1155__transferFrom(from, to, id, value);
+  return MultiToken__transferFrom(from, to, id, value);
 }
 
 export circuit _update(
@@ -65,19 +65,19 @@ export circuit _update(
   id: Field,
   value: Uint<128>
 ): [] {
-  return ERC1155__update(from, to, id, value);
+  return MultiToken__update(from, to, id, value);
 }
 
 export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
-  return ERC1155__setURI(newURI);
+  return MultiToken__setURI(newURI);
 }
 
 export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
-  return ERC1155__mint(to, id, value);
+  return MultiToken__mint(to, id, value);
 }
 
 export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
-  return ERC1155__burn(from, id, value);
+  return MultiToken__burn(from, id, value);
 }
 
 export circuit _setApprovalForAll(
@@ -85,5 +85,5 @@ export circuit _setApprovalForAll(
   operator: Either<ZswapCoinPublicKey, ContractAddress>,
   approved: Boolean
 ): [] {
-  return ERC1155__setApprovalForAll(owner, operator, approved);
+  return MultiToken__setApprovalForAll(owner, operator, approved);
 }

@@ -2,8 +2,8 @@
 pragma language_version >= 0.14.0;
 
 /**
- * @module ERC1155
- * @description An unshielded ERC1155 library.
+ * @module MultiToken
+ * @description An unshielded MultiToken library.
  *
  * @notice One notable difference regarding this implementation and the EIP1155 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
@@ -40,7 +40,7 @@ pragma language_version >= 0.14.0;
  * - Revise logic once contract-to-contract interactions are available on midnight.
  * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
-module ERC1155 {
+module MultiToken {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
 
@@ -165,7 +165,7 @@ module ERC1155 {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     if (from != caller) {
-      assert isApprovedForAll(from, caller) "ERC1155: unauthorized operator";
+      assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
     }
 
     _transferFrom(from, to, id, value);
@@ -188,8 +188,8 @@ module ERC1155 {
     id: Field,
     value: Uint<128>
   ): [] {
-    assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
-    assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
+    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
+    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
     _update(from, to, id, value);
   }
 
@@ -211,7 +211,7 @@ module ERC1155 {
   ): [] {
     if (!Utils_isKeyOrAddressZero(from)) {
       const fromBalance = balanceOf(from, id);
-      assert fromBalance >= value "ERC1155: insufficient balance";
+      assert fromBalance >= value "MultiToken: insufficient balance";
       // overflow not possible
       const newBalance = fromBalance - value;
       _balances.lookup(id).insert(from, newBalance);
@@ -225,7 +225,7 @@ module ERC1155 {
       } else {
         const toBalance = balanceOf(to, id);
         const MAX_UINT128 = 340282366920938463463374607431768211455;
-        assert MAX_UINT128 - toBalance >= value "ERC1155: arithmetic overflow";
+        assert MAX_UINT128 - toBalance >= value "MultiToken: arithmetic overflow";
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
       }
     }
@@ -233,7 +233,7 @@ module ERC1155 {
 
   /**
    * @description Sets a new URI for all token types, by relying on the token type ID
-   * substitution mechanism defined in the ERC1155 standard.
+   * substitution mechanism defined in the MultiToken standard.
    * See https://eips.ethereum.org/EIPS/eip-1155#metadata.
    *
    * @notice By this mechanism, any occurrence of the `\{id\}` substring in either the
@@ -261,7 +261,7 @@ module ERC1155 {
    * @return {[]} - None.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
-    assert !Utils_isKeyOrAddressZero(to) "ERC1155: invalid receiver";
+    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
     _update(burn_address(), to, id, value);
   }
 
@@ -274,7 +274,7 @@ module ERC1155 {
    * @return {[]} - None.
    */
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
-    assert !Utils_isKeyOrAddressZero(from) "ERC1155: invalid sender";
+    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
     _update(from, burn_address(), id, value);
   }
 
@@ -295,7 +295,7 @@ module ERC1155 {
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: Boolean
   ): [] {
-    assert !Utils_isKeyOrAddressZero(operator) "ERC1155: invalid operator";
+    assert !Utils_isKeyOrAddressZero(operator) "MultiToken: invalid operator";
     if (!_operatorApprovals.member(owner)) {
       _operatorApprovals.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
     }

@@ -977,6 +977,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@openzeppelin-midnight/multitoken@workspace:contracts/multitoken":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-midnight/multitoken@workspace:contracts/multitoken"
+  dependencies:
+    "@midnight-ntwrk/compact": "workspace:*"
+    "@openzeppelin-midnight/utils": "workspace:^"
+    eslint: "npm:^8.52.0"
+    jest: "npm:^29.7.0"
+    typescript: "npm:^5.2.2"
+  languageName: unknown
+  linkType: soft
+
 "@openzeppelin-midnight/utils@workspace:^, @openzeppelin-midnight/utils@workspace:contracts/utils":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/utils@workspace:contracts/utils"
