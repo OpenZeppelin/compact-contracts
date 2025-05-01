@@ -1,0 +1,47 @@
+:fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[fungible tokens]
+:eip20: https://eips.ethereum.org/EIPS/eip-20[EIP-20]
+
+= ERC20
+
+The ERC20 token standard is a specification for {fungible-tokens},
+a type of token where all the units are exactly equal to each other.
+The `ERC20.compact` module implements an approximation of {eip-20} in Compact for Midnight.
+
+== ERC20 Compatbility
+
+Even though Midnight is not EVM-compatible, this implementation attempts to be an approximation of the standard.
+Some features and behaviors are either not possible, not possible yet, or changed because of the vastly different tech stack
+and Compact language constraints.
+
+**Notable changes**
+
+- **Uint<128> as value type** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
+It's currently possible to go up to 222 bits; however, 128 bits is easier on integrations and conversions.
+
+**Features and specifications NOT supported**
+
+- **Events** - Midnight does not currently support events, but this is planned on being supported in the future.
+- **Uint256 type** - There's ongoing research on ways to support uint256 in the future.
+- **Interface** - Compact currently does not have a way to define a contract interface.
+This library offers modules of contracts with free floating circuits; nevertheless, there's no means of enforcing that all circuits are provided.
+
+== Usage
+
+Import the library into the implementing contract and it's recommended to prefix the library with `ERC20_`.
+
+```typescript
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+import OpenZeppelinERC20 prefix ERC20_; // Fix me!!!
+
+constructor(
+  name: Maybe<Opaque<"string">>,
+  symbol: Maybe<Opaque<"string">>,
+  decimals:Uint<8>
+) {
+  ERC20_initializer(name, symbol, decimals);
+}
+```
+
+
