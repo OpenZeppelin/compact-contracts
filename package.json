@@ -2,8 +2,7 @@
   "packageManager": "yarn@4.1.0",
   "workspaces": [
     "compact/",
-    "contracts/erc20/",
-    "contracts/utils/"
+    "contracts/*/"
   ],
   "scripts": {
     "prepare": "npx tsc -p ./compact && yarn rebuild",
