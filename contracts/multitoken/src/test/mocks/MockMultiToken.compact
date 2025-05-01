@@ -15,11 +15,11 @@ constructor(
   MultiToken_initializer(_uri);
 }
 
-export circuit uri(id: Field): Maybe<Opaque<"string">> {
+export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
   return MultiToken_uri(id);
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
+export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
   return MultiToken_balanceOf(account, id);
 }
 
@@ -44,7 +44,7 @@ export circuit isApprovedForAll(
 export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Field,
+  id: Uint<128>,
   value: Uint<128>
 ): [] {
   return MultiToken_transferFrom(from, to, id, value);
@@ -53,7 +53,7 @@ export circuit transferFrom(
 export circuit _transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Field,
+  id: Uint<128>,
   value: Uint<128>
 ): [] {
   return MultiToken__transferFrom(from, to, id, value);
@@ -62,7 +62,7 @@ export circuit _transferFrom(
 export circuit _update(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Field,
+  id: Uint<128>,
   value: Uint<128>
 ): [] {
   return MultiToken__update(from, to, id, value);
@@ -72,11 +72,11 @@ export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
   return MultiToken__setURI(newURI);
 }
 
-export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
   return MultiToken__mint(to, id, value);
 }
 
-export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
   return MultiToken__burn(from, id, value);
 }
 
