@@ -3,7 +3,10 @@ pragma language_version >= 0.14.0;
 
 /**
  * @module MultiToken
- * @description An unshielded MultiToken library.
+ * @description An unshielded MultiToken library. This library is inspired by
+ * ERC1155. Many aspects of the EIP-1155 spec cannot be implemented in Compact;
+ * therefore, the MultiToken module should be treated as an approximation of
+ * the ERC1155 standard and not necessarily a compliant implementation.
  *
  * @notice One notable difference regarding this implementation and the EIP1155 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
