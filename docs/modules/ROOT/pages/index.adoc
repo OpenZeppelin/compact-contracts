@@ -1,0 +1,10 @@
+:midnight: https://midnight.network/[Midnight]
+
+= Contracts for Midnight
+
+*A library for secure smart contract development* written in Compact for {midnight}.
+This library consists of modules to build custom smart contracts.
+
+WARNING: This repo contains highly experimental code. Expect rapid iteration. *Use at your own risk.*
+
+
