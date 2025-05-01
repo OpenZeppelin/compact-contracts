@@ -30,7 +30,6 @@
       "recommended": true,
       "correctness": {
         "noUnusedVariables": "error",
-        "useExhaustiveDependencies": "error",
         "noUnusedImports": "error"
       },
       "performance": {
