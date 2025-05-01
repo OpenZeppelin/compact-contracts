@@ -4,7 +4,7 @@ import {
   type ContractState,
   QueryContext,
   constructorContext,
-  emptyZswapLocalState
+  emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -13,7 +13,7 @@ import {
   ledger,
   Either,
   ZswapCoinPublicKey,
-  ContractAddress
+  ContractAddress,
 } from '../../artifacts/MockERC1155/contract/index.cjs'; // Combined imports
 import { MaybeString } from '../types';
 import type { IContractSimulator } from '../types';
@@ -40,16 +40,12 @@ export class ERC1155Simulator
    * @description Initializes the mock contract.
    */
   constructor(uri: MaybeString) {
-    this.contract = new MockERC1155<ERC1155PrivateState>(
-      ERC1155Witnesses,
-    );
+    this.contract = new MockERC1155<ERC1155PrivateState>(ERC1155Witnesses);
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)), uri
-    );
+    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)), uri);
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -98,26 +94,46 @@ export class ERC1155Simulator
    * @description
    * @returns
    */
-  public balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: bigint): bigint {
-    return this.contract.impureCircuits.balanceOf(this.circuitContext, account, id).result;
+  public balanceOf(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: bigint,
+  ): bigint {
+    return this.contract.impureCircuits.balanceOf(
+      this.circuitContext,
+      account,
+      id,
+    ).result;
   }
 
   /**
    * @description
    * @returns
    */
-  public balanceOfBatch_10(accounts: Array<Either<ZswapCoinPublicKey, ContractAddress>>, ids: Array<bigint>): Array<bigint> {
-    return this.contract.impureCircuits.balanceOfBatch_10(this.circuitContext, accounts, ids).result;
+  public balanceOfBatch_10(
+    accounts: Array<Either<ZswapCoinPublicKey, ContractAddress>>,
+    ids: Array<bigint>,
+  ): Array<bigint> {
+    return this.contract.impureCircuits.balanceOfBatch_10(
+      this.circuitContext,
+      accounts,
+      ids,
+    ).result;
   }
 
-  public setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: boolean, sender?: CoinPublicKey) {
-    const res = this.contract.impureCircuits.setApprovalForAll({
+  public setApprovalForAll(
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    approved: boolean,
+    sender?: CoinPublicKey,
+  ) {
+    const res = this.contract.impureCircuits.setApprovalForAll(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        },
-        operator, approved
+      },
+      operator,
+      approved,
     );
 
     this.circuitContext = res.context;
@@ -126,9 +142,13 @@ export class ERC1155Simulator
 
   public isApprovedForAll(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
   ): Boolean {
-    return this.contract.impureCircuits.isApprovedForAll(this.circuitContext, account, operator).result;
+    return this.contract.impureCircuits.isApprovedForAll(
+      this.circuitContext,
+      account,
+      operator,
+    ).result;
   }
 
   public transferFrom(
@@ -136,15 +156,19 @@ export class ERC1155Simulator
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.transferFrom({
+    const res = this.contract.impureCircuits.transferFrom(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        },
-        from, to, id, value
+      },
+      from,
+      to,
+      id,
+      value,
     );
 
     this.circuitContext = res.context;
@@ -156,15 +180,19 @@ export class ERC1155Simulator
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits._transferFrom({
+    const res = this.contract.impureCircuits._transferFrom(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        },
-        from, to, id, value
+      },
+      from,
+      to,
+      id,
+      value,
     );
 
     this.circuitContext = res.context;
@@ -177,21 +205,33 @@ export class ERC1155Simulator
     id: bigint,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._update(this.circuitContext, from, to, id, value).context;
+    this.circuitContext = this.contract.impureCircuits._update(
+      this.circuitContext,
+      from,
+      to,
+      id,
+      value,
+    ).context;
   }
 
-  public _setURI(
-    newURI: MaybeString,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._setURI(this.circuitContext, newURI).context;
+  public _setURI(newURI: MaybeString) {
+    this.circuitContext = this.contract.impureCircuits._setURI(
+      this.circuitContext,
+      newURI,
+    ).context;
   }
 
   public _mint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
-    value: bigint
+    value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._mint(this.circuitContext, to, id, value).context;
+    this.circuitContext = this.contract.impureCircuits._mint(
+      this.circuitContext,
+      to,
+      id,
+      value,
+    ).context;
   }
 
   public _burn(
@@ -199,22 +239,30 @@ export class ERC1155Simulator
     id: bigint,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._burn(this.circuitContext, from, id, value).context;
+    this.circuitContext = this.contract.impureCircuits._burn(
+      this.circuitContext,
+      from,
+      id,
+      value,
+    ).context;
   }
 
   public _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
-    sender?: CoinPublicKey
-) {
-    const res = this.contract.impureCircuits._setApprovalForAll({
+    sender?: CoinPublicKey,
+  ) {
+    const res = this.contract.impureCircuits._setApprovalForAll(
+      {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
-        },
-        owner, operator, approved
+      },
+      owner,
+      operator,
+      approved,
     );
 
     this.circuitContext = res.context;
