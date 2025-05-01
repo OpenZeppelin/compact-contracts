@@ -1,28 +1,35 @@
-import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { ERC20Simulator } from './simulators/ERC20Simulator';
-import { MaybeString } from './types/string';
+import type { MaybeString } from './types/string';
 import * as utils from './utils';
 
 const NO_STRING: MaybeString = {
   is_some: false,
-  value: ''
+  value: '',
 };
 const NAME: MaybeString = {
   is_some: true,
-  value: "NAME"
+  value: 'NAME',
 };
 const SYMBOL: MaybeString = {
   is_some: true,
-  value: "SYMBOL"
+  value: 'SYMBOL',
 };
 const DECIMALS: bigint = 18n;
 
 const AMOUNT: bigint = BigInt(250);
-const MAX_UINT128 = BigInt(2**128) - BigInt(1);
+const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
-const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64, '0');
-const SPENDER = String(Buffer.from("SPENDER", 'ascii').toString('hex')).padStart(64, '0');
-const UNAUTHORIZED = String(Buffer.from("UNAUTHORIZED", 'ascii').toString('hex')).padStart(64, '0');
+const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
+  64,
+  '0',
+);
+const SPENDER = String(
+  Buffer.from('SPENDER', 'ascii').toString('hex'),
+).padStart(64, '0');
+const UNAUTHORIZED = String(
+  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
+).padStart(64, '0');
 const ZERO = String().padStart(64, '0');
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
@@ -65,8 +72,8 @@ describe('ERC20', () => {
     it('returns the amount of existing tokens when there is a supply', () => {
       token._mint(Z_OWNER, AMOUNT);
       expect(token.totalSupply()).toEqual(AMOUNT);
-    })
-  })
+    });
+  });
 
   describe('balanceOf', () => {
     it('should return zero when requested account has no balance', () => {
@@ -232,7 +239,12 @@ describe('ERC20', () => {
       caller = SPENDER;
       const partialAmt = AMOUNT - 1n;
 
-      const txSuccess = token.transferFrom(Z_OWNER, Z_RECIPIENT, partialAmt, caller);
+      const txSuccess = token.transferFrom(
+        Z_OWNER,
+        Z_RECIPIENT,
+        partialAmt,
+        caller,
+      );
       expect(txSuccess).toBe(true);
 
       // Check balances
@@ -245,7 +257,12 @@ describe('ERC20', () => {
     it('should transferFrom spender (full)', () => {
       caller = SPENDER;
 
-      const txSuccess = token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
+      const txSuccess = token.transferFrom(
+        Z_OWNER,
+        Z_RECIPIENT,
+        AMOUNT,
+        caller,
+      );
       expect(txSuccess).toBe(true);
 
       // Check balances
@@ -260,7 +277,12 @@ describe('ERC20', () => {
       token.approve(Z_SPENDER, MAX_UINT128, caller);
 
       caller = SPENDER;
-      const txSuccess = token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
+      const txSuccess = token.transferFrom(
+        Z_OWNER,
+        Z_RECIPIENT,
+        AMOUNT,
+        caller,
+      );
       expect(txSuccess).toBe(true);
 
       // Check balances
@@ -270,7 +292,7 @@ describe('ERC20', () => {
       expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(MAX_UINT128);
     });
 
-    it ('should fail when transfer amount exceeds allowance', () => {
+    it('should fail when transfer amount exceeds allowance', () => {
       caller = SPENDER;
 
       expect(() => {
@@ -278,7 +300,7 @@ describe('ERC20', () => {
       }).toThrow('ERC20: insufficient allowance');
     });
 
-    it ('should fail when transfer amount exceeds balance', () => {
+    it('should fail when transfer amount exceeds balance', () => {
       caller = OWNER;
       // Increase allowance > balance
       token.approve(Z_SPENDER, AMOUNT + 1n, caller);
@@ -294,7 +316,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
-      }).toThrow("ERC20: insufficient allowance");
+      }).toThrow('ERC20: insufficient allowance');
     });
 
     it('should fail to transferFrom zero address', () => {
@@ -302,7 +324,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
-      }).toThrow("ERC20: insufficient allowance");
+      }).toThrow('ERC20: insufficient allowance');
     });
 
     it('should fail to transferFrom to the zero address', () => {
@@ -310,7 +332,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT, caller);
-      }).toThrow("ERC20: invalid receiver");
+      }).toThrow('ERC20: invalid receiver');
     });
   });
 
@@ -330,7 +352,7 @@ describe('ERC20', () => {
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
       expect(token.balanceOf(Z_RECIPIENT)).toEqual(partialAmt);
     });
-  })
+  });
 
   describe('_mint', () => {
     it('should mint and update supply', () => {

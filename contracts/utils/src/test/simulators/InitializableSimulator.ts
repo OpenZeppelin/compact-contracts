@@ -1,7 +1,20 @@
-import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
-import { Contract as MockInitializable, type Ledger, ledger } from '../../artifacts/MockInitializable/contract/index.cjs';
+import {
+  type CircuitContext,
+  type ContractState,
+  QueryContext,
+  constructorContext,
+  sampleContractAddress,
+} from '@midnight-ntwrk/compact-runtime';
+import {
+  type Ledger,
+  Contract as MockInitializable,
+  ledger,
+} from '../../artifacts/MockInitializable/contract/index.cjs';
+import {
+  type InitializablePrivateState,
+  InitializableWitnesses,
+} from '../../witnesses/InitializableWitnesses';
 import type { IContractSimulator } from '../types/test';
-import { InitializablePrivateState, InitializableWitnesses } from '../../witnesses/InitializableWitnesses';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -31,9 +44,7 @@ export class InitializableSimulator
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
+    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -75,7 +86,9 @@ export class InitializableSimulator
    * @returns None.
    */
   public initialize() {
-    this.circuitContext = this.contract.impureCircuits.initialize(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.initialize(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -84,7 +97,8 @@ export class InitializableSimulator
    * @throws Will throw "Initializable: contract not initialized" if the contract is not initialized.
    */
   public assertInitialized() {
-    return this.contract.impureCircuits.assertInitialized(this.circuitContext).result;
+    return this.contract.impureCircuits.assertInitialized(this.circuitContext)
+      .result;
   }
 
   /**
@@ -93,6 +107,8 @@ export class InitializableSimulator
    * @throws Will throw "Initializable: contract already initialized" if the contract is already initialized.
    */
   public assertNotInitialized() {
-    return this.contract.impureCircuits.assertNotInitialized(this.circuitContext).result;
+    return this.contract.impureCircuits.assertNotInitialized(
+      this.circuitContext,
+    ).result;
   }
 }

@@ -1,4 +1,4 @@
 export type MaybeString = {
-    is_some: boolean,
-    value: string
-}
+  is_some: boolean;
+  value: string;
+};
