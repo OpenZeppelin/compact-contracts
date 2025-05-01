@@ -28,9 +28,6 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "a11y": {
-        "useButtonType": "off"
-      },
       "correctness": {
         "noUnusedVariables": "error",
         "useExhaustiveDependencies": "error",
