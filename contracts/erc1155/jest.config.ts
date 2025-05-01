@@ -9,16 +9,8 @@ const config: Config.InitialOptions = {
   passWithNoTests: false,
   testMatch: ['**/*.test.ts'],
   extensionsToTreatAsEsm: ['.ts'],
-  collectCoverage: true,
+  collectCoverage: false,
   resolver: '<rootDir>/js-resolver.cjs',
-  coverageThreshold: {
-    global: {},
-  },
-  reporters: [
-    'default',
-    ['jest-junit', { outputDirectory: 'reports', outputName: 'report.xml' }],
-    ['jest-html-reporters', { publicPath: 'reports', filename: 'report.html' }],
-  ],
 };
 
 export default config;
