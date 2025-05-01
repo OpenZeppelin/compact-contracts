@@ -15,7 +15,10 @@ import {
   type ZswapCoinPublicKey,
   ledger,
 } from '../../artifacts/MockMultiToken/contract/index.cjs'; // Combined imports
-import { type MultiTokenPrivateState, MultiTokenWitnesses } from '../../witnesses';
+import {
+  type MultiTokenPrivateState,
+  MultiTokenWitnesses,
+} from '../../witnesses';
 import type { MaybeString } from '../types';
 import type { IContractSimulator } from '../types';
 
@@ -40,7 +43,9 @@ export class MultiTokenSimulator
    * @description Initializes the mock contract.
    */
   constructor(uri: MaybeString) {
-    this.contract = new MockMultiToken<MultiTokenPrivateState>(MultiTokenWitnesses);
+    this.contract = new MockMultiToken<MultiTokenPrivateState>(
+      MultiTokenWitnesses,
+    );
     const {
       currentPrivateState,
       currentContractState,
