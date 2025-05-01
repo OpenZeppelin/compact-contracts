@@ -25,7 +25,7 @@ pragma language_version >= 0.14.0;
  * vectors. This would change the signature and would be both difficult
  * to use and easy to misuse.
  *
- * 2. Introspect - Compact currently cannot support contract-to-contract
+ * 2. Introspection - Compact currently cannot support contract-to-contract
  * queries for introspection. ERC165 (or an equivalent thereof) is NOT
  * included in the contract.
  *
