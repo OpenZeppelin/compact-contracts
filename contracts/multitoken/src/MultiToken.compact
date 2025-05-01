@@ -48,7 +48,7 @@ module MultiToken {
   import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
 
   /// Public state
-  export ledger _balances: Map<Field, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
+  export ledger _balances: Map<Uint<128>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
   // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
   export ledger _uri: Maybe<Opaque<"string">>;
@@ -75,7 +75,7 @@ module MultiToken {
    * @param {id} - The token identifier to query.
    * return {Maybe<Opaque<"string">>} - The base URI for all tokens.
    */
-  export circuit uri(id: Field): Maybe<Opaque<"string">> {
+  export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
     return _uri;
   }
 
@@ -86,7 +86,7 @@ module MultiToken {
    * @param {id} - The token identifier to query.
    * return {Uint<128>} - The quantity of `id` tokens that `account` owns.
    */
-  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Field): Uint<128> {
+  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
     if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
       return 0;
     }
@@ -162,7 +162,7 @@ module MultiToken {
   export circuit transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Field,
+    id: Uint<128>,
     value: Uint<128>
   ): [] {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
@@ -188,7 +188,7 @@ module MultiToken {
   export circuit _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Field,
+    id: Uint<128>,
     value: Uint<128>
   ): [] {
     assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
@@ -209,7 +209,7 @@ module MultiToken {
   export circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Field,
+    id: Uint<128>,
     value: Uint<128>
   ): [] {
     if (!Utils_isKeyOrAddressZero(from)) {
@@ -263,7 +263,7 @@ module MultiToken {
    * @param {value} - The quantity of `id` tokens that are minted to `to`.
    * @return {[]} - None.
    */
-  export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+  export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
     _update(burn_address(), to, id, value);
   }
@@ -276,7 +276,7 @@ module MultiToken {
    * @param {value} - The quantity of `id` tokens that will be destroyed from `from`.
    * @return {[]} - None.
    */
-  export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Field, value: Uint<128>): [] {
+  export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
     _update(from, burn_address(), id, value);
   }
