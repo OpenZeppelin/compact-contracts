@@ -1,6 +1,6 @@
 export type { IContractSimulator } from './test';
 
 export type MaybeString = {
-    is_some: boolean,
-    value: string
-}
+  is_some: boolean;
+  value: string;
+};

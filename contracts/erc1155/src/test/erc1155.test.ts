@@ -5,15 +5,15 @@ import * as utils from './utils';
 
 const NO_STRING: MaybeString = {
   is_some: false,
-  value: ''
+  value: '',
 };
 const URI: MaybeString = {
   is_some: true,
-  value: "https://uri.com/mock_v1"
+  value: 'https://uri.com/mock_v1',
 };
 const NEW_URI: MaybeString = {
   is_some: true,
-  value: "https://uri.com/mock_v2"
+  value: 'https://uri.com/mock_v2',
 };
 
 // Amounts
@@ -21,7 +21,7 @@ const AMOUNT: bigint = BigInt(250);
 const AMOUNT2: bigint = BigInt(9999);
 const AMOUNT3: bigint = BigInt(987654321);
 const AMOUNTS = [AMOUNT, AMOUNT2, AMOUNT3];
-const MAX_UINT128 = BigInt(2**128) - BigInt(1);
+const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
 // IDs
 const TOKEN_ID: bigint = BigInt(1);
@@ -31,9 +31,16 @@ const NONEXISTENT_ID: bigint = BigInt(987654321);
 const IDS = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
 
 // PubKeys/addresses
-const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64, '0');
-const SPENDER = String(Buffer.from("SPENDER", 'ascii').toString('hex')).padStart(64, '0');
-const UNAUTHORIZED = String(Buffer.from("UNAUTHORIZED", 'ascii').toString('hex')).padStart(64, '0');
+const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
+  64,
+  '0',
+);
+const SPENDER = String(
+  Buffer.from('SPENDER', 'ascii').toString('hex'),
+).padStart(64, '0');
+const UNAUTHORIZED = String(
+  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
+).padStart(64, '0');
 const ZERO = String().padStart(64, '0');
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
@@ -82,14 +89,18 @@ describe('ERC1155', () => {
   describe('balanceOfBatch_10', () => {
     it('should return zero when requested account has no balance', () => {
       // pks
-      let pks = [Z_OWNER, Z_OTHER]
+      let pks = [Z_OWNER, Z_OTHER];
       const pk_padding = utils.ZERO_KEY;
-      for (let i = pks.length; i < 10; i++) { pks.push(pk_padding) };
+      for (let i = pks.length; i < 10; i++) {
+        pks.push(pk_padding);
+      }
 
       // ids
       let ids = [1n, 2n, 3n];
       const id_padding = 0n;
-      for (let i = ids.length; i < 10; i++) { ids.push(id_padding) };
+      for (let i = ids.length; i < 10; i++) {
+        ids.push(id_padding);
+      }
 
       const noBalances10 = new Array(10).fill(0n, 0, 10);
       expect(token.balanceOfBatch_10(pks, ids)).toEqual(noBalances10);
@@ -102,27 +113,45 @@ describe('ERC1155', () => {
 
       // pks
       let pks = [
-        owner1, owner1, owner1,
-        ownerNoBal, ownerNoBal, ownerNoBal,
-        owner2, owner2, owner2,
-        owner1
+        owner1,
+        owner1,
+        owner1,
+        ownerNoBal,
+        ownerNoBal,
+        ownerNoBal,
+        owner2,
+        owner2,
+        owner2,
+        owner1,
       ];
 
       // ids
       let ids = [
-        TOKEN_ID, TOKEN_ID2, TOKEN_ID3,
-        TOKEN_ID, TOKEN_ID2, TOKEN_ID3,
-        TOKEN_ID, TOKEN_ID2, TOKEN_ID3,
-        NONEXISTENT_ID
+        TOKEN_ID,
+        TOKEN_ID2,
+        TOKEN_ID3,
+        TOKEN_ID,
+        TOKEN_ID2,
+        TOKEN_ID3,
+        TOKEN_ID,
+        TOKEN_ID2,
+        TOKEN_ID3,
+        NONEXISTENT_ID,
       ];
 
       // amounts
       const amounts = [
-        AMOUNT, AMOUNT2, AMOUNT3,
-        0n, 0n, 0n,
-        AMOUNT, AMOUNT2, AMOUNT3,
-        0n
-      ]
+        AMOUNT,
+        AMOUNT2,
+        AMOUNT3,
+        0n,
+        0n,
+        0n,
+        AMOUNT,
+        AMOUNT2,
+        AMOUNT3,
+        0n,
+      ];
 
       for (let i = 0; i < ids.length; i++) {
         token._mint(pks[i], ids[i], amounts[i]);
@@ -139,17 +168,23 @@ describe('ERC1155', () => {
       // pks - add padding
       let pks = [owner1, ownerNoBal, owner2];
       const pk_padding = utils.ZERO_KEY;
-      for (let i = pks.length; i < 10; i++) { pks.push(pk_padding) };
+      for (let i = pks.length; i < 10; i++) {
+        pks.push(pk_padding);
+      }
 
       // ids - add padding
       let ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
-      const id_padding = 0n
-      for (let i = ids.length; i < 10; i++) { ids.push(id_padding) };
+      const id_padding = 0n;
+      for (let i = ids.length; i < 10; i++) {
+        ids.push(id_padding);
+      }
 
       // amounts - add padding
       let amounts = [AMOUNT, 0n, AMOUNT2];
       const amt_padding = 0n;
-      for (let i = amounts.length; i < 10; i++) { amounts.push(amt_padding) };
+      for (let i = amounts.length; i < 10; i++) {
+        amounts.push(amt_padding);
+      }
 
       // mint
       token._mint(pks[0], ids[0], amounts[0]); // owner1 => TOKEN_ID => AMOUNT
@@ -184,7 +219,7 @@ describe('ERC1155', () => {
 
     describe('when spender is approved as an operator', () => {
       beforeEach(() => {
-        caller = OWNER
+        caller = OWNER;
         token.setApprovalForAll(Z_SPENDER, true, caller);
       });
 
@@ -242,25 +277,49 @@ describe('ERC1155', () => {
 
       it('should fail with insufficient balance', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT + 1n,
+            caller,
+          );
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with nonexistent id', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            NONEXISTENT_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with transfer from zero', () => {
         expect(() => {
-          token.transferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
+          token.transferFrom(
+            utils.ZERO_KEY,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with transfer to zero', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT, caller);
+          token.transferFrom(
+            Z_OWNER,
+            utils.ZERO_ADDRESS,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: invalid receiver');
       });
     });
@@ -299,25 +358,49 @@ describe('ERC1155', () => {
 
       it('should fail with insufficient balance', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT + 1n,
+            caller,
+          );
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with nonexistent id', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            NONEXISTENT_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: insufficient balance');
       });
 
       it('should fail with transfer from zero', () => {
         expect(() => {
-          token.transferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
+          token.transferFrom(
+            utils.ZERO_KEY,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with transfer to zero', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT, caller);
+          token.transferFrom(
+            Z_OWNER,
+            utils.ZERO_ADDRESS,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: invalid receiver');
       });
     });
@@ -330,31 +413,49 @@ describe('ERC1155', () => {
       it('should fail when transfer whole', () => {
         expect(() => {
           token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
-        }).toThrow('ERC1155: unauthorized operator')
+        }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail when transfer partial', () => {
         expect(() => {
           const partialAmt = AMOUNT - 1n;
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, caller);
-        }).toThrow('ERC1155: unauthorized operator')
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            partialAmt,
+            caller,
+          );
+        }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail when transfer zero', () => {
         expect(() => {
           token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, caller);
-        }).toThrow('ERC1155: unauthorized operator')
+        }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with insufficient balance', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT + 1n, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT + 1n,
+            caller,
+          );
         }).toThrow('ERC1155: unauthorized operator');
       });
 
       it('should fail with nonexistent id', () => {
         expect(() => {
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, NONEXISTENT_ID, AMOUNT, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            NONEXISTENT_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: unauthorized operator');
       });
 
@@ -362,7 +463,13 @@ describe('ERC1155', () => {
         caller = ZERO;
 
         expect(() => {
-          token.transferFrom(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
+          token.transferFrom(
+            utils.ZERO_KEY,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
         }).toThrow('ERC1155: invalid sender');
       });
     });
@@ -430,19 +537,19 @@ describe('ERC1155', () => {
         const amts = AMOUNTS;
         for (let i = 0; i < ids.length; i++) {
           token._update(utils.ZERO_KEY, Z_RECIPIENT, ids[i], amts[i]);
-        };
+        }
 
         for (let i = 0; i < ids.length; i++) {
           expect(token.balanceOf(Z_RECIPIENT, ids[i])).toEqual(amts[i]);
-        };
+        }
       });
 
       it('should update balance with consecutive mints on same id', () => {
         for (let i = 0; i < 3; i++) {
           token._update(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, 1n);
-        };
+        }
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(3n);
-      })
+      });
 
       it('should fail with uint128 overflow', () => {
         token._update(utils.ZERO_KEY, Z_RECIPIENT, TOKEN_ID, MAX_UINT128);
@@ -459,18 +566,18 @@ describe('ERC1155', () => {
         const amts = AMOUNTS;
         for (let i = 0; i < ids.length; i++) {
           token._update(utils.ZERO_KEY, Z_OWNER, ids[i], amts[i]);
-        };
-      })
+        }
+      });
       it('should update balance', () => {
         const ids = IDS;
         const amts = AMOUNTS;
         for (let i = 0; i < ids.length; i++) {
           token._update(Z_OWNER, utils.ZERO_KEY, ids[i], amts[i]);
-        };
+        }
 
         for (let i = 0; i < ids.length; i++) {
           expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(0n);
-        };
+        }
       });
 
       it('should update balance partial', () => {
@@ -479,7 +586,7 @@ describe('ERC1155', () => {
         // burn 1 from each
         for (let i = 0; i < ids.length; i++) {
           token._update(Z_OWNER, utils.ZERO_KEY, ids[i], 1n);
-        };
+        }
 
         for (let i = 0; i < ids.length; i++) {
           expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(amts[i] - 1n);
@@ -493,7 +600,7 @@ describe('ERC1155', () => {
           expect(() => {
             token._update(Z_OWNER, utils.ZERO_KEY, ids[i], amts[i] + 1n);
           }).toThrow('ERC1155: insufficient balance');
-        };
+        }
       });
     });
 
@@ -506,14 +613,14 @@ describe('ERC1155', () => {
         const amts = AMOUNTS;
         for (let i = 0; i < ids.length; i++) {
           token._update(utils.ZERO_KEY, Z_OWNER, ids[i], amts[i]);
-        };
+        }
       });
 
       it('should transfer', () => {
         // transfer all
         for (let i = 0; i < ids.length; i++) {
           token._update(Z_OWNER, Z_RECIPIENT, ids[i], amts[i]);
-        };
+        }
 
         for (let i = 0; i < ids.length; i++) {
           expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(0n);
@@ -525,12 +632,12 @@ describe('ERC1155', () => {
         // transfer 1
         for (let i = 0; i < ids.length; i++) {
           token._update(Z_OWNER, Z_RECIPIENT, ids[i], 1n);
-        };
+        }
 
         for (let i = 0; i < ids.length; i++) {
           expect(token.balanceOf(Z_OWNER, ids[i])).toEqual(amts[i] - 1n);
           expect(token.balanceOf(Z_RECIPIENT, ids[i])).toEqual(1n);
-        };
+        }
       });
 
       it('should fail when transferring with not enough balance', () => {
@@ -569,7 +676,7 @@ describe('ERC1155', () => {
 
         expect(token.uri(TOKEN_ID)).toEqual(URIS[i]);
         expect(token.uri(TOKEN_ID2)).toEqual(URIS[i]);
-      };
+      }
     });
   });
 
@@ -583,7 +690,7 @@ describe('ERC1155', () => {
     it('should update balance with multiple mints', () => {
       for (let i = 0; i < 3; i++) {
         token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
-      };
+      }
 
       expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(3n);
     });
@@ -623,7 +730,7 @@ describe('ERC1155', () => {
     it('should update balance with multiple burns', () => {
       for (let i = 0; i < 3; i++) {
         token._burn(Z_OWNER, TOKEN_ID, 1n);
-      };
+      }
 
       expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - 3n);
     });
@@ -649,7 +756,6 @@ describe('ERC1155', () => {
 
   describe('_setApprovalForAll', () => {
     it('should return false when set to false', () => {
-
       token._setApprovalForAll(Z_OWNER, Z_SPENDER, false);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
     });
@@ -670,5 +776,5 @@ describe('ERC1155', () => {
       token._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
     });
-  })
+  });
 });
