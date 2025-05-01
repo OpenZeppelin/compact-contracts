@@ -969,23 +969,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-midnight/erc1155-contract@workspace:contracts/erc1155":
+"@openzeppelin-midnight/erc20@workspace:contracts/erc20":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/erc1155-contract@workspace:contracts/erc1155"
+  resolution: "@openzeppelin-midnight/erc20@workspace:contracts/erc20"
+  dependencies:
+    "@openzeppelin-midnight/utils": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
+"@openzeppelin-midnight/multitoken@workspace:contracts/multitoken":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-midnight/multitoken@workspace:contracts/multitoken"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
     "@openzeppelin-midnight/utils": "workspace:^"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
     typescript: "npm:^5.2.2"
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-midnight/erc20@workspace:contracts/erc20":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/erc20@workspace:contracts/erc20"
-  dependencies:
-    "@openzeppelin-midnight/utils": "workspace:^"
   languageName: unknown
   linkType: soft
 

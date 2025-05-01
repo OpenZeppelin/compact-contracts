@@ -11,36 +11,36 @@ import {
   type ContractAddress,
   type Either,
   type Ledger,
-  Contract as MockERC1155,
+  Contract as MockMultiToken,
   type ZswapCoinPublicKey,
   ledger,
-} from '../../artifacts/MockERC1155/contract/index.cjs'; // Combined imports
-import { type ERC1155PrivateState, ERC1155Witnesses } from '../../witnesses';
+} from '../../artifacts/MockMultiToken/contract/index.cjs'; // Combined imports
+import { type MultiTokenPrivateState, MultiTokenWitnesses } from '../../witnesses';
 import type { MaybeString } from '../types';
 import type { IContractSimulator } from '../types';
 
 /**
- * @description A simulator implementation of an erc1155 contract for testing purposes.
- * @template P - The private state type, fixed to ERC1155PrivateState.
+ * @description A simulator implementation of a MultiToken contract for testing purposes.
+ * @template P - The private state type, fixed to MultiTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class ERC1155Simulator
-  implements IContractSimulator<ERC1155PrivateState, Ledger>
+export class MultiTokenSimulator
+  implements IContractSimulator<MultiTokenPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockERC1155<ERC1155PrivateState>;
+  readonly contract: MockMultiToken<MultiTokenPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<ERC1155PrivateState>;
+  circuitContext: CircuitContext<MultiTokenPrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
   constructor(uri: MaybeString) {
-    this.contract = new MockERC1155<ERC1155PrivateState>(ERC1155Witnesses);
+    this.contract = new MockMultiToken<MultiTokenPrivateState>(MultiTokenWitnesses);
     const {
       currentPrivateState,
       currentContractState,
@@ -68,9 +68,9 @@ export class ERC1155Simulator
 
   /**
    * @description Retrieves the current private state of the contract.
-   * @returns The private state of type ERC1155PrivateState.
+   * @returns The private state of type MultiTokenPrivateState.
    */
-  public getCurrentPrivateState(): ERC1155PrivateState {
+  public getCurrentPrivateState(): MultiTokenPrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
