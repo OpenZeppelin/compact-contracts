@@ -6,22 +6,25 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type ContractAddress,
+  type Either,
   type Ledger,
   Contract as MockUtils,
+  type ZswapCoinPublicKey,
   ledger,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
-} from '../artifacts/MockUtils/contract/index.cjs'; // Combined imports
-import type { IContractSimulator } from './types';
-import { UtilsPrivateState, UtilsWitnesses } from '../witnesses';
+} from '../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
+import {
+  type UtilsPrivateState,
+  UtilsWitnesses,
+} from '../../witnesses/UtilsWitnesses';
+import type { IContractSimulator } from '../types/test';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
  * @template P - The private state type, fixed to UtilsPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class UtilsContractSimulator
+export class UtilsSimulator
   implements IContractSimulator<UtilsPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockUtils<UtilsPrivateState>;
@@ -36,16 +39,12 @@ export class UtilsContractSimulator
    * @description Initializes the mock contract.
    */
   constructor() {
-    this.contract = new MockUtils<UtilsPrivateState>(
-      UtilsWitnesses,
-    );
+    this.contract = new MockUtils<UtilsPrivateState>(UtilsWitnesses);
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
+    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -87,8 +86,13 @@ export class UtilsContractSimulator
    * @param keyOrAddress The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @returns Returns true if `keyOrAddress` is zero.
    */
-  public isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
-    return this.contract.circuits.isKeyOrAddressZero(this.circuitContext, keyOrAddress).result;
+  public isKeyOrAddressZero(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.contract.circuits.isKeyOrAddressZero(
+      this.circuitContext,
+      keyOrAddress,
+    ).result;
   }
 
   /**

@@ -1,4 +1,7 @@
-import type { CircuitContext, ContractState } from '@midnight-ntwrk/compact-runtime';
+import type {
+  CircuitContext,
+  ContractState,
+} from '@midnight-ntwrk/compact-runtime';
 
 /**
  * Generic interface for mock contract implementations.
