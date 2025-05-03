@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+import "../../MyContract" prefix MyContract_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+constructor(name: Maybe<Opaque<"string">>) {
+  MyContract_initializer(name);
+}
+
+export circuit getName(): Maybe<Opaque<"string">> {
+  return MyContract_getName();
+}
+
+export circuit setName(newName: Maybe<Opaque<"string">>): [] {
+  return MyContract_setName(newName);
+}
