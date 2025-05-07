@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+import "../../Ownable" prefix Ownable_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { Ownable__owner, Ownable__pendingOwner, Ownable__instance };
+
+constructor() {
+  Ownable_initializer();
+}
+
+export circuit owner(): Bytes<32> {
+    return Ownable_owner();
+  }
+
+export circuit renounceOwnership(): [] {
+  return Ownable_renounceOwnership();
+}
+
+export circuit assertOnlyOwner(): [] {
+  return Ownable_assertOnlyOwner();
+}
+
+export circuit publicKey(sk: Bytes<32>, instance: Bytes<32>): Bytes<32> {
+    return Ownable_publicKey(sk, instance);
+}
+
+export circuit _transferOwnership(newOwner: Bytes<32>): [] {
+  return Ownable__transferOwnership(newOwner);
+}

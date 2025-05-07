@@ -896,9 +896,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/myContract@workspace:contracts/myContract":
+"@openzeppelin-midnight/ownable@workspace:contracts/ownable":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/myContract@workspace:contracts/myContract"
+  resolution: "@openzeppelin-midnight/ownable@workspace:contracts/ownable"
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"

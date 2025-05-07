@@ -2,7 +2,10 @@
   "packageManager": "yarn@4.1.0",
   "name": "@openzeppelin-midnight/compact",
   "version": "0.0.1",
-  "keywords": ["compact", "compiler"],
+  "keywords": [
+    "compact",
+    "compiler"
+  ],
   "author": "OpenZeppelin Community <maintainers@openzeppelin.org>",
   "license": "MIT",
   "description": "Compact fetcher",
