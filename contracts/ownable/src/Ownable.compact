@@ -61,10 +61,7 @@ module Ownable {
    * @description Add me...
    */
   export circuit publicKey(sk: Bytes<32>, instance: Bytes<32>): Bytes<32> {
-    // Using `self` ensures `_owner` will be unique even if the same `sk` is used in
-    // other contracts that use the `ownable:pk:` domain with the same `instance`
-    const self = kernel.self().bytes;
-    return persistent_hash<Vector<4, Bytes<32>>>([self, pad(32, "ownable:pk:"), instance, sk]);
+    return persistent_hash<Vector<3, Bytes<32>>>([pad(32, "ownable:pk:"), instance, sk]);
   }
 
   /**
