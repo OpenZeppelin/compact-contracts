@@ -15,9 +15,10 @@ import {
 import {
   OwnablePrivateState,
   OwnableWitnesses,
+  SetWitnessContext,
 } from '../../witnesses/OwnableWitnesses';
-import type { MaybeString } from '../types/string';
 import type { IContractSimulator } from '../types/test';
+import { useCircuitContextSender } from '../utils/test';
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
@@ -91,56 +92,29 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the contract name.
-   * @returns The contract name.
-   */
-  //public getName(): MaybeString {
-  //  return this.contract.impureCircuits.getName(this.circuitContext).result;
-  //}
-
-  /**
-   * @description Sets the contract name.
+   * @description Changes the witness context by setting `sk`
+   * as the `secretKey`.
    * @returns None.
    */
-  //public setName(newName: MaybeString) {
-  //  return this.contract.impureCircuits.setName(this.circuitContext, newName)
-  //    .result;
-  //}
+  public setWitnessContext(sk: Uint8Array) {
+    this.contract.witnesses = SetWitnessContext(sk);
+  }
 
   public owner(): Uint8Array {
     return this.contract.impureCircuits.owner(this.circuitContext).result;
   }
 
-  public renounceOwnership(sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
-    const res = this.contract.impureCircuits.renounceOwnership(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-    );
-
-    this.circuitContext = res.context;
+  public renounceOwnership(): CircuitContext<OwnablePrivateState> {
+    this.circuitContext = this.contract.impureCircuits.renounceOwnership(this.circuitContext).context;
     return this.circuitContext;
   }
 
-  public assertOnlyOwner(sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
-    const res = this.contract.impureCircuits.renounceOwnership(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-    );
-
-    this.circuitContext = res.context;
-    return this.circuitContext;
+  public assertOnlyOwner(): CircuitContext<OwnablePrivateState> {
+    return this.contract.impureCircuits.assertOnlyOwner(this.circuitContext).context;
   }
 
   public publicKey(sk: Uint8Array, instance: Uint8Array, sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
-    const res = this.contract.impureCircuits.publicKey(
+    const res = this.contract.circuits.publicKey(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
