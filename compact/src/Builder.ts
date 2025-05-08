@@ -177,7 +177,7 @@ export class CompactBuilder {
    * @param colorFn - Chalk color function to style the output (e.g., `chalk.cyan` for success, `chalk.red` for errors)
    */
   private printOutput(
-    output: string | undefined,
+    output: string,
     colorFn: (text: string) => string,
   ): void {
     if (output) {
