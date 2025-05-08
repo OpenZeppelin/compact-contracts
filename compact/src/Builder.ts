@@ -10,6 +10,35 @@ import { CompactCompiler } from './Compiler.js';
 const execAsync = promisify(exec);
 
 /**
+ * A custom error that describes the shape of an error returned from a promisfied
+ * child_process.exec
+ *
+ * @interface PromisifiedChildProcessError
+ * @typedef {PromisifiedChildProcessError}
+ * @extends {Error}
+ *
+ * @prop {string} stdout stdout of a child process
+ * @prop {string} stderr stderr of a child process
+ */
+interface PromisifiedChildProcessError extends Error {
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * A type guard function for PromisifiedChildProcessError
+ *
+ * @param {unknown} error - An error caught in a try catch block
+ * @returns {error is PromisifiedChildProcessError} - Informs TS compiler if the understood
+ * type is a PromisifiedChildProcessError
+ */
+function isPromisifiedChildProcessError(
+  error: unknown,
+): error is PromisifiedChildProcessError {
+  return error instanceof Error && 'stdout' in error && 'stderr' in error;
+}
+
+/**
  * A class to handle the build process for a project.
  * Runs CompactCompiler as a prerequisite, then executes build steps (TypeScript compilation,
  * artifact copying, etc.)
@@ -126,11 +155,16 @@ export class CompactBuilder {
       spinner.succeed(`[BUILD] ${stepLabel} ${step.msg}`);
       this.printOutput(stdout, chalk.cyan);
       this.printOutput(stderr, chalk.yellow); // Show stderr (warnings) in yellow if present
-    } catch (error: any) {
+    } catch (error: unknown) {
       spinner.fail(`[BUILD] ${stepLabel} ${step.msg}`);
-      this.printOutput(error.stdout, chalk.cyan);
-      this.printOutput(error.stderr, chalk.red);
-      console.error(chalk.red('[BUILD] ❌ Build failed:', error.message));
+      if (isPromisifiedChildProcessError(error)) {
+        this.printOutput(error.stdout, chalk.cyan);
+        this.printOutput(error.stderr, chalk.red);
+        console.error(chalk.red('[BUILD] ❌ Build failed:', error.message));
+      } else if (error instanceof Error) {
+        console.error(chalk.red('[BUILD] ❌ Build failed:', error.message));
+      }
+
       process.exit(1);
     }
   }
