@@ -176,17 +176,12 @@ export class CompactBuilder {
    * @param output - The command output string to print (stdout or stderr)
    * @param colorFn - Chalk color function to style the output (e.g., `chalk.cyan` for success, `chalk.red` for errors)
    */
-  private printOutput(
-    output: string,
-    colorFn: (text: string) => string,
-  ): void {
-    if (output) {
-      const lines: string[] = output
-        .split('\n')
-        .filter((line: string): boolean => line.trim() !== '')
-        .map((line: string): string => `    ${line}`);
-      // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
-      console.log(colorFn(lines.join('\n')));
-    }
+  private printOutput(output: string, colorFn: (text: string) => string): void {
+    const lines: string[] = output
+      .split('\n')
+      .filter((line: string): boolean => line.trim() !== '')
+      .map((line: string): string => `    ${line}`);
+    // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
+    console.log(colorFn(lines.join('\n')));
   }
 }
