@@ -7,7 +7,10 @@
   "license": "MIT",
   "description": "Compact fetcher",
   "type": "module",
-  "main": "index.js",
+  "exports": "./index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "compact-builder": "dist/runBuilder.js",
     "compact-compiler": "dist/runCompiler.js"
