@@ -65,7 +65,7 @@ export class CompactBuilder {
         shell: '/bin/bash',
       },
       {
-        cmd: 'cp src/*.compact dist/ 2>/dev/null || true && rm dist/Mock*.compact 2>/dev/null || true',
+        cmd: 'mkdir -p dist && find src -type f -name "*.compact" -exec cp {} dist/ \\; 2>/dev/null && rm dist/Mock*.compact 2>/dev/null || true',
         msg: 'Copying and cleaning .compact files',
         shell: '/bin/bash',
       },
