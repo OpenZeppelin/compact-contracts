@@ -5,38 +5,10 @@ import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import { CompactCompiler } from './Compiler.js';
+import { isPromisifiedChildProcessError } from './types/errors.js';
 
 // Promisified exec for async execution
 const execAsync = promisify(exec);
-
-/**
- * A custom error that describes the shape of an error returned from a promisfied
- * child_process.exec
- *
- * @interface PromisifiedChildProcessError
- * @typedef {PromisifiedChildProcessError}
- * @extends {Error}
- *
- * @prop {string} stdout stdout of a child process
- * @prop {string} stderr stderr of a child process
- */
-interface PromisifiedChildProcessError extends Error {
-  stdout: string;
-  stderr: string;
-}
-
-/**
- * A type guard function for PromisifiedChildProcessError
- *
- * @param {unknown} error - An error caught in a try catch block
- * @returns {error is PromisifiedChildProcessError} - Informs TS compiler if the understood
- * type is a PromisifiedChildProcessError
- */
-function isPromisifiedChildProcessError(
-  error: unknown,
-): error is PromisifiedChildProcessError {
-  return error instanceof Error && 'stdout' in error && 'stderr' in error;
-}
 
 /**
  * A class to handle the build process for a project.
