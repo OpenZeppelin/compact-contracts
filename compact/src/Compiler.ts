@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
+import { isPromisifiedChildProcessError } from './types/errors.ts';
 
 const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR: string = 'src';
@@ -171,10 +172,12 @@ export class CompactCompiler {
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       this.printOutput(stdout, chalk.cyan);
       this.printOutput(stderr, chalk.yellow);
-    } catch (error: any) {
+    } catch (error: unknown) {
       spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
-      this.printOutput(error.stdout, chalk.cyan);
-      this.printOutput(error.stderr, chalk.red);
+      if (isPromisifiedChildProcessError(error)) {
+        this.printOutput(error.stdout, chalk.cyan);
+        this.printOutput(error.stderr, chalk.red);
+      }
       throw error;
     }
   }
