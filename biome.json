@@ -28,7 +28,11 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "correctness": {
+"recommended": true,
+"accessibility: {
+  "all": false
+  },
+ "correctness": {
         "noUnusedVariables": "error",
         "noUnusedImports": "error"
       },
@@ -45,7 +49,17 @@
         "noArrayIndexKey": "off",
         "noConfusingVoidType": "off",
         "noConsoleLog": "error",
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noCommentText": "off",
+        "noDuplicateAtImportRules": "off",
+        "noDuplicateFontNames": "off",
+        "noDuplicateJsxProps": "off",
+        "noDuplicateSelectorsKeyframeBlock": "off",
+        "noEmptyBlock": "off",
+        "noImportantInKeyframe": "off",
+        "noShorthandPropertyOverrides": "off",
+        "noSuspiciousSemicolonInJsx": "off",
+        "useErrorMessage": "error"
       }
     }
   },
