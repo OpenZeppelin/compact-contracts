@@ -171,13 +171,4 @@ export class OwnablePKSimulator
     this.circuitContext = this.contract.impureCircuits._proposeOwner(this.circuitContext, newOwner).context;
     return this.circuitContext;
   }
-
-  public thing(): Uint8Array {
-    return this.contract.impureCircuits.thing(this.circuitContext).result;
-  }
-
-  public thing2() {
-    return this.contract.impureCircuits.thing2(this.circuitContext).result;
-  }
-
 }

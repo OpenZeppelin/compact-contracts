@@ -47,12 +47,3 @@ export circuit _transferOwnership(newOwner: Bytes<32>): [] {
 export circuit _proposeOwner(newOwner: ZswapCoinPublicKey): [] {
   return OwnablePK__proposeOwner(newOwner);
 }
-
-export circuit thing(): Bytes<32> {
-    const f = kernel.self();
-    return f.bytes;
-}
-
-export circuit thing2(): ContractAddress {
-    return kernel.self();
-}
