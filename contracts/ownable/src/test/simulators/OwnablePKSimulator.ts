@@ -1,12 +1,13 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
+  type CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
   emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
+import type { ZswapCoinPublicKey } from '../../artifacts/MockOwnable/contract/index.cjs';
 import {
   type Ledger,
   Contract as MockOwnable,
@@ -15,11 +16,8 @@ import {
 import {
   OwnablePrivateState,
   OwnableWitnesses,
-  SetWitnessContext,
 } from '../../witnesses/OwnableWitnesses';
 import type { IContractSimulator } from '../types/test';
-import { useCircuitContextSender } from '../utils/test';
-import { ZswapCoinPublicKey } from '../../artifacts/MockOwnable/contract/index.cjs';
 
 /**
  * @description A simulator implementation of a contract for testing purposes.

@@ -1,6 +1,6 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
+  type CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
@@ -18,7 +18,6 @@ import {
   SetWitnessContext,
 } from '../../witnesses/OwnableWitnesses';
 import type { IContractSimulator } from '../types/test';
-import { useCircuitContextSender } from '../utils/test';
 
 /**
  * @description A simulator implementation of a contract for testing purposes.

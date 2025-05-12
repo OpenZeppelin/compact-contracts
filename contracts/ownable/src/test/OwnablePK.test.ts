@@ -1,7 +1,6 @@
 import {
-  CoinPublicKey,
+  type CoinPublicKey,
   convert_bigint_to_Uint8Array,
-  convert_Uint8Array_to_bigint,
 } from '@midnight-ntwrk/compact-runtime';
 import { OwnablePKSimulator } from './simulators/OwnablePKSimulator';
 import * as utils from './utils/address';
@@ -24,7 +23,6 @@ const EMPTY_BYTES = utils.ZERO_KEY.left.bytes;
 
 let ownable: OwnablePKSimulator;
 let caller: CoinPublicKey;
-let ownerSK: Uint8Array;
 
 describe('OwnablePK', () => {
   describe('initializer', () => {
@@ -277,7 +275,7 @@ describe('OwnablePK', () => {
     describe('shieldOwner', () => {
       it.skip('should hash owner correctly', () => {
         const instance = convert_bigint_to_Uint8Array(32, 123n);
-        const expHash = ownable.shieldOwner(Z_OWNER, instance);
+        const _expHash = ownable.shieldOwner(Z_OWNER, instance);
         // TODO add matching algo in js
       });
     });

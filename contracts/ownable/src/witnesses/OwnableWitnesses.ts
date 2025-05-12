@@ -1,7 +1,7 @@
 import { getRandomValues } from 'node:crypto';
-import { IOwnableWitnesses } from './interface';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import { type Ledger } from '../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
+import type { Ledger } from '../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
+import type { IOwnableWitnesses } from './interface';
 
 /**
  * @description Represents the private state of an ownable contract, storing a secret key.
