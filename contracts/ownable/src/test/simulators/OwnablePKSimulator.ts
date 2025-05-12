@@ -14,21 +14,21 @@ import {
   ledger,
 } from '../../artifacts/MockOwnablePK/contract/index.cjs'; // Combined imports
 import {
-  OwnablePrivateState,
-  OwnableWitnesses,
-} from '../../witnesses/OwnableWitnesses';
+  type OwnablePKPrivateState,
+  OwnablePKWitnesses,
+} from '../../witnesses/OwnablePKWitnesses';
 import type { IContractSimulator } from '../types/test';
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
- * @template P - The private state type, fixed to OwnablePrivateState.
+ * @template P - The private state type, fixed to OwnablePKPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class OwnablePKSimulator
-  implements IContractSimulator<OwnablePrivateState, Ledger>
+  implements IContractSimulator<OwnablePKPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockOwnable<OwnablePrivateState>;
+  readonly contract: MockOwnable<OwnablePKPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
@@ -37,22 +37,19 @@ export class OwnablePKSimulator
   readonly deployer: CoinPublicKey;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<OwnablePrivateState>;
+  circuitContext: CircuitContext<OwnablePKPrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
   constructor(initOwner: ZswapCoinPublicKey, deployer: CoinPublicKey) {
-    this.contract = new MockOwnable<OwnablePrivateState>(OwnableWitnesses());
+    this.contract = new MockOwnable<OwnablePKPrivateState>(OwnablePKWitnesses);
     this.deployer = deployer;
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext(OwnablePrivateState.generate(), deployer),
-      initOwner,
-    );
+    } = this.contract.initialState(constructorContext({}, deployer), initOwner);
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -75,9 +72,9 @@ export class OwnablePKSimulator
 
   /**
    * @description Retrieves the current private state of the contract.
-   * @returns The private state of type OwnablePrivateState.
+   * @returns The private state of type OwnablePKPrivateState.
    */
-  public getCurrentPrivateState(): OwnablePrivateState {
+  public getCurrentPrivateState(): OwnablePKPrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
@@ -101,7 +98,7 @@ export class OwnablePKSimulator
   public transferOwnership(
     newOwner: ZswapCoinPublicKey,
     sender: CoinPublicKey,
-  ): CircuitContext<OwnablePrivateState> {
+  ): CircuitContext<OwnablePKPrivateState> {
     const res = this.contract.impureCircuits.transferOwnership(
       {
         ...this.circuitContext,
@@ -118,7 +115,7 @@ export class OwnablePKSimulator
 
   public acceptOwnership(
     sender: CoinPublicKey,
-  ): CircuitContext<OwnablePrivateState> {
+  ): CircuitContext<OwnablePKPrivateState> {
     const res = this.contract.impureCircuits.acceptOwnership({
       ...this.circuitContext,
       currentZswapLocalState: sender
@@ -132,7 +129,7 @@ export class OwnablePKSimulator
 
   public renounceOwnership(
     sender: CoinPublicKey,
-  ): CircuitContext<OwnablePrivateState> {
+  ): CircuitContext<OwnablePKPrivateState> {
     const res = this.contract.impureCircuits.renounceOwnership({
       ...this.circuitContext,
       currentZswapLocalState: sender
@@ -146,7 +143,7 @@ export class OwnablePKSimulator
 
   public assertOnlyOwner(
     sender: CoinPublicKey,
-  ): CircuitContext<OwnablePrivateState> {
+  ): CircuitContext<OwnablePKPrivateState> {
     const res = this.contract.impureCircuits.assertOnlyOwner({
       ...this.circuitContext,
       currentZswapLocalState: sender
@@ -171,7 +168,7 @@ export class OwnablePKSimulator
 
   public _transferOwnership(
     newOwner: Uint8Array,
-  ): CircuitContext<OwnablePrivateState> {
+  ): CircuitContext<OwnablePKPrivateState> {
     this.circuitContext = this.contract.impureCircuits._transferOwnership(
       this.circuitContext,
       newOwner,
@@ -181,7 +178,7 @@ export class OwnablePKSimulator
 
   public _proposeOwner(
     newOwner: ZswapCoinPublicKey,
-  ): CircuitContext<OwnablePrivateState> {
+  ): CircuitContext<OwnablePKPrivateState> {
     this.circuitContext = this.contract.impureCircuits._proposeOwner(
       this.circuitContext,
       newOwner,
