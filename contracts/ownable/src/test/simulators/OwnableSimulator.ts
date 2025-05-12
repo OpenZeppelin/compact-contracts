@@ -44,9 +44,7 @@ export class OwnableSimulator
    * @description Initializes the mock contract.
    */
   constructor(deployer: CoinPublicKey) {
-    this.contract = new MockOwnable<OwnablePrivateState>(
-      OwnableWitnesses(),
-    );
+    this.contract = new MockOwnable<OwnablePrivateState>(OwnableWitnesses());
     this.deployer = deployer;
     const {
       currentPrivateState,
@@ -105,15 +103,22 @@ export class OwnableSimulator
   }
 
   public renounceOwnership(): CircuitContext<OwnablePrivateState> {
-    this.circuitContext = this.contract.impureCircuits.renounceOwnership(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.renounceOwnership(
+      this.circuitContext,
+    ).context;
     return this.circuitContext;
   }
 
   public assertOnlyOwner(): CircuitContext<OwnablePrivateState> {
-    return this.contract.impureCircuits.assertOnlyOwner(this.circuitContext).context;
+    return this.contract.impureCircuits.assertOnlyOwner(this.circuitContext)
+      .context;
   }
 
-  public publicKey(sk: Uint8Array, instance: Uint8Array, sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
+  public publicKey(
+    sk: Uint8Array,
+    instance: Uint8Array,
+    sender: CoinPublicKey,
+  ): CircuitContext<OwnablePrivateState> {
     const res = this.contract.circuits.publicKey(
       {
         ...this.circuitContext,
@@ -122,15 +127,20 @@ export class OwnableSimulator
           : this.circuitContext.currentZswapLocalState,
       },
       sk,
-      instance
+      instance,
     );
 
     this.circuitContext = res.context;
     return this.circuitContext;
   }
 
-  public _transferOwnership(newOwner: Uint8Array): CircuitContext<OwnablePrivateState> {
-    this.circuitContext = this.contract.impureCircuits._transferOwnership(this.circuitContext, newOwner).context;
+  public _transferOwnership(
+    newOwner: Uint8Array,
+  ): CircuitContext<OwnablePrivateState> {
+    this.circuitContext = this.contract.impureCircuits._transferOwnership(
+      this.circuitContext,
+      newOwner,
+    ).context;
     return this.circuitContext;
   }
 }

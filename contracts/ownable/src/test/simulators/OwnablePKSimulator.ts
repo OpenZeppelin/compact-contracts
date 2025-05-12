@@ -45,9 +45,7 @@ export class OwnablePKSimulator
    * @description Initializes the mock contract.
    */
   constructor(initOwner: ZswapCoinPublicKey, deployer: CoinPublicKey) {
-    this.contract = new MockOwnable<OwnablePrivateState>(
-      OwnableWitnesses(),
-    );
+    this.contract = new MockOwnable<OwnablePrivateState>(OwnableWitnesses());
     this.deployer = deployer;
     const {
       currentPrivateState,
@@ -55,7 +53,7 @@ export class OwnablePKSimulator
       currentZswapLocalState,
     } = this.contract.initialState(
       constructorContext(OwnablePrivateState.generate(), deployer),
-      initOwner
+      initOwner,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -98,77 +96,98 @@ export class OwnablePKSimulator
   }
 
   public pendingOwner(): Uint8Array {
-    return this.contract.impureCircuits.pendingOwner(this.circuitContext).result;
+    return this.contract.impureCircuits.pendingOwner(this.circuitContext)
+      .result;
   }
 
-  public transferOwnership(newOwner: ZswapCoinPublicKey, sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
+  public transferOwnership(
+    newOwner: ZswapCoinPublicKey,
+    sender: CoinPublicKey,
+  ): CircuitContext<OwnablePrivateState> {
     const res = this.contract.impureCircuits.transferOwnership(
-        {
-          ...this.circuitContext,
-          currentZswapLocalState: sender
-            ? emptyZswapLocalState(sender)
-            : this.circuitContext.currentZswapLocalState,
-        },
-        newOwner,
-      );
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      newOwner,
+    );
 
-      this.circuitContext = res.context;
-      return this.circuitContext;
-  }
-
-  public acceptOwnership(sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
-    const res = this.contract.impureCircuits.acceptOwnership(
-        {
-          ...this.circuitContext,
-          currentZswapLocalState: sender
-            ? emptyZswapLocalState(sender)
-            : this.circuitContext.currentZswapLocalState,
-        },
-      );
-
-      this.circuitContext = res.context;
-      return this.circuitContext;
-  }
-
-  public renounceOwnership(sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
-    const res = this.contract.impureCircuits.renounceOwnership(
-        {
-          ...this.circuitContext,
-          currentZswapLocalState: sender
-            ? emptyZswapLocalState(sender)
-            : this.circuitContext.currentZswapLocalState,
-        },
-      );
-
-      this.circuitContext = res.context;
-      return this.circuitContext;
-  }
-
-  public assertOnlyOwner(sender: CoinPublicKey): CircuitContext<OwnablePrivateState> {
-    const res = this.contract.impureCircuits.assertOnlyOwner(
-        {
-          ...this.circuitContext,
-          currentZswapLocalState: sender
-            ? emptyZswapLocalState(sender)
-            : this.circuitContext.currentZswapLocalState,
-        },
-      );
-
-      this.circuitContext = res.context;
-      return this.circuitContext;
-  }
-
-  public shieldOwner(ownerPK: ZswapCoinPublicKey, instance: Uint8Array): Uint8Array {
-    return this.contract.circuits.shieldOwner(this.circuitContext, ownerPK, instance).result
-  }
-
-  public _transferOwnership(newOwner: Uint8Array): CircuitContext<OwnablePrivateState> {
-    this.circuitContext = this.contract.impureCircuits._transferOwnership(this.circuitContext, newOwner).context;
+    this.circuitContext = res.context;
     return this.circuitContext;
   }
 
-  public _proposeOwner(newOwner: ZswapCoinPublicKey): CircuitContext<OwnablePrivateState> {
-    this.circuitContext = this.contract.impureCircuits._proposeOwner(this.circuitContext, newOwner).context;
+  public acceptOwnership(
+    sender: CoinPublicKey,
+  ): CircuitContext<OwnablePrivateState> {
+    const res = this.contract.impureCircuits.acceptOwnership({
+      ...this.circuitContext,
+      currentZswapLocalState: sender
+        ? emptyZswapLocalState(sender)
+        : this.circuitContext.currentZswapLocalState,
+    });
+
+    this.circuitContext = res.context;
+    return this.circuitContext;
+  }
+
+  public renounceOwnership(
+    sender: CoinPublicKey,
+  ): CircuitContext<OwnablePrivateState> {
+    const res = this.contract.impureCircuits.renounceOwnership({
+      ...this.circuitContext,
+      currentZswapLocalState: sender
+        ? emptyZswapLocalState(sender)
+        : this.circuitContext.currentZswapLocalState,
+    });
+
+    this.circuitContext = res.context;
+    return this.circuitContext;
+  }
+
+  public assertOnlyOwner(
+    sender: CoinPublicKey,
+  ): CircuitContext<OwnablePrivateState> {
+    const res = this.contract.impureCircuits.assertOnlyOwner({
+      ...this.circuitContext,
+      currentZswapLocalState: sender
+        ? emptyZswapLocalState(sender)
+        : this.circuitContext.currentZswapLocalState,
+    });
+
+    this.circuitContext = res.context;
+    return this.circuitContext;
+  }
+
+  public shieldOwner(
+    ownerPK: ZswapCoinPublicKey,
+    instance: Uint8Array,
+  ): Uint8Array {
+    return this.contract.circuits.shieldOwner(
+      this.circuitContext,
+      ownerPK,
+      instance,
+    ).result;
+  }
+
+  public _transferOwnership(
+    newOwner: Uint8Array,
+  ): CircuitContext<OwnablePrivateState> {
+    this.circuitContext = this.contract.impureCircuits._transferOwnership(
+      this.circuitContext,
+      newOwner,
+    ).context;
+    return this.circuitContext;
+  }
+
+  public _proposeOwner(
+    newOwner: ZswapCoinPublicKey,
+  ): CircuitContext<OwnablePrivateState> {
+    this.circuitContext = this.contract.impureCircuits._proposeOwner(
+      this.circuitContext,
+      newOwner,
+    ).context;
     return this.circuitContext;
   }
 }

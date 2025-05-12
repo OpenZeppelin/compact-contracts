@@ -1,4 +1,8 @@
-import { CoinPublicKey, convert_bigint_to_Uint8Array, convert_Uint8Array_to_bigint } from '@midnight-ntwrk/compact-runtime';
+import {
+  CoinPublicKey,
+  convert_bigint_to_Uint8Array,
+  convert_Uint8Array_to_bigint,
+} from '@midnight-ntwrk/compact-runtime';
 import { OwnableSimulator } from './simulators/OwnableSimulator';
 import * as utils from './utils/address';
 
@@ -49,7 +53,7 @@ describe('Ownable', () => {
       ownable.setWitnessContext(BAD_SECRET_KEY);
 
       expect(() => {
-        ownable.assertOnlyOwner()
+        ownable.assertOnlyOwner();
       }).toThrow('Ownable: not owner');
     });
 
@@ -60,7 +64,7 @@ describe('Ownable', () => {
       // Not owner
       ownable.setWitnessContext(BAD_SECRET_KEY);
       expect(() => {
-        ownable.assertOnlyOwner()
+        ownable.assertOnlyOwner();
       }).toThrow('Ownable: not owner');
 
       // Owner
@@ -76,7 +80,7 @@ describe('Ownable', () => {
 
       // Check that original owner can no longer call protected circuits
       expect(() => {
-        ownable.assertOnlyOwner()
+        ownable.assertOnlyOwner();
       }).toThrow('Ownable: not owner');
     });
 
@@ -103,7 +107,6 @@ describe('Ownable', () => {
     });
   });
 });
-
 
 //const sk = ownable.getCurrentPrivateState().secretKey;
 //console.log("skkkkkk", sk);
