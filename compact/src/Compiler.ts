@@ -84,11 +84,11 @@ export class CompactCompiler {
       withFileTypes: true,
     })
       .filter((dirent): boolean => {
-        const filePath = join(dirent.path, dirent.name);
+        const filePath = join(dirent.parentPath, dirent.name);
         return dirent.isFile() && filePath.endsWith('.compact');
       })
       .map((dirent): string =>
-        join(dirent.path, dirent.name).replace(`${SRC_DIR}/`, ''),
+        join(dirent.parentPath, dirent.name).replace(`${SRC_DIR}/`, ''),
       );
 
     const spinner = ora();
