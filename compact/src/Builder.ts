@@ -15,6 +15,9 @@ const execAsync = promisify(exec);
  * artifact copying, etc.)
  * with progress feedback and colored output for success and error states.
  *
+ * @notice `cmd` scripts discard `stderr` output and fail silently because this is
+ * handled in `executeStep`.
+ *
  * @example
  * ```typescript
  * const builder = new ProjectBuilder('--skip-zk'); // Optional flags for compactc
