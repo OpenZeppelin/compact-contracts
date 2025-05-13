@@ -2,12 +2,12 @@
 
 import { exec as execCallback } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { basename, dirname, join, resolve, relative } from 'node:path';
+import { readdir } from 'node:fs/promises';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
-import { readdir } from 'node:fs/promises';
 
 const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR: string = 'src';
