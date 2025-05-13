@@ -60,6 +60,10 @@
         "noShorthandPropertyOverrides": "off",
         "noSuspiciousSemicolonInJsx": "off",
         "useErrorMessage": "error"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off",
+        "noDangerouslySetInnerHtmlWithChildren": "off"
       }
     }
   },
