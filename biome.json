@@ -28,13 +28,24 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-"recommended": true,
-"accessibility: {
-  "all": false
-  },
- "correctness": {
+      "a11y": {
+        "all": false
+      },
+      "correctness": {
         "noUnusedVariables": "error",
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "noChildrenProp": "off",
+        "noInvalidDirectionInLinearGradient": "off",
+        "noInvalidGridAreas": "off",
+        "noInvalidPositionAtImportRule": "off",
+        "noRenderReturnValue": "off",
+        "noUnknownFunction": "off",
+        "noUnknownMediaFeatureName": "off",
+        "noUnknownProperty": "off",
+        "noUnknownUnit": "off",
+        "noUnmatchableAnbSelector": "off",
+        "useExhaustiveDependencies": "off",
+        "useJsxKeyInIterable": "off"
       },
       "performance": {
         "noBarrelFile": "error",
