@@ -4,7 +4,27 @@ pragma language_version >= 0.14.0;
 
 /**
  * @module Shielded Ownable Public Key module
- * @description Get rekt, losers
+ * @description The OwnablePK module provides a basic access control mechanism,
+ * where there is an account (an owner) that can be granted exclusive access
+ * to specific circuits.
+ *
+ * The initial owner can be set by using the `initializer` circuit during
+ * construction. The owner's public key will be obfuscated in the ledger
+ * (thus shielded) by the `shieldOwner` circuit.
+ *
+ * This module enforces a two-step ownership transfer mechanism. The mechanism
+ * flow starts with the current owner calling `transferOwnership` and passing
+ * the new owner's ZswapCoinPublicKey. The proposed owner's key is obfuscated
+ * similarly via the `shieldOwner` circuit. After the owner proposes the new
+ * owner, the new owner must accept ownership by calling `acceptOwnership`.
+ * This circuit validates that the caller is the proposed owner. Thereafter,
+ * the new owner may call `assertOnlyOwner` circuits.
+ *
+ * The reason this module enforces the two-step mechanism is for safety.
+ * If the owner transferred ownership to the wrong pubkey without the mechanism,
+ * it's likely that the ownership privileges will be lost for the contract forever.
+ * With the two-step mechanism, the current owner can overwrite the pending
+ * owner by calling `transferOwnership` with a different pubkey.
  */
 module OwnablePK {
   import CompactStandardLibrary;
@@ -15,7 +35,10 @@ module OwnablePK {
   export ledger _instance: Counter;
 
   /**
-   * @description Add me...
+   * @description Initializes the contract by setting `initOwner` as the
+   * (shielded) contract owner.
+   *
+   * @returns {[]} - None.
    */
   export circuit initializer(initOwner: ZswapCoinPublicKey): [] {
     assert initOwner != burn_address().left "OwnablePK: new owner cannot be zero";
@@ -25,21 +48,31 @@ module OwnablePK {
   }
 
   /**
-   * @description Add me...
+   * @description Returns the shielded owner.
+   *
+   * @returns {Bytes<32>} - The shielded owner.
    */
   export circuit owner(): Bytes<32> {
     return _owner;
   }
 
   /**
-   * @description Add me...
+   * @description Returns the shielded pending owner.
+   *
+   * @returns {Bytes<32>} - The shielded proposed owner.
    */
   export circuit pendingOwner(): Bytes<32> {
     return _pendingOwner;
   }
 
   /**
-   * @description Add me...
+   * @description Initiates the two-step ownership transfer to `newOwner`.
+   *
+   * Requirements:
+   *
+   * - The caller must be the current contract owner.
+   *
+   * @returns {[]} - None.
    */
   export circuit transferOwnership(newOwner: ZswapCoinPublicKey): [] {
     assertOnlyOwner();
@@ -47,7 +80,14 @@ module OwnablePK {
   }
 
   /**
-   * @description Add me...
+   * @description Finishes the two-step ownership transfer process by accepting
+   * the ownership. Can only be called by the pending owner.
+   *
+   * Requirements:
+   *
+   * - The caller is the pending owner.
+   *
+   * @returns {[]} - None.
    */
   export circuit acceptOwnership(): [] {
     const caller = own_public_key();
@@ -60,7 +100,15 @@ module OwnablePK {
   }
 
   /**
-   * @description Add me...
+   * @description Leaves the contract without an owner. It will not be
+   * possible to call `assertOnlyOnwer` circuits anymore. Can only be
+   * called by the current owner.
+   *
+   * Requirements:
+   *
+   * - The caller is the contract owner.
+   *
+   * @returns {[]} - None.
    */
   export circuit renounceOwnership(): [] {
     assertOnlyOwner();
@@ -68,7 +116,10 @@ module OwnablePK {
   }
 
   /**
-   * @description Add me...
+   * @description Throws if called by any account other than the owner.
+   * Use this to restrict access to sensitive circuits.
+   *
+   * @returns {[]} - None.
    */
   export circuit assertOnlyOwner(): [] {
     const caller = own_public_key();
@@ -76,14 +127,22 @@ module OwnablePK {
   }
 
   /**
-   * @description Add me...
+   * @description Obfuscates the `ownerPK` be hashing it with a domain separator and
+   * the passed `instance`.
+   *
+   * @returns {Bytes<32>} - The shielded hash of the owner and instance.
    */
   export circuit shieldOwner(ownerPK: ZswapCoinPublicKey, instance: Bytes<32>): Bytes<32> {
     return persistent_hash<Vector<3, Bytes<32>>>([pad(32, "OwnablePK:shield:"), instance, ownerPK.bytes]);
   }
 
   /**
-   * @description Add me...
+   * @description Internal circuit that transfers ownership of the contract to `newOwner`.
+   * This circuit does not have access control and thus should not be exposed.
+   *
+   * Be careful with this circuit. `newOwner` will be stored in the ledger as it's
+   * passed meaning that `newOwner` must be shielded via `shieldOwner` beforehand.
+   * Maybe include `shieldOwner()` in logic so it's difficult to misuse?
    */
   export circuit _transferOwnership(newOwner: Bytes<32>): [] {
     _pendingOwner = default<Bytes<32>>;
@@ -92,7 +151,14 @@ module OwnablePK {
   }
 
   /**
-   * @description Add me...
+   * @description Internal circuit that sets the pending owner.
+   * This circuit shields `newOwner` internally.
+   *
+   * Requirements:
+   *
+   * - `newOwner` can not be the zero address.
+   *
+   * @returns {[]} - None.
    */
   export circuit _proposeOwner(newOwner: ZswapCoinPublicKey): [] {
     assert newOwner != burn_address().left "OwnablePK: new owner cannot be zero";
