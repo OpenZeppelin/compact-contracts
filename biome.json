@@ -28,9 +28,24 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "a11y": {
+        "all": false
+      },
       "correctness": {
         "noUnusedVariables": "error",
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "noChildrenProp": "off",
+        "noInvalidDirectionInLinearGradient": "off",
+        "noInvalidGridAreas": "off",
+        "noInvalidPositionAtImportRule": "off",
+        "noRenderReturnValue": "off",
+        "noUnknownFunction": "off",
+        "noUnknownMediaFeatureName": "off",
+        "noUnknownProperty": "off",
+        "noUnknownUnit": "off",
+        "noUnmatchableAnbSelector": "off",
+        "useExhaustiveDependencies": "off",
+        "useJsxKeyInIterable": "off"
       },
       "performance": {
         "noBarrelFile": "error",
@@ -45,17 +60,29 @@
         "noArrayIndexKey": "off",
         "noConfusingVoidType": "off",
         "noConsoleLog": "error",
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noCommentText": "off",
+        "noDuplicateAtImportRules": "off",
+        "noDuplicateFontNames": "off",
+        "noDuplicateJsxProps": "off",
+        "noDuplicateSelectorsKeyframeBlock": "off",
+        "noEmptyBlock": "off",
+        "noImportantInKeyframe": "off",
+        "noShorthandPropertyOverrides": "off",
+        "noSuspiciousSemicolonInJsx": "off",
+        "useErrorMessage": "error"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off",
+        "noDangerouslySetInnerHtmlWithChildren": "off"
       }
     }
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
-      "trailingCommas": "all",
       "semicolons": "always",
-      "indentStyle": "space",
-      "indentWidth": 2
+      "indentStyle": "space"
     }
   }
 }

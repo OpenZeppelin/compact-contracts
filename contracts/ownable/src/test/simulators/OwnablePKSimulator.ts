@@ -7,7 +7,7 @@ import {
   emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
-import type { ZswapCoinPublicKey } from '../../artifacts/MockOwnable/contract/index.cjs';
+import type { ZswapCoinPublicKey } from '../../artifacts/MockOwnablePK/contract/index.cjs';
 import {
   type Ledger,
   Contract as MockOwnable,

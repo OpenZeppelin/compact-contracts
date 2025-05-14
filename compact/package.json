@@ -3,11 +3,14 @@
   "name": "@openzeppelin-midnight/compact",
   "version": "0.0.1",
   "keywords": ["compact", "compiler"],
-  "author": "OpenZeppelin Community <maintainers@openzeppelin.org>",
+  "author": "",
   "license": "MIT",
   "description": "Compact fetcher",
   "type": "module",
-  "main": "index.js",
+  "exports": "./index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "compact-builder": "dist/runBuilder.js",
     "compact-compiler": "dist/runCompiler.js"

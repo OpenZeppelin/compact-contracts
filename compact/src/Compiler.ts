@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 import { exec as execCallback } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
+import { isPromisifiedChildProcessError } from './types/errors.ts';
 
 const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR: string = 'src';
@@ -79,17 +81,7 @@ export class CompactCompiler {
    * @throws {Error} If compilation fails for any file
    */
   public async compile(): Promise<void> {
-    const compactFiles: string[] = readdirSync(SRC_DIR, {
-      recursive: true,
-      withFileTypes: true,
-    })
-      .filter((dirent): boolean => {
-        const filePath = join(dirent.path, dirent.name);
-        return dirent.isFile() && filePath.endsWith('.compact');
-      })
-      .map((dirent): string =>
-        join(dirent.path, dirent.name).replace(`${SRC_DIR}/`, ''),
-      );
+    const compactFiles: string[] = await this.getCompactFiles(SRC_DIR);
 
     const spinner = ora();
     if (compactFiles.length === 0) {
@@ -105,6 +97,46 @@ export class CompactCompiler {
 
     for (const [index, file] of compactFiles.entries()) {
       await this.compileFile(file, index, compactFiles.length);
+    }
+  }
+
+  /**
+   * Recursively scans directory and returns an array of relative paths to `.compact`
+   * files found within it.
+   *
+   * @param dir - The absolute or relative path to the directory to scan.
+   * @returns A promise that resolves to an array of relative paths from `SRC_DIR`
+   * to each `.compact` file.
+   *
+   * @throws Will log an error if a dir cannot be read or if a file or subdir
+   * fails to be accessed. It will not reject the promise. Errors are handled
+   * internally and skipped.
+   */
+  private async getCompactFiles(dir: string): Promise<string[]> {
+    try {
+      const dirents = await readdir(dir, { withFileTypes: true });
+      const filePromises = dirents.map(async (entry) => {
+        const fullPath = join(dir, entry.name);
+        try {
+          if (entry.isDirectory()) {
+            return await this.getCompactFiles(fullPath);
+          }
+
+          if (entry.isFile() && fullPath.endsWith('.compact')) {
+            return [relative(SRC_DIR, fullPath)];
+          }
+          return [];
+        } catch (err) {
+          console.warn(`Error accessing ${fullPath}:`, err);
+          return [];
+        }
+      });
+
+      const results = await Promise.all(filePromises);
+      return results.flat();
+    } catch (err) {
+      console.error(`Failed to read dir: ${dir}`, err);
+      return [];
     }
   }
 
@@ -140,10 +172,12 @@ export class CompactCompiler {
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       this.printOutput(stdout, chalk.cyan);
       this.printOutput(stderr, chalk.yellow);
-    } catch (error: any) {
+    } catch (error: unknown) {
       spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
-      this.printOutput(error.stdout, chalk.cyan);
-      this.printOutput(error.stderr, chalk.red);
+      if (isPromisifiedChildProcessError(error)) {
+        this.printOutput(error.stdout, chalk.cyan);
+        this.printOutput(error.stderr, chalk.red);
+      }
       throw error;
     }
   }
@@ -154,17 +188,12 @@ export class CompactCompiler {
    * @param output - The compiler output string to print (stdout or stderr)
    * @param colorFn - Chalk color function to style the output (e.g., `chalk.cyan` for success, `chalk.red` for errors)
    */
-  private printOutput(
-    output: string | undefined,
-    colorFn: (text: string) => string,
-  ): void {
-    if (output) {
-      const lines: string[] = output
-        .split('\n')
-        .filter((line: string): boolean => line.trim() !== '')
-        .map((line: string): string => `    ${line}`);
-      // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
-      console.log(colorFn(lines.join('\n')));
-    }
+  private printOutput(output: string, colorFn: (text: string) => string): void {
+    const lines: string[] = output
+      .split('\n')
+      .filter((line: string): boolean => line.trim() !== '')
+      .map((line: string): string => `    ${line}`);
+    // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
+    console.log(colorFn(lines.join('\n')));
   }
 }

@@ -1,5 +1,5 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
+import type { Ledger } from '../artifacts/MockOwnablePK/contract/index.cjs'; // Combined imports
 
 /**
  * @description Interface defining the witness methods for ownable operations.
