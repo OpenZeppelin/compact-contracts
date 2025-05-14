@@ -10,18 +10,24 @@
 
 ## Development
 
+> ### Requirements
+>
+> - [node](https://nodejs.org/)
+> - [yarn](https://yarnpkg.com/getting-started/install)
+> - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
+
 Clone the repository:
 
 ```bash
 git clone git@github.com:OpenZeppelin/midnight-contracts.git
 ```
 
-`cd` into it and then install dependencies and build:
+`cd` into it and then install dependencies, prepare compiler, and compile:
 
 ```bash
-cd midnight-contracts
-yarn
-npx turbo build
+yarn && \
+yarn run prepare && \
+npx turbo compact
 ```
 
 ### Run tests

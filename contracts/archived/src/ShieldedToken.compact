@@ -31,7 +31,7 @@ pragma language_version >= 0.14.0;
  */
 module ShieldedToken { // DO NOT USE IN PRODUCTION!
   import CompactStandardLibrary;
-  import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
 
   // Public state
   export ledger _counter: Counter;

@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight-contracts/archived",
+  "name": "@openzeppelin-midnight/archived",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -21,10 +21,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    "@openzeppelin-midnight/compact": "workspace:^",
+    "@openzeppelin-midnight/utils": "workspace:^"
   },
   "devDependencies": {
-    "@midnight-ntwrk/compact": "workspace:*",
     "eslint": "^8.52.0",
     "jest": "^29.7.0",
     "typescript": "^5.2.2"

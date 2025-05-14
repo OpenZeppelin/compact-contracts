@@ -1,7 +1,7 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { ERC20Simulator } from './simulators/ERC20Simulator';
 import type { MaybeString } from './types/string';
-import * as utils from './utils';
+import * as utils from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
@@ -35,7 +35,6 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
-const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
 
 let token: ERC20Simulator;
 let caller: CoinPublicKey;
