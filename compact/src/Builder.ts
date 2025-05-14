@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import { CompactCompiler } from './Compiler.js';
+import { isPromisifiedChildProcessError } from './types/errors.js';
 
 // Promisified exec for async execution
 const execAsync = promisify(exec);
@@ -126,11 +127,16 @@ export class CompactBuilder {
       spinner.succeed(`[BUILD] ${stepLabel} ${step.msg}`);
       this.printOutput(stdout, chalk.cyan);
       this.printOutput(stderr, chalk.yellow); // Show stderr (warnings) in yellow if present
-    } catch (error: any) {
+    } catch (error: unknown) {
       spinner.fail(`[BUILD] ${stepLabel} ${step.msg}`);
-      this.printOutput(error.stdout, chalk.cyan);
-      this.printOutput(error.stderr, chalk.red);
-      console.error(chalk.red('[BUILD] ❌ Build failed:', error.message));
+      if (isPromisifiedChildProcessError(error)) {
+        this.printOutput(error.stdout, chalk.cyan);
+        this.printOutput(error.stderr, chalk.red);
+        console.error(chalk.red('[BUILD] ❌ Build failed:', error.message));
+      } else if (error instanceof Error) {
+        console.error(chalk.red('[BUILD] ❌ Build failed:', error.message));
+      }
+
       process.exit(1);
     }
   }
@@ -142,17 +148,12 @@ export class CompactBuilder {
    * @param output - The command output string to print (stdout or stderr)
    * @param colorFn - Chalk color function to style the output (e.g., `chalk.cyan` for success, `chalk.red` for errors)
    */
-  private printOutput(
-    output: string | undefined,
-    colorFn: (text: string) => string,
-  ): void {
-    if (output) {
-      const lines: string[] = output
-        .split('\n')
-        .filter((line: string): boolean => line.trim() !== '')
-        .map((line: string): string => `    ${line}`);
-      // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
-      console.log(colorFn(lines.join('\n')));
-    }
+  private printOutput(output: string, colorFn: (text: string) => string): void {
+    const lines: string[] = output
+      .split('\n')
+      .filter((line: string): boolean => line.trim() !== '')
+      .map((line: string): string => `    ${line}`);
+    // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
+    console.log(colorFn(lines.join('\n')));
   }
 }

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
+import { isPromisifiedChildProcessError } from './types/errors.ts';
 
 const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR: string = 'src';
@@ -171,10 +172,12 @@ export class CompactCompiler {
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       this.printOutput(stdout, chalk.cyan);
       this.printOutput(stderr, chalk.yellow);
-    } catch (error: any) {
+    } catch (error: unknown) {
       spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
-      this.printOutput(error.stdout, chalk.cyan);
-      this.printOutput(error.stderr, chalk.red);
+      if (isPromisifiedChildProcessError(error)) {
+        this.printOutput(error.stdout, chalk.cyan);
+        this.printOutput(error.stderr, chalk.red);
+      }
       throw error;
     }
   }
@@ -185,17 +188,12 @@ export class CompactCompiler {
    * @param output - The compiler output string to print (stdout or stderr)
    * @param colorFn - Chalk color function to style the output (e.g., `chalk.cyan` for success, `chalk.red` for errors)
    */
-  private printOutput(
-    output: string | undefined,
-    colorFn: (text: string) => string,
-  ): void {
-    if (output) {
-      const lines: string[] = output
-        .split('\n')
-        .filter((line: string): boolean => line.trim() !== '')
-        .map((line: string): string => `    ${line}`);
-      // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
-      console.log(colorFn(lines.join('\n')));
-    }
+  private printOutput(output: string, colorFn: (text: string) => string): void {
+    const lines: string[] = output
+      .split('\n')
+      .filter((line: string): boolean => line.trim() !== '')
+      .map((line: string): string => `    ${line}`);
+    // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
+    console.log(colorFn(lines.join('\n')));
   }
 }
