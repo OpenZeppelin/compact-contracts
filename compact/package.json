@@ -1,17 +1,40 @@
 {
-  "name": "@midnight-ntwrk/compact",
+  "packageManager": "yarn@4.1.0",
+  "name": "@openzeppelin-midnight/compact",
+  "version": "0.0.1",
+  "keywords": ["compact", "compiler"],
+  "author": "",
+  "license": "MIT",
   "description": "Compact fetcher",
-  "author": "IOG",
-  "license": "Apache-2.0",
-  "private": true,
-  "version": "0.21.0",
   "type": "module",
+  "exports": "./index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
-    "run-compactc": "src/run-compactc.cjs"
+    "compact-builder": "dist/runBuilder.js",
+    "compact-compiler": "dist/runCompiler.js"
+  },
+  "scripts": {
+    "types": "tsc -p tsconfig.json --noEmit",
+    "fmt": "biome format",
+    "fmt:fix": "biome format --write",
+    "lint": "biome lint",
+    "lint:fix": "biome check --write",
+    "clean": "git clean -fXd"
   },
   "devDependencies": {
-    "eslint": "^8.52.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.2.2"
+    "@types/jest": "^29.5.6",
+    "@types/node": "^22.13.10",
+    "fast-check": "^3.15.0",
+    "jest": "^29.7.0",
+    "jest-fast-check": "^2.0.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "log-symbols": "^7.0.0",
+    "ora": "^8.2.0"
   }
 }
