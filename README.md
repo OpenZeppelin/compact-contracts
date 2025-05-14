@@ -31,6 +31,12 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 > - [turbo](https://turborepo.com/docs/getting-started/installation)
 > - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
 
+> ### Requirements
+>
+> - [node](https://nodejs.org/)
+> - [yarn](https://yarnpkg.com/getting-started/install)
+> - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
+
 Clone the repository:
 
 ```bash
