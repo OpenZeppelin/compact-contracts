@@ -30,7 +30,7 @@ pragma language_version >= 0.14.0;
 module OwnablePK {
   import CompactStandardLibrary;
 
-  /// Public state
+  /** Public state */
   export ledger _owner: Bytes<32>;
   export ledger _pendingOwner: Bytes<32>;
   export ledger _instance: Counter;
