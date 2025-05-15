@@ -24,7 +24,8 @@ pragma language_version >= 0.14.0;
  * If the owner transferred ownership to the wrong pubkey without the mechanism,
  * it's likely that the ownership privileges will be lost for the contract forever.
  * With the two-step mechanism, the current owner can overwrite the pending
- * owner by calling `transferOwnership` with a different pubkey.
+ * owner by calling `transferOwnership` with a different pubkey or passing
+ * zero to cancel the transfer.
  */
 module OwnablePK {
   import CompactStandardLibrary;
@@ -67,6 +68,8 @@ module OwnablePK {
 
   /**
    * @description Initiates the two-step ownership transfer to `newOwner`.
+   * To cancel an ownership transfer, the current owner can call this circuit
+   * and pass zero as `newOwner`.
    *
    * Requirements:
    *
@@ -152,17 +155,18 @@ module OwnablePK {
 
   /**
    * @description Internal circuit that sets the pending owner.
-   * This circuit shields `newOwner` internally.
-   *
-   * Requirements:
-   *
-   * - `newOwner` can not be the zero address.
+   * Passing `newOwner` as zero cancels the two-step ownership
+   * transfer. Otherwise, this circuit shields `newOwner` and
+   * sets it in the ledger.
    *
    * @returns {[]} - None.
    */
   export circuit _proposeOwner(newOwner: ZswapCoinPublicKey): [] {
-    assert newOwner != burn_address().left "OwnablePK: new owner cannot be zero";
-    const nextInstance = _instance + 1 as Field as Bytes<32>;
-    _pendingOwner = shieldOwner(newOwner, nextInstance);
+    if (newOwner == burn_address().left) {
+      _pendingOwner = pad(32, "");
+    } else {
+      const nextInstance = _instance + 1 as Field as Bytes<32>;
+      _pendingOwner = shieldOwner(newOwner, nextInstance);
+    }
   }
 }

@@ -113,12 +113,14 @@ describe('OwnablePK', () => {
         expect(ownable.owner()).toEqual(expOwner);
       });
 
-      it('should not transfer zero as owner', () => {
+      it('should cancel two-step transfer', () => {
         caller = OWNER;
 
-        expect(() => {
-          ownable.transferOwnership(Z_ZERO, caller);
-        }).toThrow('OwnablePK: new owner cannot be zero');
+        // Start transfer process
+        ownable.transferOwnership(Z_NEW_OWNER, caller);
+        // Cancel transfer by transferring to zero
+        ownable.transferOwnership(Z_ZERO, caller);
+        expect(ownable.pendingOwner()).toEqual(Z_ZERO.bytes);
       });
 
       it('should not transfer owner from unauthorized caller', () => {
@@ -318,10 +320,10 @@ describe('OwnablePK', () => {
         expect(ownable.pendingOwner()).toEqual(expOwner);
       });
 
-      it('should not propose zero as owner', () => {
-        expect(() => {
-          ownable._proposeOwner(utils.ZERO_KEY.left);
-        }).toThrow('OwnablePK: new owner cannot be zero');
+      it('should propose owner and cancel', () => {
+        ownable._proposeOwner(Z_NEW_OWNER);
+        ownable._proposeOwner(utils.ZERO_KEY.left);
+        expect(ownable.pendingOwner()).toEqual(Z_ZERO.bytes);
       });
     });
   });
