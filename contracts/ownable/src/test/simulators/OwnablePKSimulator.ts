@@ -86,15 +86,26 @@ export class OwnablePKSimulator
     return this.circuitContext.originalState;
   }
 
+  /**
+   * @description Returns the shielded owner.
+   * @returns The shielded owner.
+   */
   public owner(): Uint8Array {
     return this.contract.impureCircuits.owner(this.circuitContext).result;
   }
 
+  /**
+   * @description Returns the shielded pending owner.
+   * @returns The shielded proposed owner.
+   */
   public pendingOwner(): Uint8Array {
     return this.contract.impureCircuits.pendingOwner(this.circuitContext)
       .result;
   }
 
+  /**
+   * @description Initiates the two-step ownership transfer to `newOwner`.
+   */
   public transferOwnership(
     newOwner: ZswapCoinPublicKey,
     sender: CoinPublicKey,
@@ -113,6 +124,10 @@ export class OwnablePKSimulator
     return this.circuitContext;
   }
 
+  /**
+   * @description Finishes the two-step ownership transfer process by accepting
+   * the ownership. Can only be called by the pending owner.
+   */
   public acceptOwnership(
     sender: CoinPublicKey,
   ): CircuitContext<OwnablePKPrivateState> {
@@ -127,6 +142,11 @@ export class OwnablePKSimulator
     return this.circuitContext;
   }
 
+  /**
+   * @description Leaves the contract without an owner. It will not be
+   * possible to call `assertOnlyOnwer` circuits anymore. Can only be
+   * called by the current owner.
+   */
   public renounceOwnership(
     sender: CoinPublicKey,
   ): CircuitContext<OwnablePKPrivateState> {
@@ -141,6 +161,10 @@ export class OwnablePKSimulator
     return this.circuitContext;
   }
 
+  /**
+   * @description Throws if called by any account other than the owner.
+   * Use this to restrict access to sensitive circuits.
+   */
   public assertOnlyOwner(
     sender: CoinPublicKey,
   ): CircuitContext<OwnablePKPrivateState> {
@@ -155,6 +179,11 @@ export class OwnablePKSimulator
     return this.circuitContext;
   }
 
+  /**
+   * @description Obfuscates the `ownerPK` be hashing it with a domain separator and
+   * the passed `instance`.
+   * @returns The shielded hash of the owner and instance.
+   */
   public shieldOwner(
     ownerPK: ZswapCoinPublicKey,
     instance: Uint8Array,
@@ -166,6 +195,10 @@ export class OwnablePKSimulator
     ).result;
   }
 
+
+  /**
+   * @description Internal circuit that transfers ownership of the contract to `newOwner`.
+   */
   public _transferOwnership(
     newOwner: Uint8Array,
   ): CircuitContext<OwnablePKPrivateState> {
@@ -176,6 +209,9 @@ export class OwnablePKSimulator
     return this.circuitContext;
   }
 
+  /**
+   * @description Internal circuit that sets the pending owner.
+   */
   public _proposeOwner(
     newOwner: ZswapCoinPublicKey,
   ): CircuitContext<OwnablePKPrivateState> {
