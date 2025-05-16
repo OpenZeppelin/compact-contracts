@@ -2,6 +2,7 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { ERC20Simulator } from './simulators/ERC20Simulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
+import { expect } from 'vitest'
 
 const NO_STRING: MaybeString = {
   is_some: false,
