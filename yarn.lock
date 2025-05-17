@@ -327,7 +327,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:^0.8.0":
+"@midnight-ntwrk/compact-runtime@npm:^0.8.1":
   version: 0.8.1
   resolution: "@midnight-ntwrk/compact-runtime@npm:0.8.1"
   dependencies:
@@ -1806,7 +1806,7 @@ __metadata:
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
-    "@midnight-ntwrk/compact-runtime": "npm:^0.8.0"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:^18.18.6"
