@@ -1,6 +1,6 @@
 import { UtilsSimulator } from './simulators/UtilsSimulator';
 import * as contractUtils from './utils/address';
-import { expect } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
 const SOME_CONTRACT =
