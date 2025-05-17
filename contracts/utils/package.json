@@ -15,7 +15,7 @@
   "scripts": {
     "compact": "npx compact-compiler",
     "build": "npx compact-builder && tsc",
-    "test": "vitest",
+    "test": "vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
     "fmt": "biome format",
     "fmt:fix": "biome format --write",
