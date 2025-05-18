@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest';
 import { PausableSimulator } from './simulators/PausableSimulator';
 
 let pausable: PausableSimulator;
