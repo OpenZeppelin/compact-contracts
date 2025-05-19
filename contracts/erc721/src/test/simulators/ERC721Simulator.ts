@@ -10,6 +10,7 @@ import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type Ledger,
   Contract as MockERC721,
+  Maybe,
   ledger,
   Either,
   ZswapCoinPublicKey,
@@ -120,12 +121,8 @@ export class ERC721Simulator
     return this.contract.impureCircuits.ownerOf(this.circuitContext, tokenId).result;
   }
 
-  public tokenURI(tokenId: bigint): string {
+  public tokenURI(tokenId: bigint): Maybe<string> {
     return this.contract.impureCircuits.tokenURI(this.circuitContext, tokenId).result;
-  }
-
-  public _baseURI(): string {
-    return pureCircuits._baseURI();
   }
 
   public approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
@@ -146,14 +143,6 @@ export class ERC721Simulator
 
   public transferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
     return this.contract.impureCircuits.transferFrom(this.circuitContext, from, to, tokenId).result;
-  }
-
-  public safeTransferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
-    return this.contract.impureCircuits.safeTransferFrom(this.circuitContext, from, to, tokenId).result;
-  }
-
-  public _safeTransferFromWith(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, data: string): [] {
-    return this.contract.impureCircuits._safeTransferFrom(this.circuitContext, from, to, tokenId, data).result;
   }
 
   public _requireOwned(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -196,20 +185,16 @@ export class ERC721Simulator
     return this.contract.impureCircuits._mint(this.circuitContext, to, tokenId).result;
   }
 
-  public _safeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
-    return this.contract.impureCircuits._safeMint(this.circuitContext, to, tokenId).result;
-  }
-
-  public __safeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, data: string): [] {
-    return this.contract.impureCircuits.__safeMint(this.circuitContext, to, tokenId, data).result;
-  }
-
   public _burn(tokenId: bigint): [] {
     return this.contract.impureCircuits._burn(this.circuitContext, tokenId).result;
   }
 
   public _transfer(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
     return this.contract.impureCircuits._transfer(this.circuitContext, from, to, tokenId).result;
+  }
+
+  public _setTokenURI(tokenId: bigint, tokenURI: Maybe<string>): [] {
+    return this.contract.impureCircuits._setTokenURI(this.circuitContext, tokenId, tokenURI).result;
   }
 }
 
