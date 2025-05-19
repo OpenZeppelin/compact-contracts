@@ -1,24 +1,22 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
-  emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type Ledger,
   Contract as MockERC721,
   ledger,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
+  type Either,
+  type ZswapCoinPublicKey,
+  type ContractAddress,
   pureCircuits
 } from '../../artifacts/MockERC721/contract/index.cjs'; // Combined imports
-import { MaybeString } from '../types';
-import type { IContractSimulator } from '../types';
-import { ERC721PrivateState, ERC721Witnesses } from '../../witnesses';
+import type { MaybeString } from '../types/string';
+import type { IContractSimulator } from '../types/test';
+import { type ERC721PrivateState, ERC721Witnesses } from '../../witnesses/ERC721Witnesses';
 
 /**
  * @description A simulator implementation of an ERC721 contract for testing purposes.
