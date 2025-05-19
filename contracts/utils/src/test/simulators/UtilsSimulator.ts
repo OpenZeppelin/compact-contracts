@@ -24,14 +24,9 @@ import type { IContractSimulator } from '../types/test';
  * @template P - The private state type, fixed to UtilsPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-<<<<<<< HEAD:contracts/utils/src/test/UtilsSimulator.ts
-export class UtilsContractSimulator
-  implements IContractSimulator<UtilsPrivateState, Ledger> {
-=======
 export class UtilsSimulator
   implements IContractSimulator<UtilsPrivateState, Ledger>
 {
->>>>>>> b6f5215 (Add pausable (#22)):contracts/utils/src/test/simulators/UtilsSimulator.ts
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockUtils<UtilsPrivateState>;
 
@@ -102,18 +97,22 @@ export class UtilsSimulator
   }
 
   /**
-   * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey 
+   * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey
    * and a ContractAddress can never be equal
    *
    * @public
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress The target value to check 
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress The target value to check
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other The other value to check
    * @returns {boolean} Returns true if `keyOrAddress` is is equal to `other`.
    */
   public isKeyOrAddressEqual(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    other: Either<ZswapCoinPublicKey, ContractAddress>
+    other: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
-    return this.contract.circuits.isKeyOrAddressEqual(this.circuitContext, keyOrAddress, other).result;
+    return this.contract.circuits.isKeyOrAddressEqual(
+      this.circuitContext,
+      keyOrAddress,
+      other,
+    ).result;
   }
 }
