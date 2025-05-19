@@ -1,4 +1,5 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ERC20Simulator } from './simulators/ERC20Simulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
