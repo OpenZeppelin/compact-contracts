@@ -1,7 +1,7 @@
 import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { ERC721Simulator } from './simulators';
-import { MaybeString } from './types';
-import * as utils from './utils';
+import { ERC721Simulator } from './simulators/ERC721Simulator';
+import { MaybeString } from './types/string';
+import * as utils from './utils/address';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 const NO_STRING: MaybeString = {

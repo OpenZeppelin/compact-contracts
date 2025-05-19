@@ -17,8 +17,8 @@ import {
   ContractAddress,
   pureCircuits
 } from '../../artifacts/MockERC721/contract/index.cjs'; // Combined imports
-import { MaybeString } from '../types';
-import type { IContractSimulator } from '../types';
+import { MaybeString } from '../types/string';
+import type { IContractSimulator } from '../types/test';
 import { ERC721PrivateState, ERC721Witnesses } from '../../witnesses';
 
 /**
