@@ -2,6 +2,7 @@ import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { ERC721Simulator } from './simulators';
 import { MaybeString } from './types';
 import * as utils from './utils';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const NO_STRING: MaybeString = {
   is_some: false,
@@ -70,7 +71,7 @@ describe('ERC721', () => {
     it('should throw if tokenId does not exist', () => {
       expect(() => {
         token.ownerOf(TOKENID);
-      }).toThrow('ERC721: Invalid Owner');
+      }).toThrow('ERC721: Nonexistent Token');
     })
   })
 
