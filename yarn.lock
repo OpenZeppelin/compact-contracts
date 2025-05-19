@@ -957,9 +957,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-midnight/archived@workspace:contracts/archived":
+"@openzeppelin-midnight/archive@workspace:contracts/archive":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/archived@workspace:contracts/archived"
+  resolution: "@openzeppelin-midnight/archive@workspace:contracts/archive"
   dependencies:
     "@openzeppelin-midnight/compact": "workspace:^"
     "@openzeppelin-midnight/utils": "workspace:^"

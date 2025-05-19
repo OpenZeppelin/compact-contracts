@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight/archived",
+  "name": "@openzeppelin-midnight/archive",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
