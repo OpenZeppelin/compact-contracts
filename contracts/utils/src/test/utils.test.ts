@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { UtilsSimulator } from './simulators/UtilsSimulator';
 import * as contractUtils from './utils/address';
 
