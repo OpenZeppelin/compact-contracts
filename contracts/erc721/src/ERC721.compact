@@ -91,7 +91,16 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Returns the token URI for the given `tokenId`.
+   *
+   * @notice Since Midnight does not support native strings and string operations
+   * within the Compact language, concatenating a base URI + token ID is not possible
+   * like in other NFT implementations. Therefore, we propose the URI storage
+   * approach; whereby, NFTs may or may not have unique "base" URIs.
+   * It's up to the implementation to decide on how to handle this.
+   *
+   * @param {tokenId} - The identifier for a token.
+   * @returns {Maybe<Opaque<"string">>} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
     _requireOwned(tokenId);
@@ -350,7 +359,14 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Sets the the URI as `tokenURI` for the given `tokenId`.
+   * The `tokenId` must exist.
+   *
+   * @notice The URI for a given NFT is usually set when the NFT is minted.
+   *
+   * @params {tokenId} - The identifier of the token.
+   * @params {tokenURI} - The URI of `tokenId`.
+   * @return {[]} - None.
    */
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
     _requireOwned(tokenId);
