@@ -1,29 +1,33 @@
-import { TokenType, CoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { ShieldedTokenSimulator } from './simulators';
-import { MaybeString } from './types';
-import * as utils from './utils';
-import { encodeTokenType, encodeCoinInfo, tokenType, sampleContractAddress } from '@midnight-ntwrk/onchain-runtime';
+import type { CoinInfo, TokenType } from '@midnight-ntwrk/compact-runtime';
+import {
+  encodeCoinInfo,
+  encodeTokenType,
+  sampleContractAddress,
+  tokenType,
+} from '@midnight-ntwrk/onchain-runtime';
+import { ShieldedTokenSimulator } from './simulators/ShieldedTokenSimulator';
+import type { MaybeString } from './types/string';
+import * as utils from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
-  value: ''
+  value: '',
 };
 const NAME: MaybeString = {
   is_some: true,
-  value: 'NAME'
+  value: 'NAME',
 };
 const SYMBOL: MaybeString = {
   is_some: true,
-  value: 'SYMBOL'
+  value: 'SYMBOL',
 };
 const DECIMALS: bigint = 18n;
 const NONCE: Uint8Array = utils.pad('NONCE', 32);
 const DOMAIN: Uint8Array = utils.pad('ShieldedToken', 32);
 
 const AMOUNT: bigint = BigInt(250);
-const MAX_UINT64 = BigInt(2**64) - BigInt(1);
+const MAX_UINT64 = BigInt(2 ** 64) - BigInt(1);
 
-const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(64, '0');
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 
 let token: ShieldedTokenSimulator;
@@ -51,7 +55,9 @@ describe('Shielded token', () => {
       token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
 
       expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
-      expect(token.getCurrentPublicState().shieldedToken_Domain).toEqual(DOMAIN);
+      expect(token.getCurrentPublicState().shieldedToken_Domain).toEqual(
+        DOMAIN,
+      );
       expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
     });
   });
@@ -68,14 +74,18 @@ describe('Shielded token', () => {
       const thisCoinInfo = {
         color: encodeTokenType(thisTokenType),
         nonce: thisNonce,
-        value: AMOUNT
+        value: AMOUNT,
       };
 
       // Check circuit result
       expect(res.result).toEqual(thisCoinInfo);
       // Check circuit outputs
-      expect(res.context.currentZswapLocalState.outputs[0].coinInfo).toEqual(thisCoinInfo);
-      expect(res.context.currentZswapLocalState.outputs[0].recipient).toEqual(Z_OWNER);
+      expect(res.context.currentZswapLocalState.outputs[0].coinInfo).toEqual(
+        thisCoinInfo,
+      );
+      expect(res.context.currentZswapLocalState.outputs[0].recipient).toEqual(
+        Z_OWNER,
+      );
       // Check supply
       expect(token.totalSupply()).toEqual(AMOUNT);
     });
@@ -94,7 +104,9 @@ describe('Shielded token', () => {
       token.mint(Z_OWNER, AMOUNT);
 
       // TODO: create js equivalent of `evolve_nonce` circuit to derive correct value
-      expect(initNonce).not.toEqual(token.getCurrentPublicState().shieldedToken_Nonce);
+      expect(initNonce).not.toEqual(
+        token.getCurrentPublicState().shieldedToken_Nonce,
+      );
     });
 
     it('should fail when minting to the zero address', () => {
@@ -103,13 +115,13 @@ describe('Shielded token', () => {
       }).toThrow('ShieldedToken: invalid recipient');
     });
 
-   it('should fail when minting overflow uint64', () => {
-     token.mint(Z_OWNER, MAX_UINT64);
+    it('should fail when minting overflow uint64', () => {
+      token.mint(Z_OWNER, MAX_UINT64);
 
-     expect(() => {
-       token.mint(Z_OWNER, 1n);
-     }).toThrow('arithmetic overflow');
-   });
+      expect(() => {
+        token.mint(Z_OWNER, 1n);
+      }).toThrow('arithmetic overflow');
+    });
   });
 
   describe('burn', () => {
@@ -118,11 +130,13 @@ describe('Shielded token', () => {
     });
 
     it('should burn (whole)', () => {
-      const nonceStr = NONCE.filter(x => x !== 0).join('').padStart(64, '0'); //297481949006
+      const nonceStr = NONCE.filter((x) => x !== 0)
+        .join('')
+        .padStart(64, '0'); //297481949006
       const coin_info: CoinInfo = {
         type: thisTokenType,
         nonce: nonceStr,
-        value: AMOUNT
+        value: AMOUNT,
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
@@ -134,7 +148,7 @@ describe('Shielded token', () => {
       expect(res.result.change.value).toEqual({
         nonce: utils.pad('', 32),
         color: utils.pad('', 32),
-        value: 0n
+        value: 0n,
       });
 
       // Check input len
@@ -151,11 +165,13 @@ describe('Shielded token', () => {
     });
 
     it('should burn (partial)', () => {
-      const nonceStr = NONCE.filter(x => x !== 0).join('').padStart(64, '0');
+      const nonceStr = NONCE.filter((x) => x !== 0)
+        .join('')
+        .padStart(64, '0');
       const coin_info: CoinInfo = {
         type: thisTokenType,
         nonce: nonceStr,
-        value: AMOUNT
+        value: AMOUNT,
       };
       const partialAmt = AMOUNT - 1n;
       const encoded_coin_info = encodeCoinInfo(coin_info);
@@ -191,13 +207,15 @@ describe('Shielded token', () => {
     });
 
     it('should fail with incorrect domain', () => {
-      const nonceStr = NONCE.filter(x => x !== 0).join('').padStart(64, '0');
-      const badDomain = utils.pad('badDomain', 32)
+      const nonceStr = NONCE.filter((x) => x !== 0)
+        .join('')
+        .padStart(64, '0');
+      const badDomain = utils.pad('badDomain', 32);
       const badTokeType = tokenType(badDomain, token.contractAddress);
       const coin_info: CoinInfo = {
         type: badTokeType,
         nonce: nonceStr,
-        value: AMOUNT
+        value: AMOUNT,
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
@@ -207,13 +225,15 @@ describe('Shielded token', () => {
     });
 
     it('should fail with incorrect address', () => {
-      const nonceStr = NONCE.filter(x => x !== 0).join('').padStart(64, '0');
+      const nonceStr = NONCE.filter((x) => x !== 0)
+        .join('')
+        .padStart(64, '0');
       const badAddress = sampleContractAddress();
       const badTokeType = tokenType(DOMAIN, badAddress);
       const coin_info: CoinInfo = {
         type: badTokeType,
         nonce: nonceStr,
-        value: AMOUNT
+        value: AMOUNT,
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
@@ -223,12 +243,14 @@ describe('Shielded token', () => {
     });
 
     it('should fail when not enough balance', () => {
-      const nonceStr = NONCE.filter(x => x !== 0).join('').padStart(64, '0');
+      const nonceStr = NONCE.filter((x) => x !== 0)
+        .join('')
+        .padStart(64, '0');
       thisTokenType = tokenType(DOMAIN, token.contractAddress);
       const coin_info: CoinInfo = {
         type: thisTokenType,
         nonce: nonceStr,
-        value: AMOUNT
+        value: AMOUNT,
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 

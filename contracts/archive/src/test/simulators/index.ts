@@ -1,1 +1,0 @@
-export { ShieldedTokenSimulator } from './ShieldedTokenSimulator';

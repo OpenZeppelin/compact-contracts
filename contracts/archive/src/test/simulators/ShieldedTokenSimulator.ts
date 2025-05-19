@@ -1,26 +1,29 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
+  type CircuitResults,
+  type CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
   emptyZswapLocalState,
-  CircuitResults
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type CoinInfo,
+  type ContractAddress,
+  type Either,
   type Ledger,
   Contract as MockShielded,
+  type SendResult,
+  type ZswapCoinPublicKey,
   ledger,
-  Either,
-  CoinInfo,
-  ZswapCoinPublicKey,
-  ContractAddress,
-  SendResult
 } from '../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
-import { MaybeString } from '../types';
-import type { IContractSimulator } from '../types';
-import { ShieldedTokenPrivateState, ShieldedTokenWitnesses } from '../../witnesses/ShieldedTokenWitnesses';
+import {
+  type ShieldedTokenPrivateState,
+  ShieldedTokenWitnesses,
+} from '../../witnesses/ShieldedTokenWitnesses';
+import type { MaybeString } from '../types/string';
+import type { IContractSimulator } from '../types/test';
 
 /**
  * @description A simulator implementation of a shielded token contract for testing purposes.
@@ -42,7 +45,12 @@ export class ShieldedTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(nonce: Uint8Array, name: MaybeString, symbol: MaybeString, decimals: bigint) {
+  constructor(
+    nonce: Uint8Array,
+    name: MaybeString,
+    symbol: MaybeString,
+    decimals: bigint,
+  ) {
     this.contract = new MockShielded<ShieldedTokenPrivateState>(
       ShieldedTokenWitnesses,
     );
@@ -51,7 +59,11 @@ export class ShieldedTokenSimulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)), nonce, name, symbol, decimals,
+      constructorContext({}, '0'.repeat(64)),
+      nonce,
+      name,
+      symbol,
+      decimals,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -121,26 +133,40 @@ export class ShieldedTokenSimulator
     return this.contract.impureCircuits.totalSupply(this.circuitContext).result;
   }
 
-  public mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: bigint, sender?: CoinPublicKey): CircuitResults<ShieldedTokenPrivateState, CoinInfo> {
-    const res = this.contract.impureCircuits.mint({
-      ...this.circuitContext,
-      currentZswapLocalState: sender
-        ? emptyZswapLocalState(sender)
-        : this.circuitContext.currentZswapLocalState,
-      }, recipient, amount
+  public mint(
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    amount: bigint,
+    sender?: CoinPublicKey,
+  ): CircuitResults<ShieldedTokenPrivateState, CoinInfo> {
+    const res = this.contract.impureCircuits.mint(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      recipient,
+      amount,
     );
 
     this.circuitContext = res.context;
     return res;
   }
 
-  public burn(coin: CoinInfo, amount: bigint, sender?: CoinPublicKey): CircuitResults<ShieldedTokenPrivateState, SendResult> {
-    const res = this.contract.impureCircuits.burn({
-      ...this.circuitContext,
-      currentZswapLocalState: sender
-        ? emptyZswapLocalState(sender)
-        : this.circuitContext.currentZswapLocalState,
-      }, coin, amount
+  public burn(
+    coin: CoinInfo,
+    amount: bigint,
+    sender?: CoinPublicKey,
+  ): CircuitResults<ShieldedTokenPrivateState, SendResult> {
+    const res = this.contract.impureCircuits.burn(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      coin,
+      amount,
     );
 
     this.circuitContext = res.context;
