@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
 
@@ -10,7 +10,7 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 constructor(
   _name: Maybe<Opaque<"string">>,
-  _symbol: Maybe<Opaque<"string">> 
+  _symbol: Maybe<Opaque<"string">>
 ) {
   ERC721_initializer(_name, _symbol);
 }
@@ -31,7 +31,7 @@ export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractA
   return ERC721_ownerOf(tokenId);
 }
 
-export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
+export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
   return ERC721_tokenURI(tokenId);
 }
 
@@ -66,24 +66,6 @@ export circuit transferFrom(
   tokenId: Uint<128>
 ): [] {
   return ERC721_transferFrom(from, to, tokenId);
-}
-
-export circuit safeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
-  return ERC721_safeTransferFrom(from, to, tokenId);
-}
-
-// Two functions with the same name are not allowed as top-level exports
-export circuit _safeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>,
-  data: Opaque<"string">
-): [] {
-  return ERC721_safeTransferFrom(from, to, tokenId, data);
 }
 
 export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -148,26 +130,9 @@ export circuit _increaseBalance(
 
 export circuit _mint(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128> 
+  tokenId: Uint<128>
 ): [] {
   return ERC721__mint(to, tokenId);
-}
-
-export circuit _safeMint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>  
-): [] {
-  return ERC721__safeMint(to, tokenId);
-}
-
-
-// Two functions with the same name are not allowed as top-level exports
-export circuit __safeMint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>,
-  data: Opaque<"string">
-): [] {
-  return ERC721__safeMint(to, tokenId, data);
 }
 
 export circuit _burn(tokenId: Uint<128>): [] {
@@ -182,6 +147,9 @@ export circuit _transfer(
   return ERC721__transfer(from, to, tokenId);
 }
 
-export circuit _baseURI(): Opaque<"string"> {
-  return ERC721__baseURI();
-}
+  /**
+   * @description Add me...
+   */
+  export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
+    return ERC721__setTokenURI(tokenId, tokenURI);
+  }

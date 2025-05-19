@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.15.0;
 
 /**
  * @module ERC721
@@ -27,17 +27,7 @@ module ERC721 {
   export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
   export ledger _tokenApprovals: Map<Field, Either<ZswapCoinPublicKey, ContractAddress>>;
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
-
-  /// Private state
-  /**
-    * @description Computes a tokenURI given a `baseURI` and `tokenId`
-    * 
-    * @param baseURI - baseURI of the final tokenURI, defaults to the empty string
-    * @param tokenId - The token identifier
-    *
-    * @return {Opaque<"string">} - The final URI of the provided token identifier
-    */
-  witness computeTokenURI(baseURI: Opaque<"string">, tokenId: Uint<128>): Opaque<"string">;
+  export ledger _tokenURI: Map<Uint<128>, Maybe<Opaque<"string">>>;
 
   /**
     * @description Initializes the contract by setting the name and symbol.
@@ -103,18 +93,10 @@ module ERC721 {
   /**
    * @description Add me...
    */
-  export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
+  export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
     _requireOwned(tokenId);
 
-    const baseURI = _baseURI();
-    return disclose(computeTokenURI(baseURI, tokenId));
-  }
-
-  /**
-   * @description Add me...
-   */
-  export circuit _baseURI(): Opaque<"string"> {
-    return default<Opaque<"string">>;
+    return _tokenURI.lookup(tokenId);
   }
 
   /**
@@ -192,31 +174,6 @@ module ERC721 {
       left<ZswapCoinPublicKey, ContractAddress>(own_public_key())
     );
     assert previousOwner != from "ERC721: Incorrect Owner";
-  }
-
-  /**
-   * @description Add me...
-   */
-  export circuit safeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
-    safeTransferFrom(from, to, tokenId, default<Opaque<"string">>);
-  }
-
-  /**
-   * @description Add me...
-   */
-  export circuit safeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>,
-    data: Opaque<"string">
-  ): [] {
-    transferFrom(from, to, tokenId);
-    // See https://github.com/OpenZeppelin/midnight-contracts/issues/25
-    // ERC721Utils_checkOnERC721Received
   }
 
   /**
@@ -371,28 +328,6 @@ module ERC721 {
   /**
    * @description Add me...
    */
-  export circuit _safeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
-    _safeMint(to, tokenId, default<Opaque<"string">>);
-  }
-
-  /**
-   * @description Add me...
-   */
-  export circuit _safeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>,
-    data: Opaque<"string">
-  ): [] {
-    _mint(to, tokenId);
-    // ERC721Utils_checkOnERC721Received
-  }
-
-  /**
-   * @description Add me...
-   */
   export circuit _burn(tokenId: Uint<128>): [] {
     const previousOwner = _update(burn_address(), tokenId, burn_address());
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
@@ -412,6 +347,15 @@ module ERC721 {
 
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
     assert previousOwner != from "ERC721: Incorrect Owner";
+  }
+
+  /**
+   * @description Add me...
+   */
+  export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
+    _requireOwned(tokenId);
+
+    return _tokenURI.insert(tokenId, tokenURI);
   }
 }
 
