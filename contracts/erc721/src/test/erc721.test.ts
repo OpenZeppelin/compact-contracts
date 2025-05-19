@@ -1,39 +1,46 @@
-import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { ERC721Simulator } from './simulators/ERC721Simulator';
-import { MaybeString } from './types/string';
-import * as utils from './utils/address';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { ERC721Simulator } from './simulators/ERC721Simulator';
+import type { MaybeString } from './types/string';
+import * as utils from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
-  value: ''
+  value: '',
 };
 const NAME: MaybeString = {
   is_some: true,
-  value: "NAME"
+  value: 'NAME',
 };
 const SYMBOL: MaybeString = {
   is_some: true,
-  value: "SYMBOL"
+  value: 'SYMBOL',
 };
 
 const TOKENID: bigint = BigInt(1);
 
-const AMOUNT: bigint = BigInt(250);
-const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
+const _AMOUNT: bigint = BigInt(250);
+const _MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
-const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64, '0');
-const SPENDER = String(Buffer.from("SPENDER", 'ascii').toString('hex')).padStart(64, '0');
-const UNAUTHORIZED = String(Buffer.from("UNAUTHORIZED", 'ascii').toString('hex')).padStart(64, '0');
-const ZERO = String().padStart(64, '0');
+const _OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
+  64,
+  '0',
+);
+const _SPENDER = String(
+  Buffer.from('SPENDER', 'ascii').toString('hex'),
+).padStart(64, '0');
+const _UNAUTHORIZED = String(
+  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
+).padStart(64, '0');
+const _ZERO = String().padStart(64, '0');
 const Z_OWNER = utils.createEitherTestUser('OWNER');
-const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const Z_SPENDER = utils.createEitherTestUser('SPENDER');
-const Z_OTHER = utils.createEitherTestUser('OTHER');
-const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
+const _Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
+const _Z_SPENDER = utils.createEitherTestUser('SPENDER');
+const _Z_OTHER = utils.createEitherTestUser('OTHER');
+const _SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
 
 let token: ERC721Simulator;
-let caller: CoinPublicKey;
+let _caller: CoinPublicKey;
 
 describe('ERC721', () => {
   describe('initializer and metadata', () => {
@@ -72,8 +79,6 @@ describe('ERC721', () => {
       expect(() => {
         token.ownerOf(TOKENID);
       }).toThrow('ERC721: Nonexistent Token');
-    })
-  })
-
-
+    });
+  });
 });

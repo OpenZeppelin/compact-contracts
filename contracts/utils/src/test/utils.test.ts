@@ -4,8 +4,10 @@ import * as contractUtils from './utils/address';
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
 const Z_OTHER_KEY = contractUtils.createEitherTestUser('OTHER_KEY');
-const SOME_CONTRACT = contractUtils.createEitherTestContractAddress('SOME_CONTRACT');
-const OTHER_CONTRACT = contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
+const SOME_CONTRACT =
+  contractUtils.createEitherTestContractAddress('SOME_CONTRACT');
+const OTHER_CONTRACT =
+  contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 let contract: UtilsSimulator;
 
@@ -32,7 +34,9 @@ describe('Utils', () => {
     });
 
     it('should return true for two matching contract addresses', () => {
-      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT)).toBeTruthy();
+      expect(
+        contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT),
+      ).toBeTruthy();
     });
 
     it('should return false for two different pubkeys', () => {
@@ -40,11 +44,15 @@ describe('Utils', () => {
     });
 
     it('should return false for two different contract addresses', () => {
-      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT)).toBeFalsy();
+      expect(
+        contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT),
+      ).toBeFalsy();
     });
 
     it('should return false for two different address types', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT)).toBeFalsy();
+      expect(
+        contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT),
+      ).toBeFalsy();
     });
   });
 });
