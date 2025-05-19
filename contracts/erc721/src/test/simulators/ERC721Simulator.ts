@@ -1,10 +1,10 @@
 import {
   type CircuitContext,
-  CoinPublicKey,
+  type CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
-  emptyZswapLocalState
+  emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -139,7 +139,7 @@ export class ERC721Simulator
   public approve(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ): [] {
     const res = this.contract.impureCircuits.approve(
       {
@@ -168,7 +168,7 @@ export class ERC721Simulator
   public setApprovalForAll(
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ): [] {
     const res = this.contract.impureCircuits.setApprovalForAll(
       {
@@ -200,7 +200,7 @@ export class ERC721Simulator
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ): [] {
     const res = this.contract.impureCircuits.transferFrom(
       {
@@ -211,7 +211,7 @@ export class ERC721Simulator
       },
       from,
       to,
-      tokenId
+      tokenId,
     );
 
     this.circuitContext = res.context;
