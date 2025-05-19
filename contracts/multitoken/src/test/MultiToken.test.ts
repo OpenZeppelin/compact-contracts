@@ -1,7 +1,7 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { MultiTokenSimulator } from './simulators';
-import type { MaybeString } from './types';
-import * as utils from './utils';
+import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
+import type { MaybeString } from './types/string';
+import * as utils from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,

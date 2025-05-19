@@ -6,7 +6,7 @@ import {
   QueryContext,
   emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
-import type { IContractSimulator } from '../types';
+import type { IContractSimulator } from '../types/string';
 
 /**
  * Constructs a `CircuitContext` from the given state and sender information.
