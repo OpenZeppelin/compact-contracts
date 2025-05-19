@@ -18,9 +18,9 @@ import {
 import {
   type MultiTokenPrivateState,
   MultiTokenWitnesses,
-} from '../../witnesses';
-import type { MaybeString } from '../types';
-import type { IContractSimulator } from '../types';
+} from '../../witnesses/MultiTokenWitnesses';
+import type { MaybeString } from '../types/string';
+import type { IContractSimulator } from '../types/test';
 
 /**
  * @description A simulator implementation of a MultiToken contract for testing purposes.
@@ -115,9 +115,9 @@ export class MultiTokenSimulator
    * @returns
    */
   public balanceOfBatch_10(
-    accounts: Array<Either<ZswapCoinPublicKey, ContractAddress>>,
-    ids: Array<bigint>,
-  ): Array<bigint> {
+    accounts: Either<ZswapCoinPublicKey, ContractAddress>[],
+    ids: bigint[],
+  ): bigint[] {
     return this.contract.impureCircuits.balanceOfBatch_10(
       this.circuitContext,
       accounts,

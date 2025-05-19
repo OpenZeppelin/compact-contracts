@@ -60,7 +60,6 @@ describe('MultiToken', () => {
     });
 
     it('should initialize empty metadata', () => {
-      const NO_DECIMALS = 0n;
       token = new MultiTokenSimulator(NO_STRING);
 
       expect(token.uri(TOKEN_ID)).toEqual(NO_STRING);
