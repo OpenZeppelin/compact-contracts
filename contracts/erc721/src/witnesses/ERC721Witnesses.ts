@@ -1,5 +1,5 @@
-import * as Contract from "../artifacts/MockERC721/contract/index.cjs";
-import { WitnessContext } from "@midnight-ntwrk/compact-runtime";
+import type * as Contract from "../artifacts/MockERC721/contract/index.cjs";
+import type { WitnessContext } from "@midnight-ntwrk/compact-runtime";
 
 export type ERC721PrivateState = {
    tokenURI: string

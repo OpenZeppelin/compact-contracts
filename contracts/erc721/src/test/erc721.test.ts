@@ -1,7 +1,8 @@
-import { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { ERC721Simulator } from './simulators';
-import { MaybeString } from './types';
-import * as utils from './utils';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ERC721Simulator } from './simulators/ERC721Simulator';
+import type { MaybeString } from './types/string';
+import {createEitherTestContractAddress, createEitherTestUser} from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
@@ -25,11 +26,11 @@ const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64,
 const SPENDER = String(Buffer.from("SPENDER", 'ascii').toString('hex')).padStart(64, '0');
 const UNAUTHORIZED = String(Buffer.from("UNAUTHORIZED", 'ascii').toString('hex')).padStart(64, '0');
 const ZERO = String().padStart(64, '0');
-const Z_OWNER = utils.createEitherTestUser('OWNER');
-const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const Z_SPENDER = utils.createEitherTestUser('SPENDER');
-const Z_OTHER = utils.createEitherTestUser('OTHER');
-const SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
+const Z_OWNER = createEitherTestUser('OWNER');
+const Z_RECIPIENT = createEitherTestUser('RECIPIENT');
+const Z_SPENDER = createEitherTestUser('SPENDER');
+const Z_OTHER = createEitherTestUser('OTHER');
+const SOME_CONTRACT = createEitherTestContractAddress('SOME_CONTRACT');
 
 let token: ERC721Simulator;
 let caller: CoinPublicKey;
