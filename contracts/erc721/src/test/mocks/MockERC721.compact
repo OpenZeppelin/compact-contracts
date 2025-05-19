@@ -27,22 +27,22 @@ export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): 
   return ERC721_balanceOf(account);
 }
 
-export circuit ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721_ownerOf(tokenId);
 }
 
-export circuit tokenURI(tokenId: Field): Opaque<"string"> {
+export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
   return ERC721_tokenURI(tokenId);
 }
 
 export circuit approve(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
+  tokenId: Uint<128>
 ): [] {
   return ERC721_approve(to, tokenId);
 }
 
-export circuit getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721_getApproved(tokenId);
 }
 
@@ -63,7 +63,7 @@ export circuit isApprovedForAll(
 export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
+  tokenId: Uint<128>
 ): [] {
   return ERC721_transferFrom(from, to, tokenId);
 }
@@ -71,7 +71,7 @@ export circuit transferFrom(
 export circuit safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
+  tokenId: Uint<128>
 ): [] {
   return ERC721_safeTransferFrom(from, to, tokenId);
 }
@@ -80,23 +80,23 @@ export circuit safeTransferFrom(
 export circuit _safeTransferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field,
+  tokenId: Uint<128>,
   data: Opaque<"string">
 ): [] {
   return ERC721_safeTransferFrom(from, to, tokenId, data);
 }
 
-export circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721__requireOwned(tokenId);
 }
 
-export circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721__ownerOf(tokenId);
 }
 
 export circuit _update(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field,
+  tokenId: Uint<128>,
   auth: Either<ZswapCoinPublicKey, ContractAddress>
 ): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721__update(to, tokenId, auth);
@@ -104,7 +104,7 @@ export circuit _update(
 
 export circuit _approve(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field,
+  tokenId: Uint<128>,
   auth: Either<ZswapCoinPublicKey, ContractAddress>
 ): [] {
   return ERC721__approve(to, tokenId, auth);
@@ -113,7 +113,7 @@ export circuit _approve(
 export circuit _checkAuthorized(
   owner: Either<ZswapCoinPublicKey, ContractAddress>,
   spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
+  tokenId: Uint<128>
 ): [] {
   return ERC721__checkAuthorized(owner, spender, tokenId);
 }
@@ -121,13 +121,13 @@ export circuit _checkAuthorized(
 export circuit _isAuthorized(
   owner: Either<ZswapCoinPublicKey, ContractAddress>,
   spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
+  tokenId: Uint<128>
 ): Boolean {
   return ERC721__isAuthorized(owner, spender, tokenId);
 }
 
 
-export circuit _getApproved(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721__getApproved(tokenId);
 }
 
@@ -148,14 +148,14 @@ export circuit _increaseBalance(
 
 export circuit _mint(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field 
+  tokenId: Uint<128> 
 ): [] {
   return ERC721__mint(to, tokenId);
 }
 
 export circuit _safeMint(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field  
+  tokenId: Uint<128>  
 ): [] {
   return ERC721__safeMint(to, tokenId);
 }
@@ -164,20 +164,20 @@ export circuit _safeMint(
 // Two functions with the same name are not allowed as top-level exports
 export circuit __safeMint(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field,
+  tokenId: Uint<128>,
   data: Opaque<"string">
 ): [] {
   return ERC721__safeMint(to, tokenId, data);
 }
 
-export circuit _burn(tokenId: Field): [] {
+export circuit _burn(tokenId: Uint<128>): [] {
   return ERC721__burn(tokenId);
 }
 
 export circuit _transfer(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
+  tokenId: Uint<128>
 ): [] {
   return ERC721__transfer(from, to, tokenId);
 }
