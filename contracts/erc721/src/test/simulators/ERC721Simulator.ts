@@ -1,8 +1,10 @@
 import {
   type CircuitContext,
+  CoinPublicKey,
   type ContractState,
   QueryContext,
   constructorContext,
+  emptyZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -137,12 +139,21 @@ export class ERC721Simulator
   public approve(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
+    sender?: CoinPublicKey
   ): [] {
-    return this.contract.impureCircuits.approve(
-      this.circuitContext,
+    const res = this.contract.impureCircuits.approve(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
       to,
       tokenId,
-    ).result;
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
   }
 
   public getApproved(
@@ -157,12 +168,21 @@ export class ERC721Simulator
   public setApprovalForAll(
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
+    sender?: CoinPublicKey
   ): [] {
-    return this.contract.impureCircuits.setApprovalForAll(
-      this.circuitContext,
+    const res = this.contract.impureCircuits.setApprovalForAll(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
       operator,
       approved,
-    ).result;
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
   }
 
   public isApprovedForAll(
@@ -180,13 +200,22 @@ export class ERC721Simulator
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
+    sender?: CoinPublicKey
   ): [] {
-    return this.contract.impureCircuits.transferFrom(
-      this.circuitContext,
+    const res = this.contract.impureCircuits.transferFrom(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
       from,
       to,
-      tokenId,
-    ).result;
+      tokenId
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
   }
 
   public _requireOwned(
