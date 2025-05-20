@@ -2,7 +2,7 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
-import {createEitherTestContractAddress, createEitherTestUser} from './utils/address';
+import {encodeToPK, createEitherTestContractAddress, createEitherTestUser} from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
@@ -26,7 +26,8 @@ const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64,
 const SPENDER = String(Buffer.from("SPENDER", 'ascii').toString('hex')).padStart(64, '0');
 const UNAUTHORIZED = String(Buffer.from("UNAUTHORIZED", 'ascii').toString('hex')).padStart(64, '0');
 const ZERO = String().padStart(64, '0');
-const Z_OWNER = createEitherTestUser('OWNER');
+const Z_OWNER = encodeToPK('OWNER');
+const EITHER_Z_OWNER = createEitherTestUser('OWNER');
 const Z_RECIPIENT = createEitherTestUser('RECIPIENT');
 const Z_SPENDER = createEitherTestUser('SPENDER');
 const Z_OTHER = createEitherTestUser('OTHER');
@@ -61,17 +62,17 @@ describe('ERC721', () => {
       expect(token.balanceOf(Z_OWNER)).toEqual(0n);
     });
 
-    /*     it('should return balance when requested account has tokens', () => {
-          token._mint(Z_OWNER, AMOUNT);
-          expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
-        }); */
+    it('should return balance when requested account has tokens', () => {
+      token._mint(EITHER_Z_OWNER, AMOUNT);
+      expect(token.balanceOf(EITHER_Z_OWNER.left)).toEqual(AMOUNT);
+    });
   });
 
   describe('ownerOf', () => {
     it('should throw if tokenId does not exist', () => {
       expect(() => {
         token.ownerOf(TOKENID);
-      }).toThrow('ERC721: Invalid Owner');
+      }).toThrow('ERC721: Nonexistent Token');
     })
   })
 
