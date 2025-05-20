@@ -178,25 +178,6 @@ module ERC721 {
     assert previousOwner != eitherFrom "ERC721: Incorrect Owner";
   }
 
-  export circuit safeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field
-  ): [] {
-    safeTransferFrom(from, to, tokenId, default<Opaque<"string">>);
-  }
-
-  export circuit safeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field,
-    data: Opaque<"string">
-  ): [] {
-    transferFrom(from.left, to.left, tokenId);
-    // See https://github.com/OpenZeppelin/midnight-contracts/issues/25
-    // ERC721Utils_checkOnERC721Received
-  }
-
   export circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
     assert _owners.member(tokenId) "ERC721: Nonexistent Token";
     const owner = _owners.lookup(tokenId);
@@ -317,22 +298,6 @@ module ERC721 {
     const previousOwner = _update(to, tokenId, burn_address());
 
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
-  }
-
-  export circuit _safeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field  
-  ): [] {
-    _safeMint(to, tokenId, default<Opaque<"string">>);
-  }
-
-  export circuit _safeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Field,
-    data: Opaque<"string">
-  ): [] {
-    _mint(to, tokenId);
-    // ERC721Utils_checkOnERC721Received
   }
 
   export circuit _burn(tokenId: Field): [] {
