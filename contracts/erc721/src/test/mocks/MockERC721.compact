@@ -68,24 +68,6 @@ export circuit transferFrom(
   return ERC721_transferFrom(from, to, tokenId);
 }
 
-export circuit safeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field
-): [] {
-  return ERC721_safeTransferFrom(from, to, tokenId);
-}
-
-// Two functions with the same name are not allowed as top-level exports
-export circuit _safeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field,
-  data: Opaque<"string">
-): [] {
-  return ERC721_safeTransferFrom(from, to, tokenId, data);
-}
-
 export circuit _requireOwned(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721__requireOwned(tokenId);
 }
@@ -151,23 +133,6 @@ export circuit _mint(
   tokenId: Field 
 ): [] {
   return ERC721__mint(to, tokenId);
-}
-
-export circuit _safeMint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field  
-): [] {
-  return ERC721__safeMint(to, tokenId);
-}
-
-
-// Two functions with the same name are not allowed as top-level exports
-export circuit __safeMint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Field,
-  data: Opaque<"string">
-): [] {
-  return ERC721__safeMint(to, tokenId, data);
 }
 
 export circuit _burn(tokenId: Field): [] {
