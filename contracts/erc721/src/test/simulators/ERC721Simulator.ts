@@ -105,7 +105,7 @@ export class ERC721Simulator
    * @param account The public key or contract address to query.
    * @returns The account's token balance.
    */
-  public balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): bigint {
+  public balanceOf(account: ZswapCoinPublicKey): bigint {
     return this.contract.impureCircuits.balanceOf(this.circuitContext, account).result;
   }
 
@@ -114,7 +114,7 @@ export class ERC721Simulator
    * @param tokenId The Id of the token to query.
    * @returns The account owner of the token.
    */
-  public ownerOf(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+  public ownerOf(tokenId: bigint): ZswapCoinPublicKey {
     return this.contract.impureCircuits.ownerOf(this.circuitContext, tokenId).result;
   }
 
@@ -126,32 +126,24 @@ export class ERC721Simulator
     return pureCircuits._baseURI();
   }
 
-  public approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+  public approve(to: ZswapCoinPublicKey, tokenId: bigint): [] {
     return this.contract.impureCircuits.approve(this.circuitContext, to, tokenId).result;
   }
 
-  public getApproved(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+  public getApproved(tokenId: bigint): ZswapCoinPublicKey {
     return this.contract.impureCircuits.getApproved(this.circuitContext, tokenId).result;
   }
 
-  public setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: boolean): [] {
+  public setApprovalForAll(operator: ZswapCoinPublicKey, approved: boolean): [] {
     return this.contract.impureCircuits.setApprovalForAll(this.circuitContext, operator, approved).result;
   }
 
-  public isApprovedForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
+  public isApprovedForAll(owner: ZswapCoinPublicKey, operator: ZswapCoinPublicKey): boolean {
     return this.contract.impureCircuits.isApprovedForAll(this.circuitContext, owner, operator).result;
   }
 
-  public transferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
+  public transferFrom(from: ZswapCoinPublicKey, to: ZswapCoinPublicKey, tokenId: bigint): [] {
     return this.contract.impureCircuits.transferFrom(this.circuitContext, from, to, tokenId).result;
-  }
-
-  public safeTransferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
-    return this.contract.impureCircuits.safeTransferFrom(this.circuitContext, from, to, tokenId).result;
-  }
-
-  public _safeTransferFromWith(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, data: string): [] {
-    return this.contract.impureCircuits._safeTransferFrom(this.circuitContext, from, to, tokenId, data).result;
   }
 
   public _requireOwned(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -192,14 +184,6 @@ export class ERC721Simulator
 
   public _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
     return this.contract.impureCircuits._mint(this.circuitContext, to, tokenId).result;
-  }
-
-  public _safeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint): [] {
-    return this.contract.impureCircuits._safeMint(this.circuitContext, to, tokenId).result;
-  }
-
-  public __safeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: bigint, data: string): [] {
-    return this.contract.impureCircuits.__safeMint(this.circuitContext, to, tokenId, data).result;
   }
 
   public _burn(tokenId: bigint): [] {
