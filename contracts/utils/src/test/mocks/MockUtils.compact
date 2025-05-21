@@ -1,6 +1,4 @@
-// SPDX-License-Identifier: MIT
-
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
 
