@@ -187,6 +187,10 @@ module ERC721 {
   }
 
   export circuit _ownerOf(tokenId: Field): Either<ZswapCoinPublicKey, ContractAddress> {
+    if (!_owners.member(tokenId)) {
+      _owners.insert(tokenId, burn_address());
+    }
+
     return _owners.lookup(tokenId);
   }
 
@@ -212,6 +216,9 @@ module ERC721 {
     }
 
     if (!Utils_isKeyOrAddressZero(to)) {
+      if (!_balances.member(to)) {
+        _balances.insert(to, 0);
+      }
       const newBalance = _balances.lookup(to) + 1 as Uint<128>;
       _balances.insert(to, newBalance); 
     }
@@ -297,7 +304,7 @@ module ERC721 {
     // May want to define as default<ContractAddress>
     const previousOwner = _update(to, tokenId, burn_address());
 
-    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
+    assert Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
 
   export circuit _burn(tokenId: Field): [] {
