@@ -19,7 +19,7 @@ const SYMBOL: MaybeString = {
 
 const TOKENID: bigint = BigInt(1);
 
-const AMOUNT: bigint = BigInt(250);
+const AMOUNT: bigint = BigInt(1);
 const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
 const OWNER = String(Buffer.from("OWNER", 'ascii').toString('hex')).padStart(64, '0');
