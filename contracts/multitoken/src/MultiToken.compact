@@ -59,10 +59,10 @@ module MultiToken {
    * @param {uri_} - The base URI for all token URIs.
    * @return {[]} None.
    */
-  export circuit initializer(
+  export circuit initialize(
     uri_: Maybe<Opaque<"string">>
   ): [] {
-    _uri = uri_;
+    _setURI(uri_);
   }
 
   /**
