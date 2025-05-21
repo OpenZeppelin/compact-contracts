@@ -2,6 +2,7 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const NO_STRING: MaybeString = {
   is_some: false,
