@@ -23,11 +23,11 @@ export circuit symbol(): Maybe<Opaque<"string">> {
   return ERC721_symbol();
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+export circuit balanceOf(account: ZswapCoinPublicKey): Uint<128> {
   return ERC721_balanceOf(account);
 }
 
-export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
   return ERC721_ownerOf(tokenId);
 }
 
@@ -36,33 +36,33 @@ export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
 }
 
 export circuit approve(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: ZswapCoinPublicKey,
   tokenId: Uint<128>
 ): [] {
   return ERC721_approve(to, tokenId);
 }
 
-export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
   return ERC721_getApproved(tokenId);
 }
 
 export circuit setApprovalForAll(
-  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  operator: ZswapCoinPublicKey,
   approved: Boolean
 ): [] {
   return ERC721_setApprovalForAll(operator, approved);
 }
 
 export circuit isApprovedForAll(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  operator: Either<ZswapCoinPublicKey, ContractAddress>
+  owner: ZswapCoinPublicKey,
+  operator: ZswapCoinPublicKey
 ): Boolean {
   return ERC721_isApprovedForAll(owner, operator);
 }
 
 export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  from: ZswapCoinPublicKey,
+  to: ZswapCoinPublicKey,
   tokenId: Uint<128>
 ): [] {
   return ERC721_transferFrom(from, to, tokenId);

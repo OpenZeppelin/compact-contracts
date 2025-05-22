@@ -2,7 +2,7 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
-import * as utils from './utils/address';
+import {encodeToPK, createEitherTestContractAddress, createEitherTestUser} from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
@@ -19,7 +19,7 @@ const SYMBOL: MaybeString = {
 
 const TOKENID: bigint = BigInt(1);
 
-const _AMOUNT: bigint = BigInt(250);
+const _AMOUNT: bigint = BigInt(1);
 const _MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
 const _OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
@@ -33,11 +33,12 @@ const _UNAUTHORIZED = String(
   Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
 ).padStart(64, '0');
 const _ZERO = String().padStart(64, '0');
-const Z_OWNER = utils.createEitherTestUser('OWNER');
-const _Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const _Z_SPENDER = utils.createEitherTestUser('SPENDER');
-const _Z_OTHER = utils.createEitherTestUser('OTHER');
-const _SOME_CONTRACT = utils.createEitherTestContractAddress('SOME_CONTRACT');
+const _Z_OWNER = encodeToPK('OWNER');
+const _EITHER_Z_OWNER = createEitherTestUser('OWNER');
+const _Z_RECIPIENT = createEitherTestUser('RECIPIENT');
+const _Z_SPENDER = createEitherTestUser('SPENDER');
+const _Z_OTHER = createEitherTestUser('OTHER');
+const _SOME_CONTRACT = createEitherTestContractAddress('SOME_CONTRACT');
 
 let token: ERC721Simulator;
 let _caller: CoinPublicKey;
@@ -65,13 +66,13 @@ describe('ERC721', () => {
 
   describe('balanceOf', () => {
     it('should return zero when requested account has no balance', () => {
-      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
     });
 
-    /*     it('should return balance when requested account has tokens', () => {
-          token._mint(Z_OWNER, AMOUNT);
-          expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
-        }); */
+    it('should return balance when requested account has tokens', () => {
+      token._mint(_EITHER_Z_OWNER, _AMOUNT);
+      expect(token.balanceOf(_EITHER_Z_OWNER.left)).toEqual(_AMOUNT);
+    });
   });
 
   describe('ownerOf', () => {
