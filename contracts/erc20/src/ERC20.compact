@@ -34,14 +34,12 @@ module ERC20 {
 
   /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
-
    * @dev This MUST be called in the implementing contract's constructor. Failure to do so
    * can lead to an irreparable contract.
    *
    * @param name_ - The name of the token.
    * @param symbol_ - The symbol of the token.
    * @param decimals_ - The number of decimals used to get the user representation.
-
    * @return {[]} - None.
    */
   export circuit initializer(
