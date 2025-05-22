@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
 import {
-  encodeToPK,
   createEitherTestContractAddress,
   createEitherTestUser,
+  encodeToPK,
 } from './utils/address';
 
 const NO_STRING: MaybeString = {

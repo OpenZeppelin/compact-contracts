@@ -4,6 +4,7 @@ import {
   type ContractState,
   QueryContext,
   constructorContext,
+  emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {

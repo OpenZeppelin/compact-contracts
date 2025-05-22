@@ -416,33 +416,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
-    "@types/node": "npm:^18.18.6"
-    ts-node: "npm:^10.9.2"
-    typescript: "npm:^5.2.2"
-    vitest: "npm:^3.1.3"
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-midnight/erc721@workspace:contracts/erc721":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/erc721@workspace:contracts/erc721"
-  dependencies:
-    "@biomejs/biome": "npm:1.9.4"
-    "@openzeppelin-midnight/compact": "workspace:^"
-    "@types/node": "npm:^18.18.6"
-    ts-node: "npm:^10.9.2"
-    typescript: "npm:^5.2.2"
-    vitest: "npm:^3.1.3"
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-midnight/erc721@workspace:contracts/erc721":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/erc721@workspace:contracts/erc721"
-  dependencies:
-    "@biomejs/biome": "npm:1.9.4"
-    "@openzeppelin-midnight/compact": "workspace:^"
-    "@types/node": "npm:^18.18.6"
+    "@types/node": "npm:^22.14.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
     vitest: "npm:^3.1.3"
@@ -455,7 +429,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
-    "@types/node": "npm:^18.18.6"
+    "@types/node": "npm:^22.14.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
     vitest: "npm:^3.1.3"
@@ -641,15 +615,6 @@ __metadata:
   version: 1.0.7
   resolution: "@types/estree@npm:1.0.7"
   checksum: 10/419c845ece767ad4b21171e6e5b63dabb2eb46b9c0d97361edcd9cabbf6a95fcadb91d89b5fa098d1336fa0b8fceaea82fca97a2ef3971f5c86e53031e157b21
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^18.18.6":
-  version: 18.19.87
-  resolution: "@types/node@npm:18.19.87"
-  dependencies:
-    undici-types: "npm:~5.26.4"
-  checksum: 10/1e71b6d16dedeaa1fd5ff55baf1f353ca1f9e673b2e482d7fe82fa685addea5159a36602a344784c989b5e07ca1be633d0c493adf5951dee5a29cee69d613e7f
   languageName: node
   linkType: hard
 
@@ -2182,13 +2147,6 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 10/98470634034ec37fd9ea61cc82dcf9a27950d0117a4646146b767d085a2ec14b137aae9642a83d1c62732d7fdcdac19bb6288b0bb468a72f7a06ae4e1d2c72c9
-  languageName: node
-  linkType: hard
-
-"undici-types@npm:~5.26.4":
-  version: 5.26.5
-  resolution: "undici-types@npm:5.26.5"
-  checksum: 10/0097779d94bc0fd26f0418b3a05472410408877279141ded2bd449167be1aed7ea5b76f756562cb3586a07f251b90799bab22d9019ceba49c037c76445f7cddd
   languageName: node
   linkType: hard
 
