@@ -345,7 +345,9 @@ describe('MultiToken', () => {
       });
 
       it('should handle MAX_UINT128 transfer amount', () => {
-        token._mint(Z_OWNER, TOKEN_ID, MAX_UINT128);
+        // Mint rest of tokens to == MAX_UINT128
+        token._mint(Z_OWNER, TOKEN_ID, MAX_UINT128 - AMOUNT);
+
         token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, MAX_UINT128, caller);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(MAX_UINT128);
       });
@@ -353,28 +355,28 @@ describe('MultiToken', () => {
       it('should handle rapid state changes', () => {
         // Approve -> Transfer -> Revoke -> Approve
         token.setApprovalForAll(Z_SPENDER, true, caller);
-        
+
         token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
-        
+
         token.setApprovalForAll(Z_SPENDER, false, caller);
         expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
-        
+
         token.setApprovalForAll(Z_SPENDER, true, caller);
         expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
       });
 
       it('should handle concurrent operations on same token ID', () => {
         token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
-        
+
         // Set up two spenders
         token.setApprovalForAll(Z_SPENDER, true, caller);
         token.setApprovalForAll(Z_OTHER, true, caller);
-        
+
         // First spender transfers half
         token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
-        
+
         // Second spender transfers remaining
         token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
