@@ -65,6 +65,24 @@ describe('MultiToken', () => {
 
       expect(token.uri(TOKEN_ID)).toEqual(NO_STRING);
     });
+
+    it('should handle long URI', () => {
+      const LONG_URI: MaybeString = {
+        is_some: true,
+        value: `https://example.com/${'a'.repeat(1000)}`,
+      };
+      token._setURI(LONG_URI);
+      expect(token.uri(TOKEN_ID)).toEqual(LONG_URI);
+    });
+
+    it('should handle URI with special characters', () => {
+      const SPECIAL_URI: MaybeString = {
+        is_some: true,
+        value: 'https://example.com/path?param=value#fragment',
+      };
+      token._setURI(SPECIAL_URI);
+      expect(token.uri(TOKEN_ID)).toEqual(SPECIAL_URI);
+    });
   });
 
   beforeEach(() => {
@@ -83,6 +101,18 @@ describe('MultiToken', () => {
 
       token._mint(Z_OWNER, TOKEN_ID2, AMOUNT2);
       expect(token.balanceOf(Z_OWNER, TOKEN_ID2)).toEqual(AMOUNT2);
+    });
+
+    it('should handle token ID 0', () => {
+      const ZERO_ID = 0n;
+      token._mint(Z_OWNER, ZERO_ID, AMOUNT);
+      expect(token.balanceOf(Z_OWNER, ZERO_ID)).toEqual(AMOUNT);
+    });
+
+    it('should handle MAX_UINT128 token ID', () => {
+      const MAX_ID = MAX_UINT128;
+      token._mint(Z_OWNER, MAX_ID, AMOUNT);
+      expect(token.balanceOf(Z_OWNER, MAX_ID)).toEqual(AMOUNT);
     });
   });
 
@@ -193,10 +223,44 @@ describe('MultiToken', () => {
 
       expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
     });
+
+    it('should handle duplicate token IDs in balanceOfBatch_10', () => {
+      const pks = Array(10).fill(Z_OWNER);
+      const ids = Array(10).fill(TOKEN_ID);
+      const amounts = Array(10).fill(AMOUNT);
+
+      // Mint AMOUNT tokens total, not AMOUNT * 10
+      token._mint(Z_OWNER, TOKEN_ID, AMOUNT);
+      expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
+    });
+
+    it('should handle all zero addresses in balanceOfBatch_10', () => {
+      const pks = Array(10).fill(utils.ZERO_KEY);
+      const ids = Array(10).fill(0n);
+      const amounts = Array(10).fill(0n);
+
+      expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
+    });
   });
 
   describe('isApprovedForAll', () => {
     it('should return false when not set', () => {
+      expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
+    });
+
+    it('should handle approving owner as operator', () => {
+      token.setApprovalForAll(Z_OWNER, true, OWNER);
+      expect(token.isApprovedForAll(Z_OWNER, Z_OWNER)).toBe(true);
+    });
+
+    it('should handle multiple approvals of same operator', () => {
+      token.setApprovalForAll(Z_SPENDER, true, OWNER);
+      token.setApprovalForAll(Z_SPENDER, true, OWNER);
+      expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
+    });
+
+    it('should handle revoking non-existent approval', () => {
+      token.setApprovalForAll(Z_SPENDER, false, OWNER);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
     });
   });
@@ -273,6 +337,47 @@ describe('MultiToken', () => {
 
         expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
         expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(0n);
+      });
+
+      it('should handle self-transfer', () => {
+        token.transferFrom(Z_OWNER, Z_OWNER, TOKEN_ID, AMOUNT, caller);
+        expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
+      });
+
+      it('should handle MAX_UINT128 transfer amount', () => {
+        token._mint(Z_OWNER, TOKEN_ID, MAX_UINT128);
+        token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, MAX_UINT128, caller);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(MAX_UINT128);
+      });
+
+      it('should handle rapid state changes', () => {
+        // Approve -> Transfer -> Revoke -> Approve
+        token.setApprovalForAll(Z_SPENDER, true, caller);
+        
+        token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+        
+        token.setApprovalForAll(Z_SPENDER, false, caller);
+        expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
+        
+        token.setApprovalForAll(Z_SPENDER, true, caller);
+        expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
+      });
+
+      it('should handle concurrent operations on same token ID', () => {
+        token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
+        
+        // Set up two spenders
+        token.setApprovalForAll(Z_SPENDER, true, caller);
+        token.setApprovalForAll(Z_OTHER, true, caller);
+        
+        // First spender transfers half
+        token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+        
+        // Second spender transfers remaining
+        token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
       });
 
       it('should fail with insufficient balance', () => {
