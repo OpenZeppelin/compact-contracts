@@ -115,7 +115,8 @@ export class ERC721Simulator
    * @returns The account's token balance.
    */
   public balanceOf(account: ZswapCoinPublicKey): bigint {
-    return this.contract.impureCircuits.balanceOf(this.circuitContext, account).result;
+    return this.contract.impureCircuits.balanceOf(this.circuitContext, account)
+      .result;
   }
 
   /**
@@ -124,7 +125,8 @@ export class ERC721Simulator
    * @returns The account owner of the token.
    */
   public ownerOf(tokenId: bigint): ZswapCoinPublicKey {
-    return this.contract.impureCircuits.ownerOf(this.circuitContext, tokenId).result;
+    return this.contract.impureCircuits.ownerOf(this.circuitContext, tokenId)
+      .result;
   }
 
   public tokenURI(tokenId: bigint): Maybe<string> {
@@ -152,9 +154,7 @@ export class ERC721Simulator
     return res.result;
   }
 
-  public getApproved(
-    tokenId: bigint,
-  ): ZswapCoinPublicKey {
+  public getApproved(tokenId: bigint): ZswapCoinPublicKey {
     return this.contract.impureCircuits.getApproved(
       this.circuitContext,
       tokenId,

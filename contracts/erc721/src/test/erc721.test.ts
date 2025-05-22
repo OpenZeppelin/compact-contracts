@@ -2,7 +2,11 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
-import {encodeToPK, createEitherTestContractAddress, createEitherTestUser} from './utils/address';
+import {
+  encodeToPK,
+  createEitherTestContractAddress,
+  createEitherTestUser,
+} from './utils/address';
 
 const NO_STRING: MaybeString = {
   is_some: false,
