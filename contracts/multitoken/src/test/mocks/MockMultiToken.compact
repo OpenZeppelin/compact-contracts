@@ -12,7 +12,7 @@ export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
 constructor(
   _uri: Maybe<Opaque<"string">>
 ) {
-  MultiToken_initializer(_uri);
+  MultiToken_initialize(_uri);
 }
 
 export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
