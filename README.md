@@ -78,7 +78,7 @@ Cached:    0 cached, 2 total
   Time:    7.178s
 ```
 
-NOTE: Speed up the development process by skipping the prover and verifier key file generation:
+**Note:** Speed up the development process by skipping the prover and verifier key file generation:
 
 ```bash
 npx turbo compact -- --skip-zk
