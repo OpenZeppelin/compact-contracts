@@ -38,10 +38,10 @@ pragma language_version >= 0.15.0;
  *
  * @notice Further discussion and consideration required:
  *
- * - Consider changing the underscore in the internal methods to `unsafe` or
+ * - @todo Consider changing the underscore in the internal methods to `unsafe` or
  * adopting dot notation for prefixing imports.
- * - Revise logic once contract-to-contract interactions are available on midnight.
- * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
+ * - @todo Revise logic once contract-to-contract interactions are available on midnight.
+ * - @todo Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
 module MultiToken {
   import CompactStandardLibrary;
