@@ -88,6 +88,18 @@ export class MultiTokenSimulator
   }
 
   /**
+   * @description Initializes the contract. This is already executed in the simulator constructor;
+   * however, this method enables the tests to assert it cannot be called again.
+   * @returns None.
+   */
+  public initialize(uri: MaybeString) {
+    this.circuitContext = this.contract.impureCircuits.initialize(
+      this.circuitContext,
+      uri,
+    ).context;
+  }
+
+  /**
    * @description Returns the token URI.
    * @returns The token URI.
    */

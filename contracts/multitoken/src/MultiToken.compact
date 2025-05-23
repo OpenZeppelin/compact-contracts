@@ -45,7 +45,8 @@ pragma language_version >= 0.15.0;
  */
 module MultiToken {
   import CompactStandardLibrary;
-  import "../../node_modules/@openzeppelin-midnight-contracts/utils-contract/src/Utils" prefix Utils_;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
 
   /// Public state
   export ledger _balances: Map<Uint<128>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
@@ -62,6 +63,7 @@ module MultiToken {
   export circuit initialize(
     uri_: Maybe<Opaque<"string">>
   ): [] {
+    Initializable_initialize();
     _setURI(uri_);
   }
 

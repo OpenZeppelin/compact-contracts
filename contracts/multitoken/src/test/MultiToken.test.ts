@@ -52,7 +52,7 @@ let token: MultiTokenSimulator;
 let caller: CoinPublicKey;
 
 describe('MultiToken', () => {
-  describe('initializer and metadata', () => {
+  describe('initialize and metadata', () => {
     it('should initialize metadata', () => {
       expect(1).toEqual(1);
       token = new MultiTokenSimulator(URI);
@@ -66,22 +66,12 @@ describe('MultiToken', () => {
       expect(token.uri(TOKEN_ID)).toEqual(NO_STRING);
     });
 
-    it('should handle long URI', () => {
-      const LONG_URI: MaybeString = {
-        is_some: true,
-        value: `https://example.com/${'a'.repeat(1000)}`,
-      };
-      token._setURI(LONG_URI);
-      expect(token.uri(TOKEN_ID)).toEqual(LONG_URI);
-    });
+    it('should not be able to re-initialize', () => {
+      token = new MultiTokenSimulator(NO_STRING);
 
-    it('should handle URI with special characters', () => {
-      const SPECIAL_URI: MaybeString = {
-        is_some: true,
-        value: 'https://example.com/path?param=value#fragment',
-      };
-      token._setURI(SPECIAL_URI);
-      expect(token.uri(TOKEN_ID)).toEqual(SPECIAL_URI);
+      expect(() => {
+        token.initialize(URI);
+      }).toThrow('Initializable: contract already initialized');
     });
   });
 
@@ -784,6 +774,24 @@ describe('MultiToken', () => {
         expect(token.uri(TOKEN_ID)).toEqual(URIS[i]);
         expect(token.uri(TOKEN_ID2)).toEqual(URIS[i]);
       }
+    });
+
+    it('should handle long URI', () => {
+      const LONG_URI: MaybeString = {
+        is_some: true,
+        value: `https://example.com/${'a'.repeat(1000)}`,
+      };
+      token._setURI(LONG_URI);
+      expect(token.uri(TOKEN_ID)).toEqual(LONG_URI);
+    });
+
+    it('should handle URI with special characters', () => {
+      const SPECIAL_URI: MaybeString = {
+        is_some: true,
+        value: 'https://example.com/path?param=value#fragment',
+      };
+      token._setURI(SPECIAL_URI);
+      expect(token.uri(TOKEN_ID)).toEqual(SPECIAL_URI);
     });
   });
 

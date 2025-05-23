@@ -1,9 +1,6 @@
-// SPDX-License-Identifier: MIT
-
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-
 import "../../MultiToken" prefix MultiToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
@@ -13,6 +10,12 @@ constructor(
   _uri: Maybe<Opaque<"string">>
 ) {
   MultiToken_initialize(_uri);
+}
+
+export circuit initialize(
+  _uri: Maybe<Opaque<"string">>
+): [] {
+  return MultiToken_initialize(_uri);
 }
 
 export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
