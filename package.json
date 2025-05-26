@@ -13,7 +13,7 @@
     "fmt:fix": "turbo run fmt:fix",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "types": "turbo run types", 
+    "types": "turbo run types",
     "clean": "turbo run clean"
   },
   "dependencies": {
