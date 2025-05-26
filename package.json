@@ -15,7 +15,7 @@
     "fmt": "turbo run fmt",
     "fmt:fix": "turbo run fmt:fix",
     "lint": "turbo run lint",
-    "lint:fix": "turbo run lint:fix",
+    "lint:fix": "turbo run lint:fix", 
     "types": "turbo run types",
     "clean": "turbo run clean"
   },
