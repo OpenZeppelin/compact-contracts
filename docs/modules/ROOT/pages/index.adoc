@@ -15,7 +15,7 @@ WARNING: This repo contains highly experimental code. Expect rapid iteration. *U
 Make sure you have {nvm} and {yarn} installed on your machine.
 
 Follow Midnight's {compact-installation} guide and confirm that `compactc` is in the `PATH` env variable.
- 
+
 ```bash
 $ compactc
 
