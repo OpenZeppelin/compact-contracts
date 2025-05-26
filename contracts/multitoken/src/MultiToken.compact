@@ -36,12 +36,23 @@ pragma language_version >= 0.15.0;
  * safe transfers of any kind can not be supported.
  * BE AWARE: Tokens sent to a contract address MAY be lost forever.
  *
+ * Due to the vast incompatibilities with the EIP1155 spec, it is our
+ * opinion that this implementation should not be called ERC1155 at this time
+ * as this would be both very confusing and misleading. This may change as more
+ * features become available. The list of missing features is as follows:
+ *
+ * - Full uint256 support.
+ * - Events.
+ * - Dynamic arrays.
+ * - Introspection.
+ * - Contract-to-contract calls for acceptance callback.
+ *
  * @notice Further discussion and consideration required:
  *
- * - @todo Consider changing the underscore in the internal methods to `unsafe` or
+ * - Consider changing the underscore in the internal methods to `unsafe` or
  * adopting dot notation for prefixing imports.
- * - @todo Revise logic once contract-to-contract interactions are available on midnight.
- * - @todo Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
+ * - Revise logic once contract-to-contract interactions are available on midnight.
+ * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
 module MultiToken {
   import CompactStandardLibrary;
