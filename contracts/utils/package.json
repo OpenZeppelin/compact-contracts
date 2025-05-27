@@ -1,5 +1,6 @@
 {
   "name": "@openzeppelin-midnight/utils",
+  "private": true,
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
