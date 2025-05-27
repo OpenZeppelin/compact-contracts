@@ -322,17 +322,6 @@ module ERC721 {
   /**
    * @description Add me...
    */
-  export circuit _increaseBalance(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: Uint<128>
-  ): [] {
-    const newValue = _balances.lookup(account) + value;
-    _balances.insert(account, newValue as Uint<128>);
-  }
-
-  /**
-   * @description Add me...
-   */
   export circuit _mint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
