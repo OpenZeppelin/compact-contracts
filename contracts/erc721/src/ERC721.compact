@@ -23,10 +23,10 @@ module ERC721 {
   /// Public state
   export sealed ledger _name: Maybe<Opaque<"string">>;
   export sealed ledger _symbol: Maybe<Opaque<"string">>;
-  export ledger _owners: Map<Field, Either<ZswapCoinPublicKey, ContractAddress>>;
-  export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
-  export ledger _tokenApprovals: Map<Field, Either<ZswapCoinPublicKey, ContractAddress>>;
-  export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+  export ledger _owners: Map<Uint<128>, ZswapCoinPublicKey>;
+  export ledger _balances: Map<ZswapCoinPublicKey, Uint<128>>;
+  export ledger _tokenApprovals: Map<Uint<128>, ZswapCoinPublicKey>;
+  export ledger _operatorApprovals: Map<ZswapCoinPublicKey, Map<ZswapCoinPublicKey, Boolean>>;
   export ledger _tokenURI: Map<Uint<128>, Maybe<Opaque<"string">>>;
 
   /**
