@@ -31,11 +31,19 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 > - [turbo](https://turborepo.com/docs/getting-started/installation)
 > - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
 
-> ### Requirements
->
-> - [node](https://nodejs.org/)
-> - [yarn](https://yarnpkg.com/getting-started/install)
-> - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
+Make sure you have [nvm](https://github.com/nvm-sh/nvm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your machine.
+
+Follow Midnight's [compact installation guide](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler) and confirm that `compactc` is in the `PATH` env variable.
+
+```bash
+$ compactc
+
+Compactc version: 0.23.0
+Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
+       --help displays detailed usage information
+```
+
+## Set up the project
 
 Clone the repository:
 
