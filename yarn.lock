@@ -1502,16 +1502,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22":
-  version: 22.15.19
-  resolution: "@types/node@npm:22.15.19"
-  dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10/02311c2b5dbf2e9e2c17497dc27858bcefbe12a81af0d9b81f865613d8d014726e0eb6cbebfbdb84a327c1b9f9da1347a65a7699ac58c8854fb4daf447031149
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^22.13.10":
+"@types/node@npm:^22, @types/node@npm:^22.13.10":
   version: 22.15.33
   resolution: "@types/node@npm:22.15.33"
   dependencies:
@@ -4120,6 +4111,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openzeppelin-midnight@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "openzeppelin-midnight@workspace:."
+  dependencies:
+    "@biomejs/biome": "npm:1.9.4"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
+    "@midnight-ntwrk/ledger": "npm:^4.0.0"
+    "@midnight-ntwrk/zswap": "npm:^4.0.0"
+    "@types/node": "npm:^22"
+    fast-check: "npm:^3.15.0"
+    ts-node: "npm:^10.9.2"
+    turbo: "npm:^2.5.1"
+    typescript: "npm:^5.2.2"
+    vitest: "npm:^3.1.3"
+  languageName: unknown
+  linkType: soft
+
 "optionator@npm:^0.9.3":
   version: 0.9.4
   resolution: "optionator@npm:0.9.4"
@@ -4574,23 +4582,6 @@ __metadata:
   checksum: 10/2182fc751734277972c011bf62a07cd01de44aaa408f29d3be51b6c7373aa179c9e20d5b9b9fa46268c7d65fc8edb033243f501495465b13dd05d1f99635a7fa
   languageName: node
   linkType: hard
-
-"root-workspace-0b6124@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "root-workspace-0b6124@workspace:."
-  dependencies:
-    "@biomejs/biome": "npm:1.9.4"
-    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
-    "@midnight-ntwrk/ledger": "npm:^4.0.0"
-    "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@types/node": "npm:^22"
-    fast-check: "npm:^3.15.0"
-    ts-node: "npm:^10.9.2"
-    turbo: "npm:^2.5.1"
-    typescript: "npm:^5.2.2"
-    vitest: "npm:^3.1.3"
-  languageName: unknown
-  linkType: soft
 
 "run-parallel@npm:^1.1.9":
   version: 1.2.0
