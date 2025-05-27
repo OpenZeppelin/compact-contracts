@@ -16,7 +16,7 @@ module Utils {
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
    */
   export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    const zero = pad(32, "");
+    const zero = burn_address();
 
     if (keyOrAddress.is_left) {
       return keyOrAddress == left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey{ zero });
