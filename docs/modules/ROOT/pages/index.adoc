@@ -1,0 +1,90 @@
+:midnight: https://midnight.network/[Midnight]
+:nvm: https://github.com/nvm-sh/nvm[nvm]
+:yarn: https://yarnpkg.com/getting-started/install[yarn]
+:compact-installation: https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler[compact installation]
+
+= Contracts for Midnight
+
+*A library for secure smart contract development* written in Compact for {midnight}.
+This library consists of modules to build custom smart contracts.
+
+WARNING: This repo contains highly experimental code. Expect rapid iteration. *Use at your own risk.*
+
+== Installation
+
+Make sure you have {nvm} and {yarn} installed on your machine.
+
+Follow Midnight's {compact-installation} guide and confirm that `compactc` is in the `PATH` env variable.
+
+```bash
+$ compactc
+
+Compactc version: 0.23.0
+Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
+       --help displays detailed usage information
+```
+
+=== Project setup
+
+Clone the repository:
+
+```bash
+git clone git@github.com:OpenZeppelin/midnight-contracts.git
+```
+
+`cd` into it and then install dependencies and prepare the environment:
+
+```bash
+nvm install && \
+yarn && \
+yarn prepare
+```
+
+== Usage
+
+Compile the contracts:
+
+```bash
+$ npx turbo compact
+
+(...)
+✔ [COMPILE] [1/2] Compiled ERC20.compact
+@openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/erc20:compact:
+✔ [COMPILE] [1/6] Compiled Initializable.compact
+@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/utils:compact:
+✔ [COMPILE] [2/6] Compiled Pausable.compact
+@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/utils:compact:
+✔ [COMPILE] [3/6] Compiled Utils.compact
+@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/utils:compact:
+✔ [COMPILE] [4/6] Compiled test/mocks/MockInitializable.compact
+@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/utils:compact:     Compiling 3 circuits:
+✔ [COMPILE] [5/6] Compiled test/mocks/MockPausable.compact
+@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/utils:compact:     Compiling 5 circuits:
+✔ [COMPILE] [6/6] Compiled test/mocks/MockUtils.compact
+@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/utils:compact:
+
+✔ [COMPILE] [2/2] Compiled test/mocks/MockERC20.compact
+@openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/erc20:compact:     Compiling 15 circuits:
+
+
+ Tasks:    2 successful, 2 total
+Cached:    0 cached, 2 total
+  Time:    7.178s
+```
+
+NOTE: Speed up the development process by skipping the prover and verifier key file generation: +
+`npx turbo compact -- --skip-zk`
+
+Run tests:
+
+```bash
+npx turbo test
+```
