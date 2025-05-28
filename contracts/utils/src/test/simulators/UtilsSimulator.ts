@@ -115,4 +115,13 @@ export class UtilsSimulator
       other,
     ).result;
   }
+
+  /**
+   * @description Returns whether `key` is the zero address.
+   * @param key The target value to check.
+   * @returns Returns true if `key` is zero.
+   */
+  public isKeyZero(key: ZswapCoinPublicKey): boolean {
+    return this.contract.circuits.isKeyZero(this.circuitContext, key).result;
+  }
 }

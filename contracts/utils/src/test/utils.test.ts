@@ -55,4 +55,14 @@ describe('Utils', () => {
       ).toBeFalsy();
     });
   });
+
+  describe('isKeyZero', () => {
+    it('should return zero for the zero address', () => {
+      expect(contract.isKeyZero(contractUtils.ZERO_KEY.left)).toBe(true);
+    });
+
+    it('should not return zero for nonzero addresses', () => {
+      expect(contract.isKeyZero(Z_SOME_KEY.left)).toBe(false);
+    });
+  });
 });
