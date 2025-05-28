@@ -24,6 +24,17 @@ module Utils {
       return keyOrAddress == right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ zero });
     }
   }
+  
+  /**
+   * @description Returns whether `key` is the zero address.
+   *
+   * @param {ZswapCoinPublicKey} key - A ZswapCoinPublicKey 
+   * @return {Boolean} - Returns true if `key` is zero.
+   */
+  export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
+    const zero = burn_address().left;
+    return zero == key;
+  }
 
   /**
    * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey 

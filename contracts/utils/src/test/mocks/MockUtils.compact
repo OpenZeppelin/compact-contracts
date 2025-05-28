@@ -16,3 +16,7 @@ export pure circuit isKeyOrAddressEqual(
 ): Boolean {
     return Utils_isKeyOrAddressEqual(keyOrAddress, other);
 }
+
+export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
+    return Utils_isKeyZero(key);
+}
