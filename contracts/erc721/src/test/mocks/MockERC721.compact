@@ -121,13 +121,6 @@ export circuit _setApprovalForAll(
   return ERC721__setApprovalForAll(owner, operator, approved);
 }
 
-export circuit _increaseBalance(
-  account: ZswapCoinPublicKey,
-  value: Uint<128>
-): [] {
-  return ERC721__increaseBalance(account, value);
-}
-
 export circuit _mint(
   to: ZswapCoinPublicKey,
   tokenId: Uint<128>

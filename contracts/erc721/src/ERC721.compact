@@ -87,12 +87,11 @@ module ERC721 {
    * @return {Uint<128>} - The account's token balance.
    */
   export circuit balanceOf(account: ZswapCoinPublicKey): Uint<128> {
-    const acct = left<ZswapCoinPublicKey, ContractAddress>(account);
-    if (!_balances.member(acct)) {
+    if (!_balances.member(account)) {
       return 0;
     }
 
-    return _balances.lookup(acct);
+    return _balances.lookup(account);
   }
 
   /**
@@ -104,7 +103,7 @@ module ERC721 {
    * @return {Owner} - The public key that owns the token.
    */
   export circuit ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
-    return _requireOwned(tokenId).left;
+    return _requireOwned(tokenId);
   }
 
   /**
@@ -161,7 +160,7 @@ module ERC721 {
   export circuit getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
     _requireOwned(tokenId);
 
-    return _getApproved(tokenId).left;
+    return _getApproved(tokenId);
   }
 
   /**
