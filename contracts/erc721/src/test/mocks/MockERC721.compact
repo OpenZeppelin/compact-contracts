@@ -68,68 +68,68 @@ export circuit transferFrom(
   return ERC721_transferFrom(from, to, tokenId);
 }
 
-export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit _requireOwned(tokenId: Uint<128>): ZswapCoinPublicKey {
   return ERC721__requireOwned(tokenId);
 }
 
-export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit _ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
   return ERC721__ownerOf(tokenId);
 }
 
 export circuit _update(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: ZswapCoinPublicKey,
   tokenId: Uint<128>,
-  auth: Either<ZswapCoinPublicKey, ContractAddress>
-): Either<ZswapCoinPublicKey, ContractAddress> {
+  auth: ZswapCoinPublicKey
+): ZswapCoinPublicKey {
   return ERC721__update(to, tokenId, auth);
 }
 
 export circuit _approve(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: ZswapCoinPublicKey,
   tokenId: Uint<128>,
-  auth: Either<ZswapCoinPublicKey, ContractAddress>
+  auth: ZswapCoinPublicKey
 ): [] {
   return ERC721__approve(to, tokenId, auth);
 }
 
 export circuit _checkAuthorized(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
+  owner: ZswapCoinPublicKey,
+  spender: ZswapCoinPublicKey,
   tokenId: Uint<128>
 ): [] {
   return ERC721__checkAuthorized(owner, spender, tokenId);
 }
 
 export circuit _isAuthorized(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
+  owner: ZswapCoinPublicKey,
+  spender: ZswapCoinPublicKey,
   tokenId: Uint<128>
 ): Boolean {
   return ERC721__isAuthorized(owner, spender, tokenId);
 }
 
 
-export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit _getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
   return ERC721__getApproved(tokenId);
 }
 
 export circuit _setApprovalForAll(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  owner: ZswapCoinPublicKey,
+  operator: ZswapCoinPublicKey,
   approved: Boolean
 ): [] {
   return ERC721__setApprovalForAll(owner, operator, approved);
 }
 
 export circuit _increaseBalance(
-  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  account: ZswapCoinPublicKey,
   value: Uint<128>
 ): [] {
   return ERC721__increaseBalance(account, value);
 }
 
 export circuit _mint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: ZswapCoinPublicKey,
   tokenId: Uint<128>
 ): [] {
   return ERC721__mint(to, tokenId);
@@ -140,16 +140,13 @@ export circuit _burn(tokenId: Uint<128>): [] {
 }
 
 export circuit _transfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  from: ZswapCoinPublicKey,
+  to: ZswapCoinPublicKey,
   tokenId: Uint<128>
 ): [] {
   return ERC721__transfer(from, to, tokenId);
 }
 
-  /**
-   * @description Add me...
-   */
-  export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
-    return ERC721__setTokenURI(tokenId, tokenURI);
-  }
+export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
+  return ERC721__setTokenURI(tokenId, tokenURI);
+}
