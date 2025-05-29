@@ -419,10 +419,9 @@ module ERC721 {
         owner,
         default<Map<ZswapCoinPublicKey, Boolean>>
       );
-      _operatorApprovals.lookup(owner).insert(operator, approved);
-    } else {
-      _operatorApprovals.lookup(owner).insert(operator, approved);
     }
+
+    _operatorApprovals.lookup(owner).insert(operator, approved);
   }
 
   /**
