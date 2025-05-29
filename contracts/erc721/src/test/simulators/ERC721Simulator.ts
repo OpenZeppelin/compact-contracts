@@ -8,8 +8,6 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
-  type ContractAddress,
-  type Either,
   type Ledger,
   type Maybe,
   Contract as MockERC721,
@@ -50,10 +48,7 @@ export class ERC721Simulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext(
-        { tokenURI: 'https://www.mynft.test/' },
-        '0'.repeat(64),
-      ),
+      constructorContext({}, '0'.repeat(64)),
       name,
       symbol,
     );
@@ -216,7 +211,7 @@ export class ERC721Simulator
 
   public _requireOwned(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): ZswapCoinPublicKey {
     return this.contract.impureCircuits._requireOwned(
       this.circuitContext,
       tokenId,
@@ -225,16 +220,16 @@ export class ERC721Simulator
 
   public _ownerOf(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): ZswapCoinPublicKey {
     return this.contract.impureCircuits._ownerOf(this.circuitContext, tokenId)
       .result;
   }
 
   public _update(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: ZswapCoinPublicKey,
     tokenId: bigint,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+    auth: ZswapCoinPublicKey,
+  ): ZswapCoinPublicKey {
     return this.contract.impureCircuits._update(
       this.circuitContext,
       to,
@@ -244,9 +239,9 @@ export class ERC721Simulator
   }
 
   public _approve(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: ZswapCoinPublicKey,
     tokenId: bigint,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>,
+    auth: ZswapCoinPublicKey,
   ): [] {
     return this.contract.impureCircuits._approve(
       this.circuitContext,
@@ -257,8 +252,8 @@ export class ERC721Simulator
   }
 
   public _checkAuthorized(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: ZswapCoinPublicKey,
+    spender: ZswapCoinPublicKey,
     tokenId: bigint,
   ): [] {
     return this.contract.impureCircuits._checkAuthorized(
@@ -270,8 +265,8 @@ export class ERC721Simulator
   }
 
   public _isAuthorized(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: ZswapCoinPublicKey,
+    spender: ZswapCoinPublicKey,
     tokenId: bigint,
   ): boolean {
     return this.contract.impureCircuits._isAuthorized(
@@ -284,7 +279,7 @@ export class ERC721Simulator
 
   public _getApproved(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): ZswapCoinPublicKey {
     return this.contract.impureCircuits._getApproved(
       this.circuitContext,
       tokenId,
@@ -292,8 +287,8 @@ export class ERC721Simulator
   }
 
   public _setApprovalForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: ZswapCoinPublicKey,
+    operator: ZswapCoinPublicKey,
     approved: boolean,
   ): [] {
     return this.contract.impureCircuits._setApprovalForAll(
@@ -304,19 +299,8 @@ export class ERC721Simulator
     ).result;
   }
 
-  public _increaseBalance(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint,
-  ): [] {
-    return this.contract.impureCircuits._increaseBalance(
-      this.circuitContext,
-      account,
-      value,
-    ).result;
-  }
-
   public _mint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: ZswapCoinPublicKey,
     tokenId: bigint,
   ): [] {
     return this.contract.impureCircuits._mint(this.circuitContext, to, tokenId)
@@ -329,8 +313,8 @@ export class ERC721Simulator
   }
 
   public _transfer(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    from: ZswapCoinPublicKey,
+    to: ZswapCoinPublicKey,
     tokenId: bigint,
   ): [] {
     return this.contract.impureCircuits._transfer(
