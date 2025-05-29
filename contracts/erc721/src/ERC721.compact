@@ -228,11 +228,11 @@ module ERC721 {
     assert !Utils_isKeyZero(to) "ERC721: Invalid Receiver";
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
-
+    const auth = own_public_key();
     const previousOwner = _update(
       to,
       tokenId,
-      own_public_key()
+      auth
     );
     assert previousOwner == from "ERC721: Incorrect Owner";
   }
