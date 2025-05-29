@@ -16,6 +16,21 @@ pragma language_version >= 0.15.0;
  * - Consider implementing an introspection mechanism for transfers to contracts.
  * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
+
+/**
+ * The owner of a non-fungible token
+ * @typedef {ZswapCoinPublicKey} Owner
+ */
+
+/**
+ * The token identifier of a non-funglible token
+ * @typedef {Uint<128>} TokenId
+ */
+
+/**
+ * An account authorized to manage a non-fungible token 
+ * @typedef {ZswapCoinPublicKey} Operator
+ */
 module ERC721 {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
@@ -32,8 +47,9 @@ module ERC721 {
   /**
     * @description Initializes the contract by setting the name and symbol.
     *
-    * @param name_ - The name of the token.
-    * @param symbol_ - The symbol of the token.
+   * @param {Maybe<Opaque<"string">>} name_ - The name of the token.
+   * @param {Maybe<Opaque<"string">>} symbol_ - The symbol of the token.
+   * @return {[]} - None.
     */
   export circuit initializer(
     name_: Maybe<Opaque<"string">>,
@@ -67,7 +83,7 @@ module ERC721 {
    *
    * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
    *
-   * @param {account} - The public key to query.
+   * @param {Owner} account - The public key to query.
    * @return {Uint<128>} - The account's token balance.
    */
   export circuit balanceOf(account: ZswapCoinPublicKey): Uint<128> {
@@ -84,8 +100,8 @@ module ERC721 {
    *
    * @dev Tokens assigned to zero address are considered invalid, and queries about them do throw.
    *
-   * @param {tokenId} - The identifier for a token.
-   * @return {ZswapCoinPublicKey} - The public key that owns the token.
+   * @param {TokenId} tokenId - The identifier for a token.
+   * @return {Owner} - The public key that owns the token.
    */
   export circuit ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
     return _requireOwned(tokenId).left;
@@ -100,7 +116,7 @@ module ERC721 {
    * approach; whereby, NFTs may or may not have unique "base" URIs.
    * It's up to the implementation to decide on how to handle this.
    *
-   * @param {tokenId} - The identifier for a token.
+   * @param {TokenId} tokenId - The identifier for a token.
    * @returns {Maybe<Opaque<"string">>} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
@@ -110,7 +126,19 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Gives permission to `to` to transfer `tokenId` token to another account.
+   * The approval is cleared when the token is transferred.
+   *
+   * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
+   *
+   * Requirements:
+   *
+   * - The caller must own the token or be an approved operator.
+   * - `tokenId` must exist.
+   *
+   * @param {ZswapCoinPublicKey} to - The account receiving the approval
+   * @param {TokenId} tokenId - The token `to` may be permitted to transfer
+   * @return {[]} - None.
    */
   export circuit approve(
     to: ZswapCoinPublicKey,
@@ -126,7 +154,10 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Returns the account approved for `tokenId` token.
+   * 
+   * @param {TokenId} tokenId - The token an account may be approved to manage
+   * @return {Operator} - The account approved to manage the token
    */
   export circuit getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
     _requireOwned(tokenId);
@@ -135,7 +166,16 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Approve or remove `operator` as an operator for the caller.
+   * Operators can call {transferFrom} for any token owned by the caller.
+   *
+   * Requirements:
+   *
+   * - The `operator` cannot be the address zero.
+   * 
+   * @param {Operator} operator - An operator the caller's tokens
+   * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
+   * @return {[]} - None.
    */
   export circuit setApprovalForAll(
     operator: ZswapCoinPublicKey,
@@ -150,7 +190,11 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
+   *
+   * @param {Owner} owner - The owner of a token
+   * @param {Operator} operator - An account that may operate on `owner`'s tokens
+   * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
    */
   export circuit isApprovedForAll(
     owner: ZswapCoinPublicKey,
@@ -164,7 +208,19 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Transfers `tokenId` token from `from` to `to`.
+   * 
+   * Requirements:
+   *
+   * - `from` cannot be the zero address.
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
+   * 
+   * @param {ZswapCoinPublicKey} from - The source account from which the token is being transfered
+   * @param {ZswapCoinPublicKey} to - The target account to transfer token to
+   * @param {TokenId} tokenId - The token being transfered
+   * @return {[]} - None.
    */
   export circuit transferFrom(
     from: ZswapCoinPublicKey,
@@ -184,7 +240,13 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
+   * Returns the owner.
+   *
+   * Overrides to ownership logic should be done to {_ownerOf}.
+   * 
+   * @param {TokenId} tokenId - The token that should be owned
+   * @return {Owner} - The owner of `tokenId`
    */
   export circuit _requireOwned(tokenId: Uint<128>): ZswapCoinPublicKey {
     assert _owners.member(tokenId) "ERC721: Nonexistent Token";
@@ -195,7 +257,10 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist
+   *
+   * @param {TokenId} tokenId - The target token of the owner query
+   * @return {Owner} - The owner of the token
    */
   export circuit _ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
     if (!_owners.member(tokenId)) {
@@ -206,7 +271,16 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
+   * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
+   *
+   * The `auth` argument is optional. If the value passed is non 0, then this function will check that
+   * `auth` is either the owner of the token, or approved to operate on the token (by the owner).
+   * 
+   * @param {ZswapCoinPublicKey} to - The intended recipient of the token transfer
+   * @param {TokenId} tokenId - The token being transfered
+   * @param {ZswapCoinPublicKey} auth - An account authorized to transfer the token
+   * @return {Owner} - Owner of the token before it was transfered
    */
   export circuit _update(
     to: ZswapCoinPublicKey,
@@ -243,7 +317,15 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description  Approve `to` to operate on `tokenId`
+   *
+   * The `auth` argument is optional. If the value passed is non 0, then this function will check that `auth` is
+   * either the owner of the token, or approved to operate on all tokens held by this owner.
+   *
+   * @param {ZswapCoinPublicKey} to - The target account to approve
+   * @param {TokenId} tokenId - The token to approve
+   * @param {ZswapCoinPublicKey} auth - An account authorized to operate on all tokens held by the owner the token
+   * @return {[]} - None.
    */
   export circuit _approve(
     to: ZswapCoinPublicKey,
@@ -261,7 +343,18 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
+   * Reverts if:
+   * - `spender` does not have approval from `owner` for `tokenId`.
+   * - `spender` does not have approval to manage all of `owner`'s assets.
+   *
+   * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
+   * assumption.
+   *
+   * @param {Owner} owner - Owner of the token
+   * @param {ZswapCoinPublicKey} spender - Account operating on `tokenId`
+   * @param {TokenId} tokenId - The token to spend
+   * @return {[]} - None.
    */
   export circuit _checkAuthorized(
     owner: ZswapCoinPublicKey,
@@ -275,7 +368,16 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
+   * particular (ignoring whether it is owned by `owner`).
+   *
+   * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
+   * assumption.
+   *
+   * @param {Owner} owner - Owner of the token
+   * @param {ZswapCoinPublicKey} spender - Account that wishes to spend `tokenId`
+   * @param {TokenId} tokenId - Token to spend
+   * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
   export circuit _isAuthorized(
     owner: ZswapCoinPublicKey,
@@ -285,6 +387,12 @@ module ERC721 {
     return (!Utils_isKeyOrAddressZero(spender) && (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender));
   }
 
+  /**
+   * @description Returns the approved address for `tokenId`. Returns 0 if `tokenId` is not minted.
+   *
+   * @param {TokenId} tokenId - The token to query
+   * @return {ZswapCoinPublicKey} - An account approved to spend `tokenId`
+   */
   export circuit _getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
     // I think this returns the 0 address if token doesn't exist
     // Make sure this doesn't cause problem in testing
@@ -292,7 +400,15 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Approve `operator` to operate on all of `owner` tokens
+   *
+   * Requirements:
+   * - operator can't be the address zero.
+   *
+   * @param {Owner} owner - Owner of a token
+   * @param {Operator} operator - The account to approve
+   * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens 
+   * @return {[]} - None.
    */
   export circuit _setApprovalForAll(
     owner: ZswapCoinPublicKey,
@@ -313,7 +429,16 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Mints `tokenId` and transfers it to `to`.
+   *
+   * Requirements:
+   *
+   * - `tokenId` must not exist.
+   * - `to` cannot be the zero address.
+   * 
+   * @param {ZswapCoinPublicKey} to - The account receiving `tokenId`
+   * @param {TokenId} tokenId - The token to transfer
+   * @return {[]} - None.
    */
   export circuit _mint(
     to: ZswapCoinPublicKey,
@@ -329,7 +454,16 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Destroys `tokenId`.
+   * The approval is cleared when the token is burned.
+   * This is an internal function that does not check if the sender is authorized to operate on the token.
+   *
+   * Requirements:
+   *
+   * - `tokenId` must exist.
+   *
+   * @param {TokenId} tokenId - The token to burn
+   * @return {[]} - None.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
     const previousOwner = _update(burn_address(), tokenId, burn_address());
@@ -337,7 +471,18 @@ module ERC721 {
   }
 
   /**
-   * @description Add me...
+   * @description Transfers `tokenId` from `from` to `to`.
+   *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
+   *
+   * Requirements:
+   *
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   *
+   * @param {ZswapCoinPublicKey} from - The source account of the token transfer
+   * @param {ZswapCoinPublicKey} to - The target account of the token transfer
+   * @param {TokenId} tokenId - The token to transfer
+   * @return {[]} - None.
    */
   export circuit _transfer(
     from: ZswapCoinPublicKey,
