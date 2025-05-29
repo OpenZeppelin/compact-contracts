@@ -332,7 +332,7 @@ module ERC721 {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
-      assert (!Utils_isKeyZero(auth) && owner != auth && !isApprovedForAll(owner, auth)) "ERC721 Invalid Approver";
+      assert (owner != auth && !isApprovedForAll(owner, auth)) "ERC721 Invalid Approver";
     }
 
     _tokenApprovals.insert(tokenId, to);
