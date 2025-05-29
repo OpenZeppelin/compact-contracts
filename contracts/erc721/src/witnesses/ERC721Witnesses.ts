@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import type * as Contract from "../artifacts/MockERC721/contract/index.cjs";
 import type { WitnessContext } from "@midnight-ntwrk/compact-runtime";
 
@@ -23,3 +24,8 @@ export const ERC721Witnesses = {
     return [privateState, baseURI + privateState.tokenURI + tokenId.toString()];
   },
 };
+=======
+// This is how we type an empty object.
+export type ERC721PrivateState = Record<string, never>;
+export const ERC721Witnesses = {};
+>>>>>>> 84243c7 (Update witness file)
