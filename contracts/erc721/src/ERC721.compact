@@ -6,15 +6,19 @@ pragma language_version >= 0.15.0;
  * @module ERC721
  * @description An unshielded ERC721 library.
  *
- * @notice ADD  
+ * @notice One notable difference regarding this implementation and the EIP20 spec
+ * consists of the token size. Uint<128> is used as the token size because Uint<256>
+ * cannot be supported.
+ * This is due to encoding limits on the midnight circuit backend:
+ * https://github.com/midnightntwrk/compactc/issues/929
  *
  * @notice Further discussion and consideration required:
  *
  * - Consider changing the underscore in the internal methods to `unsafe` or
  * adopting dot notation for prefixing imports.
- * - Revise logic once contract-to-contract interactions are available on midnight.
+ * - Revise logic once contract-to-contract interactions are available on Midnight.
+ * - Revise logic once events are available on Midnight.
  * - Consider implementing an introspection mechanism for transfers to contracts.
- * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
 
 /**
@@ -96,8 +100,6 @@ module ERC721 {
 
   /**
    * @description Returns the owner of the `tokenId` token.
-   *
-   * @dev Tokens assigned to zero address are considered invalid, and queries about them do throw.
    *
    * @param {TokenId} tokenId - The identifier for a token.
    * @return {Owner} - The public key that owns the token.
