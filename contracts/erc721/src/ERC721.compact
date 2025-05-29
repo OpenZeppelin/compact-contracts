@@ -391,8 +391,9 @@ module ERC721 {
    * @return {ZswapCoinPublicKey} - An account approved to spend `tokenId`
    */
   export circuit _getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
-    // I think this returns the 0 address if token doesn't exist
-    // Make sure this doesn't cause problem in testing
+    if (!_tokenApprovals.member(tokenId)) {
+      return default<ZswapCoinPublicKey>;
+    }
     return _tokenApprovals.lookup(tokenId);
   }
 
