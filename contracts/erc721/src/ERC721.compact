@@ -491,7 +491,7 @@ module ERC721 {
     const previousOwner = _update(to, tokenId, default<ZswapCoinPublicKey>);
 
     assert !Utils_isKeyZero(previousOwner) "ERC721: Nonexistent Token";
-    assert previousOwner != from "ERC721: Incorrect Owner";
+    assert previousOwner == from "ERC721: Incorrect Owner";
   }
 
   /**
