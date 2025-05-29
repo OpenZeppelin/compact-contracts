@@ -32,7 +32,7 @@ module Utils {
    * @return {Boolean} - Returns true if `key` is zero.
    */
   export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
-    const zero = burn_address().left;
+    const zero = default<ZswapCoinPublicKey>;
     return zero == key;
   }
 
