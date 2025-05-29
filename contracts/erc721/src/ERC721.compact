@@ -83,19 +83,17 @@ module ERC721 {
 
 
   /**
-   * @description Returns the value of tokens owned by `account`.
+   * @description Returns the number of tokens in `owner`'s account.
    *
-   * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
-   *
-   * @param {Owner} account - The public key to query.
-   * @return {Uint<128>} - The account's token balance.
+   * @param {Owner} owner - The public key to query.
+   * @return {Uint<128>} - The number of tokens in`owner`'s account.
    */
-  export circuit balanceOf(account: ZswapCoinPublicKey): Uint<128> {
-    if (!_balances.member(account)) {
+  export circuit balanceOf(owner: ZswapCoinPublicKey): Uint<128> {
+    if (!_balances.member(owner)) {
       return 0;
     }
 
-    return _balances.lookup(account);
+    return _balances.lookup(owner);
   }
 
   /**
@@ -173,7 +171,7 @@ module ERC721 {
    *
    * - The `operator` cannot be the address zero.
    * 
-   * @param {Operator} operator - An operator the caller's tokens
+   * @param {Operator} operator - An operator to manage the caller's tokens
    * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
    * @return {[]} - None.
    */
