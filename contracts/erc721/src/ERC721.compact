@@ -234,7 +234,7 @@ module ERC721 {
       tokenId,
       own_public_key()
     );
-    assert previousOwner != from "ERC721: Incorrect Owner";
+    assert previousOwner == from "ERC721: Incorrect Owner";
   }
 
   /**
