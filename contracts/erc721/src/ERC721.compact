@@ -380,7 +380,10 @@ module ERC721 {
     spender: ZswapCoinPublicKey,
     tokenId: Uint<128>
   ): Boolean {
-    return (!Utils_isKeyZero(spender) && (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender));
+    return (
+      !Utils_isKeyZero(spender) && 
+      (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender)
+    );
   }
 
   /**
