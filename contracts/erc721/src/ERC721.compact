@@ -291,8 +291,9 @@ module ERC721 {
         _checkAuthorized(from, auth, tokenId);
     }
 
-    // execute update
+    // Execute the update
     if (!Utils_isKeyZero(from)) {
+      // Clear approval. No need to re-authorize
       _approve(default<ZswapCoinPublicKey>, tokenId, default<ZswapCoinPublicKey>);
       const newBalance = _balances.lookup(from) - 1 as Uint<128>;
       _balances.insert(from, newBalance);
