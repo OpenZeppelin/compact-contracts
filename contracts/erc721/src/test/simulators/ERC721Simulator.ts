@@ -158,7 +158,7 @@ export class ERC721Simulator
     to: ZswapCoinPublicKey,
     tokenId: bigint,
     sender?: CoinPublicKey,
-  ): [] {
+  ) {
     const res = this.contract.impureCircuits.approve(
       {
         ...this.circuitContext,
@@ -171,7 +171,6 @@ export class ERC721Simulator
     );
 
     this.circuitContext = res.context;
-    return res.result;
   }
 
   /**
@@ -202,7 +201,7 @@ export class ERC721Simulator
     operator: ZswapCoinPublicKey,
     approved: boolean,
     sender?: CoinPublicKey,
-  ): [] {
+  ) {
     const res = this.contract.impureCircuits.setApprovalForAll(
       {
         ...this.circuitContext,
@@ -215,9 +214,15 @@ export class ERC721Simulator
     );
 
     this.circuitContext = res.context;
-    return res.result;
   }
 
+  /**
+   * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
+   *
+   * @param owner The owner of a token
+   * @param operator An account that may operate on `owner`'s tokens
+   * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
+   */
   public isApprovedForAll(
     owner: ZswapCoinPublicKey,
     operator: ZswapCoinPublicKey,
@@ -241,7 +246,7 @@ export class ERC721Simulator
     to: ZswapCoinPublicKey,
     tokenId: bigint,
     sender?: CoinPublicKey,
-  ): [] {
+  ) {
     const res = this.contract.impureCircuits.transferFrom(
       {
         ...this.circuitContext,
@@ -255,9 +260,17 @@ export class ERC721Simulator
     );
 
     this.circuitContext = res.context;
-    return res.result;
   }
 
+  /**
+   * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
+   * Returns the owner.
+   *
+   * Overrides to ownership logic should be done to {_ownerOf}.
+   * 
+   * @param tokenId The token that should be owned
+   * @return The owner of `tokenId`
+   */
   public _requireOwned(
     tokenId: bigint,
   ): ZswapCoinPublicKey {
@@ -297,40 +310,80 @@ export class ERC721Simulator
     tokenId: bigint,
     auth: ZswapCoinPublicKey,
   ): ZswapCoinPublicKey {
-    return this.contract.impureCircuits._update(
+    const res = this.contract.impureCircuits._update(
       this.circuitContext,
       to,
       tokenId,
       auth,
-    ).result;
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
   }
 
+  /**
+   * @description  Approve `to` to operate on `tokenId`
+   *
+   * The `auth` argument is optional. If the value passed is non 0, then this function will check that `auth` is
+   * either the owner of the token, or approved to operate on all tokens held by this owner.
+   *
+   * @param to The target account to approve
+   * @param tokenId The token to approve
+   * @param auth An account authorized to operate on all tokens held by the owner the token
+   * @return None.
+   */
   public _approve(
     to: ZswapCoinPublicKey,
     tokenId: bigint,
     auth: ZswapCoinPublicKey,
-  ): [] {
-    return this.contract.impureCircuits._approve(
+  ) {
+    this.circuitContext = this.contract.impureCircuits._approve(
       this.circuitContext,
       to,
       tokenId,
       auth,
-    ).result;
+    ).context;
   }
 
+  /**
+   * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
+   * Reverts if:
+   * - `spender` does not have approval from `owner` for `tokenId`.
+   * - `spender` does not have approval to manage all of `owner`'s assets.
+   *
+   * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
+   * assumption.
+   *
+   * @param owner Owner of the token
+   * @param spender Account operating on `tokenId`
+   * @param tokenId The token to spend
+   * @return None.
+   */
   public _checkAuthorized(
     owner: ZswapCoinPublicKey,
     spender: ZswapCoinPublicKey,
     tokenId: bigint,
-  ): [] {
-    return this.contract.impureCircuits._checkAuthorized(
+  ) {
+    this.circuitContext = this.contract.impureCircuits._checkAuthorized(
       this.circuitContext,
       owner,
       spender,
       tokenId,
-    ).result;
+    ).context;
   }
 
+  /**
+   * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
+   * particular (ignoring whether it is owned by `owner`).
+   *
+   * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
+   * assumption.
+   *
+   * @param owner Owner of the token
+   * @param spender Account that wishes to spend `tokenId`
+   * @param tokenId Token to spend
+   * @return A boolean determining if `spender` may manage `tokenId`
+   */
   public _isAuthorized(
     owner: ZswapCoinPublicKey,
     spender: ZswapCoinPublicKey,
@@ -374,13 +427,13 @@ export class ERC721Simulator
     owner: ZswapCoinPublicKey,
     operator: ZswapCoinPublicKey,
     approved: boolean,
-  ): [] {
-    return this.contract.impureCircuits._setApprovalForAll(
+  ) {
+    this.circuitContext = this.contract.impureCircuits._setApprovalForAll(
       this.circuitContext,
       owner,
       operator,
       approved,
-    ).result;
+    ).context;
   }
 
   /**
@@ -398,34 +451,70 @@ export class ERC721Simulator
   public _mint(
     to: ZswapCoinPublicKey,
     tokenId: bigint,
-  ): [] {
-    return this.contract.impureCircuits._mint(this.circuitContext, to, tokenId)
-      .result;
+  ) {
+    this.circuitContext = this.contract.impureCircuits._mint(this.circuitContext, to, tokenId)
+      .context;
   }
 
-  public _burn(tokenId: bigint): [] {
-    return this.contract.impureCircuits._burn(this.circuitContext, tokenId)
-      .result;
+  /**
+   * @description Destroys `tokenId`.
+   * The approval is cleared when the token is burned.
+   * This is an internal function that does not check if the sender is authorized to operate on the token.
+   *
+   * Requirements:
+   *
+   * - `tokenId` must exist.
+   *
+   * @param tokenId The token to burn
+   * @return None.
+   */
+  public _burn(tokenId: bigint) {
+    this.circuitContext = this.contract.impureCircuits._burn(this.circuitContext, tokenId)
+      .context;
   }
 
+  /**
+   * @description Transfers `tokenId` from `from` to `to`.
+   *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
+   *
+   * Requirements:
+   *
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   *
+   * @param from The source account of the token transfer
+   * @param to The target account of the token transfer
+   * @param tokenId The token to transfer
+   * @return None.
+   */
   public _transfer(
     from: ZswapCoinPublicKey,
     to: ZswapCoinPublicKey,
     tokenId: bigint,
-  ): [] {
-    return this.contract.impureCircuits._transfer(
+  ) {
+    this.circuitContext = this.contract.impureCircuits._transfer(
       this.circuitContext,
       from,
       to,
       tokenId,
-    ).result;
+    ).context;
   }
 
-  public _setTokenURI(tokenId: bigint, tokenURI: Maybe<string>): [] {
-    return this.contract.impureCircuits._setTokenURI(
+  /**
+   * @description Sets the the URI as `tokenURI` for the given `tokenId`.
+   * The `tokenId` must exist.
+   *
+   * @notice The URI for a given NFT is usually set when the NFT is minted.
+   *
+   * @param tokenId The identifier of the token.
+   * @param tokenURI The URI of `tokenId`.
+   * @return None
+   */
+  public _setTokenURI(tokenId: bigint, tokenURI: Maybe<string>) {
+    this.circuitContext = this.contract.impureCircuits._setTokenURI(
       this.circuitContext,
       tokenId,
       tokenURI,
-    ).result;
+    ).context;
   }
 }
