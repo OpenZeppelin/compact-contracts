@@ -500,8 +500,8 @@ module ERC721 {
    *
    * @notice The URI for a given NFT is usually set when the NFT is minted.
    *
-   * @params {tokenId} - The identifier of the token.
-   * @params {tokenURI} - The URI of `tokenId`.
+   * @param {TokenId} tokenId - The identifier of the token.
+   * @param {Maybe<Opaque<"string">>} tokenURI - The URI of `tokenId`.
    * @return {[]} - None.
    */
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
