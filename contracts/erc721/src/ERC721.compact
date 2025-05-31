@@ -86,7 +86,7 @@ module ERC721 {
    * @description Returns the number of tokens in `owner`'s account.
    *
    * @param {Owner} owner - The public key to query.
-   * @return {Uint<128>} - The number of tokens in`owner`'s account.
+   * @return {Uint<128>} - The number of tokens in `owner`'s account.
    */
   export circuit balanceOf(owner: ZswapCoinPublicKey): Uint<128> {
     if (!_balances.member(owner)) {
