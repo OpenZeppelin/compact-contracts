@@ -192,7 +192,7 @@ export class ERC721Simulator
    * Requirements:
    *
    * - The `operator` cannot be the address zero.
-   * 
+   *
    * @param operator An operator to manage the caller's tokens
    * @param approved A boolean determining if `operator` may manage all tokens of the caller
    * @return None.
@@ -221,7 +221,7 @@ export class ERC721Simulator
    *
    * @param owner The owner of a token
    * @param operator An account that may operate on `owner`'s tokens
-   * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
+   * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
   public isApprovedForAll(
     owner: ZswapCoinPublicKey,
@@ -239,7 +239,7 @@ export class ERC721Simulator
    *
    * @param owner The owner of a token
    * @param operator An account that may operate on `owner`'s tokens
-   * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
+   * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
   public transferFrom(
     from: ZswapCoinPublicKey,
@@ -267,13 +267,11 @@ export class ERC721Simulator
    * Returns the owner.
    *
    * Overrides to ownership logic should be done to {_ownerOf}.
-   * 
+   *
    * @param tokenId The token that should be owned
    * @return The owner of `tokenId`
    */
-  public _requireOwned(
-    tokenId: bigint,
-  ): ZswapCoinPublicKey {
+  public _requireOwned(tokenId: bigint): ZswapCoinPublicKey {
     return this.contract.impureCircuits._requireOwned(
       this.circuitContext,
       tokenId,
@@ -286,9 +284,7 @@ export class ERC721Simulator
    * @param tokenId The target token of the owner query
    * @return The owner of the token
    */
-  public _ownerOf(
-    tokenId: bigint,
-  ): ZswapCoinPublicKey {
+  public _ownerOf(tokenId: bigint): ZswapCoinPublicKey {
     return this.contract.impureCircuits._ownerOf(this.circuitContext, tokenId)
       .result;
   }
@@ -299,7 +295,7 @@ export class ERC721Simulator
    *
    * The `auth` argument is optional. If the value passed is non 0, then this function will check that
    * `auth` is either the owner of the token, or approved to operate on the token (by the owner).
-   * 
+   *
    * @param to The intended recipient of the token transfer
    * @param tokenId The token being transfered
    * @param auth An account authorized to transfer the token
@@ -403,9 +399,7 @@ export class ERC721Simulator
    * @param tokenId The token to query
    * @return An account approved to spend `tokenId`
    */
-  public _getApproved(
-    tokenId: bigint,
-  ): ZswapCoinPublicKey {
+  public _getApproved(tokenId: bigint): ZswapCoinPublicKey {
     return this.contract.impureCircuits._getApproved(
       this.circuitContext,
       tokenId,
@@ -420,7 +414,7 @@ export class ERC721Simulator
    *
    * @param owner Owner of a token
    * @param operator The account to approve
-   * @param approved A boolean determining if `operator` may operate on all of `owner` tokens 
+   * @param approved A boolean determining if `operator` may operate on all of `owner` tokens
    * @return None.
    */
   public _setApprovalForAll(
@@ -443,17 +437,17 @@ export class ERC721Simulator
    *
    * - `tokenId` must not exist.
    * - `to` cannot be the zero address.
-   * 
+   *
    * @param to The account receiving `tokenId`
    * @param tokenId The token to transfer
    * @return None.
    */
-  public _mint(
-    to: ZswapCoinPublicKey,
-    tokenId: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._mint(this.circuitContext, to, tokenId)
-      .context;
+  public _mint(to: ZswapCoinPublicKey, tokenId: bigint) {
+    this.circuitContext = this.contract.impureCircuits._mint(
+      this.circuitContext,
+      to,
+      tokenId,
+    ).context;
   }
 
   /**
@@ -469,8 +463,10 @@ export class ERC721Simulator
    * @return None.
    */
   public _burn(tokenId: bigint) {
-    this.circuitContext = this.contract.impureCircuits._burn(this.circuitContext, tokenId)
-      .context;
+    this.circuitContext = this.contract.impureCircuits._burn(
+      this.circuitContext,
+      tokenId,
+    ).context;
   }
 
   /**
