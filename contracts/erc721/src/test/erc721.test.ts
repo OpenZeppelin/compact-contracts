@@ -74,8 +74,8 @@ describe('ERC721', () => {
     });
 
     it('should return balance when requested account has tokens', () => {
-      token._mint(_EITHER_Z_OWNER, _AMOUNT);
-      expect(token.balanceOf(_EITHER_Z_OWNER.left)).toEqual(_AMOUNT);
+      token._mint(_Z_OWNER, _AMOUNT);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(_AMOUNT);
     });
   });
 
