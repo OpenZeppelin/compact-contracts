@@ -11,6 +11,10 @@ const NO_STRING: MaybeString = {
   is_some: false,
   value: '',
 };
+const SOME_STRING: MaybeString = {
+  is_some: true,
+  value: 'https://openzeppelin.example',
+};
 const NAME: MaybeString = {
   is_some: true,
   value: 'NAME',
