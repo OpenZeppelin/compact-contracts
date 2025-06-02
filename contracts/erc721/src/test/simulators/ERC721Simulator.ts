@@ -235,11 +235,19 @@ export class ERC721Simulator
   }
 
   /**
-   * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
+   * @description Transfers `tokenId` token from `from` to `to`.
    *
-   * @param owner The owner of a token
-   * @param operator An account that may operate on `owner`'s tokens
-   * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
+   * Requirements:
+   *
+   * - `from` cannot be the zero address.
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
+   *
+   * @param {ZswapCoinPublicKey} from - The source account from which the token is being transfered
+   * @param {ZswapCoinPublicKey} to - The target account to transfer token to
+   * @param {TokenId} tokenId - The token being transfered
+   * @return {[]} - None.
    */
   public transferFrom(
     from: ZswapCoinPublicKey,
