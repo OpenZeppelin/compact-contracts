@@ -41,11 +41,8 @@ const _UNAUTHORIZED = String(
 ).padStart(64, '0');
 const _ZERO = String().padStart(64, '0');
 const _Z_OWNER = encodeToPK('OWNER');
-const _EITHER_Z_OWNER = createEitherTestUser('OWNER');
-const _Z_RECIPIENT = createEitherTestUser('RECIPIENT');
-const _Z_SPENDER = createEitherTestUser('SPENDER');
-const _Z_OTHER = createEitherTestUser('OTHER');
-const _SOME_CONTRACT = createEitherTestContractAddress('SOME_CONTRACT');
+const _Z_SPENDER = encodeToPK('SPENDER');
+const _Z_OTHER = encodeToPK('OTHER');
 
 let token: ERC721Simulator;
 let _caller: CoinPublicKey;
