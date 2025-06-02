@@ -3,9 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
 import {
-  createEitherTestContractAddress,
-  createEitherTestUser,
   encodeToPK,
+  ZERO_KEY,
 } from './utils/address';
 
 const NO_STRING: MaybeString = {
