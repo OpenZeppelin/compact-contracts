@@ -583,4 +583,18 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Nonexistent Token'); 
     });
   });
+
+  describe('_setTokenURI', () => {
+    it('should throw if token does not exist', () => {
+      expect(() => {
+        token._setTokenURI(TOKENID, NO_STRING);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+    it('should set tokenURI', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, SOME_STRING);
+      expect(token.tokenURI(TOKENID)).toEqual(SOME_STRING);
+    });
+  });
 });
