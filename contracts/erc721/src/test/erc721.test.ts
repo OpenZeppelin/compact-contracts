@@ -234,4 +234,17 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Invalid Approver');
     });
   });
+
+  describe('isApprovedForAll', () => {
+    it('should return false if approval not set', () => {
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(false);
+    });
+
+    it('should return true if approval set', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _OWNER);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+    });
+  });
 });
