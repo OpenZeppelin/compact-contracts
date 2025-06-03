@@ -461,4 +461,17 @@ describe('ERC721', () => {
       expect(token._isAuthorized(_Z_OWNER, ZERO_KEY.left, TOKENID)).toBe(false);
     }); 
   });
+
+  describe('_getApproved', () => {
+    it('should return zero address if token is not minted', () => {
+      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+    });
+
+    it('should return approved address', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      expect(token._getApproved(TOKENID)).toEqual(_Z_SPENDER);
+    });
+  });
 });
