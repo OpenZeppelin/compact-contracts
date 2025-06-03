@@ -157,4 +157,81 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Invalid Approver');
     });
   });
+
+  describe('getApproved', () => {
+    it('should throw if tokenId does not exist', () => {
+      expect(() => {
+        token.getApproved(TOKENID);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+    it('should throw if tokenId has been burned', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._burn(TOKENID);
+      expect(() => {
+        token.getApproved(TOKENID);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+    it('should get current approved spender', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_OWNER, TOKENID);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_OWNER);
+    });
+
+    it('should return zero key if approval not set', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+    });
+  });
+
+  describe('setApprovalForAll', () => {
+    it('should not approve zero address', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token.setApprovalForAll(ZERO_KEY.left, true, _caller);
+      }).toThrow('ERC721: Invalid Operator');
+    });
+
+    it('should approve operator for all tokens', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+
+      token.setApprovalForAll(_Z_SPENDER, true, _OWNER);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+    });
+
+    it('spender should manage all tokens', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+
+      token.setApprovalForAll(_Z_SPENDER, true, _OWNER);
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _SPENDER);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+
+      token.approve(_Z_OTHER, TOKENID + 1n, _SPENDER);
+      expect(token.getApproved(TOKENID + 1n)).toEqual(_Z_OTHER);
+
+      token.approve(_Z_SPENDER, TOKENID + 2n, _SPENDER);
+      expect(token.getApproved(TOKENID + 2n)).toEqual(_Z_SPENDER);
+    });
+
+    it('should revoke approval for all', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+
+      token.setApprovalForAll(_Z_SPENDER, false, _caller);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(false);
+
+      _caller = _SPENDER;
+      expect(() => {
+        token.approve(_Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Invalid Approver');
+    });
+  });
 });
