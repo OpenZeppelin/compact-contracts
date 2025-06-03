@@ -523,4 +523,31 @@ describe('ERC721', () => {
       expect(token.balanceOf(_Z_OWNER)).toEqual(3n);
     });
   });
+
+  describe('_burn', () => {
+    it('should burn token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+      
+      token._burn(TOKENID);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+    });
+
+    it('should not burn a token that does not exist', () => {
+      expect(() => {
+        token._burn(TOKENID);
+      }).toThrow('ERC721: Invalid Sender');
+    });
+
+    it('should clear approval when token is burned', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
+
+      token._burn(TOKENID);
+      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+    });
+  });
 });
