@@ -247,4 +247,55 @@ describe('ERC721', () => {
       expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
     });
   });
+
+  describe('transferFrom', () => {
+    it('should not transfer to zero address', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token.transferFrom(_Z_OWNER, ZERO_KEY.left, TOKENID);
+      }).toThrow('ERC721: Invalid Receiver');
+    });
+
+    it('should not transfer from zero address', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token.transferFrom(ZERO_KEY.left, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Incorrect Owner');
+    });
+
+    it('unapproved operator should not transfer', () => {
+      _caller = _SPENDER
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Insufficient Approval');
+    })
+    
+    it('should not transfer token that has not been minted', () => {
+      _caller = _OWNER;
+      expect(() => {
+        token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+   it('should transfer token via approved operator', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _OWNER);
+
+      _caller = _SPENDER;
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    }); 
+    
+    it('should transfer token via approvedForAll operator', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _OWNER);
+
+      _caller = _SPENDER;
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    }); 
+  });
 });
