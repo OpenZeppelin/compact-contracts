@@ -298,4 +298,25 @@ describe('ERC721', () => {
       expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
     }); 
   });
+
+  describe('_requireOwned', () => {
+    it('should throw if token has not been minted', () => {
+      expect(() => {
+        token._requireOwned(TOKENID);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+    it('should throw if token has been burned', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._burn(TOKENID);
+      expect(() => {
+          token._requireOwned(TOKENID);
+        }).toThrow('ERC721: Nonexistent Token'); 
+    });
+
+    it('should return correct owner', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token._requireOwned(TOKENID)).toEqual(_Z_OWNER);
+    });
+  });
 });
