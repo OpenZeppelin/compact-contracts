@@ -392,4 +392,33 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Insufficient Approval');
     });
   });
+
+  describe('_approve', () => {
+    it('should approve if auth is owner', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._approve(_Z_SPENDER, TOKENID, _Z_OWNER);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should approve if auth is approved for all', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      token._approve(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should throw if auth is unauthorized', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._approve(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      }).toThrow('ERC721: Invalid Approver');
+    });
+
+    it('should approve if auth is zero address', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._approve(_Z_SPENDER, TOKENID, ZERO_KEY.left);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER); 
+    });
+  });
 });
