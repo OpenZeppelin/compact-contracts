@@ -550,4 +550,37 @@ describe('ERC721', () => {
       expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY.left);
     });
   });
+
+  describe('_transfer', () => {
+    it('should transfer token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(0n);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(1n);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should not transfer to zero address', () => {
+      expect(() => {
+        token._transfer(_Z_OWNER, ZERO_KEY.left, TOKENID);
+      }).toThrow('ERC721: Invalid Receiver');
+    });
+
+    it('should throw if from does not own token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._transfer(_Z_SPENDER, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Incorrect Owner'); 
+    });
+
+    it('should throw if token does not exist', () => {
+      expect(() => {
+        token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Nonexistent Token'); 
+    });
+  });
 });
