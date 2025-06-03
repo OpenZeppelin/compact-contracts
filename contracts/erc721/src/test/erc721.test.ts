@@ -436,4 +436,29 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Insufficient Approval');
     });
   });
+
+  describe('_isAuthorized', () => {
+    it('should return true if spender is authorized', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      expect(token._isAuthorized(_Z_OWNER, _Z_SPENDER, TOKENID)).toBe(true);
+    });
+
+    it('should return true if spender is authorized for all', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      expect(token._isAuthorized(_Z_OWNER, _Z_SPENDER, TOKENID)).toBe(true);
+    });
+    
+    it('should return true if spender is owner', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token._isAuthorized(_Z_OWNER, _Z_OWNER, TOKENID)).toBe(true);
+    });
+
+    it('should return false if spender is zero address', () => {
+      expect(token._isAuthorized(_Z_OWNER, ZERO_KEY.left, TOKENID)).toBe(false);
+    }); 
+  });
 });
