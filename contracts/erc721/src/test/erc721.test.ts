@@ -498,4 +498,29 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Invalid Operator');
     });
   });
+
+  describe('_mint', () => {
+    it('should not mint to zero address', () => {
+      expect(() => {
+        token._mint(ZERO_KEY.left, TOKENID);
+      }).toThrow('ERC721: Invalid Receiver');
+    });
+
+    it('should not mint a token that already exists', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._mint(_Z_OWNER, TOKENID);
+      }).toThrow('ERC721: Invalid Sender');
+    });
+
+    it('should mint token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+
+      token._mint(_Z_OWNER, TOKENID + 1n); 
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(3n);
+    });
+  });
 });
