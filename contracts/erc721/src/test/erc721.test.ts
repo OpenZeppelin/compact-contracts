@@ -474,4 +474,28 @@ describe('ERC721', () => {
       expect(token._getApproved(TOKENID)).toEqual(_Z_SPENDER);
     });
   });
+
+  describe('_setApprovalForAll', () => {
+    it('should approve operator', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._setApprovalForAll(_Z_OWNER, _Z_SPENDER, true);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+    });
+
+   it('should revoke operator approval', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+
+      token._setApprovalForAll(_Z_OWNER, _Z_SPENDER, false);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(false); 
+    });
+
+    it('should throw if operator is zero address', () => {
+      expect(() => {
+        token._setApprovalForAll(_Z_OWNER, ZERO_KEY.left, true);
+      }).toThrow('ERC721: Invalid Operator');
+    });
+  });
 });
