@@ -421,4 +421,19 @@ describe('ERC721', () => {
       expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER); 
     });
   });
+
+  describe('_checkAuthorized', () => {
+    it('should throw if token not minted', () => {
+      expect(() => {
+        token._checkAuthorized(ZERO_KEY.left, _Z_OWNER, TOKENID);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+    it('should throw if spender does not have approval', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._checkAuthorized(_Z_OWNER, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Insufficient Approval');
+    });
+  });
 });
