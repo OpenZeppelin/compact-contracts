@@ -330,4 +330,66 @@ describe('ERC721', () => {
       expect(token._ownerOf(TOKENID)).toEqual(_Z_OWNER);
     });
   });
+
+  describe('_update', () => {
+    it('should transfer token and clear approvals', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_OTHER, TOKENID, _caller);
+      const prevOwner = token._update(_Z_SPENDER, TOKENID, ZERO_KEY.left);
+
+      expect(prevOwner).toEqual(_Z_OWNER);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(1n);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY.left)
+    });
+
+    it('should mint a token', () => {
+      const prevOwner = token._update(_Z_OWNER, TOKENID, ZERO_KEY.left);
+      expect(prevOwner).toEqual(ZERO_KEY.left);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+    });
+
+    it('should burn a token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      const prevOwner = token._update(ZERO_KEY.left, TOKENID, _Z_OWNER);
+      expect(prevOwner).toEqual(_Z_OWNER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY.left);
+    });
+
+    it('should transfer if auth is authorized', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      const prevOwner = token._update(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      
+      expect(prevOwner).toEqual(_Z_OWNER);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(1n);
+    });
+
+    it('should transfer if auth is authorized for all', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      const prevOwner = token._update(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      
+      expect(prevOwner).toEqual(_Z_OWNER);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(1n);
+    });
+
+    it('should throw if auth is not authorized', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._update(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      }).toThrow('ERC721: Insufficient Approval');
+    });
+  });
 });
