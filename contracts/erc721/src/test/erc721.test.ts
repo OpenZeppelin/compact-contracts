@@ -319,4 +319,15 @@ describe('ERC721', () => {
       expect(token._requireOwned(TOKENID)).toEqual(_Z_OWNER);
     });
   });
+
+  describe('_ownerOf', () => {
+    it('should return zero address if token does not exist', () => {
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY.left);
+    });
+
+    it('should return owner of token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token._ownerOf(TOKENID)).toEqual(_Z_OWNER);
+    });
+  });
 });
