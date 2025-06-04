@@ -65,4 +65,14 @@ describe('Utils', () => {
       expect(contract.isKeyZero(Z_SOME_KEY.left)).toBe(false);
     });
   });
+
+  describe('isContractAddress', () => {
+    it('should return true if ContractAddress', () => {
+      expect(contract.isContractAddress(SOME_CONTRACT)).toBe(true);
+    });
+
+    it('should return false ZswapCoinPublicKey', () => {
+      expect(contract.isContractAddress(Z_SOME_KEY)).toBe(false);
+    });
+  });
 });

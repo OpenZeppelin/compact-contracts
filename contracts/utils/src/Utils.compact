@@ -57,4 +57,14 @@ module Utils {
       return false;
     }
   }
+
+  /**
+   * @description Returns whether `keyOrAddress` is a ContractAddress type
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
+   * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress
+   */
+  export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    return !keyOrAddress.is_left;
+  }
 }
