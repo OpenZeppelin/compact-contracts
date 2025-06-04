@@ -634,4 +634,8 @@ export class ERC721Simulator
       tokenId,
     ).context;
   }
+
+  public assertInitialized() {
+    this.contract.impureCircuits.assertInitialized(this.circuitContext);
+  }
 }

@@ -5,6 +5,7 @@ pragma language_version >= 0.15.0;
 import CompactStandardLibrary;
 
 import "../../ERC721" prefix ERC721_;
+import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
@@ -13,6 +14,7 @@ constructor(
   _symbol: Opaque<"string">
 ) {
   ERC721_initialize(_name, _symbol);
+  Initializable_initialize();
 }
 
 export circuit name(): Opaque<"string"> {
@@ -165,4 +167,8 @@ export circuit _unsafe_mint(
   tokenId: Uint<128>
 ): [] {
   return ERC721__unsafe_mint(to, tokenId);  
+}
+
+export circuit assertInitialized(): [] {
+  return Initializable_assertInitialized();
 }
