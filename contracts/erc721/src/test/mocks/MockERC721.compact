@@ -143,3 +143,26 @@ export circuit _transfer(
 export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
   return ERC721__setTokenURI(tokenId, tokenURI);
 }
+
+export circuit _unsafeTransferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Uint<128>
+): [] {
+  return ERC721__unsafeTransferFrom(from, to, tokenId);
+}
+
+export circuit _unsafe_transfer(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Uint<128>
+): [] {
+  return ERC721__unsafe_transfer(from, to, tokenId); 
+}
+
+export circuit _unsafe_mint(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Uint<128>
+): [] {
+  return ERC721__unsafe_mint(to, tokenId);  
+}
