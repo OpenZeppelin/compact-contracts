@@ -2,9 +2,9 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
-import { encodeToPK, ZERO_KEY } from './utils/address';
+import { createEitherTestUser, ZERO_KEY } from './utils/address';
 
-const NO_STRING: MaybeString = {
+const NONE_STRING: MaybeString = {
   is_some: false,
   value: '',
 };
@@ -12,14 +12,10 @@ const SOME_STRING: MaybeString = {
   is_some: true,
   value: 'https://openzeppelin.example',
 };
-const NAME: MaybeString = {
-  is_some: true,
-  value: 'NAME',
-};
-const SYMBOL: MaybeString = {
-  is_some: true,
-  value: 'SYMBOL',
-};
+
+const NAME = 'NAME';
+const SYMBOL = 'SYMBOL';
+const EMPTY_STRING = '';
 
 const TOKENID: bigint = BigInt(1);
 
@@ -37,9 +33,9 @@ const _UNAUTHORIZED = String(
   Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
 ).padStart(64, '0');
 const _ZERO = String().padStart(64, '0');
-const _Z_OWNER = encodeToPK('OWNER');
-const _Z_SPENDER = encodeToPK('SPENDER');
-const _Z_OTHER = encodeToPK('OTHER');
+const _Z_OWNER = createEitherTestUser('OWNER');
+const _Z_SPENDER = createEitherTestUser('SPENDER');
+const _Z_OTHER = createEitherTestUser('OTHER');
 
 let token: ERC721Simulator;
 let _caller: CoinPublicKey;
@@ -54,10 +50,10 @@ describe('ERC721', () => {
     });
 
     it('should initialize empty metadata', () => {
-      token = new ERC721Simulator(NO_STRING, NO_STRING);
+      token = new ERC721Simulator(EMPTY_STRING, EMPTY_STRING);
 
-      expect(token.name()).toEqual(NO_STRING);
-      expect(token.symbol()).toEqual(NO_STRING);
+      expect(token.name()).toEqual(EMPTY_STRING);
+      expect(token.symbol()).toEqual(EMPTY_STRING);
     });
   });
 
@@ -106,8 +102,8 @@ describe('ERC721', () => {
 
     it('should return none if tokenURI set as default value', () => {
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, NO_STRING);
-      expect(token.tokenURI(TOKENID)).toEqual(NO_STRING);
+      token._setTokenURI(TOKENID, NONE_STRING);
+      expect(token.tokenURI(TOKENID)).toEqual(NONE_STRING);
     });
 
     it('should return some string if tokenURI is set', () => {
@@ -120,7 +116,7 @@ describe('ERC721', () => {
   describe('approve', () => {
     beforeEach(() => {
       token._mint(_Z_OWNER, TOKENID);
-      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
 
     it('should throw if not owner', () => {
@@ -177,7 +173,7 @@ describe('ERC721', () => {
 
     it('should return zero key if approval not set', () => {
       token._mint(_Z_OWNER, TOKENID);
-      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
   });
 
@@ -186,7 +182,7 @@ describe('ERC721', () => {
       _caller = _OWNER;
       token._mint(_Z_OWNER, TOKENID);
       expect(() => {
-        token.setApprovalForAll(ZERO_KEY.left, true, _caller);
+        token.setApprovalForAll(ZERO_KEY, true, _caller);
       }).toThrow('ERC721: Invalid Operator');
     });
 
@@ -248,14 +244,14 @@ describe('ERC721', () => {
     it('should not transfer to zero address', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(() => {
-        token.transferFrom(_Z_OWNER, ZERO_KEY.left, TOKENID);
+        token.transferFrom(_Z_OWNER, ZERO_KEY, TOKENID);
       }).toThrow('ERC721: Invalid Receiver');
     });
 
     it('should not transfer from zero address', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(() => {
-        token.transferFrom(ZERO_KEY.left, _Z_SPENDER, TOKENID);
+        token.transferFrom(ZERO_KEY, _Z_SPENDER, TOKENID);
       }).toThrow('ERC721: Incorrect Owner');
     });
 
@@ -318,7 +314,7 @@ describe('ERC721', () => {
 
   describe('_ownerOf', () => {
     it('should return zero address if token does not exist', () => {
-      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY);
     });
 
     it('should return owner of token', () => {
@@ -332,28 +328,28 @@ describe('ERC721', () => {
       _caller = _OWNER;
       token._mint(_Z_OWNER, TOKENID);
       token.approve(_Z_OTHER, TOKENID, _caller);
-      const prevOwner = token._update(_Z_SPENDER, TOKENID, ZERO_KEY.left);
+      const prevOwner = token._update(_Z_SPENDER, TOKENID, ZERO_KEY);
 
       expect(prevOwner).toEqual(_Z_OWNER);
       expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
       expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
       expect(token.balanceOf(_Z_SPENDER)).toEqual(1n);
-      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
 
     it('should mint a token', () => {
-      const prevOwner = token._update(_Z_OWNER, TOKENID, ZERO_KEY.left);
-      expect(prevOwner).toEqual(ZERO_KEY.left);
+      const prevOwner = token._update(_Z_OWNER, TOKENID, ZERO_KEY);
+      expect(prevOwner).toEqual(ZERO_KEY);
       expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
       expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
     });
 
     it('should burn a token', () => {
       token._mint(_Z_OWNER, TOKENID);
-      const prevOwner = token._update(ZERO_KEY.left, TOKENID, _Z_OWNER);
+      const prevOwner = token._update(ZERO_KEY, TOKENID, _Z_OWNER);
       expect(prevOwner).toEqual(_Z_OWNER);
       expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
-      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY);
     });
 
     it('should transfer if auth is authorized', () => {
@@ -413,7 +409,7 @@ describe('ERC721', () => {
 
     it('should approve if auth is zero address', () => {
       token._mint(_Z_OWNER, TOKENID);
-      token._approve(_Z_SPENDER, TOKENID, ZERO_KEY.left);
+      token._approve(_Z_SPENDER, TOKENID, ZERO_KEY);
       expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
     });
   });
@@ -421,7 +417,7 @@ describe('ERC721', () => {
   describe('_checkAuthorized', () => {
     it('should throw if token not minted', () => {
       expect(() => {
-        token._checkAuthorized(ZERO_KEY.left, _Z_OWNER, TOKENID);
+        token._checkAuthorized(ZERO_KEY, _Z_OWNER, TOKENID);
       }).toThrow('ERC721: Nonexistent Token');
     });
 
@@ -454,13 +450,13 @@ describe('ERC721', () => {
     });
 
     it('should return false if spender is zero address', () => {
-      expect(token._isAuthorized(_Z_OWNER, ZERO_KEY.left, TOKENID)).toBe(false);
+      expect(token._isAuthorized(_Z_OWNER, ZERO_KEY, TOKENID)).toBe(false);
     });
   });
 
   describe('_getApproved', () => {
     it('should return zero address if token is not minted', () => {
-      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
 
     it('should return approved address', () => {
@@ -490,7 +486,7 @@ describe('ERC721', () => {
 
     it('should throw if operator is zero address', () => {
       expect(() => {
-        token._setApprovalForAll(_Z_OWNER, ZERO_KEY.left, true);
+        token._setApprovalForAll(_Z_OWNER, ZERO_KEY, true);
       }).toThrow('ERC721: Invalid Operator');
     });
   });
@@ -498,7 +494,7 @@ describe('ERC721', () => {
   describe('_mint', () => {
     it('should not mint to zero address', () => {
       expect(() => {
-        token._mint(ZERO_KEY.left, TOKENID);
+        token._mint(ZERO_KEY, TOKENID);
       }).toThrow('ERC721: Invalid Receiver');
     });
 
@@ -526,7 +522,7 @@ describe('ERC721', () => {
       expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
 
       token._burn(TOKENID);
-      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY);
       expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
     });
 
@@ -543,7 +539,7 @@ describe('ERC721', () => {
       expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
 
       token._burn(TOKENID);
-      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY.left);
+      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
   });
 
@@ -562,7 +558,7 @@ describe('ERC721', () => {
 
     it('should not transfer to zero address', () => {
       expect(() => {
-        token._transfer(_Z_OWNER, ZERO_KEY.left, TOKENID);
+        token._transfer(_Z_OWNER, ZERO_KEY, TOKENID);
       }).toThrow('ERC721: Invalid Receiver');
     });
 
@@ -583,7 +579,7 @@ describe('ERC721', () => {
   describe('_setTokenURI', () => {
     it('should throw if token does not exist', () => {
       expect(() => {
-        token._setTokenURI(TOKENID, NO_STRING);
+        token._setTokenURI(TOKENID, NONE_STRING);
       }).toThrow('ERC721: Nonexistent Token');
     });
 

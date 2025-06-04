@@ -23,7 +23,7 @@ pragma language_version >= 0.15.0;
 
 /**
  * The owner of a non-fungible token
- * @typedef {ZswapCoinPublicKey} Owner
+ * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Owner
  */
 
 /**
@@ -33,31 +33,31 @@ pragma language_version >= 0.15.0;
 
 /**
  * An account authorized to manage a non-fungible token 
- * @typedef {ZswapCoinPublicKey} Operator
+ * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Operator
  */
 module ERC721 {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
 
   /// Public state
-  export sealed ledger _name: Maybe<Opaque<"string">>;
-  export sealed ledger _symbol: Maybe<Opaque<"string">>;
-  export ledger _owners: Map<Uint<128>, ZswapCoinPublicKey>;
-  export ledger _balances: Map<ZswapCoinPublicKey, Uint<128>>;
-  export ledger _tokenApprovals: Map<Uint<128>, ZswapCoinPublicKey>;
-  export ledger _operatorApprovals: Map<ZswapCoinPublicKey, Map<ZswapCoinPublicKey, Boolean>>;
+  export sealed ledger _name: Opaque<"string">;
+  export sealed ledger _symbol: Opaque<"string">;
+  export ledger _owners: Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>;
+  export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
+  export ledger _tokenApprovals: Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>;
+  export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
   export ledger _tokenURI: Map<Uint<128>, Maybe<Opaque<"string">>>;
 
   /**
    * @description Initializes the contract by setting the name and symbol.
    *
-   * @param {Maybe<Opaque<"string">>} name_ - The name of the token.
-   * @param {Maybe<Opaque<"string">>} symbol_ - The symbol of the token.
+   * @param {Opaque<"string">} name_ - The name of the token.
+   * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @return {[]} - None.
    */
-  export circuit initializer(
-    name_: Maybe<Opaque<"string">>,
-    symbol_: Maybe<Opaque<"string">>
+  export circuit initialize(
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">
   ): [] {
     _name = name_;
     _symbol = symbol_;
@@ -66,18 +66,18 @@ module ERC721 {
   /**
    * @description Returns the token name.
    *
-   * @return {Maybe<Opaque<"string">>} - The token name.
+   * @return {Opaque<"string">} - The token name.
    */
-  export circuit name(): Maybe<Opaque<"string">> {
+  export circuit name(): Opaque<"string"> {
     return _name;
   }
 
   /**
    * @description Returns the symbol of the token.
    *
-   * @return {Maybe<Opaque<"string">>} - The token symbol.
+   * @return {Opaque<"string">} - The token symbol.
    */
-  export circuit symbol(): Maybe<Opaque<"string">> {
+  export circuit symbol(): Opaque<"string"> {
     return _symbol;
   }
 
@@ -88,7 +88,7 @@ module ERC721 {
    * @param {Owner} owner - The public key to query.
    * @return {Uint<128>} - The number of tokens in `owner`'s account.
    */
-  export circuit balanceOf(owner: ZswapCoinPublicKey): Uint<128> {
+  export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
     if (!_balances.member(owner)) {
       return 0;
     }
@@ -102,7 +102,7 @@ module ERC721 {
    * @param {TokenId} tokenId - The identifier for a token.
    * @return {Owner} - The public key that owns the token.
    */
-  export circuit ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
+  export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     return _requireOwned(tokenId);
   }
 
@@ -116,7 +116,7 @@ module ERC721 {
    * It's up to the implementation to decide on how to handle this.
    *
    * @param {TokenId} tokenId - The identifier for a token.
-   * @returns {Maybe<Opaque<"string">>} - the token id's URI.
+   * @returns {Opaque<"string">} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
     _requireOwned(tokenId);
@@ -135,17 +135,17 @@ module ERC721 {
    * - The caller must own the token or be an approved operator.
    * - `tokenId` must exist.
    *
-   * @param {ZswapCoinPublicKey} to - The account receiving the approval
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving the approval
    * @param {TokenId} tokenId - The token `to` may be permitted to transfer
    * @return {[]} - None.
    */
   export circuit approve(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
-    const auth = own_public_key();
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
     _approve(
-      to, 
+      to,
       tokenId,
       auth
     );
@@ -157,7 +157,7 @@ module ERC721 {
    * @param {TokenId} tokenId - The token an account may be approved to manage
    * @return {Operator} - The account approved to manage the token
    */
-  export circuit getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
+  export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     _requireOwned(tokenId);
 
     return _getApproved(tokenId);
@@ -176,10 +176,10 @@ module ERC721 {
    * @return {[]} - None.
    */
   export circuit setApprovalForAll(
-    operator: ZswapCoinPublicKey,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: Boolean
   ): [] {
-    const owner = own_public_key();
+    const owner = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
     _setApprovalForAll(
       owner,
       operator,
@@ -195,8 +195,8 @@ module ERC721 {
    * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
    */
   export circuit isApprovedForAll(
-    owner: ZswapCoinPublicKey,
-    operator: ZswapCoinPublicKey
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
     if (_operatorApprovals.member(owner) && _operatorApprovals.lookup(owner).member(operator)) {
       return _operatorApprovals.lookup(owner).lookup(operator);
@@ -215,20 +215,20 @@ module ERC721 {
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    * 
-   * @param {ZswapCoinPublicKey} from - The source account from which the token is being transfered
-   * @param {ZswapCoinPublicKey} to - The target account to transfer token to
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
    * @param {TokenId} tokenId - The token being transfered
    * @return {[]} - None.
    */
   export circuit transferFrom(
-    from: ZswapCoinPublicKey,
-    to: ZswapCoinPublicKey,
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
-    assert !Utils_isKeyZero(to) "ERC721: Invalid Receiver";
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
-    const auth = own_public_key();
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
     const previousOwner = _update(
       to,
       tokenId,
@@ -246,10 +246,10 @@ module ERC721 {
    * @param {TokenId} tokenId - The token that should be owned
    * @return {Owner} - The owner of `tokenId`
    */
-  export circuit _requireOwned(tokenId: Uint<128>): ZswapCoinPublicKey {
+  export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     const owner = _ownerOf(tokenId);
 
-    assert !Utils_isKeyZero(owner) "ERC721: Nonexistent Token";
+    assert !Utils_isKeyOrAddressZero(owner) "ERC721: Nonexistent Token";
     return owner;
   }
 
@@ -259,9 +259,9 @@ module ERC721 {
    * @param {TokenId} tokenId - The target token of the owner query
    * @return {Owner} - The owner of the token
    */
-  export circuit _ownerOf(tokenId: Uint<128>): ZswapCoinPublicKey {
+  export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_owners.member(tokenId)) {
-      _owners.insert(tokenId, default<ZswapCoinPublicKey>);
+      _owners.insert(tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
     }
 
     return _owners.lookup(tokenId);
@@ -274,32 +274,32 @@ module ERC721 {
    * The `auth` argument is optional. If the value passed is non 0, then this function will check that
    * `auth` is either the owner of the token, or approved to operate on the token (by the owner).
    * 
-   * @param {ZswapCoinPublicKey} to - The intended recipient of the token transfer
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The intended recipient of the token transfer
    * @param {TokenId} tokenId - The token being transfered
-   * @param {ZswapCoinPublicKey} auth - An account authorized to transfer the token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to transfer the token
    * @return {Owner} - Owner of the token before it was transfered
    */
   export circuit _update(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>,
-    auth: ZswapCoinPublicKey
-  ): ZswapCoinPublicKey {
+    auth: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
     const from = _ownerOf(tokenId);
 
     // Perform (optional) operator check
-    if (!Utils_isKeyZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(auth)) {
         _checkAuthorized(from, auth, tokenId);
     }
 
     // Execute the update
-    if (!Utils_isKeyZero(from)) {
+    if (!Utils_isKeyOrAddressZero(from)) {
       // Clear approval. No need to re-authorize
-      _approve(default<ZswapCoinPublicKey>, tokenId, default<ZswapCoinPublicKey>);
+      _approve(default<Either<ZswapCoinPublicKey, ContractAddress>>, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
       const newBalance = _balances.lookup(from) - 1 as Uint<128>;
       _balances.insert(from, newBalance);
     }
 
-    if (!Utils_isKeyZero(to)) {
+    if (!Utils_isKeyOrAddressZero(to)) {
       if (!_balances.member(to)) {
         _balances.insert(to, 0);
       }
@@ -318,17 +318,17 @@ module ERC721 {
    * The `auth` argument is optional. If the value passed is non 0, then this function will check that `auth` is
    * either the owner of the token, or approved to operate on all tokens held by this owner.
    *
-   * @param {ZswapCoinPublicKey} to - The target account to approve
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to approve
    * @param {TokenId} tokenId - The token to approve
-   * @param {ZswapCoinPublicKey} auth - An account authorized to operate on all tokens held by the owner the token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner the token
    * @return {[]} - None.
    */
   export circuit _approve(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>,
-    auth: ZswapCoinPublicKey
+    auth: Either<ZswapCoinPublicKey, ContractAddress>
   ): [] {
-    if (!Utils_isKeyZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(auth)) {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
@@ -348,17 +348,17 @@ module ERC721 {
    * assumption.
    *
    * @param {Owner} owner - Owner of the token
-   * @param {ZswapCoinPublicKey} spender - Account operating on `tokenId`
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - Account operating on `tokenId`
    * @param {TokenId} tokenId - The token to spend
    * @return {[]} - None.
    */
   export circuit _checkAuthorized(
-    owner: ZswapCoinPublicKey,
-    spender: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
     if (!_isAuthorized(owner, spender, tokenId)) {
-      assert !Utils_isKeyZero(owner) "ERC721: Nonexistent Token";
+      assert !Utils_isKeyOrAddressZero(owner) "ERC721: Nonexistent Token";
       assert false "ERC721: Insufficient Approval";
     }
   }
@@ -371,17 +371,17 @@ module ERC721 {
    * assumption.
    *
    * @param {Owner} owner - Owner of the token
-   * @param {ZswapCoinPublicKey} spender - Account that wishes to spend `tokenId`
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - Account that wishes to spend `tokenId`
    * @param {TokenId} tokenId - Token to spend
    * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
   export circuit _isAuthorized(
-    owner: ZswapCoinPublicKey,
-    spender: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): Boolean {
     return (
-      !Utils_isKeyZero(spender) && 
+      !Utils_isKeyOrAddressZero(spender) && 
       (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender)
     );
   }
@@ -390,11 +390,11 @@ module ERC721 {
    * @description Returns the approved address for `tokenId`. Returns 0 if `tokenId` is not minted.
    *
    * @param {TokenId} tokenId - The token to query
-   * @return {ZswapCoinPublicKey} - An account approved to spend `tokenId`
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - An account approved to spend `tokenId`
    */
-  export circuit _getApproved(tokenId: Uint<128>): ZswapCoinPublicKey {
+  export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_tokenApprovals.member(tokenId)) {
-      return default<ZswapCoinPublicKey>;
+      return default<Either<ZswapCoinPublicKey, ContractAddress>>;
     }
     return _tokenApprovals.lookup(tokenId);
   }
@@ -411,16 +411,16 @@ module ERC721 {
    * @return {[]} - None.
    */
   export circuit _setApprovalForAll(
-    owner: ZswapCoinPublicKey,
-    operator: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: Boolean
   ): [] {
-    assert !Utils_isKeyZero(operator) "ERC721: Invalid Operator";
+    assert !Utils_isKeyOrAddressZero(operator) "ERC721: Invalid Operator";
 
     if (!_operatorApprovals.member(owner)) {
       _operatorApprovals.insert(
         owner,
-        default<Map<ZswapCoinPublicKey, Boolean>>
+        default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
       );
     }
 
@@ -435,19 +435,19 @@ module ERC721 {
    * - `tokenId` must not exist.
    * - `to` cannot be the zero address.
    * 
-   * @param {ZswapCoinPublicKey} to - The account receiving `tokenId`
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {TokenId} tokenId - The token to transfer
    * @return {[]} - None.
    */
   export circuit _mint(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
-    assert !Utils_isKeyZero(to) "ERC721: Invalid Receiver";
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, default<ZswapCoinPublicKey>);
+    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
 
-    assert Utils_isKeyZero(previousOwner) "ERC721: Invalid Sender";
+    assert Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
 
   /**
@@ -463,8 +463,8 @@ module ERC721 {
    * @return {[]} - None.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
-    const previousOwner = _update(default<ZswapCoinPublicKey>, tokenId, default<ZswapCoinPublicKey>);
-    assert !Utils_isKeyZero(previousOwner) "ERC721: Invalid Sender";
+    const previousOwner = _update(default<Either<ZswapCoinPublicKey, ContractAddress>>, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
 
   /**
@@ -476,21 +476,21 @@ module ERC721 {
    * - `to` cannot be the zero address.
    * - `tokenId` token must be owned by `from`.
    *
-   * @param {ZswapCoinPublicKey} from - The source account of the token transfer
-   * @param {ZswapCoinPublicKey} to - The target account of the token transfer
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
    * @param {TokenId} tokenId - The token to transfer
    * @return {[]} - None.
    */
   export circuit _transfer(
-    from: ZswapCoinPublicKey,
-    to: ZswapCoinPublicKey,
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
-    assert !Utils_isKeyZero(to) "ERC721: Invalid Receiver";
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, default<ZswapCoinPublicKey>);
+    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
 
-    assert !Utils_isKeyZero(previousOwner) "ERC721: Nonexistent Token";
+    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
     assert previousOwner == from "ERC721: Incorrect Owner";
   }
 
@@ -501,7 +501,7 @@ module ERC721 {
    * @notice The URI for a given NFT is usually set when the NFT is minted.
    *
    * @param {TokenId} tokenId - The identifier of the token.
-   * @param {Maybe<Opaque<"string">>} tokenURI - The URI of `tokenId`.
+   * @param {Opaque<"string">} tokenURI - The URI of `tokenId`.
    * @return {[]} - None.
    */
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {

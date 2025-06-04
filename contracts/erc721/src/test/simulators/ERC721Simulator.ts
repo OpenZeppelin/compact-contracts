@@ -10,15 +10,16 @@ import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type Ledger,
   type Maybe,
-  Contract as MockERC721,
+  type Either,
   type ZswapCoinPublicKey,
+  type ContractAddress,
+  Contract as MockERC721,
   ledger,
 } from '../../artifacts/MockERC721/contract/index.cjs'; // Combined imports
 import {
   type ERC721PrivateState,
   ERC721Witnesses,
 } from '../../witnesses/ERC721Witnesses';
-import type { MaybeString } from '../types/string';
 import type { IContractSimulator } from '../types/test';
 
 /**
@@ -41,7 +42,7 @@ export class ERC721Simulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(name: MaybeString, symbol: MaybeString) {
+  constructor(name: string, symbol: string) {
     this.contract = new MockERC721<ERC721PrivateState>(ERC721Witnesses);
     const {
       currentPrivateState,
@@ -92,7 +93,7 @@ export class ERC721Simulator
    * @description Returns the token name.
    * @returns The token name.
    */
-  public name(): MaybeString {
+  public name(): string {
     return this.contract.impureCircuits.name(this.circuitContext).result;
   }
 
@@ -100,7 +101,7 @@ export class ERC721Simulator
    * @description Returns the symbol of the token.
    * @returns The token name.
    */
-  public symbol(): MaybeString {
+  public symbol(): string {
     return this.contract.impureCircuits.symbol(this.circuitContext).result;
   }
 
@@ -109,7 +110,9 @@ export class ERC721Simulator
    * @param account The public key to query.
    * @return The number of tokens in `account`'s account.
    */
-  public balanceOf(account: ZswapCoinPublicKey): bigint {
+  public balanceOf(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): bigint {
     return this.contract.impureCircuits.balanceOf(this.circuitContext, account)
       .result;
   }
@@ -119,7 +122,7 @@ export class ERC721Simulator
    * @param tokenId The identifier for a token.
    * @return The public key that owns the token.
    */
-  public ownerOf(tokenId: bigint): ZswapCoinPublicKey {
+  public ownerOf(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits.ownerOf(this.circuitContext, tokenId)
       .result;
   }
@@ -155,7 +158,7 @@ export class ERC721Simulator
    * @return None.
    */
   public approve(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
     sender?: CoinPublicKey,
   ) {
@@ -178,7 +181,9 @@ export class ERC721Simulator
    * @param tokenId The token an account may be approved to manage
    * @return The account approved to manage the token
    */
-  public getApproved(tokenId: bigint): ZswapCoinPublicKey {
+  public getApproved(
+    tokenId: bigint,
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits.getApproved(
       this.circuitContext,
       tokenId,
@@ -198,7 +203,7 @@ export class ERC721Simulator
    * @return None.
    */
   public setApprovalForAll(
-    operator: ZswapCoinPublicKey,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
     sender?: CoinPublicKey,
   ) {
@@ -224,8 +229,8 @@ export class ERC721Simulator
    * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
   public isApprovedForAll(
-    owner: ZswapCoinPublicKey,
-    operator: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
     return this.contract.impureCircuits.isApprovedForAll(
       this.circuitContext,
@@ -244,14 +249,14 @@ export class ERC721Simulator
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
-   * @param {ZswapCoinPublicKey} from - The source account from which the token is being transfered
-   * @param {ZswapCoinPublicKey} to - The target account to transfer token to
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
    * @param {TokenId} tokenId - The token being transfered
    * @return {[]} - None.
    */
   public transferFrom(
-    from: ZswapCoinPublicKey,
-    to: ZswapCoinPublicKey,
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
     sender?: CoinPublicKey,
   ) {
@@ -279,7 +284,9 @@ export class ERC721Simulator
    * @param tokenId The token that should be owned
    * @return The owner of `tokenId`
    */
-  public _requireOwned(tokenId: bigint): ZswapCoinPublicKey {
+  public _requireOwned(
+    tokenId: bigint,
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits._requireOwned(
       this.circuitContext,
       tokenId,
@@ -292,7 +299,9 @@ export class ERC721Simulator
    * @param tokenId The target token of the owner query
    * @return The owner of the token
    */
-  public _ownerOf(tokenId: bigint): ZswapCoinPublicKey {
+  public _ownerOf(
+    tokenId: bigint,
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits._ownerOf(this.circuitContext, tokenId)
       .result;
   }
@@ -310,10 +319,10 @@ export class ERC721Simulator
    * @return Owner of the token before it was transfered
    */
   public _update(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
-    auth: ZswapCoinPublicKey,
-  ): ZswapCoinPublicKey {
+    auth: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
     const res = this.contract.impureCircuits._update(
       this.circuitContext,
       to,
@@ -337,9 +346,9 @@ export class ERC721Simulator
    * @return None.
    */
   public _approve(
-    to: ZswapCoinPublicKey,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
-    auth: ZswapCoinPublicKey,
+    auth: Either<ZswapCoinPublicKey, ContractAddress>,
   ) {
     this.circuitContext = this.contract.impureCircuits._approve(
       this.circuitContext,
@@ -364,8 +373,8 @@ export class ERC721Simulator
    * @return None.
    */
   public _checkAuthorized(
-    owner: ZswapCoinPublicKey,
-    spender: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
   ) {
     this.circuitContext = this.contract.impureCircuits._checkAuthorized(
@@ -389,8 +398,8 @@ export class ERC721Simulator
    * @return A boolean determining if `spender` may manage `tokenId`
    */
   public _isAuthorized(
-    owner: ZswapCoinPublicKey,
-    spender: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
   ): boolean {
     return this.contract.impureCircuits._isAuthorized(
@@ -407,7 +416,9 @@ export class ERC721Simulator
    * @param tokenId The token to query
    * @return An account approved to spend `tokenId`
    */
-  public _getApproved(tokenId: bigint): ZswapCoinPublicKey {
+  public _getApproved(
+    tokenId: bigint,
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits._getApproved(
       this.circuitContext,
       tokenId,
@@ -426,8 +437,8 @@ export class ERC721Simulator
    * @return None.
    */
   public _setApprovalForAll(
-    owner: ZswapCoinPublicKey,
-    operator: ZswapCoinPublicKey,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
   ) {
     this.circuitContext = this.contract.impureCircuits._setApprovalForAll(
@@ -450,7 +461,10 @@ export class ERC721Simulator
    * @param tokenId The token to transfer
    * @return None.
    */
-  public _mint(to: ZswapCoinPublicKey, tokenId: bigint) {
+  public _mint(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: bigint,
+  ) {
     this.circuitContext = this.contract.impureCircuits._mint(
       this.circuitContext,
       to,
@@ -492,8 +506,8 @@ export class ERC721Simulator
    * @return None.
    */
   public _transfer(
-    from: ZswapCoinPublicKey,
-    to: ZswapCoinPublicKey,
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
   ) {
     this.circuitContext = this.contract.impureCircuits._transfer(
