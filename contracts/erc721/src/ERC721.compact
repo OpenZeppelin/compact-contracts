@@ -225,6 +225,7 @@ module ERC721 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
+    assert !Utils_isContractAddress(to) "Error: Unsafe Transfer";
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
@@ -443,6 +444,7 @@ module ERC721 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
+    assert !Utils_isContractAddress(to) "Error: Unsafe Transfer";
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
     const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
@@ -486,6 +488,7 @@ module ERC721 {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: Uint<128>
   ): [] {
+    assert !Utils_isContractAddress(to) "Error: Unsafe Transfer" 
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
     const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
