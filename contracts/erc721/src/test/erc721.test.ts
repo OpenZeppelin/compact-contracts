@@ -2,7 +2,7 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
-import { createEitherTestUser, ZERO_KEY } from './utils/address';
+import { createEitherTestContractAddress, createEitherTestUser, ZERO_KEY } from './utils/address';
 
 const NONE_STRING: MaybeString = {
   is_some: false,
@@ -18,9 +18,7 @@ const SYMBOL = 'SYMBOL';
 const EMPTY_STRING = '';
 
 const TOKENID: bigint = BigInt(1);
-
 const _AMOUNT: bigint = BigInt(1);
-const _MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
 const _OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
   64,
@@ -32,10 +30,11 @@ const _SPENDER = String(
 const _UNAUTHORIZED = String(
   Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
 ).padStart(64, '0');
-const _ZERO = String().padStart(64, '0');
+
 const _Z_OWNER = createEitherTestUser('OWNER');
 const _Z_SPENDER = createEitherTestUser('SPENDER');
 const _Z_OTHER = createEitherTestUser('OTHER');
+const _SOME_CONTRACT = createEitherTestContractAddress('CONTRACT');
 
 let token: ERC721Simulator;
 let _caller: CoinPublicKey;
@@ -241,6 +240,13 @@ describe('ERC721', () => {
   });
 
   describe('transferFrom', () => {
+    it('should not transfer to ContractAddress', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token.transferFrom(_Z_OWNER, _SOME_CONTRACT, TOKENID);
+      }).toThrow('ERC721: Unsafe Transfer');
+    });
+
     it('should not transfer to zero address', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(() => {
@@ -492,6 +498,12 @@ describe('ERC721', () => {
   });
 
   describe('_mint', () => {
+    it('should not mint to ContractAddress', () => {
+      expect(() => {
+        token._mint(_SOME_CONTRACT, TOKENID);
+      }).toThrow('ERC721: Unsafe Transfer');
+    });
+
     it('should not mint to zero address', () => {
       expect(() => {
         token._mint(ZERO_KEY, TOKENID);
@@ -544,6 +556,13 @@ describe('ERC721', () => {
   });
 
   describe('_transfer', () => {
+    it('should not transfer to ContractAddress', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._transfer(_Z_OWNER, _SOME_CONTRACT, TOKENID);
+      }).toThrow('ERC721: Unsafe Transfer')
+    });
+
     it('should transfer token', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
