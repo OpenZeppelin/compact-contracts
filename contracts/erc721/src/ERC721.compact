@@ -262,7 +262,7 @@ module ERC721 {
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_owners.member(tokenId)) {
-      _owners.insert(tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+      _owners.insert(tokenId, burn_address());
     }
 
     return _owners.lookup(tokenId);
@@ -295,7 +295,7 @@ module ERC721 {
     // Execute the update
     if (!Utils_isKeyOrAddressZero(from)) {
       // Clear approval. No need to re-authorize
-      _approve(default<Either<ZswapCoinPublicKey, ContractAddress>>, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+      _approve(burn_address(), tokenId, burn_address());
       const newBalance = _balances.lookup(from) - 1 as Uint<128>;
       _balances.insert(from, newBalance);
     }
@@ -395,7 +395,7 @@ module ERC721 {
    */
   export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_tokenApprovals.member(tokenId)) {
-      return default<Either<ZswapCoinPublicKey, ContractAddress>>;
+      return burn_address();
     }
     return _tokenApprovals.lookup(tokenId);
   }
@@ -447,7 +447,7 @@ module ERC721 {
     assert !Utils_isContractAddress(to) "ERC721: Unsafe Transfer";
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    const previousOwner = _update(to, tokenId, burn_address());
 
     assert Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
@@ -465,7 +465,7 @@ module ERC721 {
    * @return {[]} - None.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
-    const previousOwner = _update(default<Either<ZswapCoinPublicKey, ContractAddress>>, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    const previousOwner = _update(burn_address(), tokenId, burn_address());
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
 
@@ -491,7 +491,7 @@ module ERC721 {
     assert !Utils_isContractAddress(to) "ERC721: Unsafe Transfer";
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    const previousOwner = _update(to, tokenId, burn_address());
 
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
     assert previousOwner == from "ERC721: Incorrect Owner";
@@ -575,7 +575,7 @@ module ERC721 {
   ): [] {
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    const previousOwner = _update(to, tokenId, burn_address());
 
     assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
     assert previousOwner == from "ERC721: Incorrect Owner";
@@ -603,7 +603,7 @@ module ERC721 {
   ): [] {
     assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+    const previousOwner = _update(to, tokenId, burn_address());
 
     assert Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
