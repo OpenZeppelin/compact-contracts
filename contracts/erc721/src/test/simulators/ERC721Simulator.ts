@@ -535,10 +535,10 @@ export class ERC721Simulator
       tokenURI,
     ).context;
   }
-  
+
   /**
    * @description Transfers `tokenId` token from `from` to `to`. It does NOT check if the recipient is a ContractAddress.
-   * 
+   *
    * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
    * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
    * ContractAddress
@@ -549,7 +549,7 @@ export class ERC721Simulator
    * - `to` cannot be the zero address.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
-   * 
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
    * @param {TokenId} tokenId - The token being transfered
@@ -610,7 +610,7 @@ export class ERC721Simulator
 
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
-   * 
+   *
    * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
    * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
    * ContractAddress
@@ -619,7 +619,7 @@ export class ERC721Simulator
    *
    * - `tokenId` must not exist.
    * - `to` cannot be the zero address.
-   * 
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {TokenId} tokenId - The token to transfer
    * @return {[]} - None.

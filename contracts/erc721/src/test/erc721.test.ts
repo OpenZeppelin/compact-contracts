@@ -2,7 +2,11 @@ import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
 import type { MaybeString } from './types/string';
-import { createEitherTestContractAddress, createEitherTestUser, ZERO_KEY } from './utils/address';
+import {
+  createEitherTestContractAddress,
+  createEitherTestUser,
+  ZERO_KEY,
+} from './utils/address';
 
 const NONE_STRING: MaybeString = {
   is_some: false,
@@ -560,7 +564,7 @@ describe('ERC721', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(() => {
         token._transfer(_Z_OWNER, _SOME_CONTRACT, TOKENID);
-      }).toThrow('ERC721: Unsafe Transfer')
+      }).toThrow('ERC721: Unsafe Transfer');
     });
 
     it('should transfer token', () => {
@@ -639,13 +643,13 @@ describe('ERC721', () => {
       expect(token.balanceOf(_Z_OWNER)).toEqual(3n);
     });
   });
-  
+
   describe('_unsafe_transfer', () => {
     it('should transfer to ContractAddress', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(() => {
         token._unsafe_transfer(_Z_OWNER, _SOME_CONTRACT, TOKENID);
-      }).not.toThrow()
+      }).not.toThrow();
     });
 
     it('should transfer token', () => {
