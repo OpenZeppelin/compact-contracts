@@ -608,4 +608,133 @@ describe('ERC721', () => {
       expect(token.tokenURI(TOKENID)).toEqual(SOME_STRING);
     });
   });
+
+  describe('_unsafe_mint', () => {
+    it('should mint to ContractAddress', () => {
+      expect(() => {
+        token._unsafe_mint(_SOME_CONTRACT, TOKENID);
+      }).not.toThrow();
+    });
+
+    it('should not mint to zero address', () => {
+      expect(() => {
+        token._unsafe_mint(ZERO_KEY, TOKENID);
+      }).toThrow('ERC721: Invalid Receiver');
+    });
+
+    it('should not mint a token that already exists', () => {
+      token._unsafe_mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafe_mint(_Z_OWNER, TOKENID);
+      }).toThrow('ERC721: Invalid Sender');
+    });
+
+    it('should mint token', () => {
+      token._unsafe_mint(_Z_OWNER, TOKENID);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+
+      token._unsafe_mint(_Z_OWNER, TOKENID + 1n);
+      token._unsafe_mint(_Z_OWNER, TOKENID + 2n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(3n);
+    });
+  });
+  
+  describe('_unsafe_transfer', () => {
+    it('should transfer to ContractAddress', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafe_transfer(_Z_OWNER, _SOME_CONTRACT, TOKENID);
+      }).not.toThrow()
+    });
+
+    it('should transfer token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(0n);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+
+      token._unsafe_transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(1n);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should not transfer to zero address', () => {
+      expect(() => {
+        token._unsafe_transfer(_Z_OWNER, ZERO_KEY, TOKENID);
+      }).toThrow('ERC721: Invalid Receiver');
+    });
+
+    it('should throw if from does not own token', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafe_transfer(_Z_SPENDER, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Incorrect Owner');
+    });
+
+    it('should throw if token does not exist', () => {
+      expect(() => {
+        token._unsafe_transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+  });
+
+  describe('_unsafeTransferFrom', () => {
+    it('should transfer to ContractAddress', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafeTransferFrom(_Z_OWNER, _SOME_CONTRACT, TOKENID);
+      }).not.toThrow();
+    });
+
+    it('should not transfer to zero address', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafeTransferFrom(_Z_OWNER, ZERO_KEY, TOKENID);
+      }).toThrow('ERC721: Invalid Receiver');
+    });
+
+    it('should not transfer from zero address', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafeTransferFrom(ZERO_KEY, _Z_SPENDER, TOKENID);
+      }).toThrow('ERC721: Incorrect Owner');
+    });
+
+    it('unapproved operator should not transfer', () => {
+      _caller = _SPENDER;
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token._unsafeTransferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Insufficient Approval');
+    });
+
+    it('should not transfer token that has not been minted', () => {
+      _caller = _OWNER;
+      expect(() => {
+        token._unsafeTransferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Nonexistent Token');
+    });
+
+    it('should transfer token via approved operator', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _OWNER);
+
+      _caller = _SPENDER;
+      token._unsafeTransferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should transfer token via approvedForAll operator', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _OWNER);
+
+      _caller = _SPENDER;
+      token._unsafeTransferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
+  });
 });
