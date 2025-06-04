@@ -211,7 +211,7 @@ module ERC721 {
    * Requirements:
    *
    * - `from` cannot be the zero address.
-   * - `to` cannot be the zero address.
+   * - `to` cannot be the zero address or a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    * 
@@ -434,7 +434,7 @@ module ERC721 {
    * Requirements:
    *
    * - `tokenId` must not exist.
-   * - `to` cannot be the zero address.
+   * - `to` cannot be the zero address or a ContractAddress.
    * 
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {TokenId} tokenId - The token to transfer
@@ -475,7 +475,7 @@ module ERC721 {
    *
    * Requirements:
    *
-   * - `to` cannot be the zero address.
+   * - `to` cannot be the zero address or a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
@@ -511,6 +511,101 @@ module ERC721 {
     _requireOwned(tokenId);
 
     return _tokenURI.insert(tokenId, tokenURI);
+  }
+
+  /**
+   * @description Transfers `tokenId` token from `from` to `to`. It does NOT check if the recipient is a ContractAddress.
+   * 
+   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
+   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
+   * ContractAddress
+   *
+   * Requirements:
+   *
+   * - `from` cannot be the zero address.
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
+   * 
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
+   * @param {TokenId} tokenId - The token being transfered
+   * @return {[]} - None.
+   */
+  export circuit _unsafeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Uint<128>
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
+    // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
+    // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const previousOwner = _update(
+      to,
+      tokenId,
+      auth
+    );
+    assert previousOwner == from "ERC721: Incorrect Owner";
+  }
+
+  /**
+   * @description Transfers `tokenId` from `from` to `to`.
+   * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on own_public_key().
+   * It does NOT check if the recipient is a ContractAddress.
+   *
+   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
+   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
+   * ContractAddress
+   *
+   * Requirements:
+   *
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
+   * @param {TokenId} tokenId - The token to transfer
+   * @return {[]} - None.
+   */
+  export circuit _unsafe_transfer(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Uint<128>
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
+
+    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+
+    assert !Utils_isKeyOrAddressZero(previousOwner) "ERC721: Nonexistent Token";
+    assert previousOwner == from "ERC721: Incorrect Owner";
+  }
+
+  /**
+   * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
+   * 
+   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
+   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
+   * ContractAddress
+   *
+   * Requirements:
+   *
+   * - `tokenId` must not exist.
+   * - `to` cannot be the zero address.
+   * 
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
+   * @param {TokenId} tokenId - The token to transfer
+   * @return {[]} - None.
+   */
+  export circuit _unsafe_mint(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Uint<128>
+  ): [] {
+    assert !Utils_isKeyOrAddressZero(to) "ERC721: Invalid Receiver";
+
+    const previousOwner = _update(to, tokenId, default<Either<ZswapCoinPublicKey, ContractAddress>>);
+
+    assert Utils_isKeyOrAddressZero(previousOwner) "ERC721: Invalid Sender";
   }
 }
 
