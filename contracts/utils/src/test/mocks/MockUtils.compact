@@ -20,3 +20,7 @@ export pure circuit isKeyOrAddressEqual(
 export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
     return Utils_isKeyZero(key);
 }
+
+export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    return Utils_isContractAddress(keyOrAddress);
+}
