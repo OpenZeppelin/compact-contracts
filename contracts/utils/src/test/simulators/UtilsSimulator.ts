@@ -130,7 +130,12 @@ export class UtilsSimulator
    * @param keyOrAddress The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @returns Returns true if `keyOrAddress` is a ContractAddress
    */
-  public isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
-    return this.contract.circuits.isContractAddress(this.circuitContext, keyOrAddress).result;
+  public isContractAddress(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.contract.circuits.isContractAddress(
+      this.circuitContext,
+      keyOrAddress,
+    ).result;
   }
 }
