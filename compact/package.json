@@ -1,17 +1,37 @@
 {
-  "name": "@midnight-ntwrk/compact",
-  "description": "Compact fetcher",
-  "author": "IOG",
-  "license": "Apache-2.0",
+  "packageManager": "yarn@4.1.0",
+  "name": "@openzeppelin-midnight/compact",
   "private": true,
-  "version": "0.21.0",
+  "version": "0.0.1",
+  "keywords": ["compact", "compiler"],
+  "author": "",
+  "license": "MIT",
+  "description": "Compact fetcher",
   "type": "module",
+  "exports": "./index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
-    "run-compactc": "src/run-compactc.cjs"
+    "compact-builder": "dist/runBuilder.js",
+    "compact-compiler": "dist/runCompiler.js"
+  },
+  "scripts": {
+    "types": "tsc -p tsconfig.json --noEmit",
+    "fmt": "biome format",
+    "fmt:fix": "biome format --write",
+    "lint": "biome lint",
+    "lint:fix": "biome check --write",
+    "clean": "git clean -fXd"
   },
   "devDependencies": {
-    "eslint": "^8.52.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.2.2"
+    "@types/node": "^22.13.10",
+    "fast-check": "^3.15.0",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "log-symbols": "^7.0.0",
+    "ora": "^8.2.0"
   }
 }
