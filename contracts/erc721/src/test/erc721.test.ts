@@ -183,30 +183,30 @@ describe('ERC721', () => {
 
     it('should return empty string tokenURI', () => {
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, { is_some: true, value: '' });
-      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: '' });
+      token._setTokenURI(TOKENID, '');
+      expect(token.tokenURI(TOKENID)).toEqual('');
     });
 
     it('should return very long tokenURI', () => {
       const longURI = 'A'.repeat(1000);
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, { is_some: true, value: longURI });
-      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: longURI });
+      token._setTokenURI(TOKENID, longURI);
+      expect(token.tokenURI(TOKENID)).toEqual(longURI);
     });
 
     it('should return tokenURI with special characters', () => {
       const specialURI = '!@#$%^&*()_+';
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, { is_some: true, value: specialURI });
-      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: specialURI });
+      token._setTokenURI(TOKENID, specialURI);
+      expect(token.tokenURI(TOKENID)).toEqual(specialURI);
     });
 
     it('should update tokenURI multiple times', () => {
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, { is_some: true, value: 'URI1' });
-      token._setTokenURI(TOKENID, { is_some: true, value: 'URI2' });
-      token._setTokenURI(TOKENID, { is_some: true, value: 'URI3' });
-      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: 'URI3' });
+      token._setTokenURI(TOKENID, 'URI1');
+      token._setTokenURI(TOKENID, 'URI2');
+      token._setTokenURI(TOKENID, 'URI3');
+      expect(token.tokenURI(TOKENID)).toEqual('URI3');
     });
 
     it('should maintain tokenURI after token transfer', () => {
@@ -527,6 +527,14 @@ describe('ERC721', () => {
       token.transferFrom(_Z_OWNER, _Z_SPENDER, longTokenId, _caller);
       expect(token.ownerOf(longTokenId)).toEqual(_Z_SPENDER);
     });
+
+    it('should revoke approval after transferFrom', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token.transferFrom(_Z_OWNER, _Z_OTHER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
+    });
   });
 
   describe('_requireOwned', () => {
@@ -828,8 +836,8 @@ describe('ERC721', () => {
 
     it('should mint with special characters in metadata', () => {
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, { is_some: true, value: '!@#$%^&*()_+' });
-      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: '!@#$%^&*()_+' });
+      token._setTokenURI(TOKENID, '!@#$%^&*()_+');
+      expect(token.tokenURI(TOKENID)).toEqual('!@#$%^&*()_+');
     });
   });
 
@@ -931,6 +939,14 @@ describe('ERC721', () => {
         token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
       }).toThrow('ERC721: Nonexistent Token');
     });
+
+    it('should revoke approval after _transfer', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token._transfer(_Z_OWNER, _Z_OTHER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
+    });
   });
 
   describe('_setTokenURI', () => {
@@ -1016,6 +1032,14 @@ describe('ERC721', () => {
         token._unsafe_transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
       }).toThrow('ERC721: Nonexistent Token');
     });
+
+    it('should revoke approval after _unsafe_transfer', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token._unsafe_transfer(_Z_OWNER, _Z_OTHER, TOKENID);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
+    });
   });
 
   describe('_unsafeTransferFrom', () => {
@@ -1073,6 +1097,14 @@ describe('ERC721', () => {
       _caller = _SPENDER;
       token._unsafeTransferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
       expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should revoke approval after _unsafeTransferFrom', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token._unsafeTransferFrom(_Z_OWNER, _Z_OTHER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
   });
 });
