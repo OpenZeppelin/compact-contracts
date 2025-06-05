@@ -46,7 +46,7 @@ module ERC721 {
   export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
   export ledger _tokenApprovals: Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>;
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
-  export ledger _tokenURI: Map<Uint<128>, Maybe<Opaque<"string">>>;
+  export ledger _tokenURIs: Map<Uint<128>, Opaque<"string">>;
 
   /**
    * @description Initializes the contract by setting the name and symbol.
@@ -118,10 +118,10 @@ module ERC721 {
    * @param {Uint<128>} tokenId - The identifier for a token.
    * @returns {Opaque<"string">} - the token id's URI.
    */
-  export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
+  export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
     _requireOwned(tokenId);
 
-    return _tokenURI.lookup(tokenId);
+    return _tokenURIs.lookup(tokenId);
   }
 
   /**
@@ -507,10 +507,10 @@ module ERC721 {
    * @param {Opaque<"string">} tokenURI - The URI of `tokenId`.
    * @return {[]} - None.
    */
-  export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
+  export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
     _requireOwned(tokenId);
 
-    return _tokenURI.insert(tokenId, tokenURI);
+    return _tokenURIs.insert(tokenId, tokenURI);
   }
 
   /**
