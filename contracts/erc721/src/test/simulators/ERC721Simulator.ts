@@ -9,7 +9,6 @@ import {
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type Ledger,
-  type Maybe,
   type Either,
   type ZswapCoinPublicKey,
   type ContractAddress,
@@ -137,7 +136,7 @@ export class ERC721Simulator
    * @param tokenId The identifier for a token.
    * @returns The token id's URI.
    */
-  public tokenURI(tokenId: bigint): Maybe<string> {
+  public tokenURI(tokenId: bigint): string {
     return this.contract.impureCircuits.tokenURI(this.circuitContext, tokenId)
       .result;
   }
@@ -528,7 +527,7 @@ export class ERC721Simulator
    * @param tokenURI The URI of `tokenId`.
    * @return None
    */
-  public _setTokenURI(tokenId: bigint, tokenURI: Maybe<string>) {
+  public _setTokenURI(tokenId: bigint, tokenURI: string) {
     this.circuitContext = this.contract.impureCircuits._setTokenURI(
       this.circuitContext,
       tokenId,
