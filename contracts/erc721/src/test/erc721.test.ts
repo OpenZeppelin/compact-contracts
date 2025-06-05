@@ -61,6 +61,26 @@ describe('ERC721', () => {
       expect(token.name()).toEqual(EMPTY_STRING);
       expect(token.symbol()).toEqual(EMPTY_STRING);
     });
+
+    it('should initialize metadata with whitespace', () => {
+      token = new ERC721Simulator('  NAME  ', '  SYMBOL  ');
+      expect(token.name()).toEqual('  NAME  ');
+      expect(token.symbol()).toEqual('  SYMBOL  ');
+    });
+
+    it('should initialize metadata with special characters', () => {
+      token = new ERC721Simulator('NAME!@#', 'SYMBOL$%^');
+      expect(token.name()).toEqual('NAME!@#');
+      expect(token.symbol()).toEqual('SYMBOL$%^');
+    });
+
+    it('should initialize metadata with very long strings', () => {
+      const longName = 'A'.repeat(1000);
+      const longSymbol = 'B'.repeat(1000);
+      token = new ERC721Simulator(longName, longSymbol);
+      expect(token.name()).toEqual(longName);
+      expect(token.symbol()).toEqual(longSymbol);
+    });
   });
 
   beforeEach(() => {
@@ -75,6 +95,32 @@ describe('ERC721', () => {
     it('should return balance when requested account has tokens', () => {
       token._mint(_Z_OWNER, _AMOUNT);
       expect(token.balanceOf(_Z_OWNER)).toEqual(_AMOUNT);
+    });
+
+    it('should return correct balance for multiple tokens', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(3n);
+    });
+
+    it('should return correct balance after burning multiple tokens', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      token._burn(TOKENID);
+      token._burn(TOKENID + 1n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+    });
+
+    it('should return correct balance after transferring multiple tokens', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID + 1n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+      expect(token.balanceOf(_Z_SPENDER)).toEqual(2n);
     });
   });
 
@@ -97,6 +143,31 @@ describe('ERC721', () => {
       token._mint(_Z_OWNER, TOKENID);
       expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
     });
+
+    it('should return correct owner for multiple tokens', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+      expect(token.ownerOf(TOKENID + 1n)).toEqual(_Z_OWNER);
+      expect(token.ownerOf(TOKENID + 2n)).toEqual(_Z_OWNER);
+    });
+
+    it('should return correct owner after multiple transfers', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      token._transfer(_Z_OWNER, _Z_OTHER, TOKENID + 1n);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+      expect(token.ownerOf(TOKENID + 1n)).toEqual(_Z_OTHER);
+    });
+
+    it('should return correct owner after multiple burns and mints', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._burn(TOKENID);
+      token._mint(_Z_SPENDER, TOKENID);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
   });
 
   describe('tokenURI', () => {
@@ -115,6 +186,41 @@ describe('ERC721', () => {
     it('should return some string if tokenURI is set', () => {
       token._mint(_Z_OWNER, TOKENID);
       token._setTokenURI(TOKENID, SOME_STRING);
+      expect(token.tokenURI(TOKENID)).toEqual(SOME_STRING);
+    });
+
+    it('should return empty string tokenURI', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, { is_some: true, value: '' });
+      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: '' });
+    });
+
+    it('should return very long tokenURI', () => {
+      const longURI = 'A'.repeat(1000);
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, { is_some: true, value: longURI });
+      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: longURI });
+    });
+
+    it('should return tokenURI with special characters', () => {
+      const specialURI = '!@#$%^&*()_+';
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, { is_some: true, value: specialURI });
+      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: specialURI });
+    });
+
+    it('should update tokenURI multiple times', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, { is_some: true, value: 'URI1' });
+      token._setTokenURI(TOKENID, { is_some: true, value: 'URI2' });
+      token._setTokenURI(TOKENID, { is_some: true, value: 'URI3' });
+      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: 'URI3' });
+    });
+
+    it('should maintain tokenURI after token transfer', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, SOME_STRING);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
       expect(token.tokenURI(TOKENID)).toEqual(SOME_STRING);
     });
   });
@@ -153,6 +259,45 @@ describe('ERC721', () => {
       expect(() => {
         token.approve(_Z_OTHER, TOKENID, _caller);
       }).toThrow('ERC721: Invalid Approver');
+    });
+
+    // TODO: Is this the intended behavior per ERC721 spec?
+    // it('should not approve zero address', () => {
+    //   _caller = _OWNER;
+    //   expect(() => {
+    //     token.approve(ZERO_KEY, TOKENID, _caller);
+    //   }).toThrow('ERC721: Invalid Operator');
+    // });
+
+    it('should approve same address multiple times', () => {
+      _caller = _OWNER;
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should approve after token transfer', () => {
+      _caller = _OWNER;
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      _caller = _SPENDER;
+      token.approve(_Z_OTHER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_OTHER);
+    });
+
+    it('should approve after token burn and remint', () => {
+      _caller = _OWNER;
+      token._burn(TOKENID);
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    it('should approve with very long token ID', () => {
+      _caller = _OWNER;
+      const longTokenId = BigInt('18446744073709551615');
+      token._mint(_Z_OWNER, longTokenId);
+      token.approve(_Z_SPENDER, longTokenId, _caller);
+      expect(token.getApproved(longTokenId)).toEqual(_Z_SPENDER);
     });
   });
 
@@ -231,6 +376,40 @@ describe('ERC721', () => {
         token.approve(_Z_SPENDER, TOKENID, _caller);
       }).toThrow('ERC721: Invalid Approver');
     });
+
+    it('should set approval for all to same address multiple times', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+    });
+
+    it('should set approval for all after token transfer', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      _caller = _SPENDER;
+      token.setApprovalForAll(_Z_OTHER, true, _caller);
+      expect(token.isApprovedForAll(_Z_SPENDER, _Z_OTHER)).toBe(true);
+    });
+
+    it('should set approval for all with multiple operators', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      token.setApprovalForAll(_Z_OTHER, true, _caller);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_OTHER)).toBe(true);
+    });
+
+    it('should set approval for all with very long token IDs', () => {
+      _caller = _OWNER;
+      const longTokenId = BigInt('18446744073709551615');
+      token._mint(_Z_OWNER, longTokenId);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      expect(token.isApprovedForAll(_Z_OWNER, _Z_SPENDER)).toBe(true);
+    });
   });
 
   describe('isApprovedForAll', () => {
@@ -301,6 +480,69 @@ describe('ERC721', () => {
       _caller = _SPENDER;
       token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
       expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+    });
+
+    // TODO: is this a bug in the ERC721 spec?
+    it('should allow transfer to same address', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      expect(() => {
+        token.transferFrom(_Z_OWNER, _Z_OWNER, TOKENID, _caller);
+      }).not.toThrow();
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(1n);
+    });
+
+    it('should not transfer after approval revocation', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token.approve(ZERO_KEY, TOKENID, _caller);
+      _caller = _SPENDER;
+      expect(() => {
+        token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Insufficient Approval');
+    });
+
+    it('should not transfer after approval for all revocation', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.setApprovalForAll(_Z_SPENDER, true, _caller);
+      token.setApprovalForAll(_Z_SPENDER, false, _caller);
+      _caller = _SPENDER;
+      expect(() => {
+        token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      }).toThrow('ERC721: Insufficient Approval');
+    });
+
+    it('should transfer multiple tokens in sequence', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token.approve(_Z_SPENDER, TOKENID + 1n, _caller);
+      token.approve(_Z_SPENDER, TOKENID + 2n, _caller);
+
+      _caller = _SPENDER;
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID, _caller);
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID + 1n, _caller);
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, TOKENID + 2n, _caller);
+
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+      expect(token.ownerOf(TOKENID + 1n)).toEqual(_Z_SPENDER);
+      expect(token.ownerOf(TOKENID + 2n)).toEqual(_Z_SPENDER);
+    });
+
+    it('should transfer with very long token IDs', () => {
+      _caller = _OWNER;
+      const longTokenId = BigInt('18446744073709551615');
+      token._mint(_Z_OWNER, longTokenId);
+      token.approve(_Z_SPENDER, longTokenId, _caller);
+
+      _caller = _SPENDER;
+      token.transferFrom(_Z_OWNER, _Z_SPENDER, longTokenId, _caller);
+      expect(token.ownerOf(longTokenId)).toEqual(_Z_SPENDER);
     });
   });
 
@@ -395,6 +637,53 @@ describe('ERC721', () => {
       expect(() => {
         token._update(_Z_SPENDER, TOKENID, _Z_SPENDER);
       }).toThrow('ERC721: Insufficient Approval');
+    });
+
+    it('should update multiple tokens in sequence', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token.approve(_Z_SPENDER, TOKENID + 1n, _caller);
+      token.approve(_Z_SPENDER, TOKENID + 2n, _caller);
+
+      token._update(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      token._update(_Z_SPENDER, TOKENID + 1n, _Z_SPENDER);
+      token._update(_Z_SPENDER, TOKENID + 2n, _Z_SPENDER);
+
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
+      expect(token.ownerOf(TOKENID + 1n)).toEqual(_Z_SPENDER);
+      expect(token.ownerOf(TOKENID + 2n)).toEqual(_Z_SPENDER);
+    });
+
+    it('should update with very long token IDs', () => {
+      _caller = _OWNER;
+      const longTokenId = BigInt('18446744073709551615');
+      token._mint(_Z_OWNER, longTokenId);
+      token.approve(_Z_SPENDER, longTokenId, _caller);
+      token._update(_Z_SPENDER, longTokenId, _Z_SPENDER);
+      expect(token.ownerOf(longTokenId)).toEqual(_Z_SPENDER);
+    });
+
+    it('should update after multiple transfers', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      _caller = _SPENDER;
+      token.approve(_Z_OTHER, TOKENID, _caller);
+      token._update(_Z_OTHER, TOKENID, _Z_OTHER);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OTHER);
+    });
+
+    it('should update after multiple burns', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token._burn(TOKENID);
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token._update(_Z_SPENDER, TOKENID, _Z_SPENDER);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
     });
   });
 
@@ -533,6 +822,32 @@ describe('ERC721', () => {
       token._mint(_Z_OWNER, TOKENID + 2n);
       expect(token.balanceOf(_Z_OWNER)).toEqual(3n);
     });
+
+    it('should mint multiple tokens in sequence', () => {
+      for (let i = 0; i < 10; i++) {
+        token._mint(_Z_OWNER, TOKENID + BigInt(i));
+      }
+      expect(token.balanceOf(_Z_OWNER)).toEqual(10n);
+    });
+
+    it('should mint with very long token IDs', () => {
+      const longTokenId = BigInt('18446744073709551615');
+      token._mint(_Z_OWNER, longTokenId);
+      expect(token.ownerOf(longTokenId)).toEqual(_Z_OWNER);
+    });
+
+    it('should mint after burning', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._burn(TOKENID);
+      token._mint(_Z_OWNER, TOKENID);
+      expect(token.ownerOf(TOKENID)).toEqual(_Z_OWNER);
+    });
+
+    it('should mint with special characters in metadata', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._setTokenURI(TOKENID, { is_some: true, value: '!@#$%^&*()_+' });
+      expect(token.tokenURI(TOKENID)).toEqual({ is_some: true, value: '!@#$%^&*()_+' });
+    });
   });
 
   describe('_burn', () => {
@@ -558,6 +873,39 @@ describe('ERC721', () => {
       expect(token.getApproved(TOKENID)).toEqual(_Z_SPENDER);
 
       token._burn(TOKENID);
+      expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY);
+    });
+
+    it('should burn multiple tokens in sequence', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._mint(_Z_OWNER, TOKENID + 1n);
+      token._mint(_Z_OWNER, TOKENID + 2n);
+      token._burn(TOKENID);
+      token._burn(TOKENID + 1n);
+      token._burn(TOKENID + 2n);
+      expect(token.balanceOf(_Z_OWNER)).toEqual(0n);
+    });
+
+    it('should burn with very long token IDs', () => {
+      const longTokenId = BigInt('18446744073709551615');
+      token._mint(_Z_OWNER, longTokenId);
+      token._burn(longTokenId);
+      expect(token._ownerOf(longTokenId)).toEqual(ZERO_KEY);
+    });
+
+    it('should burn after transfer', () => {
+      token._mint(_Z_OWNER, TOKENID);
+      token._transfer(_Z_OWNER, _Z_SPENDER, TOKENID);
+      token._burn(TOKENID);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY);
+    });
+
+    it('should burn after approval', () => {
+      _caller = _OWNER;
+      token._mint(_Z_OWNER, TOKENID);
+      token.approve(_Z_SPENDER, TOKENID, _caller);
+      token._burn(TOKENID);
+      expect(token._ownerOf(TOKENID)).toEqual(ZERO_KEY);
       expect(token._getApproved(TOKENID)).toEqual(ZERO_KEY);
     });
   });
