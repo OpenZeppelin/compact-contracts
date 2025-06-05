@@ -85,7 +85,7 @@ module ERC721 {
   /**
    * @description Returns the number of tokens in `owner`'s account.
    *
-   * @param {Owner} owner - The public key to query.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>)} owner - The account to query.
    * @return {Uint<128>} - The number of tokens in `owner`'s account.
    */
   export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
@@ -99,8 +99,8 @@ module ERC721 {
   /**
    * @description Returns the owner of the `tokenId` token.
    *
-   * @param {TokenId} tokenId - The identifier for a token.
-   * @return {Owner} - The public key that owns the token.
+   * @param {Uint<128>} tokenId - The identifier for a token.
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The account that owns the token.
    */
   export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     return _requireOwned(tokenId);
@@ -115,7 +115,7 @@ module ERC721 {
    * approach; whereby, NFTs may or may not have unique "base" URIs.
    * It's up to the implementation to decide on how to handle this.
    *
-   * @param {TokenId} tokenId - The identifier for a token.
+   * @param {Uint<128>} tokenId - The identifier for a token.
    * @returns {Opaque<"string">} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
@@ -136,7 +136,7 @@ module ERC721 {
    * - `tokenId` must exist.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving the approval
-   * @param {TokenId} tokenId - The token `to` may be permitted to transfer
+   * @param {Uint<128>} tokenId - The token `to` may be permitted to transfer
    * @return {[]} - None.
    */
   export circuit approve(
@@ -154,8 +154,8 @@ module ERC721 {
   /**
    * @description Returns the account approved for `tokenId` token.
    * 
-   * @param {TokenId} tokenId - The token an account may be approved to manage
-   * @return {Operator} - The account approved to manage the token
+   * @param {Uint<128>} tokenId - The token an account may be approved to manage
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} Operator- The account approved to manage the token
    */
   export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     _requireOwned(tokenId);
@@ -171,7 +171,7 @@ module ERC721 {
    *
    * - The `operator` cannot be the address zero.
    * 
-   * @param {Operator} operator - An operator to manage the caller's tokens
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An operator to manage the caller's tokens
    * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
    * @return {[]} - None.
    */
@@ -190,8 +190,8 @@ module ERC721 {
   /**
    * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
    *
-   * @param {Owner} owner - The owner of a token
-   * @param {Operator} operator - An account that may operate on `owner`'s tokens
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of a token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An account that may operate on `owner`'s tokens
    * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
    */
   export circuit isApprovedForAll(
@@ -217,7 +217,7 @@ module ERC721 {
    * 
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
-   * @param {TokenId} tokenId - The token being transfered
+   * @param {Uint<128>} tokenId - The token being transfered
    * @return {[]} - None.
    */
   export circuit transferFrom(
@@ -244,8 +244,8 @@ module ERC721 {
    *
    * Overrides to ownership logic should be done to {_ownerOf}.
    * 
-   * @param {TokenId} tokenId - The token that should be owned
-   * @return {Owner} - The owner of `tokenId`
+   * @param {Uint<128>} tokenId - The token that should be owned
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The owner of `tokenId`
    */
   export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     const owner = _ownerOf(tokenId);
@@ -257,8 +257,8 @@ module ERC721 {
   /**
    * @description Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist
    *
-   * @param {TokenId} tokenId - The target token of the owner query
-   * @return {Owner} - The owner of the token
+   * @param {Uint<128>} tokenId - The target token of the owner query
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The owner of the token
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_owners.member(tokenId)) {
@@ -276,9 +276,9 @@ module ERC721 {
    * `auth` is either the owner of the token, or approved to operate on the token (by the owner).
    * 
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The intended recipient of the token transfer
-   * @param {TokenId} tokenId - The token being transfered
+   * @param {Uint<128>} tokenId - The token being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to transfer the token
-   * @return {Owner} - Owner of the token before it was transfered
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - Owner of the token before it was transfered
    */
   export circuit _update(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -320,7 +320,7 @@ module ERC721 {
    * either the owner of the token, or approved to operate on all tokens held by this owner.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to approve
-   * @param {TokenId} tokenId - The token to approve
+   * @param {Uint<128>} tokenId - The token to approve
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner the token
    * @return {[]} - None.
    */
@@ -348,9 +348,9 @@ module ERC721 {
    * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
    * assumption.
    *
-   * @param {Owner} owner - Owner of the token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of the token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - Account operating on `tokenId`
-   * @param {TokenId} tokenId - The token to spend
+   * @param {Uint<128>} tokenId - The token to spend
    * @return {[]} - None.
    */
   export circuit _checkAuthorized(
@@ -371,9 +371,9 @@ module ERC721 {
    * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
    * assumption.
    *
-   * @param {Owner} owner - Owner of the token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of the token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - Account that wishes to spend `tokenId`
-   * @param {TokenId} tokenId - Token to spend
+   * @param {Uint<128>} tokenId - Token to spend
    * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
   export circuit _isAuthorized(
@@ -390,7 +390,7 @@ module ERC721 {
   /**
    * @description Returns the approved address for `tokenId`. Returns 0 if `tokenId` is not minted.
    *
-   * @param {TokenId} tokenId - The token to query
+   * @param {Uint<128>} tokenId - The token to query
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - An account approved to spend `tokenId`
    */
   export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -406,8 +406,8 @@ module ERC721 {
    * Requirements:
    * - operator can't be the address zero.
    *
-   * @param {Owner} owner - Owner of a token
-   * @param {Operator} operator - The account to approve
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of a token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The account to approve
    * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens 
    * @return {[]} - None.
    */
@@ -437,7 +437,7 @@ module ERC721 {
    * - `to` cannot be the zero address or a ContractAddress.
    * 
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
-   * @param {TokenId} tokenId - The token to transfer
+   * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - None.
    */
   export circuit _mint(
@@ -461,7 +461,7 @@ module ERC721 {
    *
    * - `tokenId` must exist.
    *
-   * @param {TokenId} tokenId - The token to burn
+   * @param {Uint<128>} tokenId - The token to burn
    * @return {[]} - None.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
@@ -480,7 +480,7 @@ module ERC721 {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
-   * @param {TokenId} tokenId - The token to transfer
+   * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - None.
    */
   export circuit _transfer(
@@ -503,7 +503,7 @@ module ERC721 {
    *
    * @notice The URI for a given NFT is usually set when the NFT is minted.
    *
-   * @param {TokenId} tokenId - The identifier of the token.
+   * @param {Uint<128>} tokenId - The identifier of the token.
    * @param {Opaque<"string">} tokenURI - The URI of `tokenId`.
    * @return {[]} - None.
    */
@@ -529,7 +529,7 @@ module ERC721 {
    * 
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
-   * @param {TokenId} tokenId - The token being transfered
+   * @param {Uint<128>} tokenId - The token being transfered
    * @return {[]} - None.
    */
   export circuit _unsafeTransferFrom(
@@ -565,7 +565,7 @@ module ERC721 {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
-   * @param {TokenId} tokenId - The token to transfer
+   * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - None.
    */
   export circuit _unsafe_transfer(
@@ -594,7 +594,7 @@ module ERC721 {
    * - `to` cannot be the zero address.
    * 
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
-   * @param {TokenId} tokenId - The token to transfer
+   * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - None.
    */
   export circuit _unsafe_mint(
