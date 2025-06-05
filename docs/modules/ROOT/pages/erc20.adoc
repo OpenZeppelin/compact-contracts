@@ -30,7 +30,7 @@ This library offers modules of contracts with free floating circuits; neverthele
 Import the library into the implementing contract and it's recommended to prefix the library with `ERC20_`.
 
 ```typescript
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
 import OpenZeppelinERC20 prefix ERC20_; // Fix me!!!
@@ -40,7 +40,7 @@ constructor(
   symbol: Maybe<Opaque<"string">>,
   decimals:Uint<8>
 ) {
-  ERC20_initializer(name, symbol, decimals);
+  ERC20_initialize(name, symbol, decimals);
 }
 ```
 
