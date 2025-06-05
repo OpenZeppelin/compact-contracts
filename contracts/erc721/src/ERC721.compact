@@ -262,7 +262,7 @@ module ERC721 {
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_owners.member(tokenId)) {
-      _owners.insert(tokenId, burn_address());
+      return burn_address();
     }
 
     return _owners.lookup(tokenId);
