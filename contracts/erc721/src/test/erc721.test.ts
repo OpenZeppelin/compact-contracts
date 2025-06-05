@@ -1,21 +1,13 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ERC721Simulator } from './simulators/ERC721Simulator';
-import type { MaybeString } from './types/string';
 import {
   createEitherTestContractAddress,
   createEitherTestUser,
   ZERO_KEY,
 } from './utils/address';
 
-const NONE_STRING: MaybeString = {
-  is_some: false,
-  value: '',
-};
-const SOME_STRING: MaybeString = {
-  is_some: true,
-  value: 'https://openzeppelin.example',
-};
+const SOME_STRING = 'https://openzeppelin.example';
 
 const NAME = 'NAME';
 const SYMBOL = 'SYMBOL';
@@ -179,8 +171,8 @@ describe('ERC721', () => {
 
     it('should return none if tokenURI set as default value', () => {
       token._mint(_Z_OWNER, TOKENID);
-      token._setTokenURI(TOKENID, NONE_STRING);
-      expect(token.tokenURI(TOKENID)).toEqual(NONE_STRING);
+      token._setTokenURI(TOKENID, EMPTY_STRING);
+      expect(token.tokenURI(TOKENID)).toEqual(EMPTY_STRING);
     });
 
     it('should return some string if tokenURI is set', () => {
@@ -944,7 +936,7 @@ describe('ERC721', () => {
   describe('_setTokenURI', () => {
     it('should throw if token does not exist', () => {
       expect(() => {
-        token._setTokenURI(TOKENID, NONE_STRING);
+        token._setTokenURI(TOKENID, EMPTY_STRING);
       }).toThrow('ERC721: Nonexistent Token');
     });
 

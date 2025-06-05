@@ -33,7 +33,7 @@ export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractA
   return ERC721_ownerOf(tokenId);
 }
 
-export circuit tokenURI(tokenId: Uint<128>): Maybe<Opaque<"string">> {
+export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
   return ERC721_tokenURI(tokenId);
 }
 
@@ -142,7 +142,7 @@ export circuit _transfer(
   return ERC721__transfer(from, to, tokenId);
 }
 
-export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Maybe<Opaque<"string">>): [] {
+export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
   return ERC721__setTokenURI(tokenId, tokenURI);
 }
 
