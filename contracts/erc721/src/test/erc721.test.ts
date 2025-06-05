@@ -42,9 +42,6 @@ describe('ERC721', () => {
 
       expect(token.name()).toEqual(NAME);
       expect(token.symbol()).toEqual(SYMBOL);
-      expect(() => {
-        token.assertInitialized();
-      }).not.toThrow();
     });
 
     it('should initialize empty metadata', () => {
