@@ -261,14 +261,6 @@ describe('ERC721', () => {
       }).toThrow('ERC721: Invalid Approver');
     });
 
-    // TODO: Is this the intended behavior per ERC721 spec?
-    // it('should not approve zero address', () => {
-    //   _caller = _OWNER;
-    //   expect(() => {
-    //     token.approve(ZERO_KEY, TOKENID, _caller);
-    //   }).toThrow('ERC721: Invalid Operator');
-    // });
-
     it('should approve same address multiple times', () => {
       _caller = _OWNER;
       token.approve(_Z_SPENDER, TOKENID, _caller);
@@ -482,7 +474,6 @@ describe('ERC721', () => {
       expect(token.ownerOf(TOKENID)).toEqual(_Z_SPENDER);
     });
 
-    // TODO: is this a bug in the ERC721 spec?
     it('should allow transfer to same address', () => {
       _caller = _OWNER;
       token._mint(_Z_OWNER, TOKENID);
