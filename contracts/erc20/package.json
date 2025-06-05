@@ -1,5 +1,6 @@
 {
   "name": "@openzeppelin-midnight/erc20",
+  "private": true,
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",

@@ -12,16 +12,17 @@ module Utils {
   /**
    * @description Returns whether `keyOrAddress` is the zero address.
    *
+   * @notice Midnight's burn address is represented as left<ZswapCoinPublicKey, ContractAddress>(default<ZswapCoinPublicKey>)
+   * in Compact, so we've chosen to represent the zero address as this structure as well.
+   *
    * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
    */
   export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    const zero = pad(32, "");
-
     if (keyOrAddress.is_left) {
-      return keyOrAddress == left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey{ zero });
+      return burn_address() == keyOrAddress;
     } else {
-      return keyOrAddress == right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ zero });
+      return right<ZswapCoinPublicKey, ContractAddress>(default<ContractAddress>) == keyOrAddress;
     }
   }
 }
