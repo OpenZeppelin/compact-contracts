@@ -119,7 +119,6 @@ module ERC721 {
    * @returns {Opaque<"string">} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
-  export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
     _requireOwned(tokenId);
 
     return _tokenURIs.lookup(tokenId);
@@ -508,7 +507,6 @@ module ERC721 {
    * @param {Opaque<"string">} tokenURI - The URI of `tokenId`.
    * @return {[]} - None.
    */
-  export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
     _requireOwned(tokenId);
 
