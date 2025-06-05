@@ -109,8 +109,8 @@ module ERC721 {
   /**
    * @description Returns the token URI for the given `tokenId`.
    *
-   * @notice Since Midnight does not support native strings and string operations
-   * within the Compact language, concatenating a base URI + token ID is not possible
+   * @notice Midnight does not support native strings and string operations
+   * within the Compact language, eg concatenating a base URI + token ID, are not possible
    * like in other NFT implementations. Therefore, we propose the URI storage
    * approach; whereby, NFTs may or may not have unique "base" URIs.
    * It's up to the implementation to decide on how to handle this.
