@@ -38,6 +38,7 @@ pragma language_version >= 0.15.0;
 module ERC721 {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
 
   /// Public state
   export sealed ledger _name: Opaque<"string">;
@@ -59,6 +60,7 @@ module ERC721 {
     name_: Opaque<"string">,
     symbol_: Opaque<"string">
   ): [] {
+    Initializable_initialize();
     _name = name_;
     _symbol = symbol_;
   }
