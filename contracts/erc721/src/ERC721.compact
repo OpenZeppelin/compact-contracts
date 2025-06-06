@@ -19,19 +19,22 @@ pragma language_version >= 0.15.0;
  * - Revise logic once contract-to-contract interactions are available on Midnight.
  * - Revise logic once events are available on Midnight.
  * - Consider implementing an introspection mechanism for transfers to contracts.
- *
- * @notice TODO List - Missing Features and Improvements:
- * @notice TODO: Support Uint256 token IDs
- * @notice TODO: Implement Transfer/Approval events
- * @notice TODO: Add safe transfer functions
- * @notice TODO: Add _baseURI() support
- * @notice TODO: Add ERC165 support
- * @notice TODO: Add msg.sender equivalent
- * @notice TODO: Add specific error types
- *
- * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Owner - The owner of a non-fungible token
- * @typedef {Uint<128>} TokenId - The token identifier of a non-funglible token
- * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Operator - An account authorized to manage a non-fungible token
+ */
+
+
+/**
+ * The owner of a non-fungible token
+ * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Owner
+ */
+
+/**
+ * The token identifier of a non-funglible token
+ * @typedef {Uint<128>} TokenId
+ */
+ 
+/**
+ * An account authorized to manage a non-fungible token 
+ * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Operator
  */
 module ERC721 {
   import CompactStandardLibrary;
