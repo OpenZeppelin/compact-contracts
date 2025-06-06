@@ -21,7 +21,6 @@ pragma language_version >= 0.15.0;
  * - Consider implementing an introspection mechanism for transfers to contracts.
  */
 
-
 /**
  * The owner of a non-fungible token
  * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Owner
@@ -31,7 +30,7 @@ pragma language_version >= 0.15.0;
  * The token identifier of a non-funglible token
  * @typedef {Uint<128>} TokenId
  */
- 
+
 /**
  * An account authorized to manage a non-fungible token 
  * @typedef {Either<ZswapCoinPublicKey, ContractAddress>} Operator
