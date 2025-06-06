@@ -24,6 +24,12 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 
 ## Set up the project
 
+> ### Requirements
+>
+> - [node](https://nodejs.org/)
+> - [yarn](https://yarnpkg.com/getting-started/install)
+> - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
+
 Clone the repository:
 
 ```bash
