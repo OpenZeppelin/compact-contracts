@@ -60,11 +60,11 @@ constructor(
 
 /** IFungibleTokenMetadata */
 
-export circuit name(): Maybe<Opaque<"string">> {
+export circuit name(): Opaque<"string"> {
   return FungibleToken_name();
 }
 
-export circuit symbol(): Maybe<Opaque<"string">> {
+export circuit symbol(): Opaque<"string"> {
   return FungibleToken_symbol();
 }
 
