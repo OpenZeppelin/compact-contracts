@@ -215,16 +215,9 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 
 | Label name | `OpenZeppelin/midnight-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
 | --- | --- | --- | --- |
-| `documentation` | [search][search-OpenZeppelin-repo-label-documentation] | [search][search-OpenZeppelin-org-label-documentation] | Related to any type of documentation |
-| `performance` | [search][search-OpenZeppelin-repo-label-performance] | [search][search-OpenZeppelin-org-label-performance] | Related to performance. |
+| `documentation` | [search][search-OpenZeppelin-repo-label-documentation] | [search][search-OpenZeppelin-org-label-documentation] | Improvements or additions to documentation. |
+| `performance` | [search][search-OpenZeppelin-repo-label-performance] | [search][search-OpenZeppelin-org-label-performance] | Improvements related to circuit size, gas optimization, or code efficiency. |
 | `security` | [search][search-OpenZeppelin-repo-label-security] | [search][search-OpenZeppelin-org-label-security] | Related to security. |
-| `git` | [search][search-OpenZeppelin-repo-label-git] | [search][search-OpenZeppelin-org-label-git] | Related to Git functionality (e.g. problems with gitignore files or with showing the correct file status). |
-
-#### `OpenZeppelin/midnight-contracts` Topic Categories
-
-| Label name | `OpenZeppelin/midnight-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
-| --- | --- | --- | --- |
-| `build-error` | [search][search-OpenZeppelin-repo-label-build-error] | [search][search-OpenZeppelin-org-label-build-error] | Related to problems with building OpenZeppelin from source. |
 | `deprecation-help` | [search][search-OpenZeppelin-repo-label-deprecation-help] | [search][search-OpenZeppelin-org-label-deprecation-help] | Issues for helping package authors remove usage of deprecated APIs in packages. |
 
 #### Pull Request Labels
@@ -260,9 +253,6 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 [search-OpenZeppelin-repo-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Asecurity
 [search-OpenZeppelin-org-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Asecurity
 
-[search-OpenZeppelin-repo-label-git]: https://github.com/search?q=is%3Aopen
-+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Agit
-[search-OpenZeppelin-org-label-git]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Agit
 [search-OpenZeppelin-repo-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ablocked
 [search-OpenZeppelin-org-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ablocked
 [search-OpenZeppelin-repo-label-duplicate]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aduplicate
@@ -271,8 +261,6 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 [search-OpenZeppelin-org-label-wontfix]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Awontfix
 [search-OpenZeppelin-repo-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ainvalid
 [search-OpenZeppelin-org-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ainvalid
-[search-OpenZeppelin-repo-label-build-error]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Abuild-error
-[search-OpenZeppelin-org-label-build-error]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abuild-error
 [search-OpenZeppelin-repo-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Adeprecation-help
 [search-OpenZeppelin-org-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Adeprecation-help
 
