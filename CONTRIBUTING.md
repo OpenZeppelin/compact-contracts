@@ -101,14 +101,14 @@ Before creating enhancement suggestions, please check [this list](#before-submit
 
 #### How Do I Submit A (Good) Enhancement Suggestion?
 
-Enhancement suggestions are tracked as [GitHub issues](https://guides.github.com/features/issues/). After you've determined [which repository](#OpenZeppelin-and-packages) your enhancement suggestion is related to, create an issue on that repository and provide the following information:
+Enhancement suggestions are tracked as [GitHub issues](https://guides.github.com/features/issues/). Create an issue and provide the following information:
 
 * **Use a clear and descriptive title** for the issue to identify the suggestion.
 * **Provide a step-by-step description of the suggested enhancement** in as many details as possible.
 * **Provide specific examples to demonstrate the steps**. Include copy/pasteable snippets which you use in those examples, as [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
 * **Describe the current behavior** and **explain which behavior you expected to see instead** and why.
 * **Include screenshots and animated GIFs** which help you demonstrate the steps or point out the part of the contracts library the suggestion is related to.
-* **Explain why this enhancement would be useful** to most OpenZeppelin contracts users and isn't something that can or should be implemented as a [community package](#OpenZeppelin-and-packages).
+* **Explain why this enhancement would be useful** to most OpenZeppelin contracts users
 * **Specify which version of Compact you're using.** You can get the exact version by running `compactc --version` in your terminal
 
 ### Your First Code Contribution
@@ -210,8 +210,6 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 | `duplicate` | [search][search-OpenZeppelin-repo-label-duplicate] | [search][search-OpenZeppelin-org-label-duplicate] | Issues which are duplicates of other issues, i.e. they have been reported before. |
 | `wontfix` | [search][search-OpenZeppelin-repo-label-wontfix] | [search][search-OpenZeppelin-org-label-wontfix] | The OpenZeppelin core team has decided not to fix these issues for now, either because they're working as intended or for some other reason. |
 | `invalid` | [search][search-OpenZeppelin-repo-label-invalid] | [search][search-OpenZeppelin-org-label-invalid] | Issues which aren't valid (e.g. user errors). |
-| `package-idea` | [search][search-OpenZeppelin-repo-label-package-idea] | [search][search-OpenZeppelin-org-label-package-idea] | Feature request which might be good candidates for new packages, instead of extending OpenZeppelin or core OpenZeppelin packages. |
-| `wrong-repo` | [search][search-OpenZeppelin-repo-label-wrong-repo] | [search][search-OpenZeppelin-org-label-wrong-repo] | Issues reported on the wrong repository (e.g. a bug related to the [Settings View package](https://github.com/OpenZeppelin/settings-view) was reported on [OpenZeppelin core](https://github.com/OpenZeppelin/midnight-contracts)). |
 
 #### Topic Categories
 
@@ -255,35 +253,15 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 [search-OpenZeppelin-org-label-more-information-needed]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Amore-information-needed
 [search-OpenZeppelin-repo-label-needs-reproduction]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aneeds-reproduction
 [search-OpenZeppelin-org-label-needs-reproduction]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aneeds-reproduction
-[search-OpenZeppelin-repo-label-triage-help-needed]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Atriage-help-needed
-[search-OpenZeppelin-org-label-triage-help-needed]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Atriage-help-needed
-[search-OpenZeppelin-repo-label-windows]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Awindows
-[search-OpenZeppelin-org-label-windows]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Awindows
-[search-OpenZeppelin-repo-label-linux]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Alinux
-[search-OpenZeppelin-org-label-linux]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Alinux
-[search-OpenZeppelin-repo-label-mac]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Amac
-[search-OpenZeppelin-org-label-mac]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Amac
 [search-OpenZeppelin-repo-label-documentation]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Adocumentation
 [search-OpenZeppelin-org-label-documentation]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Adocumentation
 [search-OpenZeppelin-repo-label-performance]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aperformance
 [search-OpenZeppelin-org-label-performance]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aperformance
 [search-OpenZeppelin-repo-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Asecurity
 [search-OpenZeppelin-org-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Asecurity
-[search-OpenZeppelin-repo-label-ui]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aui
-[search-OpenZeppelin-org-label-ui]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aui
-[search-OpenZeppelin-repo-label-api]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aapi
-[search-OpenZeppelin-org-label-api]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aapi
-[search-OpenZeppelin-repo-label-crash]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Acrash
-[search-OpenZeppelin-org-label-crash]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Acrash
-[search-OpenZeppelin-repo-label-auto-indent]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aauto-indent
-[search-OpenZeppelin-org-label-auto-indent]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aauto-indent
-[search-OpenZeppelin-repo-label-encoding]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aencoding
-[search-OpenZeppelin-org-label-encoding]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aencoding
-[search-OpenZeppelin-repo-label-network]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Anetwork
-[search-OpenZeppelin-org-label-network]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Anetwork
-[search-OpenZeppelin-repo-label-uncaught-exception]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Auncaught-exception
-[search-OpenZeppelin-org-label-uncaught-exception]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Auncaught-exception
-[search-OpenZeppelin-repo-label-git]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Agit
+
+[search-OpenZeppelin-repo-label-git]: https://github.com/search?q=is%3Aopen
++is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Agit
 [search-OpenZeppelin-org-label-git]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Agit
 [search-OpenZeppelin-repo-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ablocked
 [search-OpenZeppelin-org-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ablocked
@@ -293,28 +271,11 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 [search-OpenZeppelin-org-label-wontfix]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Awontfix
 [search-OpenZeppelin-repo-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ainvalid
 [search-OpenZeppelin-org-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ainvalid
-[search-OpenZeppelin-repo-label-package-idea]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Apackage-idea
-[search-OpenZeppelin-org-label-package-idea]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Apackage-idea
-[search-OpenZeppelin-repo-label-wrong-repo]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Awrong-repo
-[search-OpenZeppelin-org-label-wrong-repo]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Awrong-repo
-[search-OpenZeppelin-repo-label-editor-rendering]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aeditor-rendering
-[search-OpenZeppelin-org-label-editor-rendering]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aeditor-rendering
 [search-OpenZeppelin-repo-label-build-error]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Abuild-error
 [search-OpenZeppelin-org-label-build-error]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abuild-error
-[search-OpenZeppelin-repo-label-error-from-pathwatcher]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aerror-from-pathwatcher
-[search-OpenZeppelin-org-label-error-from-pathwatcher]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aerror-from-pathwatcher
-[search-OpenZeppelin-repo-label-error-from-save]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aerror-from-save
-[search-OpenZeppelin-org-label-error-from-save]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aerror-from-save
-[search-OpenZeppelin-repo-label-error-from-open]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aerror-from-open
-[search-OpenZeppelin-org-label-error-from-open]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aerror-from-open
-[search-OpenZeppelin-repo-label-installer]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ainstaller
-[search-OpenZeppelin-org-label-installer]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ainstaller
-[search-OpenZeppelin-repo-label-auto-updater]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aauto-updater
-[search-OpenZeppelin-org-label-auto-updater]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aauto-updater
 [search-OpenZeppelin-repo-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Adeprecation-help
 [search-OpenZeppelin-org-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Adeprecation-help
-[search-OpenZeppelin-repo-label-electron]: https://github.com/search?q=is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+is%3Aopen+label%3Aelectron
-[search-OpenZeppelin-org-label-electron]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aelectron
+
 [search-OpenZeppelin-repo-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Awork-in-progress
 [search-OpenZeppelin-org-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Awork-in-progress
 [search-OpenZeppelin-repo-label-needs-review]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aneeds-review
