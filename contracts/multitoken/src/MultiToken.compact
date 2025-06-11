@@ -67,6 +67,10 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
+   * Requirements:
+   *
+   * - Must be called in the contract's constructor.
+   *
    * @param {uri_} - The base URI for all token URIs.
    * @return {[]} None.
    */
@@ -84,21 +88,33 @@ module MultiToken {
    * Clients calling this function must replace the `\{id\}` substring with the
    * actual token type ID.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @param {id} - The token identifier to query.
    * return {Maybe<Opaque<"string">>} - The base URI for all tokens.
    */
   export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
+    Initializable_assertInitialized();
+
     return _uri;
   }
 
   /**
    * @description Returns the amount of `id` tokens owned by `account`.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @param {account} - The account balance to query.
    * @param {id} - The token identifier to query.
    * return {Uint<128>} - The quantity of `id` tokens that `account` owns.
    */
   export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
+    Initializable_assertInitialized();
+
     if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
       return 0;
     }
@@ -114,6 +130,10 @@ module MultiToken {
    * - Define multiple `balanceOfBatch` with differing n values. The contract can
    * have 10, 100, 1000, etc. values for n and can pad any remaining pairs.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @param {accounts} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
    * caller's assets.
    * @param {ids} - The boolean value determining if the operator may or may not handle the
@@ -124,11 +144,17 @@ module MultiToken {
     accounts: Vector<n, Either<ZswapCoinPublicKey, ContractAddress>>,
     ids: Vector<n, Uint<128>>
   ): Vector<n, Uint<128>> {
+    Initializable_assertInitialized();
+
     return map(balanceOf, accounts, ids);
   }
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
    *
    * @param {operator} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
    * caller's assets.
@@ -137,6 +163,8 @@ module MultiToken {
    * @return {[]} None.
    */
   export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+    Initializable_assertInitialized();
+
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _setApprovalForAll(caller, operator, approved);
@@ -144,6 +172,10 @@ module MultiToken {
 
   /**
    * @description Queries if `operator` is an authorized operator for `owner`.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
    *
    * @param {account} - The queried possessor of assets.
    * @param {operator} - The queried handler of `account`'s assets.
@@ -153,6 +185,8 @@ module MultiToken {
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
+    Initializable_assertInitialized();
+
     if (!_operatorApprovals.member(account) || !_operatorApprovals.lookup(account).member(operator)) {
       return false;
     }
@@ -164,6 +198,10 @@ module MultiToken {
    * @description Transfers ownership of `value` amount of `token_id` from `from` to `to`.
    * @notice This circuit checks that the caller is either `from` or is approved
    * to transfer on behalf of `from`.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
    *
    * @param {from} - The owner from which the transfer originates.
    * @param {to} - The recipient of the transferred assets.
@@ -177,6 +215,8 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
+
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     if (from != caller) {
@@ -191,6 +231,10 @@ module MultiToken {
    * @notice This internal circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @param {from} - The owner from which the transfer originates.
    * @param {to} - The recipient of the transferred assets.
    * @param {id} - The unique identifier of the asset type.
@@ -203,6 +247,8 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
+
     assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
     assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
     _update(from, to, id, value);
@@ -211,6 +257,10 @@ module MultiToken {
   /**
    * @description Transfers a value amount of tokens of type id from from to to.
    * This circuit will mint (or burn) if `from` (or `to`) is the zero address.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
    *
    * @param {from} - The origin of the transfer.
    * @param {to} - The destination of the transfer.
@@ -224,6 +274,8 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
+
     if (!Utils_isKeyOrAddressZero(from)) {
       const fromBalance = balanceOf(from, id);
       assert fromBalance >= value "MultiToken: insufficient balance";
@@ -260,15 +312,25 @@ module MultiToken {
    * `https://token-cdn-domain/000000000000000000000000000000000000000000000000000000000004cce0.json`
    * for token type ID 0x4cce0.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @param {newURI} - The new base URI for all tokens.
    * @return {[]} - None.
    */
   export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
+    Initializable_assertInitialized();
+
     _uri = newURI;
   }
 
   /**
    * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
    *
    * @param {to} - The recipient of the minted tokens.
    * @param {id} - The unique identifier for the token type.
@@ -276,6 +338,8 @@ module MultiToken {
    * @return {[]} - None.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+    Initializable_assertInitialized();
+
     assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
     _update(burn_address(), to, id, value);
   }
@@ -283,12 +347,18 @@ module MultiToken {
   /**
    * @description Destroys a `value` amount of tokens of type `token_id` from `from`.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @param {from} - The owner whose tokens will be destroyed.
    * @param {id} - The unique identifier of the token type.
    * @param {value} - The quantity of `id` tokens that will be destroyed from `from`.
    * @return {[]} - None.
    */
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+    Initializable_assertInitialized();
+
     assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
     _update(from, burn_address(), id, value);
   }
@@ -297,6 +367,10 @@ module MultiToken {
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
    * @notice This internal circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
    *
    * @param {owner} - The ZswapCoinPublicKey or ContractAddress of the target owner.
    * @param {operator} - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
@@ -310,6 +384,8 @@ module MultiToken {
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: Boolean
   ): [] {
+    Initializable_assertInitialized();
+
     assert !Utils_isKeyOrAddressZero(operator) "MultiToken: invalid operator";
     if (!_operatorApprovals.member(owner)) {
       _operatorApprovals.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);

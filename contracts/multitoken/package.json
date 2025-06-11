@@ -24,7 +24,7 @@
     "clean": "git clean -fXd"
   },
   "dependencies": {
-    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    "@openzeppelin-midnight/utils": "workspace:^"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
