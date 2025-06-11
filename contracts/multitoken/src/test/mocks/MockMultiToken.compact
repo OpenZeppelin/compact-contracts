@@ -62,15 +62,6 @@ export circuit _transferFrom(
   return MultiToken__transferFrom(from, to, id, value);
 }
 
-export circuit _update(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  id: Uint<128>,
-  value: Uint<128>
-): [] {
-  return MultiToken__update(from, to, id, value);
-}
-
 export circuit _setURI(newURI: Opaque<"string">): [] {
   return MultiToken__setURI(newURI);
 }

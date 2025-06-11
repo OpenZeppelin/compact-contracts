@@ -215,21 +215,6 @@ export class MultiTokenSimulator
     return res.result;
   }
 
-  public _update(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: bigint,
-    value: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._update(
-      this.circuitContext,
-      from,
-      to,
-      id,
-      value,
-    ).context;
-  }
-
   public _setURI(newURI: string) {
     this.circuitContext = this.contract.impureCircuits._setURI(
       this.circuitContext,

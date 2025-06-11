@@ -268,7 +268,7 @@ module MultiToken {
    * @param {value} - The quantity of `id` tokens to transfer.
    * @return {[]} None.
    */
-  export circuit _update(
+  circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Uint<128>,
