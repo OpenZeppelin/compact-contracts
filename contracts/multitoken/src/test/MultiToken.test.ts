@@ -1,21 +1,12 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
-import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
 
-const NO_STRING: MaybeString = {
-  is_some: false,
-  value: '',
-};
-const URI: MaybeString = {
-  is_some: true,
-  value: 'https://uri.com/mock_v1',
-};
-const NEW_URI: MaybeString = {
-  is_some: true,
-  value: 'https://uri.com/mock_v2',
-};
+// URIs
+const NO_STRING = '';
+const URI = 'https://uri.com/mock_v1';
+const NEW_URI = 'https://uri.com/mock_v2';
 
 // Amounts
 const AMOUNT: bigint = BigInt(250);
@@ -777,19 +768,13 @@ describe('MultiToken', () => {
     });
 
     it('should handle long URI', () => {
-      const LONG_URI: MaybeString = {
-        is_some: true,
-        value: `https://example.com/${'a'.repeat(1000)}`,
-      };
+      const LONG_URI = `https://example.com/${'a'.repeat(1000)}`;
       token._setURI(LONG_URI);
       expect(token.uri(TOKEN_ID)).toEqual(LONG_URI);
     });
 
     it('should handle URI with special characters', () => {
-      const SPECIAL_URI: MaybeString = {
-        is_some: true,
-        value: 'https://example.com/path?param=value#fragment',
-      };
+      const SPECIAL_URI = 'https://example.com/path?param=value#fragment';
       token._setURI(SPECIAL_URI);
       expect(token.uri(TOKEN_ID)).toEqual(SPECIAL_URI);
     });

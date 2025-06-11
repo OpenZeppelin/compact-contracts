@@ -7,18 +7,18 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
 
 constructor(
-  _uri: Maybe<Opaque<"string">>
+  _uri: Opaque<"string">
 ) {
   MultiToken_initialize(_uri);
 }
 
 export circuit initialize(
-  _uri: Maybe<Opaque<"string">>
+  _uri: Opaque<"string">
 ): [] {
   return MultiToken_initialize(_uri);
 }
 
-export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
+export circuit uri(id: Uint<128>): Opaque<"string"> {
   return MultiToken_uri(id);
 }
 
@@ -71,7 +71,7 @@ export circuit _update(
   return MultiToken__update(from, to, id, value);
 }
 
-export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
+export circuit _setURI(newURI: Opaque<"string">): [] {
   return MultiToken__setURI(newURI);
 }
 

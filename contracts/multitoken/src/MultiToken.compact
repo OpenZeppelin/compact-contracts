@@ -62,7 +62,7 @@ module MultiToken {
   export ledger _balances: Map<Uint<128>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
   // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
-  export ledger _uri: Maybe<Opaque<"string">>;
+  export ledger _uri: Opaque<"string">;
 
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
@@ -75,7 +75,7 @@ module MultiToken {
    * @return {[]} None.
    */
   export circuit initialize(
-    uri_: Maybe<Opaque<"string">>
+    uri_: Opaque<"string">
   ): [] {
     Initializable_initialize();
     _setURI(uri_);
@@ -93,9 +93,9 @@ module MultiToken {
    * - Contract must be initialized.
    *
    * @param {id} - The token identifier to query.
-   * return {Maybe<Opaque<"string">>} - The base URI for all tokens.
+   * return {Opaque<"string">} - The base URI for all tokens.
    */
-  export circuit uri(id: Uint<128>): Maybe<Opaque<"string">> {
+  export circuit uri(id: Uint<128>): Opaque<"string"> {
     Initializable_assertInitialized();
 
     return _uri;
@@ -319,7 +319,7 @@ module MultiToken {
    * @param {newURI} - The new base URI for all tokens.
    * @return {[]} - None.
    */
-  export circuit _setURI(newURI: Maybe<Opaque<"string">>): [] {
+  export circuit _setURI(newURI: Opaque<"string">): [] {
     Initializable_assertInitialized();
 
     _uri = newURI;

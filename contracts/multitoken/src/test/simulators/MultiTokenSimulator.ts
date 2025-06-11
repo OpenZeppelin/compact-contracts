@@ -19,7 +19,6 @@ import {
   type MultiTokenPrivateState,
   MultiTokenWitnesses,
 } from '../../witnesses/MultiTokenWitnesses';
-import type { MaybeString } from '../types/string';
 import type { IContractSimulator } from '../types/test';
 
 /**
@@ -42,7 +41,7 @@ export class MultiTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(uri: MaybeString) {
+  constructor(uri: string) {
     this.contract = new MockMultiToken<MultiTokenPrivateState>(
       MultiTokenWitnesses,
     );
@@ -92,7 +91,7 @@ export class MultiTokenSimulator
    * however, this method enables the tests to assert it cannot be called again.
    * @returns None.
    */
-  public initialize(uri: MaybeString) {
+  public initialize(uri: string) {
     this.circuitContext = this.contract.impureCircuits.initialize(
       this.circuitContext,
       uri,
@@ -103,7 +102,7 @@ export class MultiTokenSimulator
    * @description Returns the token URI.
    * @returns The token URI.
    */
-  public uri(id: bigint): MaybeString {
+  public uri(id: bigint): string {
     return this.contract.impureCircuits.uri(this.circuitContext, id).result;
   }
 
@@ -231,7 +230,7 @@ export class MultiTokenSimulator
     ).context;
   }
 
-  public _setURI(newURI: MaybeString) {
+  public _setURI(newURI: string) {
     this.circuitContext = this.contract.impureCircuits._setURI(
       this.circuitContext,
       newURI,
