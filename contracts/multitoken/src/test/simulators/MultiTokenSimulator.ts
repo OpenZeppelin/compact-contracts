@@ -20,6 +20,7 @@ import {
   MultiTokenWitnesses,
 } from '../../witnesses/MultiTokenWitnesses';
 import type { IContractSimulator } from '../types/test';
+import { MaybeString } from '../types/string';
 
 /**
  * @description A simulator implementation of a MultiToken contract for testing purposes.
@@ -39,9 +40,10 @@ export class MultiTokenSimulator
   circuitContext: CircuitContext<MultiTokenPrivateState>;
 
   /**
-   * @description Initializes the mock contract.
+   * @description Initializes the mock contract if `uri` is provided.
+   * If `uri` is none, the contract will not initialize (for testing).
    */
-  constructor(uri: string) {
+  constructor(uri: MaybeString) {
     this.contract = new MockMultiToken<MultiTokenPrivateState>(
       MultiTokenWitnesses,
     );

@@ -6,10 +6,18 @@ import "../../MultiToken" prefix MultiToken_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
 
+/**
+ * @description `_uri` is a `Maybe` type for testing.
+ * If `_uri` is provided, initialize the contract with that value.
+ * Otherwise, the contract will not initialize and we can test
+ * the contract when it is not initialized properly.
+*/
 constructor(
-  _uri: Opaque<"string">
+  _uri: Maybe<Opaque<"string">>
 ) {
-  MultiToken_initialize(_uri);
+  if (_uri.is_some) {
+    MultiToken_initialize(_uri.value);
+  }
 }
 
 export circuit initialize(
