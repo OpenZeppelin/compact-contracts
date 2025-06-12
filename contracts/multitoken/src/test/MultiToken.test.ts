@@ -13,7 +13,6 @@ const NEW_URI = 'https://uri.com/mock_v2';
 const AMOUNT: bigint = BigInt(250);
 const AMOUNT2: bigint = BigInt(9999);
 const AMOUNT3: bigint = BigInt(987654321);
-const AMOUNTS = [AMOUNT, AMOUNT2, AMOUNT3];
 const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
 // IDs
@@ -21,7 +20,6 @@ const TOKEN_ID: bigint = BigInt(1);
 const TOKEN_ID2: bigint = BigInt(22);
 const TOKEN_ID3: bigint = BigInt(333);
 const NONEXISTENT_ID: bigint = BigInt(987654321);
-const IDS = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
 
 // PubKeys/addresses
 const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
