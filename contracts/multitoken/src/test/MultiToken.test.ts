@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
-import { AnyAaaaRecord } from 'node:dns';
 
 // URIs
 const NO_STRING = '';
@@ -38,10 +37,14 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
-const Z_OWNER_CONTRACT = utils.createEitherTestContractAddress('OWNER_CONTRACT');
-const Z_RECIPIENT_CONTRACT = utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
-const Z_SPENDER_CONTRACT = utils.createEitherTestContractAddress('SPENDER_CONTRACT');
-const Z_OTHER_CONTRACT = utils.createEitherTestContractAddress('OTHER_CONTRACT');
+const Z_OWNER_CONTRACT =
+  utils.createEitherTestContractAddress('OWNER_CONTRACT');
+const Z_RECIPIENT_CONTRACT =
+  utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
+const Z_SPENDER_CONTRACT =
+  utils.createEitherTestContractAddress('SPENDER_CONTRACT');
+const Z_OTHER_CONTRACT =
+  utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 // Init
 const initWithURI: MaybeString = {
@@ -774,10 +777,7 @@ describe('MultiToken', () => {
     });
 
     describe('_unsafeMint', () => {
-      const caseContractOrPK = [
-        [Z_RECIPIENT_CONTRACT],
-        [Z_RECIPIENT],
-      ];
+      const caseContractOrPK = [[Z_RECIPIENT_CONTRACT], [Z_RECIPIENT]];
 
       describe.each(caseContractOrPK)('%s', (recipient) => {
         it('should update balance when minting', () => {
