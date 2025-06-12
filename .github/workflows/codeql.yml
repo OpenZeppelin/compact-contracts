@@ -23,6 +23,11 @@ jobs:
         language: ["javascript", "typescript"]
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Recommended by turbo team
+          
       - name: Setup Environment
         uses: ./.github/actions/setup
         with:

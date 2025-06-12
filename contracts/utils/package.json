@@ -14,8 +14,8 @@
     }
   },
   "scripts": {
-    "compact": "npx compact-compiler",
-    "build": "npx compact-builder && tsc",
+    "compact": "compact-compiler",
+    "build": "compact-builder && tsc",
     "test": "vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
     "fmt": "biome format",

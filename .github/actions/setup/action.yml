@@ -1,9 +1,6 @@
 name: 'Setup Environment'
 description: 'Sets up the environment with Compact compiler, yarn, and Node.js'
 timeout-minutes: 15
-env:
-  COMPACT_HOME: $HOME/compactc
-  PATH: $HOME/compactc:$PATH
 
 inputs:
   skip-compile:
@@ -14,12 +11,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Check out code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 2 # Recommended by turbo team
-
     - name: Get yarn cache directory path
+      shell: bash
       id: yarn-cache-dir-path
       run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
 
@@ -38,33 +31,6 @@ runs:
         key: ${{ runner.os }}-turbo-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-turbo-
-    
-    - name: Cache Compact compiler
-      uses: actions/cache@v4
-      id: cache-compact
-      with:
-        path: ${{ env.COMPACT_HOME }}
-        key: compact-compiler-0.23.0
-        restore-keys: |
-          compact-compiler-
-
-    - name: Install Compact compiler
-      if: steps.cache-compact.outputs.cache-hit != 'true'
-      id: setup
-      shell: bash
-      run: |
-          COMPILER_VERSION="0.23.0"
-          LANGUAGE_VERSION="0.15.0"
-          mkdir -p "${{ env.COMPACT_HOME }}"
-
-          echo "⬇️ Downloading Compact compiler..."
-          cd "${{ env.COMPACT_HOME }}"
-          curl -L https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_${COMPILER_VERSION}/compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip -o compactc.zip
-          unzip compactc.zip
-          chmod +x compactc.bin zkir compactc
-
-          # Test installation
-          "${{ env.COMPACT_HOME }}/compactc" --version
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -78,15 +44,17 @@ runs:
     
     - name: Build compact package
       shell: bash
+      env:
+        TURBO_TELEMETRY_DISABLED: 1
       run: |
-        yarn build -- --filter=compact/
+        yarn build:compact
 
     - name: Validate build artifacts
       shell: bash
       run: |
         REQUIRED_FILES=(
-          "packages/compact/dist/runCompiler.js"
-          "packages/compact/dist/runBuilder.js"
+          "compact/dist/runCompiler.js"
+          "compact/dist/runBuilder.js"
         )
         for file in "${REQUIRED_FILES[@]}"; do
           if [ ! -f "$file" ]; then
@@ -96,6 +64,8 @@ runs:
         done
 
     - name: Fast compile contracts (skip zk)
+      env:
+        TURBO_TELEMETRY_DISABLED: 1 
       if: ${{ inputs.skip-compile != 'true' }}
       shell: bash
       run: yarn compact -- --skip-zk
