@@ -75,7 +75,3 @@ This repository does not follow conventional commits, so do not prefix the title
 Work in progress pull requests should be submitted as Drafts and should not be prefixed with "WIP:".
 
 Branch names don't matter, and commit messages within a pull request mostly don't matter either, although they can help the review process.
-
-# Compact Conventions
-
-TODO
