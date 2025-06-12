@@ -1,0 +1,34 @@
+name: Contracts Compile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  checks: write
+  actions: write
+  contents: read
+
+concurrency:
+  group: contracts-compile-${{ github.run_id }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Fast Compile Contracts
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+        with:
+         skip-compile: 'true'
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "Compilation failed. Cleaning up..."
+          rm -rf contracts/*/src/artifacts/
