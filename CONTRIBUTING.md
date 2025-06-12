@@ -31,7 +31,9 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Midni
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [OpenZeppelin Midnight Contracts Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [contact@openzeppelin.com](contact@openzeppelin.com).
+This project and everyone participating in it is governed by the [OpenZeppelin Midnight Contracts Code of Conduct](CODE_OF_CONDUCT.md). 
+By participating, you are expected to uphold this code. 
+Please report unacceptable behavior to [contact@openzeppelin.com](contact@openzeppelin.com).
 
 ## I don't want to read this whole thing I just have a question!!!
 
