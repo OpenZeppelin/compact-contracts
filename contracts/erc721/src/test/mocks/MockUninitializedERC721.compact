@@ -99,7 +99,6 @@ export circuit _isAuthorized(
   return ERC721__isAuthorized(owner, spender, tokenId);
 }
 
-
 export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return ERC721__getApproved(tokenId);
 }
