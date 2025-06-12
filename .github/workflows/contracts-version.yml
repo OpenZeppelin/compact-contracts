@@ -1,4 +1,4 @@
-name: Contracts Build
+name: Contracts Version
 
 on:
   push:
@@ -7,25 +7,20 @@ on:
     branches: [main]
 
 concurrency:
-  group: contracts-build-${{ github.run_id }}-${{ github.ref }}
+  group: contracts-version-${{ github.run_id }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Compact Contracts
+  check:
+    name: Check Contract Versions
     runs-on: ubuntu-22.04
 
     steps:
       - name: Check out code
         uses: actions/checkout@v4
         with:
-         fetch-depth: 2 # Recommended by turbo team
+          fetch-depth: 2 # Recommended by turbo team
 
-      - name: Setup Environment
-        uses: ./.github/actions/setup
-        with:
-         skip-compile: 'true'
-      
       - name: Install Compact compiler
         id: setup
         shell: bash
@@ -55,27 +50,32 @@ jobs:
             echo "COMPACT_HOME=$COMPACT_HOME" >> $GITHUB_ENV
             echo "$COMPACT_HOME" >> $GITHUB_PATH
 
-      - name: Build contracts
-        run: yarn build
-        timeout-minutes: 10
-
-      - name: Check if build artifacts exist
+      - name: Check compiler version
         run: |
-          if ! find contracts -type d -name artifacts | grep -q . && [ ! -d "packages/compact/dist" ]; then
-            echo "::error::❌ Build artifacts not found in any contracts/*/artifacts or in packages/compact/dist!"
+          EXPECTED_COMPILER_VERSION="0.23.0"
+          COMPILER_OUTPUT=$("$COMPACT_HOME/compactc" --version)
+          COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
+          if [ "$COMPILER_VERSION" != "$EXPECTED_COMPILER_VERSION" ]; then
+            errMsg="❌ Compiler version mismatch!%0AExpected: $EXPECTED_COMPILER_VERSION%0AGot: $COMPILER_VERSION"
+            echo "::error::$errMsg"
             exit 1
           fi
-          
-          # List build artifacts
-          echo "✅ Build artifacts found:"
-          echo "Package build artifacts (dist):"
-          find contracts -name "dist" -type d -exec ls -la {} \;
-          echo -e "\nCompact code artifacts (src/artifacts):"
-          find contracts -name "artifacts" -type d -exec ls -la {} \;
+          echo "✅ Compiler version matches: $COMPILER_VERSION"
+
+      - name: Check language version
+        run: |
+          EXPECTED_LANGUAGE_VERSION="0.15.0"
+          LANGUAGE_OUTPUT=$("$COMPACT_HOME/compactc" --language-version)
+          LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | tail -n 1)
+          if [ "$LANGUAGE_VERSION" != "$EXPECTED_LANGUAGE_VERSION" ]; then
+            errMsg="❌ Language version mismatch!%0AExpected: $EXPECTED_LANGUAGE_VERSION%0AGot: $LANGUAGE_VERSION"
+            echo "::error::$errMsg"
+            exit 1
+          fi
+          echo "✅ Language version matches: $LANGUAGE_VERSION"
 
       - name: Cleanup on failure
         if: failure()
         run: |
-          echo "Build failed. Cleaning up..."
-          rm -rf contracts/*/dist/
+          echo "Version check failed. Cleaning up..."
           rm -rf contracts/*/src/artifacts/

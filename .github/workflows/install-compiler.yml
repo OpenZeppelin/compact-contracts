@@ -1,10 +1,7 @@
 name: Install Compact Compiler
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_call:
 
 env:
   COMPACT_HOME: $HOME/compactc
@@ -15,18 +12,12 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Cache Compact compiler
-        uses: actions/cache@v4
-        id: cache-compact
+      - name: Check out code
+        uses: actions/checkout@v4
         with:
-          path: ${{ env.COMPACT_HOME }}
-          key: compact-compiler-0.23.0
-          restore-keys: |
-            compact-compiler-
+          fetch-depth: 2 # Recommended by turbo team
 
-      - name: Install Compact compiler
-        if: steps.cache-compact.outputs.cache-hit != 'true'
-        id: setup
+      - name: Archive compactc binaries
         shell: bash
         run: |
             COMPILER_VERSION="0.23.0"
@@ -41,3 +32,12 @@ jobs:
 
             # Test installation
             "${{ env.COMPACT_HOME }}/compactc" --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compactc-binaries
+          if-no-files-found: error
+          include-hidden-files: 'true'
+          path: |
+            home/runner/compactc/*
+            !home/runner/compactc/*.zip
+            !home/runner/compactc/lib/
