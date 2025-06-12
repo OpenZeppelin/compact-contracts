@@ -124,10 +124,10 @@ Both issue lists are sorted by total number of comments. While not perfect, numb
 
 The process described here has several goals:
 
-- Maintain Midnight Contracts quality
-- Fix problems that are important to users
-- Engage the community in working toward the best possible smart contracts library on Midnight
-- Enable a sustainable system for Midnight Contract's maintainers to review contributions
+* Maintain Midnight Contracts quality.
+* Fix problems that are important to users.
+* Engage the community in working toward the best possible smart contracts library on Midnight.
+* Enable a sustainable system for Midnight Contract's maintainers to review contributions.
 
 Any non-trivial code contribution must be first discussed with the maintainers in an issue (see [Opening an issue](#opening-an-issue)). Only very minor changes are accepted without prior discussion.
 
