@@ -1,5 +1,8 @@
 name: Checks
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
 on:
   push:
     branches: [main]
