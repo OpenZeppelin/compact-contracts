@@ -28,9 +28,9 @@ runs:
       uses: actions/cache@v4
       with:
         path: .turbo
-        key: ${{ runner.os }}-turbo-${{ github.sha }}
+        key: ${{ runner.os }}-turbo-${{ hashFiles('.turbo/*') }}-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-turbo-
+          ${{ runner.os }}-turbo-${{ hashFiles('.turbo/*') }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
