@@ -49,7 +49,7 @@ The review must be approached by the reviewer in a similar way as if it was an a
 
 Reviewers should enforce code and project guidelines.
 
-External contributions must be reviewed separately by multiple maintainers.
+Small external contributions and documentation changes must be reviewed by a at least a single maintainer. Large PRs and critical code changes must be reviewed by multiple maintainers.
 
 ## Automation
 
