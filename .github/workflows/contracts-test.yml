@@ -1,0 +1,42 @@
+name: Contracts Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: contracts-test-${{ github.run_id }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test Contracts
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+        with:
+         skip-compile: 'true'
+ 
+      - name: Verify Compact build artifacts
+        run: |
+          if ! find contracts/*/src/artifacts -type d 2>/dev/null | grep -q .; then
+            echo "::error::❌ Compact build artifacts not found!"
+            exit 1
+          fi
+          echo "✅ Compact build artifacts found"
+
+      - name: Run contract tests
+        run: yarn test
+        timeout-minutes: 15
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "Tests failed. Cleaning up..."
+          rm -rf contracts/*/dist/
+          rm -rf contracts/*/src/artifacts/
+ 
