@@ -1,0 +1,43 @@
+name: Install Compact Compiler
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  COMPACT_HOME: $HOME/compactc
+
+jobs:
+  install:
+    name: Install Compact Compiler
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Cache Compact compiler
+        uses: actions/cache@v4
+        id: cache-compact
+        with:
+          path: ${{ env.COMPACT_HOME }}
+          key: compact-compiler-0.23.0
+          restore-keys: |
+            compact-compiler-
+
+      - name: Install Compact compiler
+        if: steps.cache-compact.outputs.cache-hit != 'true'
+        id: setup
+        shell: bash
+        run: |
+            COMPILER_VERSION="0.23.0"
+            LANGUAGE_VERSION="0.15.0"
+            mkdir -p "${{ env.COMPACT_HOME }}"
+
+            echo "⬇️ Downloading Compact compiler..."
+            cd "${{ env.COMPACT_HOME }}"
+            curl -L https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_${COMPILER_VERSION}/compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip -o compactc.zip
+            unzip compactc.zip
+            chmod +x compactc.bin zkir compactc
+
+            # Test installation
+            "${{ env.COMPACT_HOME }}/compactc" --version
