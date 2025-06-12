@@ -1,12 +1,11 @@
-name: 'Setup Environment'
-description: 'Sets up the environment with Compact compiler, yarn, and Node.js'
-timeout-minutes: 15
+name: "Setup Environment"
+description: "Sets up the environment with Compact compiler, yarn, and Node.js"
 
 inputs:
   skip-compile:
-    description: 'Skip the fast compile step'
+    description: "Skip the fast compile step"
     required: false
-    default: 'false'
+    default: "false"
 
 runs:
   using: "composite"
@@ -23,7 +22,7 @@ runs:
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
         restore-keys: |
           ${{ runner.os }}-yarn-
-    
+
     - name: Cache turbo build setup
       uses: actions/cache@v4
       with:
@@ -35,13 +34,13 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version-file: '.nvmrc'
-        cache: 'yarn'
+        node-version-file: ".nvmrc"
+        cache: "yarn"
 
     - name: Install dependencies
       shell: bash
       run: yarn install --immutable
-    
+
     - name: Build compact package
       shell: bash
       env:
@@ -65,7 +64,7 @@ runs:
 
     - name: Fast compile contracts (skip zk)
       env:
-        TURBO_TELEMETRY_DISABLED: 1 
+        TURBO_TELEMETRY_DISABLED: 1
       if: ${{ inputs.skip-compile != 'true' }}
       shell: bash
       run: yarn compact -- --skip-zk
