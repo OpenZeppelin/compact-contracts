@@ -11,8 +11,9 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Midni
 [I don't want to read this whole thing, I just have a question!!!](#i-dont-want-to-read-this-whole-thing-i-just-have-a-question)
 
 [What should I know before I get started?](#what-should-i-know-before-i-get-started)
-  * [What Is OpenZeppelin Contracts for Midnight](#what-is-openzeppelin-contracts-for-midnight)
-  * [Midnight Contracts Design Decisions](#midnight-contracts-design-decisions)
+
+* [What Is OpenZeppelin Contracts for Midnight](#what-is-openzeppelin-contracts-for-midnight)
+* [Midnight Contracts Design Decisions](#midnight-contracts-design-decisions)
 
 [How Can I Contribute?](#how-can-i-contribute)
   * [Reporting Bugs](#reporting-bugs)
