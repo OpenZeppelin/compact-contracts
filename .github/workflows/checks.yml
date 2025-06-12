@@ -26,12 +26,8 @@ jobs:
         with:
           skip-compile: 'true'
 
-      - name: Lint
-        run: yarn lint
-        timeout-minutes: 10
-
       - name: Format
-        run: yarn fmt
+        run: yarn fmt:ci
         timeout-minutes: 10
 
       - name: Cleanup on failure
