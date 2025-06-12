@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
+import { AnyAaaaRecord } from 'node:dns';
 
 // URIs
 const NO_STRING = '';
@@ -37,6 +38,10 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
+const Z_OWNER_CONTRACT = utils.createEitherTestContractAddress('OWNER_CONTRACT');
+const Z_RECIPIENT_CONTRACT = utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
+const Z_SPENDER_CONTRACT = utils.createEitherTestContractAddress('SPENDER_CONTRACT');
+const Z_OTHER_CONTRACT = utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 // Init
 const initWithURI: MaybeString = {
@@ -729,31 +734,84 @@ describe('MultiToken', () => {
     });
 
     describe('_mint', () => {
-      it('should update balance when minting', () => {
-        token._mint(Z_RECIPIENT, TOKEN_ID, AMOUNT);
+      describe('when the recipient is a pubkey', () => {
+        it('should update balance when minting', () => {
+          token._mint(Z_RECIPIENT, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+          expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+        });
+
+        it('should update balance with multiple mints', () => {
+          for (let i = 0; i < 3; i++) {
+            token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
+          }
+
+          expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(3n);
+        });
+
+        it('should fail when overflowing uin128', () => {
+          token._mint(Z_RECIPIENT, TOKEN_ID, MAX_UINT128);
+
+          expect(() => {
+            token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
+          }).toThrow('MultiToken: arithmetic overflow');
+        });
+
+        it('should fail when minting to zero address', () => {
+          expect(() => {
+            token._mint(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+          }).toThrow('MultiToken: invalid receiver');
+        });
       });
 
-      it('should update balance with multiple mints', () => {
-        for (let i = 0; i < 3; i++) {
-          token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
-        }
+      describe('when the recipient is a contract address', () => {
+        it('should fail when minting to a contract address', () => {
+          expect(() => {
+            token._mint(Z_RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT);
+          }).toThrow('MultiToken: unsafe Transfer');
+        });
+      });
+    });
 
-        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(3n);
+    describe('_unsafeMint', () => {
+      const caseContractOrPK = [
+        [Z_RECIPIENT_CONTRACT],
+        [Z_RECIPIENT],
+      ];
+
+      describe.each(caseContractOrPK)('%s', (recipient) => {
+        it('should update balance when minting', () => {
+          token._unsafeMint(recipient, TOKEN_ID, AMOUNT);
+
+          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+        });
+
+        it('should update balance with multiple mints', () => {
+          for (let i = 0; i < 3; i++) {
+            token._unsafeMint(recipient, TOKEN_ID, 1n);
+          }
+
+          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(3n);
+        });
+
+        it('should fail when overflowing uint128', () => {
+          token._unsafeMint(recipient, TOKEN_ID, MAX_UINT128);
+
+          expect(() => {
+            token._unsafeMint(recipient, TOKEN_ID, 1n);
+          }).toThrow('MultiToken: arithmetic overflow');
+        });
       });
 
-      it('should fail when overflowing uin128', () => {
-        token._mint(Z_RECIPIENT, TOKEN_ID, MAX_UINT128);
-
+      it('should fail when minting to zero address (pk)', () => {
         expect(() => {
-          token._mint(Z_RECIPIENT, TOKEN_ID, 1n);
-        }).toThrow('MultiToken: arithmetic overflow');
+          token._unsafeMint(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+        }).toThrow('MultiToken: invalid receiver');
       });
 
-      it('should fail when minting to zero address', () => {
+      it('should fail when minting to zero address (contract)', () => {
         expect(() => {
-          token._mint(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+          token._unsafeMint(utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT);
         }).toThrow('MultiToken: invalid receiver');
       });
     });
