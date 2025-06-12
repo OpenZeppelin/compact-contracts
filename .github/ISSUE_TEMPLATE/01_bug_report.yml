@@ -24,7 +24,7 @@ body:
           required: true
         - label: I have searched for [existing issues](https://github.com/OpenZeppelin/midnight-contracts/issues) that already report this problem, without success.
           required: true
-  
+
   - type: textarea
     id: bug-steps
     attributes:
