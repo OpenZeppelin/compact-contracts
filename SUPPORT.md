@@ -1,6 +1,6 @@
 # OpenZeppelin Contracts for Midnight Support
 
-If you're looking for support for this library there are a lot of options, check out:
+If you're looking for support for this library, check out:
 
 * Developer Documentation &mdash; [Midnight Contracts API Documentation](https://docs.openzeppelin.com)
 * Message Board &mdash; [Github Discussions](https://github.com/OpenZeppelin/midnight-contracts/discussions)
