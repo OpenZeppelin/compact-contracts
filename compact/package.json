@@ -17,6 +17,7 @@
     "compact-compiler": "dist/runCompiler.js"
   },
   "scripts": {
+    "build": "tsc -p .", 
     "types": "tsc -p tsconfig.json --noEmit",
     "fmt": "biome format",
     "fmt:fix": "biome format --write",
