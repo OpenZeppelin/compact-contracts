@@ -170,7 +170,7 @@ While the prerequisites above must be satisfied prior to having your pull reques
 
 All TypeScript code is linted with [Biome](https://biomejs.dev/).
 
-Quickly fix all lint errors with the `turbo fmt:fix` command
+Quickly fix all formatting and linting errors with the `turbo fmt:fix` and `turbo lint:fix` commands
 
 ## Opening an issue
 
