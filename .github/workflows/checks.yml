@@ -22,7 +22,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Recommended by turbo team
+          fetch-depth: 2 # Recommended by turbo team
 
       - name: Setup Environment
         uses: ./.github/actions/setup
