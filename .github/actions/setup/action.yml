@@ -1,0 +1,101 @@
+name: 'Setup Environment'
+description: 'Sets up the environment with Compact compiler, yarn, and Node.js'
+timeout-minutes: 15
+env:
+  COMPACT_HOME: $HOME/compactc
+  PATH: $HOME/compactc:$PATH
+
+inputs:
+  skip-compile:
+    description: 'Skip the fast compile step'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2 # Recommended by turbo team
+
+    - name: Get yarn cache directory path
+      id: yarn-cache-dir-path
+      run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v4
+      id: yarn-cache
+      with:
+        path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
+    
+    - name: Cache turbo build setup
+      uses: actions/cache@v4
+      with:
+        path: .turbo
+        key: ${{ runner.os }}-turbo-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-turbo-
+    
+    - name: Cache Compact compiler
+      uses: actions/cache@v4
+      id: cache-compact
+      with:
+        path: ${{ env.COMPACT_HOME }}
+        key: compact-compiler-0.23.0
+        restore-keys: |
+          compact-compiler-
+
+    - name: Install Compact compiler
+      if: steps.cache-compact.outputs.cache-hit != 'true'
+      id: setup
+      shell: bash
+      run: |
+          COMPILER_VERSION="0.23.0"
+          LANGUAGE_VERSION="0.15.0"
+          mkdir -p "${{ env.COMPACT_HOME }}"
+
+          echo "⬇️ Downloading Compact compiler..."
+          cd "${{ env.COMPACT_HOME }}"
+          curl -L https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_${COMPILER_VERSION}/compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip -o compactc.zip
+          unzip compactc.zip
+          chmod +x compactc.bin zkir compactc
+
+          # Test installation
+          "${{ env.COMPACT_HOME }}/compactc" --version
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      shell: bash
+      run: yarn install --immutable
+    
+    - name: Build compact package
+      shell: bash
+      run: |
+        yarn build -- --filter=compact/
+
+    - name: Validate build artifacts
+      shell: bash
+      run: |
+        REQUIRED_FILES=(
+          "packages/compact/dist/runCompiler.js"
+          "packages/compact/dist/runBuilder.js"
+        )
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "::error::❌ Missing required file: $file"
+            exit 1
+          fi
+        done
+
+    - name: Fast compile contracts (skip zk)
+      if: ${{ inputs.skip-compile != 'true' }}
+      shell: bash
+      run: yarn compact -- --skip-zk
