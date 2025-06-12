@@ -237,6 +237,19 @@ export class MultiTokenSimulator
     ).context;
   }
 
+  public _unsafeMint(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: bigint,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._unsafeMint(
+      this.circuitContext,
+      to,
+      id,
+      value,
+    ).context;
+  }
+
   public _burn(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,

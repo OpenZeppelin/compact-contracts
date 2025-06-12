@@ -78,6 +78,10 @@ export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<1
   return MultiToken__mint(to, id, value);
 }
 
+export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+  return MultiToken__unsafeMint(to, id, value);
+}
+
 export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
   return MultiToken__burn(from, id, value);
 }
