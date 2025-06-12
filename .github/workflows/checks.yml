@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Setup Environment
         uses: ./.github/actions/setup
+        with:
+          skip-compile: 'true'
 
       - name: Lint
         run: yarn lint
