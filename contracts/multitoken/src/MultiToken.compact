@@ -71,7 +71,7 @@ module MultiToken {
    *
    * - Must be called in the contract's constructor.
    *
-   * @param {uri_} - The base URI for all token URIs.
+   * @param {Opaque<"string">} uri_ - The base URI for all token URIs.
    * @return {[]} None.
    */
   export circuit initialize(
@@ -92,7 +92,7 @@ module MultiToken {
    *
    * - Contract must be initialized.
    *
-   * @param {id} - The token identifier to query.
+   * @param {Uint<128>} id - The token identifier to query.
    * return {Opaque<"string">} - The base URI for all tokens.
    */
   export circuit uri(id: Uint<128>): Opaque<"string"> {
