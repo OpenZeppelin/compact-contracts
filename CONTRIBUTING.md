@@ -4,7 +4,7 @@
 
 We really appreciate and value contributions to OpenZeppelin Contracts for Midnight. Please take 5' to review the items listed below to make sure that your contributions are merged and questions are answered.
 
-### Table Of Contents
+## Table Of Contents
 
 [Code of Conduct](#code-of-conduct)
 
