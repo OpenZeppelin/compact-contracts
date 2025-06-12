@@ -1,0 +1,55 @@
+name: Contracts Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: contracts-build-${{ github.run_id }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Compact Contracts
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+
+      - name: Build contracts
+        run: yarn build
+        timeout-minutes: 10
+
+      - name: Check if build artifacts exist
+        run: |
+          if ! find contracts -type d -name artifacts | grep -q . && [ ! -d "packages/compact/dist" ]; then
+            echo "::error::❌ Build artifacts not found in any contracts/*/artifacts or in packages/compact/dist!"
+            exit 1
+          fi
+          
+          # List build artifacts
+          echo "✅ Build artifacts found:"
+          echo "Package build artifacts (dist):"
+          find contracts -name "dist" -type d -exec ls -la {} \;
+          echo -e "\nCompact code artifacts (src/artifacts):"
+          find contracts -name "artifacts" -type d -exec ls -la {} \;
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compact-builds
+          path: |
+            contracts/*/dist/
+            contracts/*/src/artifacts/
+          retention-days: 7
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "Build failed. Cleaning up..."
+          rm -rf contracts/*/dist/
+          rm -rf contracts/*/src/artifacts/
