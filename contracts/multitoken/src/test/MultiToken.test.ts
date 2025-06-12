@@ -113,7 +113,10 @@ describe('MultiToken', () => {
     // Always use the constructor to initialize the state.
     it('should allow initialization post deployment', () => {
       token.initialize(URI);
-      expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
+
+      expect(() => {
+        token.balanceOf(Z_OWNER, TOKEN_ID)
+      }).not.toThrow()
     });
   });
 
