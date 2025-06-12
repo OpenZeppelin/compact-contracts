@@ -338,6 +338,23 @@ module MultiToken {
    * @return {[]} - None.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+    assert !Utils_isContractAddress(to) "MultiToken: unsafe Transfer";
+    _unsafeMint(to, id, value);
+  }
+
+  /**
+   * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {to} - The recipient of the minted tokens.
+   * @param {id} - The unique identifier for the token type.
+   * @param {value} - The quantity of `id` tokens that are minted to `to`.
+   * @return {[]} - None.
+   */
+  export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
 
     assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
