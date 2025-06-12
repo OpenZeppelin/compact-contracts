@@ -19,8 +19,8 @@ import {
   type MultiTokenPrivateState,
   MultiTokenWitnesses,
 } from '../../witnesses/MultiTokenWitnesses';
+import type { MaybeString } from '../types/string';
 import type { IContractSimulator } from '../types/test';
-import { MaybeString } from '../types/string';
 
 /**
  * @description A simulator implementation of a MultiToken contract for testing purposes.

@@ -1,8 +1,8 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
+import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
-import { MaybeString } from './types/string';
 
 // URIs
 const NO_STRING = '';
@@ -41,18 +41,18 @@ const Z_OTHER = utils.createEitherTestUser('OTHER');
 // Init
 const initWithURI: MaybeString = {
   is_some: true,
-  value: URI
-}
+  value: URI,
+};
 
 const initWithEmptyURI: MaybeString = {
   is_some: true,
-  value: ''
-}
+  value: '',
+};
 
 const badInit: MaybeString = {
   is_some: false,
-  value: ''
-}
+  value: '',
+};
 
 let token: MultiTokenSimulator;
 let caller: CoinPublicKey;
@@ -89,7 +89,10 @@ describe('MultiToken', () => {
     const circuitsToFail: FailingCircuits[] = [
       ['uri', [TOKEN_ID]],
       ['balanceOf', [Z_OWNER, TOKEN_ID]],
-      ['balanceOfBatch_10', [new Array(10).fill(Z_OWNER, 0, 10), new Array(10).fill(0n, 0, 10)]],
+      [
+        'balanceOfBatch_10',
+        [new Array(10).fill(Z_OWNER, 0, 10), new Array(10).fill(0n, 0, 10)],
+      ],
       ['setApprovalForAll', [Z_OWNER, true]],
       ['isApprovedForAll', [Z_OWNER, Z_SPENDER]],
       ['transferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
@@ -113,8 +116,8 @@ describe('MultiToken', () => {
       token.initialize(URI);
 
       expect(() => {
-        token.balanceOf(Z_OWNER, TOKEN_ID)
-      }).not.toThrow()
+        token.balanceOf(Z_OWNER, TOKEN_ID);
+      }).not.toThrow();
     });
   });
 
@@ -360,9 +363,17 @@ describe('MultiToken', () => {
 
         it('should transfer partial', () => {
           const partialAmt = AMOUNT - 1n;
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            partialAmt,
+            caller,
+          );
 
-          expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
+          expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(
+            AMOUNT - partialAmt,
+          );
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(partialAmt);
         });
 
@@ -382,7 +393,13 @@ describe('MultiToken', () => {
           // Mint rest of tokens to == MAX_UINT128
           token._mint(Z_OWNER, TOKEN_ID, MAX_UINT128 - AMOUNT);
 
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, MAX_UINT128, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            MAX_UINT128,
+            caller,
+          );
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(MAX_UINT128);
         });
 
@@ -484,9 +501,17 @@ describe('MultiToken', () => {
 
         it('should transfer partial', () => {
           const partialAmt = AMOUNT - 1n;
-          token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, partialAmt, caller);
+          token.transferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            partialAmt,
+            caller,
+          );
 
-          expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
+          expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(
+            AMOUNT - partialAmt,
+          );
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(partialAmt);
         });
 
