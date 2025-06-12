@@ -84,7 +84,7 @@ body:
     attributes:
       value: |
         ----
-        
+
         # Details of your setup
 
   - type: dropdown
