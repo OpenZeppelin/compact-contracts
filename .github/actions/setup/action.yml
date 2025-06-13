@@ -1,12 +1,5 @@
-name: 'Setup Environment'
-description: 'Sets up the environment with Compact compiler, yarn, and Node.js'
-timeout-minutes: 15
-
-inputs:
-  skip-compile:
-    description: 'Skip the fast compile step'
-    required: false
-    default: 'false'
+name: "Setup Environment"
+description: "Sets up the environment with yarn, Node.js, and turbo"
 
 runs:
   using: "composite"
@@ -23,49 +16,28 @@ runs:
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
         restore-keys: |
           ${{ runner.os }}-yarn-
-    
+
     - name: Cache turbo build setup
       uses: actions/cache@v4
       with:
         path: .turbo
-        key: ${{ runner.os }}-turbo-${{ hashFiles('.turbo/*') }}-${{ github.sha }}
+        key: ${{ runner.os }}-turbo-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-turbo-${{ hashFiles('.turbo/*') }}
+          ${{ runner.os }}-turbo-
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version-file: '.nvmrc'
-        cache: 'yarn'
+        node-version-file: ".nvmrc"
+        cache: "yarn"
 
     - name: Install dependencies
       shell: bash
       run: yarn install --immutable
-    
-    - name: Build compact package
+
+    - name: Install Turbo Globally
       shell: bash
       env:
+        TURBO_MAJOR_VERSION: 2
         TURBO_TELEMETRY_DISABLED: 1
-      run: |
-        yarn build:compact
-
-    - name: Validate build artifacts
-      shell: bash
-      run: |
-        REQUIRED_FILES=(
-          "compact/dist/runCompiler.js"
-          "compact/dist/runBuilder.js"
-        )
-        for file in "${REQUIRED_FILES[@]}"; do
-          if [ ! -f "$file" ]; then
-            echo "::error::❌ Missing required file: $file"
-            exit 1
-          fi
-        done
-
-    - name: Fast compile contracts (skip zk)
-      env:
-        TURBO_TELEMETRY_DISABLED: 1 
-      if: ${{ inputs.skip-compile != 'true' }}
-      shell: bash
-      run: yarn compact -- --skip-zk
+      run: yarn add global turbo@${{ env.TURBO_MAJOR_VERSION }}
