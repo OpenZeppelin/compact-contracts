@@ -25,13 +25,7 @@ In some cases unit tests may be insufficient and complementary techniques should
 
 ## Code style
 
-Compact code should be written in a consistent format enforced by a linter
-
-The code should be simple and straightforward, prioritizing readability and understandability. Consistency and predictability should be maintained across the codebase. In particular, this applies to naming, which should be systematic, clear, and concise.
-
-Sometimes these guidelines may be broken if doing so brings significant efficiency gains, but explanatory comments should be added.
-
-Modularity should be pursued, but not at the cost of the above priorities.
+TypeScript code should be written in a consistent format enforced by the project's chosen formatting tool, [biomejs](https://biomejs.dev/).
 
 ## Documentation
 
