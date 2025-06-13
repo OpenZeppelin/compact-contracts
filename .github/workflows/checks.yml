@@ -24,7 +24,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Format & Lint
-        run: yarn biome ci . --no-errors-on-unmatched && turbo fmt:ci
+        run: yarn biome ci . --changed --no-errors-on-unmatched && turbo fmt:ci
 
       - name: Run type checks
         run: turbo types
