@@ -170,9 +170,9 @@ While the prerequisites above must be satisfied prior to having your pull reques
 
 ### TypeScript Styleguide
 
-All TypeScript code is linted with [Biome](https://biomejs.dev/).
+All TypeScript code is linted with [Biomejs](https://biomejs.dev/).
 
-Quickly fix all formatting and linting errors with the `turbo fmt:fix` and `turbo lint:fix` commands
+Quickly fix all formatting and linting errors with the `turbo fmt:fix` and `turbo lint:fix` commands.
 
 ## Opening an issue
 
