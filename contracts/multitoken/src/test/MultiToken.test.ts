@@ -713,6 +713,12 @@ describe('MultiToken', () => {
           token._transferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
         }).toThrow('MultiToken: invalid receiver');
       });
+
+      it('should fail when transfer to contract address', () => {
+        expect(() => {
+          token._transferFrom(Z_OWNER, Z_RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT);
+        }).toThrow('MultiToken: unsafe transfer');
+      });
     });
 
     describe('_setURI', () => {
