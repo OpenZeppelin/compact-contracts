@@ -37,14 +37,14 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
-const Z_OWNER_CONTRACT =
-  utils.createEitherTestContractAddress('OWNER_CONTRACT');
+//const Z_OWNER_CONTRACT =
+//  utils.createEitherTestContractAddress('OWNER_CONTRACT');
 const Z_RECIPIENT_CONTRACT =
   utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
-const Z_SPENDER_CONTRACT =
-  utils.createEitherTestContractAddress('SPENDER_CONTRACT');
-const Z_OTHER_CONTRACT =
-  utils.createEitherTestContractAddress('OTHER_CONTRACT');
+//const Z_SPENDER_CONTRACT =
+//  utils.createEitherTestContractAddress('SPENDER_CONTRACT');
+//const Z_OTHER_CONTRACT =
+//  utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 // Init
 const initWithURI: MaybeString = {
@@ -481,18 +481,29 @@ describe('MultiToken', () => {
           expect(() => {
             token.transferFrom(
               Z_OWNER,
-              utils.ZERO_ADDRESS,
+              utils.ZERO_KEY,
               TOKEN_ID,
               AMOUNT,
               caller,
             );
           }).toThrow('MultiToken: invalid receiver');
         });
+
+        it('should fail when transferring to a contract address', () => {
+          expect(() => {
+            token.transferFrom(
+              Z_OWNER,
+              Z_RECIPIENT_CONTRACT,
+              TOKEN_ID,
+              AMOUNT,
+              caller,
+            );
+          }).toThrow('MultiToken: unsafe transfer');
+        });
       });
 
       describe('when caller is spender', () => {
         beforeEach(() => {
-          caller = OWNER;
           token._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
           caller = SPENDER;
 
@@ -570,7 +581,7 @@ describe('MultiToken', () => {
           expect(() => {
             token.transferFrom(
               Z_OWNER,
-              utils.ZERO_ADDRESS,
+              utils.ZERO_KEY,
               TOKEN_ID,
               AMOUNT,
               caller,
@@ -771,7 +782,7 @@ describe('MultiToken', () => {
         it('should fail when minting to a contract address', () => {
           expect(() => {
             token._mint(Z_RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT);
-          }).toThrow('MultiToken: unsafe Transfer');
+          }).toThrow('MultiToken: unsafe transfer');
         });
       });
     });
@@ -811,7 +822,7 @@ describe('MultiToken', () => {
 
       it('should fail when minting to zero address (contract)', () => {
         expect(() => {
-          token._unsafeMint(utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT);
+          token._unsafeMint(utils.ZERO_KEY, TOKEN_ID, AMOUNT);
         }).toThrow('MultiToken: invalid receiver');
       });
     });
