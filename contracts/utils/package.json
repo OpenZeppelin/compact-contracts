@@ -18,11 +18,6 @@
     "build": "compact-builder && tsc",
     "test": "vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
-    "fmt": "biome format",
-    "fmt:fix": "biome format --write",
-    "fmt:ci": "biome ci --changed --no-errors-on-unmatched",
-    "lint": "biome lint",
-    "lint:fix": "biome check --write",
     "clean": "git clean -fXd"
   },
   "dependencies": {

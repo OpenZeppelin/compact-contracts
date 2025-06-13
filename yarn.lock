@@ -408,7 +408,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/erc20@workspace:contracts/erc20"
   dependencies:
-    "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:^18.18.6"
     ts-node: "npm:^10.9.2"
@@ -447,7 +446,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/utils@workspace:contracts/utils"
   dependencies:
-    "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:^18.18.6"
     ts-node: "npm:^10.9.2"
