@@ -40,4 +40,6 @@ runs:
       env:
         TURBO_MAJOR_VERSION: 2
         TURBO_TELEMETRY_DISABLED: 1
-      run: yarn add global turbo@${{ env.TURBO_MAJOR_VERSION }}
+      run: |
+        yarn add global turbo@${{ env.TURBO_MAJOR_VERSION }}
+        echo "$(where turbo)" >> $GITHUB_PATH
