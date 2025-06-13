@@ -29,24 +29,9 @@
       "cache": false,
       "dependsOn": ["compact"]
     },
-    "fmt": {
-      "outputs": [],
-      "cache": false
-    },
-    "fmt:fix": {
-      "outputs": [],
-      "cache": false
-    },
-    "fmt:ci": {
-      "outputs": [],
-      "cache": false
-    },
-    "lint": {
-      "outputs": [],
-      "cache": false
-    },
-    "lint:fix": {
-      "outputs": [],
+    "//#fmt-and-lint": {},
+    "//#fmt-and-lint:ci": {},
+    "//#fmt-and-lint:fix": {
       "cache": false
     },
     "clean": {
