@@ -37,14 +37,8 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
-const Z_OWNER_CONTRACT =
-  utils.createEitherTestContractAddress('OWNER_CONTRACT');
 const Z_RECIPIENT_CONTRACT =
   utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
-const Z_SPENDER_CONTRACT =
-  utils.createEitherTestContractAddress('SPENDER_CONTRACT');
-const Z_UNAUTHORIZED_CONTRACT =
-  utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 // Init
 const initWithURI: MaybeString = {
