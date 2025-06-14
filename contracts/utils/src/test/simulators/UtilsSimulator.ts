@@ -16,8 +16,8 @@ import {
 import {
   type UtilsPrivateState,
   UtilsWitnesses,
-} from '../../witnesses/UtilsWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/UtilsWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.

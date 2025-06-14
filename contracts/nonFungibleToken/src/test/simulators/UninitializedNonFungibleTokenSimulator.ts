@@ -12,38 +12,38 @@ import {
   type Either,
   type ZswapCoinPublicKey,
   type ContractAddress,
-  Contract as MockUninitializedERC721,
+  Contract as MockUninitializedNonFungibleToken,
   ledger,
-} from '../../artifacts/MockUninitializedERC721/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockUninitializedNonFungibleToken/contract/index.cjs'; // Combined imports
 import {
-  type ERC721PrivateState,
-  ERC721Witnesses,
-} from '../../witnesses/ERC721Witnesses';
-import type { IContractSimulator } from '../types/test';
+  type NonFungibleTokenPrivateState,
+  NonFungibleTokenWitnesses,
+} from '../../witnesses/NonFungibleTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
- * @description A simulator implementation of an ERC721 contract for testing purposes.
- * @template P - The private state type, fixed to ERC721PrivateState.
+ * @description A simulator implementation of an NonFungibleToken contract for testing purposes.
+ * @template P - The private state type, fixed to NonFungibleTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class ERC721UninitializedSimulator
-  implements IContractSimulator<ERC721PrivateState, Ledger>
+export class UninitializedNonFungibleTokenSimulator
+  implements IContractSimulator<NonFungibleTokenPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockUninitializedERC721<ERC721PrivateState>;
+  readonly contract: MockUninitializedNonFungibleToken<NonFungibleTokenPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<ERC721PrivateState>;
+  circuitContext: CircuitContext<NonFungibleTokenPrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
   constructor() {
-    this.contract = new MockUninitializedERC721<ERC721PrivateState>(
-      ERC721Witnesses,
+    this.contract = new MockUninitializedNonFungibleToken<NonFungibleTokenPrivateState>(
+      NonFungibleTokenWitnesses,
     );
     const {
       currentPrivateState,
@@ -72,9 +72,9 @@ export class ERC721UninitializedSimulator
 
   /**
    * @description Retrieves the current private state of the contract.
-   * @returns The private state of type ERC721PrivateState.
+   * @returns The private state of type NonFungibleTokenPrivateState.
    */
-  public getCurrentPrivateState(): ERC721PrivateState {
+  public getCurrentPrivateState(): NonFungibleTokenPrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
@@ -592,12 +592,12 @@ export class ERC721UninitializedSimulator
    * @param {TokenId} tokenId - The token to transfer
    * @return {[]} - None.
    */
-  public _unsafe_transfer(
+  public _unsafeTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._unsafe_transfer(
+    this.circuitContext = this.contract.impureCircuits._unsafeTransfer(
       this.circuitContext,
       from,
       to,
@@ -621,11 +621,11 @@ export class ERC721UninitializedSimulator
    * @param {TokenId} tokenId - The token to transfer
    * @return {[]} - None.
    */
-  public _unsafe_mint(
+  public _unsafeMint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     tokenId: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._unsafe_mint(
+    this.circuitContext = this.contract.impureCircuits._unsafeMint(
       this.circuitContext,
       to,
       tokenId,
