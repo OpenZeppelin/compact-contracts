@@ -272,7 +272,8 @@ module NonFungibleToken {
    * Requirements:
    * - The contract must have been initialized.
    * - `from` cannot be the zero address.
-   * - `to` cannot be the zero address or a ContractAddress.
+   * - `to` cannot be the zero address.
+   * - `to` cannot be ContractAddress.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
@@ -480,7 +481,8 @@ module NonFungibleToken {
    * Requirements:
    * - The contract must have been initialized.
    * - `tokenId` must not exist.
-   * - `to` cannot be the zero address or a ContractAddress.
+   * - `to` cannot be the zero address.
+   * - `to` cannot be ContractAddress.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
@@ -550,7 +552,8 @@ module NonFungibleToken {
    *
    * Requirements:
    * - The contract must have been initialized.
-   * - `to` cannot be the zero address or a ContractAddress.
+   * - `to` cannot be the zero address.
+   * - `to` cannot be ContractAddress.
    * - `tokenId` token must be owned by `from`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
