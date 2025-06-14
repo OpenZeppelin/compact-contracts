@@ -29,12 +29,13 @@ pragma language_version >= 0.15.0;
  * - Drop _unsafeTransfer and remove `isContract` guard from `transfer`.
  * - By this point, anyone using _unsafeTransfer should have migrated to the now C2C-capable `transfer`.
  *
- * @notice TODO List - Missing Features and Improvements:
- * @notice TODO: Support Uint256 token IDs
- * @notice TODO: Implement Transfer/Approval events
- * @notice TODO: Add safe transfer functions
- * @notice TODO: Add _baseURI() support
- * @notice TODO: Add ERC165 support
+ * @notice Missing Features and Improvements:
+ *
+ * - Uint256 token IDs
+ * - Transfer/Approval events
+ * - safeTransfer functions
+ * - _baseURI() support
+ * - An ERC165-like interface
  */
 
 module NonFungibleToken {
