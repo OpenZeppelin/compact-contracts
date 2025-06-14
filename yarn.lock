@@ -392,7 +392,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/compact@workspace:compact"
   dependencies:
-    "@types/node": "npm:^22.13.10"
+    "@types/node": "npm:22.14.0"
     chalk: "npm:^5.4.1"
     fast-check: "npm:^3.15.0"
     log-symbols: "npm:^7.0.0"
