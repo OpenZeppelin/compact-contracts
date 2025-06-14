@@ -674,7 +674,13 @@ describe('MultiToken', () => {
         });
 
         it('should transfer whole', () => {
-          token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
+          token._unsafeTransferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
 
           expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
@@ -726,7 +732,13 @@ describe('MultiToken', () => {
           // Approve -> Transfer -> Revoke -> Approve
           token.setApprovalForAll(Z_SPENDER, true, caller);
 
-          token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
+          token._unsafeTransferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            SPENDER,
+          );
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
 
           token.setApprovalForAll(Z_SPENDER, false, caller);
@@ -744,11 +756,23 @@ describe('MultiToken', () => {
           token.setApprovalForAll(Z_OTHER, true, caller);
 
           // First spender transfers half
-          token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
+          token._unsafeTransferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            SPENDER,
+          );
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
 
           // Second spender transfers remaining
-          token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, SPENDER);
+          token._unsafeTransferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            SPENDER,
+          );
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
         });
 
@@ -811,7 +835,13 @@ describe('MultiToken', () => {
         });
 
         it('should transfer whole', () => {
-          token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
+          token._unsafeTransferFrom(
+            Z_OWNER,
+            Z_RECIPIENT,
+            TOKEN_ID,
+            AMOUNT,
+            caller,
+          );
 
           expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
@@ -896,7 +926,13 @@ describe('MultiToken', () => {
 
         it('should fail when transfer whole', () => {
           expect(() => {
-            token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT, caller);
+            token._unsafeTransferFrom(
+              Z_OWNER,
+              Z_RECIPIENT,
+              TOKEN_ID,
+              AMOUNT,
+              caller,
+            );
           }).toThrow('MultiToken: unauthorized operator');
         });
 
@@ -915,7 +951,13 @@ describe('MultiToken', () => {
 
         it('should fail when transfer zero', () => {
           expect(() => {
-            token._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, 0n, caller);
+            token._unsafeTransferFrom(
+              Z_OWNER,
+              Z_RECIPIENT,
+              TOKEN_ID,
+              0n,
+              caller,
+            );
           }).toThrow('MultiToken: unauthorized operator');
         });
 
@@ -1032,7 +1074,12 @@ describe('MultiToken', () => {
 
       describe.each(caseContractOrPK)('%s', (recipient) => {
         it('should transfer whole', () => {
-          token._unsafeUncheckedTransferFrom(Z_OWNER, recipient, TOKEN_ID, AMOUNT);
+          token._unsafeUncheckedTransferFrom(
+            Z_OWNER,
+            recipient,
+            TOKEN_ID,
+            AMOUNT,
+          );
 
           expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
           expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
@@ -1040,9 +1087,16 @@ describe('MultiToken', () => {
 
         it('should transfer partial', () => {
           const partialAmt = AMOUNT - 1n;
-          token._unsafeUncheckedTransferFrom(Z_OWNER, recipient, TOKEN_ID, partialAmt);
+          token._unsafeUncheckedTransferFrom(
+            Z_OWNER,
+            recipient,
+            TOKEN_ID,
+            partialAmt,
+          );
 
-          expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT - partialAmt);
+          expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(
+            AMOUNT - partialAmt,
+          );
           expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(partialAmt);
         });
 
@@ -1055,38 +1109,68 @@ describe('MultiToken', () => {
 
         it('should fail with unsufficient balance', () => {
           expect(() => {
-            token._unsafeUncheckedTransferFrom(Z_OWNER, recipient, TOKEN_ID, AMOUNT + 1n);
+            token._unsafeUncheckedTransferFrom(
+              Z_OWNER,
+              recipient,
+              TOKEN_ID,
+              AMOUNT + 1n,
+            );
           }).toThrow('MultiToken: insufficient balance');
         });
 
         it('should fail with nonexistent id', () => {
           expect(() => {
-            token._unsafeUncheckedTransferFrom(Z_OWNER, recipient, NONEXISTENT_ID, AMOUNT);
+            token._unsafeUncheckedTransferFrom(
+              Z_OWNER,
+              recipient,
+              NONEXISTENT_ID,
+              AMOUNT,
+            );
           }).toThrow('MultiToken: insufficient balance');
         });
 
         it('should fail when transfer from 0 (pk)', () => {
           expect(() => {
-            token._unsafeUncheckedTransferFrom(utils.ZERO_KEY, recipient, TOKEN_ID, AMOUNT);
+            token._unsafeUncheckedTransferFrom(
+              utils.ZERO_KEY,
+              recipient,
+              TOKEN_ID,
+              AMOUNT,
+            );
           }).toThrow('MultiToken: invalid sender');
         });
 
         it('should fail when transfer from 0 (contract address)', () => {
           expect(() => {
-            token._unsafeUncheckedTransferFrom(utils.ZERO_ADDRESS, recipient, TOKEN_ID, AMOUNT);
+            token._unsafeUncheckedTransferFrom(
+              utils.ZERO_ADDRESS,
+              recipient,
+              TOKEN_ID,
+              AMOUNT,
+            );
           }).toThrow('MultiToken: invalid sender');
         });
       });
 
       it('should fail when transfer to 0 (pk)', () => {
         expect(() => {
-          token._unsafeUncheckedTransferFrom(Z_OWNER, utils.ZERO_KEY, TOKEN_ID, AMOUNT);
+          token._unsafeUncheckedTransferFrom(
+            Z_OWNER,
+            utils.ZERO_KEY,
+            TOKEN_ID,
+            AMOUNT,
+          );
         }).toThrow('MultiToken: invalid receiver');
       });
 
       it('should fail when transfer to 0 (contract address)', () => {
         expect(() => {
-          token._unsafeUncheckedTransferFrom(Z_OWNER, utils.ZERO_ADDRESS, TOKEN_ID, AMOUNT);
+          token._unsafeUncheckedTransferFrom(
+            Z_OWNER,
+            utils.ZERO_ADDRESS,
+            TOKEN_ID,
+            AMOUNT,
+          );
         }).toThrow('MultiToken: invalid receiver');
       });
     });
