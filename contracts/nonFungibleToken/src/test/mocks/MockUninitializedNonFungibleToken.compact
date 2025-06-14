@@ -6,13 +6,6 @@ import "NonFungibleTokenTesting" prefix NonFungibleToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
-constructor(
-  _name: Opaque<"string">,
-  _symbol: Opaque<"string">
-) {
-  NonFungibleToken_initialize(_name, _symbol);
-}
-
 export circuit name(): Opaque<"string"> {
   return NonFungibleToken_name();
 }
@@ -154,12 +147,12 @@ export circuit _unsafeTransfer(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__unsafeTransfer(from, to, tokenId);
+  return NonFungibleToken__unsafeTransfer(from, to, tokenId); 
 }
 
 export circuit _unsafeMint(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__unsafeMint(to, tokenId);
+  return NonFungibleToken__unsafeMint(to, tokenId);  
 }
