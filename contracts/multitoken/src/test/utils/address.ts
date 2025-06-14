@@ -7,26 +7,26 @@ import type * as Compact from '../../artifacts/MockMultiToken/contract/index.cjs
 
 const PREFIX_ADDRESS = '0200';
 
-export const pad = (s: string, n: number): Uint8Array => {
-  const encoder = new TextEncoder();
-  const utf8Bytes = encoder.encode(s);
-  if (n < utf8Bytes.length) {
-    throw new Error(`The padded length n must be at least ${utf8Bytes.length}`);
-  }
-  const paddedArray = new Uint8Array(n);
-  paddedArray.set(utf8Bytes);
-  return paddedArray;
-};
+/**
+ * @description Converts an ASCII string to its hexadecimal representation,
+ *              left-padded with zeros to a specified length.
+ *              Useful for generating fixed-size hex strings for encoding.
+ * @param str ASCII string to convert.
+ * @param len Total desired length of the resulting hex string. Defaults to 64.
+ * @returns Hexadecimal string representation of `str`, padded to `length` characters.
+ * @throws If `length` is less than the length of the converted hex string.
+ */
+export const toHexPadded = (str: string, len = 64) =>
+  Buffer.from(str, 'ascii').toString('hex').padStart(len, '0');
 
 /**
  * @description Generates ZswapCoinPublicKey from `str` for testing purposes.
  * @param str String to hexify and encode.
  * @returns Encoded `ZswapCoinPublicKey`.
  */
-export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => {
-  const toHex = Buffer.from(str, 'ascii').toString('hex');
-  return { bytes: encodeCoinPublicKey(String(toHex).padStart(64, '0')) };
-};
+export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
+  bytes: encodeCoinPublicKey(toHexPadded(str)),
+});
 
 /**
  * @description Generates ContractAddress from `str` for testing purposes.
@@ -34,11 +34,9 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => {
  * @param str String to hexify and encode.
  * @returns Encoded `ZswapCoinPublicKey`.
  */
-export const encodeToAddress = (str: string): Compact.ContractAddress => {
-  const toHex = Buffer.from(str, 'ascii').toString('hex');
-  const fullAddress = PREFIX_ADDRESS + String(toHex).padStart(64, '0');
-  return { bytes: encodeContractAddress(fullAddress) };
-};
+export const encodeToAddress = (str: string): Compact.ContractAddress => ({
+  bytes: encodeContractAddress(PREFIX_ADDRESS + toHexPadded(str)),
+});
 
 /**
  * @description Generates an Either object for ZswapCoinPublicKey for testing.
@@ -46,13 +44,11 @@ export const encodeToAddress = (str: string): Compact.ContractAddress => {
  * @param str String to hexify and encode.
  * @returns Defined Either object for ZswapCoinPublicKey.
  */
-export const createEitherTestUser = (str: string) => {
-  return {
-    is_left: true,
-    left: encodeToPK(str),
-    right: encodeToAddress(''),
-  };
-};
+export const createEitherTestUser = (str: string) => ({
+  is_left: true,
+  left: encodeToPK(str),
+  right: encodeToAddress(''),
+});
 
 /**
  * @description Generates an Either object for ContractAddress for testing.
@@ -60,22 +56,22 @@ export const createEitherTestUser = (str: string) => {
  * @param str String to hexify and encode.
  * @returns Defined Either object for ContractAddress.
  */
-export const createEitherTestContractAddress = (str: string) => {
-  return {
-    is_left: false,
-    left: encodeToPK(''),
-    right: encodeToAddress(str),
-  };
-};
+export const createEitherTestContractAddress = (str: string) => ({
+  is_left: false,
+  left: encodeToPK(''),
+  right: encodeToAddress(str),
+});
+
+export const zeroUint8Array = (length = 32) => convert_bigint_to_Uint8Array(length, 0n);
 
 export const ZERO_KEY = {
   is_left: true,
-  left: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+  left: { bytes: zeroUint8Array() },
   right: encodeToAddress(''),
 };
 
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
-  right: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+  right: { bytes: zeroUint8Array() },
 };

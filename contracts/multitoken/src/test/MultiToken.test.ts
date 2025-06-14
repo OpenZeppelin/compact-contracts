@@ -21,18 +21,13 @@ const TOKEN_ID2: bigint = BigInt(22);
 const TOKEN_ID3: bigint = BigInt(333);
 const NONEXISTENT_ID: bigint = BigInt(987654321);
 
-// PubKeys/addresses
-const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
-  64,
-  '0',
-);
-const SPENDER = String(
-  Buffer.from('SPENDER', 'ascii').toString('hex'),
-).padStart(64, '0');
-const UNAUTHORIZED = String(
-  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
-).padStart(64, '0');
-const ZERO = String().padStart(64, '0');
+// Callers
+const OWNER = utils.toHexPadded('OWNER');
+const SPENDER = utils.toHexPadded('SPENDER');
+const UNAUTHORIZED = utils.toHexPadded('UNAUTHORIZED');
+const ZERO = utils.toHexPadded('');
+
+// Encoded PK/Addresses
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
@@ -94,6 +89,7 @@ describe('MultiToken', () => {
     });
 
     type FailingCircuits = [method: keyof MultiTokenSimulator, args: unknown[]];
+    // Circuit calls should fail before the args are used
     const circuitsToFail: FailingCircuits[] = [
       ['uri', [TOKEN_ID]],
       ['balanceOf', [Z_OWNER, TOKEN_ID]],
