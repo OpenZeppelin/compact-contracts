@@ -289,16 +289,8 @@ module NonFungibleToken {
   ): [] {
     Initializable_assertInitialized();
     assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
-    // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
-    // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
-    const previousOwner = _update(
-      to,
-      tokenId,
-      auth
-    );
-    assert previousOwner == from "NonFungibleToken: Incorrect Owner";
+
+    _unsafeTransferFrom(from, to, tokenId);
   }
 
   /**
@@ -494,11 +486,8 @@ module NonFungibleToken {
   ): [] {
     Initializable_assertInitialized();
     assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, burn_address());
-
-    assert Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Invalid Sender";
+    _unsafeMint(to, tokenId);
   }
 
   /**
@@ -568,12 +557,8 @@ module NonFungibleToken {
   ): [] {
     Initializable_assertInitialized();
     assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
 
-    const previousOwner = _update(to, tokenId, burn_address());
-
-    assert !Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Nonexistent Token";
-    assert previousOwner == from "NonFungibleToken: Incorrect Owner";
+    _unsafeTransfer(from, to);
   }
 
   /**
