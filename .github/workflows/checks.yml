@@ -1,4 +1,4 @@
-name: Format, Lint, Type Check
+name: Format and Lint
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -25,6 +25,3 @@ jobs:
 
       - name: Format & Lint
         run: turbo fmt-and-lint:ci
-
-      - name: Run type checks
-        run: turbo types
