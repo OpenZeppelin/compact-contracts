@@ -25,11 +25,11 @@ module Utils {
       return right<ZswapCoinPublicKey, ContractAddress>(default<ContractAddress>) == keyOrAddress;
     }
   }
-  
+
   /**
    * @description Returns whether `key` is the zero address.
    *
-   * @param {ZswapCoinPublicKey} key - A ZswapCoinPublicKey 
+   * @param {ZswapCoinPublicKey} key - A ZswapCoinPublicKey
    * @return {Boolean} - Returns true if `key` is zero.
    */
   export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
