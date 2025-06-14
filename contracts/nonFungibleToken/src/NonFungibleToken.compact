@@ -55,6 +55,9 @@ module NonFungibleToken {
   /**
    * @description Initializes the contract by setting the name and symbol.
    *
+   * Requirements:
+   * - The contract must not have been initialized.
+   *
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @return {[]} - None.
@@ -63,6 +66,7 @@ module NonFungibleToken {
     name_: Opaque<"string">,
     symbol_: Opaque<"string">
   ): [] {
+    Initializable_assertNotInitialized();
     Initializable_initialize();
     _name = name_;
     _symbol = symbol_;
@@ -70,6 +74,9 @@ module NonFungibleToken {
 
   /**
    * @description Returns the number of tokens in `owner`'s account.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>)} owner - The account to query.
    * @return {Uint<128>} - The number of tokens in `owner`'s account.
@@ -86,6 +93,10 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId` token.
    *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - The `tokenId` must exist.
+   *
    * @param {Uint<128>} tokenId - The identifier for a token.
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The account that owns the token.
    */
@@ -97,6 +108,9 @@ module NonFungibleToken {
   /**
    * @description Returns the token name.
    *
+   * Requirements:
+   * - The contract must have been initialized.
+   *
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
@@ -107,6 +121,9 @@ module NonFungibleToken {
   /**
    * @description Returns the symbol of the token.
    *
+   * Requirements:
+   * - The contract must have been initialized.
+   *
    * @return {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
@@ -116,6 +133,10 @@ module NonFungibleToken {
 
   /**
    * @description Returns the token URI for the given `tokenId`.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - The `tokenId` must exist.
    *
    * @notice Midnight does not support native strings and string operations
    * within the Compact language, e.g. concatenating a base URI + token ID are not possible
@@ -135,7 +156,10 @@ module NonFungibleToken {
 
   /**
    * @description Sets the the URI as `tokenURI` for the given `tokenId`.
-   * The `tokenId` must exist.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - The `tokenId` must exist.
    *
    * @notice The URI for a given NFT is usually set when the NFT is minted.
    *
@@ -157,7 +181,7 @@ module NonFungibleToken {
    * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
    *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - The caller must either own the token or be an approved operator.
    * - `tokenId` must exist.
    *
@@ -180,6 +204,11 @@ module NonFungibleToken {
 
   /**
    * @description Returns the account approved for `tokenId` token.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - `tokenId` must exist.
+   *
    * @param {Uint<128>} tokenId - The token an account may be approved to manage
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} Operator- The account approved to manage the token
    */
@@ -195,7 +224,7 @@ module NonFungibleToken {
    * Operators can call {transferFrom} for any token owned by the caller.
    *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - The `operator` cannot be the address zero.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An operator to manage the caller's tokens
@@ -218,6 +247,9 @@ module NonFungibleToken {
   /**
    * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
    *
+   * Requirements:
+   * - The contract must have been initialized.
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of a token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An account that may operate on `owner`'s tokens
    * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
@@ -238,7 +270,7 @@ module NonFungibleToken {
    * @description Transfers `tokenId` token from `from` to `to`.
    *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - `from` cannot be the zero address.
    * - `to` cannot be the zero address or a ContractAddress.
    * - `tokenId` token must be owned by `from`.
@@ -271,16 +303,16 @@ module NonFungibleToken {
   /**
    * @description Transfers `tokenId` token from `from` to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
-   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
-   * ContractAddress
-   *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - `from` cannot be the zero address.
    * - `to` cannot be the zero address.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
+   *
+   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
+   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
+   * ContractAddress
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
@@ -308,6 +340,9 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist
    *
+   * Requirements:
+   * - The contract must have been initialized.
+   *
    * @param {Uint<128>} tokenId - The target token of the owner query
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The owner of the token
    */
@@ -321,7 +356,10 @@ module NonFungibleToken {
   }
 
   /**
-   * @description Returns the approved address for `tokenId`. Returns 0 if `tokenId` is not minted.
+   * @description Returns the approved address for `tokenId`. Returns the zero address if `tokenId` is not minted.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
    *
    * @param {Uint<128>} tokenId - The token to query
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - An account approved to spend `tokenId`
@@ -337,6 +375,9 @@ module NonFungibleToken {
     /**
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
+   *
+   * Requirements:
+   * - The contract must have been initialized.
    *
    * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
    * assumption.
@@ -360,9 +401,10 @@ module NonFungibleToken {
 
   /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
-   * Reverts if:
-   * - `spender` does not have approval from `owner` for `tokenId`.
-   * - `spender` does not have approval to manage all of `owner`'s assets.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - `spender` has approval from `owner` for `tokenId` OR `spender` has approval to manage all of `owner`'s assets.
    *
    * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
    * assumption.
@@ -388,8 +430,10 @@ module NonFungibleToken {
    * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
    * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
    *
-   * The `auth` argument is optional. If the value passed is non 0, then this function will check that
-   * `auth` is either the owner of the token, or approved to operate on the token (by the owner).
+   * Requirements:
+   * - The contract must have been initialized.
+   * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
+   * or approved to operate on the token (by the owner).
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The intended recipient of the token transfer
    * @param {Uint<128>} tokenId - The token being transfered
@@ -434,7 +478,7 @@ module NonFungibleToken {
    * @description Mints `tokenId` and transfers it to `to`.
    *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - `tokenId` must not exist.
    * - `to` cannot be the zero address or a ContractAddress.
    *
@@ -458,13 +502,13 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
-   * may result in a permanent loss of the token.
-   *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - `tokenId` must not exist.
    * - `to` cannot be the zero address.
+   *
+   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
+   * may result in a permanent loss of the token.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
@@ -488,7 +532,7 @@ module NonFungibleToken {
    * This circuit does not check if the sender is authorized to operate on the token.
    *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token to burn
@@ -505,7 +549,7 @@ module NonFungibleToken {
    *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
    *
    * Requirements:
-   *
+   * - The contract must have been initialized.
    * - `to` cannot be the zero address or a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    *
@@ -534,14 +578,14 @@ module NonFungibleToken {
    * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on own_public_key().
    * It does NOT check if the recipient is a ContractAddress.
    *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - `to` cannot be the zero address.
+   * - `tokenId` token must be owned by `from`.
+   *
    * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
    * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
    * ContractAddress
-   *
-   * Requirements:
-   *
-   * - `to` cannot be the zero address.
-   * - `tokenId` token must be owned by `from`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
@@ -565,8 +609,10 @@ module NonFungibleToken {
   /**
    * @description  Approve `to` to operate on `tokenId`
    *
-   * The `auth` argument is optional. If the value passed is non 0, then this function will check that `auth` is
-   * either the owner of the token, or approved to operate on all tokens held by this owner.
+   * Requirements:
+   * - The contract must have been initialized.
+   * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
+   * or approved to operate on the token (by the owner).
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to approve
    * @param {Uint<128>} tokenId - The token to approve
@@ -593,6 +639,7 @@ module NonFungibleToken {
    * @description Approve `operator` to operate on all of `owner` tokens
    *
    * Requirements:
+   * - The contract must have been initialized.
    * - `operator` can't be the address zero.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of a token
@@ -621,6 +668,10 @@ module NonFungibleToken {
   /**
    * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
    * Returns the owner.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token that should be owned
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The owner of `tokenId`
