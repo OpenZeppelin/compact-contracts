@@ -193,6 +193,30 @@ export class MultiTokenSimulator
     return res.result;
   }
 
+  public _unsafeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: bigint,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ) {
+    const res = this.contract.impureCircuits._unsafeTransferFrom(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      from,
+      to,
+      id,
+      value,
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
   public _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -201,6 +225,30 @@ export class MultiTokenSimulator
     sender?: CoinPublicKey,
   ) {
     const res = this.contract.impureCircuits._transferFrom(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      from,
+      to,
+      id,
+      value,
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  public _unsafeUncheckedTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: bigint,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ) {
+    const res = this.contract.impureCircuits._unsafeUncheckedTransferFrom(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
