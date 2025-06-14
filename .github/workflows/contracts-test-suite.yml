@@ -115,5 +115,8 @@ jobs:
           echo -e "\nCompact code artifacts (src/artifacts):"
           find contracts -name "artifacts" -type d -exec ls -la {} \;
 
+      - name: Run type checks
+        run: turbo types
+
       - name: Run Contract Tests
         run: turbo test
