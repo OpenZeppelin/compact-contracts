@@ -62,7 +62,8 @@ export const createEitherTestContractAddress = (str: string) => ({
   right: encodeToAddress(str),
 });
 
-export const zeroUint8Array = (length = 32) => convert_bigint_to_Uint8Array(length, 0n);
+export const zeroUint8Array = (length = 32) =>
+  convert_bigint_to_Uint8Array(length, 0n);
 
 export const ZERO_KEY = {
   is_left: true,
