@@ -420,54 +420,6 @@ module NonFungibleToken {
   }
 
   /**
-   * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
-   * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
-   *
-   * Requirements:
-   * - The contract must have been initialized.
-   * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
-   * or approved to operate on the token (by the owner).
-   *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The intended recipient of the token transfer
-   * @param {Uint<128>} tokenId - The token being transfered
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to transfer the token
-   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - Owner of the token before it was transfered
-   */
-  export circuit _update(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
-    Initializable_assertInitialized();
-    const from = _ownerOf(tokenId);
-
-    // Perform (optional) operator check
-    if (!Utils_isKeyOrAddressZero(auth)) {
-        _checkAuthorized(from, auth, tokenId);
-    }
-
-    // Execute the update
-    if (!Utils_isKeyOrAddressZero(from)) {
-      // Clear approval. No need to re-authorize
-      _approve(burn_address(), tokenId, burn_address());
-      const newBalance = _balances.lookup(from) - 1 as Uint<128>;
-      _balances.insert(from, newBalance);
-    }
-
-    if (!Utils_isKeyOrAddressZero(to)) {
-      if (!_balances.member(to)) {
-        _balances.insert(to, 0);
-      }
-      const newBalance = _balances.lookup(to) + 1 as Uint<128>;
-      _balances.insert(to, newBalance);
-    }
-
-    _owners.insert(tokenId, to);
-
-    return from;
-  }
-
-  /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
    * Requirements:
@@ -670,6 +622,54 @@ module NonFungibleToken {
 
     assert !Utils_isKeyOrAddressZero(owner) "NonFungibleToken: Nonexistent Token";
     return owner;
+  }
+
+  /**
+   * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
+   * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
+   *
+   * Requirements:
+   * - The contract must have been initialized.
+   * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
+   * or approved to operate on the token (by the owner).
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The intended recipient of the token transfer
+   * @param {Uint<128>} tokenId - The token being transfered
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to transfer the token
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - Owner of the token before it was transfered
+   */
+  circuit _update(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    tokenId: Uint<128>,
+    auth: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
+    Initializable_assertInitialized();
+    const from = _ownerOf(tokenId);
+
+    // Perform (optional) operator check
+    if (!Utils_isKeyOrAddressZero(auth)) {
+        _checkAuthorized(from, auth, tokenId);
+    }
+
+    // Execute the update
+    if (!Utils_isKeyOrAddressZero(from)) {
+      // Clear approval. No need to re-authorize
+      _approve(burn_address(), tokenId, burn_address());
+      const newBalance = _balances.lookup(from) - 1 as Uint<128>;
+      _balances.insert(from, newBalance);
+    }
+
+    if (!Utils_isKeyOrAddressZero(to)) {
+      if (!_balances.member(to)) {
+        _balances.insert(to, 0);
+      }
+      const newBalance = _balances.lookup(to) + 1 as Uint<128>;
+      _balances.insert(to, newBalance);
+    }
+
+    _owners.insert(tokenId, to);
+
+    return from;
   }
 }
 
