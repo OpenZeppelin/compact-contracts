@@ -4,10 +4,10 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 on:
-  push
-    # paths:
-    #   - '**.ts'
-    #   - '**.json'
+  push:
+    paths:
+      - '**.ts'
+      - '**.json'
 
 jobs:
   checks:
