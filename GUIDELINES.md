@@ -33,6 +33,8 @@ For contributors, project guidelines and processes must be documented publicly.
 
 For users, features must be abundantly documented. Documentation should include answers to common questions, solutions to common problems, and recommendations for critical decisions that the user may face.
 
+Method documentation must list all requirements necessary for the method to execute without error.
+
 All changes to the core codebase (excluding tests, auxiliary scripts, etc.) must be documented in a changelog, except for purely cosmetic or documentation changes.
 
 ## Peer review
