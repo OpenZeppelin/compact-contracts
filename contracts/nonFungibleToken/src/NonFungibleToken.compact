@@ -510,7 +510,7 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
 
-    _unsafeTransfer(from, to);
+    _unsafeTransfer(from, to, tokenId);
   }
 
   /**
