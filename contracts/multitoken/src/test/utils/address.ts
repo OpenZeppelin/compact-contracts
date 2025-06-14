@@ -14,7 +14,6 @@ const PREFIX_ADDRESS = '0200';
  * @param str ASCII string to convert.
  * @param len Total desired length of the resulting hex string. Defaults to 64.
  * @returns Hexadecimal string representation of `str`, padded to `length` characters.
- * @throws If `length` is less than the length of the converted hex string.
  */
 export const toHexPadded = (str: string, len = 64) =>
   Buffer.from(str, 'ascii').toString('hex').padStart(len, '0');
