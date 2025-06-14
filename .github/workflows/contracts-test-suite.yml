@@ -71,7 +71,7 @@ jobs:
           [ -f "$COMPACT_HOME/compactc" ] || { echo "::error::❌ Failed to install compiler - compactc not found"; exit 1; }
 
           # Test installation
-          $COMPACT_HOME/compactc" --version
+          "$COMPACT_HOME/compactc" --version
 
       - name: Check compiler version
         run: |
