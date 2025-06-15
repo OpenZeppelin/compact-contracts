@@ -99,6 +99,7 @@ describe('MultiToken', () => {
 
     type FailingCircuits = [method: keyof MultiTokenSimulator, args: unknown[]];
     // Circuit calls should fail before the args are used
+    const transferArgs = [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT];
     const circuitsToFail: FailingCircuits[] = [
       ['uri', [TOKEN_ID]],
       ['balanceOf', [Z_OWNER, TOKEN_ID]],
@@ -108,13 +109,10 @@ describe('MultiToken', () => {
       ],
       ['setApprovalForAll', [Z_OWNER, true]],
       ['isApprovedForAll', [Z_OWNER, Z_SPENDER]],
-      ['transferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
-      ['_unsafeTransferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
-      ['_transferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
-      [
-        '_unsafeUncheckedTransferFrom',
-        [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT],
-      ],
+      ['transferFrom', transferArgs],
+      ['_unsafeTransferFrom', transferArgs],
+      ['_transferFrom', transferArgs],
+      ['_unsafeUncheckedTransferFrom', transferArgs],
       ['_setURI', [URI]],
       ['_mint', [Z_OWNER, TOKEN_ID, AMOUNT]],
       ['_burn', [Z_OWNER, TOKEN_ID, AMOUNT]],
