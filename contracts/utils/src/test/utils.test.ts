@@ -54,6 +54,12 @@ describe('Utils', () => {
         contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT),
       ).toBeFalsy();
     });
+
+    it('should return false for two different address types of equal value', () => {
+      expect(
+        contract.isKeyOrAddressEqual(contractUtils.ZERO_KEY, contractUtils.ZERO_ADDRESS),
+      ).toBeFalsy();
+    });
   });
 
   describe('isKeyZero', () => {
