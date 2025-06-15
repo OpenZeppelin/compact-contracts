@@ -584,7 +584,7 @@ module NonFungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of a token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The account to approve
-   * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens 
+   * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens
    * @return {[]} - None.
    */
   export circuit _setApprovalForAll(
