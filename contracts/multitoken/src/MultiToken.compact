@@ -136,7 +136,7 @@ module MultiToken {
    * - `accounts` and `ids` vectors must be of length n.
    *
    * @param {Vector<n, Either<ZswapCoinPublicKey, ContractAddress>>} accounts - The account balances to query.
-   * @param {Vector<n, Uint<128>>} ids - The IDs of `accounts` to query.
+   * @param {Vector<n, Uint<128>>} ids - The token identifiers of `accounts` to query.
    * @return {Vector<n, Uint<128>>} Returns n balances of account/token id pairs.
    */
   export circuit balanceOfBatch<#n>(
