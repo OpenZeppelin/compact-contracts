@@ -462,7 +462,7 @@ module MultiToken {
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
-   * @notice This internal circuit does not check for access permissions but can be useful as a building block
+   * @notice This circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *
    * Requirements:
