@@ -91,7 +91,7 @@ export class MultiTokenSimulator
   /**
    * @description Initializes the contract. This is already executed in the simulator constructor;
    * however, this method enables the tests to assert it cannot be called again.
-   * @returns None.
+   * @param uri The base URI for all token URIs.
    */
   public initialize(uri: string) {
     this.circuitContext = this.contract.impureCircuits.initialize(
@@ -102,6 +102,7 @@ export class MultiTokenSimulator
 
   /**
    * @description Returns the token URI.
+   * @param id The token identifier to query.
    * @returns The token URI.
    */
   public uri(id: bigint): string {
@@ -109,8 +110,10 @@ export class MultiTokenSimulator
   }
 
   /**
-   * @description
-   * @returns
+   * @description Returns the amount of `id` tokens owned by `account`.
+   * @param account The account balance to query.
+   * @param id The token identifier to query.
+   * @returns The quantity of `id` tokens that `account` owns.
    */
   public balanceOf(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -124,8 +127,10 @@ export class MultiTokenSimulator
   }
 
   /**
-   * @description
-   * @returns
+   * @description Get the balance of multiple account/token pairs.
+   * @param accounts The account balances to query.
+   * @param ids The token identifiers of `accounts` to query.
+   * @returns Returns 10 balances of account/token id pairs.
    */
   public balanceOfBatch_10(
     accounts: Either<ZswapCoinPublicKey, ContractAddress>[],
@@ -138,12 +143,19 @@ export class MultiTokenSimulator
     ).result;
   }
 
+  /**
+   * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   * @param operator The ZswapCoinPublicKey or ContractAddress whose approval is set for the caller's assets.
+   * @param approved The boolean value determining if the operator may or may not handle the
+   * caller's assets.
+   * @param sender - Optional. Sets the caller context if provided.
+   */
   public setApprovalForAll(
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
     sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.setApprovalForAll(
+    this.circuitContext = this.contract.impureCircuits.setApprovalForAll(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -152,12 +164,15 @@ export class MultiTokenSimulator
       },
       operator,
       approved,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    ).context;
   }
 
+  /**
+   * @description Queries if `operator` is an authorized operator for `owner`.
+   * @param account The queried possessor of assets.
+   * @param operator The queried handler of `account`'s assets.
+   * @returns Whether or not `operator` has permission to handle `account`'s assets.
+   */
   public isApprovedForAll(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -169,6 +184,16 @@ export class MultiTokenSimulator
     ).result;
   }
 
+  /**
+   * @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
+   * The caller must be `from` or approved to transfer on their behalf.
+   * @param from The owner from which the transfer originates.
+   * @param to The recipient of the transferred assets.
+   * @param id The unique identifier of the asset type.
+   * @param value The quantity of `id` tokens to transfer.
+   * @param sender - Optional. Sets the caller context if provided.
+   * @returns None.
+   */
   public transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -176,7 +201,7 @@ export class MultiTokenSimulator
     value: bigint,
     sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.transferFrom(
+    this.circuitContext = this.contract.impureCircuits.transferFrom(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -187,12 +212,18 @@ export class MultiTokenSimulator
       to,
       id,
       value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    ).context;
   }
 
+  /**
+   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   * The caller must be `from` or approved to transfer on their behalf.
+   * @param from The owner from which the transfer originates.
+   * @param to The recipient of the transferred assets.
+   * @param id The unique identifier of the asset type.
+   * @param value The quantity of `id` tokens to transfer.
+   * @param sender - Optional. Sets the caller context if provided.
+   */
   public _unsafeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -200,7 +231,7 @@ export class MultiTokenSimulator
     value: bigint,
     sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits._unsafeTransferFrom(
+    this.circuitContext = this.contract.impureCircuits._unsafeTransferFrom(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -211,12 +242,20 @@ export class MultiTokenSimulator
       to,
       id,
       value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    ).context;
   }
 
+  /**
+   *  @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
+   * Does not impose restrictions on the caller, making it suitable for composition
+   * in higher-level contract logic.
+   * @param from The owner from which the transfer originates.
+   * @param to The recipient of the transferred assets.
+   * @param id The unique identifier of the asset type.
+   * @param value The quantity of `id` tokens to transfer.
+   * @param sender - Optional. Sets the caller context if provided.
+   * @returns None.
+   */
   public _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -224,7 +263,7 @@ export class MultiTokenSimulator
     value: bigint,
     sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits._transferFrom(
+    this.circuitContext = this.contract.impureCircuits._transferFrom(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -235,12 +274,19 @@ export class MultiTokenSimulator
       to,
       id,
       value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    ).context;
   }
 
+  /**
+   * @description Unsafe variant of `_transferFrom` which allows transfers to contract addresses.
+   * Does not impose restrictions on the caller, making it suitable as a low-level
+   * building block for advanced contract logic.
+   * @param from The owner from which the transfer originates.
+   * @param to The recipient of the transferred assets.
+   * @param id The unique identifier of the asset type.
+   * @param value The quantity of `id` tokens to transfer.
+   * @param sender - Optional. Sets the caller context if provided.
+   */
   public _unsafeUncheckedTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -248,23 +294,25 @@ export class MultiTokenSimulator
     value: bigint,
     sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits._unsafeUncheckedTransferFrom(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      from,
-      to,
-      id,
-      value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    this.circuitContext =
+      this.contract.impureCircuits._unsafeUncheckedTransferFrom(
+        {
+          ...this.circuitContext,
+          currentZswapLocalState: sender
+            ? emptyZswapLocalState(sender)
+            : this.circuitContext.currentZswapLocalState,
+        },
+        from,
+        to,
+        id,
+        value,
+      ).context;
   }
 
+  /**
+   * @description Sets a new URI for all token types.
+   * @param newURI The new base URI for all tokens.
+   */
   public _setURI(newURI: string) {
     this.circuitContext = this.contract.impureCircuits._setURI(
       this.circuitContext,
@@ -272,6 +320,12 @@ export class MultiTokenSimulator
     ).context;
   }
 
+  /**
+   * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   * @param to The recipient of the minted tokens.
+   * @param id The unique identifier for the token type.
+   * @param value The quantity of `id` tokens that are minted to `to`.
+   */
   public _mint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
@@ -285,6 +339,12 @@ export class MultiTokenSimulator
     ).context;
   }
 
+  /**
+   * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   * @param to The recipient of the minted tokens.
+   * @param id The unique identifier for the token type.
+   * @param value The quantity of `id` tokens that are minted to `to`.
+   */
   public _unsafeMint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
@@ -298,6 +358,12 @@ export class MultiTokenSimulator
     ).context;
   }
 
+  /**
+   * @description Destroys a `value` amount of tokens of type `token_id` from `from`.
+   * @param from The owner whose tokens will be destroyed.
+   * @param id The unique identifier of the token type.
+   * @param value The quantity of `id` tokens that will be destroyed from `from`.
+   */
   public _burn(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
@@ -311,13 +377,22 @@ export class MultiTokenSimulator
     ).context;
   }
 
+  /**
+   * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   * @param owner The ZswapCoinPublicKey or ContractAddress of the target owner.
+   * @param operator The ZswapCoinPublicKey or ContractAddress whose approval is set for the
+   * `owner`'s assets.
+   * @param approved The boolean value determining if the operator may or may not handle the
+   * `owner`'s assets.
+   * @param sender - Optional. Sets the caller context if provided.
+   */
   public _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
     approved: boolean,
     sender?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits._setApprovalForAll(
+    this.circuitContext = this.contract.impureCircuits._setApprovalForAll(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -327,9 +402,6 @@ export class MultiTokenSimulator
       owner,
       operator,
       approved,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    ).context;
   }
 }
