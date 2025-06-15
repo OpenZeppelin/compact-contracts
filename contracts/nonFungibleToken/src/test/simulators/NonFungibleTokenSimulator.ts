@@ -11,10 +11,10 @@ import {
   type ContractAddress,
   type Either,
   type Ledger,
-  Contract as MockUninitializedNonFungibleToken,
+  Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
   ledger,
-} from '../../artifacts/MockUninitializedNonFungibleToken/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockNonFungibleToken/contract/index.cjs'; // Combined imports
 import {
   type NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,
@@ -22,15 +22,15 @@ import {
 import type { IContractSimulator } from '../types/test.js';
 
 /**
- * @description A simulator implementation of an NonFungibleToken contract for testing purposes.
+ * @description A simulator implementation of an nonFungibleToken contract for testing purposes.
  * @template P - The private state type, fixed to NonFungibleTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class UninitializedNonFungibleTokenSimulator
+export class NonFungibleTokenSimulator
   implements IContractSimulator<NonFungibleTokenPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockUninitializedNonFungibleToken<NonFungibleTokenPrivateState>;
+  readonly contract: MockNonFungibleToken<NonFungibleTokenPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
@@ -41,16 +41,19 @@ export class UninitializedNonFungibleTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor() {
-    this.contract =
-      new MockUninitializedNonFungibleToken<NonFungibleTokenPrivateState>(
-        NonFungibleTokenWitnesses,
-      );
+  constructor(name: string, symbol: string) {
+    this.contract = new MockNonFungibleToken<NonFungibleTokenPrivateState>(
+      NonFungibleTokenWitnesses,
+    );
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
+    } = this.contract.initialState(
+      constructorContext({}, '0'.repeat(64)),
+      name,
+      symbol,
+    );
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -427,6 +430,7 @@ export class UninitializedNonFungibleTokenSimulator
    * @description Approve `operator` to operate on all of `owner` tokens
    *
    * Requirements:
+   *
    * - operator can't be the address zero.
    *
    * @param owner Owner of a token

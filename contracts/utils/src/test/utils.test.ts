@@ -57,7 +57,10 @@ describe('Utils', () => {
 
     it('should return false for two different address types of equal value', () => {
       expect(
-        contract.isKeyOrAddressEqual(contractUtils.ZERO_KEY, contractUtils.ZERO_ADDRESS),
+        contract.isKeyOrAddressEqual(
+          contractUtils.ZERO_KEY,
+          contractUtils.ZERO_ADDRESS,
+        ),
       ).toBeFalsy();
     });
   });
