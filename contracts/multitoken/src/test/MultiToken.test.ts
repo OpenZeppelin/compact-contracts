@@ -32,8 +32,12 @@ const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
+const Z_OWNER_CONTRACT =
+  utils.createEitherTestContractAddress('OWNER_CONTRACT');
 const Z_RECIPIENT_CONTRACT =
   utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
+const Z_OTHER_CONTRACT =
+  utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 // Init
 const initWithURI: MaybeString = {
@@ -107,7 +111,10 @@ describe('MultiToken', () => {
       ['transferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
       ['_unsafeTransferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
       ['_transferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
-      ['_unsafeUncheckedTransferFrom', [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT]],
+      [
+        '_unsafeUncheckedTransferFrom',
+        [Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT],
+      ],
       ['_setURI', [URI]],
       ['_mint', [Z_OWNER, TOKEN_ID, AMOUNT]],
       ['_burn', [Z_OWNER, TOKEN_ID, AMOUNT]],
@@ -138,156 +145,143 @@ describe('MultiToken', () => {
     });
 
     describe('balanceOf', () => {
-      it('should return zero when requested account has no balance', () => {
-        expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(Z_OWNER, TOKEN_ID2)).toEqual(0n);
-      });
+      const ownerTypes = [
+        ['contract', Z_OWNER_CONTRACT],
+        ['pubkey', Z_OWNER],
+      ] as const;
 
-      it('should return balance when requested account has tokens', () => {
-        token._mint(Z_OWNER, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(Z_OWNER, TOKEN_ID)).toEqual(AMOUNT);
+      describe.each(ownerTypes)('when the owner is a %s', (_, owner) => {
+        it('should return zero when requested account has no balance', () => {
+          expect(token.balanceOf(owner, TOKEN_ID)).toEqual(0n);
+          expect(token.balanceOf(owner, TOKEN_ID2)).toEqual(0n);
+        });
 
-        token._mint(Z_OWNER, TOKEN_ID2, AMOUNT2);
-        expect(token.balanceOf(Z_OWNER, TOKEN_ID2)).toEqual(AMOUNT2);
-      });
+        it('should return balance when requested account has tokens', () => {
+          token._unsafeMint(owner, TOKEN_ID, AMOUNT);
+          expect(token.balanceOf(owner, TOKEN_ID)).toEqual(AMOUNT);
 
-      it('should handle token ID 0', () => {
-        const ZERO_ID = 0n;
-        token._mint(Z_OWNER, ZERO_ID, AMOUNT);
-        expect(token.balanceOf(Z_OWNER, ZERO_ID)).toEqual(AMOUNT);
-      });
+          token._unsafeMint(owner, TOKEN_ID2, AMOUNT2);
+          expect(token.balanceOf(owner, TOKEN_ID2)).toEqual(AMOUNT2);
+        });
 
-      it('should handle MAX_UINT128 token ID', () => {
-        const MAX_ID = MAX_UINT128;
-        token._mint(Z_OWNER, MAX_ID, AMOUNT);
-        expect(token.balanceOf(Z_OWNER, MAX_ID)).toEqual(AMOUNT);
+        it('should handle token ID 0', () => {
+          const ZERO_ID = 0n;
+          token._unsafeMint(owner, ZERO_ID, AMOUNT);
+          expect(token.balanceOf(owner, ZERO_ID)).toEqual(AMOUNT);
+        });
+
+        it('should handle MAX_UINT128 token ID', () => {
+          const MAX_ID = MAX_UINT128;
+          token._unsafeMint(owner, MAX_ID, AMOUNT);
+          expect(token.balanceOf(owner, MAX_ID)).toEqual(AMOUNT);
+        });
       });
     });
 
     describe('balanceOfBatch_10', () => {
-      it('should return zero when requested account has no balance', () => {
-        // pks
-        const pks = [Z_OWNER, Z_OTHER];
-        const pk_padding = utils.ZERO_KEY;
-        for (let i = pks.length; i < 10; i++) {
-          pks.push(pk_padding);
-        }
+      const batchedOwnerTypes = [
+        ['pubkeys', [Z_OWNER, Z_RECIPIENT, Z_OTHER]],
+        [
+          'contracts',
+          [Z_OWNER_CONTRACT, Z_RECIPIENT_CONTRACT, Z_OTHER_CONTRACT],
+        ],
+        ['mixed', [Z_OWNER, Z_RECIPIENT_CONTRACT, Z_OTHER]],
+      ] as const;
 
-        // ids
-        const ids = [1n, 2n, 3n];
-        const id_padding = 0n;
-        for (let i = ids.length; i < 10; i++) {
-          ids.push(id_padding);
-        }
+      describe.each(batchedOwnerTypes)(
+        'when the batched owners are %s',
+        (_, owners) => {
+          it('should return zero when requested accounts have no balance', () => {
+            const BATCH_SIZE = 10;
 
-        const noBalances10 = new Array(10).fill(0n, 0, 10);
-        expect(token.balanceOfBatch_10(pks, ids)).toEqual(noBalances10);
-      });
+            const accounts = [...owners];
+            while (accounts.length < BATCH_SIZE) {
+              accounts.push(utils.ZERO_KEY);
+            }
 
-      it('should return balance when requested accounts have tokens (no padding)', () => {
-        const owner1 = Z_OWNER;
-        const owner2 = Z_RECIPIENT;
-        const ownerNoBal = Z_OTHER;
+            const ids = [1n, 2n, 3n];
+            while (ids.length < BATCH_SIZE) {
+              ids.push(0n);
+            }
 
-        // pks
-        const pks = [
-          owner1,
-          owner1,
-          owner1,
-          ownerNoBal,
-          ownerNoBal,
-          ownerNoBal,
-          owner2,
-          owner2,
-          owner2,
-          owner1,
-        ];
+            const expected = new Array(BATCH_SIZE).fill(0n);
+            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(expected);
+          });
 
-        // ids
-        const ids = [
-          TOKEN_ID,
-          TOKEN_ID2,
-          TOKEN_ID3,
-          TOKEN_ID,
-          TOKEN_ID2,
-          TOKEN_ID3,
-          TOKEN_ID,
-          TOKEN_ID2,
-          TOKEN_ID3,
-          NONEXISTENT_ID,
-        ];
+          it('should return balance when requested accounts have tokens (no padding)', () => {
+            const [owner1, owner2, ownerNoBal] = owners;
 
-        // amounts
-        const amounts = [
-          AMOUNT,
-          AMOUNT2,
-          AMOUNT3,
-          0n,
-          0n,
-          0n,
-          AMOUNT,
-          AMOUNT2,
-          AMOUNT3,
-          0n,
-        ];
+            const testCases = [
+              { account: owner1, id: TOKEN_ID, amount: AMOUNT },
+              { account: owner1, id: TOKEN_ID2, amount: AMOUNT2 },
+              { account: owner1, id: TOKEN_ID3, amount: AMOUNT3 },
+              { account: ownerNoBal, id: TOKEN_ID, amount: 0n },
+              { account: ownerNoBal, id: TOKEN_ID2, amount: 0n },
+              { account: ownerNoBal, id: TOKEN_ID3, amount: 0n },
+              { account: owner2, id: TOKEN_ID, amount: AMOUNT },
+              { account: owner2, id: TOKEN_ID2, amount: AMOUNT2 },
+              { account: owner2, id: TOKEN_ID3, amount: AMOUNT3 },
+              { account: owner1, id: NONEXISTENT_ID, amount: 0n },
+            ];
 
-        for (let i = 0; i < ids.length; i++) {
-          token._mint(pks[i], ids[i], amounts[i]);
-        }
+            // Mint tokens
+            for (const { account, id, amount } of testCases) {
+              token._unsafeMint(account, id, amount);
+            }
 
-        expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
-      });
+            // Prepare input arrays
+            const accounts = testCases.map((tc) => tc.account);
+            const ids = testCases.map((tc) => tc.id);
+            const expected = testCases.map((tc) => tc.amount);
 
-      it('should return balance when requested accounts have tokens (with padding)', () => {
-        const owner1 = Z_OWNER;
-        const owner2 = Z_RECIPIENT;
-        const ownerNoBal = Z_OTHER;
+            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(expected);
+          });
 
-        // pks - add padding
-        const pks = [owner1, ownerNoBal, owner2];
-        const pk_padding = utils.ZERO_KEY;
-        for (let i = pks.length; i < 10; i++) {
-          pks.push(pk_padding);
-        }
+          it('should return balance when requested accounts have tokens (with padding)', () => {
+            const BATCH_SIZE = 10;
+            const [owner1, owner2, ownerNoBal] = owners;
 
-        // ids - add padding
-        const ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
-        const id_padding = 0n;
-        for (let i = ids.length; i < 10; i++) {
-          ids.push(id_padding);
-        }
+            const accounts = [owner1, ownerNoBal, owner2];
+            while (accounts.length < BATCH_SIZE) accounts.push(utils.ZERO_KEY);
 
-        // amounts - add padding
-        const amounts = [AMOUNT, 0n, AMOUNT2];
-        const amt_padding = 0n;
-        for (let i = amounts.length; i < 10; i++) {
-          amounts.push(amt_padding);
-        }
+            const ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
+            while (ids.length < BATCH_SIZE) ids.push(0n);
 
-        // mint
-        token._mint(pks[0], ids[0], amounts[0]); // owner1 => TOKEN_ID => AMOUNT
-        token._mint(pks[1], ids[1], amounts[1]); // ownerNoBal => TOKEN_ID2 => 0n
-        token._mint(pks[2], ids[2], amounts[2]); // owner2 => TOKEN_ID3 => AMOUNT2
+            const amounts = [AMOUNT, 0n, AMOUNT2];
+            while (amounts.length < BATCH_SIZE) amounts.push(0n);
 
-        expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
-      });
+            // Mint only the non-padding entries
+            token._unsafeMint(accounts[0], ids[0], amounts[0]); // owner1 → TOKEN_ID → AMOUNT
+            token._unsafeMint(accounts[1], ids[1], amounts[1]); // ownerNoBal → TOKEN_ID2 → 0n
+            token._unsafeMint(accounts[2], ids[2], amounts[2]); // owner2 → TOKEN_ID3 → AMOUNT2
 
-      it('should handle duplicate token IDs in balanceOfBatch_10', () => {
-        const pks = Array(10).fill(Z_OWNER);
-        const ids = Array(10).fill(TOKEN_ID);
-        const amounts = Array(10).fill(AMOUNT);
+            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(amounts);
+          });
 
-        // Mint AMOUNT tokens total, not AMOUNT * 10
-        token._mint(Z_OWNER, TOKEN_ID, AMOUNT);
-        expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
-      });
+          it('should handle duplicate token IDs in balanceOfBatch_10', () => {
+            const owner = owners[0];
+            const accounts = Array(10).fill(owner);
+            const ids = Array(10).fill(TOKEN_ID);
+            const amounts = Array(10).fill(AMOUNT);
 
-      it('should handle all zero addresses in balanceOfBatch_10', () => {
-        const pks = Array(10).fill(utils.ZERO_KEY);
-        const ids = Array(10).fill(0n);
-        const amounts = Array(10).fill(0n);
+            // Mint AMOUNT tokens total, not AMOUNT * 10
+            token._unsafeMint(owner, TOKEN_ID, AMOUNT);
+            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(amounts);
+          });
+        },
+      );
 
-        expect(token.balanceOfBatch_10(pks, ids)).toEqual(amounts);
+      describe.each([
+        ['pubkey (ZERO_KEY)', utils.ZERO_KEY],
+        ['contract address (ZERO_ADDRESS)', utils.ZERO_ADDRESS],
+      ])('when using %s', (_, zeroAddress) => {
+        it('should handle all zero addresses in balanceOfBatch_10', () => {
+          const accounts = Array(10).fill(zeroAddress);
+          const ids = Array(10).fill(0n);
+          const amounts = Array(10).fill(0n);
+
+          expect(token.balanceOfBatch_10(accounts, ids)).toEqual(amounts);
+        });
       });
     });
 
