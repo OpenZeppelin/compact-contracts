@@ -753,7 +753,9 @@ describe('NonFungibleToken', () => {
     });
 
     it('should return false for unauthorized', () => {
-      expect(token._isAuthorized(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1)).toBe(false);
+      expect(token._isAuthorized(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1)).toBe(
+        false,
+      );
     });
   });
 
