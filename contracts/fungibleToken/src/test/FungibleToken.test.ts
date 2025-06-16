@@ -469,6 +469,12 @@ describe('FungibleToken', () => {
         expect(token.totalSupply()).toEqual(0n);
         expect(token.balanceOf(Z_OWNER)).toEqual(0n);
       });
+
+      it('should fail when minting to a contract', () => {
+        expect(() => {
+          token._mint(Z_OWNER_CONTRACT, AMOUNT);
+        }).toThrow('FungibleToken: unsafe transfer');
+      });
     });
 
     describe('_burn', () => {
