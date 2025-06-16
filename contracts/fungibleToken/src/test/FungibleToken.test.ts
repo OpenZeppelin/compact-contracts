@@ -137,7 +137,7 @@ describe('FungibleToken', () => {
       caller = OWNER;
 
       expect(() => {
-        token.transfer(utils.ZERO_ADDRESS, AMOUNT, caller);
+        token.transfer(utils.ZERO_KEY, AMOUNT, caller);
       }).toThrow('FungibleToken: invalid receiver');
     });
 
@@ -194,7 +194,7 @@ describe('FungibleToken', () => {
       caller = OWNER;
 
       expect(() => {
-        token.approve(utils.ZERO_ADDRESS, AMOUNT, caller);
+        token.approve(utils.ZERO_KEY, AMOUNT, caller);
       }).toThrow('FungibleToken: invalid spender');
     });
 
@@ -331,7 +331,7 @@ describe('FungibleToken', () => {
       caller = SPENDER;
 
       expect(() => {
-        token.transferFrom(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT, caller);
+        token.transferFrom(Z_OWNER, utils.ZERO_KEY, AMOUNT, caller);
       }).toThrow('FungibleToken: invalid receiver');
     });
   });
@@ -379,7 +379,7 @@ describe('FungibleToken', () => {
 
     it('should not mint to zero contract address', () => {
       expect(() => {
-        token._mint(utils.ZERO_ADDRESS, AMOUNT);
+        token._mint(utils.ZERO_KEY, AMOUNT);
       }).toThrow('FungibleToken: invalid receiver');
     });
 
@@ -443,24 +443,24 @@ describe('FungibleToken', () => {
 
     describe('with minted tokens', () => {
       beforeEach(() => {
-        token._update(utils.ZERO_ADDRESS, Z_OWNER, AMOUNT);
+        token._update(utils.ZERO_KEY, Z_OWNER, AMOUNT);
 
         expect(token.totalSupply()).toEqual(AMOUNT);
         expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
       });
 
       it('should update from non-zero to zero (burn)', () => {
-        token._update(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
+        token._update(Z_OWNER, utils.ZERO_KEY, AMOUNT);
 
         expect(token.totalSupply()).toEqual(0n);
         expect(token.balanceOf(Z_OWNER)).toEqual(0n);
       });
 
       it('should catch overflow from non-zero to zero (burn)', () => {
-        token._update(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
+        token._update(Z_OWNER, utils.ZERO_KEY, AMOUNT);
 
         expect(() => {
-          token._update(Z_OWNER, utils.ZERO_ADDRESS, 1n);
+          token._update(Z_OWNER, utils.ZERO_KEY, 1n);
         }).toThrow('FungibleToken: insufficient balance');
       });
 
