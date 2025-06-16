@@ -312,7 +312,7 @@ module FungibleToken {
     value: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(account) "FungibleToken: usnafe transfer";
+    assert !Utils_isContractAddress(account) "FungibleToken: unsafe transfer";
     _unsafeMint(account, value);
   }
 
