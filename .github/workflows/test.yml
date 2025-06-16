@@ -1,10 +1,10 @@
 name: Compact Contracts Test Suite
 
 on:
-  push:
-    paths:
-      - 'contracts/**/*.compact'
-      - 'contracts/**/*.ts'
+  push
+    # paths:
+    #   - 'contracts/**/*.compact'
+    #   - 'contracts/**/*.ts'
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -26,10 +26,7 @@ jobs:
 
       - name: Build compact package
         shell: bash
-        run: |
-          cd compact
-          turbo build
-          cd ..
+        run: turbo build --filter=@openzeppelin-midnight/compact
 
       - name: Validate build artifacts
         shell: bash
