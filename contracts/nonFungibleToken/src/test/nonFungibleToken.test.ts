@@ -541,6 +541,14 @@ describe('NonFungibleToken', () => {
       token.transferFrom(Z_OWNER, Z_OTHER, TOKENID_1, _caller);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
       expect(token._isAuthorized(Z_OTHER, Z_SPENDER, TOKENID_1)).toBe(false);
+
+      _caller = SPENDER;
+      expect(() => {
+        token.approve(Z_UNAUTHORIZED, TOKENID_1, _caller)
+      }).toThrow('NonFungibleToken: Invalid Approver');
+      expect(() => {
+        token.transferFrom(Z_OTHER, Z_UNAUTHORIZED, TOKENID_1, _caller)
+      }).toThrow('NonFungibleToken: Insufficient Approval');
     });
   });
 
