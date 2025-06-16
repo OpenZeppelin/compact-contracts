@@ -19,7 +19,6 @@ import {
   type FungibleTokenPrivateState,
   FungibleTokenWitnesses,
 } from '../../witnesses/FungibleTokenWitnesses';
-import type { MaybeString } from '../types/string';
 import type { IContractSimulator } from '../types/test';
 
 /**
