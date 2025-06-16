@@ -74,7 +74,7 @@ $ npx turbo compact
 @openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
 @openzeppelin-midnight/utils:compact:
 
-✔ [COMPILE] [2/2] Compiled test/mocks/MockERC20.compact
+✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
 @openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
 @openzeppelin-midnight/erc20:compact:     Compiling 15 circuits:
 

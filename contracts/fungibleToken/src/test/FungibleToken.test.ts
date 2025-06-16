@@ -1,6 +1,6 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ERC20Simulator } from './simulators/ERC20Simulator';
+import { FungibleTokenSimulator } from './simulators/FungibleTokenSimulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
 
@@ -37,13 +37,13 @@ const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
 
-let token: ERC20Simulator;
+let token: FungibleTokenSimulator;
 let caller: CoinPublicKey;
 
-describe('ERC20', () => {
+describe('FungibleToken', () => {
   describe('initializer and metadata', () => {
     it('should initialize metadata', () => {
-      token = new ERC20Simulator(NAME, SYMBOL, DECIMALS);
+      token = new FungibleTokenSimulator(NAME, SYMBOL, DECIMALS);
 
       expect(token.name()).toEqual(NAME);
       expect(token.symbol()).toEqual(SYMBOL);
@@ -52,7 +52,7 @@ describe('ERC20', () => {
 
     it('should initialize empty metadata', () => {
       const NO_DECIMALS = 0n;
-      token = new ERC20Simulator(NO_STRING, NO_STRING, NO_DECIMALS);
+      token = new FungibleTokenSimulator(NO_STRING, NO_STRING, NO_DECIMALS);
 
       expect(token.name()).toEqual(NO_STRING);
       expect(token.symbol()).toEqual(NO_STRING);
@@ -61,7 +61,7 @@ describe('ERC20', () => {
   });
 
   beforeEach(() => {
-    token = new ERC20Simulator(NAME, SYMBOL, DECIMALS);
+    token = new FungibleTokenSimulator(NAME, SYMBOL, DECIMALS);
   });
 
   describe('totalSupply', () => {
@@ -122,7 +122,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transfer(Z_RECIPIENT, AMOUNT + 1n, caller);
-      }).toThrow('ERC20: insufficient balance');
+      }).toThrow('FungibleToken: insufficient balance');
     });
 
     it('should fail with transfer from zero', () => {
@@ -130,7 +130,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transfer(Z_RECIPIENT, AMOUNT, caller);
-      }).toThrow('ERC20: invalid sender');
+      }).toThrow('FungibleToken: invalid sender');
     });
 
     it('should fail with transfer to zero', () => {
@@ -138,7 +138,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transfer(utils.ZERO_ADDRESS, AMOUNT, caller);
-      }).toThrow('ERC20: invalid receiver');
+      }).toThrow('FungibleToken: invalid receiver');
     });
 
     it('should allow transfer of 0 tokens', () => {
@@ -154,7 +154,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transfer(Z_RECIPIENT, 1n, caller);
-      }).toThrow('ERC20: insufficient balance');
+      }).toThrow('FungibleToken: insufficient balance');
     });
   });
 
@@ -187,7 +187,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.approve(Z_SPENDER, AMOUNT, caller);
-      }).toThrow('ERC20: invalid owner');
+      }).toThrow('FungibleToken: invalid owner');
     });
 
     it('should fail when approve to zero', () => {
@@ -195,7 +195,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.approve(utils.ZERO_ADDRESS, AMOUNT, caller);
-      }).toThrow('ERC20: invalid spender');
+      }).toThrow('FungibleToken: invalid spender');
     });
 
     it('should transfer exact allowance and fail subsequent transfer', () => {
@@ -209,7 +209,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, 1n, caller);
-      }).toThrow('ERC20: insufficient allowance');
+      }).toThrow('FungibleToken: insufficient allowance');
     });
 
     it('should allow approve of 0 tokens', () => {
@@ -297,7 +297,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT + 1n);
-      }).toThrow('ERC20: insufficient allowance');
+      }).toThrow('FungibleToken: insufficient allowance');
     });
 
     it('should fail when transfer amount exceeds balance', () => {
@@ -308,7 +308,7 @@ describe('ERC20', () => {
       caller = SPENDER;
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT + 1n, caller);
-      }).toThrow('ERC20: insufficient balance');
+      }).toThrow('FungibleToken: insufficient balance');
     });
 
     it('should fail when spender does not have allowance', () => {
@@ -316,7 +316,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
-      }).toThrow('ERC20: insufficient allowance');
+      }).toThrow('FungibleToken: insufficient allowance');
     });
 
     it('should fail to transferFrom zero address', () => {
@@ -324,7 +324,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT, caller);
-      }).toThrow('ERC20: insufficient allowance');
+      }).toThrow('FungibleToken: insufficient allowance');
     });
 
     it('should fail to transferFrom to the zero address', () => {
@@ -332,7 +332,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token.transferFrom(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT, caller);
-      }).toThrow('ERC20: invalid receiver');
+      }).toThrow('FungibleToken: invalid receiver');
     });
   });
 
@@ -368,19 +368,19 @@ describe('ERC20', () => {
 
       expect(() => {
         token._mint(Z_RECIPIENT, 1n);
-      }).toThrow('ERC20: arithmetic overflow');
+      }).toThrow('FungibleToken: arithmetic overflow');
     });
 
     it('should not mint to zero pubkey', () => {
       expect(() => {
         token._mint(utils.ZERO_KEY, AMOUNT);
-      }).toThrow('ERC20: invalid receiver');
+      }).toThrow('FungibleToken: invalid receiver');
     });
 
     it('should not mint to zero contract address', () => {
       expect(() => {
         token._mint(utils.ZERO_ADDRESS, AMOUNT);
-      }).toThrow('ERC20: invalid receiver');
+      }).toThrow('FungibleToken: invalid receiver');
     });
 
     it('should allow mint of 0 tokens', () => {
@@ -406,13 +406,13 @@ describe('ERC20', () => {
     it('should throw when burning from zero', () => {
       expect(() => {
         token._burn(utils.ZERO_KEY, AMOUNT);
-      }).toThrow('ERC20: invalid sender');
+      }).toThrow('FungibleToken: invalid sender');
     });
 
     it('should throw when burn amount is greater than balance', () => {
       expect(() => {
         token._burn(Z_OWNER, AMOUNT + 1n);
-      }).toThrow('ERC20: insufficient balance');
+      }).toThrow('FungibleToken: insufficient balance');
     });
 
     it('should allow burn of 0 tokens', () => {
@@ -438,7 +438,7 @@ describe('ERC20', () => {
 
       expect(() => {
         token._update(utils.ZERO_KEY, Z_OWNER, 1n);
-      }).toThrow('ERC20: arithmetic overflow');
+      }).toThrow('FungibleToken: arithmetic overflow');
     });
 
     describe('with minted tokens', () => {
@@ -461,7 +461,7 @@ describe('ERC20', () => {
 
         expect(() => {
           token._update(Z_OWNER, utils.ZERO_ADDRESS, 1n);
-        }).toThrow('ERC20: insufficient balance');
+        }).toThrow('FungibleToken: insufficient balance');
       });
 
       it('should update from non-zero to non-zero (transfer)', () => {

@@ -11,39 +11,41 @@ import {
   type ContractAddress,
   type Either,
   type Ledger,
-  Contract as MockERC20,
+  Contract as MockFungibleToken,
   type ZswapCoinPublicKey,
   ledger,
-} from '../../artifacts/MockERC20/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockFungibleToken/contract/index.cjs'; // Combined imports
 import {
-  type ERC20PrivateState,
-  ERC20Witnesses,
-} from '../../witnesses/ERC20Witnesses';
+  type FungibleTokenPrivateState,
+  FungibleTokenWitnesses,
+} from '../../witnesses/FungibleTokenWitnesses';
 import type { MaybeString } from '../types/string';
-import type { IContractSimulator } from './../types/test';
+import type { IContractSimulator } from '../types/test';
 
 /**
- * @description A simulator implementation of an erc20 contract for testing purposes.
- * @template P - The private state type, fixed to ERC20PrivateState.
+ * @description A simulator implementation of a FungibleToken contract for testing purposes.
+ * @template P - The private state type, fixed to FungibleTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class ERC20Simulator
-  implements IContractSimulator<ERC20PrivateState, Ledger>
+export class FungibleTokenSimulator
+  implements IContractSimulator<FungibleTokenPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockERC20<ERC20PrivateState>;
+  readonly contract: MockFungibleToken<FungibleTokenPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<ERC20PrivateState>;
+  circuitContext: CircuitContext<FungibleTokenPrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
   constructor(name: MaybeString, symbol: MaybeString, decimals: bigint) {
-    this.contract = new MockERC20<ERC20PrivateState>(ERC20Witnesses);
+    this.contract = new MockFungibleToken<FungibleTokenPrivateState>(
+      FungibleTokenWitnesses,
+    );
     const {
       currentPrivateState,
       currentContractState,
@@ -76,9 +78,9 @@ export class ERC20Simulator
 
   /**
    * @description Retrieves the current private state of the contract.
-   * @returns The private state of type ERC20PrivateState.
+   * @returns The private state of type FungibleTokenPrivateState.
    */
-  public getCurrentPrivateState(): ERC20PrivateState {
+  public getCurrentPrivateState(): FungibleTokenPrivateState {
     return this.circuitContext.currentPrivateState;
   }
 

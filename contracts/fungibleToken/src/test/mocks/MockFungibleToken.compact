@@ -4,7 +4,7 @@ pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
 
-import "../../ERC20" prefix ERC20_;
+import "../../FungibleToken" prefix FungibleToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
@@ -13,38 +13,38 @@ constructor(
   _symbol: Maybe<Opaque<"string">>,
   _decimals:Uint<8>
 ) {
-  ERC20_initializer(_name, _symbol, _decimals);
+  FungibleToken_initializer(_name, _symbol, _decimals);
 }
 
 export circuit name(): Maybe<Opaque<"string">> {
-  return ERC20_name();
+  return FungibleToken_name();
 }
 
 export circuit symbol(): Maybe<Opaque<"string">> {
-  return ERC20_symbol();
+  return FungibleToken_symbol();
 }
 
 export circuit decimals(): Uint<8> {
-  return ERC20_decimals();
+  return FungibleToken_decimals();
 }
 
 export circuit totalSupply(): Uint<128> {
-  return ERC20_totalSupply();
+  return FungibleToken_totalSupply();
 }
 
 export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
-    return ERC20_balanceOf(account);
+    return FungibleToken_balanceOf(account);
 }
 
 export circuit allowance(
   owner: Either<ZswapCoinPublicKey, ContractAddress>,
   spender: Either<ZswapCoinPublicKey, ContractAddress>
 ): Uint<128> {
-    return ERC20_allowance(owner, spender);
+    return FungibleToken_allowance(owner, spender);
 }
 
 export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
-    return ERC20_transfer(to, value);
+    return FungibleToken_transfer(to, value);
 }
 
 export circuit transferFrom(
@@ -52,11 +52,11 @@ export circuit transferFrom(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): Boolean {
-    return ERC20_transferFrom(from, to, value);
+    return FungibleToken_transferFrom(from, to, value);
 }
 
 export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
-    return ERC20_approve(spender, value);
+    return FungibleToken_approve(spender, value);
 }
 
 export circuit _approve(
@@ -64,7 +64,7 @@ export circuit _approve(
   spender: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-    return ERC20__approve(owner, spender, value);
+    return FungibleToken__approve(owner, spender, value);
 }
 
 export circuit _transfer(
@@ -72,21 +72,21 @@ export circuit _transfer(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-    return ERC20__transfer(from, to, value);
+    return FungibleToken__transfer(from, to, value);
 }
 
 export circuit _mint(
   account: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-    return ERC20__mint(account, value);
+    return FungibleToken__mint(account, value);
 }
 
 export circuit _burn(
   account: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-    return ERC20__burn(account, value);
+    return FungibleToken__burn(account, value);
 }
 
 export circuit _update(
@@ -94,7 +94,7 @@ export circuit _update(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-    return ERC20__update(from, to, value);
+    return FungibleToken__update(from, to, value);
 }
 
 export circuit _spendAllowance(
@@ -102,5 +102,5 @@ export circuit _spendAllowance(
   spender: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-    return ERC20__spendAllowance(owner, spender, value);
+    return FungibleToken__spendAllowance(owner, spender, value);
 }
