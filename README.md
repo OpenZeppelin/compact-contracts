@@ -53,8 +53,8 @@ $ npx turbo compact
 
 (...)
 ✔ [COMPILE] [1/2] Compiled ERC20.compact
-@openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/erc20:compact:
+@openzeppelin-midnight/fungibletoken:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/fungibletoken:compact:
 ✔ [COMPILE] [1/6] Compiled Initializable.compact
 @openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
 @openzeppelin-midnight/utils:compact:
@@ -75,8 +75,8 @@ $ npx turbo compact
 @openzeppelin-midnight/utils:compact:
 
 ✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
-@openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/erc20:compact:     Compiling 15 circuits:
+@openzeppelin-midnight/fungibletoken:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/fungibletoken:compact:     Compiling 15 circuits:
 
 
  Tasks:    2 successful, 2 total

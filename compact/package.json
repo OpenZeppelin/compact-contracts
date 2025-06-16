@@ -3,7 +3,10 @@
   "name": "@openzeppelin-midnight/compact",
   "private": true,
   "version": "0.0.1",
-  "keywords": ["compact", "compiler"],
+  "keywords": [
+    "compact",
+    "compiler"
+  ],
   "author": "",
   "license": "MIT",
   "description": "Compact fetcher",
