@@ -52,7 +52,7 @@ yarn prepare
 $ npx turbo compact
 
 (...)
-✔ [COMPILE] [1/2] Compiled ERC20.compact
+✔ [COMPILE] [1/2] Compiled FungibleToken.compact
 @openzeppelin-midnight/fungibletoken:compact:     Compactc version: 0.23.0
 @openzeppelin-midnight/fungibletoken:compact:
 ✔ [COMPILE] [1/6] Compiled Initializable.compact
