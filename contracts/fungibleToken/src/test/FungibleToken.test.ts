@@ -18,24 +18,27 @@ const SYMBOL: MaybeString = {
 };
 const DECIMALS: bigint = 18n;
 
+// Amounts
 const AMOUNT: bigint = BigInt(250);
 const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
-const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
-  64,
-  '0',
-);
-const SPENDER = String(
-  Buffer.from('SPENDER', 'ascii').toString('hex'),
-).padStart(64, '0');
-const UNAUTHORIZED = String(
-  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
-).padStart(64, '0');
-const ZERO = String().padStart(64, '0');
+// Callers
+const OWNER = utils.toHexPadded('OWNER');
+const SPENDER = utils.toHexPadded('SPENDER');
+const UNAUTHORIZED = utils.toHexPadded('UNAUTHORIZED');
+const ZERO = utils.toHexPadded('');
+
+// Encoded PK/Addresses
 const Z_OWNER = utils.createEitherTestUser('OWNER');
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 const Z_SPENDER = utils.createEitherTestUser('SPENDER');
 const Z_OTHER = utils.createEitherTestUser('OTHER');
+const Z_OWNER_CONTRACT =
+  utils.createEitherTestContractAddress('OWNER_CONTRACT');
+const Z_RECIPIENT_CONTRACT =
+  utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
+const Z_OTHER_CONTRACT =
+  utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 let token: FungibleTokenSimulator;
 let caller: CoinPublicKey;
