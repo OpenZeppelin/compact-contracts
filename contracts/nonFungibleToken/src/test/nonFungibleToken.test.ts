@@ -1121,6 +1121,12 @@ describe('NonFungibleToken', () => {
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
   });
+
+  describe('emptyString', () => {
+    it('should return the empty string', () => {
+      expect(token.emptyString()).toBe('');
+    });
+  });
 });
 
 let uninitializedToken: UninitializedNonFungibleTokenSimulator;
@@ -1327,12 +1333,6 @@ describe('Uninitialized NonFungibleToken', () => {
       expect(() => {
         uninitializedToken._unsafeMint(Z_OWNER, TOKENID_1);
       }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('emptyString', () => {
-    it('should return the empty string', () => {
-      expect(token.emptyString()).toBe('');
     });
   });
 });
