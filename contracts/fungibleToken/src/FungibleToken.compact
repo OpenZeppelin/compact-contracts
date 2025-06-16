@@ -43,7 +43,7 @@ module FungibleToken {
    * @param decimals_ - The number of decimals used to get the user representation.
    * @return {[]} - None.
    */
-  export circuit initializer(
+  export circuit initialize(
     name_: Opaque<"string">,
     symbol_: Opaque<"string">,
     decimals_:Uint<8>
@@ -164,7 +164,7 @@ module FungibleToken {
     Initializable_assertInitialized();
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-    _transfer(owner, to, value);
+    _unsafeUncheckedTransfer(owner, to, value);
     return true;
   }
 
@@ -211,7 +211,7 @@ module FungibleToken {
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const spender = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _spendAllowance(from, spender, value);
-    _transfer(from, to, value);
+    _unsafeUncheckedTransfer(from, to, value);
     return true;
   }
 
@@ -266,6 +266,28 @@ module FungibleToken {
    * @return {[]} - None.
    */
   export circuit _transfer(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: Uint<128>
+  ): [] {
+    Initializable_assertInitialized();
+    assert !Utils_isContractAddress(to) "FungibleToken: unsafe transfer";
+    _unsafeUncheckedTransfer(from, to, value);
+  }
+
+  /**
+   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   *
+   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
+   * @param {from} - The owner of the tokens to transfer.
+   * @param {to} - The receipient of the transferred tokens.
+   * @param {value} - The amount of tokens to transfer.
+   * @return {[]} - None.
+   */
+  export circuit _unsafeUncheckedTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
