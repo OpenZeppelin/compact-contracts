@@ -381,6 +381,22 @@ export class FungibleTokenSimulator
   }
 
   /**
+   * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
+   * @param account The recipient of tokens minted.
+   * @param value The amount of tokens minted.
+   */
+  public _unsafeMint(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._unsafeMint(
+      this.circuitContext,
+      account,
+      value,
+    ).context;
+  }
+
+  /**
    * @description Destroys a `value` amount of tokens from `account`, lowering the total supply.
    * Relies on the `_update` mechanism.
    * @param account The target owner of tokens to burn.
