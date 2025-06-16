@@ -165,6 +165,10 @@ describe('NonFungibleToken', () => {
   });
 
   describe('tokenURI', () => {
+    beforeEach(() => {
+      token._mint(Z_OWNER, TOKENID_1);
+    });
+
     it('should throw if token does not exist', () => {
       expect(() => {
         token.tokenURI(NON_EXISTENT_TOKEN);
@@ -172,33 +176,28 @@ describe('NonFungibleToken', () => {
     });
 
     it('should return the empty string if tokenURI set as default value', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       token._setTokenURI(TOKENID_1, EMPTY_STRING);
       expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_STRING);
     });
 
     it('should return some string if tokenURI is set', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       token._setTokenURI(TOKENID_1, SOME_STRING);
       expect(token.tokenURI(TOKENID_1)).toEqual(SOME_STRING);
     });
 
     it('should return very long tokenURI', () => {
       const longURI = 'A'.repeat(1000);
-      token._mint(Z_OWNER, TOKENID_1);
       token._setTokenURI(TOKENID_1, longURI);
       expect(token.tokenURI(TOKENID_1)).toEqual(longURI);
     });
 
     it('should return tokenURI with special characters', () => {
       const specialURI = '!@#$%^&*()_+';
-      token._mint(Z_OWNER, TOKENID_1);
       token._setTokenURI(TOKENID_1, specialURI);
       expect(token.tokenURI(TOKENID_1)).toEqual(specialURI);
     });
 
     it('should update tokenURI multiple times', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       token._setTokenURI(TOKENID_1, 'URI1');
       token._setTokenURI(TOKENID_1, 'URI2');
       token._setTokenURI(TOKENID_1, 'URI3');
@@ -206,7 +205,6 @@ describe('NonFungibleToken', () => {
     });
 
     it('should maintain tokenURI after token transfer', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       token._setTokenURI(TOKENID_1, SOME_STRING);
       token._transfer(Z_OWNER, Z_RECIPIENT, TOKENID_1);
       expect(token.tokenURI(TOKENID_1)).toEqual(SOME_STRING);
