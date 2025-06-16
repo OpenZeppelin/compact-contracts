@@ -35,6 +35,22 @@ const Z_RECIPIENT_CONTRACT =
 const Z_OTHER_CONTRACT =
   utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
+// Helper types
+const ownerTypes = [
+  ['contract', Z_OWNER_CONTRACT],
+  ['pubkey', Z_OWNER],
+] as const;
+
+const recipientTypes = [
+  ['contract', Z_RECIPIENT_CONTRACT],
+  ['pubkey', Z_RECIPIENT],
+] as const;
+
+const callerTypes = [
+  ['owner', OWNER],
+  ['spender', SPENDER],
+] as const;
+
 let token: FungibleTokenSimulator;
 let caller: CoinPublicKey;
 
@@ -93,6 +109,7 @@ describe('FungibleToken', () => {
       ['_transfer', [Z_OWNER, Z_RECIPIENT, AMOUNT]],
       ['_unsafeUncheckedTransfer', [Z_OWNER, Z_RECIPIENT, AMOUNT]],
       ['_mint', [Z_OWNER, AMOUNT]],
+      ['_unsafeMint', [Z_OWNER, AMOUNT]],
       ['_burn', [Z_OWNER, AMOUNT]],
     ];
 
@@ -120,13 +137,15 @@ describe('FungibleToken', () => {
     });
 
     describe('balanceOf', () => {
-      it('should return zero when requested account has no balance', () => {
-        expect(token.balanceOf(Z_OWNER)).toEqual(0n);
-      });
+      describe.each(ownerTypes)('when the owner is a %s', (_, owner) => {
+        it('should return zero when requested account has no balance', () => {
+          expect(token.balanceOf(owner)).toEqual(0n);
+        });
 
-      it('should return balance when requested account has tokens', () => {
-        token._mint(Z_OWNER, AMOUNT);
-        expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
+        it('should return balance when requested account has tokens', () => {
+          token._unsafeMint(owner, AMOUNT);
+          expect(token.balanceOf(owner)).toEqual(AMOUNT);
+        });
       });
     });
 
@@ -199,6 +218,12 @@ describe('FungibleToken', () => {
         expect(() => {
           token.transfer(Z_RECIPIENT, 1n, caller);
         }).toThrow('FungibleToken: insufficient balance');
+      });
+
+      it('should fail when transferring to a contract', () => {
+        expect(() => {
+          token.transfer(Z_OWNER_CONTRACT, AMOUNT);
+        }).toThrow('FungibleToken: unsafe transfer');
       });
     });
 
@@ -377,6 +402,12 @@ describe('FungibleToken', () => {
         expect(() => {
           token.transferFrom(Z_OWNER, utils.ZERO_KEY, AMOUNT, caller);
         }).toThrow('FungibleToken: invalid receiver');
+      });
+
+      it('should fail when transferring to a contract', () => {
+        expect(() => {
+          token.transferFrom(Z_OWNER, Z_OWNER_CONTRACT, AMOUNT, caller);
+        }).toThrow('FungibleToken: unsafe transfer');
       });
     });
 
