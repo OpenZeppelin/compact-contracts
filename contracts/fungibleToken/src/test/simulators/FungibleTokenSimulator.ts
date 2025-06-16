@@ -42,7 +42,7 @@ export class FungibleTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(name: string, symbol: string, decimals: bigint) {
+  constructor(name: string, symbol: string, decimals: bigint, init: boolean) {
     this.contract = new MockFungibleToken<FungibleTokenPrivateState>(
       FungibleTokenWitnesses,
     );
@@ -55,6 +55,7 @@ export class FungibleTokenSimulator
       name,
       symbol,
       decimals,
+      init,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -336,6 +337,25 @@ export class FungibleTokenSimulator
     value: bigint,
   ) {
     this.circuitContext = this.contract.impureCircuits._transfer(
+      this.circuitContext,
+      from,
+      to,
+      value,
+    ).context;
+  }
+
+  /**
+   * @description Unsafe variant of `_transfer` which allows transfers to contract addresses.
+   * @param from The owner of the tokens to transfer.
+   * @param to The receipient of the transferred tokens.
+   * @param value The amount of tokens to transfer.
+   */
+  public _unsafeUncheckedTransfer(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._unsafeUncheckedTransfer(
       this.circuitContext,
       from,
       to,
