@@ -4,18 +4,10 @@ import { FungibleTokenSimulator } from './simulators/FungibleTokenSimulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
 
-const NO_STRING: MaybeString = {
-  is_some: false,
-  value: '',
-};
-const NAME: MaybeString = {
-  is_some: true,
-  value: 'NAME',
-};
-const SYMBOL: MaybeString = {
-  is_some: true,
-  value: 'SYMBOL',
-};
+// Metadata
+const NO_STRING = '';
+const NAME = 'NAME';
+const SYMBOL = 'SYMBOL';
 const DECIMALS: bigint = 18n;
 
 // Amounts

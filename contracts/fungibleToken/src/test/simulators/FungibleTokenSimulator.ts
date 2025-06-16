@@ -42,7 +42,7 @@ export class FungibleTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(name: MaybeString, symbol: MaybeString, decimals: bigint) {
+  constructor(name: string, symbol: string, decimals: bigint) {
     this.contract = new MockFungibleToken<FungibleTokenPrivateState>(
       FungibleTokenWitnesses,
     );
@@ -96,7 +96,7 @@ export class FungibleTokenSimulator
    * @description Returns the token name.
    * @returns The token name.
    */
-  public name(): MaybeString {
+  public name(): string {
     return this.contract.impureCircuits.name(this.circuitContext).result;
   }
 
@@ -104,7 +104,7 @@ export class FungibleTokenSimulator
    * @description Returns the symbol of the token.
    * @returns The token name.
    */
-  public symbol(): MaybeString {
+  public symbol(): string {
     return this.contract.impureCircuits.symbol(this.circuitContext).result;
   }
 

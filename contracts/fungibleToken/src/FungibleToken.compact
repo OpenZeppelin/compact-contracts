@@ -26,8 +26,8 @@ module FungibleToken {
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
 
   /// Public state
-  export sealed ledger _name: Maybe<Opaque<"string">>;
-  export sealed ledger _symbol: Maybe<Opaque<"string">>;
+  export sealed ledger _name: Opaque<"string">;
+  export sealed ledger _symbol: Opaque<"string">;
   export sealed ledger _decimals: Uint<8>;
   export ledger _totalSupply: Uint<128>;
   export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
@@ -44,8 +44,8 @@ module FungibleToken {
    * @return {[]} - None.
    */
   export circuit initializer(
-    name_: Maybe<Opaque<"string">>,
-    symbol_: Maybe<Opaque<"string">>,
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
     decimals_:Uint<8>
   ): [] {
     Initializable_initialize();
@@ -57,9 +57,9 @@ module FungibleToken {
   /**
    * @description Returns the token name.
    *
-   * @return {Maybe<Opaque<"string">>} - The token name.
+   * @return {Opaque<"string">} - The token name.
    */
-  export circuit name(): Maybe<Opaque<"string">> {
+  export circuit name(): Opaque<"string"> {
     Initializable_assertInitialized();
     return _name;
   }
@@ -67,9 +67,9 @@ module FungibleToken {
   /**
    * @description Returns the symbol of the token.
    *
-   * @return {Maybe<Opaque<"string">>} - The token name.
+   * @return {Opaque<"string">} - The token name.
    */
-  export circuit symbol(): Maybe<Opaque<"string">> {
+  export circuit symbol(): Opaque<"string"> {
     Initializable_assertInitialized();
     return _symbol;
   }
