@@ -182,6 +182,33 @@ export class FungibleTokenSimulator
   }
 
   /**
+   * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
+   * @param to The recipient of the transfer, either a user or a contract.
+   * @param value The amount to transfer.
+   * @param sender The simulated caller.
+   * @returns As per the IERC20 spec, this MUST return true.
+   */
+  public _unsafeTransfer(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ): boolean {
+    const res = this.contract.impureCircuits._unsafeTransfer(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      to,
+      value,
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
    * @description Moves `value` tokens from `from` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
    * @param from The current owner of the tokens for the transfer, either a user or a contract.
@@ -197,6 +224,36 @@ export class FungibleTokenSimulator
     sender?: CoinPublicKey,
   ): boolean {
     const res = this.contract.impureCircuits.transferFrom(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      from,
+      to,
+      value,
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
+   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   * @param from The current owner of the tokens for the transfer, either a user or a contract.
+   * @param to The recipient of the transfer, either a user or a contract.
+   * @param value The amount to transfer.
+   * @param sender The simulated caller.
+   * @returns As per the IERC20 spec, this MUST return true.
+   */
+  public _unsafeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ): boolean {
+    const res = this.contract.impureCircuits._unsafeTransferFrom(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender

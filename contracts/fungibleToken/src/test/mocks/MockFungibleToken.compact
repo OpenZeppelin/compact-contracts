@@ -47,12 +47,24 @@ export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: 
     return FungibleToken_transfer(to, value);
 }
 
+export circuit _unsafeTransfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+    return FungibleToken__unsafeTransfer(to, value);
+}
+
 export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): Boolean {
     return FungibleToken_transferFrom(from, to, value);
+}
+
+export circuit _unsafeTransferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>
+): Boolean {
+    return FungibleToken__unsafeTransferFrom(from, to, value);
 }
 
 export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {

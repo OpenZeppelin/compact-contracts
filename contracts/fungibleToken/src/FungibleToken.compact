@@ -22,6 +22,7 @@ pragma language_version >= 0.15.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
 
   /// Public state
@@ -47,6 +48,7 @@ module FungibleToken {
     symbol_: Maybe<Opaque<"string">>,
     decimals_:Uint<8>
   ): [] {
+    Initializable_initialize();
     _name = name_;
     _symbol = symbol_;
     _decimals = decimals_;
@@ -58,6 +60,7 @@ module FungibleToken {
    * @return {Maybe<Opaque<"string">>} - The token name.
    */
   export circuit name(): Maybe<Opaque<"string">> {
+    Initializable_assertInitialized();
     return _name;
   }
 
@@ -67,6 +70,7 @@ module FungibleToken {
    * @return {Maybe<Opaque<"string">>} - The token name.
    */
   export circuit symbol(): Maybe<Opaque<"string">> {
+    Initializable_assertInitialized();
     return _symbol;
   }
 
@@ -76,6 +80,7 @@ module FungibleToken {
    * @return {Uint<8>} - The account's token balance.
    */
   export circuit decimals(): Uint<8> {
+    Initializable_assertInitialized();
     return _decimals;
   }
 
@@ -85,6 +90,7 @@ module FungibleToken {
    * @return {Uint<128>} - The total supply of tokens.
    */
   export circuit totalSupply(): Uint<128> {
+    Initializable_assertInitialized();
     return _totalSupply;
   }
 
@@ -97,6 +103,7 @@ module FungibleToken {
    * @return {Uint<128>} - The account's token balance.
    */
   export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+    Initializable_assertInitialized();
     if (!_balances.member(account)) {
       return 0;
     }
@@ -118,6 +125,7 @@ module FungibleToken {
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     spender: Either<ZswapCoinPublicKey, ContractAddress>
   ): Uint<128> {
+    Initializable_assertInitialized();
     if (!_allowances.member(owner) || !_allowances.lookup(owner).member(spender)) {
       return 0;
     }
@@ -136,6 +144,24 @@ module FungibleToken {
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+    Initializable_assertInitialized();
+    assert !Utils_isContractAddress(to) "FungibleToken: unsafe transfer";
+    return _unsafeTransfer(to, value);
+  }
+
+  /**
+   * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
+   *
+   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
+   * @param {to} - The recipient of the transfer, either a user or a contract.
+   * @param {value} - The amount to transfer.
+   * @return {Boolean} - As per the IERC20 spec, this MUST return true.
+   */
+  export circuit _unsafeTransfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+    Initializable_assertInitialized();
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _transfer(owner, to, value);
@@ -159,6 +185,29 @@ module FungibleToken {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): Boolean {
+    Initializable_assertInitialized();
+    assert !Utils_isContractAddress(to) "FungibleToken: unsafe transfer";
+    return _unsafeTransferFrom(from, to, value);
+  }
+
+  /**
+   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   *
+   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
+   * @param {from} - The current owner of the tokens for the transfer, either a user or a contract.
+   * @param {to} - The recipient of the transfer, either a user or a contract.
+   * @param {value} - The amount to transfer.
+   * @return {Boolean} - As per the IERC20 spec, this MUST return true.
+   */
+  export circuit _unsafeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: Uint<128>
+  ): Boolean {
+    Initializable_assertInitialized();
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const spender = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _spendAllowance(from, spender, value);
@@ -174,6 +223,7 @@ module FungibleToken {
    * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
    */
   export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+    Initializable_assertInitialized();
     // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
     const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _approve(owner, spender, value);
@@ -182,7 +232,7 @@ module FungibleToken {
 
   /**
    * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
-   * This internal function is equivalent to `approve`, and can be used to
+   * This circuit is equivalent to `approve`, and can be used to
    * e.g. set automatic allowances for certain subsystems, etc.
    *
    * @param {owner} - The owner of the tokens.
@@ -195,6 +245,7 @@ module FungibleToken {
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
     assert !Utils_isKeyOrAddressZero(owner) "FungibleToken: invalid owner";
     assert !Utils_isKeyOrAddressZero(spender) "FungibleToken: invalid spender";
     if (!_allowances.member(owner)) {
@@ -206,7 +257,7 @@ module FungibleToken {
 
   /**
    * @description Moves a `value` amount of tokens from `from` to `to`.
-   * This internal function is equivalent to {transfer}, and can be used to
+   * This circuit is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
    *
    * @param {from} - The owner of the tokens to transfer.
@@ -219,6 +270,7 @@ module FungibleToken {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
     assert !Utils_isKeyOrAddressZero(from) "FungibleToken: invalid sender";
     assert !Utils_isKeyOrAddressZero(to) "FungibleToken: invalid receiver";
 
@@ -237,12 +289,9 @@ module FungibleToken {
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
     assert !Utils_isKeyOrAddressZero(account) "FungibleToken: invalid receiver";
-    // Using the contract variant of 0
-    // TODO: Look into if this matters
-    const zero_address = right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ pad(32, "") });
-
-    _update(zero_address, account, value);
+    _update(burn_address(), account, value);
   }
 
   /**
@@ -257,11 +306,9 @@ module FungibleToken {
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
     assert !Utils_isKeyOrAddressZero(account) "FungibleToken: invalid sender";
-    // Using the contract variant of 0
-    // TODO: Look into if this matters
-    const zero_address = right<ZswapCoinPublicKey, ContractAddress>(ContractAddress{ pad(32, "") });
-    _update(account, zero_address, value);
+    _update(account, burn_address(), value);
   }
 
   /**
@@ -279,6 +326,7 @@ module FungibleToken {
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
     if (Utils_isKeyOrAddressZero(from)) {
       // Mint
       const MAX_UINT128 = 340282366920938463463374607431768211455;
@@ -314,6 +362,7 @@ module FungibleToken {
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
+    Initializable_assertInitialized();
     // TODO: Look into improving design so we're not checking allowance member twice (here and in `_approve`)
     assert (_allowances.member(owner) && _allowances.lookup(owner).member(spender)) "FungibleToken: insufficient allowance";
 
