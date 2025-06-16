@@ -175,6 +175,10 @@ describe('NonFungibleToken', () => {
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
+    it('should return the empty string for an unset tokenURI', () => {
+      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_STRING);
+    });
+
     it('should return the empty string if tokenURI set as default value', () => {
       token._setTokenURI(TOKENID_1, EMPTY_STRING);
       expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_STRING);
@@ -1323,6 +1327,12 @@ describe('Uninitialized NonFungibleToken', () => {
       expect(() => {
         uninitializedToken._unsafeMint(Z_OWNER, TOKENID_1);
       }).toThrow('Initializable: contract not initialized');
+    });
+  });
+
+  describe('emptyString', () => {
+    it('should return the empty string', () => {
+      expect(token.emptyString()).toBe('');
     });
   });
 });

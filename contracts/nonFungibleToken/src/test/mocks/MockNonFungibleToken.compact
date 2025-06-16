@@ -163,3 +163,7 @@ export circuit _unsafeMint(
 ): [] {
   return NonFungibleToken__unsafeMint(to, tokenId);
 }
+
+export pure circuit emptyString(): Opaque<"string"> {
+  return NonFungibleToken_emptyString();
+}

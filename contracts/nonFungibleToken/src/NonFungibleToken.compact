@@ -132,7 +132,8 @@ module NonFungibleToken {
   }
 
   /**
-   * @description Returns the token URI for the given `tokenId`.
+   * @description Returns the token URI for the given `tokenId`. Returns the empty
+   * string if a tokenURI does not exist.
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -150,6 +151,10 @@ module NonFungibleToken {
   export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
     Initializable_assertInitialized();
     _requireOwned(tokenId);
+
+    if (!_tokenURIs.member(tokenId)) {
+      return emptyString();
+    }
 
     return _tokenURIs.lookup(tokenId);
   }
@@ -670,6 +675,15 @@ module NonFungibleToken {
     _owners.insert(tokenId, to);
 
     return from;
+  }
+
+  /**
+   * @description A helper function that returns the empty string: ""
+
+   * @return {Opaque<"string">} - The empty string: ""
+   */
+  pure circuit emptyString(): Opaque<"string"> {
+    return default<Opaque<"string">>;
   }
 }
 
