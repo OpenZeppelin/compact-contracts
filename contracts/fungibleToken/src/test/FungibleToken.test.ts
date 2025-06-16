@@ -427,6 +427,12 @@ describe('FungibleToken', () => {
         expect(token.balanceOf(Z_OWNER)).toEqual(1n);
         expect(token.balanceOf(Z_RECIPIENT)).toEqual(partialAmt);
       });
+
+      it('should fail when transferring to a contract', () => {
+        expect(() => {
+          token._transfer(Z_OWNER, Z_OWNER_CONTRACT, AMOUNT);
+        }).toThrow('FungibleToken: unsafe transfer');
+      });
     });
 
     describe('_mint', () => {
