@@ -477,6 +477,44 @@ describe('FungibleToken', () => {
       });
     });
 
+    describe('_unsafeMint', () => {
+      describe.each(recipientTypes)('when the recipient is a %s', (_, recipient) => {
+        it('should mint and update supply', () => {
+          expect(token.totalSupply()).toEqual(0n);
+
+          token._unsafeMint(recipient, AMOUNT);
+          expect(token.totalSupply()).toEqual(AMOUNT);
+          expect(token.balanceOf(recipient)).toEqual(AMOUNT);
+        });
+
+        it('should catch mint overflow', () => {
+          token._unsafeMint(recipient, MAX_UINT128);
+
+          expect(() => {
+            token._unsafeMint(recipient, 1n);
+          }).toThrow('FungibleToken: arithmetic overflow');
+        });
+
+        it('should allow mint of 0 tokens', () => {
+          token._unsafeMint(recipient, 0n);
+          expect(token.totalSupply()).toEqual(0n);
+          expect(token.balanceOf(recipient)).toEqual(0n);
+        });
+    });
+
+      it('should not mint to zero pubkey', () => {
+        expect(() => {
+          token._unsafeMint(utils.ZERO_KEY, AMOUNT);
+        }).toThrow('FungibleToken: invalid receiver');
+      });
+
+      it('should not mint to zero contract address', () => {
+        expect(() => {
+          token._unsafeMint(utils.ZERO_KEY, AMOUNT);
+        }).toThrow('FungibleToken: invalid receiver');
+      });
+    });
+
     describe('_burn', () => {
       beforeEach(() => {
         token._mint(Z_OWNER, AMOUNT);
