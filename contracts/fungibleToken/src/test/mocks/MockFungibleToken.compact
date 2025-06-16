@@ -8,12 +8,22 @@ import "../../FungibleToken" prefix FungibleToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
+/**
+ * @description `init` is a param for testing.
+ * If `init` is true, initialize the contract with the
+ * _name`, `_symbol`, and `_decimals`.
+ * Otherwise, the contract will not initialize and we can test
+ * the contract when it is not initialized properly.
+*/
 constructor(
   _name: Opaque<"string">,
   _symbol: Opaque<"string">,
-  _decimals:Uint<8>
+  _decimals:Uint<8>,
+  init: Boolean
 ) {
-  FungibleToken_initializer(_name, _symbol, _decimals);
+  if (init) {
+    FungibleToken_initialize(_name, _symbol, _decimals);
+  }
 }
 
 export circuit name(): Opaque<"string"> {
@@ -85,6 +95,14 @@ export circuit _transfer(
   value: Uint<128>
 ): [] {
     return FungibleToken__transfer(from, to, value);
+}
+
+export circuit _unsafeUncheckedTransfer(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>
+): [] {
+    return FungibleToken__unsafeUncheckedTransfer(from, to, value);
 }
 
 export circuit _mint(
