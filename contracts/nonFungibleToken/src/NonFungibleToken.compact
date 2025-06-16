@@ -686,4 +686,3 @@ module NonFungibleToken {
     return default<Opaque<"string">>;
   }
 }
-
