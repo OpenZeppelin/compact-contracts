@@ -369,7 +369,7 @@ module NonFungibleToken {
     return _tokenApprovals.lookup(tokenId);
   }
 
-    /**
+  /**
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
    *
@@ -551,7 +551,7 @@ module NonFungibleToken {
   }
 
   /**
-   * @description  Approve `to` to operate on `tokenId`
+   * @description Approve `to` to operate on `tokenId`
    *
    * Requirements:
    * - The contract must have been initialized.
