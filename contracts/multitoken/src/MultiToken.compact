@@ -423,7 +423,7 @@ module MultiToken {
   }
 
   /**
-   * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
    *
    * Requirements:
    *
