@@ -679,8 +679,32 @@ describe('FungibleToken', () => {
             expect(token.balanceOf(Z_OWNER)).toEqual(0n);
             expect(token.balanceOf(recipient)).toEqual(AMOUNT);
           });
+
+          it('should fail when transfer amount exceeds balance', () => {
+            expect(() => {
+              token._unsafeUncheckedTransfer(Z_OWNER, recipient, AMOUNT + 1n);
+            }).toThrow('FungibleToken: insufficient balance');
+          });
+
+          it('should fail when transfer from zero', () => {
+            expect(() => {
+              token._unsafeUncheckedTransfer(utils.ZERO_ADDRESS, recipient, AMOUNT);
+            }).toThrow('FungibleToken: invalid sender');
+          });
         },
       );
+
+      it('should fail when transfer to zero (pk)', () => {
+        expect(() => {
+          token._unsafeUncheckedTransfer(Z_OWNER, utils.ZERO_KEY, AMOUNT);
+        }).toThrow('FungibleToken: invalid receiver');
+      });
+
+      it('should fail when transfer to zero (contract)', () => {
+        expect(() => {
+          token._unsafeUncheckedTransfer(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
+        }).toThrow('FungibleToken: invalid receiver');
+      });
     });
 
     describe('_mint', () => {
