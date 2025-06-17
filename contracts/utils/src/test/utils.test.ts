@@ -34,9 +34,9 @@ describe('Utils', () => {
     });
 
     it('should return true for two matching contract addresses', () => {
-      expect(
-        contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT),
-      ).toBe(true);
+      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT)).toBe(
+        true,
+      );
     });
 
     it('should return false for two different pubkeys', () => {
@@ -44,15 +44,15 @@ describe('Utils', () => {
     });
 
     it('should return false for two different contract addresses', () => {
-      expect(
-        contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT),
-      ).toBe(false);
+      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT)).toBe(
+        false,
+      );
     });
 
     it('should return false for two different address types', () => {
-      expect(
-        contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT),
-      ).toBe(false);
+      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT)).toBe(
+        false,
+      );
     });
   });
 
