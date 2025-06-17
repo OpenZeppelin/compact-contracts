@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight/multitoken",
+  "name": "@openzeppelin-midnight/multi-token",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",

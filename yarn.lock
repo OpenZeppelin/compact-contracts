@@ -417,9 +417,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/multitoken@workspace:contracts/multitoken":
+"@openzeppelin-midnight/multi-token@workspace:contracts/multiToken":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/multitoken@workspace:contracts/multitoken"
+  resolution: "@openzeppelin-midnight/multi-token@workspace:contracts/multiToken"
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/utils": "workspace:^"
