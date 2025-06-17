@@ -90,7 +90,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    *
    * @param {Uint<128>} id - The token identifier to query.
    * return {Opaque<"string">} - The base URI for all tokens.
@@ -106,7 +106,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account balance to query.
    * @param {Uint<128>} id - The token identifier to query.
@@ -132,7 +132,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    * - `accounts` and `ids` vectors must be of length n.
    *
    * @param {Vector<n, Either<ZswapCoinPublicKey, ContractAddress>>} accounts - The account balances to query.
@@ -153,8 +153,8 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
-   * - `operator` must not be zero.
+   * - Contract is initialized.
+   * - `operator` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The ZswapCoinPublicKey or ContractAddress
    * whose approval is set for the caller's assets.
@@ -175,7 +175,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The queried possessor of assets.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The queried handler of `account`'s assets.
@@ -206,20 +206,20 @@ module MultiToken {
    * See **Extensibility** documentation for usage patterns.
    *
    * Requirements:
-  *
-  * - Contract must be initialized.
-  * - `to` must be a ZswapCoinPublicKey.
-  * - `to` must not be zero.
-  * - `from` must not be zero.
-  * - Caller must be `from` or approved via `setApprovalForAll`.
+   *
+   * - Contract is initialized.
+   * - `to` is not a ContractAddress.
+   * - `to` is not the zero address.
+   * - `from` is not the zero address.
+   * - Caller must be `from` or approved via `setApprovalForAll`.
    * - `from` must have an `id` balance of at least `value`.
-  *
-  * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
-  * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
-  * @param {Uint<128>} id - The unique identifier of the asset type.
-  * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-  * @returns None.
-  */
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
+   * @param {Uint<128>} id - The unique identifier of the asset type.
+   * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
+   * @returns None.
+   */
   export circuit transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -240,9 +240,9 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
-   * - `to` must not be zero.
-   * - `from` must not be zero.
+   * - Contract is initialized.
+   * - `to` is not the zero address.
+   * - `from` is not the zero address.
    * - Caller must be `from` or approved via `setApprovalForAll`.
    * - `from` must have an `id` balance of at least `value`.
    *
@@ -280,10 +280,10 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
-   * - `to` must be a ZswapCoinPublicKey.
-   * - `to` must not be zero.
-   * - `from` must not be zero.
+   * - Contract is initialized.
+   * - `to` is not a ContractAddress.
+   * - `to` is not the zero address.
+   * - `from` is not the zero address.
    * - `from` must have an `id` balance of at least `value`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
@@ -313,9 +313,9 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
-   * - `from` must not be zero.
-   * - `to` must not be zero.
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `to` is not the zero address.
    * - `from` must have an `id` balance of at least `value`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
@@ -343,7 +343,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    * - If `from` is not zero, the balance of `id` of `from` must be >= `value`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The origin of the transfer.
@@ -398,7 +398,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    *
    * @param {Opaque<"string">} newURI - The new base URI for all tokens.
    * @return {[]} - None.
@@ -414,7 +414,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    * - `to` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
@@ -432,7 +432,7 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
    * - `to` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
@@ -452,7 +452,8 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
+   * - `from` is not the zero address.
    * - `from` must have an `id` balance of at least `value`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner whose tokens will be destroyed.
@@ -474,7 +475,8 @@ module MultiToken {
    *
    * Requirements:
    *
-   * - Contract must be initialized.
+   * - Contract is initialized.
+   * - `operator` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The ZswapCoinPublicKey or ContractAddress of the target owner.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The ZswapCoinPublicKey or ContractAddress whose approval is set for the
