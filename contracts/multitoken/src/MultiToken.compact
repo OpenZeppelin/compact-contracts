@@ -58,10 +58,31 @@ module MultiToken {
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
 
-  /// Public state
+  /**
+   * @description Mapping from token ID to account balances.
+   * @type {Uint<128>} id - The token identifier.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The account address.
+   * @type {Uint<128>} balance - The balance of the account for the token.
+   * @type {Map<id, Map<account, balance>>}
+   * @type {Map<Uint<128>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>} _balances
+   */
   export ledger _balances: Map<Uint<128>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
+
+  /**
+   * @description Mapping from account to operator approvals.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The account address.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} operator - The operator address.
+   * @type {Boolean} approved - The approval status of the operator for the account.
+   * @type {Map<account, Map<operator, approved>>}
+   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>}
+   */
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
-  // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
+
+  /**
+   * @description Base URI for computing token URIs.
+   * Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
+   * @type {Opaque<"string">} _uri - The base URI for all token URIs.
+   */
   export ledger _uri: Opaque<"string">;
 
   /**
@@ -74,9 +95,7 @@ module MultiToken {
    * @param {Opaque<"string">} uri_ - The base URI for all token URIs.
    * @return {[]} None.
    */
-  export circuit initialize(
-    uri_: Opaque<"string">
-  ): [] {
+  export circuit initialize(uri_: Opaque<"string">): [] {
     Initializable_initialize();
     _setURI(uri_);
   }
@@ -165,7 +184,7 @@ module MultiToken {
   export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
     Initializable_assertInitialized();
 
-    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    // TODO: Contract-to-contract calls not yet supported.
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _setApprovalForAll(caller, operator, approved);
   }
@@ -250,7 +269,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns None.
+   * @returns {[]} None.
    */
   export circuit _unsafeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -260,7 +279,7 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    // TMP: Contract-to-contract calls not yet supported.
+    // TODO: Contract-to-contract calls not yet supported.
     // Once available, handle ContractAddress recipients here.
     const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     if (from != caller) {
@@ -290,7 +309,7 @@ module MultiToken {
    * @param Either<ZswapCoinPublicKey, ContractAddress> to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns None.
+   * @returns {[]} None.
    */
   export circuit _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -322,7 +341,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns None.
+   * @returns {[]} None.
    */
   export circuit _unsafeUncheckedTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -375,6 +394,7 @@ module MultiToken {
         _balances.lookup(id).insert(to, value as Uint<128>);
       } else {
         const toBalance = balanceOf(to, id);
+       // TODO: Replace with Max_Uint128() 
         const MAX_UINT128 = 340282366920938463463374607431768211455;
         assert MAX_UINT128 - toBalance >= value "MultiToken: arithmetic overflow";
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);

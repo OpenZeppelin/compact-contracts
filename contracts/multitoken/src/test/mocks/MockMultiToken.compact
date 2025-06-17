@@ -20,9 +20,7 @@ constructor(
   }
 }
 
-export circuit initialize(
-  _uri: Opaque<"string">
-): [] {
+export circuit initialize(_uri: Opaque<"string">): [] {
   return MultiToken_initialize(_uri);
 }
 
@@ -39,6 +37,13 @@ export circuit balanceOfBatch_10(
   ids: Vector<10, Uint<128>>
 ): Vector<10, Uint<128>> {
   return MultiToken_balanceOfBatch<10>(accounts, ids);
+}
+
+export circuit balanceOfBatch_1000(
+  accounts: Vector<1000, Either<ZswapCoinPublicKey, ContractAddress>>,
+  ids: Vector<1000, Uint<128>>
+): Vector<1000, Uint<128>> {
+  return MultiToken_balanceOfBatch<1000>(accounts, ids);
 }
 
 export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
