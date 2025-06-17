@@ -12,13 +12,21 @@ pragma language_version >= 0.15.0;
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
  *
+ * Due to the vast incompatibilities with the EIP20 spec, it is our
+ * opinion that this implementation should not be called ERC20 at this time
+ * as this would be both very confusing and misleading. This may change as more
+ * features become available. The list of missing features is as follows:
+ *
+ * - Full uint256 support.
+ * - Events.
+ * - Contract-to-contract calls.
+ *
  * @notice Further discussion and consideration required:
  *
  * - Consider changing the underscore in the internal methods to `unsafe` or
  * adopting dot notation for prefixing imports.
  * - Revise logic once contract-to-contract interactions are available on midnight.
  * - Consider implementing an introspection mechanism for transfers to contracts.
- * - Standardize which zero address to use (`ZswapCoinPublicKey` or `ContractAddress`).
  */
 module FungibleToken {
   import CompactStandardLibrary;
@@ -57,6 +65,10 @@ module FungibleToken {
   /**
    * @description Returns the token name.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
@@ -66,6 +78,10 @@ module FungibleToken {
 
   /**
    * @description Returns the symbol of the token.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @return {Opaque<"string">} - The token name.
    */
@@ -77,6 +93,10 @@ module FungibleToken {
   /**
    * @description Returns the number of decimals used to get its user representation.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
    * @return {Uint<8>} - The account's token balance.
    */
   export circuit decimals(): Uint<8> {
@@ -86,6 +106,10 @@ module FungibleToken {
 
   /**
    * @description Returns the value of tokens in existence.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @return {Uint<128>} - The total supply of tokens.
    */
@@ -98,6 +122,10 @@ module FungibleToken {
    * @description Returns the value of tokens owned by `account`.
    *
    * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {account} - The public key or contract address to query.
    * @return {Uint<128>} - The account's token balance.
@@ -116,6 +144,10 @@ module FungibleToken {
    *              through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
    *
    * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {owner} - The public key or contract address of approver.
    * @param {spender} - The public key or contract address of spender.
@@ -136,8 +168,16 @@ module FungibleToken {
   /**
    * @description Moves a `value` amount of tokens from the caller's account to `to`.
    *
-   * @dev We need to get the caller address from contracts and handle the transfer appropriately.
-   *      This should include a callback to ensure the contract can safely receive tokens.
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from
+   * being inadvertently locked in contracts that cannot currently handle token receipt.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not a ContractAddress.
+   * - `to` is not the zero address.
+   * - The caller has a balance of at least `value`.
    *
    * @param {to} - The recipient of the transfer, either a user or a contract.
    * @param {value} - The amount to transfer.
@@ -156,6 +196,12 @@ module FungibleToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not the zero address.
+   * - The caller has a balance of at least `value`.
+   *
    * @param {to} - The recipient of the transfer, either a user or a contract.
    * @param {value} - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
@@ -172,8 +218,18 @@ module FungibleToken {
    * @description Moves `value` tokens from `from` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
    *
-   * @dev We need to get the caller address from contracts and handle the transfer appropriately.
-   *      This should include a callback to ensure the contract can safely receive tokens.
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from
+   * being inadvertently locked in contracts that cannot currently handle token receipt.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `from` must have a balance of at least `value`.
+   * - `to` is not the zero address.
+   * - `to` is not a ContractAddress.
+   * - The caller has an allowance of `from`'s tokens of at least `value`.
    *
    * @param {from} - The current owner of the tokens for the transfer, either a user or a contract.
    * @param {to} - The recipient of the transfer, either a user or a contract.
@@ -197,6 +253,14 @@ module FungibleToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `from` must have a balance of at least `value`.
+   * - `to` is not the zero address.
+   * - The caller has an allowance of `from`'s tokens of at least `value`.
+   *
    * @param {from} - The current owner of the tokens for the transfer, either a user or a contract.
    * @param {to} - The recipient of the transfer, either a user or a contract.
    * @param {value} - The amount to transfer.
@@ -218,6 +282,11 @@ module FungibleToken {
   /**
    * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `spender` is not the zero address.
+   *
    * @param {spender} - The Zswap key or ContractAddress that may spend on behalf of the caller.
    * @param {value} - The amount of tokens the `spender` may spend.
    * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
@@ -234,6 +303,12 @@ module FungibleToken {
    * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
    * This circuit is equivalent to `approve`, and can be used to
    * e.g. set automatic allowances for certain subsystems, etc.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `owner` is not the zero address.
+   * - `spender` is not the zero address.
    *
    * @param {owner} - The owner of the tokens.
    * @param {spender} - The spender of the tokens.
@@ -260,6 +335,18 @@ module FungibleToken {
    * This circuit is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
    *
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from
+   * being inadvertently locked in contracts that cannot currently handle token receipt.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not be the zero address.
+   * - `from` must have at least a balance of `value`.
+   * - `to` must not be the zero address.
+   * - `to` must not be a ContractAddress.
+   *
    * @param {from} - The owner of the tokens to transfer.
    * @param {to} - The receipient of the transferred tokens.
    * @param {value} - The amount of tokens to transfer.
@@ -282,6 +369,12 @@ module FungibleToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `to` is not the zero address.
+   *
    * @param {from} - The owner of the tokens to transfer.
    * @param {to} - The receipient of the transferred tokens.
    * @param {value} - The amount of tokens to transfer.
@@ -303,6 +396,16 @@ module FungibleToken {
    * @description Creates a `value` amount of tokens and assigns them to `account`,
    * by transferring it from the zero address. Relies on the `update` mechanism.
    *
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from
+   * being inadvertently locked in contracts that cannot currently handle token receipt.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not a ContractAddress.
+   * - `account` is not the zero address.
+   *
    * @param {account} - The recipient of tokens minted.
    * @param {value} - The amount of tokens minted.
    * @return {[]} - None.
@@ -323,6 +426,11 @@ module FungibleToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `account` is not the zero address.
+   *
    * @param {account} - The recipient of tokens minted.
    * @param {value} - The amount of tokens minted.
    * @return {[]} - None.
@@ -339,6 +447,12 @@ module FungibleToken {
   /**
    * @description Destroys a `value` amount of tokens from `account`, lowering the total supply.
    * Relies on the `_update` mechanism.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `account` is not the zero address.
+   * - `account` must have at least a balance of `value`.
    *
    * @param {account} - The target owner of tokens to burn.
    * @param {value} - The amount of tokens to burn.
@@ -357,6 +471,10 @@ module FungibleToken {
    * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
    * (or `to`) is the zero address.
    * @dev Checks for a mint overflow in order to output a more readable error message.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {from} - The original owner of the tokens moved (which is 0 if tokens are minted).
    * @param {to} - The recipient of the tokens moved (which is 0 if tokens are burned).
@@ -393,6 +511,11 @@ module FungibleToken {
   /**
    * @description Updates `owner`'s allowance for `spender` based on spent `value`.
    * Does not update the allowance value in case of infinite allowance.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `spender` must have at least an allowance of `value` from `owner`.
    *
    * @param {owner} - The owner of the tokens.
    * @param {spender} - The spender of the tokens.
