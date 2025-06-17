@@ -5,7 +5,6 @@
   "packageManager": "yarn@4.1.0",
   "workspaces": ["compact/", "contracts/*/", "docs/"],
   "scripts": {
-    "prepare": "npx tsc -p ./compact && yarn rebuild",
     "docs": "npx turbo run docs --filter=docs",
     "docs:watch": "npx turbo run docs:watch --filter=docs",
     "compact": "turbo run compact",
