@@ -53,8 +53,8 @@ $ npx turbo compact
 
 (...)
 ✔ [COMPILE] [1/2] Compiled FungibleToken.compact
-@openzeppelin-midnight/fungibletoken:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/fungibletoken:compact:
+@openzeppelin-midnight/fungible-token:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/fungible-token:compact:
 ✔ [COMPILE] [1/6] Compiled Initializable.compact
 @openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
 @openzeppelin-midnight/utils:compact:
@@ -75,8 +75,8 @@ $ npx turbo compact
 @openzeppelin-midnight/utils:compact:
 
 ✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
-@openzeppelin-midnight/fungibletoken:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/fungibletoken:compact:     Compiling 15 circuits:
+@openzeppelin-midnight/fungible-token:compact:     Compactc version: 0.23.0
+@openzeppelin-midnight/fungible-token:compact:     Compiling 15 circuits:
 
 
  Tasks:    2 successful, 2 total

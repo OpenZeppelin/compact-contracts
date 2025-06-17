@@ -404,9 +404,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/fungibletoken@workspace:contracts/fungibleToken":
+"@openzeppelin-midnight/fungible-token@workspace:contracts/fungibleToken":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/fungibletoken@workspace:contracts/fungibleToken"
+  resolution: "@openzeppelin-midnight/fungible-token@workspace:contracts/fungibleToken"
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
