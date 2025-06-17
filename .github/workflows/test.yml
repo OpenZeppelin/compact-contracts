@@ -48,28 +48,33 @@ jobs:
         id: setup
         shell: bash
         run: |
-          # Set version variables
-          COMPILER_VERSION="0.23.0"
-          LANGUAGE_VERSION="0.15.0"
-
+          set -euo pipefail
           # Create directory for compiler
           COMPACT_HOME="$HOME/compactc"
           mkdir -p "$COMPACT_HOME"
-          cd "$COMPACT_HOME"
+
+          # Create URL
+          ZIP_FILE="compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip"
+          DOWNLOAD_URL="https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_${COMPILER_VERSION}/${ZIP_FILE}"
 
           echo "⬇️ Downloading Compact compiler..."
-          curl -L https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_${COMPILER_VERSION}/compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip -o compactc.zip
-          unzip compactc.zip
-          chmod +x compactc.bin zkir compactc
+          curl -Ls "$DOWNLOAD_URL" -o "$COMPACT_HOME/compactc.zip"
 
-          # Set up environment variables
-          echo "COMPACT_HOME=$COMPACT_HOME" >> $GITHUB_ENV
-          echo "$COMPACT_HOME" >> $GITHUB_PATH
+          echo "📦 Extracting..."
+          unzip -q "$COMPACT_HOME/compactc.zip" -d "$COMPACT_HOME"
+          chmod +x "$COMPACT_HOME"/{compactc,compactc.bin,zkir}
 
-          # Verify installation
-          [ -f "$COMPACT_HOME/compactc" ] || { echo "::error::❌ Failed to install compiler - compactc not found"; exit 1; }
+          echo "📁 Setting environment variables..."
+          echo "COMPACT_HOME=$COMPACT_HOME" >> "$GITHUB_ENV"
+          echo "$COMPACT_HOME" >> "$GITHUB_PATH"
 
-          # Test installation
+          echo "✅ Verifying installation..."
+          if [ ! -f "$COMPACT_HOME/compactc" ]; then
+            echo "::error::❌ compactc not found in $COMPACT_HOME"
+            exit 1
+          fi
+
+          echo "🤖 Testing installation..."
           "$COMPACT_HOME/compactc" --version
 
       - name: Check compiler version
