@@ -77,29 +77,26 @@ jobs:
           echo "🤖 Testing installation..."
           "$COMPACT_HOME/compactc" --version
 
-      - name: Check compiler version
+      - name: Check compiler and language version
         run: |
-            EXPECTED_COMPILER_VERSION="0.23.0"
             COMPILER_OUTPUT=$(compactc --version)
-            COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
-            if [ "$COMPILER_VERSION" != "$EXPECTED_COMPILER_VERSION" ]; then
-              errMsg="❌ Compiler version mismatch!%0AExpected: $EXPECTED_COMPILER_VERSION%0AGot: $COMPILER_VERSION"
+            COMPUTED_COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
+            if [ "$COMPUTED_COMPILER_VERSION" != "$COMPILER_VERSION" ]; then
+              errMsg="❌ Compiler version mismatch!%0AExpected: $COMPILER_VERSION%0AGot: $COMPUTED_COMPILER_VERSION"
               echo "::error::$errMsg"
               exit 1
             fi
-            echo "✅ Compiler version matches: $COMPILER_VERSION"
+            echo "✅ Compiler version matches: $COMPUTED_COMPILER_VERSION"
 
-      - name: Check language version
-        run: |
-          EXPECTED_LANGUAGE_VERSION="0.15.0"
-          LANGUAGE_OUTPUT=$(compactc --language-version)
-          LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | tail -n 1)
-          if [ "$LANGUAGE_VERSION" != "$EXPECTED_LANGUAGE_VERSION" ]; then
-              errMsg="❌ Language version mismatch!%0AExpected: $EXPECTED_LANGUAGE_VERSION%0AGot: $LANGUAGE_VERSION"
-              echo "::error::$errMsg"
-              exit 1
-          fi
-          echo "✅ Language version matches: $LANGUAGE_VERSION"
+            LANGUAGE_OUTPUT=$(compactc --language-version)
+            COMPUTED_LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | tail -n 1)
+            if [ "$COMPUTED_LANGUAGE_VERSION" != "$LANGUAGE_VERSION" ]; then
+                errMsg="❌ Language version mismatch!%0AExpected: $LANGUAGE_VERSION%0AGot: $COMPUTED_LANGUAGE_VERSION"
+                echo "::error::$errMsg"
+                exit 1
+            fi
+
+            echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
 
       - name: Build contracts
         run: turbo build --filter="./contracts/*"
