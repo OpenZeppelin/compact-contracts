@@ -8,6 +8,8 @@ on:
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
+  COMPILER_VERSION: "0.23.0"
+  LANGUAGE_VERSION: "0.15.0"
 
 jobs:
   run-suite:
