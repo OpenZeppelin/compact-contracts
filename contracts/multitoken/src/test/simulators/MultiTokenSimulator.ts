@@ -144,6 +144,23 @@ export class MultiTokenSimulator
   }
 
   /**
+   * @description Get the balance of multiple account/token pairs.
+   * @param accounts The account balances to query.
+   * @param ids The token identifiers of `accounts` to query.
+   * @returns Returns 1000 balances of account/token id pairs.
+   */
+  public balanceOfBatch_1000(
+    accounts: Either<ZswapCoinPublicKey, ContractAddress>[],
+    ids: bigint[],
+  ): bigint[] {
+    return this.contract.impureCircuits.balanceOfBatch_1000(
+      this.circuitContext,
+      accounts,
+      ids,
+    ).result;
+  }
+  
+  /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
    * @param operator The ZswapCoinPublicKey or ContractAddress whose approval is set for the caller's assets.
    * @param approved The boolean value determining if the operator may or may not handle the
