@@ -688,7 +688,11 @@ describe('FungibleToken', () => {
 
           it('should fail when transfer from zero', () => {
             expect(() => {
-              token._unsafeUncheckedTransfer(utils.ZERO_ADDRESS, recipient, AMOUNT);
+              token._unsafeUncheckedTransfer(
+                utils.ZERO_ADDRESS,
+                recipient,
+                AMOUNT,
+              );
             }).toThrow('FungibleToken: invalid sender');
           });
         },
