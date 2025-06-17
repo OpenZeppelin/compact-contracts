@@ -1,12 +1,12 @@
 name: Compact Contracts Test Suite
 
 on:
-  push
-    # paths:
-    #   - 'contracts/**/*.compact'
-    #   - 'contracts/**/*.ts'
-    # branches:
-    #   - main
+  push:
+    paths:
+      - 'contracts/**/*.compact'
+      - 'contracts/**/*.ts'
+    branches:
+      - main
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
