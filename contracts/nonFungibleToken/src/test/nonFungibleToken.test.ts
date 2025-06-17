@@ -332,10 +332,10 @@ describe('NonFungibleToken', () => {
     });
 
     it('should allow operator to manage owner tokens', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
       token._mint(Z_OWNER, TOKENID_2);
       token._mint(Z_OWNER, TOKENID_3);
+      _caller = OWNER;
       token.setApprovalForAll(Z_SPENDER, true, _caller);
 
       _caller = SPENDER;
