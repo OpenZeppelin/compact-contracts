@@ -304,7 +304,8 @@ describe('NonFungibleToken', () => {
     });
 
     it('should get current approved spender', () => {
-      token.approve(Z_OWNER, TOKENID_1);
+      _caller = OWNER;
+      token.approve(Z_OWNER, TOKENID_1, _caller);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_OWNER);
     });
 
