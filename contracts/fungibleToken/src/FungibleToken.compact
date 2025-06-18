@@ -32,23 +32,40 @@ module FungibleToken {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
+  
+  /**
+   * @description Mapping from account addresses to their token balances.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The account address.
+   * @type {Uint<128>} balance - The balance of the account.
+   * @type {Map<account, balance>}
+   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>} _balances
+   */
+  export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
+  
+  /**
+   * @description Mapping from owner accounts to spender accounts and their allowances. 
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The owner account address.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender account address.
+   * @type {Uint<128>} allowance - The amount allowed to be spent by the spender.
+   * @type {Map<account, Map<spender, allowance>>}
+   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>} _allowances
+   */
+  export ledger _allowances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
 
-  /// Public state
+  export ledger _totalSupply: Uint<128>;
+
   export sealed ledger _name: Opaque<"string">;
   export sealed ledger _symbol: Opaque<"string">;
   export sealed ledger _decimals: Uint<8>;
-  export ledger _totalSupply: Uint<128>;
-  export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
-  export ledger _allowances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
-
+  
   /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
    * @dev This MUST be called in the implementing contract's constructor. Failure to do so
    * can lead to an irreparable contract.
    *
-   * @param name_ - The name of the token.
-   * @param symbol_ - The symbol of the token.
-   * @param decimals_ - The number of decimals used to get the user representation.
+   * @param {Opaque<"string">} name_ - The name of the token.
+   * @param {Opaque<"string">} symbol_ - The symbol of the token.
+   * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
    * @return {[]} - None.
    */
   export circuit initialize(
@@ -127,7 +144,7 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @param {account} - The public key or contract address to query.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The public key or contract address to query.
    * @return {Uint<128>} - The account's token balance.
    */
   export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
@@ -137,32 +154,6 @@ module FungibleToken {
     }
 
     return _balances.lookup(account);
-  }
-
-  /**
-   * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
-   *              through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
-   *
-   * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @param {owner} - The public key or contract address of approver.
-   * @param {spender} - The public key or contract address of spender.
-   * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
-   */
-  export circuit allowance(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Uint<128> {
-    Initializable_assertInitialized();
-    if (!_allowances.member(owner) || !_allowances.lookup(owner).member(spender)) {
-      return 0;
-    }
-
-    return _allowances.lookup(owner).lookup(spender);
   }
 
   /**
@@ -179,8 +170,8 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has a balance of at least `value`.
    *
-   * @param {to} - The recipient of the transfer, either a user or a contract.
-   * @param {value} - The amount to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
@@ -202,15 +193,61 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has a balance of at least `value`.
    *
-   * @param {to} - The recipient of the transfer, either a user or a contract.
-   * @param {value} - The amount to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
     Initializable_assertInitialized();
-    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    // TODO: Contracts-to-contract calls are not supported yet.
     const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _unsafeUncheckedTransfer(owner, to, value);
+    return true;
+  }
+
+  /**
+   * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
+   *              through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
+   *
+   * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The public key or contract address of approver.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The public key or contract address of spender.
+   * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
+   */
+  export circuit allowance(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Uint<128> {
+    Initializable_assertInitialized();
+    if (!_allowances.member(owner) || !_allowances.lookup(owner).member(spender)) {
+      return 0;
+    }
+
+    return _allowances.lookup(owner).lookup(spender);
+  }
+
+  /**
+   * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `spender` is not the zero address.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The Zswap key or ContractAddress that may spend on behalf of the caller.
+   * @param {Uint<128>} value - The amount of tokens the `spender` may spend.
+   * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
+   */
+  export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+    Initializable_assertInitialized();
+    // TODO: Contracts-to-contract calls are not supported yet.
+    const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    _approve(owner, spender, value);
     return true;
   }
 
@@ -231,9 +268,9 @@ module FungibleToken {
    * - `to` is not a ContractAddress.
    * - The caller has an allowance of `from`'s tokens of at least `value`.
    *
-   * @param {from} - The current owner of the tokens for the transfer, either a user or a contract.
-   * @param {to} - The recipient of the transfer, either a user or a contract.
-   * @param {value} - The amount to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The current owner of the tokens for the transfer, either a user or a contract.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transferFrom(
@@ -261,9 +298,9 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has an allowance of `from`'s tokens of at least `value`.
    *
-   * @param {from} - The current owner of the tokens for the transfer, either a user or a contract.
-   * @param {to} - The recipient of the transfer, either a user or a contract.
-   * @param {value} - The amount to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The current owner of the tokens for the transfer, either a user or a contract.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransferFrom(
@@ -272,63 +309,12 @@ module FungibleToken {
     value: Uint<128>
   ): Boolean {
     Initializable_assertInitialized();
-    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
+    // TODO: Contracts-to-contract calls are not supported yet.
     const spender = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _spendAllowance(from, spender, value);
     _unsafeUncheckedTransfer(from, to, value);
     return true;
-  }
-
-  /**
-   * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - `spender` is not the zero address.
-   *
-   * @param {spender} - The Zswap key or ContractAddress that may spend on behalf of the caller.
-   * @param {value} - The amount of tokens the `spender` may spend.
-   * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
-   */
-  export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
-    Initializable_assertInitialized();
-    // TMP - Waiting for contract-to-contract calls to handle `right` with contract address
-    const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-    _approve(owner, spender, value);
-    return true;
-  }
-
-  /**
-   * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
-   * This circuit is equivalent to `approve`, and can be used to
-   * e.g. set automatic allowances for certain subsystems, etc.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - `owner` is not the zero address.
-   * - `spender` is not the zero address.
-   *
-   * @param {owner} - The owner of the tokens.
-   * @param {spender} - The spender of the tokens.
-   * @param {value} - The amount of tokens `spender` may spend on behalf of `owner`.
-   * @return {[]} - None.
-   */
-  export circuit _approve(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: Uint<128>
-  ): [] {
-    Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(owner) "FungibleToken: invalid owner";
-    assert !Utils_isKeyOrAddressZero(spender) "FungibleToken: invalid spender";
-    if (!_allowances.member(owner)) {
-      // If owner doesn't exist, create and insert a new sub-map directly
-      _allowances.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
-    }
-    _allowances.lookup(owner).insert(spender, value);
-  }
+  } 
 
   /**
    * @description Moves a `value` amount of tokens from `from` to `to`.
@@ -347,9 +333,9 @@ module FungibleToken {
    * - `to` must not be the zero address.
    * - `to` must not be a ContractAddress.
    *
-   * @param {from} - The owner of the tokens to transfer.
-   * @param {to} - The receipient of the transferred tokens.
-   * @param {value} - The amount of tokens to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner of the tokens to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The receipient of the transferred tokens.
+   * @param {Uint<128>} value - The amount of tokens to transfer.
    * @return {[]} - None.
    */
   export circuit _transfer(
@@ -375,9 +361,9 @@ module FungibleToken {
    * - `from` is not the zero address.
    * - `to` is not the zero address.
    *
-   * @param {from} - The owner of the tokens to transfer.
-   * @param {to} - The receipient of the transferred tokens.
-   * @param {value} - The amount of tokens to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner of the tokens to transfer.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The receipient of the transferred tokens.
+   * @param {Uint<128>} value - The amount of tokens to transfer.
    * @return {[]} - None.
    */
   export circuit _unsafeUncheckedTransfer(
@@ -390,6 +376,48 @@ module FungibleToken {
     assert !Utils_isKeyOrAddressZero(to) "FungibleToken: invalid receiver";
 
     _update(from, to, value);
+  }
+
+  /**
+   * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
+   * (or `to`) is the zero address.
+   * @dev Checks for a mint overflow in order to output a more readable error message.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The original owner of the tokens moved (which is 0 if tokens are minted).
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the tokens moved (which is 0 if tokens are burned).
+   * @param {Uint<128>} value - The amount of tokens moved from `from` to `to`.
+   * @return {[]} - None.
+   */
+  export circuit _update(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: Uint<128>
+  ): [] {
+    Initializable_assertInitialized();
+    if (Utils_isKeyOrAddressZero(from)) {
+      // Mint
+      // TODO: improve readability of max_u128
+      const MAX_UINT128 = 340282366920938463463374607431768211455;
+      assert MAX_UINT128 - _totalSupply >= value "FungibleToken: arithmetic overflow";
+
+      _totalSupply = _totalSupply + value as Uint<128>;
+    } else {
+      const fromBal = balanceOf(from);
+      assert fromBal >= value "FungibleToken: insufficient balance";
+      _balances.insert(from, fromBal - value as Uint<128>);
+    }
+
+    if (Utils_isKeyOrAddressZero(to)) {
+      // Burn
+      _totalSupply = _totalSupply - value as Uint<128>;
+    } else {
+      const toBal = balanceOf(to);
+      _balances.insert(to, toBal + value as Uint<128>);
+    }
   }
 
   /**
@@ -406,8 +434,8 @@ module FungibleToken {
    * - `to` is not a ContractAddress.
    * - `account` is not the zero address.
    *
-   * @param {account} - The recipient of tokens minted.
-   * @param {value} - The amount of tokens minted.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.
+   * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - None.
    */
   export circuit _mint(
@@ -431,8 +459,8 @@ module FungibleToken {
    * - Contract is initialized.
    * - `account` is not the zero address.
    *
-   * @param {account} - The recipient of tokens minted.
-   * @param {value} - The amount of tokens minted.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.
+   * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - None.
    */
   export circuit _unsafeMint(
@@ -454,8 +482,8 @@ module FungibleToken {
    * - `account` is not the zero address.
    * - `account` must have at least a balance of `value`.
    *
-   * @param {account} - The target owner of tokens to burn.
-   * @param {value} - The amount of tokens to burn.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The target owner of tokens to burn.
+   * @param {Uint<128>} value - The amount of tokens to burn.
    * @return {[]} - None.
    */
   export circuit _burn(
@@ -468,44 +496,34 @@ module FungibleToken {
   }
 
   /**
-   * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
-   * (or `to`) is the zero address.
-   * @dev Checks for a mint overflow in order to output a more readable error message.
+   * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
+   * This circuit is equivalent to `approve`, and can be used to
+   * e.g. set automatic allowances for certain subsystems, etc.
    *
    * Requirements:
    *
    * - Contract is initialized.
+   * - `owner` is not the zero address.
+   * - `spender` is not the zero address.
    *
-   * @param {from} - The original owner of the tokens moved (which is 0 if tokens are minted).
-   * @param {to} - The recipient of the tokens moved (which is 0 if tokens are burned).
-   * @param {value} - The amount of tokens moved from `from` to `to`.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of the tokens.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender of the tokens.
+   * @param {Uint<128>} value - The amount of tokens `spender` may spend on behalf of `owner`.
    * @return {[]} - None.
    */
-  export circuit _update(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+  export circuit _approve(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    if (Utils_isKeyOrAddressZero(from)) {
-      // Mint
-      const MAX_UINT128 = 340282366920938463463374607431768211455;
-      assert MAX_UINT128 - _totalSupply >= value "FungibleToken: arithmetic overflow";
-
-      _totalSupply = _totalSupply + value as Uint<128>;
-    } else {
-      const fromBal = balanceOf(from);
-      assert fromBal >= value "FungibleToken: insufficient balance";
-      _balances.insert(from, fromBal - value as Uint<128>);
+    assert !Utils_isKeyOrAddressZero(owner) "FungibleToken: invalid owner";
+    assert !Utils_isKeyOrAddressZero(spender) "FungibleToken: invalid spender";
+    if (!_allowances.member(owner)) {
+      // If owner doesn't exist, create and insert a new sub-map directly
+      _allowances.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
     }
-
-    if (Utils_isKeyOrAddressZero(to)) {
-      // Burn
-      _totalSupply = _totalSupply - value as Uint<128>;
-    } else {
-      const toBal = balanceOf(to);
-      _balances.insert(to, toBal + value as Uint<128>);
-    }
+    _allowances.lookup(owner).insert(spender, value);
   }
 
   /**
@@ -517,9 +535,9 @@ module FungibleToken {
    * - Contract is initialized.
    * - `spender` must have at least an allowance of `value` from `owner`.
    *
-   * @param {owner} - The owner of the tokens.
-   * @param {spender} - The spender of the tokens.
-   * @param {value} - The amount of token allowance to spend.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of the tokens.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender of the tokens.
+   * @param {Uint<128>} value - The amount of token allowance to spend.
    * @return {[]} - None.
    */
   export circuit _spendAllowance(
