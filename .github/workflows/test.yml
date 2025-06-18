@@ -10,6 +10,7 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
   COMPILER_VERSION: "0.23.0"
   LANGUAGE_VERSION: "0.15.0"
+  MIDNIGHT_CACHE_PATH: "/home/runner/.cache/midnight/zk-params/bls_filecoin_2p11"
 
 jobs:
   run-suite:
@@ -34,6 +35,12 @@ jobs:
           # Create directory for compiler
           COMPACT_HOME="$HOME/compactc"
           mkdir -p "$COMPACT_HOME"
+          if [ -f $MIDNIGHT_CACHE_PATH ]; then
+            echo "$MIDNIGHT_CACHE_PATH exists with hash $(sha256sum "$MIDNIGHT_CACHE_PATH" | awk '${print $1}')"
+          else
+           echo "File does not exist."
+           exit 1;
+          fi
 
           # Create URL
           ZIP_FILE="compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip"
