@@ -453,7 +453,7 @@ describe('NonFungibleToken', () => {
     it('should transfer token without approvers or operators', () => {
       _caller = OWNER;
       token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKENID_1, _caller);
-      expect(token.ownerOf(TOKENID_1)).toBe(Z_RECIPIENT);
+      expect(token.ownerOf(TOKENID_1)).toEqual(Z_RECIPIENT);
     })
 
     it('should transfer token via approved operator', () => {
