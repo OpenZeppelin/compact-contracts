@@ -46,10 +46,51 @@ module NonFungibleToken {
   /// Public state
   export sealed ledger _name: Opaque<"string">;
   export sealed ledger _symbol: Opaque<"string">;
+  
+  /**
+   * @description Mapping from token IDs to their owner addresses.
+   * @type {Uint<128>} tokenId - The unique identifier for a token.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner address (public key or contract).
+   * @type {Map<tokenId, owner>}
+   * @type {Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>} _owners
+   */
   export ledger _owners: Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>;
+
+  /**
+   * @description Mapping from account addresses to their token balances.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner address.
+   * @type {Uint<128>} balance - The balance of the owner.
+   * @type {Map<owner, balance>}
+   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>} _balances
+   */
   export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
+
+  /**
+   * @description Mapping from token IDs to approved addresses.
+   * @type {Uint<128>} tokenId - The unique identifier for a token.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} approved - The approved address (public key or contract).
+   * @type {Map<tokenId, approved>}
+   * @type {Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>} _tokenApprovals
+   */
   export ledger _tokenApprovals: Map<Uint<128>, Either<ZswapCoinPublicKey, ContractAddress>>;
+
+  /**
+   * @description Mapping from owner addresses to operator approvals.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner address.
+   * @type {Either<ZswapCoinPublicKey, ContractAddress>} operator - The operator address.
+   * @type {Boolean} approved - Whether the operator is approved.
+   * @type {Map<owner, Map<operator, approved>>}
+   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>} _operatorApprovals
+   */
   export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+
+  /**
+   * @description Mapping from token IDs to their metadata URIs.
+   * @type {Uint<128>} tokenId - The unique identifier for a token.
+   * @type {Opaque<"string">} uri - The metadata URI for the token.
+   * @type {Map<tokenId, uri>}
+   * @type {Map<Uint<128>, Opaque<"string">>} _tokenURIs
+   */
   export ledger _tokenURIs: Map<Uint<128>, Opaque<"string">>;
 
   /**
