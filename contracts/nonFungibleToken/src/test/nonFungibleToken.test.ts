@@ -450,6 +450,12 @@ describe('NonFungibleToken', () => {
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
+    it('should transfer token without approvers or operators', () => {
+      _caller = OWNER;
+      token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKENID_1, _caller);
+      expect(token.ownerOf(TOKENID_1)).toBe(Z_RECIPIENT);
+    })
+
     it('should transfer token via approved operator', () => {
       _caller = OWNER;
       token.approve(Z_SPENDER, TOKENID_1, OWNER);
