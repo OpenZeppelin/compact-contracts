@@ -27,6 +27,7 @@
       "outputs": ["dist/**"]
     },
     "types": {
+      "dependsOn": ["compact"],
       "outputs": [],
       "cache": false
     },
