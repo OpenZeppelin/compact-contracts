@@ -2,12 +2,14 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "compact": {
+      "dependsOn": ["^build"],
       "env": ["COMPACT_HOME"],
       "inputs": ["src/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["src/artifacts/**", "src/gen/**", "gen/**"]
     },
     "test": {
+      "dependsOn": ["^build", "compact"],
       "outputs": [],
       "cache": false
     },
@@ -25,6 +27,7 @@
       "outputs": ["dist/**"]
     },
     "types": {
+      "dependsOn": ["compact"],
       "outputs": [],
       "cache": false
     },

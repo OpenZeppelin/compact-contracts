@@ -30,8 +30,6 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
-        with:
-          skip-compile: 'true'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -44,9 +42,3 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
-
-      - name: Cleanup on failure
-        if: failure()
-        run: |
-          echo "Analysis failed. Cleaning up..."
-          rm -rf contracts/*/src/artifacts/
