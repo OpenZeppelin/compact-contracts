@@ -269,7 +269,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns {[]} None.
+   * @return {[]} None.
    */
   export circuit _transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -347,7 +347,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns {[]} None.
+   * @return {[]} None.
    */
   export circuit _unsafeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -387,7 +387,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns {[]} None.
+   * @return {[]} None.
    */
   export circuit _unsafeUncheckedTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
