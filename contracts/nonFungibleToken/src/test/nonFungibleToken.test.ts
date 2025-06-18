@@ -792,15 +792,22 @@ describe('NonFungibleToken', () => {
   });
 
   describe('_getApproved', () => {
+    beforeEach(() => {
+      token._mint(Z_OWNER, TOKENID_1);
+    });
+
     it('should return zero address if token is not minted', () => {
-      expect(token._getApproved(TOKENID_1)).toEqual(ZERO_KEY);
+      expect(token._getApproved(NON_EXISTENT_TOKEN)).toEqual(ZERO_KEY);
     });
 
     it('should return approved address', () => {
       _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
       token.approve(Z_SPENDER, TOKENID_1, _caller);
       expect(token._getApproved(TOKENID_1)).toEqual(Z_SPENDER);
+    });
+
+    it('should return zero address if no approvals', () => {
+      expect(token._getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
   });
 
