@@ -32,6 +32,9 @@ jobs:
         run: |
           set -euo pipefail
           # Create directory for compiler
+          export HOME="$PWD/_tmp_home"
+          mkdir -p "$HOME"
+
           COMPACT_HOME="$HOME/compactc"
           mkdir -p "$COMPACT_HOME"
 
