@@ -1245,7 +1245,9 @@ describe('Uninitialized NonFungibleToken', () => {
 
   it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
     expect(() => {
-      (uninitializedToken[circuitName] as (...args: unknown[]) => unknown)(...args);
+      (uninitializedToken[circuitName] as (...args: unknown[]) => unknown)(
+        ...args,
+      );
     }).toThrow('Initializable: contract not initialized');
   });
 });
