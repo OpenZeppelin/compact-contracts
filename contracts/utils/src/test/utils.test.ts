@@ -36,23 +36,29 @@ describe('Utils', () => {
 
   describe('isKeyOrAddressEqual', () => {
     it('should return true for two matching pubkeys', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_SOME_KEY)).toBeTruthy();
+      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_SOME_KEY)).toBe(true);
     });
 
     it('should return true for two matching contract addresses', () => {
-      expect(
-        contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT),
-      ).toBeTruthy();
+      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT)).toBe(
+        true,
+      );
     });
 
     it('should return false for two different pubkeys', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_OTHER_KEY)).toBeFalsy();
+      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_OTHER_KEY)).toBe(false);
     });
 
     it('should return false for two different contract addresses', () => {
-      expect(
-        contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT),
-      ).toBeFalsy();
+      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT)).toBe(
+        false,
+      );
+    });
+
+    it('should return false for two different address types', () => {
+      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT)).toBe(
+        false,
+      );
     });
 
     it('should return false for two different address types of equal value', () => {
@@ -61,7 +67,7 @@ describe('Utils', () => {
           contractUtils.ZERO_KEY,
           contractUtils.ZERO_ADDRESS,
         ),
-      ).toBeFalsy();
+      ).toBe(false);
     });
   });
 
