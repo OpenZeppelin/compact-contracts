@@ -266,7 +266,7 @@ module MultiToken {
    * - `from` must have an `id` balance of at least `value`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
-   * @param Either<ZswapCoinPublicKey, ContractAddress> to - The recipient of the transferred assets.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
    * @returns {[]} None.
