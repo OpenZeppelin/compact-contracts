@@ -737,11 +737,25 @@ describe('NonFungibleToken', () => {
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
-    it('should throw if spender does not have approval', () => {
+    it('should throw if unauthorized', () => {
       token._mint(Z_OWNER, TOKENID_1);
       expect(() => {
-        token._checkAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
+        token._checkAuthorized(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
+    });
+
+    it('should not throw if approved', () => {
+      token._mint(Z_OWNER, TOKENID_1);
+      _caller = OWNER;
+      token.approve(Z_SPENDER, TOKENID_1, _caller);
+      token._checkAuthorized(Z_OWNER ,Z_SPENDER, TOKENID_1);
+    });
+
+    it('should not throw if approvedForAll', () => {
+      token._mint(Z_OWNER, TOKENID_1);
+      _caller = OWNER;
+      token.setApprovalForAll(Z_SPENDER, true, _caller);
+      token._checkAuthorized(Z_OWNER ,Z_SPENDER, TOKENID_1);
     });
   });
 
