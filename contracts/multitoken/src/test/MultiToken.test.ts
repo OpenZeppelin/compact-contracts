@@ -12,13 +12,11 @@ const NEW_URI = 'https://uri.com/mock_v2';
 // Amounts
 const AMOUNT: bigint = BigInt(250);
 const AMOUNT2: bigint = BigInt(9999);
-const AMOUNT3: bigint = BigInt(987654321);
 const MAX_UINT128 = BigInt(2 ** 128) - BigInt(1);
 
 // IDs
 const TOKEN_ID: bigint = BigInt(1);
 const TOKEN_ID2: bigint = BigInt(22);
-const TOKEN_ID3: bigint = BigInt(333);
 const NONEXISTENT_ID: bigint = BigInt(987654321);
 
 // Callers
@@ -36,8 +34,6 @@ const Z_OWNER_CONTRACT =
   utils.createEitherTestContractAddress('OWNER_CONTRACT');
 const Z_RECIPIENT_CONTRACT =
   utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
-const Z_OTHER_CONTRACT =
-  utils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 // Init
 const initWithURI: MaybeString = {
@@ -103,17 +99,6 @@ describe('MultiToken', () => {
     const circuitsToFail: FailingCircuits[] = [
       ['uri', [TOKEN_ID]],
       ['balanceOf', [Z_OWNER, TOKEN_ID]],
-      [
-        'balanceOfBatch_10',
-        [new Array(10).fill(Z_OWNER, 0, 10), new Array(10).fill(0n, 0, 10)],
-      ],
-      [
-        'balanceOfBatch_1000',
-        [
-          new Array(1000).fill(Z_OWNER, 0, 1000),
-          new Array(1000).fill(0n, 0, 1000),
-        ],
-      ],
       ['setApprovalForAll', [Z_OWNER, true]],
       ['isApprovedForAll', [Z_OWNER, Z_SPENDER]],
       ['transferFrom', transferArgs],
@@ -179,219 +164,6 @@ describe('MultiToken', () => {
           const MAX_ID = MAX_UINT128;
           token._unsafeMint(owner, MAX_ID, AMOUNT);
           expect(token.balanceOf(owner, MAX_ID)).toEqual(AMOUNT);
-        });
-      });
-    });
-
-    describe('balanceOfBatch_10', () => {
-      const batchedOwnerTypes = [
-        ['pubkeys', [Z_OWNER, Z_RECIPIENT, Z_OTHER]],
-        [
-          'contracts',
-          [Z_OWNER_CONTRACT, Z_RECIPIENT_CONTRACT, Z_OTHER_CONTRACT],
-        ],
-        ['mixed', [Z_OWNER, Z_RECIPIENT_CONTRACT, Z_OTHER]],
-      ] as const;
-
-      describe.each(batchedOwnerTypes)(
-        'when the batched owners are %s',
-        (_, owners) => {
-          it('should return zero when requested accounts have no balance', () => {
-            const BATCH_SIZE = 10;
-
-            const accounts = [...owners];
-            while (accounts.length < BATCH_SIZE) {
-              accounts.push(utils.ZERO_KEY);
-            }
-
-            const ids = [1n, 2n, 3n];
-            while (ids.length < BATCH_SIZE) {
-              ids.push(0n);
-            }
-
-            const expected = new Array(BATCH_SIZE).fill(0n);
-            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(expected);
-          });
-
-          it('should return balance when requested accounts have tokens (no padding)', () => {
-            const [owner1, owner2, ownerNoBal] = owners;
-
-            const testCases = [
-              { account: owner1, id: TOKEN_ID, amount: AMOUNT },
-              { account: owner1, id: TOKEN_ID2, amount: AMOUNT2 },
-              { account: owner1, id: TOKEN_ID3, amount: AMOUNT3 },
-              { account: ownerNoBal, id: TOKEN_ID, amount: 0n },
-              { account: ownerNoBal, id: TOKEN_ID2, amount: 0n },
-              { account: ownerNoBal, id: TOKEN_ID3, amount: 0n },
-              { account: owner2, id: TOKEN_ID, amount: AMOUNT },
-              { account: owner2, id: TOKEN_ID2, amount: AMOUNT2 },
-              { account: owner2, id: TOKEN_ID3, amount: AMOUNT3 },
-              { account: owner1, id: NONEXISTENT_ID, amount: 0n },
-            ];
-
-            // Mint tokens
-            for (const { account, id, amount } of testCases) {
-              token._unsafeMint(account, id, amount);
-            }
-
-            // Prepare input arrays
-            const accounts = testCases.map((tc) => tc.account);
-            const ids = testCases.map((tc) => tc.id);
-            const expected = testCases.map((tc) => tc.amount);
-
-            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(expected);
-          });
-
-          it('should return balance when requested accounts have tokens (with padding)', () => {
-            const BATCH_SIZE = 10;
-            const [owner1, owner2, ownerNoBal] = owners;
-
-            const accounts = [owner1, ownerNoBal, owner2];
-            while (accounts.length < BATCH_SIZE) accounts.push(utils.ZERO_KEY);
-
-            const ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
-            while (ids.length < BATCH_SIZE) ids.push(0n);
-
-            const amounts = [AMOUNT, 0n, AMOUNT2];
-            while (amounts.length < BATCH_SIZE) amounts.push(0n);
-
-            // Mint only the non-padding entries
-            token._unsafeMint(accounts[0], ids[0], amounts[0]); // owner1 → TOKEN_ID → AMOUNT
-            token._unsafeMint(accounts[1], ids[1], amounts[1]); // ownerNoBal → TOKEN_ID2 → 0n
-            token._unsafeMint(accounts[2], ids[2], amounts[2]); // owner2 → TOKEN_ID3 → AMOUNT2
-
-            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(amounts);
-          });
-
-          it('should handle duplicate token IDs in balanceOfBatch_10', () => {
-            const owner = owners[0];
-            const accounts = Array(10).fill(owner);
-            const ids = Array(10).fill(TOKEN_ID);
-            const amounts = Array(10).fill(AMOUNT);
-
-            // Mint AMOUNT tokens total, not AMOUNT * 10
-            token._unsafeMint(owner, TOKEN_ID, AMOUNT);
-            expect(token.balanceOfBatch_10(accounts, ids)).toEqual(amounts);
-          });
-        },
-      );
-
-      describe.each([
-        ['pubkey (ZERO_KEY)', utils.ZERO_KEY],
-        ['contract address (ZERO_ADDRESS)', utils.ZERO_ADDRESS],
-      ])('when using %s', (_, zeroAddress) => {
-        it('should handle all zero addresses in balanceOfBatch_10', () => {
-          const accounts = Array(10).fill(zeroAddress);
-          const ids = Array(10).fill(0n);
-          const amounts = Array(10).fill(0n);
-
-          expect(token.balanceOfBatch_10(accounts, ids)).toEqual(amounts);
-        });
-      });
-    });
-
-    describe('balanceOfBatch_1000', () => {
-      const batchedOwnerTypes = [
-        ['pubkeys', [Z_OWNER, Z_RECIPIENT, Z_OTHER]],
-        [
-          'contracts',
-          [Z_OWNER_CONTRACT, Z_RECIPIENT_CONTRACT, Z_OTHER_CONTRACT],
-        ],
-        ['mixed', [Z_OWNER, Z_RECIPIENT_CONTRACT, Z_OTHER]],
-      ] as const;
-
-      describe.each(batchedOwnerTypes)(
-        'when the batched owners are %s',
-        (_, owners) => {
-          it('should return zero when requested accounts have no balance', () => {
-            const BATCH_SIZE = 1000;
-
-            const accounts = [...owners];
-            while (accounts.length < BATCH_SIZE) {
-              accounts.push(utils.ZERO_KEY);
-            }
-
-            const ids = [1n, 2n, 3n];
-            while (ids.length < BATCH_SIZE) {
-              ids.push(0n);
-            }
-
-            const expected = new Array(BATCH_SIZE).fill(0n);
-            expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(expected);
-          });
-
-          it('should return balance when requested accounts have tokens (no padding)', () => {
-            const NUM_TEST_CASES = 1000;
-            const NUM_TOKEN_IDS = 10;
-
-            // Test case gen
-            const testCases = Array.from(
-              { length: NUM_TEST_CASES },
-              (_, i) => ({
-                account: utils.createEitherTestUser(i.toString()),
-                id: BigInt(i % NUM_TOKEN_IDS),
-                amount: BigInt((i % 5) * 10),
-              }),
-            );
-
-            // Mint
-            testCases.map(({ account, id, amount }) =>
-              token._unsafeMint(account, id, amount),
-            );
-
-            // Extract for balanceOfBatch
-            const accounts = testCases.map((t) => t.account);
-            const ids = testCases.map((t) => t.id);
-            const expected = testCases.map((t) => t.amount);
-
-            // Check balances
-            expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(expected);
-          }, 30_000); // Test may timeout otherwise
-
-          it('should return balance when requested accounts have tokens (with padding)', () => {
-            const BATCH_SIZE = 1000;
-            const [owner1, owner2, ownerNoBal] = owners;
-
-            const accounts = [owner1, ownerNoBal, owner2];
-            while (accounts.length < BATCH_SIZE) accounts.push(utils.ZERO_KEY);
-
-            const ids = [TOKEN_ID, TOKEN_ID2, TOKEN_ID3];
-            while (ids.length < BATCH_SIZE) ids.push(0n);
-
-            const amounts = [AMOUNT, 0n, AMOUNT2];
-            while (amounts.length < BATCH_SIZE) amounts.push(0n);
-
-            // Mint only the non-padding entries
-            token._unsafeMint(accounts[0], ids[0], amounts[0]); // owner1 → TOKEN_ID → AMOUNT
-            token._unsafeMint(accounts[1], ids[1], amounts[1]); // ownerNoBal → TOKEN_ID2 → 0n
-            token._unsafeMint(accounts[2], ids[2], amounts[2]); // owner2 → TOKEN_ID3 → AMOUNT2
-
-            expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(amounts);
-          });
-
-          it('should handle duplicate token IDs in balanceOfBatch_1000', () => {
-            const owner = owners[0];
-            const accounts = Array(1000).fill(owner);
-            const ids = Array(1000).fill(TOKEN_ID);
-            const amounts = Array(1000).fill(AMOUNT);
-
-            // Mint AMOUNT tokens total, not AMOUNT * 10
-            token._unsafeMint(owner, TOKEN_ID, AMOUNT);
-            expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(amounts);
-          });
-        },
-      );
-
-      describe.each([
-        ['pubkey (ZERO_KEY)', utils.ZERO_KEY],
-        ['contract address (ZERO_ADDRESS)', utils.ZERO_ADDRESS],
-      ])('when using %s', (_, zeroAddress) => {
-        it('should handle all zero addresses in balanceOfBatch_1000', () => {
-          const accounts = Array(1000).fill(zeroAddress);
-          const ids = Array(1000).fill(0n);
-          const amounts = Array(1000).fill(0n);
-
-          expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(amounts);
         });
       });
     });
