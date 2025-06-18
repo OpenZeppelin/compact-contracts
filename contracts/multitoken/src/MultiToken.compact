@@ -22,11 +22,11 @@ pragma language_version >= 0.15.0;
  * @notice Some features defined in th EIP1155 spec are NOT included.
  * Such features include:
  *
- * 1. Batch mint, burn, transfer - Without support for dynamic arrays,
- * batching transfers is difficult to do without a hacky solution.
- * For instance, we could change the `to` and `from` parameters to be
- * vectors. This would change the signature and would be both difficult
- * to use and easy to misuse.
+ * 1. Batch mint, burn, transfer - Batch operations are now supported using fixed-size vectors,
+ * since dynamic arrays are not available in Compact. The implementing contract must define
+ * the maximum batch size (e.g., 10, 100, 1000), and any unused elements in the batch should be padded.
+ * The `to`, `from`, `ids`, and `values` parameters for batch operations are vectors of the specified size.
+ * This approach enables batch mint, burn, and transfer, but requires careful handling to avoid misuse.
  *
  * 2. Introspection - Compact currently cannot support contract-to-contract
  * queries for introspection. ERC165 (or an equivalent thereof) is NOT
@@ -250,6 +250,82 @@ module MultiToken {
   }
 
   /**
+   * @description Transfers ownership of `values` amounts of tokens of types `ids` from `from` to `to`.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of token types to transfer. Some ideas:
+   * - Define one `transferFromBatch` with a max value for n that must not be exceeded. Any
+   * unused token elements in the vector can be padded.
+   * - Define multiple `transferFromBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not a ContractAddress.
+   * - `to` is not the zero address.
+   * - `from` is not the zero address.
+   * - Caller must be `from` or approved via `setApprovalForAll`.
+   * - `from` must have sufficient balance for each `id`/`value` pair.
+   * - `ids` and `values` vectors must be of length n.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfers originate.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
+   * @param {Vector<n, Uint<128>>} ids - The unique identifiers for the token types.
+   * @param {Vector<n, Uint<128>>} values - The quantities of tokens to transfer for each `id`.
+   * @return {[]} - None.
+   */
+  export circuit transferFromBatch<#n>(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Uint<128>>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    _unsafeTransferFromBatch(from, to, ids, values);
+  }
+
+  /**
+   * @description Unsafe variant of `transferFromBatch` which allows transfers to contract addresses.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of token types to transfer. Some ideas:
+   * - Define one `unsafeTransferFromBatch` with a max value for n that must not be exceeded. Any
+   * unused token elements in the vector can be padded.
+   * - Define multiple `unsafeTransferFromBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not the zero address.
+   * - `from` is not the zero address.
+   * - Caller must be `from` or approved via `setApprovalForAll`.
+   * - `from` must have sufficient balance for each `id`/`value` pair.
+   * - `ids` and `values` vectors must be of length n.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfers originate.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
+   * @param {Vector<n, Uint<128>>} ids - The unique identifiers for the token types.
+   * @param {Vector<n, Uint<128>>} values - The quantities of tokens to transfer for each `id`.
+   * @return {[]} - None.
+   */
+  export circuit _unsafeTransferFromBatch<#n>(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Uint<128>>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    Initializable_assertInitialized();
+
+    // TODO: Contract-to-contract calls not yet supported.
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    if (from != caller) {
+      assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
+    }
+
+    return map(_unsafeTransferFrom, from, to, ids, values);
+  }
+
+  /**
    * @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
    * Does not impose restrictions on the caller, making it suitable for composition
    * in higher-level contract logic.
@@ -266,7 +342,7 @@ module MultiToken {
    * - `from` must have an `id` balance of at least `value`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
-   * @param Either<ZswapCoinPublicKey, ContractAddress> to - The recipient of the transferred assets.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
    * @returns {[]} None.
@@ -448,6 +524,66 @@ module MultiToken {
   }
 
   /**
+   * @description Creates `values` amounts of tokens of types `ids`, and assigns them to `to`.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of token types to mint. Some ideas:
+   * - Define one `mintBatch` with a max value for n that must not be exceeded. Any
+   * unused token elements in the vector can be padded.
+   * - Define multiple `mintBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not a ContractAddress.
+   * - `to` is not the zero address.
+   * - `ids` and `values` vectors must be of length n.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
+   * @param {Vector<n, Uint<128>>} ids - The unique identifiers for the token types.
+   * @param {Vector<n, Uint<128>>} values - The quantities of tokens to mint for each `id`.
+   * @return {[]} - None.
+   */
+  export circuit _mintBatch<#n>(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Uint<128>>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    _unsafeMintBatch(to, ids, values);
+  }
+
+  /**
+   * @description Unsafe variant of `_mintBatch` which allows transfers to contract addresses.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of token types to mint. Some ideas:
+   * - Define one `unsafeMintBatch` with a max value for n that must not be exceeded. Any
+   * unused token elements in the vector can be padded.
+   * - Define multiple `unsafeMintBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not the zero address.
+   * - `ids` and `values` vectors must be of length n.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
+   * @param {Vector<n, Uint<128>>} ids - The unique identifiers for the token types.
+   * @param {Vector<n, Uint<128>>} values - The quantities of tokens to mint for each `id`.
+   * @return {[]} - None.
+   */
+  export circuit _unsafeMintBatch<#n>(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Uint<128>>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    Initializable_assertInitialized();
+    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
+    return map(_unsafeMint, ids, values);
+  }
+
+  /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
    *
    * Requirements:
@@ -462,7 +598,6 @@ module MultiToken {
    */
   export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
-
     assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
     _update(burn_address(), to, id, value);
   }
@@ -483,9 +618,70 @@ module MultiToken {
    */
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
-
     assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
     _update(from, burn_address(), id, value);
+  }
+
+  /**
+   * @description Destroys `values` amounts of tokens of types `ids` from `from`.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of token types to burn. Some ideas:
+   * - Define one `burnBatch` with a max value for n that must not be exceeded. Any
+   * unused token elements in the vector can be padded.
+   * - Define multiple `burnBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `from` must have sufficient balance for each `id`/`value` pair.
+   * - `ids` and `values` vectors must be of length n.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner whose tokens will be destroyed.
+   * @param {Vector<n, Uint<128>>} ids - The unique identifiers for the token types.
+   * @param {Vector<n, Uint<128>>} values - The quantities of tokens to burn for each `id`.
+   * @return {[]} - None.
+   */
+  export circuit _burnBatch<#n>(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Uint<128>>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    Initializable_assertInitialized();
+    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
+    return map(_unsafeBurn, ids, values);
+  }
+
+  /**
+   * @description Unsafe variant of `_burnBatch` which allows burning from contract addresses.
+   * @dev Compact does not support dynamic arrays; therefore, the implementing contract
+   * must explicitly declare the quantity of token types to burn. Some ideas:
+   * - Define one `unsafeBurnBatch` with a max value for n that must not be exceeded. Any
+   * unused token elements in the vector can be padded.
+   * - Define multiple `unsafeBurnBatch` with differing n values. The contract can
+   * have 10, 100, 1000, etc. values for n and can pad any remaining tokens.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `from` must have sufficient balance for each `id`/`value` pair.
+   * - `ids` and `values` vectors must be of length n.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner whose tokens will be destroyed.
+   * @param {Vector<n, Uint<128>>} ids - The unique identifiers for the token types.
+   * @param {Vector<n, Uint<128>>} values - The quantities of tokens to burn for each `id`.
+   * @return {[]} - None.
+   */
+  export circuit _unsafeBurnBatch<#n>(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    ids: Vector<n, Uint<128>>,
+    values: Vector<n, Uint<128>>
+  ): [] {
+    Initializable_assertInitialized();
+    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
+    return map(_burn, ids, values);
   }
 
   /**
@@ -520,3 +716,4 @@ module MultiToken {
     _operatorApprovals.lookup(owner).insert(operator, approved);
   }
 }
+
