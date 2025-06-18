@@ -159,7 +159,7 @@ export class MultiTokenSimulator
       ids,
     ).result;
   }
-  
+
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
    * @param operator The ZswapCoinPublicKey or ContractAddress whose approval is set for the caller's assets.
