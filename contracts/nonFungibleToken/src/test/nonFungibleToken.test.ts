@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
 import { UninitializedNonFungibleTokenSimulator } from './simulators/UninitializedNonFungibleTokenSimulator.js';
 import {
+  ZERO_ADDRESS,
   ZERO_KEY,
   createEitherTestContractAddress,
   createEitherTestUser,
@@ -1024,6 +1025,10 @@ describe('NonFungibleToken', () => {
     it('should not mint to zero address', () => {
       expect(() => {
         token._unsafeMint(ZERO_KEY, TOKENID_1);
+      }).toThrow('NonFungibleToken: Invalid Receiver');
+
+      expect(() => {
+        token._unsafeMint(ZERO_ADDRESS, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Receiver');
     });
 
