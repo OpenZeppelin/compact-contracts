@@ -320,37 +320,33 @@ describe('MultiToken', () => {
             expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(expected);
           });
 
-          it.skip('should return balance when requested accounts have tokens (no padding)', () => {
-            const [owner1, owner2, ownerNoBal] = owners;
+          it('should return balance when requested accounts have tokens (no padding)', () => {
+            const NUM_TEST_CASES = 1000;
+            const NUM_TOKEN_IDS = 10;
 
-            const testCases = [
-              { account: owner1, id: TOKEN_ID, amount: AMOUNT },
-              { account: owner1, id: TOKEN_ID2, amount: AMOUNT2 },
-              { account: owner1, id: TOKEN_ID3, amount: AMOUNT3 },
-              { account: ownerNoBal, id: TOKEN_ID, amount: 0n },
-              { account: ownerNoBal, id: TOKEN_ID2, amount: 0n },
-              { account: ownerNoBal, id: TOKEN_ID3, amount: 0n },
-              { account: owner2, id: TOKEN_ID, amount: AMOUNT },
-              { account: owner2, id: TOKEN_ID2, amount: AMOUNT2 },
-              { account: owner2, id: TOKEN_ID3, amount: AMOUNT3 },
-              { account: owner1, id: NONEXISTENT_ID, amount: 0n },
-            ];
+            // Test case gen
+            const testCases = Array.from(
+              { length: NUM_TEST_CASES },
+              (_, i) => ({
+                account: utils.createEitherTestUser(i.toString()),
+                id: BigInt(i % NUM_TOKEN_IDS),
+                amount: BigInt((i % 5) * 10),
+              }),
+            );
 
-            // Amount are changed and fails test, FIX ME!
-            Array(10).flatMap(() => testCases);
+            // Mint
+            testCases.map(({ account, id, amount }) =>
+              token._unsafeMint(account, id, amount),
+            );
 
-            // Mint tokens
-            for (const { account, id, amount } of testCases) {
-              token._unsafeMint(account, id, amount);
-            }
+            // Extract for balanceOfBatch
+            const accounts = testCases.map((t) => t.account);
+            const ids = testCases.map((t) => t.id);
+            const expected = testCases.map((t) => t.amount);
 
-            // Prepare input arrays
-            const accounts = testCases.map((tc) => tc.account);
-            const ids = testCases.map((tc) => tc.id);
-            const expected = testCases.map((tc) => tc.amount);
-
+            // Check balances
             expect(token.balanceOfBatch_1000(accounts, ids)).toEqual(expected);
-          });
+          }, 30_000); // Test may timeout otherwise
 
           it('should return balance when requested accounts have tokens (with padding)', () => {
             const BATCH_SIZE = 1000;
