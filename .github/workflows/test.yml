@@ -31,8 +31,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Remove cache
-          rm -rf ~/.cache/midnight/
           # Create directory for compiler
           COMPACT_HOME="$HOME/compactc"
           mkdir -p "$COMPACT_HOME"
