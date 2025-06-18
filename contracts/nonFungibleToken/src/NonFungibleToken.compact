@@ -74,6 +74,8 @@ module NonFungibleToken {
   /**
    * @description Returns the number of tokens in `owner`'s account.
    *
+   * @circuitInfo k=10, rows=309
+   *
    * Requirements:
    * - The contract must have been initialized.
    *
@@ -92,6 +94,8 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId` token.
    *
+   * @circuitInfo k=10, rows=320
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - The `tokenId` must exist.
@@ -107,6 +111,8 @@ module NonFungibleToken {
   /**
    * @description Returns the token name.
    *
+   * @circuitInfo k=10, rows=36
+   *
    * Requirements:
    * - The contract must have been initialized.
    *
@@ -119,6 +125,8 @@ module NonFungibleToken {
 
   /**
    * @description Returns the symbol of the token.
+   *
+   * @circuitInfo k=10, rows=36
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -133,6 +141,8 @@ module NonFungibleToken {
   /**
    * @description Returns the token URI for the given `tokenId`. Returns the empty
    * string if a tokenURI does not exist.
+   *
+   * @circuitInfo k=10, rows=326
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -161,6 +171,8 @@ module NonFungibleToken {
   /**
    * @description Sets the the URI as `tokenURI` for the given `tokenId`.
    *
+   * @circuitInfo k=10, rows=283
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - The `tokenId` must exist.
@@ -183,6 +195,8 @@ module NonFungibleToken {
    * The approval is cleared when the token is transferred.
    *
    * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
+   *
+   * @circuitInfo k=10, rows=993
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -209,6 +223,8 @@ module NonFungibleToken {
   /**
    * @description Returns the account approved for `tokenId` token.
    *
+   * @circuitInfo k=10, rows=439
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - `tokenId` must exist.
@@ -226,6 +242,8 @@ module NonFungibleToken {
   /**
    * @description Approve or remove `operator` as an operator for the caller.
    * Operators can call {transferFrom} for any token owned by the caller.
+   *
+   * @circuitInfo k=10, rows=439
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -251,6 +269,8 @@ module NonFungibleToken {
   /**
    * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
    *
+   * @circuitInfo k=10, rows=621
+   *
    * Requirements:
    * - The contract must have been initialized.
    *
@@ -272,6 +292,8 @@ module NonFungibleToken {
 
   /**
    * @description Transfers `tokenId` token from `from` to `to`.
+   *
+   * @circuitInfo k=11, rows=2023
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -299,6 +321,8 @@ module NonFungibleToken {
 
   /**
    * @description Transfers `tokenId` token from `from` to `to`. It does NOT check if the recipient is a ContractAddress.
+   *
+   * @circuitInfo k=11, rows=2020
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -337,6 +361,8 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist
    *
+   * @circuitInfo k=10, rows=253
+   *
    * Requirements:
    * - The contract must have been initialized.
    *
@@ -355,6 +381,8 @@ module NonFungibleToken {
   /**
    * @description Returns the approved address for `tokenId`. Returns the zero address if `tokenId` is not minted.
    *
+   * @circuitInfo k=10, rows=253
+   *
    * Requirements:
    * - The contract must have been initialized.
    *
@@ -372,6 +400,8 @@ module NonFungibleToken {
   /**
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
+   *
+   * @circuitInfo k=11, rows=1128
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -398,6 +428,8 @@ module NonFungibleToken {
 
   /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
+   *
+   * @circuitInfo k=11, rows=1181
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -426,6 +458,8 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
+   * @circuitInfo k=11, rows=1073
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - `tokenId` must not exist.
@@ -448,6 +482,8 @@ module NonFungibleToken {
 
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
+   *
+   * @circuitInfo k=11, rows=1070
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -478,6 +514,8 @@ module NonFungibleToken {
    * The approval is cleared when the token is burned.
    * This circuit does not check if the sender is authorized to operate on the token.
    *
+   * @circuitInfo k=10, rows=509
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - `tokenId` must exist.
@@ -494,6 +532,8 @@ module NonFungibleToken {
   /**
    * @description Transfers `tokenId` from `from` to `to`.
    *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
+   *
+   * @circuitInfo k=11, rows=1284
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -521,6 +561,8 @@ module NonFungibleToken {
    * @description Transfers `tokenId` from `from` to `to`.
    * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on own_public_key().
    * It does NOT check if the recipient is a ContractAddress.
+   *
+   * @circuitInfo k=11, rows=1281
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -553,6 +595,8 @@ module NonFungibleToken {
   /**
    * @description Approve `to` to operate on `tokenId`
    *
+   * @circuitInfo k=11, rows=1169
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
@@ -581,6 +625,8 @@ module NonFungibleToken {
 
   /**
    * @description Approve `operator` to operate on all of `owner` tokens
+   *
+   * @circuitInfo k=10, rows=554
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -613,6 +659,8 @@ module NonFungibleToken {
    * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
    * Returns the owner.
    *
+   * @circuitInfo k=10, rows=318
+   *
    * Requirements:
    * - The contract must have been initialized.
    * - `tokenId` must exist.
@@ -631,6 +679,8 @@ module NonFungibleToken {
   /**
    * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
    * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
+   *
+   * @circuitInfo k=12, rows=2049
    *
    * Requirements:
    * - The contract must have been initialized.
@@ -678,7 +728,7 @@ module NonFungibleToken {
 
   /**
    * @description A helper function that returns the empty string: ""
-
+   *
    * @return {Opaque<"string">} - The empty string: ""
    */
   pure circuit emptyString(): Opaque<"string"> {
