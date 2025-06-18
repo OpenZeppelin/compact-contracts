@@ -1147,7 +1147,7 @@ describe('NonFungibleToken', () => {
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
-    it('should transfer token via approved operator', () => {
+    it('should transfer token to spender via approved operator', () => {
       _caller = OWNER;
       token.approve(Z_SPENDER, TOKENID_1, OWNER);
 
@@ -1156,13 +1156,31 @@ describe('NonFungibleToken', () => {
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
-    it('should transfer token via approvedForAll operator', () => {
+    it('should transfer token to ContractAddress via approved operator', () => {
+      _caller = OWNER;
+      token.approve(Z_SPENDER, TOKENID_1, OWNER);
+
+      _caller = SPENDER;
+      token._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1, _caller);
+      expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
+    });
+
+    it('should transfer token to spender via approvedForAll operator', () => {
       _caller = OWNER;
       token.setApprovalForAll(Z_SPENDER, true, OWNER);
 
       _caller = SPENDER;
       token._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1, _caller);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
+    });
+
+    it('should transfer token to ContractAddress via approvedForAll operator', () => {
+      _caller = OWNER;
+      token.setApprovalForAll(Z_SPENDER, true, OWNER);
+
+      _caller = SPENDER;
+      token._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1, _caller);
+      expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
     });
 
     it('should revoke approval after _unsafeTransferFrom', () => {
