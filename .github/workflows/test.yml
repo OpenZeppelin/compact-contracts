@@ -88,4 +88,4 @@ jobs:
             echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
 
       - name: Compile, test, and check types
-        run: turbo compact types test
+        run: turbo compact -- --ski-zk && turbo types test
