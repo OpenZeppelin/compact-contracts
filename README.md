@@ -10,7 +10,7 @@
 
 ## Installation
 
-Make sure you have [nvm](https://github.com/nvm-sh/nvm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your machine.
+Make sure you have [nvm](https://github.com/nvm-sh/nvm), [yarn](https://yarnpkg.com/getting-started/install), and [turbo](https://turborepo.com/docs/getting-started/installation) installed on your machine.
 
 Follow Midnight's [compact installation guide](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler) and confirm that `compactc` is in the `PATH` env variable.
 
@@ -28,6 +28,7 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 >
 > - [node](https://nodejs.org/)
 > - [yarn](https://yarnpkg.com/getting-started/install)
+> - [turbo](https://turborepo.com/docs/getting-started/installation)
 > - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
 
 Clone the repository:
@@ -41,7 +42,7 @@ git clone git@github.com:OpenZeppelin/midnight-contracts.git
 ```bash
 nvm install && \
 yarn && \
-yarn prepare
+turbo compact
 ```
 
 ## Usage
@@ -49,7 +50,7 @@ yarn prepare
 ### Compile the contracts
 
 ```bash
-$ npx turbo compact
+$ turbo compact
 
 (...)
 ✔ [COMPILE] [1/2] Compiled ERC20.compact
@@ -87,13 +88,24 @@ Cached:    0 cached, 2 total
 **Note:** Speed up the development process by skipping the prover and verifier key file generation:
 
 ```bash
-npx turbo compact -- --skip-zk
+turbo compact -- --skip-zk
 ```
 
 ### Run tests
 
 ```bash
-npx turbo test
+turbo test
+```
+
+### Format and lint files
+
+```bash
+turbo fmt-and-lint:fix
+```
+
+### All together now!
+```bash
+turbo compact test fmt-and-lint:fix
 ```
 
 ## Security
