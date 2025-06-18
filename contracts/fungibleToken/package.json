@@ -14,22 +14,17 @@
     }
   },
   "scripts": {
-    "compact": "npx compact-compiler",
-    "build": "npx compact-builder && tsc",
+    "compact": "compact-compiler",
+    "build": "compact-builder && tsc",
     "test": "vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
-    "fmt": "biome format",
-    "fmt:fix": "biome format --write",
-    "lint": "biome lint",
-    "lint:fix": "biome check --write",
     "clean": "git clean -fXd"
   },
   "dependencies": {
     "@openzeppelin-midnight/compact": "workspace:^"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@types/node": "^18.18.6",
+    "@types/node": "22.14.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
     "vitest": "^3.1.3"

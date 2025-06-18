@@ -17,15 +17,12 @@
     "compact-compiler": "dist/runCompiler.js"
   },
   "scripts": {
+    "build": "tsc -p .",
     "types": "tsc -p tsconfig.json --noEmit",
-    "fmt": "biome format",
-    "fmt:fix": "biome format --write",
-    "lint": "biome lint",
-    "lint:fix": "biome check --write",
     "clean": "git clean -fXd"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
+    "@types/node": "22.14.0",
     "fast-check": "^3.15.0",
     "typescript": "^5.8.2"
   },
