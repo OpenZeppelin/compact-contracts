@@ -1051,15 +1051,17 @@ describe('NonFungibleToken', () => {
   });
 
   describe('_unsafeTransfer', () => {
-    it('should transfer to ContractAddress', () => {
+    beforeEach(() => {
       token._mint(Z_OWNER, TOKENID_1);
+    });
+
+    it('should transfer to ContractAddress', () => {
       expect(() => {
         token._unsafeTransfer(Z_OWNER, SOME_CONTRACT, TOKENID_1);
       }).not.toThrow();
     });
 
     it('should transfer token to public key', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
       expect(token.balanceOf(Z_SPENDER)).toEqual(0n);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_OWNER);
@@ -1074,12 +1076,15 @@ describe('NonFungibleToken', () => {
       expect(() => {
         token._unsafeTransfer(Z_OWNER, ZERO_KEY, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Receiver');
+
+      expect(() => {
+        token._unsafeTransfer(Z_OWNER, ZERO_ADDRESS, TOKENID_1);
+      }).toThrow('NonFungibleToken: Invalid Receiver');
     });
 
     it('should throw if from does not own token', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       expect(() => {
-        token._unsafeTransfer(Z_SPENDER, Z_SPENDER, TOKENID_1);
+        token._unsafeTransfer(Z_UNAUTHORIZED, Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Incorrect Owner');
     });
 
@@ -1091,7 +1096,6 @@ describe('NonFungibleToken', () => {
 
     it('should revoke approval after _unsafeTransfer', () => {
       _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
       token.approve(Z_SPENDER, TOKENID_1, _caller);
       token._unsafeTransfer(Z_OWNER, Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
@@ -1099,45 +1103,52 @@ describe('NonFungibleToken', () => {
   });
 
   describe('_unsafeTransferFrom', () => {
-    it('should transfer to ContractAddress', () => {
+    beforeEach(() => {
       token._mint(Z_OWNER, TOKENID_1);
+    });
+
+    it('should transfer to ContractAddress', () => {
       expect(() => {
         token._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1);
       }).not.toThrow();
     });
 
     it('should not transfer to zero address', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       expect(() => {
         token._unsafeTransferFrom(Z_OWNER, ZERO_KEY, TOKENID_1);
+      }).toThrow('NonFungibleToken: Invalid Receiver');
+
+      expect(() => {
+        token._unsafeTransferFrom(Z_OWNER, ZERO_ADDRESS, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Receiver');
     });
 
     it('should not transfer from zero address', () => {
-      token._mint(Z_OWNER, TOKENID_1);
       expect(() => {
         token._unsafeTransferFrom(ZERO_KEY, Z_SPENDER, TOKENID_1);
+      }).toThrow('NonFungibleToken: Incorrect Owner');
+
+      expect(() => {
+        token._unsafeTransferFrom(ZERO_ADDRESS, Z_SPENDER, TOKENID_1);
       }).toThrow('NonFungibleToken: Incorrect Owner');
     });
 
     it('unapproved operator should not transfer', () => {
       _caller = SPENDER;
-      token._mint(Z_OWNER, TOKENID_1);
       expect(() => {
-        token._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1, _caller);
+        token._unsafeTransferFrom(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1, _caller);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
 
     it('should not transfer token that has not been minted', () => {
       _caller = OWNER;
       expect(() => {
-        token._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1, _caller);
+        token._unsafeTransferFrom(Z_OWNER, Z_SPENDER, NON_EXISTENT_TOKEN, _caller);
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
     it('should transfer token via approved operator', () => {
       _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
       token.approve(Z_SPENDER, TOKENID_1, OWNER);
 
       _caller = SPENDER;
@@ -1147,7 +1158,6 @@ describe('NonFungibleToken', () => {
 
     it('should transfer token via approvedForAll operator', () => {
       _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
       token.setApprovalForAll(Z_SPENDER, true, OWNER);
 
       _caller = SPENDER;
@@ -1157,7 +1167,6 @@ describe('NonFungibleToken', () => {
 
     it('should revoke approval after _unsafeTransferFrom', () => {
       _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
       token.approve(Z_SPENDER, TOKENID_1, _caller);
       token._unsafeTransferFrom(Z_OWNER, Z_OTHER, TOKENID_1, _caller);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
