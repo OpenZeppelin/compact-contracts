@@ -455,7 +455,7 @@ describe('NonFungibleToken', () => {
       _caller = OWNER;
       token.transferFrom(Z_OWNER, Z_RECIPIENT, TOKENID_1, _caller);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_RECIPIENT);
-    })
+    });
 
     it('should transfer token via approved operator', () => {
       _caller = OWNER;
@@ -552,10 +552,10 @@ describe('NonFungibleToken', () => {
 
       _caller = SPENDER;
       expect(() => {
-        token.approve(Z_UNAUTHORIZED, TOKENID_1, _caller)
+        token.approve(Z_UNAUTHORIZED, TOKENID_1, _caller);
       }).toThrow('NonFungibleToken: Invalid Approver');
       expect(() => {
-        token.transferFrom(Z_OTHER, Z_UNAUTHORIZED, TOKENID_1, _caller)
+        token.transferFrom(Z_OTHER, Z_UNAUTHORIZED, TOKENID_1, _caller);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
   });
@@ -749,14 +749,14 @@ describe('NonFungibleToken', () => {
       token._mint(Z_OWNER, TOKENID_1);
       _caller = OWNER;
       token.approve(Z_SPENDER, TOKENID_1, _caller);
-      token._checkAuthorized(Z_OWNER ,Z_SPENDER, TOKENID_1);
+      token._checkAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
     });
 
     it('should not throw if approvedForAll', () => {
       token._mint(Z_OWNER, TOKENID_1);
       _caller = OWNER;
       token.setApprovalForAll(Z_SPENDER, true, _caller);
-      token._checkAuthorized(Z_OWNER ,Z_SPENDER, TOKENID_1);
+      token._checkAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
     });
   });
 
@@ -1143,7 +1143,12 @@ describe('NonFungibleToken', () => {
     it('should not transfer token that has not been minted', () => {
       _caller = OWNER;
       expect(() => {
-        token._unsafeTransferFrom(Z_OWNER, Z_SPENDER, NON_EXISTENT_TOKEN, _caller);
+        token._unsafeTransferFrom(
+          Z_OWNER,
+          Z_SPENDER,
+          NON_EXISTENT_TOKEN,
+          _caller,
+        );
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
@@ -1198,6 +1203,39 @@ describe('NonFungibleToken', () => {
   });
 });
 
+type FailingCircuits = [
+  method: keyof UninitializedNonFungibleTokenSimulator,
+  args: unknown[],
+]; // Circuit calls should fail before the args are used
+
+const circuitsToFail: FailingCircuits[] = [
+  ['name', []],
+  ['symbol', []],
+  ['balanceOf', [Z_OWNER]],
+  ['ownerOf', [TOKENID_1]],
+  ['tokenURI', [TOKENID_1]],
+  ['approve', [Z_OWNER, TOKENID_1]],
+  ['getApproved', [TOKENID_1]],
+  ['setApprovalForAll', [Z_SPENDER, true]],
+  ['isApprovedForAll', [Z_OWNER, Z_SPENDER]],
+  ['transferFrom', [Z_OWNER, Z_RECIPIENT, TOKENID_1]],
+  ['_requireOwned', [TOKENID_1]],
+  ['_ownerOf', [TOKENID_1]],
+  ['_update', [Z_SPENDER, TOKENID_1, Z_OWNER]],
+  ['_approve', [Z_OWNER, TOKENID_1, Z_SPENDER]],
+  ['_checkAuthorized', [Z_OWNER, Z_SPENDER, TOKENID_1]],
+  ['_isAuthorized', [Z_OWNER, Z_SPENDER, TOKENID_1]],
+  ['_getApproved', [TOKENID_1]],
+  ['_setApprovalForAll', [Z_OWNER, Z_SPENDER, true]],
+  ['_mint', [Z_OWNER, TOKENID_1]],
+  ['_burn', [TOKENID_1]],
+  ['_transfer', [Z_OWNER, Z_RECIPIENT, TOKENID_1]],
+  ['_setTokenURI', [TOKENID_1]],
+  ['_unsafeTransferFrom', [Z_OWNER, Z_RECIPIENT, TOKENID_1]],
+  ['_unsafeTransfer', [Z_OWNER, Z_RECIPIENT, TOKENID_1]],
+  ['_unsafeMint', [Z_OWNER, TOKENID_1]],
+];
+
 let uninitializedToken: UninitializedNonFungibleTokenSimulator;
 
 describe('Uninitialized NonFungibleToken', () => {
@@ -1205,203 +1243,9 @@ describe('Uninitialized NonFungibleToken', () => {
     uninitializedToken = new UninitializedNonFungibleTokenSimulator();
   });
 
-  describe('name', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.name();
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('symbol', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.symbol();
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('balanceOf', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.balanceOf(Z_OWNER);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('ownerOf', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.ownerOf(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('tokenURI', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.tokenURI(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('approve', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.approve(Z_OWNER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('getApproved', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.getApproved(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('setApprovalForAll', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.setApprovalForAll(Z_OWNER, true);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('isApprovedForAll', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.isApprovedForAll(Z_OWNER, Z_SPENDER);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('transferFrom', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken.transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_requireOwned', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._requireOwned(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_ownerOf', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._ownerOf(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_update', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._update(Z_OWNER, TOKENID_1, Z_SPENDER);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_approve', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._approve(Z_OWNER, TOKENID_1, Z_SPENDER);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_checkAuthorized', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._checkAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_isAuthorized', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._isAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_getApproved', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._getApproved(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_setApprovalForAll', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_mint', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._mint(Z_OWNER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_burn', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._burn(TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_transfer', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._transfer(Z_OWNER, Z_SPENDER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_setTokenURI', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._setTokenURI(TOKENID_1, SOME_STRING);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_unsafeTransferFrom', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_unsafeTransfer', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._unsafeTransfer(Z_OWNER, Z_SPENDER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
-  });
-
-  describe('_unsafeMint', () => {
-    it('should throw', () => {
-      expect(() => {
-        uninitializedToken._unsafeMint(Z_OWNER, TOKENID_1);
-      }).toThrow('Initializable: contract not initialized');
-    });
+  it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
+    expect(() => {
+      (uninitializedToken[circuitName] as (...args: unknown[]) => unknown)(...args);
+    }).toThrow('Initializable: contract not initialized');
   });
 });
