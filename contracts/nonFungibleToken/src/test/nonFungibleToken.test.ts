@@ -1195,12 +1195,6 @@ describe('NonFungibleToken', () => {
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
   });
-
-  describe('emptyString', () => {
-    it('should return the empty string', () => {
-      expect(token.emptyString()).toBe('');
-    });
-  });
 });
 
 type FailingCircuits = [

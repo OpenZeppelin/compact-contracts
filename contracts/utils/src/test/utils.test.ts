@@ -9,6 +9,8 @@ const SOME_CONTRACT =
 const OTHER_CONTRACT =
   contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
 
+const EMPTY_STRING = '';
+
 let contract: UtilsSimulator;
 
 describe('Utils', () => {
@@ -88,6 +90,12 @@ describe('Utils', () => {
 
     it('should return false ZswapCoinPublicKey', () => {
       expect(contract.isContractAddress(Z_SOME_KEY)).toBe(false);
+    });
+  });
+
+  describe('emptyString', () => {
+    it('should return the empty string', () => {
+      expect(contract.emptyString()).toBe(EMPTY_STRING);
     });
   });
 });

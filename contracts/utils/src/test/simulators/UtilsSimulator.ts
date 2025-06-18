@@ -138,4 +138,12 @@ export class UtilsSimulator
       keyOrAddress,
     ).result;
   }
+
+  /**
+   * @description  A helper function that returns the empty string: ""
+   * @returns The empty string: ""
+   */
+  public emptyString(): string {
+    return this.contract.circuits.emptyString(this.circuitContext).result;
+  }
 }

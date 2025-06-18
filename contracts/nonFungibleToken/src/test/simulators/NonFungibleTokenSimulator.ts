@@ -14,7 +14,6 @@ import {
   Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
   ledger,
-  pureCircuits,
 } from '../../artifacts/MockNonFungibleToken/contract/index.cjs'; // Combined imports
 import {
   type NonFungibleTokenPrivateState,
@@ -636,14 +635,5 @@ export class NonFungibleTokenSimulator
       to,
       tokenId,
     ).context;
-  }
-
-  /**
-   * @description A helper function that returns the empty string: ""
-
-   * @return {Opaque<"string">} - The empty string: ""
-   */
-  public emptyString(): '' {
-    return pureCircuits.emptyString() as '';
   }
 }
