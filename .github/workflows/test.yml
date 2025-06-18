@@ -80,15 +80,5 @@ jobs:
 
             echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
 
-      - name: Debug
-        run: ls -laR ~/.cache/midnight || true
-
-      - name: Clear zk-params cache
-        run: |
-          rm -rf ~/.cache/midnight/zk-params || true
-          echo "Deleeeeete"
-          ls -la ~/.cache/midnight || true
-
       - name: Compile, test, and check types
         run: turbo compact types test
-
