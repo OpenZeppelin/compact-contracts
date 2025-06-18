@@ -250,46 +250,6 @@ module MultiToken {
   }
 
   /**
-   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
-   * The caller must be `from` or approved to transfer on their behalf.
-   *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - `to` is not the zero address.
-   * - `from` is not the zero address.
-   * - Caller must be `from` or approved via `setApprovalForAll`.
-   * - `from` must have an `id` balance of at least `value`.
-   *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
-   * @param {Uint<128>} id - The unique identifier of the asset type.
-   * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns {[]} None.
-   */
-  export circuit _unsafeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Uint<128>,
-    value: Uint<128>
-  ): [] {
-    Initializable_assertInitialized();
-
-    // TODO: Contract-to-contract calls not yet supported.
-    // Once available, handle ContractAddress recipients here.
-    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-    if (from != caller) {
-      assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
-    }
-
-    _unsafeUncheckedTransferFrom(from, to, id, value);
-  }
-
-  /**
    * @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
    * Does not impose restrictions on the caller, making it suitable for composition
    * in higher-level contract logic.
@@ -319,41 +279,6 @@ module MultiToken {
   ): [] {
     assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
     _unsafeUncheckedTransferFrom(from, to, id, value);
-  }
-
-  /**
-   * @description Unsafe variant of `_transferFrom` which allows transfers to contract addresses.
-   * Does not impose restrictions on the caller, making it suitable as a low-level
-   * building block for advanced contract logic.
-   *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - `from` is not the zero address.
-   * - `to` is not the zero address.
-   * - `from` must have an `id` balance of at least `value`.
-   *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
-   * @param {Uint<128>} id - The unique identifier of the asset type.
-   * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @returns {[]} None.
-   */
-  export circuit _unsafeUncheckedTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    id: Uint<128>,
-    value: Uint<128>
-  ): [] {
-    Initializable_assertInitialized();
-
-    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
-    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
-    _update(from, to, id, value);
   }
 
   /**
@@ -394,12 +319,87 @@ module MultiToken {
         _balances.lookup(id).insert(to, value as Uint<128>);
       } else {
         const toBalance = balanceOf(to, id);
-       // TODO: Replace with Max_Uint128() 
+       // TODO: Replace with Max_Uint128()
         const MAX_UINT128 = 340282366920938463463374607431768211455;
         assert MAX_UINT128 - toBalance >= value "MultiToken: arithmetic overflow";
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
       }
     }
+  }
+
+  /**
+   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   * The caller must be `from` or approved to transfer on their behalf.
+   *
+   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `to` is not the zero address.
+   * - `from` is not the zero address.
+   * - Caller must be `from` or approved via `setApprovalForAll`.
+   * - `from` must have an `id` balance of at least `value`.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
+   * @param {Uint<128>} id - The unique identifier of the asset type.
+   * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
+   * @returns {[]} None.
+   */
+  export circuit _unsafeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: Uint<128>,
+    value: Uint<128>
+  ): [] {
+    Initializable_assertInitialized();
+
+    // TODO: Contract-to-contract calls not yet supported.
+    // Once available, handle ContractAddress recipients here.
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    if (from != caller) {
+      assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
+    }
+
+    _unsafeUncheckedTransferFrom(from, to, id, value);
+  }
+
+  /**
+   * @description Unsafe variant of `_transferFrom` which allows transfers to contract addresses.
+   * Does not impose restrictions on the caller, making it suitable as a low-level
+   * building block for advanced contract logic.
+   *
+   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `from` is not the zero address.
+   * - `to` is not the zero address.
+   * - `from` must have an `id` balance of at least `value`.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner from which the transfer originates.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
+   * @param {Uint<128>} id - The unique identifier of the asset type.
+   * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
+   * @returns {[]} None.
+   */
+  export circuit _unsafeUncheckedTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    id: Uint<128>,
+    value: Uint<128>
+  ): [] {
+    Initializable_assertInitialized();
+
+    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
+    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
+    _update(from, to, id, value);
   }
 
   /**
