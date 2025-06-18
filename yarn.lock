@@ -420,7 +420,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/non-fungible-token@workspace:contracts/nonFungibleToken"
   dependencies:
-    "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
     ts-node: "npm:^10.9.2"
@@ -433,7 +432,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-midnight/utils@workspace:contracts/utils"
   dependencies:
-    "@biomejs/biome": "npm:1.9.4"
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
     ts-node: "npm:^10.9.2"
