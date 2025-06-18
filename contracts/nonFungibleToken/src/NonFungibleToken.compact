@@ -103,10 +103,7 @@ module NonFungibleToken {
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @return {[]} - None.
    */
-  export circuit initialize(
-    name_: Opaque<"string">,
-    symbol_: Opaque<"string">
-  ): [] {
+  export circuit initialize(name_: Opaque<"string">, symbol_: Opaque<"string">): [] {
     Initializable_initialize();
     _name = name_;
     _symbol = symbol_;
