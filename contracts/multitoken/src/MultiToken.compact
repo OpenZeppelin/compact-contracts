@@ -14,11 +14,6 @@ pragma language_version >= 0.15.0;
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
  *
- * @notice Querying balanceOfBatch is currently supported; however,
- * the number of balances to query is set as a generic `n` number.
- * The implementing contract must define the size(s) that the contract
- * is going to expose and queries must then be padded if queries < `n`.
- *
  * @notice Some features defined in th EIP1155 spec are NOT included.
  * Such features include:
  *
@@ -28,11 +23,24 @@ pragma language_version >= 0.15.0;
  * vectors. This would change the signature and would be both difficult
  * to use and easy to misuse.
  *
- * 2. Introspection - Compact currently cannot support contract-to-contract
+ * 2. Querying batched balances - This can be somewhat supported.
+ * The issue, without dynamic arrays, is that the module circuit must use
+ * Vector<n> for accounts and ids; therefore, the implementing contract must
+ * explicitly define the number of balances to query in the circuit i.e.
+ *
+ * balanceOfBatch_10(
+ *    accounts: Vector<10, Either<ZswapCoinPublicKey, ContractAddress>>,
+ *    ids: Vector<10, Uint<128>>
+ * ): Vector<10, Uint<128>>
+ *
+ * Since this module does not offer mint or transfer batching,
+ * balance batching is also not included at this time.
+ *
+ * 3. Introspection - Compact currently cannot support contract-to-contract
  * queries for introspection. ERC165 (or an equivalent thereof) is NOT
  * included in the contract.
  *
- * 3. Safe transfers - The lack of an introspection mechanism means
+ * 4. Safe transfers - The lack of an introspection mechanism means
  * safe transfers of any kind can not be supported.
  * BE AWARE: Tokens sent to a contract address MAY be lost forever.
  *
