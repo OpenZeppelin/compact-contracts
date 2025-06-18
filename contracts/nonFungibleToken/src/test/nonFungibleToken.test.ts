@@ -596,6 +596,7 @@ describe('NonFungibleToken', () => {
       _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
       token.approve(Z_OTHER, TOKENID_1, _caller);
+      expect(token.getApproved(TOKENID_1)).toEqual(Z_OTHER);
       const prevOwner = token._update(Z_SPENDER, TOKENID_1, ZERO_KEY);
 
       expect(prevOwner).toEqual(Z_OWNER);
