@@ -18,9 +18,9 @@ import {
 import {
   type ERC20PrivateState,
   ERC20Witnesses,
-} from '../../witnesses/ERC20Witnesses';
-import type { MaybeString } from '../types/string';
-import type { IContractSimulator } from './../types/test';
+} from '../../witnesses/ERC20Witnesses.js';
+import type { MaybeString } from '../types/string.js';
+import type { IContractSimulator } from './../types/test.js';
 
 /**
  * @description A simulator implementation of an erc20 contract for testing purposes.
