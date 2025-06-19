@@ -254,7 +254,7 @@ module FungibleToken {
    */
   export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
     Initializable_assertInitialized();
-    // TODO: Contracts-to-contract calls are not supported yet.
+
     const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _approve(owner, spender, value);
     return true;
@@ -318,12 +318,12 @@ module FungibleToken {
     value: Uint<128>
   ): Boolean {
     Initializable_assertInitialized();
-    // TODO: Contracts-to-contract calls are not supported yet.
+
     const spender = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _spendAllowance(from, spender, value);
     _unsafeUncheckedTransfer(from, to, value);
     return true;
-  } 
+  }
 
   /**
    * @description Moves a `value` amount of tokens from `from` to `to`.
@@ -409,7 +409,6 @@ module FungibleToken {
     Initializable_assertInitialized();
     if (Utils_isKeyOrAddressZero(from)) {
       // Mint
-      // TODO: improve readability of max_u128
       const MAX_UINT128 = 340282366920938463463374607431768211455;
       assert MAX_UINT128 - _totalSupply >= value "FungibleToken: arithmetic overflow";
 
@@ -555,11 +554,9 @@ module FungibleToken {
     value: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    // TODO: Look into improving design so we're not checking allowance member twice (here and in `_approve`)
     assert (_allowances.member(owner) && _allowances.lookup(owner).member(spender)) "FungibleToken: insufficient allowance";
 
     const currentAllowance = _allowances.lookup(owner).lookup(spender);
-    // TODO: improve readability of max_u128
     const MAX_UINT128 = 340282366920938463463374607431768211455;
     if (currentAllowance < MAX_UINT128) {
       assert currentAllowance >= value "FungibleToken: insufficient allowance";
