@@ -288,7 +288,7 @@ module FungibleToken {
     value: Uint<128>
   ): Boolean {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "FungibleToken: unsafe transfer";
+    assert !Utils_isContractAddress(to) "FungibleToken: Unsafe Transfer";
     return _unsafeTransferFrom(from, to, value);
   }
 
@@ -353,7 +353,7 @@ module FungibleToken {
     value: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "FungibleToken: unsafe transfer";
+    assert !Utils_isContractAddress(to) "FungibleToken: Unsafe Transfer";
     _unsafeUncheckedTransfer(from, to, value);
   }
 
@@ -452,7 +452,7 @@ module FungibleToken {
     value: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(account) "FungibleToken: unsafe transfer";
+    assert !Utils_isContractAddress(account) "FungibleToken: Unsafe Transfer";
     _unsafeMint(account, value);
   }
 

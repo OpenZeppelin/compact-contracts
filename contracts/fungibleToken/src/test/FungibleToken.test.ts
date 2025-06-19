@@ -215,7 +215,7 @@ describe('FungibleToken', () => {
       it('should fail when transferring to a contract', () => {
         expect(() => {
           token.transfer(Z_OWNER_CONTRACT, AMOUNT);
-        }).toThrow('FungibleToken: unsafe transfer');
+        }).toThrow('FungibleToken: Unsafe Transfer');
       });
     });
 
@@ -489,7 +489,7 @@ describe('FungibleToken', () => {
       it('should fail when transferring to a contract', () => {
         expect(() => {
           token.transferFrom(Z_OWNER, Z_OWNER_CONTRACT, AMOUNT, caller);
-        }).toThrow('FungibleToken: unsafe transfer');
+        }).toThrow('FungibleToken: Unsafe Transfer');
       });
     });
 
@@ -649,7 +649,7 @@ describe('FungibleToken', () => {
       it('should fail when transferring to a contract', () => {
         expect(() => {
           token._transfer(Z_OWNER, Z_OWNER_CONTRACT, AMOUNT);
-        }).toThrow('FungibleToken: unsafe transfer');
+        }).toThrow('FungibleToken: Unsafe Transfer');
       });
     });
 
@@ -749,7 +749,7 @@ describe('FungibleToken', () => {
       it('should fail when minting to a contract', () => {
         expect(() => {
           token._mint(Z_OWNER_CONTRACT, AMOUNT);
-        }).toThrow('FungibleToken: unsafe transfer');
+        }).toThrow('FungibleToken: Unsafe Transfer');
       });
     });
 
