@@ -43,7 +43,7 @@ module FungibleToken {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
-  
+
   /**
    * @description Mapping from account addresses to their token balances.
    * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The account address.
