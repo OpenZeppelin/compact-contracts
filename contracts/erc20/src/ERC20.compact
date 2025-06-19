@@ -42,6 +42,7 @@ module ERC20 {
    * @param decimals_ - The number of decimals used to get the user representation.
    * @return {[]} - None.
    */
+
   export circuit initializer(
     name_: Maybe<Opaque<"string">>,
     symbol_: Maybe<Opaque<"string">>,
