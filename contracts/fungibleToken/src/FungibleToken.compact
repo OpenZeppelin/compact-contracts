@@ -12,6 +12,23 @@ pragma language_version >= 0.15.0;
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
  *
+ * @notice At the moment Midnight does not support contract-to-contract communication, but
+ * there are ongoing efforts to enable this in the future. Thus, the main circuits of this module
+ * restrict developers from sending tokens to contracts; however, we provide developers
+ * the ability to experiment with sending tokens to contracts using the `_unsafe`
+ * transfer methods. Once contract-to-contract communication is available we will follow the
+ * deprecation plan outlined below:
+ *
+ * Initial Minor Version Change:
+ *
+ * - Mark _unsafeFN as deprecated and emit a warning if possible.
+ * - Keep its implementation intact so existing callers continue to work.
+ *
+ * Later Major Version Change:
+ *
+ * - Drop _unsafeFN and remove `isContract` guard from `FN`.
+ * - By this point, anyone using _unsafeFN should have migrated to the now C2C-capable `FN`.
+ *
  * Due to the vast incompatibilities with the EIP20 spec, it is our
  * opinion that this implementation should not be called ERC20 at this time
  * as this would be both very confusing and misleading. This may change as more
@@ -21,12 +38,6 @@ pragma language_version >= 0.15.0;
  * - Events.
  * - Contract-to-contract calls.
  *
- * @notice Further discussion and consideration required:
- *
- * - Consider changing the underscore in the internal methods to `unsafe` or
- * adopting dot notation for prefixing imports.
- * - Revise logic once contract-to-contract interactions are available on midnight.
- * - Consider implementing an introspection mechanism for transfers to contracts.
  */
 module FungibleToken {
   import CompactStandardLibrary;
@@ -41,9 +52,8 @@ module FungibleToken {
    * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>} _balances
    */
   export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
-  
   /**
-   * @description Mapping from owner accounts to spender accounts and their allowances. 
+   * @description Mapping from owner accounts to spender accounts and their allowances.
    * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The owner account address.
    * @type {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender account address.
    * @type {Uint<128>} allowance - The amount allowed to be spent by the spender.
@@ -199,7 +209,6 @@ module FungibleToken {
    */
   export circuit _unsafeTransfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
     Initializable_assertInitialized();
-    // TODO: Contracts-to-contract calls are not supported yet.
     const owner = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
     _unsafeUncheckedTransfer(owner, to, value);
     return true;
@@ -207,7 +216,7 @@ module FungibleToken {
 
   /**
    * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
-   *              through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
+   * through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
    *
    * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
    *
