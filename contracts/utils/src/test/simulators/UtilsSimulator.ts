@@ -95,4 +95,47 @@ export class UtilsSimulator
       keyOrAddress,
     ).result;
   }
+
+  /**
+   * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey
+   * and a ContractAddress can never be equal
+   *
+   * @public
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress The target value to check
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} other The other value to check
+   * @returns {boolean} Returns true if `keyOrAddress` is is equal to `other`.
+   */
+  public isKeyOrAddressEqual(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    other: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.contract.circuits.isKeyOrAddressEqual(
+      this.circuitContext,
+      keyOrAddress,
+      other,
+    ).result;
+  }
+
+  /**
+   * @description Returns whether `key` is the zero address.
+   * @param key The target value to check.
+   * @returns Returns true if `key` is zero.
+   */
+  public isKeyZero(key: ZswapCoinPublicKey): boolean {
+    return this.contract.circuits.isKeyZero(this.circuitContext, key).result;
+  }
+
+  /**
+   * @description Returns whether `keyOrAddress` is a ContractAddress type.
+   * @param keyOrAddress The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
+   * @returns Returns true if `keyOrAddress` is a ContractAddress
+   */
+  public isContractAddress(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.contract.circuits.isContractAddress(
+      this.circuitContext,
+      keyOrAddress,
+    ).result;
+  }
 }
