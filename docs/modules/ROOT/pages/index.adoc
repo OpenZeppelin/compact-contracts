@@ -45,7 +45,7 @@ yarn prepare
 Compile the contracts:
 
 ```bash
-$ npx turbo compact
+$ turbo compact
 
 (...)
 ✔ [COMPILE] [1/2] Compiled ERC20.compact
@@ -81,10 +81,10 @@ Cached:    0 cached, 2 total
 ```
 
 NOTE: Speed up the development process by skipping the prover and verifier key file generation: +
-`npx turbo compact -- --skip-zk`
+`turbo compact -- --skip-zk`
 
 Run tests:
 
 ```bash
-npx turbo test
+turbo test
 ```
