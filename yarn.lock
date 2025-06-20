@@ -404,9 +404,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/nft@workspace:contracts/nonFungibleToken":
+"@openzeppelin-midnight/non-fungible-token@workspace:contracts/nonFungibleToken":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/nft@workspace:contracts/nonFungibleToken"
+  resolution: "@openzeppelin-midnight/non-fungible-token@workspace:contracts/nonFungibleToken"
   dependencies:
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
