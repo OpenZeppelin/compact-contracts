@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight/non-fungible-token",
+  "name": "@openzeppelin-midnight/nft",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
