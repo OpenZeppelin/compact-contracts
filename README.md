@@ -103,7 +103,8 @@ turbo test
 turbo fmt-and-lint:fix
 ```
 
-### All together now!
+### All together now
+
 ```bash
 turbo compact test fmt-and-lint:fix
 ```
