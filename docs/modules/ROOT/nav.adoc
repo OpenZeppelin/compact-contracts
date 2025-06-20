@@ -1,7 +1,10 @@
 * xref:index.adoc[Overview]
 
+* Learn
+
+** xref:extensibility.adoc[Extensibility]
+
 * Modules
 
-** xref:erc20.adoc[ERC20]
-*** xref:/api/erc20.adoc[API Reference]
-* xref:extensibility.adoc[Extensibility]
+** xref:fungible.adoc[Fungible]
+*** xref:/api/fungible.adoc[API Reference]
