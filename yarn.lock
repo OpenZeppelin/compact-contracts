@@ -404,9 +404,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/erc20@workspace:contracts/erc20":
+"@openzeppelin-midnight/erc20@workspace:contracts/fungibleToken":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/erc20@workspace:contracts/erc20"
+  resolution: "@openzeppelin-midnight/erc20@workspace:contracts/fungibleToken"
   dependencies:
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
