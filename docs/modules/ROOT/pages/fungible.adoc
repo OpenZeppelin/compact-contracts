@@ -1,11 +1,11 @@
 :fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[fungible tokens]
 :eip20: https://eips.ethereum.org/EIPS/eip-20[EIP-20]
 
-= ERC20
+= FungibleToken
 
-The ERC20 token standard is a specification for {fungible-tokens},
+FungibleToken is a specification for {fungible-tokens},
 a type of token where all the units are exactly equal to each other.
-The `ERC20.compact` module implements an approximation of {eip-20} in Compact for Midnight.
+This module is an approximation of {eip-20} written in the Compact programming language for the Midnight network.
 
 == ERC20 Compatbility
 
@@ -27,21 +27,20 @@ This library offers modules of contracts with free floating circuits; neverthele
 
 == Usage
 
-Import the library into the implementing contract and it's recommended to prefix the library with `ERC20_`.
+Import the FungibleToken module into the implementing contract.
+It's recommended to prefix the module with `FungibleToken_` to avoid ccircuit signature clashes.
 
 ```typescript
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import OpenZeppelinERC20 prefix ERC20_; // Fix me!!!
+import openzeppelin-midnight/fungible-token prefix FungibleToken_; // Fix me!!!
 
 constructor(
-  name: Maybe<Opaque<"string">>,
-  symbol: Maybe<Opaque<"string">>,
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
   decimals:Uint<8>
 ) {
-  ERC20_initializer(name, symbol, decimals);
+  FungibleToken_initialize(name, symbol, decimals);
 }
 ```
-
-
