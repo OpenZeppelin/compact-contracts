@@ -416,9 +416,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/non-fungible-token@workspace:contracts/nonfungibletoken":
+"@openzeppelin-midnight/non-fungible-token@workspace:contracts/erc721":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/non-fungible-token@workspace:contracts/nonfungibletoken"
+  resolution: "@openzeppelin-midnight/non-fungible-token@workspace:contracts/erc721"
   dependencies:
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
