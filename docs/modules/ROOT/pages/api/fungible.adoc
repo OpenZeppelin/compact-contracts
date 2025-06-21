@@ -293,7 +293,7 @@ Requirements:
 ==== `[.contract-item-name]#++_approve++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
 
 Sets `value` as the allowance of `spender` over the ``owner``'s tokens.
-This internal function is equivalent to `approve`, and can be used to e.g. set automatic allowances for certain subsystems, etc.
+This circuit is equivalent to `approve`, and can be used to e.g. set automatic allowances for certain subsystems, etc.
 
 Requirements:
 
