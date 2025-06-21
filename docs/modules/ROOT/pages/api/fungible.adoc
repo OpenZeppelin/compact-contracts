@@ -102,8 +102,8 @@ Requirements:
 
 
 [.contract-item]
-[[FungibleTokenModule-balance_of]]
-==== `[.contract-item-name]#++balance_of++#++(account: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
+[[FungibleTokenModule-balanceOf]]
+==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
 
 Returns the value of tokens owned by `account`.
 
