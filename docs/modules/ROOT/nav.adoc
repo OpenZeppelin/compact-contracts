@@ -6,5 +6,5 @@
 
 * Modules
 
-** xref:fungible.adoc[Fungible]
+** xref:fungible.adoc[FungibleToken]
 *** xref:/api/fungible.adoc[API Reference]
