@@ -1,5 +1,5 @@
 :fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[fungible tokens]
-:eip20: https://eips.ethereum.org/EIPS/eip-20[EIP-20]
+:eip-20: https://eips.ethereum.org/EIPS/eip-20[EIP-20]
 
 = FungibleToken
 
