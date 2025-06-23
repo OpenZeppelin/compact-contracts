@@ -252,14 +252,14 @@ module MultiToken {
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
    * @return {[]} None.
    */
-  export circuit _transferFrom(
+  export circuit _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Uint<128>,
     value: Uint<128>
   ): [] {
     assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
-    _unsafeUncheckedTransferFrom(from, to, id, value);
+    _unsafeTransfer(from, to, id, value);
   }
 
   /**
@@ -345,11 +345,11 @@ module MultiToken {
       assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
     }
 
-    _unsafeUncheckedTransferFrom(from, to, id, value);
+    _unsafeTransfer(from, to, id, value);
   }
 
   /**
-   * @description Unsafe variant of `_transferFrom` which allows transfers to contract addresses.
+   * @description Unsafe variant of `_transfer` which allows transfers to contract addresses.
    * Does not impose restrictions on the caller, making it suitable as a low-level
    * building block for advanced contract logic.
    *
@@ -370,7 +370,7 @@ module MultiToken {
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
    * @return {[]} None.
    */
-  export circuit _unsafeUncheckedTransferFrom(
+  export circuit _unsafeTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: Uint<128>,

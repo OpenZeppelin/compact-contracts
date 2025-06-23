@@ -61,22 +61,22 @@ export circuit _unsafeTransferFrom(
   return MultiToken__unsafeTransferFrom(from, to, id, value);
 }
 
-export circuit _transferFrom(
+export circuit _transfer(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken__transferFrom(from, to, id, value);
+  return MultiToken__transfer(from, to, id, value);
 }
 
-export circuit _unsafeUncheckedTransferFrom(
+export circuit _unsafeTransfer(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken__unsafeUncheckedTransferFrom(from, to, id, value);
+  return MultiToken__unsafeTransfer(from, to, id, value);
 }
 
 export circuit _setURI(newURI: Opaque<"string">): [] {

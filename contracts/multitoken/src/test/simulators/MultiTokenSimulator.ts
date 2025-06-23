@@ -239,14 +239,14 @@ export class MultiTokenSimulator
    * @param sender - Optional. Sets the caller context if provided.
    * @returns None.
    */
-  public _transferFrom(
+  public _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
     sender?: CoinPublicKey,
   ) {
-    this.circuitContext = this.contract.impureCircuits._transferFrom(
+    this.circuitContext = this.contract.impureCircuits._transfer(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -261,7 +261,7 @@ export class MultiTokenSimulator
   }
 
   /**
-   * @description Unsafe variant of `_transferFrom` which allows transfers to contract addresses.
+   * @description Unsafe variant of `_transfer` which allows transfers to contract addresses.
    * Does not impose restrictions on the caller, making it suitable as a low-level
    * building block for advanced contract logic.
    * @param from The owner from which the transfer originates.
@@ -270,26 +270,25 @@ export class MultiTokenSimulator
    * @param value The quantity of `id` tokens to transfer.
    * @param sender - Optional. Sets the caller context if provided.
    */
-  public _unsafeUncheckedTransferFrom(
+  public _unsafeTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     id: bigint,
     value: bigint,
     sender?: CoinPublicKey,
   ) {
-    this.circuitContext =
-      this.contract.impureCircuits._unsafeUncheckedTransferFrom(
-        {
-          ...this.circuitContext,
-          currentZswapLocalState: sender
-            ? emptyZswapLocalState(sender)
-            : this.circuitContext.currentZswapLocalState,
-        },
-        from,
-        to,
-        id,
-        value,
-      ).context;
+    this.circuitContext = this.contract.impureCircuits._unsafeTransfer(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      from,
+      to,
+      id,
+      value,
+    ).context;
   }
 
   /**
