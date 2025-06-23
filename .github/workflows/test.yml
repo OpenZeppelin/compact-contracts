@@ -80,5 +80,31 @@ jobs:
 
             echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
 
-      - name: Compile, test, and check types
-        run: turbo compact types test
+      - name: Compile contracts (with automatic retry on hash mismatch)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          compile() {
+            echo "⚙️ Running Compact compilation..."
+            if ! turbo compact --concurrency=1; then
+              echo "❗ Compilation failed. Checking for hash mismatch errors..."
+
+              if find "$HOME/.cache/midnight/zk-params" -type f -name '*' 2>/dev/null | grep -q .; then
+                echo "🔎 Hash mismatch detected. Clearing zk-params..."
+                rm -rf "$HOME/.cache/midnight/zk-params"
+                echo "♻️ Retrying compilation..."
+                turbo compact --concurrency=1 || { echo "::error::❌ Retry also failed."; exit 1; }
+              else
+                echo "❌ Compilation failed for another reason. Exiting."
+                exit 1
+              fi
+            fi
+          }
+
+          compile
+
+      - name: Run types and tests
+        run: |
+          turbo types
+          turbo test
