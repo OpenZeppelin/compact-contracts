@@ -37,7 +37,6 @@ pragma language_version >= 0.15.0;
  * - Full uint256 support.
  * - Events.
  * - Contract-to-contract calls.
- *
  */
 module FungibleToken {
   import CompactStandardLibrary;
