@@ -87,16 +87,16 @@ jobs:
 
           compile() {
             echo "⚙️ Running Compact compilation..."
-            if ! turbo compact --concurrency=1; then
-              echo "❗ Compilation failed. Checking for hash mismatch errors..."
+            if ! output=$(turbo compact --concurrency=1 2>&1); then
+              echo "❌ Compilation failed."
 
-              if find "$HOME/.cache/midnight/zk-params" -type f -name '*' 2>/dev/null | grep -q .; then
-                echo "🔎 Hash mismatch detected. Clearing zk-params..."
+              if echo "$output" | grep -q "Hash mismatch" && [ -d "$HOME/.cache/midnight/zk-params" ]; then
+                echo "⚠️ Hash mismatch detected *and* zk-params exists. Removing cache..."
                 rm -rf "$HOME/.cache/midnight/zk-params"
-                echo "♻️ Retrying compilation..."
+                echo "::notice::♻️ Retrying compilation after clearing zk-params..."
                 turbo compact --concurrency=1 || { echo "::error::❌ Retry also failed."; exit 1; }
               else
-                echo "❌ Compilation failed for another reason. Exiting."
+                echo "🚫 Compilation failed for another reason or zk-params missing. No retry."
                 exit 1
               fi
             fi
@@ -104,7 +104,8 @@ jobs:
 
           compile
 
-      - name: Run types and tests
-        run: |
-          turbo types
-          turbo test
+      - name: Run type checks
+        run: turbo types
+
+      - name: Run tests
+        run: turbo test
