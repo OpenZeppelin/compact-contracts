@@ -80,5 +80,27 @@ jobs:
 
             echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
 
-      - name: Compile, test, and check types
-        run: turbo compact types test
+      - name: Attempt Compact compilation
+        continue-on-error: true
+        run: turbo compact
+
+      - name: Remove Midnight zk-params cache
+        run: |
+          echo "Checking for Midnight zk-params directory..."
+          MIDNIGHT_CACHE="$HOME/.cache/midnight/zk-params"
+          if [ -d "$MIDNIGHT_CACHE" ]; then
+            echo "Found zk-params directory. Removing..."
+            ls -lh "$MIDNIGHT_CACHE"
+            rm -rf "$MIDNIGHT_CACHE"
+            echo "Cache removed."
+          else
+            echo "No zk-params directory found."
+          fi
+
+      - name: Retry Compact compilation
+        run: turbo compact
+
+      - name: Run types and test
+        run: |
+          turbo types
+          turbo test
