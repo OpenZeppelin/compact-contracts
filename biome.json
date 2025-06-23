@@ -20,7 +20,8 @@
   },
   "formatter": {
     "enabled": true,
-    "indentStyle": "space"
+    "indentStyle": "space",
+    "ignore": ["package.json"]
   },
   "organizeImports": {
     "enabled": true
