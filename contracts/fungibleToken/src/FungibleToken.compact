@@ -562,4 +562,16 @@ module FungibleToken {
       _approve(owner, spender, currentAllowance - value as Uint<128>);
     }
   }
+
+  /**
+   * DO NOT USE!
+   * @description Wrapper circuit to test the `_update` circuit.
+   */
+  export circuit doNotUse_update(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: Uint<128>
+  ): [] {
+    _update(from, to, value);
+  }
 }

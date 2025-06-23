@@ -842,5 +842,57 @@ describe('FungibleToken', () => {
         expect(token.balanceOf(Z_OWNER)).toEqual(0n);
       });
     });
+
+    describe('_update', () => {
+      it('should update from zero to non-zero (mint)', () => {
+        expect(token.totalSupply()).toEqual(0n);
+        expect(token.balanceOf(Z_OWNER)).toEqual(0n);
+
+        token.doNotUse_update(utils.ZERO_KEY, Z_OWNER, AMOUNT);
+
+        expect(token.totalSupply()).toEqual(AMOUNT);
+        expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
+      });
+
+      it('should catch overflow from zero to non-zero (mint)', () => {
+        token.doNotUse_update(utils.ZERO_KEY, Z_OWNER, MAX_UINT128);
+
+        expect(() => {
+          token.doNotUse_update(utils.ZERO_KEY, Z_OWNER, 1n);
+        }).toThrow('FungibleToken: arithmetic overflow');
+      });
+
+      describe('with minted tokens', () => {
+        beforeEach(() => {
+          token.doNotUse_update(utils.ZERO_KEY, Z_OWNER, AMOUNT);
+
+          expect(token.totalSupply()).toEqual(AMOUNT);
+          expect(token.balanceOf(Z_OWNER)).toEqual(AMOUNT);
+        });
+
+        it('should update from non-zero to zero (burn)', () => {
+          token.doNotUse_update(Z_OWNER, utils.ZERO_KEY, AMOUNT);
+
+          expect(token.totalSupply()).toEqual(0n);
+          expect(token.balanceOf(Z_OWNER)).toEqual(0n);
+        });
+
+        it('should catch overflow from non-zero to zero (burn)', () => {
+          token.doNotUse_update(Z_OWNER, utils.ZERO_KEY, AMOUNT);
+
+          expect(() => {
+            token.doNotUse_update(Z_OWNER, utils.ZERO_KEY, 1n);
+          }).toThrow('FungibleToken: insufficient balance');
+        });
+
+        it('should update from non-zero to non-zero (transfer)', () => {
+          token.doNotUse_update(Z_OWNER, Z_RECIPIENT, AMOUNT - 1n);
+
+          expect(token.totalSupply()).toEqual(AMOUNT);
+          expect(token.balanceOf(Z_OWNER)).toEqual(1n);
+          expect(token.balanceOf(Z_RECIPIENT)).toEqual(AMOUNT - 1n);
+        });
+      });
+    });
   });
 });
