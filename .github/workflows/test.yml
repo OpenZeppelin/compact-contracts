@@ -80,7 +80,7 @@ jobs:
 
             echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
 
-      - name: Compile contracts (with automatic retry on hash mismatch)
+      - name: Compile contracts (with retry on hash mismatch)
         shell: bash
         run: |
           set -euo pipefail
