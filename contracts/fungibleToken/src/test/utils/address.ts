@@ -9,7 +9,7 @@ const PREFIX_ADDRESS = '0200';
 
 /**
  * @description Converts an ASCII string to its hexadecimal representation,
- * left-padded with zeros to a specified length. Useful for generating 
+ * left-padded with zeros to a specified length. Useful for generating
  * fixed-size hex strings for encoding.
  * @param str ASCII string to convert.
  * @param len Total desired length of the resulting hex string. Defaults to 64.
