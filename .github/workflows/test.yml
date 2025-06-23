@@ -82,7 +82,7 @@ jobs:
 
       - name: Attempt Compact compilation
         continue-on-error: true
-        run: turbo compact
+        run: turbo compact --concurrency=1
 
       - name: Remove Midnight zk-params cache
         run: |
@@ -98,7 +98,7 @@ jobs:
           fi
 
       - name: Retry Compact compilation
-        run: turbo compact
+        run: turbo compact --concurrency=1
 
       - name: Run types and test
         run: |
