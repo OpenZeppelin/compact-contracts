@@ -3,7 +3,11 @@
   "description": "Secure Smart Contract library for Midnight",
   "private": true,
   "packageManager": "yarn@4.1.0",
-  "workspaces": ["compact/", "contracts/*/", "docs/"],
+  "workspaces": [
+    "compact/",
+    "contracts/*/",
+    "docs/"
+  ],
   "scripts": {
     "docs": "npx turbo run docs --filter=docs",
     "docs:watch": "npx turbo run docs:watch --filter=docs",
