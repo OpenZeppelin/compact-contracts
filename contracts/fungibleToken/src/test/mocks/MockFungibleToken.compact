@@ -126,14 +126,6 @@ export circuit _burn(
   return FungibleToken__burn(account, value);
 }
 
-export circuit _update(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
-  return FungibleToken__update(from, to, value);
-}
-
 export circuit _spendAllowance(
   owner: Either<ZswapCoinPublicKey, ContractAddress>,
   spender: Either<ZswapCoinPublicKey, ContractAddress>,

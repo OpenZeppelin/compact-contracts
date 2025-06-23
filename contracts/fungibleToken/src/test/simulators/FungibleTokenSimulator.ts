@@ -413,26 +413,6 @@ export class FungibleTokenSimulator
   }
 
   /**
-   * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
-   * (or `to`) is the zero address.
-   * @param from The original owner of the tokens moved (which is 0 if tokens are minted).
-   * @param to The recipient of the tokens moved (which is 0 if tokens are burned).
-   * @param value The amount of tokens moved from `from` to `to`.
-   */
-  public _update(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._update(
-      this.circuitContext,
-      from,
-      to,
-      value,
-    ).context;
-  }
-
-  /**
    * @description Updates `owner`'s allowance for `spender` based on spent `value`.
    * Does not update the allowance value in case of infinite allowance.
    * @param owner The owner of the tokens.

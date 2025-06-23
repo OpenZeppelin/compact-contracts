@@ -401,7 +401,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens moved from `from` to `to`.
    * @return {[]} - None.
    */
-  export circuit _update(
+  circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: Uint<128>
