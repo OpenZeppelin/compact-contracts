@@ -25,6 +25,16 @@ It's currently possible to go up to 222 bits; however, 128 bits is easier on int
 - **Interface** - Compact currently does not have a way to define a contract interface.
 This library offers modules of contracts with free floating circuits; nevertheless, there's no means of enforcing that all circuits are provided.
 
+== Contract-to-contract calls
+
+Contract-to-contract calls are currently not supported in the Compact language.
+Due to this limitation, the current iteration of FungibleToken disallows transfers and mints to the `ContractAddress` type.
+Transferring tokens to a contract may result in those tokens being locked forever.
+The FungibleToken module, however, does provide `unsafe` circuit variants for users who wish to experiment with sending tokens to contracts.
+
+WARNING: The `unsafe` circuits will eventually be deprecated after Compact supports contract-to-contract calls—meaning
+`transfer`, `_mint`, etc. are planned to eventually allow the recipients to be of the `ContractAddress` type.
+
 == Usage
 
 Import the FungibleToken module into the implementing contract.
