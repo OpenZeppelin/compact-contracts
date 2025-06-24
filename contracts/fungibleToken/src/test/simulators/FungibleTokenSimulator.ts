@@ -431,27 +431,4 @@ export class FungibleTokenSimulator
       value,
     ).context;
   }
-
-  /**
-   * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
-   * (or `to`) is the zero address.
-   *
-   * @warning This circuit is exported only for testing—hence the name `doNotUse_update`.
-   * Use `_mint`, `_burn`, or one of the transfer circuits to move tokens in contracts.
-   * @param from The original owner of the tokens moved (which is 0 if tokens are minted).
-   * @param to The recipient of the tokens moved (which is 0 if tokens are burned).
-   * @param value The amount of tokens moved from `from` to `to`.
-   */
-  public doNotUse_update(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits.doNotUse_update(
-      this.circuitContext,
-      from,
-      to,
-      value,
-    ).context;
-  }
 }

@@ -133,11 +133,3 @@ export circuit _spendAllowance(
 ): [] {
   return FungibleToken__spendAllowance(owner, spender, value);
 }
-
-export circuit doNotUse_update(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
-  return FungibleToken_doNotUse_update(from, to, value);
-}
