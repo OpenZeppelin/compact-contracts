@@ -31,6 +31,7 @@ Import the FungibleToken module into the implementing contract.
 It's recommended to prefix the module with `FungibleToken_` to avoid ccircuit signature clashes.
 
 ```typescript
+// MyFungibleToken.compact
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
