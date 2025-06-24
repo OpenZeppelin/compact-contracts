@@ -235,8 +235,9 @@ module MultiToken {
    * Does not impose restrictions on the caller, making it suitable for composition
    * in higher-level contract logic.
    *
-   * @warning Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported.
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from
+   * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * Requirements:
    *
@@ -413,10 +414,15 @@ module MultiToken {
   /**
    * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
    *
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from
+   * being inadvertently locked in contracts that cannot currently handle token receipt.
+   *
    * Requirements:
    *
    * - Contract is initialized.
    * - `to` is not the zero address.
+   * - `to` is not a ContractAddress.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
    * @param {Uint<128>} id - The unique identifier for the token type.
@@ -430,6 +436,10 @@ module MultiToken {
 
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
+   *
+   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
    * Requirements:
    *
