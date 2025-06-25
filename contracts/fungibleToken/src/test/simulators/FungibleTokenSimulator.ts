@@ -11,39 +11,40 @@ import {
   type ContractAddress,
   type Either,
   type Ledger,
-  Contract as MockERC20,
+  Contract as MockFungibleToken,
   type ZswapCoinPublicKey,
   ledger,
-} from '../../artifacts/MockERC20/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockFungibleToken/contract/index.cjs'; // Combined imports
 import {
-  type ERC20PrivateState,
-  ERC20Witnesses,
-} from '../../witnesses/ERC20Witnesses';
-import type { MaybeString } from '../types/string';
-import type { IContractSimulator } from './../types/test';
+  type FungibleTokenPrivateState,
+  FungibleTokenWitnesses,
+} from '../../witnesses/FungibleTokenWitnesses';
+import type { IContractSimulator } from '../types/test';
 
 /**
- * @description A simulator implementation of an erc20 contract for testing purposes.
- * @template P - The private state type, fixed to ERC20PrivateState.
+ * @description A simulator implementation of a FungibleToken contract for testing purposes.
+ * @template P - The private state type, fixed to FungibleTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class ERC20Simulator
-  implements IContractSimulator<ERC20PrivateState, Ledger>
+export class FungibleTokenSimulator
+  implements IContractSimulator<FungibleTokenPrivateState, Ledger>
 {
   /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockERC20<ERC20PrivateState>;
+  readonly contract: MockFungibleToken<FungibleTokenPrivateState>;
 
   /** @description The deployed address of the contract. */
   readonly contractAddress: string;
 
   /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<ERC20PrivateState>;
+  circuitContext: CircuitContext<FungibleTokenPrivateState>;
 
   /**
    * @description Initializes the mock contract.
    */
-  constructor(name: MaybeString, symbol: MaybeString, decimals: bigint) {
-    this.contract = new MockERC20<ERC20PrivateState>(ERC20Witnesses);
+  constructor(name: string, symbol: string, decimals: bigint, init: boolean) {
+    this.contract = new MockFungibleToken<FungibleTokenPrivateState>(
+      FungibleTokenWitnesses,
+    );
     const {
       currentPrivateState,
       currentContractState,
@@ -53,6 +54,7 @@ export class ERC20Simulator
       name,
       symbol,
       decimals,
+      init,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -76,9 +78,9 @@ export class ERC20Simulator
 
   /**
    * @description Retrieves the current private state of the contract.
-   * @returns The private state of type ERC20PrivateState.
+   * @returns The private state of type FungibleTokenPrivateState.
    */
-  public getCurrentPrivateState(): ERC20PrivateState {
+  public getCurrentPrivateState(): FungibleTokenPrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
@@ -94,7 +96,7 @@ export class ERC20Simulator
    * @description Returns the token name.
    * @returns The token name.
    */
-  public name(): MaybeString {
+  public name(): string {
     return this.contract.impureCircuits.name(this.circuitContext).result;
   }
 
@@ -102,7 +104,7 @@ export class ERC20Simulator
    * @description Returns the symbol of the token.
    * @returns The token name.
    */
-  public symbol(): MaybeString {
+  public symbol(): string {
     return this.contract.impureCircuits.symbol(this.circuitContext).result;
   }
 
@@ -180,6 +182,33 @@ export class ERC20Simulator
   }
 
   /**
+   * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
+   * @param to The recipient of the transfer, either a user or a contract.
+   * @param value The amount to transfer.
+   * @param sender The simulated caller.
+   * @returns As per the IERC20 spec, this MUST return true.
+   */
+  public _unsafeTransfer(
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ): boolean {
+    const res = this.contract.impureCircuits._unsafeTransfer(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      to,
+      value,
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
    * @description Moves `value` tokens from `from` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
    * @param from The current owner of the tokens for the transfer, either a user or a contract.
@@ -195,6 +224,36 @@ export class ERC20Simulator
     sender?: CoinPublicKey,
   ): boolean {
     const res = this.contract.impureCircuits.transferFrom(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      from,
+      to,
+      value,
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
+   * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   * @param from The current owner of the tokens for the transfer, either a user or a contract.
+   * @param to The recipient of the transfer, either a user or a contract.
+   * @param value The amount to transfer.
+   * @param sender The simulated caller.
+   * @returns As per the IERC20 spec, this MUST return true.
+   */
+  public _unsafeTransferFrom(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+    sender?: CoinPublicKey,
+  ): boolean {
+    const res = this.contract.impureCircuits._unsafeTransferFrom(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender
@@ -285,6 +344,25 @@ export class ERC20Simulator
   }
 
   /**
+   * @description Unsafe variant of `_transfer` which allows transfers to contract addresses.
+   * @param from The owner of the tokens to transfer.
+   * @param to The receipient of the transferred tokens.
+   * @param value The amount of tokens to transfer.
+   */
+  public _unsafeUncheckedTransfer(
+    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._unsafeUncheckedTransfer(
+      this.circuitContext,
+      from,
+      to,
+      value,
+    ).context;
+  }
+
+  /**
    * @description Creates a `value` amount of tokens and assigns them to `account`,
    * by transferring it from the zero address. Relies on the `update` mechanism.
    * @param account The recipient of tokens minted.
@@ -295,6 +373,22 @@ export class ERC20Simulator
     value: bigint,
   ) {
     this.circuitContext = this.contract.impureCircuits._mint(
+      this.circuitContext,
+      account,
+      value,
+    ).context;
+  }
+
+  /**
+   * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
+   * @param account The recipient of tokens minted.
+   * @param value The amount of tokens minted.
+   */
+  public _unsafeMint(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._unsafeMint(
       this.circuitContext,
       account,
       value,
@@ -314,26 +408,6 @@ export class ERC20Simulator
     this.circuitContext = this.contract.impureCircuits._burn(
       this.circuitContext,
       account,
-      value,
-    ).context;
-  }
-
-  /**
-   * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
-   * (or `to`) is the zero address.
-   * @param from The original owner of the tokens moved (which is 0 if tokens are minted).
-   * @param to The recipient of the tokens moved (which is 0 if tokens are burned).
-   * @param value The amount of tokens moved from `from` to `to`.
-   */
-  public _update(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._update(
-      this.circuitContext,
-      from,
-      to,
       value,
     ).context;
   }
