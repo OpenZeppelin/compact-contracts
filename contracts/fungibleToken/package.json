@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight/erc20",
+  "name": "@openzeppelin-midnight/fungible-token",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
