@@ -1,2 +1,10 @@
 * xref:index.adoc[Overview]
-* xref:extensibility.adoc[Extensibility]
+
+* Learn
+
+** xref:extensibility.adoc[Extensibility]
+
+* Modules
+
+** xref:multitoken.adoc[MultiToken]
+*** xref:api/multitoken.adoc[MultiToken]
