@@ -1,0 +1,42 @@
+:eip-1155: https://eips.ethereum.org/EIPS/eip-1155[EIP-1155]
+
+= MultiToken
+
+MultiToken is a specification for...
+This module is an approximation of {eip-1155} written in the Compact programming language for the Midnight network.
+
+== ERC1155 Compatbility
+
+Even though Midnight is not EVM-compatible, this implementation attempts to be an approximation of the standard.
+Some features and behaviors are either not possible, not possible yet, or changed because of the vastly different tech stack
+and Compact language constraints.
+
+**Notable changes**
+
+- **Uint<128> as value type** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
+It's currently possible to go up to 222 bits; however, 128 bits is easier on integrations and conversions.
+
+**Features and specifications NOT supported**
+
+- **Events** - Midnight does not currently support events, but this is planned on being supported in the future.
+- **Uint256 type** - There's ongoing research on ways to support uint256 in the future.
+- **Interface** - Compact currently does not have a way to define a contract interface.
+This library offers modules of contracts with free floating circuits; nevertheless, there's no means of enforcing that all circuits are provided.
+
+== Usage
+
+Import the MultiToken module into the implementing contract.
+It's recommended to prefix the module with `MultiToken_` to avoid ccircuit signature clashes.
+
+```typescript
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import openzeppelin-midnight/multi-token prefix MultiToken_;
+
+constructor(
+  uri: Opaque<"string">,
+) {
+  MultiToken_initialize(uri);
+}
+```
