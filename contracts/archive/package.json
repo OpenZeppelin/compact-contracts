@@ -1,5 +1,6 @@
 {
   "name": "@openzeppelin-midnight/archive",
+  "private": true,
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -13,20 +14,19 @@
     }
   },
   "scripts": {
-    "compact": "find src -name '*.compact' -exec sh -c 'run-compactc \"{}\" \"src/artifacts/$(basename \"{}\" .compact)\"' \\;",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "prepack": "yarn build",
-    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/artifacts ./dist/artifacts && cp ./src/ShieldedToken.compact ./dist",
-    "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "compact": "compact-compiler",
+    "build": "compact-builder && tsc",
+    "test": "vitest run",
+    "types": "tsc -p tsconfig.json --noEmit",
+    "clean": "git clean -fXd"
   },
   "dependencies": {
-    "@openzeppelin-midnight/compact": "workspace:^",
-    "@openzeppelin-midnight/utils": "workspace:^"
+    "@openzeppelin-midnight/compact": "workspace:^"
   },
   "devDependencies": {
-    "eslint": "^8.52.0",
-    "jest": "^29.7.0",
-    "typescript": "^5.2.2"
+    "@types/node": "22.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.2.2",
+    "vitest": "^3.1.3"
   }
 }

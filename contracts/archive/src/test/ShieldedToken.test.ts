@@ -5,6 +5,7 @@ import {
   sampleContractAddress,
   tokenType,
 } from '@midnight-ntwrk/onchain-runtime';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ShieldedTokenSimulator } from './simulators/ShieldedTokenSimulator';
 import type { MaybeString } from './types/string';
 import * as utils from './utils/address';
