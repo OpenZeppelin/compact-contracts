@@ -6,7 +6,6 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
-<<<<<<< HEAD
   type ContractAddress,
   type Either,
   type Ledger,
@@ -19,19 +18,6 @@ import {
   UtilsWitnesses,
 } from '../../witnesses/UtilsWitnesses.js';
 import type { IContractSimulator } from '../types/test.js';
-=======
-  type Ledger,
-  Contract as MockUtils,
-  type ZswapCoinPublicKey,
-  ledger,
-} from '../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
-import {
-  type UtilsPrivateState,
-  UtilsWitnesses,
-} from '../../witnesses/UtilsWitnesses';
-import type { IContractSimulator } from '../types/test';
-import { UtilsPrivateState, UtilsWitnesses } from '../../witnesses/UtilsWitnesses';
->>>>>>> b6f5215 (Add pausable (#22))
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -39,8 +25,7 @@ import { UtilsPrivateState, UtilsWitnesses } from '../../witnesses/UtilsWitnesse
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class UtilsSimulator
-  implements IContractSimulator<UtilsPrivateState, Ledger>
-{
+  implements IContractSimulator<UtilsPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockUtils<UtilsPrivateState>;
 
@@ -54,24 +39,12 @@ export class UtilsSimulator
    * @description Initializes the mock contract.
    */
   constructor() {
-<<<<<<< HEAD
     this.contract = new MockUtils<UtilsPrivateState>(UtilsWitnesses);
-=======
-    this.contract = new MockUtils<UtilsPrivateState>(
-      UtilsWitnesses,
-    );
->>>>>>> b6f5215 (Add pausable (#22))
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-<<<<<<< HEAD
     } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
-=======
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
->>>>>>> b6f5215 (Add pausable (#22))
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -113,7 +86,6 @@ export class UtilsSimulator
    * @param keyOrAddress The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @returns Returns true if `keyOrAddress` is zero.
    */
-<<<<<<< HEAD
   public isKeyOrAddressZero(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
@@ -165,16 +137,12 @@ export class UtilsSimulator
       keyOrAddress,
     ).result;
   }
-
   /**
    * @description  A helper function that returns the empty string: ""
    * @returns The empty string: ""
    */
   public emptyString(): string {
     return this.contract.circuits.emptyString(this.circuitContext).result;
-=======
-  public isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): boolean {
-    return this.contract.circuits.isKeyOrAddressZero(this.circuitContext, keyOrAddress).result;
->>>>>>> b6f5215 (Add pausable (#22))
+
   }
 }
