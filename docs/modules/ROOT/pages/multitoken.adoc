@@ -2,7 +2,7 @@
 
 = MultiToken
 
-MultiToken is a specification for...
+MultiToken is a specification for contracts that manage multiple token types.
 This module is an approximation of {eip-1155} written in the Compact programming language for the Midnight network.
 
 == ERC1155 Compatbility
