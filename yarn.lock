@@ -388,9 +388,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-midnight/compact@workspace:^, @openzeppelin-midnight/compact@workspace:compact":
+"@openzeppelin-compact/compact@workspace:^, @openzeppelin-compact/compact@workspace:compact":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/compact@workspace:compact"
+  resolution: "@openzeppelin-compact/compact@workspace:compact"
   dependencies:
     "@types/node": "npm:22.14.0"
     chalk: "npm:^5.4.1"
@@ -404,11 +404,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/fungible-token@workspace:contracts/fungibleToken":
+"@openzeppelin-compact/fungible-token@workspace:contracts/fungibleToken":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/fungible-token@workspace:contracts/fungibleToken"
+  resolution: "@openzeppelin-compact/fungible-token@workspace:contracts/fungibleToken"
   dependencies:
-    "@openzeppelin-midnight/compact": "workspace:^"
+    "@openzeppelin-compact/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
@@ -416,11 +416,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/utils@workspace:contracts/utils":
+"@openzeppelin-compact/utils@workspace:contracts/utils":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/utils@workspace:contracts/utils"
+  resolution: "@openzeppelin-compact/utils@workspace:contracts/utils"
   dependencies:
-    "@openzeppelin-midnight/compact": "workspace:^"
+    "@openzeppelin-compact/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
@@ -1805,9 +1805,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openzeppelin-midnight@workspace:.":
+"openzeppelin-compact@workspace:.":
   version: 0.0.0-use.local
-  resolution: "openzeppelin-midnight@workspace:."
+  resolution: "openzeppelin-compact@workspace:."
   dependencies:
     "@biomejs/biome": "npm:1.9.4"
     "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
