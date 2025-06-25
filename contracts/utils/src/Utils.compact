@@ -15,7 +15,7 @@ module Utils {
    * @notice Midnight's burn address is represented as left<ZswapCoinPublicKey, ContractAddress>(default<ZswapCoinPublicKey>)
    * in Compact, so we've chosen to represent the zero address as this structure as well.
    *
-   * @param {keyOrAddress} - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
    */
   export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
@@ -38,7 +38,11 @@ module Utils {
   }
 
   /**
+<<<<<<< HEAD
    * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey 
+=======
+   * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey
+>>>>>>> 4f20422 (Update fungible token (#125))
    * and a ContractAddress can never be equal
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
@@ -67,6 +71,7 @@ module Utils {
   export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return !keyOrAddress.is_left;
   }
+<<<<<<< HEAD
 
   /**
    * @description A helper function that returns the empty string: ""
@@ -76,4 +81,6 @@ module Utils {
   export pure circuit emptyString(): Opaque<"string"> {
     return default<Opaque<"string">>;
   }
+=======
+>>>>>>> 4f20422 (Update fungible token (#125))
 }
