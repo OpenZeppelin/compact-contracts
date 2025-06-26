@@ -5,12 +5,11 @@
   "packageManager": "yarn@4.1.0",
   "workspaces": [
     "compact/",
-    "contracts/*/",
-    "docs/"
+    "contracts/*/"
   ],
   "scripts": {
-    "docs": "npx turbo run docs --filter=docs",
-    "docs:watch": "npx turbo run docs:watch --filter=docs",
+    "docs": "cd docs && npm i && npm run docs",
+    "docs:watch": "cd docs && npm i && npm run docs:watch",
     "compact": "turbo run compact",
     "build": "turbo run build",
     "test": "turbo run test",
