@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import {
   type CircuitContext,
   type ContractState,
@@ -16,12 +15,6 @@ import {
   InitializableWitnesses,
 } from '../../witnesses/InitializableWitnesses.js';
 import type { IContractSimulator } from '../types/test.js';
-=======
-import { type CircuitContext, type ContractState, QueryContext, sampleContractAddress, constructorContext } from '@midnight-ntwrk/compact-runtime';
-import { Contract as MockInitializable, type Ledger, ledger } from '../../artifacts/MockInitializable/contract/index.cjs';
-import type { IContractSimulator } from '../types/test';
-import { InitializablePrivateState, InitializableWitnesses } from '../../witnesses/InitializableWitnesses';
->>>>>>> b6f5215 (Add pausable (#22))
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -50,13 +43,7 @@ export class InitializableSimulator
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-<<<<<<< HEAD
     } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
-=======
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64))
-    );
->>>>>>> b6f5215 (Add pausable (#22))
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -98,13 +85,9 @@ export class InitializableSimulator
    * @returns None.
    */
   public initialize() {
-<<<<<<< HEAD
     this.circuitContext = this.contract.impureCircuits.initialize(
       this.circuitContext,
     ).context;
-=======
-    this.circuitContext = this.contract.impureCircuits.initialize(this.circuitContext).context;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 
   /**
@@ -113,12 +96,8 @@ export class InitializableSimulator
    * @throws Will throw "Initializable: contract not initialized" if the contract is not initialized.
    */
   public assertInitialized() {
-<<<<<<< HEAD
     return this.contract.impureCircuits.assertInitialized(this.circuitContext)
       .result;
-=======
-    return this.contract.impureCircuits.assertInitialized(this.circuitContext).result;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 
   /**
@@ -127,12 +106,8 @@ export class InitializableSimulator
    * @throws Will throw "Initializable: contract already initialized" if the contract is already initialized.
    */
   public assertNotInitialized() {
-<<<<<<< HEAD
     return this.contract.impureCircuits.assertNotInitialized(
       this.circuitContext,
     ).result;
-=======
-    return this.contract.impureCircuits.assertNotInitialized(this.circuitContext).result;
->>>>>>> b6f5215 (Add pausable (#22))
   }
 }
