@@ -1,7 +1,7 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FungibleTokenSimulator } from './simulators/FungibleTokenSimulator';
-import * as utils from './utils/address';
+import { FungibleTokenSimulator } from './simulators/FungibleTokenSimulator.js';
+import * as utils from './utils/address.js';
 
 // Metadata
 const EMPTY_STRING = '';

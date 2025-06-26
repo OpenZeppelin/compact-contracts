@@ -22,7 +22,8 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class InitializableSimulator
-  implements IContractSimulator<InitializablePrivateState, Ledger> {
+  implements IContractSimulator<InitializablePrivateState, Ledger>
+{
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockInitializable<InitializablePrivateState>;
 

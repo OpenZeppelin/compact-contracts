@@ -18,8 +18,8 @@ import {
 import {
   type FungibleTokenPrivateState,
   FungibleTokenWitnesses,
-} from '../../witnesses/FungibleTokenWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/FungibleTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a FungibleToken contract for testing purposes.
@@ -27,8 +27,7 @@ import type { IContractSimulator } from '../types/test';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class FungibleTokenSimulator
-  implements IContractSimulator<FungibleTokenPrivateState, Ledger>
-{
+  implements IContractSimulator<FungibleTokenPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockFungibleToken<FungibleTokenPrivateState>;
 

@@ -22,7 +22,8 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class PausableSimulator
-  implements IContractSimulator<PausablePrivateState, Ledger> {
+  implements IContractSimulator<PausablePrivateState, Ledger>
+{
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockPausable<PausablePrivateState>;
 

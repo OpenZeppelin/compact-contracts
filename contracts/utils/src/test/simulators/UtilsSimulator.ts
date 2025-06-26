@@ -25,7 +25,8 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class UtilsSimulator
-  implements IContractSimulator<UtilsPrivateState, Ledger> {
+  implements IContractSimulator<UtilsPrivateState, Ledger>
+{
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockUtils<UtilsPrivateState>;
 
@@ -144,6 +145,5 @@ export class UtilsSimulator
    */
   public emptyString(): string {
     return this.contract.circuits.emptyString(this.circuitContext).result;
-
   }
 }
