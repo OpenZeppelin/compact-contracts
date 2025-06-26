@@ -41,7 +41,7 @@ export class NonFungibleTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(name: string, symbol: string) {
+  constructor(name: string, symbol: string, init: boolean) {
     this.contract = new MockNonFungibleToken<NonFungibleTokenPrivateState>(
       NonFungibleTokenWitnesses,
     );
@@ -53,6 +53,7 @@ export class NonFungibleTokenSimulator
       constructorContext({}, '0'.repeat(64)),
       name,
       symbol,
+      init,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -305,34 +306,6 @@ export class NonFungibleTokenSimulator
   ): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits._ownerOf(this.circuitContext, tokenId)
       .result;
-  }
-
-  /**
-   * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
-   * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
-   *
-   * The `auth` argument is optional. If the value passed is non 0, then this function will check that
-   * `auth` is either the owner of the token, or approved to operate on the token (by the owner).
-   *
-   * @param to The intended recipient of the token transfer
-   * @param tokenId The token being transfered
-   * @param auth An account authorized to transfer the token
-   * @return Owner of the token before it was transfered
-   */
-  public _update(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: bigint,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
-    const res = this.contract.impureCircuits._update(
-      this.circuitContext,
-      to,
-      tokenId,
-      auth,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
   }
 
   /**
