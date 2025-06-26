@@ -2,15 +2,25 @@ pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
 
-import "NonFungibleTokenTesting" prefix NonFungibleToken_;
+import "../../NonFungibleToken" prefix NonFungibleToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
+/**
+ * @description `init` is a param for testing.
+ * If `init` is true, initialize the contract with the
+ * _name`, `_symbol`, and `_decimals`.
+ * Otherwise, the contract will not initialize and we can test
+ * the contract when it is not initialized properly.
+*/
 constructor(
   _name: Opaque<"string">,
-  _symbol: Opaque<"string">
+  _symbol: Opaque<"string">,
+  init: Boolean
 ) {
-  NonFungibleToken_initialize(_name, _symbol);
+  if (init) {
+    NonFungibleToken_initialize(_name, _symbol);
+  }
 }
 
 export circuit name(): Opaque<"string"> {
@@ -72,14 +82,6 @@ export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, Con
 
 export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
   return NonFungibleToken__ownerOf(tokenId);
-}
-
-export circuit _update(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>,
-  auth: Either<ZswapCoinPublicKey, ContractAddress>
-): Either<ZswapCoinPublicKey, ContractAddress> {
-  return NonFungibleToken__update(to, tokenId, auth);
 }
 
 export circuit _approve(
