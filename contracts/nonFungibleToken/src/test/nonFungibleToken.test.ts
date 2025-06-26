@@ -1,36 +1,36 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
-import { UninitializedNonFungibleTokenSimulator } from './simulators/UninitializedNonFungibleTokenSimulator.js';
 import {
   ZERO_ADDRESS,
   ZERO_KEY,
   createEitherTestContractAddress,
   createEitherTestUser,
+  toHexPadded,
 } from './utils/address.js';
 
-const SOME_STRING = 'https://openzeppelin.example';
+// Contract Metadata
 const NAME = 'NAME';
 const SYMBOL = 'SYMBOL';
 const EMPTY_STRING = '';
+const INIT = true;
+const BAD_INIT = false;
 
+// Token Metadata
 const TOKENID_1: bigint = BigInt(1);
 const TOKENID_2: bigint = BigInt(2);
 const TOKENID_3: bigint = BigInt(3);
 const NON_EXISTENT_TOKEN: bigint = BigInt(0xdead);
+const SOME_URI = 'https://openzeppelin.example';
+const EMPTY_URI = '';
 const AMOUNT: bigint = BigInt(1);
 
-const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
-  64,
-  '0',
-);
-const SPENDER = String(
-  Buffer.from('SPENDER', 'ascii').toString('hex'),
-).padStart(64, '0');
-const UNAUTHORIZED = String(
-  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
-).padStart(64, '0');
+// Callers
+const OWNER = toHexPadded('OWNER');
+const SPENDER = toHexPadded('SPENDER');
+const UNAUTHORIZED = toHexPadded('UNAUTHORIZED');
 
+// Encoded PK/Addresses
 const Z_OWNER = createEitherTestUser('OWNER');
 const Z_SPENDER = createEitherTestUser('SPENDER');
 const Z_RECIPIENT = createEitherTestUser('RECIPIENT');
@@ -44,27 +44,27 @@ let _caller: CoinPublicKey;
 describe('NonFungibleToken', () => {
   describe('initializer and metadata', () => {
     it('should initialize metadata', () => {
-      token = new NonFungibleTokenSimulator(NAME, SYMBOL);
+      token = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
 
       expect(token.name()).toEqual(NAME);
       expect(token.symbol()).toEqual(SYMBOL);
     });
 
     it('should initialize empty metadata', () => {
-      token = new NonFungibleTokenSimulator(EMPTY_STRING, EMPTY_STRING);
+      token = new NonFungibleTokenSimulator(EMPTY_STRING, EMPTY_STRING, INIT);
 
       expect(token.name()).toEqual(EMPTY_STRING);
       expect(token.symbol()).toEqual(EMPTY_STRING);
     });
 
     it('should initialize metadata with whitespace', () => {
-      token = new NonFungibleTokenSimulator('  NAME  ', '  SYMBOL  ');
+      token = new NonFungibleTokenSimulator('  NAME  ', '  SYMBOL  ', INIT);
       expect(token.name()).toEqual('  NAME  ');
       expect(token.symbol()).toEqual('  SYMBOL  ');
     });
 
     it('should initialize metadata with special characters', () => {
-      token = new NonFungibleTokenSimulator('NAME!@#', 'SYMBOL$%^');
+      token = new NonFungibleTokenSimulator('NAME!@#', 'SYMBOL$%^', INIT);
       expect(token.name()).toEqual('NAME!@#');
       expect(token.symbol()).toEqual('SYMBOL$%^');
     });
@@ -72,14 +72,14 @@ describe('NonFungibleToken', () => {
     it('should initialize metadata with very long strings', () => {
       const longName = 'A'.repeat(1000);
       const longSymbol = 'B'.repeat(1000);
-      token = new NonFungibleTokenSimulator(longName, longSymbol);
+      token = new NonFungibleTokenSimulator(longName, longSymbol, INIT);
       expect(token.name()).toEqual(longName);
       expect(token.symbol()).toEqual(longSymbol);
     });
   });
 
   beforeEach(() => {
-    token = new NonFungibleTokenSimulator(NAME, SYMBOL);
+    token = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
   });
 
   describe('balanceOf', () => {
@@ -177,17 +177,17 @@ describe('NonFungibleToken', () => {
     });
 
     it('should return the empty string for an unset tokenURI', () => {
-      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_STRING);
+      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
     });
 
     it('should return the empty string if tokenURI set as default value', () => {
-      token._setTokenURI(TOKENID_1, EMPTY_STRING);
-      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_STRING);
+      token._setTokenURI(TOKENID_1, EMPTY_URI);
+      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
     });
 
     it('should return some string if tokenURI is set', () => {
-      token._setTokenURI(TOKENID_1, SOME_STRING);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_STRING);
+      token._setTokenURI(TOKENID_1, SOME_URI);
+      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
     });
 
     it('should return very long tokenURI', () => {
@@ -210,9 +210,9 @@ describe('NonFungibleToken', () => {
     });
 
     it('should maintain tokenURI after token transfer', () => {
-      token._setTokenURI(TOKENID_1, SOME_STRING);
+      token._setTokenURI(TOKENID_1, SOME_URI);
       token._transfer(Z_OWNER, Z_RECIPIENT, TOKENID_1);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_STRING);
+      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
     });
   });
 
@@ -592,116 +592,6 @@ describe('NonFungibleToken', () => {
     });
   });
 
-  describe('_update', () => {
-    it('should transfer token and clear approvals', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      token.approve(Z_OTHER, TOKENID_1, _caller);
-      expect(token.getApproved(TOKENID_1)).toEqual(Z_OTHER);
-      const prevOwner = token._update(Z_SPENDER, TOKENID_1, ZERO_KEY);
-
-      expect(prevOwner).toEqual(Z_OWNER);
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
-      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
-      expect(token.balanceOf(Z_SPENDER)).toEqual(1n);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
-    });
-
-    it('should mint a token', () => {
-      const prevOwner = token._update(Z_OWNER, TOKENID_1, ZERO_KEY);
-      expect(prevOwner).toEqual(ZERO_KEY);
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_OWNER);
-      expect(token.balanceOf(Z_OWNER)).toEqual(1n);
-    });
-
-    it('should burn a token', () => {
-      token._mint(Z_OWNER, TOKENID_1);
-      const prevOwner = token._update(ZERO_KEY, TOKENID_1, Z_OWNER);
-      expect(prevOwner).toEqual(Z_OWNER);
-      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
-      expect(token._ownerOf(TOKENID_1)).toEqual(ZERO_KEY);
-    });
-
-    it('should transfer if auth is authorized', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      token.approve(Z_SPENDER, TOKENID_1, _caller);
-      const prevOwner = token._update(Z_SPENDER, TOKENID_1, Z_SPENDER);
-
-      expect(prevOwner).toEqual(Z_OWNER);
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
-      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
-      expect(token.balanceOf(Z_SPENDER)).toEqual(1n);
-    });
-
-    it('should transfer if auth is authorized for all', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      token.setApprovalForAll(Z_SPENDER, true, _caller);
-      const prevOwner = token._update(Z_SPENDER, TOKENID_1, Z_SPENDER);
-
-      expect(prevOwner).toEqual(Z_OWNER);
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
-      expect(token.balanceOf(Z_OWNER)).toEqual(0n);
-      expect(token.balanceOf(Z_SPENDER)).toEqual(1n);
-    });
-
-    it('should throw if auth is not authorized', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      expect(() => {
-        token._update(Z_SPENDER, TOKENID_1, Z_SPENDER);
-      }).toThrow('NonFungibleToken: Insufficient Approval');
-    });
-
-    it('should update multiple tokens in sequence', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      token._mint(Z_OWNER, TOKENID_2);
-      token._mint(Z_OWNER, TOKENID_3);
-      token.approve(Z_SPENDER, TOKENID_1, _caller);
-      token.approve(Z_SPENDER, TOKENID_2, _caller);
-      token.approve(Z_SPENDER, TOKENID_3, _caller);
-
-      token._update(Z_SPENDER, TOKENID_1, Z_SPENDER);
-      token._update(Z_SPENDER, TOKENID_2, Z_SPENDER);
-      token._update(Z_SPENDER, TOKENID_3, Z_SPENDER);
-
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
-      expect(token.ownerOf(TOKENID_2)).toEqual(Z_SPENDER);
-      expect(token.ownerOf(TOKENID_3)).toEqual(Z_SPENDER);
-    });
-
-    it('should update with very long token IDs', () => {
-      _caller = OWNER;
-      const longTokenId = BigInt('18446744073709551615');
-      token._mint(Z_OWNER, longTokenId);
-      token.approve(Z_SPENDER, longTokenId, _caller);
-      token._update(Z_SPENDER, longTokenId, Z_SPENDER);
-      expect(token.ownerOf(longTokenId)).toEqual(Z_SPENDER);
-    });
-
-    it('should update after multiple transfers', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      token._transfer(Z_OWNER, Z_SPENDER, TOKENID_1);
-      _caller = SPENDER;
-      token.approve(Z_OTHER, TOKENID_1, _caller);
-      token._update(Z_OTHER, TOKENID_1, Z_OTHER);
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_OTHER);
-    });
-
-    it('should update after multiple burns', () => {
-      _caller = OWNER;
-      token._mint(Z_OWNER, TOKENID_1);
-      token._burn(TOKENID_1);
-      token._mint(Z_OWNER, TOKENID_1);
-      token.approve(Z_SPENDER, TOKENID_1, _caller);
-      token._update(Z_SPENDER, TOKENID_1, Z_SPENDER);
-      expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
-    });
-  });
-
   describe('_approve', () => {
     it('should approve if auth is owner', () => {
       token._mint(Z_OWNER, TOKENID_1);
@@ -1004,14 +894,14 @@ describe('NonFungibleToken', () => {
   describe('_setTokenURI', () => {
     it('should throw if token does not exist', () => {
       expect(() => {
-        token._setTokenURI(NON_EXISTENT_TOKEN, EMPTY_STRING);
+        token._setTokenURI(NON_EXISTENT_TOKEN, EMPTY_URI);
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
     it('should set tokenURI', () => {
       token._mint(Z_OWNER, TOKENID_1);
-      token._setTokenURI(TOKENID_1, SOME_STRING);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_STRING);
+      token._setTokenURI(TOKENID_1, SOME_URI);
+      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
     });
   });
 
@@ -1198,7 +1088,7 @@ describe('NonFungibleToken', () => {
 });
 
 type FailingCircuits = [
-  method: keyof UninitializedNonFungibleTokenSimulator,
+  method: keyof NonFungibleTokenSimulator,
   args: unknown[],
 ]; // Circuit calls should fail before the args are used
 
@@ -1215,7 +1105,6 @@ const circuitsToFail: FailingCircuits[] = [
   ['transferFrom', [Z_OWNER, Z_RECIPIENT, TOKENID_1]],
   ['_requireOwned', [TOKENID_1]],
   ['_ownerOf', [TOKENID_1]],
-  ['_update', [Z_SPENDER, TOKENID_1, Z_OWNER]],
   ['_approve', [Z_OWNER, TOKENID_1, Z_SPENDER]],
   ['_checkAuthorized', [Z_OWNER, Z_SPENDER, TOKENID_1]],
   ['_isAuthorized', [Z_OWNER, Z_SPENDER, TOKENID_1]],
@@ -1230,11 +1119,11 @@ const circuitsToFail: FailingCircuits[] = [
   ['_unsafeMint', [Z_OWNER, TOKENID_1]],
 ];
 
-let uninitializedToken: UninitializedNonFungibleTokenSimulator;
+let uninitializedToken: NonFungibleTokenSimulator;
 
 describe('Uninitialized NonFungibleToken', () => {
   beforeEach(() => {
-    uninitializedToken = new UninitializedNonFungibleTokenSimulator();
+    uninitializedToken = new NonFungibleTokenSimulator(NAME, SYMBOL, BAD_INIT);
   });
 
   it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
