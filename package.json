@@ -5,7 +5,8 @@
   "packageManager": "yarn@4.1.0",
   "workspaces": [
     "compact/",
-    "contracts/*/"
+    "contracts/*/",
+    "docs/"
   ],
   "scripts": {
     "docs": "cd docs && npm i && npm run docs",
