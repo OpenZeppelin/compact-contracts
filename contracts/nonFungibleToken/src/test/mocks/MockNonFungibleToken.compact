@@ -8,10 +8,9 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 /**
  * @description `init` is a param for testing.
- * If `init` is true, initialize the contract with the
- * _name`, `_symbol`, and `_decimals`.
- * Otherwise, the contract will not initialize and we can test
- * the contract when it is not initialized properly.
+ * If `init` is true, initialize the contract with `_name` and `_symbol`.
+ * Otherwise, the contract will not initialize and we can test the
+ * contract when it is not initialized properly.
 */
 constructor(
   _name: Opaque<"string">,
