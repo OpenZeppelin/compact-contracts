@@ -1,2 +1,8 @@
 * xref:index.adoc[Overview]
-* xref:extensibility.adoc[Extensibility]
+
+* Learn
+** xref:extensibility.adoc[Extensibility]
+
+* Modules
+** xref:fungibleToken.adoc[FungibleToken]
+*** xref:/api/fungibleToken.adoc[API Reference]
