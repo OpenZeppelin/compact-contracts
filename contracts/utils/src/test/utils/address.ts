@@ -3,20 +3,20 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import type * as Compact from '../../artifacts/MockUtils/contract/index.cjs';
+import type * as Compact from '../../artifacts/MockNonFungibleToken/contract/index.cjs';
 
 const PREFIX_ADDRESS = '0200';
 
-export const pad = (s: string, n: number): Uint8Array => {
-  const encoder = new TextEncoder();
-  const utf8Bytes = encoder.encode(s);
-  if (n < utf8Bytes.length) {
-    throw new Error(`The padded length n must be at least ${utf8Bytes.length}`);
-  }
-  const paddedArray = new Uint8Array(n);
-  paddedArray.set(utf8Bytes);
-  return paddedArray;
-};
+/**
+ * @description Converts an ASCII string to its hexadecimal representation,
+ * left-padded with zeros to a specified length. Useful for generating
+ * fixed-size hex strings for encoding.
+ * @param str ASCII string to convert.
+ * @param len Total desired length of the resulting hex string. Defaults to 64.
+ * @returns Hexadecimal string representation of `str`, padded to `length` characters.
+ */
+export const toHexPadded = (str: string, len = 64) =>
+  Buffer.from(str, 'ascii').toString('hex').padStart(len, '0');
 
 /**
  * @description Generates ZswapCoinPublicKey from `str` for testing purposes.

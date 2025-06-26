@@ -22,6 +22,9 @@
   "scripts": {
     "build": "tsc -p .",
     "types": "tsc -p tsconfig.json --noEmit",
+    "fmt-and-lint": "biome check . --changed",
+    "fmt-and-lint:fix": "biome check . --changed --fix",
+    "fmt-and-lint:ci": "biome ci --changed --no-errors-on-unmatched",
     "clean": "git clean -fXd"
   },
   "devDependencies": {

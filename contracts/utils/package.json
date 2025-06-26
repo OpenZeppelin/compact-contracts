@@ -18,12 +18,16 @@
     "build": "compact-builder && tsc",
     "test": "vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
+    "fmt-and-lint": "biome check . --changed",
+    "fmt-and-lint:fix": "biome check . --changed --fix",
+    "fmt-and-lint:ci": "biome ci --changed --no-errors-on-unmatched",
     "clean": "git clean -fXd"
   },
   "dependencies": {
-    "@openzeppelin-midnight-contracts/utils-contract": "workspace:^"
+    "@openzeppelin-midnight/compact": "workspace:^"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/node": "22.14.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
