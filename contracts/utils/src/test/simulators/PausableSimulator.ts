@@ -42,7 +42,6 @@ export class PausableSimulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
-
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -92,7 +91,9 @@ export class PausableSimulator
    * @returns None.
    */
   public assertPaused() {
-    this.circuitContext = this.contract.impureCircuits.assertPaused(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.assertPaused(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -100,7 +101,9 @@ export class PausableSimulator
    * @returns None.
    */
   public assertNotPaused() {
-    this.circuitContext = this.contract.impureCircuits.assertNotPaused(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.assertNotPaused(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -108,7 +111,9 @@ export class PausableSimulator
    * @returns None.
    */
   public pause() {
-    this.circuitContext = this.contract.impureCircuits.pause(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.pause(
+      this.circuitContext,
+    ).context;
   }
 
   /**
@@ -116,6 +121,8 @@ export class PausableSimulator
    * @returns None.
    */
   public unpause() {
-    this.circuitContext = this.contract.impureCircuits.unpause(this.circuitContext).context;
+    this.circuitContext = this.contract.impureCircuits.unpause(
+      this.circuitContext,
+    ).context;
   }
 }

@@ -8,7 +8,6 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import type { IContractSimulator } from '../types/test.js';
 
-
 /**
  * Constructs a `CircuitContext` from the given state and sender information.
  *
