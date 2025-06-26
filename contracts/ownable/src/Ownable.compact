@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.15.0;
+
+/**
+ * @module Ownable
+ * @description An unshielded Ownable library.
+ *
+ */
+module Ownable {
+  import CompactStandardLibrary;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
+
+  export ledger _owner: Either<ZswapCoinPublicKey, ContractAddress>;
+  export ledger _pendingOwner: Either<ZswapCoinPublicKey, ContractAddress>;
+
+  /**
+   * @description An unshielded Ownable2Step library.
+   *
+   */
+  export circuit initialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assert !Utils_isKeyOrAddressZero(initialOwner) "Ownable: invalid owner";
+    _transferOwnership(initialOwner);
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return _owner;
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit pendingOwner(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return _pendingOwner;
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit assertOnlyOwner(): [] {
+    const caller = own_public_key();
+    assert caller == _owner.left "Ownable: caller is not the owner";
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit acceptOwnership(): [] {
+    const caller = own_public_key();
+    const pendingOwner = _pendingOwner;
+    assert caller == pendingOwner.left "Ownable: not pending owner";
+    _transferOwnership(pendingOwner);
+  }
+
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assertOnlyOwner();
+    _proposeOwner(newOwner);
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit renounceOwnership(): [] {
+    assertOnlyOwner();
+    _transferOwnership(burn_address());
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    _pendingOwner = burn_address();
+    _owner = newOwner;
+  }
+
+  /**
+   * @description An unshielded Ownable library.
+   *
+   */
+  export circuit _proposeOwner(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    const previousOwner = _owner;
+    _pendingOwner.write(newOwner);
+  }
+}
