@@ -13,8 +13,8 @@ import {
 import {
   type InitializablePrivateState,
   InitializableWitnesses,
-} from '../../witnesses/InitializableWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/InitializableWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -22,8 +22,7 @@ import type { IContractSimulator } from '../types/test';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class InitializableSimulator
-  implements IContractSimulator<InitializablePrivateState, Ledger>
-{
+  implements IContractSimulator<InitializablePrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockInitializable<InitializablePrivateState>;
 

@@ -1,13 +1,17 @@
 {
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts"
+  ],
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
-    "lib": ["ESNext"],
+    "lib": [
+      "ES2022"
+    ],
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,

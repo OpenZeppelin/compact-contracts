@@ -13,8 +13,8 @@ import {
 import {
   type PausablePrivateState,
   PausableWitnesses,
-} from '../../witnesses/PausableWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/PausableWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -22,8 +22,7 @@ import type { IContractSimulator } from '../types/test';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class PausableSimulator
-  implements IContractSimulator<PausablePrivateState, Ledger>
-{
+  implements IContractSimulator<PausablePrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockPausable<PausablePrivateState>;
 
