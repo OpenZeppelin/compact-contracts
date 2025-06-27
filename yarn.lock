@@ -416,9 +416,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-midnight/multi-token@workspace:contracts/multitoken":
+"@openzeppelin-midnight/multi-token@workspace:contracts/multiToken":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-midnight/multi-token@workspace:contracts/multitoken"
+  resolution: "@openzeppelin-midnight/multi-token@workspace:contracts/multiToken"
   dependencies:
     "@openzeppelin-midnight/compact": "workspace:^"
     "@types/node": "npm:22.14.0"
