@@ -4,6 +4,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { OwnablePKSimulator } from './simulators/OwnablePKSimulator';
 import * as utils from './utils/address';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
   64,
