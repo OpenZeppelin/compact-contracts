@@ -15,7 +15,7 @@ module Ownable {
   export ledger _pendingOwner: Either<ZswapCoinPublicKey, ContractAddress>;
 
   /**
-   * @description An unshielded Ownable2Step library.
+   * @description Add me...
    *
    */
   export circuit initialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
@@ -24,7 +24,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -32,7 +32,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit pendingOwner(): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -40,7 +40,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit assertOnlyOwner(): [] {
@@ -49,7 +49,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit acceptOwnership(): [] {
@@ -61,7 +61,7 @@ module Ownable {
 
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
@@ -70,7 +70,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit renounceOwnership(): [] {
@@ -79,7 +79,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
@@ -88,7 +88,7 @@ module Ownable {
   }
 
   /**
-   * @description An unshielded Ownable library.
+   * @description Add me...
    *
    */
   export circuit _proposeOwner(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
