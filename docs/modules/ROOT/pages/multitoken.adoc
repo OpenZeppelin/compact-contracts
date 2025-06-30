@@ -1,4 +1,5 @@
 :eip-1155: https://eips.ethereum.org/EIPS/eip-1155[EIP-1155]
+:erc165: https://eips.ethereum.org/EIPS/eip-165[ERC165]
 
 = MultiToken
 
@@ -13,8 +14,7 @@ and Compact language constraints.
 
 **Notable changes**
 
-- **Uint<128> as value type** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
-It's currently possible to go up to 222 bits; however, 128 bits is easier on integrations and conversions.
+- **Uint<128> as value and id type** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
 
 **Features and specifications NOT supported**
 
@@ -22,17 +22,45 @@ It's currently possible to go up to 222 bits; however, 128 bits is easier on int
 - **Uint256 type** - There's ongoing research on ways to support uint256 in the future.
 - **Interface** - Compact currently does not have a way to define a contract interface.
 This library offers modules of contracts with free floating circuits; nevertheless, there's no means of enforcing that all circuits are provided.
+- **Batch mint, burn, transfer** - Without support for dynamic arrays, batching transfers is difficult to do without a hacky solution.
+For instance, we could change the `to` and `from` parameters to be vectors.
+This would change the signature and would be both difficult to use and easy to misuse.
+- **Querying batched balances** - This can be somewhat supported.
+The issue, without dynamic arrays, is that the module circuit must use Vector<n> for accounts and ids;
+therefore, the implementing contract must explicitly define the number of balances to query in the circuit i.e.
+
+> ```ts
+> balanceOfBatch_10(
+>    accounts: Vector<10, Either<ZswapCoinPublicKey, ContractAddress>>,
+>    ids: Vector<10, Uint<128>>
+> ): Vector<10, Uint<128>>
+> ```
+> Since this module does not offer mint or transfer batching, balance batching is also not included at this time.
+
+- **Introspection** - Compact currently cannot support contract-to-contract queries for introspection.
+{erc165} (or an equivalent thereof) is NOT included in the contract.
+- **Safe transfers** - The lack of an introspection mechanism means safe transfers of any kind can not be supported.
+
+== Contract-to-contract calls
+
+Contract-to-contract calls are currently not supported in the Compact language.
+Due to this limitation, the current iteration of MultiToken disallows transfers and mints to the `ContractAddress` type.
+Transferring tokens to a contract may result in those tokens being locked forever.
+The MultiToken module, however, does provide `unsafe` circuit variants for users who wish to experiment with sending tokens to contracts.
+
+WARNING: The `unsafe` circuits will eventually be deprecated after Compact supports contract-to-contract calls—meaning
+`transferFrom`, `_mint`, etc. are planned to eventually allow the recipients to be of the `ContractAddress` type.
 
 == Usage
 
 Import the MultiToken module into the implementing contract.
-It's recommended to prefix the module with `MultiToken_` to avoid ccircuit signature clashes.
+It's recommended to prefix the module with `MultiToken_` to avoid circuit signature clashes.
 
 ```typescript
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import openzeppelin-midnight/multi-token prefix MultiToken_;
+import openzeppelin-compact/multi-token prefix MultiToken_;
 
 constructor(
   uri: Opaque<"string">,
