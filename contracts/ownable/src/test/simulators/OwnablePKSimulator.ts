@@ -195,7 +195,6 @@ export class OwnablePKSimulator
     ).result;
   }
 
-
   /**
    * @description Internal circuit that transfers ownership of the contract to `newOwner`.
    */
