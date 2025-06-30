@@ -12,7 +12,7 @@ TIP: For an overview of the module, read the {multiToken-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "openzeppelin-midnight/multi-token" prefix MultiToken_;
+import "openzeppelin-compact/multi-token" prefix MultiToken_;
 ```
 
 [.contract]
