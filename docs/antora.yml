@@ -1,0 +1,8 @@
+name: contracts-midnight
+title: Contracts for Midnight
+version: 0.0.1
+nav:
+  - modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    page-sidebar-collapse-default: false
