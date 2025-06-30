@@ -89,7 +89,6 @@ jobs:
             echo "⚙️ Running Compact compilation..."
             if ! output=$(turbo compact --concurrency=1 2>&1); then
               echo "❌ Compilation failed."
-
               if echo "$output" | grep -q "Hash mismatch" && [ -d "$HOME/.cache/midnight/zk-params" ]; then
                 echo "⚠️ Hash mismatch detected *and* zk-params exists. Removing cache..."
                 rm -rf "$HOME/.cache/midnight/zk-params"
