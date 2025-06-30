@@ -16,7 +16,6 @@ and Compact language constraints.
 **Notable changes**
 
 - **Uint<128> as value type** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
-It's currently possible to go up to 222 bits; however, 128 bits is easier on integrations and conversions.
 
 **Features and specifications NOT supported**
 
@@ -45,7 +44,7 @@ It's recommended to prefix the module with `FungibleToken_` to avoid ccircuit si
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import openzeppelin-midnight/fungible-token prefix FungibleToken_;
+import openzeppelin-compact/fungible-token prefix FungibleToken_;
 
 constructor(
   name: Opaque<"string">,

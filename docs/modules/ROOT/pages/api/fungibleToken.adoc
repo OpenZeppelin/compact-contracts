@@ -11,7 +11,7 @@ TIP: For an overview of the module, read the {fungible-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "openzeppelin-midnight/fungible-token" prefix FungibleToken_;
+import "openzeppelin-compact/fungible-token" prefix FungibleToken_;
 ```
 
 [.contract]
