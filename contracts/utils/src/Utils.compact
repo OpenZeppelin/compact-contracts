@@ -67,4 +67,13 @@ module Utils {
   export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return !keyOrAddress.is_left;
   }
+
+  /**
+   * @description A helper function that returns the empty string: ""
+   *
+   * @return {Opaque<"string">} - The empty string: ""
+   */
+  export pure circuit emptyString(): Opaque<"string"> {
+    return default<Opaque<"string">>;
+  }
 }
