@@ -19,6 +19,15 @@ module Ownable {
    *
    */
   export circuit initialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assert !Utils_isContractAddress(initialOwner) "Ownable: unsafe initial owner";
+    _unsafeInitialize(initialOwner);
+  }
+
+  /**
+   * @description Add me...
+   *
+   */
+  export circuit _unsafeInitialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     assert !Utils_isKeyOrAddressZero(initialOwner) "Ownable: invalid owner";
     _transferOwnership(initialOwner);
   }
@@ -52,21 +61,20 @@ module Ownable {
    * @description Add me...
    *
    */
-  export circuit acceptOwnership(): [] {
-    const caller = own_public_key();
-    const pendingOwner = _pendingOwner;
-    assert caller == pendingOwner.left "Ownable: not pending owner";
-    _transferOwnership(pendingOwner);
+  export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assertOnlyOwner();
+    _proposeOwner(newOwner);
   }
-
 
   /**
    * @description Add me...
    *
    */
-  export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assertOnlyOwner();
-    _proposeOwner(newOwner);
+  export circuit acceptOwnership(): [] {
+    const caller = own_public_key();
+    const pendingOwner = _pendingOwner;
+    assert caller == pendingOwner.left "Ownable: not pending owner";
+    _transferOwnership(pendingOwner);
   }
 
   /**
@@ -92,7 +100,6 @@ module Ownable {
    *
    */
   export circuit _proposeOwner(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    const previousOwner = _owner;
     _pendingOwner.write(newOwner);
   }
 }

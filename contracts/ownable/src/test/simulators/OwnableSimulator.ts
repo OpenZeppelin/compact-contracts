@@ -41,7 +41,7 @@ export class OwnableSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>) {
+  constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isUnsafeOwner: boolean) {
     this.contract = new MockOwnable<OwnablePrivateState>(
       OwnableWitnesses,
     );
@@ -52,6 +52,7 @@ export class OwnableSimulator
     } = this.contract.initialState(
       constructorContext({}, '0'.repeat(64)),
       initialOwner,
+      isUnsafeOwner
     );
     this.circuitContext = {
       currentPrivateState,
@@ -124,24 +125,6 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the value of tokens in existence.
-   * @returns The total supply of tokens.
-   */
-  public acceptOwnership(sender?: CoinPublicKey) {
-    const res = this.contract.impureCircuits.acceptOwnership(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
-  }
-
-  /**
    * @description Returns the value of tokens owned by `account`.
    * @param account The public key or contract address to query.
    * @returns The account's token balance.
@@ -158,6 +141,24 @@ export class OwnableSimulator
           : this.circuitContext.currentZswapLocalState,
       },
       newOwner
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
+   * @description Returns the value of tokens in existence.
+   * @returns The total supply of tokens.
+   */
+  public acceptOwnership(sender?: CoinPublicKey) {
+    const res = this.contract.impureCircuits.acceptOwnership(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
     );
 
     this.circuitContext = res.context;
@@ -197,6 +198,31 @@ export class OwnableSimulator
     sender?: CoinPublicKey,
   ) {
     const res = this.contract.impureCircuits._transferOwnership(
+      {
+        ...this.circuitContext,
+        currentZswapLocalState: sender
+          ? emptyZswapLocalState(sender)
+          : this.circuitContext.currentZswapLocalState,
+      },
+      newOwner
+    );
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
+   * @description Moves a `value` amount of tokens from the caller's account to `to`.
+   * @param to The recipient of the transfer, either a user or a contract.
+   * @param value The amount to transfer.
+   * @param sender The simulated caller.
+   * @returns As per the IERC20 spec, this MUST return true.
+   */
+  public _proposeOwner(
+    newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+    sender?: CoinPublicKey,
+  ) {
+    const res = this.contract.impureCircuits._proposeOwner(
       {
         ...this.circuitContext,
         currentZswapLocalState: sender

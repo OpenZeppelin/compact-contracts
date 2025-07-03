@@ -8,8 +8,19 @@ import "../../Ownable" prefix Ownable_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
-constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>) {
-  Ownable_initialize(initialOwner);
+/**
+ * @description `isUnsafeOwner` is a param for testing.
+ * If `isUnsafeOwner` is true, the initial owner may be a
+ * ContractAddress type through invoking `_unsafeInitialize`.
+ * Otherwise, the contract call regular `initialize` which
+ * disallows ownership to contract addresses.
+*/
+constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isUnsafeOwner: Boolean) {
+  if (isUnsafeOwner) {
+    Ownable__unsafeInitialize(initialOwner);
+  } else {
+    Ownable_initialize(initialOwner);
+  }
 }
 
 export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -24,12 +35,12 @@ export circuit assertOnlyOwner(): [] {
   return Ownable_assertOnlyOwner();
 }
 
-export circuit acceptOwnership(): [] {
-  return Ownable_acceptOwnership();
-}
-
 export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   return Ownable_transferOwnership(newOwner);
+}
+
+export circuit acceptOwnership(): [] {
+  return Ownable_acceptOwnership();
 }
 
 export circuit renounceOwnership(): [] {
