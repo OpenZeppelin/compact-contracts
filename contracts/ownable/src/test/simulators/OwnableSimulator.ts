@@ -41,10 +41,12 @@ export class OwnableSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isUnsafeOwner: boolean, isInit: boolean) {
-    this.contract = new MockOwnable<OwnablePrivateState>(
-      OwnableWitnesses,
-    );
+  constructor(
+    initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+    isUnsafeOwner: boolean,
+    isInit: boolean,
+  ) {
+    this.contract = new MockOwnable<OwnablePrivateState>(OwnableWitnesses);
     const {
       currentPrivateState,
       currentContractState,
@@ -53,7 +55,7 @@ export class OwnableSimulator
       constructorContext({}, '0'.repeat(64)),
       initialOwner,
       isUnsafeOwner,
-      isInit
+      isInit,
     );
     this.circuitContext = {
       currentPrivateState,
@@ -104,14 +106,12 @@ export class OwnableSimulator
    * @returns The account's token balance.
    */
   public assertOnlyOwner(sender?: CoinPublicKey) {
-    const res = this.contract.impureCircuits.assertOnlyOwner(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-    );
+    const res = this.contract.impureCircuits.assertOnlyOwner({
+      ...this.circuitContext,
+      currentZswapLocalState: sender
+        ? emptyZswapLocalState(sender)
+        : this.circuitContext.currentZswapLocalState,
+    });
 
     this.circuitContext = res.context;
     return res.result;
@@ -124,7 +124,7 @@ export class OwnableSimulator
    */
   public transferOwnership(
     newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ) {
     const res = this.contract.impureCircuits.transferOwnership(
       {
@@ -133,7 +133,7 @@ export class OwnableSimulator
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
       },
-      newOwner
+      newOwner,
     );
 
     this.circuitContext = res.context;
@@ -147,7 +147,7 @@ export class OwnableSimulator
    */
   public _unsafeTransferOwnership(
     newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
-    sender?: CoinPublicKey
+    sender?: CoinPublicKey,
   ) {
     const res = this.contract.impureCircuits._unsafeTransferOwnership(
       {
@@ -156,7 +156,7 @@ export class OwnableSimulator
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
       },
-      newOwner
+      newOwner,
     );
 
     this.circuitContext = res.context;
@@ -171,14 +171,12 @@ export class OwnableSimulator
    * @returns The `spender`'s allowance over `owner`'s tokens.
    */
   public renounceOwnership(sender?: CoinPublicKey) {
-    const res = this.contract.impureCircuits.renounceOwnership(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-    );
+    const res = this.contract.impureCircuits.renounceOwnership({
+      ...this.circuitContext,
+      currentZswapLocalState: sender
+        ? emptyZswapLocalState(sender)
+        : this.circuitContext.currentZswapLocalState,
+    });
 
     this.circuitContext = res.context;
     return res.result;
@@ -202,7 +200,7 @@ export class OwnableSimulator
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
       },
-      newOwner
+      newOwner,
     );
 
     this.circuitContext = res.context;
@@ -227,7 +225,7 @@ export class OwnableSimulator
           ? emptyZswapLocalState(sender)
           : this.circuitContext.currentZswapLocalState,
       },
-      newOwner
+      newOwner,
     );
 
     this.circuitContext = res.context;
