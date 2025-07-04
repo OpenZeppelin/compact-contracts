@@ -10,9 +10,9 @@ pragma language_version >= 0.15.0;
 module Ownable {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-midnight/utils/src/Utils" prefix Utils_;
+  import "../../node_modules/@openzeppelin-midnight/utils/src/Initializable" prefix Initializable_;
 
   export ledger _owner: Either<ZswapCoinPublicKey, ContractAddress>;
-  export ledger _pendingOwner: Either<ZswapCoinPublicKey, ContractAddress>;
 
   /**
    * @description Add me...
@@ -28,8 +28,8 @@ module Ownable {
    *
    */
   export circuit _unsafeInitialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert !Utils_isKeyOrAddressZero(initialOwner) "Ownable: invalid owner";
-    _transferOwnership(initialOwner);
+    Initializable_initialize();
+    _unsafeTransferOwnership(initialOwner);
   }
 
   /**
@@ -37,6 +37,7 @@ module Ownable {
    *
    */
   export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+    Initializable_assertInitialized();
     return _owner;
   }
 
@@ -44,15 +45,8 @@ module Ownable {
    * @description Add me...
    *
    */
-  export circuit pendingOwner(): Either<ZswapCoinPublicKey, ContractAddress> {
-    return _pendingOwner;
-  }
-
-  /**
-   * @description Add me...
-   *
-   */
   export circuit assertOnlyOwner(): [] {
+    Initializable_assertInitialized();
     const caller = own_public_key();
     assert caller == _owner.left "Ownable: caller is not the owner";
   }
@@ -62,19 +56,20 @@ module Ownable {
    *
    */
   export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assertOnlyOwner();
-    _proposeOwner(newOwner);
+    Initializable_assertInitialized();
+    assert !Utils_isContractAddress(newOwner) "Ownable: unsafe ownership transfer";
+    _unsafeTransferOwnership(newOwner);
   }
 
   /**
    * @description Add me...
    *
    */
-  export circuit acceptOwnership(): [] {
-    const caller = own_public_key();
-    const pendingOwner = _pendingOwner;
-    assert caller == pendingOwner.left "Ownable: not pending owner";
-    _transferOwnership(pendingOwner);
+  export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    Initializable_assertInitialized();
+    assertOnlyOwner();
+    assert !Utils_isKeyOrAddressZero(newOwner) "Ownable: invalid new owner";
+    _unsafeUncheckedTransferOwnership(newOwner);
   }
 
   /**
@@ -82,6 +77,7 @@ module Ownable {
    *
    */
   export circuit renounceOwnership(): [] {
+    Initializable_assertInitialized();
     assertOnlyOwner();
     _transferOwnership(burn_address());
   }
@@ -91,15 +87,17 @@ module Ownable {
    *
    */
   export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    _pendingOwner = burn_address();
-    _owner = newOwner;
+    Initializable_assertInitialized();
+    assert !Utils_isContractAddress(newOwner) "Ownable: unsafe ownership transfer";
+    _unsafeUncheckedTransferOwnership(newOwner);
   }
 
   /**
    * @description Add me...
    *
    */
-  export circuit _proposeOwner(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    _pendingOwner.write(newOwner);
+  export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    Initializable_assertInitialized();
+    _owner = newOwner;
   }
 }

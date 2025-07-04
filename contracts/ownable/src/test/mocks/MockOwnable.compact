@@ -9,26 +9,29 @@ import "../../Ownable" prefix Ownable_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 /**
- * @description `isUnsafeOwner` is a param for testing.
+ * @description `isUnsafeOwner` and `isInit` are params for testing.
+ *
  * If `isUnsafeOwner` is true, the initial owner may be a
  * ContractAddress type through invoking `_unsafeInitialize`.
- * Otherwise, the contract call regular `initialize` which
+ * Otherwise, the contract will call regular `initialize` which
  * disallows ownership to contract addresses.
+ *
+ * If `isInit` is false, the constructor will not initialize the contract.
+ * This behavior is to test that circuits are not callable unless the
+ * contract is initialized.
 */
-constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isUnsafeOwner: Boolean) {
-  if (isUnsafeOwner) {
-    Ownable__unsafeInitialize(initialOwner);
-  } else {
-    Ownable_initialize(initialOwner);
+constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isUnsafeOwner: Boolean, isInit: Boolean) {
+  if (isInit) {
+    if (isUnsafeOwner) {
+      Ownable__unsafeInitialize(initialOwner);
+    } else {
+      Ownable_initialize(initialOwner);
+    }
   }
 }
 
 export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
   return Ownable_owner();
-}
-
-export circuit pendingOwner(): Either<ZswapCoinPublicKey, ContractAddress> {
-  return Ownable_pendingOwner();
 }
 
 export circuit assertOnlyOwner(): [] {
@@ -39,8 +42,8 @@ export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAd
   return Ownable_transferOwnership(newOwner);
 }
 
-export circuit acceptOwnership(): [] {
-  return Ownable_acceptOwnership();
+export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  return Ownable__unsafeTransferOwnership(newOwner);
 }
 
 export circuit renounceOwnership(): [] {
@@ -51,6 +54,6 @@ export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractA
   return Ownable__transferOwnership(newOwner);
 }
 
-export circuit _proposeOwner(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-  return Ownable__proposeOwner(newOwner);
+export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  return Ownable__unsafeUncheckedTransferOwnership(newOwner);
 }
