@@ -81,7 +81,7 @@ module Ownable {
   }
 
   /**
-   * @description Returns public key or contract address of the current owner.
+   * @description Returns the current contract owner.
    *
    * Requirements:
    *
