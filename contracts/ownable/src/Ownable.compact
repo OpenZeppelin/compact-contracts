@@ -95,7 +95,7 @@ module Ownable {
   }
 
   /**
-   * @description Transfers ownership of the contract to a owner.
+   * @description Transfers ownership of the contract to `newOwner`.
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
@@ -177,7 +177,7 @@ module Ownable {
   }
 
   /**
-   * @description Transfers ownership of the contract to a new owner without
+   * @description Transfers ownership of the contract to `newOwner` without
    * enforcing permission checks on the caller.
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
