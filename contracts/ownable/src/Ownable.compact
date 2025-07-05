@@ -22,9 +22,10 @@ pragma language_version >= 0.15.0;
  *
  * @notice This module does offer experimental circuits that allow ownership to be granted
  * to contract addresses (`_unsafeTransferOwnshiper` and `_unsafeUncheckedTransferOwnership`).
- * Note that the circuit names are very explicit ("unsafe").
- * Transferring ownership to a contract address is the equivalent to renouncing ownership up until
- * contract-to-contract calls are supported.
+ * Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
+ * Until contract-to-contract calls are supported,
+ * there is no direct way for a contract to call circuits of other contracts
+ * or transfer ownership back to a user.
  *
  * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
  * are supported.
