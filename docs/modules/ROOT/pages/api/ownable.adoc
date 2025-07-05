@@ -24,7 +24,6 @@ import "openzeppelin-compact/ownable" prefix Ownable_;
 
 [.sub-index#OwnableModule]
 * xref:#Ownable-initialize[`++initialize(initialOwner)++`]
-* xref:#Ownable-_unsafeInitialize[`++_unsafeInitialize(initialOwner)++`]
 * xref:#Ownable-owner[`++owner()++`]
 * xref:#Ownable-transferOwnership[`++transferOwnership(newOwner)++`]
 * xref:#Ownable-_unsafeTransferOwnership[`++_unsafeTransferOwnership(newOwner)++`]
@@ -39,32 +38,12 @@ import "openzeppelin-compact/ownable" prefix Ownable_;
 ==== `[.contract-item-name]#++initialize++#++(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
 
 Initializes the contract by setting the `initialOwner`.
-
-WARNING: Contracts must only use either <<Ownable-initialize,initialize>> or <<Ownable-_unsafeInitialize,_unsafeInitialize>>—never both.
-<<Ownable-_unsafeInitialize,_unsafeInitialize>> allows the initial owner to be a ContractAddress type.
-Contract-to-contract calls are currently not supported; therefore,
-contracts have no way of calling a protected circuit.
+This must be called in the contract's constructor.
 
 Requirements:
 
 - Contract is not already initialized.
 - `initialOwner` is not a ContractAddress.
-- `initialOwner` is not the zero address.
-
-[.contract-item]
-[[Ownable-_unsafeInitialize]]
-==== `[.contract-item-name]#++_unsafeInitialize++#++(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
-
-Initializes the contract by setting the `initialOwner`.
-
-WARNING: Contracts must only use either `initialize` or `_unsafeInitialize`—never both.
-`_unsafeInitialize` allows the initial owner to be a ContractAddress type.
-Contract-to-contract calls are currently not supported; therefore,
-contracts have no way of calling a protected circuit.
-
-Requirements:
-
-- Contract is not already initialized.
 - `initialOwner` is not the zero address.
 
 [.contract-item]
