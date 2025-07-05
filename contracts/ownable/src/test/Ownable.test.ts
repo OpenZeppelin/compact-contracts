@@ -16,33 +16,41 @@ const Z_OWNER_CONTRACT =
 const Z_RECIPIENT_CONTRACT =
   utils.createEitherTestContractAddress('RECIPIENT_CONTRACT');
 
-const unsafeOwnerInit = true;
-const ownerInit = false;
 const isInit = true;
 const isBadInit = false;
 
 let ownable: OwnableSimulator;
 let caller: CoinPublicKey;
 
-const ownerTypes = [
-  ['contract', Z_OWNER_CONTRACT],
-  ['pubkey', Z_OWNER],
-] as const;
-
 const newOwnerTypes = [
   ['contract', Z_OWNER_CONTRACT],
   ['pubkey', Z_NEW_OWNER],
 ] as const;
 
+const zeroTypes = [
+  ['contract', utils.ZERO_ADDRESS],
+  ['pubkey', utils.ZERO_KEY],
+] as const;
+
 describe('Ownable', () => {
   describe('before initialized', () => {
-    describe.each(ownerTypes)(
-      'unsafe initialization when the owner is a %s',
-      (_, _owner) => {
-        it('should initialize', () => {
-          ownable = new OwnableSimulator(_owner, unsafeOwnerInit, isInit);
-          expect(ownable.owner()).toEqual(_owner);
-        });
+    it('should initialize', () => {
+      ownable = new OwnableSimulator(Z_OWNER, isInit);
+      expect(ownable.owner()).toEqual(Z_OWNER);
+    });
+
+    it('should fail to initialize when owner is a contract address', () => {
+      expect(() => {
+        new OwnableSimulator(Z_OWNER_CONTRACT, isInit);
+      }).toThrow('Ownable: unsafe ownership transfer');
+    });
+
+    it.each(zeroTypes)(
+      'should fail to initialize when owner is zero (%s)',
+      (_, _zero) => {
+        expect(() => {
+          ownable = new OwnableSimulator(_zero, isInit);
+        }).toThrow('Ownable: invalid initial owner');
       },
     );
 
@@ -58,7 +66,7 @@ describe('Ownable', () => {
       ['_unsafeUncheckedTransferOwnership', [Z_OWNER]],
     ];
     it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
-      ownable = new OwnableSimulator(Z_OWNER, unsafeOwnerInit, isBadInit);
+      ownable = new OwnableSimulator(Z_OWNER, isBadInit);
       expect(() => {
         (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
       }).toThrow('Initializable: contract not initialized');
@@ -67,7 +75,7 @@ describe('Ownable', () => {
 
   describe('when initialized', () => {
     beforeEach(() => {
-      ownable = new OwnableSimulator(Z_OWNER, ownerInit, isInit);
+      ownable = new OwnableSimulator(Z_OWNER, isInit);
     });
 
     describe('owner', () => {

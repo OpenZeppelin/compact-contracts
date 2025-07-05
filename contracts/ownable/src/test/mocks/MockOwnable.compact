@@ -9,24 +9,15 @@ import "../../Ownable" prefix Ownable_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 /**
- * @description `isUnsafeOwner` and `isInit` are params for testing.
- *
- * If `isUnsafeOwner` is true, the initial owner may be a
- * ContractAddress type through invoking `_unsafeInitialize`.
- * Otherwise, the contract will call regular `initialize` which
- * disallows ownership to contract addresses.
+ * @description `isInit` is a param for testing.
  *
  * If `isInit` is false, the constructor will not initialize the contract.
  * This behavior is to test that circuits are not callable unless the
  * contract is initialized.
 */
-constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isUnsafeOwner: Boolean, isInit: Boolean) {
+constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isInit: Boolean) {
   if (isInit) {
-    if (isUnsafeOwner) {
-      Ownable__unsafeInitialize(initialOwner);
-    } else {
-      Ownable_initialize(initialOwner);
-    }
+    Ownable_initialize(initialOwner);
   }
 }
 

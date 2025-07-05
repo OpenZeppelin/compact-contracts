@@ -43,7 +43,6 @@ export class OwnableSimulator
    */
   constructor(
     initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
-    isUnsafeOwner: boolean,
     isInit: boolean,
   ) {
     this.contract = new MockOwnable<OwnablePrivateState>(OwnableWitnesses);
@@ -54,7 +53,6 @@ export class OwnableSimulator
     } = this.contract.initialState(
       constructorContext({}, '0'.repeat(64)),
       initialOwner,
-      isUnsafeOwner,
       isInit,
     );
     this.circuitContext = {
