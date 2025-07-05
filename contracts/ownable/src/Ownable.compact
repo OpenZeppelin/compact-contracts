@@ -5,7 +5,7 @@ pragma language_version >= 0.15.0;
 /**
  * @module Ownable
  * @description An unshielded Ownable library.
- * This modules provides a basic access controlmechanism, where there is an owner
+ * This modules provides a basic access control mechanism, where there is an owner
  * that can be granted exclusive access to specific circuits.
  *
  * The initial owner must be set by using the `initialize` circuit during construction.
