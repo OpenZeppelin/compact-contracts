@@ -33,6 +33,7 @@ It's recommended to prefix the module with `Ownable_` to avoid circuit signature
 
 ```ts
 // MyOwnableContract.compact
+
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
