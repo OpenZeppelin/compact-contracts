@@ -1,0 +1,11 @@
+:ownable-guide: xref:ownable.adoc[Ownable guide]
+
+
+= Ownable
+
+An unshielded Ownable library.
+This modules provides a basic access control mechanism, where there is an owner
+that can be granted exclusive access to specific circuits.
+
+The initial owner must be set by using the xref:api/ownable.adoc#Ownable-initialize[initialize] circuit during construction.
+This can later be changed with xref:api/ownable.adoc#Ownable-transferOwnership[transferOwnership].
