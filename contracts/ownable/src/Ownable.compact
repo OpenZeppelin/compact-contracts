@@ -38,6 +38,11 @@ module Ownable {
   /**
    * @description Initializes the contract by setting the `initialOwner`.
    *
+   * @warning Contracts must only use either `initialize` or `_unsafeInitialize`—never both.
+   * `_unsafeInitialize` allows the initial owner to be a ContractAddress type.
+   * Contract-to-contract calls are currently not supported; therefore,
+   * contracts have no way of calling a protected circuit.
+   *
    * Requirements:
    *
    * - Contract is not already initialized.
@@ -56,6 +61,11 @@ module Ownable {
    * @description Unsafe variant of `initialize`.
    * This circuit is for experimental purposes in order to allow the `initialOwner`
    * to be a ContractAddress type.
+   *
+   * @warning Contracts must only use either `initialize` or `_unsafeInitialize`—never both.
+   * `_unsafeInitialize` allows the initial owner to be a ContractAddress type.
+   * Contract-to-contract calls are currently not supported; therefore,
+   * contracts have no way of calling a protected circuit.
    *
    * Requirements:
    *
