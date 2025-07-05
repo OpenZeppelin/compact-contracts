@@ -87,7 +87,6 @@ module Ownable {
    *
    * - Contract is initialized.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} initialOwner - The initial owner of the contract.
    * @returns {Either<ZswapCoinPublicKey, ContractAddress> } - The contract owner.
    */
   export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
