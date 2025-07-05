@@ -34,10 +34,6 @@ export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
   return Ownable_owner();
 }
 
-export circuit assertOnlyOwner(): [] {
-  return Ownable_assertOnlyOwner();
-}
-
 export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   return Ownable_transferOwnership(newOwner);
 }
@@ -48,6 +44,10 @@ export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, Con
 
 export circuit renounceOwnership(): [] {
   return Ownable_renounceOwnership();
+}
+
+export circuit _assertOnlyOwner(): [] {
+  return Ownable__assertOnlyOwner();
 }
 
 export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {

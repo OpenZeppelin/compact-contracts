@@ -102,22 +102,6 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the number of decimals used to get its user representation.
-   * @returns The account's token balance.
-   */
-  public assertOnlyOwner(sender?: CoinPublicKey) {
-    const res = this.contract.impureCircuits.assertOnlyOwner({
-      ...this.circuitContext,
-      currentZswapLocalState: sender
-        ? emptyZswapLocalState(sender)
-        : this.circuitContext.currentZswapLocalState,
-    });
-
-    this.circuitContext = res.context;
-    return res.result;
-  }
-
-  /**
    * @description Returns the value of tokens owned by `account`.
    * @param account The public key or contract address to query.
    * @returns The account's token balance.
@@ -172,6 +156,22 @@ export class OwnableSimulator
    */
   public renounceOwnership(sender?: CoinPublicKey) {
     const res = this.contract.impureCircuits.renounceOwnership({
+      ...this.circuitContext,
+      currentZswapLocalState: sender
+        ? emptyZswapLocalState(sender)
+        : this.circuitContext.currentZswapLocalState,
+    });
+
+    this.circuitContext = res.context;
+    return res.result;
+  }
+
+  /**
+   * @description Returns the number of decimals used to get its user representation.
+   * @returns The account's token balance.
+   */
+  public _assertOnlyOwner(sender?: CoinPublicKey) {
+    const res = this.contract.impureCircuits._assertOnlyOwner({
       ...this.circuitContext,
       currentZswapLocalState: sender
         ? emptyZswapLocalState(sender)

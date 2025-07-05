@@ -86,23 +86,6 @@ module Ownable {
   }
 
   /**
-   * @description Throws if called by any account other than the owner.
-   * Use this to restrict access of specific circuits to the owner.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - The caller is the current contract owner.
-   *
-   * @returns {[]} Empty tuple.
-   */
-  export circuit assertOnlyOwner(): [] {
-    Initializable_assertInitialized();
-    const caller = own_public_key();
-    assert caller == _owner.left "Ownable: caller is not the owner";
-  }
-
-  /**
    * @description Transfers ownership of the contract to a owner.
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
@@ -144,7 +127,7 @@ module Ownable {
    */
   export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    assertOnlyOwner();
+    _assertOnlyOwner();
     assert !Utils_isKeyOrAddressZero(newOwner) "Ownable: invalid new owner";
     _unsafeUncheckedTransferOwnership(newOwner);
   }
@@ -163,8 +146,25 @@ module Ownable {
    */
   export circuit renounceOwnership(): [] {
     Initializable_assertInitialized();
-    assertOnlyOwner();
+    _assertOnlyOwner();
     _transferOwnership(burn_address());
+  }
+
+  /**
+   * @description Throws if called by any account other than the owner.
+   * Use this to restrict access of specific circuits to the owner.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is the current contract owner.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _assertOnlyOwner(): [] {
+    Initializable_assertInitialized();
+    const caller = own_public_key();
+    assert caller == _owner.left "Ownable: caller is not the owner";
   }
 
   /**
