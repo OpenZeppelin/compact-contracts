@@ -28,7 +28,7 @@ import "openzeppelin-compact/ownable" prefix Ownable_;
 * xref:#Ownable-transferOwnership[`++transferOwnership(newOwner)++`]
 * xref:#Ownable-_unsafeTransferOwnership[`++_unsafeTransferOwnership(newOwner)++`]
 * xref:#Ownable-renounceOwnership[`++renounceOwnership()++`]
-* xref:#Ownable-_assertOnlyOwner[`++_assertOnlyOwner(operator, approved)++`]
+* xref:#Ownable-assertOnlyOwner[`++assertOnlyOwner(operator, approved)++`]
 * xref:#Ownable-_transferOwnership[`++_transferOwnership(newOwner)++`]
 * xref:#Ownable-_unsafeUncheckedTransferOwnership[`++_unsafeUncheckedTransferOwnership(newOwner)++`]
 --
@@ -93,7 +93,7 @@ Requirements:
 ==== `[.contract-item-name]#++renounceOwnership++#++() → []++` [.item-kind]#circuit#
 
 Leaves the contract without an owner.
-It will not be possible to call <<Ownable-_assertOnlyOwner,_assertOnlyOwner>> circuits anymore.
+It will not be possible to call <<Ownable-assertOnlyOwner,assertOnlyOwner>> circuits anymore.
 Can only be called by the current owner.
 
 Requirements:
@@ -102,8 +102,8 @@ Requirements:
 - The caller is the current contract owner.
 
 [.contract-item]
-[[Ownable-_assertOnlyOwner]]
-==== `[.contract-item-name]#++_assertOnlyOwner++#++() → []++` [.item-kind]#circuit#
+[[Ownable-assertOnlyOwner]]
+==== `[.contract-item-name]#++assertOnlyOwner++#++() → []++` [.item-kind]#circuit#
 
 Throws if called by any account other than the owner.
 Use this to restrict access of specific circuits to the owner.
