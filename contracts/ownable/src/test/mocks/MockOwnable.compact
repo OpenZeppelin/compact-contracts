@@ -37,8 +37,8 @@ export circuit renounceOwnership(): [] {
   return Ownable_renounceOwnership();
 }
 
-export circuit _assertOnlyOwner(): [] {
-  return Ownable__assertOnlyOwner();
+export circuit assertOnlyOwner(): [] {
+  return Ownable_assertOnlyOwner();
 }
 
 export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {

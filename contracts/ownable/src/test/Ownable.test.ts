@@ -58,7 +58,7 @@ describe('Ownable', () => {
     // Circuit calls should fail before the args are used
     const circuitsToFail: FailingCircuits[] = [
       ['owner', []],
-      ['_assertOnlyOwner', []],
+      ['assertOnlyOwner', []],
       ['transferOwnership', [Z_OWNER]],
       ['_unsafeTransferOwnership', [Z_OWNER]],
       ['renounceOwnership', []],
@@ -89,12 +89,12 @@ describe('Ownable', () => {
       });
     });
 
-    describe('_assertOnlyOwner', () => {
+    describe('assertOnlyOwner', () => {
       it('should allow owner to call', () => {
         caller = OWNER;
 
         expect(() => {
-          ownable._assertOnlyOwner(caller);
+          ownable.assertOnlyOwner(caller);
         }).not.toThrow();
       });
 
@@ -102,7 +102,7 @@ describe('Ownable', () => {
         caller = UNAUTHORIZED;
 
         expect(() => {
-          ownable._assertOnlyOwner(caller);
+          ownable.assertOnlyOwner(caller);
         }).toThrow('Ownable: caller is not the owner');
       });
     });
@@ -116,19 +116,19 @@ describe('Ownable', () => {
         // Old owner
         expect(() => {
           caller = OWNER;
-          ownable._assertOnlyOwner(caller);
+          ownable.assertOnlyOwner(caller);
         }).toThrow('Ownable: caller is not the owner');
 
         // Unauthorized
         expect(() => {
           caller = UNAUTHORIZED;
-          ownable._assertOnlyOwner(caller);
+          ownable.assertOnlyOwner(caller);
         }).toThrow('Ownable: caller is not the owner');
 
         // New owner
         expect(() => {
           caller = NEW_OWNER;
-          ownable._assertOnlyOwner(caller);
+          ownable.assertOnlyOwner(caller);
         }).not.toThrow();
       });
 
@@ -187,13 +187,13 @@ describe('Ownable', () => {
             expect(() => {
               // Old owner
               caller = OWNER;
-              ownable._assertOnlyOwner(caller);
+              ownable.assertOnlyOwner(caller);
             }).toThrow('Ownable: caller is not the owner');
 
             if (type === 'pubkey') {
               expect(() => {
                 caller = NEW_OWNER;
-                ownable._assertOnlyOwner(caller);
+                ownable.assertOnlyOwner(caller);
               }).not.toThrow();
             }
           });
@@ -246,7 +246,7 @@ describe('Ownable', () => {
         expect(ownable.owner()).toEqual(utils.ZERO_KEY);
         expect(() => {
           caller = OWNER;
-          ownable._assertOnlyOwner(caller);
+          ownable.assertOnlyOwner(caller);
         }).toThrow('Ownable: caller is not the owner');
       });
 
@@ -265,19 +265,19 @@ describe('Ownable', () => {
           // Old owner
           expect(() => {
             caller = OWNER;
-            ownable._assertOnlyOwner(caller);
+            ownable.assertOnlyOwner(caller);
           }).toThrow('Ownable: caller is not the owner');
 
           // Unauthorized
           expect(() => {
             caller = UNAUTHORIZED;
-            ownable._assertOnlyOwner(caller);
+            ownable.assertOnlyOwner(caller);
           }).toThrow('Ownable: caller is not the owner');
 
           // New owner
           expect(() => {
             caller = NEW_OWNER;
-            ownable._assertOnlyOwner(caller);
+            ownable.assertOnlyOwner(caller);
           }).not.toThrow();
         });
 
@@ -329,19 +329,19 @@ describe('Ownable', () => {
           // Old owner
           expect(() => {
             caller = OWNER;
-            ownable._assertOnlyOwner(caller);
+            ownable.assertOnlyOwner(caller);
           }).toThrow('Ownable: caller is not the owner');
 
           // Unauthorized
           expect(() => {
             caller = UNAUTHORIZED;
-            ownable._assertOnlyOwner(caller);
+            ownable.assertOnlyOwner(caller);
           }).toThrow('Ownable: caller is not the owner');
 
           // New owner
           expect(() => {
             caller = NEW_OWNER;
-            ownable._assertOnlyOwner(caller);
+            ownable.assertOnlyOwner(caller);
           }).not.toThrow();
         });
 

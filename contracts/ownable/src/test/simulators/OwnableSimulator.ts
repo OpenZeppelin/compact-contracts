@@ -168,8 +168,8 @@ export class OwnableSimulator
    * @description Returns the number of decimals used to get its user representation.
    * @returns The account's token balance.
    */
-  public _assertOnlyOwner(sender?: CoinPublicKey) {
-    const res = this.contract.impureCircuits._assertOnlyOwner({
+  public assertOnlyOwner(sender?: CoinPublicKey) {
+    const res = this.contract.impureCircuits.assertOnlyOwner({
       ...this.circuitContext,
       currentZswapLocalState: sender
         ? emptyZswapLocalState(sender)
