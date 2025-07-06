@@ -84,7 +84,7 @@ module Ownable {
    * - `newOwner` is not a ContractAddress.
    * - `newOwner` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} initialOwner - The new owner.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
   export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
@@ -107,7 +107,7 @@ module Ownable {
    * - The caller is the current contract owner.
    * - `newOwner` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} initialOwner - The new owner.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
   export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
@@ -166,7 +166,7 @@ module Ownable {
    * - `newOwner` is not a ContractAddress.
    * - `newOwner` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} initialOwner - The new owner.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
   export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
@@ -188,7 +188,7 @@ module Ownable {
    * - Contract is initialized.
    * - `newOwner` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} initialOwner - The new owner.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
   export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
