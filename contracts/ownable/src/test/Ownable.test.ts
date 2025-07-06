@@ -259,107 +259,104 @@ describe('Ownable', () => {
           ownable.renounceOwnership(caller);
         }).toThrow('Ownable: caller is not the owner');
       });
+    });
 
-      describe('_transferOwnership', () => {
-        it('should transfer ownership', () => {
-          ownable._transferOwnership(Z_NEW_OWNER);
-          expect(ownable.owner()).toEqual(Z_NEW_OWNER);
+    describe('_transferOwnership', () => {
+      it('should transfer ownership', () => {
+        ownable._transferOwnership(Z_NEW_OWNER);
+        expect(ownable.owner()).toEqual(Z_NEW_OWNER);
 
-          // Old owner
-          expect(() => {
-            caller = OWNER;
-            ownable.assertOnlyOwner(caller);
-          }).toThrow('Ownable: caller is not the owner');
-
-          // Unauthorized
-          expect(() => {
-            caller = UNAUTHORIZED;
-            ownable.assertOnlyOwner(caller);
-          }).toThrow('Ownable: caller is not the owner');
-
-          // New owner
-          expect(() => {
-            caller = NEW_OWNER;
-            ownable.assertOnlyOwner(caller);
-          }).not.toThrow();
-        });
-
-        it('should allow transfers to zero', () => {
-          ownable._transferOwnership(utils.ZERO_KEY);
-          expect(ownable.owner()).toEqual(utils.ZERO_KEY);
-        });
-
-        it('should fail when transferring ownership to contract address zero', () => {
-          expect(() => {
-            ownable._transferOwnership(utils.ZERO_ADDRESS);
-          }).toThrow('Ownable: unsafe ownership transfer');
-        });
-
-        it('should fail when transferring ownership to non-zero contract address', () => {
-          expect(() => {
-            ownable._transferOwnership(Z_OWNER_CONTRACT);
-          }).toThrow('Ownable: unsafe ownership transfer');
-        });
-
-        it('should transfer multiple times', () => {
+        // Old owner
+        expect(() => {
           caller = OWNER;
-          ownable._transferOwnership(Z_NEW_OWNER, caller);
+          ownable.assertOnlyOwner(caller);
+        }).toThrow('Ownable: caller is not the owner');
 
+        // Unauthorized
+        expect(() => {
+          caller = UNAUTHORIZED;
+          ownable.assertOnlyOwner(caller);
+        }).toThrow('Ownable: caller is not the owner');
+
+        // New owner
+        expect(() => {
           caller = NEW_OWNER;
-          ownable._transferOwnership(Z_OWNER, caller);
+          ownable.assertOnlyOwner(caller);
+        }).not.toThrow();
+      });
 
-          caller = OWNER;
-          ownable._transferOwnership(Z_NEW_OWNER, caller);
+      it('should allow transfers to zero', () => {
+        ownable._transferOwnership(utils.ZERO_KEY);
+        expect(ownable.owner()).toEqual(utils.ZERO_KEY);
+      });
 
-          expect(ownable.owner()).toEqual(Z_NEW_OWNER);
+      it('should fail when transferring ownership to contract address zero', () => {
+        expect(() => {
+          ownable._transferOwnership(utils.ZERO_ADDRESS);
+        }).toThrow('Ownable: unsafe ownership transfer');
+      });
+
+      it('should fail when transferring ownership to non-zero contract address', () => {
+        expect(() => {
+          ownable._transferOwnership(Z_OWNER_CONTRACT);
+        }).toThrow('Ownable: unsafe ownership transfer');
+      });
+
+      it('should transfer multiple times', () => {
+        caller = OWNER;
+        ownable._transferOwnership(Z_NEW_OWNER, caller);
+
+        caller = NEW_OWNER;
+        ownable._transferOwnership(Z_OWNER, caller);
+
+        caller = OWNER;
+        ownable._transferOwnership(Z_NEW_OWNER, caller);
+
+        expect(ownable.owner()).toEqual(Z_NEW_OWNER);
+      });
+    });
+
+    describe('_unsafeUncheckedTransferOwnership', () => {
+      describe.each(newOwnerTypes)('when the owner is a %s', (_, newOwner) => {
+        it('should transfer ownership', () => {
+          ownable._unsafeUncheckedTransferOwnership(newOwner);
+          expect(ownable.owner()).toEqual(newOwner);
         });
       });
 
-      describe('_unsafeUncheckedTransferOwnership', () => {
-        describe.each(newOwnerTypes)(
-          'when the owner is a %s',
-          (_, newOwner) => {
-            it('should transfer ownership', () => {
-              ownable._unsafeUncheckedTransferOwnership(newOwner);
-              expect(ownable.owner()).toEqual(newOwner);
-            });
-          },
-        );
+      it('should enforce permissions after transfer (pk)', () => {
+        ownable._unsafeUncheckedTransferOwnership(Z_NEW_OWNER);
 
-        it('should enforce permissions after transfer (pk)', () => {
-          ownable._unsafeUncheckedTransferOwnership(Z_NEW_OWNER);
-
-          // Old owner
-          expect(() => {
-            caller = OWNER;
-            ownable.assertOnlyOwner(caller);
-          }).toThrow('Ownable: caller is not the owner');
-
-          // Unauthorized
-          expect(() => {
-            caller = UNAUTHORIZED;
-            ownable.assertOnlyOwner(caller);
-          }).toThrow('Ownable: caller is not the owner');
-
-          // New owner
-          expect(() => {
-            caller = NEW_OWNER;
-            ownable.assertOnlyOwner(caller);
-          }).not.toThrow();
-        });
-
-        it('should transfer multiple times', () => {
+        // Old owner
+        expect(() => {
           caller = OWNER;
-          ownable._unsafeUncheckedTransferOwnership(Z_NEW_OWNER, caller);
+          ownable.assertOnlyOwner(caller);
+        }).toThrow('Ownable: caller is not the owner');
 
+        // Unauthorized
+        expect(() => {
+          caller = UNAUTHORIZED;
+          ownable.assertOnlyOwner(caller);
+        }).toThrow('Ownable: caller is not the owner');
+
+        // New owner
+        expect(() => {
           caller = NEW_OWNER;
-          ownable._unsafeUncheckedTransferOwnership(Z_OWNER, caller);
+          ownable.assertOnlyOwner(caller);
+        }).not.toThrow();
+      });
 
-          caller = OWNER;
-          ownable._unsafeUncheckedTransferOwnership(Z_OWNER_CONTRACT, caller);
+      it('should transfer multiple times', () => {
+        caller = OWNER;
+        ownable._unsafeUncheckedTransferOwnership(Z_NEW_OWNER, caller);
 
-          expect(ownable.owner()).toEqual(Z_OWNER_CONTRACT);
-        });
+        caller = NEW_OWNER;
+        ownable._unsafeUncheckedTransferOwnership(Z_OWNER, caller);
+
+        caller = OWNER;
+        ownable._unsafeUncheckedTransferOwnership(Z_OWNER_CONTRACT, caller);
+
+        expect(ownable.owner()).toEqual(Z_OWNER_CONTRACT);
       });
     });
   });
