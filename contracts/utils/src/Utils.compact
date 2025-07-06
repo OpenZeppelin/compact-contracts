@@ -22,7 +22,7 @@ module Utils {
     if (keyOrAddress.is_left) {
       return burn_address() == keyOrAddress;
     } else {
-      return right<ZswapCoinPublicKey, ContractAddress>(default<ContractAddress>) == keyOrAddress;
+      return default<ContractAddress> == keyOrAddress.right;
     }
   }
 
