@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight/ownable",
+  "name": "@openzeppelin-compact/ownable",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
