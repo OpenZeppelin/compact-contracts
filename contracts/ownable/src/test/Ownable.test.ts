@@ -65,7 +65,7 @@ describe('Ownable', () => {
       ['_transferOwnership', [Z_OWNER]],
       ['_unsafeUncheckedTransferOwnership', [Z_OWNER]],
     ];
-    it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
+    it.each(circuitsToFail)('should fail when calling circuit "%s"', (circuitName, args) => {
       ownable = new OwnableSimulator(Z_OWNER, isBadInit);
       expect(() => {
         (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
