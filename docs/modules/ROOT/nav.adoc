@@ -5,4 +5,4 @@
 
 * Modules
 ** xref:ownable.adoc[Ownable]
-*** xref:api/ownable.adoc[Ownable]
+*** xref:api/ownable.adoc[API Reference]
