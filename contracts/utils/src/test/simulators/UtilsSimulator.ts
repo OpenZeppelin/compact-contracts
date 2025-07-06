@@ -16,8 +16,8 @@ import {
 import {
   type UtilsPrivateState,
   UtilsWitnesses,
-} from '../../witnesses/UtilsWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/UtilsWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.
@@ -137,5 +137,13 @@ export class UtilsSimulator
       this.circuitContext,
       keyOrAddress,
     ).result;
+  }
+
+  /**
+   * @description  A helper function that returns the empty string: ""
+   * @returns The empty string: ""
+   */
+  public emptyString(): string {
+    return this.contract.circuits.emptyString(this.circuitContext).result;
   }
 }
