@@ -19,7 +19,7 @@ This is because Compact currently does not support contract-to-contract calls wh
 
 === Experimental features
 
-This module does offer experimental circuits that allow ownership to be granted to contract addresses (xref:api/ownable.adoc#Ownable-_unsafeTransferOwnership[_unsafeTransferOwnership] and xref:api/ownable.adoc#Ownable-_unsafeUncheckedTransferOwnership[_unsafeUncheckedTransferOwnership]).
+This module offers experimental circuits that allow ownership to be granted to contract addresses (xref:api/ownable.adoc#Ownable-_unsafeTransferOwnership[_unsafeTransferOwnership] and xref:api/ownable.adoc#Ownable-_unsafeUncheckedTransferOwnership[_unsafeUncheckedTransferOwnership]).
 Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
 Until contract-to-contract calls are supported,
 there is no direct way for a contract to call circuits of other contracts or transfer ownership back to a user.
