@@ -65,12 +65,15 @@ describe('Ownable', () => {
       ['_transferOwnership', [Z_OWNER]],
       ['_unsafeUncheckedTransferOwnership', [Z_OWNER]],
     ];
-    it.each(circuitsToFail)('should fail when calling circuit "%s"', (circuitName, args) => {
-      ownable = new OwnableSimulator(Z_OWNER, isBadInit);
-      expect(() => {
-        (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('Initializable: contract not initialized');
-    });
+    it.each(circuitsToFail)(
+      'should fail when calling circuit "%s"',
+      (circuitName, args) => {
+        ownable = new OwnableSimulator(Z_OWNER, isBadInit);
+        expect(() => {
+          (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
+        }).toThrow('Initializable: contract not initialized');
+      },
+    );
   });
 
   describe('when initialized', () => {
