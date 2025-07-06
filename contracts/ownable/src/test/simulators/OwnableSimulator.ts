@@ -92,17 +92,17 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the token name.
-   * @returns The token name.
+   * @description Returns the current contract owner.
+   * @returns The contract owner.
    */
   public owner(): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.contract.impureCircuits.owner(this.circuitContext).result;
   }
 
   /**
-   * @description Returns the value of tokens owned by `account`.
-   * @param account The public key or contract address to query.
-   * @returns The account's token balance.
+   * @description Transfers ownership of the contract to `newOwner`.
+   * @param newOwner - The new owner.
+   * @param sender - Optional. Sets the caller context if provided.
    */
   public transferOwnership(
     newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -123,9 +123,9 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the value of tokens owned by `account`.
-   * @param account The public key or contract address to query.
-   * @returns The account's token balance.
+   * @description Unsafe variant of `transferOwnership`.
+   * @param newOwner - The new owner.
+   * @param sender - Optional. Sets the caller context if provided.
    */
   public _unsafeTransferOwnership(
     newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -146,11 +146,10 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
-   * through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
-   * @param owner The public key or contract address of approver.
-   * @param spender The public key or contract address of spender.
-   * @returns The `spender`'s allowance over `owner`'s tokens.
+   * @description Leaves the contract without an owner.
+   * It will not be possible to call `assertOnlyOnwer` circuits anymore.
+   * Can only be called by the current owner.
+   * @param sender - Optional. Sets the caller context if provided.
    */
   public renounceOwnership(sender?: CoinPublicKey) {
     const res = this.contract.impureCircuits.renounceOwnership({
@@ -165,8 +164,9 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Returns the number of decimals used to get its user representation.
-   * @returns The account's token balance.
+   * @description Throws if called by any account other than the owner.
+   * Use this to restrict access of specific circuits to the owner.
+   * @param sender - Optional. Sets the caller context if provided.
    */
   public assertOnlyOwner(sender?: CoinPublicKey) {
     const res = this.contract.impureCircuits.assertOnlyOwner({
@@ -181,11 +181,10 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Moves a `value` amount of tokens from the caller's account to `to`.
-   * @param to The recipient of the transfer, either a user or a contract.
-   * @param value The amount to transfer.
-   * @param sender The simulated caller.
-   * @returns As per the IERC20 spec, this MUST return true.
+   * @description Transfers ownership of the contract to `newOwner` without
+   * enforcing permission checks on the caller.
+   * @param newOwner - The new owner.
+   * @param sender - Optional. Sets the caller context if provided.
    */
   public _transferOwnership(
     newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -206,11 +205,9 @@ export class OwnableSimulator
   }
 
   /**
-   * @description Moves a `value` amount of tokens from the caller's account to `to`.
-   * @param to The recipient of the transfer, either a user or a contract.
-   * @param value The amount to transfer.
-   * @param sender The simulated caller.
-   * @returns As per the IERC20 spec, this MUST return true.
+   * @description Unsafe variant of `_transferOwnership`.
+   * @param newOwner - The new owner.
+   * @param sender - Optional. Sets the caller context if provided.
    */
   public _unsafeUncheckedTransferOwnership(
     newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
