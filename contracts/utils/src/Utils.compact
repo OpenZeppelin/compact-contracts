@@ -19,9 +19,9 @@ module Utils {
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
    */
   export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    return keyOrAddress.is_left
-    ? default<ZswapCoinPublicKey> == keyOrAddress.left
-    : default<ContractAddress> == keyOrAddress.right;
+    return isContractAddress(keyOrAddress)
+    ? default<ContractAddress> == keyOrAddress.right
+    : default<ZswapCoinPublicKey> == keyOrAddress.left;
   }
 
   /**
