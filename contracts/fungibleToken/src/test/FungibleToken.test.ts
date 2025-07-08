@@ -374,6 +374,58 @@ describe('FungibleToken', () => {
       });
     });
 
+    describe('_approve', () => {
+      beforeEach(() => {
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
+      });
+
+      it('should approve and update allowance', () => {
+        token._approve(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(AMOUNT);
+      });
+
+      it('should approve and update allowance for multiple spenders', () => {
+        // Approve spender
+        token._approve(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(AMOUNT);
+
+        // Approve other
+        token._approve(Z_OWNER, Z_OTHER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_OTHER)).toEqual(AMOUNT);
+
+        expect(token.allowance(Z_OWNER, Z_RECIPIENT)).toEqual(0n);
+      });
+
+      it('should fail when approve from zero (pk)', () => {
+        expect(() => {
+          token._approve(utils.ZERO_KEY, Z_SPENDER, AMOUNT);
+        }).toThrow('FungibleToken: invalid owner');
+      });
+
+      it('should fail when approve from zero (contract)', () => {
+        expect(() => {
+          token._approve(utils.ZERO_ADDRESS, Z_SPENDER, AMOUNT);
+        }).toThrow('FungibleToken: invalid owner');
+      });
+
+      it('should fail when approve to zero (pk)', () => {
+        expect(() => {
+          token._approve(Z_OWNER, utils.ZERO_KEY, AMOUNT);
+        }).toThrow('FungibleToken: invalid spender');
+      });
+
+      it('should fail when approve to zero (contract)', () => {
+        expect(() => {
+          token._approve(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
+        }).toThrow('FungibleToken: invalid spender');
+      });
+
+      it('should allow approve of 0 tokens', () => {
+        token._approve(Z_OWNER, Z_SPENDER, 0n);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
+      });
+    });
+
     describe('transferFrom', () => {
       beforeEach(() => {
         caller = OWNER;
