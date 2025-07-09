@@ -1,25 +1,27 @@
 {
-    "compilerOptions": {
-        "outDir": "dist",
-        "rootDir": "src",
-        "declaration": true,
-        "lib": ["es2023"],
-        "module": "nodenext",
-        "target": "es2022",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "moduleResolution": "node16",
-        "sourceMap": true,
-        "rewriteRelativeImportExtensions": true,
-        "erasableSyntaxOnly": true,
-        "verbatimModuleSyntax": true
-    },
-    "include": [
-        "src/**/*"
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "lib": [
+      "es2022"
     ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+    "module": "nodenext",
+    "target": "es2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "nodenext",
+    "sourceMap": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

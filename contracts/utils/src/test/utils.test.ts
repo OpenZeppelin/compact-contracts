@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { UtilsSimulator } from './simulators/UtilsSimulator';
-import * as contractUtils from './utils/address';
+import { UtilsSimulator } from './simulators/UtilsSimulator.js';
+import * as contractUtils from './utils/address.js';
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
 const Z_OTHER_KEY = contractUtils.createEitherTestUser('OTHER_KEY');
@@ -8,6 +8,8 @@ const SOME_CONTRACT =
   contractUtils.createEitherTestContractAddress('SOME_CONTRACT');
 const OTHER_CONTRACT =
   contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
+
+const EMPTY_STRING = '';
 
 let contract: UtilsSimulator;
 
@@ -54,6 +56,15 @@ describe('Utils', () => {
         false,
       );
     });
+
+    it('should return false for two different address types of equal value', () => {
+      expect(
+        contract.isKeyOrAddressEqual(
+          contractUtils.ZERO_KEY,
+          contractUtils.ZERO_ADDRESS,
+        ),
+      ).toBe(false);
+    });
   });
 
   describe('isKeyZero', () => {
@@ -73,6 +84,12 @@ describe('Utils', () => {
 
     it('should return false ZswapCoinPublicKey', () => {
       expect(contract.isContractAddress(Z_SOME_KEY)).toBe(false);
+    });
+  });
+
+  describe('emptyString', () => {
+    it('should return the empty string', () => {
+      expect(contract.emptyString()).toBe(EMPTY_STRING);
     });
   });
 });
