@@ -18,8 +18,8 @@ import {
 import {
   type FungibleTokenPrivateState,
   FungibleTokenWitnesses,
-} from '../../witnesses/FungibleTokenWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/FungibleTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a FungibleToken contract for testing purposes.
