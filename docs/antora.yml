@@ -5,4 +5,4 @@ nav:
   - modules/ROOT/nav.adoc
 asciidoc:
   attributes:
-    page-sidebar-collapse-default: false
+    page-sidebar-collapse-default: 'Ownable'
