@@ -37,7 +37,7 @@ It's recommended to prefix the module with `Ownable_` to avoid circuit signature
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import openzeppelin-compact/ownable prefix Ownable_;
+import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
 
 constructor(
   initialOwner: Either<ZswapCoinPublicKey, ContractAddress>
@@ -73,7 +73,7 @@ Here's a complete contract showcasing how to integrate the Ownable module and pr
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import openzeppelin-compact/ownable prefix Ownable_;
+import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
 
 /**
  * Set `initialOwner` as the owner of the contract.
