@@ -44,7 +44,7 @@ It's recommended to prefix the module with `FungibleToken_` to avoid ccircuit si
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import openzeppelin-compact/fungible-token prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/tokens/FungibleToken" prefix FungibleToken_;
 
 constructor(
   name: Opaque<"string">,
