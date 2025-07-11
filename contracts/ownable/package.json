@@ -21,7 +21,7 @@
     "clean": "git clean -fXd"
   },
   "dependencies": {
-    "@openzeppelin-midnight/compact": "workspace:^"
+    "@openzeppelin-compact/compact": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "22.14.0",

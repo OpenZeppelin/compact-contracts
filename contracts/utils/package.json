@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-midnight/utils",
+  "name": "@openzeppelin-compact/utils",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "clean": "git clean -fXd"
   },
   "dependencies": {
-    "@openzeppelin-midnight/compact": "workspace:^"
+    "@openzeppelin-compact/compact": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "22.14.0",

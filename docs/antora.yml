@@ -1,5 +1,5 @@
-name: contracts-midnight
-title: Contracts for Midnight
+name: contracts-compact
+title: Contracts for Compact
 version: 0.0.1
 nav:
   - modules/ROOT/nav.adoc

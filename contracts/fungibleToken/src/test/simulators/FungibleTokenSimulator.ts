@@ -301,28 +301,6 @@ export class FungibleTokenSimulator
   ///
 
   /**
-   * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
-   * This internal function is equivalent to `approve`, and can be used to
-   * e.g. set automatic allowances for certain subsystems, etc.
-   * @param owner The owner of the tokens.
-   * @param spender The spender of the tokens.
-   * @param value The amount of tokens `spender` may spend on behalf of `owner`.
-   * @returns None.
-   */
-  public _approve(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._approve(
-      this.circuitContext,
-      owner,
-      spender,
-      value,
-    ).context;
-  }
-
-  /**
    * @description Moves a `value` amount of tokens from `from` to `to`.
    * This internal function is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
@@ -408,6 +386,28 @@ export class FungibleTokenSimulator
     this.circuitContext = this.contract.impureCircuits._burn(
       this.circuitContext,
       account,
+      value,
+    ).context;
+  }
+
+  /**
+   * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
+   * This internal function is equivalent to `approve`, and can be used to
+   * e.g. set automatic allowances for certain subsystems, etc.
+   * @param owner The owner of the tokens.
+   * @param spender The spender of the tokens.
+   * @param value The amount of tokens `spender` may spend on behalf of `owner`.
+   * @returns None.
+   */
+  public _approve(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuitContext = this.contract.impureCircuits._approve(
+      this.circuitContext,
+      owner,
+      spender,
       value,
     ).context;
   }

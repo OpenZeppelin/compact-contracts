@@ -1,4 +1,4 @@
-# OpenZeppelin Contracts for Midnight
+# OpenZeppelin Contracts for Compact
 
 **A library for secure smart contract development** written in Compact for [Midnight](https://midnight.network/).
 
@@ -34,7 +34,7 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 Clone the repository:
 
 ```bash
-git clone git@github.com:OpenZeppelin/midnight-contracts.git
+git clone git@github.com:OpenZeppelin/compact-contracts.git
 ```
 
 `cd` into it and then install dependencies and prepare the environment:
@@ -54,30 +54,30 @@ $ turbo compact
 
 (...)
 ✔ [COMPILE] [1/2] Compiled FungibleToken.compact
-@openzeppelin-midnight/fungible-token:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/fungible-token:compact:
+@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/fungible-token:compact:
 ✔ [COMPILE] [1/6] Compiled Initializable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 ✔ [COMPILE] [2/6] Compiled Pausable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 ✔ [COMPILE] [3/6] Compiled Utils.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 ✔ [COMPILE] [4/6] Compiled test/mocks/MockInitializable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:     Compiling 3 circuits:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:     Compiling 3 circuits:
 ✔ [COMPILE] [5/6] Compiled test/mocks/MockPausable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:     Compiling 5 circuits:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:     Compiling 5 circuits:
 ✔ [COMPILE] [6/6] Compiled test/mocks/MockUtils.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 
 ✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
-@openzeppelin-midnight/fungible-token:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/fungible-token:compact:     Compiling 15 circuits:
+@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/fungible-token:compact:     Compiling 15 circuits:
 
 
  Tasks:    2 successful, 2 total
