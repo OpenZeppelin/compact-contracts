@@ -1,5 +1,5 @@
 :github-icon: pass:[<svg class="icon"><use href="#github-icon"/></svg>]
-:fungible-guide: xref:fungible.adoc[FungibleToken guide]
+:fungible-guide: xref:fungibleToken.adoc[FungibleToken guide]
 
 = FungibleToken
 
@@ -11,7 +11,7 @@ TIP: For an overview of the module, read the {fungible-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "openzeppelin-compact/fungible-token" prefix FungibleToken_;
+import "./node-modules/@openzeppelin-compact/fungible-token/FungibleToken" prefix FungibleToken_;
 ```
 
 [.contract]
