@@ -22,7 +22,7 @@ import "./node-modules/@openzeppelin-compact/fungible-token/FungibleToken" prefi
 .Circuits
 --
 [.sub-index#FungibleTokenModule]
-* xref:#FungibleTokenModule-initialize[`++initialize(name_, symabol_, decimals_)++`]
+* xref:#FungibleTokenModule-initialize[`++initialize(name_, symbol_, decimals_)++`]
 * xref:#FungibleTokenModule-name[`++name()++`]
 * xref:#FungibleTokenModule-symbol[`++symbol()++`]
 * xref:#FungibleTokenModule-decimals[`++decimals()++`]
@@ -46,7 +46,7 @@ import "./node-modules/@openzeppelin-compact/fungible-token/FungibleToken" prefi
 
 [.contract-item]
 [[FungibleTokenModule-initialize]]
-==== `[.contract-item-name]#++initialize++#++(name_: Opaque<"string">, symabol_: Opaque<"string">, decimals_: Uint<8>) → []++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++initialize++#++(name_: Opaque<"string">, symbol_: Opaque<"string">, decimals_: Uint<8>) → []++` [.item-kind]#circuit#
 
 Initializes the contract by setting the name, symbol, and decimals.
 
