@@ -52,7 +52,7 @@ import "./node_modules/@openzeppelin-compact/tokens/FungibleToken" prefix Fungib
 constructor(
   name: Opaque<"string">,
   symbol: Opaque<"string">,
-  decimals:Uint<8>
+  decimals: Uint<8>
 ) {
   FungibleToken_initialize(name, symbol, decimals);
 }
@@ -92,7 +92,7 @@ import "./node_modules/@openzeppelin-compact/tokens/FungibleToken" prefix Fungib
 constructor(
   name: Opaque<"string">,
   symbol: Opaque<"string">,
-  decimals:Uint<8>,
+  decimals: Uint<8>,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
   fixedSupply: Uint<128>,
 ) {
