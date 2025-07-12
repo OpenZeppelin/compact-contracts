@@ -9,8 +9,8 @@
     "docs/"
   ],
   "scripts": {
-    "docs": "npx turbo run docs --filter=docs",
-    "docs:watch": "npx turbo run docs:watch --filter=docs",
+    "docs": "turbo run docs --filter=docs",
+    "docs:watch": "turbo run docs:watch --filter=docs",
     "compact": "turbo run compact",
     "build": "turbo run build",
     "test": "turbo run test",
