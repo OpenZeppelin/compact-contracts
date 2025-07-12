@@ -16,7 +16,7 @@ import "./node-modules/@openzeppelin-compact/fungible-token/FungibleToken" prefi
 
 [.contract]
 [[FungibleToken]]
-=== `++FungibleToken++` link:https://github.com/OpenZeppelin/midnight-contracts/blob/update-fungible-token/contracts/fungibleToken/src/FungibleToken.compact[{github-icon},role=heading-link]
+=== `++FungibleToken++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/fungibleToken/src/FungibleToken.compact[{github-icon},role=heading-link]
 
 [.contract-index]
 .Circuits
