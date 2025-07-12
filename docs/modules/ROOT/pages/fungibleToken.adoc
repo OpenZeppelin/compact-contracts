@@ -37,7 +37,7 @@ WARNING: The `unsafe` circuits will eventually be deprecated after Compact suppo
 == Usage
 
 Import the FungibleToken module into the implementing contract.
-It's recommended to prefix the module with `FungibleToken_` to avoid ccircuit signature clashes.
+It's recommended to prefix the module with `FungibleToken_` to avoid circuit signature clashes.
 
 ```typescript
 // MyFungibleToken.compact
