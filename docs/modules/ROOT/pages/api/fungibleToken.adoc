@@ -266,7 +266,7 @@ Requirements:
 
 Unsafe variant of <<FungibleTokenModule-_mint,_mint>> which allows transfers to contract addresses.
 
-Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
+WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
 Tokens sent to a contract address may become irretrievable.
 Once contract-to-contract calls are supported, this circuit may be deprecated.
 
