@@ -19,11 +19,9 @@ module Utils {
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
    */
   export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    if (keyOrAddress.is_left) {
-      return burn_address() == keyOrAddress;
-    } else {
-      return right<ZswapCoinPublicKey, ContractAddress>(default<ContractAddress>) == keyOrAddress;
-    }
+    return isContractAddress(keyOrAddress)
+    ? default<ContractAddress> == keyOrAddress.right
+    : default<ZswapCoinPublicKey> == keyOrAddress.left;
   }
 
   /**
@@ -66,5 +64,14 @@ module Utils {
    */
   export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return !keyOrAddress.is_left;
+  }
+
+  /**
+   * @description A helper function that returns the empty string: ""
+   *
+   * @return {Opaque<"string">} - The empty string: ""
+   */
+  export pure circuit emptyString(): Opaque<"string"> {
+    return default<Opaque<"string">>;
   }
 }
