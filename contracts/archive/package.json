@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-compact/utils",
+  "name": "@openzeppelin-compact/archive",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
