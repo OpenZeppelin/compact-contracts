@@ -63,8 +63,8 @@ pragma language_version >= 0.15.0;
  */
 module MultiToken {
   import CompactStandardLibrary;
-  import "../../node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
-  import "../../node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
+  import "../../../node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
+  import "../../../node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
 
   /**
    * @description Mapping from token ID to account balances.

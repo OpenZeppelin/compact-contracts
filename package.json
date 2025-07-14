@@ -4,9 +4,9 @@
   "private": true,
   "packageManager": "yarn@4.1.0",
   "workspaces": [
-    "compact/",
-    "contracts/*/",
-    "docs/"
+    "docs/",
+    "packages/*",
+    "packages/contracts/*"
   ],
   "scripts": {
     "docs": "npx turbo run docs --filter=docs",
