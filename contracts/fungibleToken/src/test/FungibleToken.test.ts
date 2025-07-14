@@ -826,6 +826,98 @@ describe('FungibleToken', () => {
       });
     });
 
+    describe('_approve', () => {
+      beforeEach(() => {
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
+      });
+
+      it('should approve and update allowance', () => {
+        token._approve(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(AMOUNT);
+      });
+
+      it('should approve and update allowance for multiple spenders', () => {
+        // Approve spender
+        token._approve(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(AMOUNT);
+
+        // Approve other
+        token._approve(Z_OWNER, Z_OTHER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_OTHER)).toEqual(AMOUNT);
+
+        expect(token.allowance(Z_OWNER, Z_RECIPIENT)).toEqual(0n);
+      });
+
+      it('should fail when approve from zero (pk)', () => {
+        expect(() => {
+          token._approve(utils.ZERO_KEY, Z_SPENDER, AMOUNT);
+        }).toThrow('FungibleToken: invalid owner');
+      });
+
+      it('should fail when approve from zero (contract)', () => {
+        expect(() => {
+          token._approve(utils.ZERO_ADDRESS, Z_SPENDER, AMOUNT);
+        }).toThrow('FungibleToken: invalid owner');
+      });
+
+      it('should fail when approve to zero (pk)', () => {
+        expect(() => {
+          token._approve(Z_OWNER, utils.ZERO_KEY, AMOUNT);
+        }).toThrow('FungibleToken: invalid spender');
+      });
+
+      it('should fail when approve to zero (contract)', () => {
+        expect(() => {
+          token._approve(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
+        }).toThrow('FungibleToken: invalid spender');
+      });
+
+      it('should allow approve of 0 tokens', () => {
+        token._approve(Z_OWNER, Z_SPENDER, 0n);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
+      });
+    });
+
+    describe('_spendAllowance', () => {
+      beforeEach(() => {
+        token._mint(Z_OWNER, AMOUNT);
+      });
+
+      it('should update allowance when not unlimited', () => {
+        token._approve(Z_OWNER, Z_SPENDER, MAX_UINT128 - 1n);
+        token._spendAllowance(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(
+          MAX_UINT128 - 1n - AMOUNT,
+        );
+      });
+
+      it('should not update allowance when unlimited', () => {
+        token._approve(Z_OWNER, Z_SPENDER, MAX_UINT128);
+        token._spendAllowance(Z_OWNER, Z_SPENDER, MAX_UINT128 - 1n);
+        expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(MAX_UINT128);
+      });
+
+      it('should fail when owner allowance is not initialized', () => {
+        expect(() => {
+          token._spendAllowance(Z_OTHER, Z_SPENDER, AMOUNT);
+        }).toThrow('FungibleToken: insufficient allowance');
+      });
+
+      it('should fail when spender is not initialized', () => {
+        token._approve(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(() => {
+          token._spendAllowance(Z_OWNER, Z_OTHER, AMOUNT);
+        }).toThrow('FungibleToken: insufficient allowance');
+      });
+
+      it('should fail when spender has insufficient allowance', () => {
+        token._approve(Z_OWNER, Z_SPENDER, AMOUNT);
+        expect(() => {
+          token._spendAllowance(Z_OWNER, Z_SPENDER, AMOUNT + 1n);
+        }).toThrow('FungibleToken: insufficient allowance');
+      });
+    });
+
     describe('Multiple Operations', () => {
       it('should handle mint → transfer → burn sequence', () => {
         token._mint(Z_OWNER, AMOUNT);

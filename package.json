@@ -1,6 +1,6 @@
 {
-  "name": "openzeppelin-midnight",
-  "description": "Secure Smart Contract library for Midnight",
+  "name": "openzeppelin-compact",
+  "description": "Secure Smart Contract library written in Compact for Midnight",
   "private": true,
   "packageManager": "yarn@4.1.0",
   "workspaces": [
