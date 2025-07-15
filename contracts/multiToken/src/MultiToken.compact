@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma language_version >= 0.15.0;
 
 /**
@@ -101,7 +102,7 @@ module MultiToken {
    * - Must be called in the contract's constructor.
    *
    * @param {Opaque<"string">} uri_ - The base URI for all token URIs.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit initialize(uri_: Opaque<"string">): [] {
     Initializable_initialize();
@@ -160,7 +161,7 @@ module MultiToken {
    * whose approval is set for the caller's assets.
    * @param {Boolean} approved - The boolean value determining if the operator may or may not handle the
    * caller's assets.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
     Initializable_assertInitialized();
@@ -218,7 +219,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -251,7 +252,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -276,7 +277,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The destination of the transfer.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -329,7 +330,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -369,7 +370,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -403,7 +404,7 @@ module MultiToken {
    * - Contract is initialized.
    *
    * @param {Opaque<"string">} newURI - The new base URI for all tokens.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _setURI(newURI: Opaque<"string">): [] {
     Initializable_assertInitialized();
@@ -427,7 +428,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
    * @param {Uint<128>} id - The unique identifier for the token type.
    * @param {Uint<128>} value - The quantity of `id` tokens that are minted to `to`.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
@@ -449,7 +450,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the minted tokens.
    * @param {Uint<128>} id - The unique identifier for the token type.
    * @param {Uint<128>} value - The quantity of `id` tokens that are minted to `to`.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
@@ -470,7 +471,7 @@ module MultiToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner whose tokens will be destroyed.
    * @param {Uint<128>} id - The unique identifier of the token type.
    * @param {Uint<128>} value - The quantity of `id` tokens that will be destroyed from `from`.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
@@ -494,7 +495,7 @@ module MultiToken {
    * `owner`'s assets.
    * @param {Boolean} approved - The boolean value determining if the operator may or may not handle the
    * `owner`'s assets.
-   * @return {[]} None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,

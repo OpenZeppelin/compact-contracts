@@ -1,0 +1,314 @@
+:github-icon: pass:[<svg class="icon"><use href="#github-icon"/></svg>]
+:fungible-guide: xref:fungibleToken.adoc[FungibleToken guide]
+
+= FungibleToken
+
+This module provides the full FungibleToken module API.
+
+TIP: For an overview of the module, read the {fungible-guide}.
+
+== Core
+
+[.hljs-theme-dark]
+```ts
+import "./node-modules/@openzeppelin-compact/fungible-token/FungibleToken" prefix FungibleToken_;
+```
+
+[.contract]
+[[FungibleToken]]
+=== `++FungibleToken++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/fungibleToken/src/FungibleToken.compact[{github-icon},role=heading-link]
+
+[.contract-index]
+.Circuits
+--
+[.sub-index#FungibleTokenModule]
+* xref:#FungibleTokenModule-initialize[`++initialize(name_, symbol_, decimals_)++`]
+* xref:#FungibleTokenModule-name[`++name()++`]
+* xref:#FungibleTokenModule-symbol[`++symbol()++`]
+* xref:#FungibleTokenModule-decimals[`++decimals()++`]
+* xref:#FungibleTokenModule-totalSupply[`++totalSupply()++`]
+* xref:#FungibleTokenModule-balanceOf[`++balanceOf(account)++`]
+* xref:#FungibleTokenModule-transfer[`++transfer(to, value)++`]
+* xref:#FungibleTokenModule-_unsafeTransfer[`++_unsafeTransfer(to, value)++`]
+* xref:#FungibleTokenModule-allowance[`++allowance(owner, spender)++`]
+* xref:#FungibleTokenModule-approve[`++approve(spender, value)++`]
+* xref:#FungibleTokenModule-transferFrom[`++transferFrom(from, to, value)++`]
+* xref:#FungibleTokenModule-_unsafeTransferFrom[`++_unsafeTransferFrom(from, to, value)++`]
+* xref:#FungibleTokenModule-_transfer[`++_transfer(from, to, value)++`]
+* xref:#FungibleTokenModule-_unsafeUncheckedTransfer[`++_unsafeUncheckedTransfer(from, to, value)++`]
+* xref:#FungibleTokenModule-_update[`++_update(from, to, value)++`]
+* xref:#FungibleTokenModule-_mint[`++_mint(account, value)++`]
+* xref:#FungibleTokenModule-_unsafeMint[`++_unsafeMint(account, value)++`]
+* xref:#FungibleTokenModule-_burn[`++_burn(account, value)++`]
+* xref:#FungibleTokenModule-_approve[`++_approve(owner, spender, value)++`]
+* xref:#FungibleTokenModule-_spendAllowance[`++_spendAllowance(owner, spender, value)++`]
+--
+
+[.contract-item]
+[[FungibleTokenModule-initialize]]
+==== `[.contract-item-name]#++initialize++#++(name_: Opaque<"string">, symbol_: Opaque<"string">, decimals_: Uint<8>) → []++` [.item-kind]#circuit#
+
+Initializes the contract by setting the name, symbol, and decimals.
+
+This MUST be called in the implementing contract's constructor.
+Failure to do so can lead to an irreparable contract.
+
+Requirements:
+
+- Contract is not initialized.
+
+[.contract-item]
+[[FungibleTokenModule-name]]
+==== `[.contract-item-name]#++name++#++() → Opaque<"string">++` [.item-kind]#circuit#
+
+Returns the token name.
+
+Requirements:
+
+- Contract is initialized.
+
+
+[.contract-item]
+[[FungibleTokenModule-symbol]]
+==== `[.contract-item-name]#++symbol++#++() → Opaque<"string">++` [.item-kind]#circuit#
+
+Returns the symbol of the token.
+
+Requirements:
+
+- Contract is initialized.
+
+
+[.contract-item]
+[[FungibleTokenModule-decimals]]
+==== `[.contract-item-name]#++decimals++#++() → Uint<8>++` [.item-kind]#circuit#
+
+Returns the number of decimals used to get its user representation.
+
+Requirements:
+
+- Contract is initialized.
+
+
+[.contract-item]
+[[FungibleTokenModule-totalSupply]]
+==== `[.contract-item-name]#++totalSupply++#++() → Uint<128>++` [.item-kind]#circuit#
+
+Returns the value of tokens in existence.
+
+Requirements:
+
+- Contract is initialized.
+
+
+[.contract-item]
+[[FungibleTokenModule-balanceOf]]
+==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
+
+Returns the value of tokens owned by `account`.
+
+Requirements:
+
+- Contract is initialized.
+
+
+[.contract-item]
+[[FungibleTokenModule-transfer]]
+==== `[.contract-item-name]#++transfer++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
+
+Moves a `value` amount of tokens from the caller's account to `to`.
+
+NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
+This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
+
+Requirements:
+
+- Contract is initialized.
+- `to` is not a ContractAddress.
+- `to` is not the zero address.
+- The caller has a balance of at least `value`.
+
+[.contract-item]
+[[FungibleTokenModule-_unsafeTransfer]]
+==== `[.contract-item-name]#++_unsafeTransfer++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
+
+Unsafe variant of <<FungibleTokenModule-transfer,transfer>> which allows transfers to contract addresses.
+
+WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+Once contract-to-contract calls are supported, this circuit may be deprecated.
+
+Requirements:
+
+- Contract is initialized.
+- `to` is not the zero address.
+- The caller has a balance of at least `value`.
+
+[.contract-item]
+[[FungibleTokenModule-allowance]]
+==== `[.contract-item-name]#++allowance++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
+
+Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner` through <<FungibleTokenModule-transferFrom,transferFrom>>.
+This value changes when <<FungibleTokenModule-approve,approve>> or <<FungibleTokenModule-transferFrom,transferFrom>> are called.
+
+Requirements:
+
+- Contract is initialized.
+
+[.contract-item]
+[[FungibleTokenModule-approve]]
+==== `[.contract-item-name]#++approve++#++(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
+
+Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
+
+Requirements:
+
+- Contract is initialized.
+- `spender` is not the zero address.
+
+[.contract-item]
+[[FungibleTokenModule-transferFrom]]
+==== `[.contract-item-name]#++transferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
+
+Moves `value` tokens from `from` to `to` using the allowance mechanism.
+`value` is the deducted from the caller's allowance.
+
+NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
+This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
+
+Requirements:
+
+- Contract is initialized.
+- `from` is not the zero address.
+- `from` must have a balance of at least `value`.
+- `to` is not the zero address.
+- `to` is not a ContractAddress.
+- The caller has an allowance of ``from``'s tokens of at least `value`.
+
+[.contract-item]
+[[FungibleTokenModule-_unsafeTransferFrom]]
+==== `[.contract-item-name]#++_unsafeTransferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
+
+Unsafe variant of <<FungibleTokenModule-transferFrom,transferFrom>> which allows transfers to contract addresses.
+
+WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
+Tokens sent to a contract address may become irretrievable.
+Once contract-to-contract calls are supported, this circuit may be deprecated.
+
+Requirements:
+
+- Contract is initialized.
+- `from` is not the zero address.
+- `from` must have a balance of at least `value`.
+- `to` is not the zero address.
+- The caller has an allowance of ``from``'s tokens of at least `value`.
+
+[.contract-item]
+[[FungibleTokenModule-_transfer]]
+==== `[.contract-item-name]#++_transfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Moves a `value` amount of tokens from `from` to `to`.
+This circuit is equivalent to <<FungibleTokenModule-transfer,transfer>>, and can be used to e.g.
+implement automatic token fees, slashing mechanisms, etc.
+
+NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
+This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
+
+Requirements:
+
+- Contract is initialized.
+- `from` is not be the zero address.
+- `from` must have at least a balance of `value`.
+- `to` must not be the zero address.
+- `to` must not be a ContractAddress.
+
+[.contract-item]
+[[FungibleTokenModule-_unsafeUncheckedTransfer]]
+==== `[.contract-item-name]#++_unsafeUncheckedTransfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Unsafe variant of <<FungibleTokenModule-_transfer,_transfer>> which allows transfers to contract addresses.
+
+WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+Once contract-to-contract calls are supported, this circuit may be deprecated.
+
+Requirements:
+
+- Contract is initialized.
+- `from` is not the zero address.
+- `to` is not the zero address.
+
+[.contract-item]
+[[FungibleTokenModule-_update]]
+==== `[.contract-item-name]#++_update++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Transfers a `value` amount of tokens from `from` to `to`,
+or alternatively mints (or burns) if `from` (or `to`) is the zero address.
+
+Requirements:
+
+- Contract is initialized.
+
+[.contract-item]
+[[FungibleTokenModule-_mint]]
+==== `[.contract-item-name]#++_mint++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Creates a `value` amount of tokens and assigns them to `account`, by transferring it from the zero address.
+Relies on the `update` mechanism.
+
+Requirements:
+
+- Contract is initialized.
+- `to` is not a ContractAddress.
+- `account` is not the zero address.
+
+[.contract-item]
+[[FungibleTokenModule-_unsafeMint]]
+==== `[.contract-item-name]#++_unsafeMint++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Unsafe variant of <<FungibleTokenModule-_mint,_mint>> which allows transfers to contract addresses.
+
+WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
+Tokens sent to a contract address may become irretrievable.
+Once contract-to-contract calls are supported, this circuit may be deprecated.
+
+Requirements:
+
+- Contract is initialized.
+- `account` is not the zero address.
+
+[.contract-item]
+[[FungibleTokenModule-_burn]]
+==== `[.contract-item-name]#++_burn++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Destroys a `value` amount of tokens from `account`, lowering the total supply.
+Relies on the `_update` mechanism.
+
+Requirements:
+
+- Contract is initialized.
+- `account` is not the zero address.
+- `account` must have at least a balance of `value`.
+
+[.contract-item]
+[[FungibleTokenModule-_approve]]
+==== `[.contract-item-name]#++_approve++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Sets `value` as the allowance of `spender` over the ``owner``'s tokens.
+This circuit is equivalent to `approve`, and can be used to e.g. set automatic allowances for certain subsystems, etc.
+
+Requirements:
+
+- Contract is initialized.
+- `owner` is not the zero address.
+- `spender` is not the zero address.
+
+[.contract-item]
+[[FungibleTokenModule-_spendAllowance]]
+==== `[.contract-item-name]#++_spendAllowance++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
+
+Updates ``owner``'s allowance for `spender` based on spent `value`.
+Does not update the allowance value in case of infinite allowance.
+
+Requirements:
+
+- Contract is initialized.
+- `spender` must have at least an allowance of `value` from `owner`.
