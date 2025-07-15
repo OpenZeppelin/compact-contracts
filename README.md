@@ -1,7 +1,7 @@
-[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.23.0-1abc9c.svg)](https://shields.io/)  
+[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.23.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
-# OpenZeppelin Contracts for Midnight
+# OpenZeppelin Contracts for Compact
 
 **A library for secure smart contract development** written in Compact for [Midnight](https://midnight.network/).
 
@@ -13,7 +13,7 @@
 
 ## Installation
 
-Make sure you have [nvm](https://github.com/nvm-sh/nvm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your machine.
+Make sure you have [nvm](https://github.com/nvm-sh/nvm), [yarn](https://yarnpkg.com/getting-started/install), and [turbo](https://turborepo.com/docs/getting-started/installation) installed on your machine.
 
 Follow Midnight's [compact installation guide](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler) and confirm that `compactc` is in the `PATH` env variable.
 
@@ -31,12 +31,13 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 >
 > - [node](https://nodejs.org/)
 > - [yarn](https://yarnpkg.com/getting-started/install)
+> - [turbo](https://turborepo.com/docs/getting-started/installation)
 > - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
 
 Clone the repository:
 
 ```bash
-git clone git@github.com:OpenZeppelin/midnight-contracts.git
+git clone git@github.com:OpenZeppelin/compact-contracts.git
 ```
 
 `cd` into it and then install dependencies and prepare the environment:
@@ -44,7 +45,7 @@ git clone git@github.com:OpenZeppelin/midnight-contracts.git
 ```bash
 nvm install && \
 yarn && \
-yarn prepare
+turbo compact
 ```
 
 ## Usage
@@ -52,34 +53,34 @@ yarn prepare
 ### Compile the contracts
 
 ```bash
-$ npx turbo compact
+$ turbo compact
 
 (...)
-✔ [COMPILE] [1/2] Compiled ERC20.compact
-@openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/erc20:compact:
+✔ [COMPILE] [1/2] Compiled FungibleToken.compact
+@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/fungible-token:compact:
 ✔ [COMPILE] [1/6] Compiled Initializable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 ✔ [COMPILE] [2/6] Compiled Pausable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 ✔ [COMPILE] [3/6] Compiled Utils.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 ✔ [COMPILE] [4/6] Compiled test/mocks/MockInitializable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:     Compiling 3 circuits:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:     Compiling 3 circuits:
 ✔ [COMPILE] [5/6] Compiled test/mocks/MockPausable.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:     Compiling 5 circuits:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:     Compiling 5 circuits:
 ✔ [COMPILE] [6/6] Compiled test/mocks/MockUtils.compact
-@openzeppelin-midnight/utils:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/utils:compact:
+@openzeppelin-compact/utils:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/utils:compact:
 
-✔ [COMPILE] [2/2] Compiled test/mocks/MockERC20.compact
-@openzeppelin-midnight/erc20:compact:     Compactc version: 0.23.0
-@openzeppelin-midnight/erc20:compact:     Compiling 15 circuits:
+✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
+@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.23.0
+@openzeppelin-compact/fungible-token:compact:     Compiling 15 circuits:
 
 
  Tasks:    2 successful, 2 total
@@ -90,13 +91,24 @@ Cached:    0 cached, 2 total
 **Note:** Speed up the development process by skipping the prover and verifier key file generation:
 
 ```bash
-npx turbo compact -- --skip-zk
+turbo compact -- --skip-zk
 ```
 
 ### Run tests
 
 ```bash
-npx turbo test
+turbo test
+```
+
+### Format and lint files
+
+```bash
+turbo fmt-and-lint:fix
+```
+
+### All together now!
+```bash
+turbo compact test fmt-and-lint:fix
 ```
 
 ## Security

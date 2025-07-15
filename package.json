@@ -1,6 +1,6 @@
 {
-  "name": "openzeppelin-midnight",
-  "description": "Secure Smart Contract library for Midnight",
+  "name": "openzeppelin-compact",
+  "description": "Secure Smart Contract library written in Compact for Midnight",
   "private": true,
   "packageManager": "yarn@4.1.0",
   "workspaces": [
@@ -9,16 +9,14 @@
     "docs/"
   ],
   "scripts": {
-    "prepare": "npx tsc -p ./compact && yarn rebuild",
     "docs": "npx turbo run docs --filter=docs",
     "docs:watch": "npx turbo run docs:watch --filter=docs",
     "compact": "turbo run compact",
     "build": "turbo run build",
     "test": "turbo run test",
-    "fmt": "turbo run fmt",
-    "fmt:fix": "turbo run fmt:fix",
-    "lint": "turbo run lint",
-    "lint:fix": "turbo run lint:fix",
+    "fmt-and-lint": "biome check . --changed",
+    "fmt-and-lint:fix": "biome check . --changed --write",
+    "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
     "types": "turbo run types",
     "clean": "turbo run clean"
   },

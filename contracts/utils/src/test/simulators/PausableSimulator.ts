@@ -13,8 +13,8 @@ import {
 import {
   type PausablePrivateState,
   PausableWitnesses,
-} from '../../witnesses/PausableWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/PausableWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of an utils contract for testing purposes.

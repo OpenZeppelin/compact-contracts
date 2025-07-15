@@ -3,9 +3,9 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "outputs": ["compactc/**"],
+      "outputs": ["dist/**"],
+      "inputs": ["src/**/*.ts", "tsconfig.json"],
       "env": ["COMPACT_HOME"],
-      "inputs": ["src/**.cjs"],
       "cache": true
     }
   }
