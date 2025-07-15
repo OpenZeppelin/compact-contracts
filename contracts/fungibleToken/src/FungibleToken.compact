@@ -75,7 +75,7 @@ module FungibleToken {
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit initialize(
     name_: Opaque<"string">,
@@ -344,7 +344,7 @@ module FungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner of the tokens to transfer.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The receipient of the transferred tokens.
    * @param {Uint<128>} value - The amount of tokens to transfer.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -372,7 +372,7 @@ module FungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The owner of the tokens to transfer.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The receipient of the transferred tokens.
    * @param {Uint<128>} value - The amount of tokens to transfer.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeUncheckedTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -398,7 +398,7 @@ module FungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The original owner of the tokens moved (which is 0 if tokens are minted).
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the tokens moved (which is 0 if tokens are burned).
    * @param {Uint<128>} value - The amount of tokens moved from `from` to `to`.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   circuit _update(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -443,7 +443,7 @@ module FungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.
    * @param {Uint<128>} value - The amount of tokens minted.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _mint(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -468,7 +468,7 @@ module FungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.
    * @param {Uint<128>} value - The amount of tokens minted.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -491,7 +491,7 @@ module FungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The target owner of tokens to burn.
    * @param {Uint<128>} value - The amount of tokens to burn.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _burn(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -516,7 +516,7 @@ module FungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of the tokens.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender of the tokens.
    * @param {Uint<128>} value - The amount of tokens `spender` may spend on behalf of `owner`.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _approve(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -545,7 +545,7 @@ module FungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of the tokens.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender of the tokens.
    * @param {Uint<128>} value - The amount of token allowance to spend.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _spendAllowance(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,

@@ -397,7 +397,6 @@ export class FungibleTokenSimulator
    * @param owner The owner of the tokens.
    * @param spender The spender of the tokens.
    * @param value The amount of tokens `spender` may spend on behalf of `owner`.
-   * @returns None.
    */
   public _approve(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,

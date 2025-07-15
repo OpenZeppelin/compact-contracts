@@ -1,0 +1,145 @@
+:fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[fungible tokens]
+:eip-20: https://eips.ethereum.org/EIPS/eip-20[EIP-20]
+
+= FungibleToken
+
+FungibleToken is a specification for {fungible-tokens},
+a type of token where all the units are exactly equal to each other.
+This module is an approximation of {eip-20} written in the Compact programming language for the Midnight network.
+
+== ERC20 Compatbility
+
+Even though Midnight is not EVM-compatible, this implementation attempts to be an approximation of the standard.
+Some features and behaviors are either not possible, not possible yet,
+or changed because of the vastly different tech stack and Compact language constraints.
+
+**Notable changes**
+
+- **Uint<128> as value type** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
+
+**Features and specifications NOT supported**
+
+- **Events** - Midnight does not currently support events, but this is planned on being supported in the future.
+- **Uint256 type** - There's ongoing research on ways to support uint256 in the future.
+- **Interface** - Compact currently does not have a way to define a contract interface.
+This library offers modules of contracts with free floating circuits;
+nevertheless, there are no means of enforcing that all circuits are provided.
+
+== Contract-to-contract calls
+
+Contract-to-contract calls are currently not supported in the Compact language.
+Due to this limitation, the current iteration of FungibleToken disallows transfers and mints to the `ContractAddress` type.
+Transferring tokens to a contract may result in those tokens being locked forever.
+The FungibleToken module, however, does provide `unsafe` circuit variants for users who wish to experiment with sending tokens to contracts.
+
+WARNING: The `unsafe` circuits will eventually be deprecated after Compact supports contract-to-contract calls—meaning
+`transfer`, `_mint`, etc. are planned to eventually allow the recipients to be of the `ContractAddress` type.
+
+== Usage
+
+:extensibility-pattern: xref:extensibility.adoc#the_module_contract_pattern[Module/Contract Pattern]
+:fungible-mint: xref:/api/fungibleToken.adoc#FungibleTokenModule-_mint[_mint]
+
+Import the FungibleToken module into the implementing contract.
+It's recommended to prefix the module with `FungibleToken_` to avoid circuit signature clashes.
+
+```typescript
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/tokens/FungibleToken" prefix FungibleToken_;
+
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  decimals: Uint<8>
+) {
+  FungibleToken_initialize(name, symbol, decimals);
+}
+```
+
+Next, expose the ciruits that users may call in the contract.
+This library enables extensibility by following the rules of the {extensibility-pattern}.
+Note that circuits with a preceding underscore (`_likeThis`) are meant to be building blocks for implementing contracts.
+Exposing {fungible-mint} without some sort of access control, for example, would allow ANYONE to mint tokens.
+
+```typescript
+export circuit name(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return FungibleToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return FungibleToken_decimals();
+}
+
+(...)
+```
+
+The following example is a simple token contract with a fixed supply that's minted to the passed recipient upon construction.
+
+```typescript
+// FungibleTokenFixedSupply.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/tokens/FungibleToken" prefix FungibleToken_;
+
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  decimals: Uint<8>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  fixedSupply: Uint<128>,
+) {
+  FungibleToken_initialize(name, symbol, decimals);
+  FungibleToken__mint(recipient, fixedSupply);
+}
+
+export circuit name(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return FungibleToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return FungibleToken_decimals();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return FungibleToken_totalSupply();
+}
+
+export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
+
+export circuit allowance(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  spender: Either<ZswapCoinPublicKey, ContractAddress>
+): Uint<128> {
+  return FungibleToken_allowance(owner, spender);
+}
+
+export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+  return FungibleToken_transfer(to, value);
+}
+
+export circuit transferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
+  return FungibleToken_transferFrom(from, to, value);
+}
+
+export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+  return FungibleToken_approve(spender, value);
+}
+```
