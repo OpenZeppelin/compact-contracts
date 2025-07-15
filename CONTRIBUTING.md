@@ -16,23 +16,26 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Midni
 * [Midnight Contracts Design Decisions](#midnight-contracts-design-decisions)
 
 [How Can I Contribute?](#how-can-i-contribute)
-  * [Reporting Bugs](#reporting-bugs)
-  * [Suggesting Enhancements](#suggesting-enhancements)
-  * [Your First Code Contribution](#your-first-code-contribution)
-  * [Pull Requests](#pull-requests)
-  * [Opening an Issue](#opening-an-issue)
+
+* [Reporting Bugs](#reporting-bugs)
+* [Suggesting Enhancements](#suggesting-enhancements)
+* [Your First Code Contribution](#your-first-code-contribution)
+* [Pull Requests](#pull-requests)
+* [Opening an Issue](#opening-an-issue)
 
 [Styleguides](#styleguides)
-  * [Git Commit Messages](#git-commit-messages)
-  * [TypeScript Styleguide](#typescript-styleguide)
+
+* [Git Commit Messages](#git-commit-messages)
+* [TypeScript Styleguide](#typescript-styleguide)
 
 [Additional Notes](#additional-notes)
-  * [Issue and Pull Request Labels](#issue-and-pull-request-labels)
+
+* [Issue and Pull Request Labels](#issue-and-pull-request-labels)
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [OpenZeppelin Midnight Contracts Code of Conduct](CODE_OF_CONDUCT.md). 
-By participating, you are expected to uphold this code. 
+This project and everyone participating in it is governed by the [OpenZeppelin Midnight Contracts Code of Conduct](CODE_OF_CONDUCT.md).
+By participating, you are expected to uphold this code.
 Please report unacceptable behavior to [contact@openzeppelin.com](contact@openzeppelin.com).
 
 ## I don't want to read this whole thing I just have a question!!!
@@ -137,12 +140,12 @@ Any non-trivial code contribution must be first discussed with the maintainers i
 Please follow these steps to have your contribution considered by the maintainers:
 
 1. [Open an issue](#opening-an-issue).
-2. Fork the repository and create a new branch. 
+2. Fork the repository and create a new branch.
 3. Follow all instructions in [the template](.github/PULL_REQUEST_TEMPLATE.md)
 4. Follow the [engineering guidelines](./GUIDELINES.md).
 5. Follow the [styleguides](#styleguides)
 6. After you submit your pull request, verify that all [status checks](https://help.github.com/articles/about-status-checks/) are passing. <details><summary>What if the status checks are failing?</summary>
-If a status check is failing, and you believe that the failure is unrelated to your change, please leave a comment on the pull request explaining why you believe the failure is unrelated. 
+If a status check is failing, and you believe that the failure is unrelated to your change, please leave a comment on the pull request explaining why you believe the failure is unrelated.
 A maintainer will re-run the status check for you. If we conclude that the failure was a false positive, then we will open an issue to track that problem with our status check suite.</details>
 
 While the prerequisites above must be satisfied prior to having your pull request reviewed, the reviewer(s) may ask you to complete additional design work, tests, or other changes before your pull request can be ultimately accepted.
@@ -174,7 +177,10 @@ When requesting a new feature, include as many details as you can, especially ar
 
 This section lists the labels we use to help us track and manage issues and pull requests.
 
-[GitHub search](https://help.github.com/articles/searching-issues/) makes it easy to use labels for finding groups of issues or pull requests you're interested in. For example, you might be interested in [open issues across `OpenZeppelin` and all OpenZeppelin-owned packages which are labeled as bugs, but still need to be reliably reproduced](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abug) or perhaps [open pull requests in `OpenZeppelin/midnight-contracts` which haven't been reviewed yet](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+comments%3A0). To help you find issues and pull requests, each label is listed with search links for finding open items with that label in `OpenZeppelin/midnight-contracts` only and also across all OpenZeppelin repositories. We  encourage you to read about [other search filters](https://help.github.com/articles/searching-issues/) which will help you write more focused queries.
+[GitHub search](https://help.github.com/articles/searching-issues/) makes it easy to use labels for finding groups of issues or pull requests you're interested in.
+For example, you might be interested in [open issues across `OpenZeppelin` and all OpenZeppelin-owned packages which are labeled as bugs, but still need to be reliably reproduced](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abug) or perhaps [open pull requests in `OpenZeppelin/midnight-contracts` which haven't been reviewed yet](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+comments%3A0).
+To help you find issues and pull requests, each label is listed with search links for finding open items with that label in `OpenZeppelin/midnight-contracts` only and also across all OpenZeppelin repositories.
+We  encourage you to read about [other search filters](https://help.github.com/articles/searching-issues/) which will help you write more focused queries.
 
 The labels are loosely grouped by their purpose, but it's not required that every issue has a label from every group or that an issue can't have more than one label from the same group.
 
