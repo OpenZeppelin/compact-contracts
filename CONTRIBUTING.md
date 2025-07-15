@@ -1,8 +1,8 @@
-# Contributing to OpenZeppelin Contracts for Midnight
+# Contributing to OpenZeppelin Contracts for Compact
 
 👍🎉 First off, thanks for taking the time to contribute! 🎉👍
 
-We really appreciate and value contributions to OpenZeppelin Contracts for Midnight. Please take 5' to review the items listed below to make sure that your contributions are merged and questions are answered.
+We really appreciate and value contributions to OpenZeppelin Contracts for Compact. Please take 5' to review the items listed below to make sure that your contributions are merged and questions are answered.
 
 ## Table Of Contents
 
@@ -12,8 +12,8 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Midni
 
 [What should I know before I get started?](#what-should-i-know-before-i-get-started)
 
-* [What Is OpenZeppelin Contracts for Midnight](#what-is-openzeppelin-contracts-for-midnight)
-* [Midnight Contracts Design Decisions](#midnight-contracts-design-decisions)
+* [What Is OpenZeppelin Contracts for Compact](#what-is-openzeppelin-contracts-for-compact)
+* [Compact Contracts Design Decisions](#compact-contracts-design-decisions)
 
 [How Can I Contribute?](#how-can-i-contribute)
 
@@ -34,7 +34,7 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Midni
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [OpenZeppelin Midnight Contracts Code of Conduct](CODE_OF_CONDUCT.md).
+This project and everyone participating in it is governed by the [OpenZeppelin Compact Contracts Code of Conduct](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code.
 Please report unacceptable behavior to [contact@openzeppelin.com](contact@openzeppelin.com).
 
@@ -44,11 +44,11 @@ Please report unacceptable behavior to [contact@openzeppelin.com](contact@openze
 
 We have an official message board where the community chimes in with helpful advice if you have questions.
 
-* [Github Discussions](https://github.com/OpenZeppelin/midnight-contracts/discussions)
+* [Github Discussions](https://github.com/OpenZeppelin/compact-contracts/discussions)
 
 ## What should I know before I get started?
 
-### What Is OpenZeppelin Contracts for Midnight
+### What Is OpenZeppelin Contracts for Compact?
 
 **A library for secure smart contract development** written in Compact for [Midnight](https://midnight.network/).
 
@@ -58,28 +58,28 @@ We have an official message board where the community chimes in with helpful adv
 > Expect rapid iteration.
 > **Use at your own risk.**
 
-### Midnight Contracts Design Decisions
+### Compact Contracts Design Decisions
 
-We try our best to document important design decisions, limitations, and pitfalls in each module using the [NatSpec format](https://docs.soliditylang.org/en/latest/natspec-format.html). If you have a question about module that's not answered by this documentation please use the [Discussion Board](https://github.com/OpenZeppelin/midnight-contracts/discussions).
+We try our best to document important design decisions, limitations, and pitfalls in each module using the [NatSpec format](https://docs.soliditylang.org/en/latest/natspec-format.html). If you have a question about module that's not answered by this documentation please use the [Discussion Board](https://github.com/OpenZeppelin/compact-contracts/discussions).
 
 ## How Can I Contribute?
 
 ### Reporting Bugs
 
-This section guides you through submitting a bug report for Midnight Contracts. Following these guidelines helps maintainers and the community understand your report :pencil:, reproduce the behavior :computer: :computer:, and find related reports :mag_right:.
+This section guides you through submitting a bug report for Compact Contracts. Following these guidelines helps maintainers and the community understand your report :pencil:, reproduce the behavior :computer: :computer:, and find related reports :mag_right:.
 
-Before creating bug reports, please check [this list](#before-submitting-a-bug-report) as you might find out that you don't need to create one. When you are creating a bug report, please [include as many details as possible](#how-do-i-submit-a-good-bug-report). Fill out [the required template](https://github.com/OpenZeppelin/midnight-contracts/blob/main/.github/ISSUE_TEMPLATE/01_BUG_REPORT.yml), the information it asks for helps us resolve issues faster.
+Before creating bug reports, please check [this list](#before-submitting-a-bug-report) as you might find out that you don't need to create one. When you are creating a bug report, please [include as many details as possible](#how-do-i-submit-a-good-bug-report). Fill out [the required template](https://github.com/OpenZeppelin/compact-contracts/blob/main/.github/ISSUE_TEMPLATE/01_BUG_REPORT.yml), the information it asks for helps us resolve issues faster.
 
 > **Note:** If you find a **Closed** issue that seems like it is the same thing that you're experiencing, open a new issue and include a link to the original issue in the body of your new one.
 
 #### Before Submitting A Bug Report
 
-* **Check the [discussions](https://github.com/OpenZeppelin/midnight-contracts/discussions)** for a list of common questions and problems.
-* **Perform a [cursory search](https://github.com/search?q=repo%3AOpenZeppelin%2Fmidnight-contracts%20is%3Aissue&type=issues)** to see if the problem has already been reported. If it has **and the issue is still open**, add a comment to the existing issue instead of opening a new one.
+* **Check the [discussions](https://github.com/OpenZeppelin/compact-contracts/discussions)** for a list of common questions and problems.
+* **Perform a [cursory search](https://github.com/search?q=repo%3AOpenZeppelin%2Fcompact-contracts%20is%3Aissue&type=issues)** to see if the problem has already been reported. If it has **and the issue is still open**, add a comment to the existing issue instead of opening a new one.
 
 #### How Do I Submit A (Good) Bug Report?
 
-Bugs are tracked as [GitHub issues](https://guides.github.com/features/issues/). Create an issue and provide the following information by filling in [the template](https://github.com/OpenZeppelin/midnight-contracts/issues/new?template=01_BUG_REPORT.yml).
+Bugs are tracked as [GitHub issues](https://guides.github.com/features/issues/). Create an issue and provide the following information by filling in [the template](https://github.com/OpenZeppelin/compact-contracts/issues/new?template=01_BUG_REPORT.yml).
 
 Explain the problem and include additional details to help maintainers reproduce the problem:
 
@@ -119,7 +119,7 @@ Enhancement suggestions are tracked as [GitHub issues](https://guides.github.com
 
 ### Your First Code Contribution
 
-Unsure where to begin contributing to Midnight Contracts? You can start by looking through these `beginner` and `help-wanted` issues:
+Unsure where to begin contributing to Compact Contracts? You can start by looking through these `beginner` and `help-wanted` issues:
 
 * [Beginner issues][beginner] - issues which should only require a few lines of code, and a test or two.
 * [Help wanted issues][help-wanted] - issues which should be a bit more involved than `beginner` issues.
@@ -130,10 +130,10 @@ Both issue lists are sorted by total number of comments. While not perfect, numb
 
 The process described here has several goals:
 
-* Maintain Midnight Contracts quality.
+* Maintain Compact Contracts quality.
 * Fix problems that are important to users.
-* Engage the community in working toward the best possible smart contracts library on Midnight.
-* Enable a sustainable system for Midnight Contract's maintainers to review contributions.
+* Engage the community in working toward the best possible Compact smart contracts library.
+* Enable a sustainable system for Compact Contract's maintainers to review contributions.
 
 Any non-trivial code contribution must be first discussed with the maintainers in an issue (see [Opening an issue](#opening-an-issue)). Only very minor changes are accepted without prior discussion.
 
@@ -168,8 +168,8 @@ Before opening an issue, be sure to search through the existing open and closed 
 
 When requesting a new feature, include as many details as you can, especially around the use cases that motivate it. Features are prioritized according to the impact they may have on the ecosystem, so we appreciate information showing that the impact could be high.
 
-[security policy]: https://github.com/OpenZeppelin/midnight-contracts/security
-[open an issue]: https://github.com/OpenZeppelin/midnight-contracts/issues/new/choose
+[security policy]: https://github.com/OpenZeppelin/compact-contracts/security
+[open an issue]: https://github.com/OpenZeppelin/compact-contracts/issues/new/choose
 
 ## Additional Notes
 
@@ -178,17 +178,17 @@ When requesting a new feature, include as many details as you can, especially ar
 This section lists the labels we use to help us track and manage issues and pull requests.
 
 [GitHub search](https://help.github.com/articles/searching-issues/) makes it easy to use labels for finding groups of issues or pull requests you're interested in.
-For example, you might be interested in [open issues across `OpenZeppelin` and all OpenZeppelin-owned packages which are labeled as bugs, but still need to be reliably reproduced](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abug) or perhaps [open pull requests in `OpenZeppelin/midnight-contracts` which haven't been reviewed yet](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+comments%3A0).
-To help you find issues and pull requests, each label is listed with search links for finding open items with that label in `OpenZeppelin/midnight-contracts` only and also across all OpenZeppelin repositories.
+For example, you might be interested in [open issues across `OpenZeppelin` and all OpenZeppelin-owned packages which are labeled as bugs, but still need to be reliably reproduced](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abug) or perhaps [open pull requests in `OpenZeppelin/compact-contracts` which haven't been reviewed yet](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+comments%3A0).
+To help you find issues and pull requests, each label is listed with search links for finding open items with that label in `OpenZeppelin/compact-contracts` only and also across all OpenZeppelin repositories.
 We  encourage you to read about [other search filters](https://help.github.com/articles/searching-issues/) which will help you write more focused queries.
 
 The labels are loosely grouped by their purpose, but it's not required that every issue has a label from every group or that an issue can't have more than one label from the same group.
 
-Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestions for new labels, and if you notice some labels are missing on some repositories, then please open an issue on that repository.
+Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions for new labels, and if you notice some labels are missing on some repositories, then please open an issue on that repository.
 
 #### Type of Issue and Issue State
 
-| Label name | `OpenZeppelin/midnight-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
+| Label name | `OpenZeppelin/compact-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
 | --- | --- | --- | --- |
 | `enhancement` | [search][search-OpenZeppelin-repo-label-enhancement] | [search][search-OpenZeppelin-org-label-enhancement] | Feature requests. |
 | `bug` | [search][search-OpenZeppelin-repo-label-bug] | [search][search-OpenZeppelin-org-label-bug] | Confirmed bugs or reports that are very likely to be bugs. |
@@ -205,7 +205,7 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 
 #### Topic Categories
 
-| Label name | `OpenZeppelin/midnight-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
+| Label name | `OpenZeppelin/compact-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
 | --- | --- | --- | --- |
 | `documentation` | [search][search-OpenZeppelin-repo-label-documentation] | [search][search-OpenZeppelin-org-label-documentation] | Improvements or additions to documentation. |
 | `performance` | [search][search-OpenZeppelin-repo-label-performance] | [search][search-OpenZeppelin-org-label-performance] | Improvements related to circuit size, gas optimization, or code efficiency. |
@@ -214,7 +214,7 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 
 #### Pull Request Labels
 
-| Label name | `OpenZeppelin/midnight-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description
+| Label name | `OpenZeppelin/compact-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description
 | --- | --- | --- | --- |
 | `work-in-progress` | [search][search-OpenZeppelin-repo-label-work-in-progress] | [search][search-OpenZeppelin-org-label-work-in-progress] | Pull requests which are still being worked on, more changes will follow. |
 | `needs-review` | [search][search-OpenZeppelin-repo-label-needs-review] | [search][search-OpenZeppelin-org-label-needs-review] | Pull requests which need code review, and approval from maintainers or OpenZeppelin core team. |
@@ -222,49 +222,49 @@ Please open an issue on `OpenZeppelin/midnight-contracts` if you have suggestion
 | `requires-changes` | [search][search-OpenZeppelin-repo-label-requires-changes] | [search][search-OpenZeppelin-org-label-requires-changes] | Pull requests which need to be updated based on review comments and then reviewed again. |
 | `needs-testing` | [search][search-OpenZeppelin-repo-label-needs-testing] | [search][search-OpenZeppelin-org-label-needs-testing] | Pull requests which need manual testing. |
 
-[search-OpenZeppelin-repo-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aenhancement
+[search-OpenZeppelin-repo-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aenhancement
 [search-OpenZeppelin-org-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aenhancement
-[search-OpenZeppelin-repo-label-bug]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Abug
+[search-OpenZeppelin-repo-label-bug]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Abug
 [search-OpenZeppelin-org-label-bug]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abug
-[search-OpenZeppelin-repo-label-question]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aquestion
+[search-OpenZeppelin-repo-label-question]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aquestion
 [search-OpenZeppelin-org-label-question]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aquestion
-[search-OpenZeppelin-repo-label-feedback]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Afeedback
+[search-OpenZeppelin-repo-label-feedback]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Afeedback
 [search-OpenZeppelin-org-label-feedback]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Afeedback
-[search-OpenZeppelin-repo-label-help-wanted]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ahelp-wanted
+[search-OpenZeppelin-repo-label-help-wanted]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Ahelp-wanted
 [search-OpenZeppelin-org-label-help-wanted]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ahelp-wanted
-[search-OpenZeppelin-repo-label-beginner]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Abeginner
+[search-OpenZeppelin-repo-label-beginner]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Abeginner
 [search-OpenZeppelin-org-label-beginner]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abeginner
-[search-OpenZeppelin-repo-label-more-information-needed]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Amore-information-needed
+[search-OpenZeppelin-repo-label-more-information-needed]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Amore-information-needed
 [search-OpenZeppelin-org-label-more-information-needed]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Amore-information-needed
-[search-OpenZeppelin-repo-label-needs-reproduction]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aneeds-reproduction
+[search-OpenZeppelin-repo-label-needs-reproduction]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aneeds-reproduction
 [search-OpenZeppelin-org-label-needs-reproduction]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aneeds-reproduction
-[search-OpenZeppelin-repo-label-documentation]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Adocumentation
+[search-OpenZeppelin-repo-label-documentation]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Adocumentation
 [search-OpenZeppelin-org-label-documentation]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Adocumentation
-[search-OpenZeppelin-repo-label-performance]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aperformance
+[search-OpenZeppelin-repo-label-performance]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aperformance
 [search-OpenZeppelin-org-label-performance]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aperformance
-[search-OpenZeppelin-repo-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Asecurity
+[search-OpenZeppelin-repo-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Asecurity
 [search-OpenZeppelin-org-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Asecurity
 
-[search-OpenZeppelin-repo-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ablocked
+[search-OpenZeppelin-repo-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Ablocked
 [search-OpenZeppelin-org-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ablocked
-[search-OpenZeppelin-repo-label-duplicate]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aduplicate
+[search-OpenZeppelin-repo-label-duplicate]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aduplicate
 [search-OpenZeppelin-org-label-duplicate]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aduplicate
-[search-OpenZeppelin-repo-label-wontfix]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Awontfix
+[search-OpenZeppelin-repo-label-wontfix]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Awontfix
 [search-OpenZeppelin-org-label-wontfix]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Awontfix
-[search-OpenZeppelin-repo-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Ainvalid
+[search-OpenZeppelin-repo-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Ainvalid
 [search-OpenZeppelin-org-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ainvalid
-[search-OpenZeppelin-repo-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Adeprecation-help
+[search-OpenZeppelin-repo-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Adeprecation-help
 [search-OpenZeppelin-org-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Adeprecation-help
 
-[search-OpenZeppelin-repo-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Awork-in-progress
+[search-OpenZeppelin-repo-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Awork-in-progress
 [search-OpenZeppelin-org-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Awork-in-progress
-[search-OpenZeppelin-repo-label-needs-review]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aneeds-review
+[search-OpenZeppelin-repo-label-needs-review]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aneeds-review
 [search-OpenZeppelin-org-label-needs-review]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Aneeds-review
-[search-OpenZeppelin-repo-label-under-review]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aunder-review
+[search-OpenZeppelin-repo-label-under-review]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aunder-review
 [search-OpenZeppelin-org-label-under-review]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Aunder-review
-[search-OpenZeppelin-repo-label-requires-changes]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Arequires-changes
+[search-OpenZeppelin-repo-label-requires-changes]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Arequires-changes
 [search-OpenZeppelin-org-label-requires-changes]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Arequires-changes
-[search-OpenZeppelin-repo-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fmidnight-contracts+label%3Aneeds-testing
+[search-OpenZeppelin-repo-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aneeds-testing
 [search-OpenZeppelin-org-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Aneeds-testing
 
 [beginner]:https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abeginner+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc
