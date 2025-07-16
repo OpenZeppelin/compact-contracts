@@ -63,7 +63,7 @@ Requirements:
 Transfers ownership of the contract to `newOwner`.
 
 NOTE: Ownership transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
-This restriction prevents circuits from being inadvertently locked in contracts.
+This restriction prevents permanently disabling access to a circuit.
 
 Requirements:
 
@@ -120,13 +120,12 @@ Requirements:
 Transfers ownership of the contract to a `newOwner` without enforcing permission checks on the caller.
 
 NOTE: Ownership transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
-This restriction prevents circuits from being inadvertently locked in contracts.
+This restriction prevents permanently disabling access to a circuit.
 
 Requirements:
 
 - Contract is initialized.
 - `newOwner` is not a ContractAddress.
-- `newOwner` is not the zero address.
 
 [.contract-item]
 [[Ownable-_unsafeUncheckedTransferOwnership]]
@@ -141,4 +140,3 @@ Once contract-to-contract calls are supported, this circuit may be deprecated.
 Requirements:
 
 - Contract is initialized.
-- `newOwner` is not the zero address.
