@@ -12,7 +12,7 @@ pragma language_version >= 0.15.0;
  * The initial owner must be set by using the `initialize` circuit during construction.
  * This can later be changed with `transferOwnership`.
  *
- * @notice Ownership can only be transferred to ZSwapCoinPublicKeys
+ * @notice Ownership can only be transferred to ZswapCoinPublicKeys
  * through the main transfer circuits (`transferOwnership` and `_transferOwnership`).
  * In other words, ownership transfers to contract addresses are disallowed through these
  * circuits.
@@ -21,7 +21,7 @@ pragma language_version >= 0.15.0;
  * circuit.
  *
  * @notice This module does offer experimental circuits that allow ownership to be granted
- * to contract addresses (`_unsafeTransferOwnshiper` and `_unsafeUncheckedTransferOwnership`).
+ * to contract addresses (`_unsafeTransferOwnership` and `_unsafeUncheckedTransferOwnership`).
  * Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
  * Until contract-to-contract calls are supported,
  * there is no direct way for a contract to call circuits of other contracts
@@ -75,7 +75,7 @@ module Ownable {
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
-   * This restriction prevents circuits from being inadvertently locked in contracts.
+   * This restriction prevents permanently disabling access to a circuit.
    *
    * Requirements:
    *
@@ -164,7 +164,6 @@ module Ownable {
    *
    * - Contract is initialized.
    * - `newOwner` is not a ContractAddress.
-   * - `newOwner` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
@@ -186,7 +185,6 @@ module Ownable {
    * Requirements:
    *
    * - Contract is initialized.
-   * - `newOwner` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.

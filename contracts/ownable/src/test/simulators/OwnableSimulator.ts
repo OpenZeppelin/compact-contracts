@@ -119,7 +119,6 @@ export class OwnableSimulator
     );
 
     this.circuitContext = res.context;
-    return res.result;
   }
 
   /**
