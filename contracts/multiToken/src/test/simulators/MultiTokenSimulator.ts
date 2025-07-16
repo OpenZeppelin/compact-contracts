@@ -175,7 +175,6 @@ export class MultiTokenSimulator
    * @param id The unique identifier of the asset type.
    * @param value The quantity of `id` tokens to transfer.
    * @param sender - Optional. Sets the caller context if provided.
-   * @returns None.
    */
   public transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -237,7 +236,6 @@ export class MultiTokenSimulator
    * @param id The unique identifier of the asset type.
    * @param value The quantity of `id` tokens to transfer.
    * @param sender - Optional. Sets the caller context if provided.
-   * @returns None.
    */
   public _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,

@@ -1,5 +1,6 @@
 # Extensibility
 
+[id="the_module_contract_pattern"]
 ## The Module/Contract Pattern
 
 We use the term *modular composition by delegation* to describe the practice of having contracts call into module-defined circuits to implement behavior. Rather than inheriting or overriding functionality, a contract delegates responsibility to the module by explicitly invoking its exported circuits.

@@ -6,5 +6,9 @@
 
 * Modules
 
+* Modules
+** xref:fungibleToken.adoc[FungibleToken]
+*** xref:/api/fungibleToken.adoc[API Reference]
+
 ** xref:multitoken.adoc[MultiToken]
-*** xref:api/multitoken.adoc[MultiToken]
+*** xref:api/multitoken.adoc[API Reference]

@@ -89,7 +89,6 @@ export class PausableSimulator
 
   /**
    * @description Makes a circuit only callable when the contract is paused.
-   * @returns None.
    */
   public assertPaused() {
     this.circuitContext = this.contract.impureCircuits.assertPaused(
@@ -99,7 +98,6 @@ export class PausableSimulator
 
   /**
    * @description Makes a circuit only callable when the contract is not paused.
-   * @returns None.
    */
   public assertNotPaused() {
     this.circuitContext = this.contract.impureCircuits.assertNotPaused(
@@ -109,7 +107,6 @@ export class PausableSimulator
 
   /**
    * @description Triggers a stopped state.
-   * @returns None.
    */
   public pause() {
     this.circuitContext = this.contract.impureCircuits.pause(
@@ -119,7 +116,6 @@ export class PausableSimulator
 
   /**
    * @description Lifts the pause on the contract.
-   * @returns None.
    */
   public unpause() {
     this.circuitContext = this.contract.impureCircuits.unpause(

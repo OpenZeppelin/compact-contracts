@@ -25,7 +25,7 @@ import "openzeppelin-compact/multi-token" prefix MultiToken_;
 
 [.sub-index#MultiTokenModule]
 * xref:#MultiTokenModule-initialize[`++initialize(uri_)++`]
-* xref:#MultiTokenModule-uri[`++uri()++`]
+* xref:#MultiTokenModule-uri[`++uri(id)++`]
 * xref:#MultiTokenModule-balanceOf[`++balanceOf(account, id)++`]
 * xref:#MultiTokenModule-setApprovalForAll[`++setApprovalForAll(operator, approved)++`]
 * xref:#MultiTokenModule-isApprovedForAll[`++isApprovedForAll(account, operator)++`]
@@ -55,7 +55,7 @@ Requirements:
 
 [.contract-item]
 [[MultiTokenModule-uri]]
-==== `[.contract-item-name]#++uri++#++() → Opaque<"string">++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++uri++#++(id: Uint<128>) → Opaque<"string">++` [.item-kind]#circuit#
 
 This implementation returns the same URI for *all* token types.
 It relies on the token type ID substitution mechanism defined in the EIP: {erc1155-metadata}.
