@@ -1,7 +1,7 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { OwnableSimulator } from './simulators/OwnableSimulator';
-import * as utils from './utils/address';
+import { OwnableSimulator } from './simulators/OwnableSimulator.js';
+import * as utils from './utils/address.js';
 
 // Callers
 const OWNER = utils.toHexPadded('OWNER');
