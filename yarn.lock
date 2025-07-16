@@ -459,6 +459,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@openzeppelin-compact/ownable@workspace:contracts/ownable":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-compact/ownable@workspace:contracts/ownable"
+  dependencies:
+    "@openzeppelin-compact/compact": "workspace:^"
+    "@types/node": "npm:22.14.0"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.2.2"
+    vitest: "npm:^3.1.3"
+  languageName: unknown
+  linkType: soft
+
 "@openzeppelin-compact/utils@workspace:contracts/utils":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/utils@workspace:contracts/utils"
