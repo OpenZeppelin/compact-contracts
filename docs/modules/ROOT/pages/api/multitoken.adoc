@@ -42,7 +42,7 @@ import "openzeppelin-compact/multi-token" prefix MultiToken_;
 
 [.contract-item]
 [[MultiTokenModule-initialize]]
-==== `[.contract-item-name]#++initialize++#++(uri_) → []++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++initialize++#++(uri_: Opaque<"string">) → []++` [.item-kind]#circuit#
 
 Initializes the contract by setting the base URI for all tokens.
 
