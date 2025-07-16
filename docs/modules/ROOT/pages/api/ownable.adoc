@@ -16,7 +16,7 @@ import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
 
 [.contract]
 [[Ownable]]
-=== `++Ownable++` link:https://github.com/OpenZeppelin/midnight-contracts/blob/add-ownable/contracts/ownable/src/Ownable.compact[{github-icon},role=heading-link]
+=== `++Ownable++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/ownable/src/Ownable.compact[{github-icon},role=heading-link]
 
 [.contract-index]
 .Circuits

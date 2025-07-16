@@ -17,7 +17,7 @@ import "openzeppelin-compact/multi-token" prefix MultiToken_;
 
 [.contract]
 [[MultiToken]]
-=== `++MultiToken++` link:https://github.com/OpenZeppelin/midnight-contracts/blob/update-multi-token/contracts/multiToken/src/MultiToken.compact[{github-icon},role=heading-link]
+=== `++MultiToken++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/multiToken/src/MultiToken.compact[{github-icon},role=heading-link]
 
 [.contract-index]
 .Circuits
