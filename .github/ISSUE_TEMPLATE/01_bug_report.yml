@@ -1,0 +1,100 @@
+name: "🐛 Bug Report"
+description: Create a report to help us improve
+title: "[Bug]: "
+labels: ["bug", "triage"]
+projects: ["OpenZeppelin/41"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+        If you’re unsure whether the issue you’re having is a bug, you can post in [Discussions](https://github.com/OpenZeppelin/midnight-contracts/discussions) instead.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please ensure you have completed all of the following.
+      options:
+        - label: I have read the [Contributing Guidelines](https://github.com/OpenZeppelin/midnight-contracts/CONTRIBUTING.md#creating-an-issue).
+          required: true
+        - label: I agree to follow the [Code of Conduct](https://github.com/OpenZeppelin/midnight-contracts/CODE_OF_CONDUCT.md).
+          required: true
+        - label: I have searched for [existing issues](https://github.com/OpenZeppelin/midnight-contracts/issues) that already report this problem, without success.
+          required: true
+
+  - type: textarea
+    id: bug-steps
+    attributes:
+      label: What are the steps to reproduce this issue?
+      placeholder: |
+        1. Clone repo
+        2. Run `turbo compact`
+        3. …
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: What happens?
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-expectation
+    attributes:
+      label: What were you expecting to happen?
+      description: A clear and concise description of what was supposed to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-logs
+    attributes:
+      label: Paste any relevant logs, error output, etc.
+      description: |
+        Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+        (If it’s long, please paste to https://gist.github.com/ and insert the link here.)
+      render: shell
+
+  - type: textarea
+    id: bug-context
+    attributes:
+      label: Additional context
+      description: Add any other context you can provide about the problem here.
+
+  - type: input
+    id: reproduction-url
+    attributes:
+      label: Code Reproduction URL
+      description: |
+        Reproduce this issue in a blank [Compact starter application](https://github.com/midnightntwrk/example-counter/tree/main)
+
+        Reproductions must be minimal and focused around the specific problem you are experiencing. This is the best way to ensure this issue is triaged quickly. Issues without a code reproduction may be closed if the OpenZeppelin Team cannot reproduce the issue you are reporting.
+      placeholder: https://github.com/...
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ----
+
+        # Details of your setup
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: What version of Compact are you running?
+      options:
+        - 0.23.0 (Default)
+      default: 0
+    validations:
+      required: true
+
