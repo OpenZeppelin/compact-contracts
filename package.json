@@ -15,7 +15,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "fmt-and-lint": "biome check . --changed",
-    "fmt-and-lint:fix": "biome check . --changed --write --no-errors-on-unmatched",
+    "fmt-and-lint:fix": "biome check . --changed --write",
     "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
     "types": "turbo run types",
     "clean": "turbo run clean"
