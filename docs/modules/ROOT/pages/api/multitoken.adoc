@@ -79,7 +79,7 @@ Requirements:
 
 [.contract-item]
 [[MultiTokenModule-setApprovalForAll]]
-==== `[.contract-item-name]#++setApprovalForAll++#++(operator: Either<ZSwapCoinPublicKey, ContractAddress>, approved: Boolean) → []++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++setApprovalForAll++#++(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean) → []++` [.item-kind]#circuit#
 
 Enables or disables approval for `operator` to manage all of the caller's assets.
 
@@ -91,7 +91,7 @@ Requirements:
 
 [.contract-item]
 [[MultiTokenModule-isApprovedForAll]]
-==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZSwapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
 
 Queries if `operator` is an authorized operator for `owner`.
 
