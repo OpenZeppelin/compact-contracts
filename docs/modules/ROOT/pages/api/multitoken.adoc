@@ -121,7 +121,7 @@ Requirements:
 
 [.contract-item]
 [[MultiTokenModule-_transfer]]
-==== `[.contract-item-name]#++_transfer++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++_transfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>)++` [.item-kind]#circuit#
 
 Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
 Does not impose restrictions on the caller, making it suitable for composition in higher-level contract logic.
@@ -136,6 +136,18 @@ Requirements:
 - `to` is not the zero address.
 - `from` is not the zero address.
 - `from` must have an `id` balance of at least `value`.
+
+[.contract-item]
+[[MultiTokenModule-_update]]
+==== `[.contract-item-name]#++_update++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>)++` [.item-kind]#internal#
+
+Transfers a value amount of tokens of type id from from to to.
+This circuit will mint (or burn) if `from` (or `to`) is the zero address.
+
+Requirements:
+
+- Contract is initialized.
+- If `from` is not zero, the balance of `id` of `from` must be >= `value`.
 
 [.contract-item]
 [[MultiTokenModule-_unsafeTransferFrom]]
