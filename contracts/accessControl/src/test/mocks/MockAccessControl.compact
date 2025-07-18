@@ -6,21 +6,7 @@ import CompactStandardLibrary;
 
 import "../../AccessControl" prefix AccessControl_;
 
-export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
-
-/**
- * @description `init` is a param for testing.
- * If `init` is true, initialize the contract.
- * Otherwise, the contract will not initialize and we can test
- * the contract when it is not initialized properly.
-*/
-constructor(
-  init: Boolean
-) {
-  if (init) {
-    AccessControl_initialize();
-  }
-}
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, AccessControl_DEFAULT_ADMIN_ROLE };
 
 export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
   return AccessControl_hasRole(roleId, account);

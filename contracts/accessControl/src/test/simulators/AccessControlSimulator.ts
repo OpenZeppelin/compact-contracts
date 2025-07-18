@@ -41,7 +41,7 @@ export class AccessControlSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(init: boolean) {
+  constructor() {
     this.contract = new MockAccessControl<AccessControlPrivateState>(
       AccessControlWitnesses,
     );
@@ -49,10 +49,7 @@ export class AccessControlSimulator
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)),
-      init,
-    );
+    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
