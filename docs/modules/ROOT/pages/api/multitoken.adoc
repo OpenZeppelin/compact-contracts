@@ -31,6 +31,7 @@ import "./node_modules/@openzeppelin-compact/multi-token/MultiToken" prefix Mult
 * xref:#MultiTokenModule-isApprovedForAll[`++isApprovedForAll(account, operator)++`]
 * xref:#MultiTokenModule-transferFrom[`++transferFrom(from, to, id, value)++`]
 * xref:#MultiTokenModule-_transfer[`++_transfer(from, to, id, value)++`]
+* xref:#MultiTokenModule-_update[`++_update(from, to, id, value)++`]
 * xref:#MultiTokenModule-_unsafeTransferFrom[`++_unsafeTransferFrom(from, to, id, value)++`]
 * xref:#MultiTokenModule-_unsafeTransfer[`++_unsafeTransfer(from, to, id, value)++`]
 * xref:#MultiTokenModule-_setURI[`++_setURI(newURI)++`]
