@@ -24,11 +24,11 @@ pragma language_version >= 0.15.0;
  * }
  * ```
  *
- * To restrict access to a circuit, use {hasRole}:
+ * To restrict access to a circuit, use {assertOnlyRole}:
  *
  * ```typescript
  * circuit foo(): [] {
- *  assert hasRole(MY_ROLE, own_public_key());
+ *  assertOnlyRole(MY_ROLE);
  *  ...
  * }
  * ```
