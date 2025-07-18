@@ -1,0 +1,142 @@
+:github-icon: pass:[<svg class="icon"><use href="#github-icon"/></svg>]
+:ownable-guide: xref:ownable.adoc[Ownable guide]
+
+= Ownable
+
+This module provides the full Ownable module API.
+
+TIP: For an overview of the module, read the {ownable-guide}.
+
+== Core
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
+```
+
+[.contract]
+[[Ownable]]
+=== `++Ownable++` link:https://github.com/OpenZeppelin/midnight-contracts/blob/add-ownable/contracts/ownable/src/Ownable.compact[{github-icon},role=heading-link]
+
+[.contract-index]
+.Circuits
+--
+
+[.sub-index#OwnableModule]
+* xref:#Ownable-initialize[`++initialize(initialOwner)++`]
+* xref:#Ownable-owner[`++owner()++`]
+* xref:#Ownable-transferOwnership[`++transferOwnership(newOwner)++`]
+* xref:#Ownable-_unsafeTransferOwnership[`++_unsafeTransferOwnership(newOwner)++`]
+* xref:#Ownable-renounceOwnership[`++renounceOwnership()++`]
+* xref:#Ownable-assertOnlyOwner[`++assertOnlyOwner(operator, approved)++`]
+* xref:#Ownable-_transferOwnership[`++_transferOwnership(newOwner)++`]
+* xref:#Ownable-_unsafeUncheckedTransferOwnership[`++_unsafeUncheckedTransferOwnership(newOwner)++`]
+--
+
+[.contract-item]
+[[Ownable-initialize]]
+==== `[.contract-item-name]#++initialize++#++(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+Initializes the contract by setting the `initialOwner`.
+This must be called in the contract's constructor.
+
+Requirements:
+
+- Contract is not already initialized.
+- `initialOwner` is not a ContractAddress.
+- `initialOwner` is not the zero address.
+
+[.contract-item]
+[[Ownable-owner]]
+==== `[.contract-item-name]#++owner++#++() → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
+
+Returns the current contract owner.
+
+Requirements:
+
+- Contract is initialized.
+
+[.contract-item]
+[[Ownable-transferOwnership]]
+==== `[.contract-item-name]#++transferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+Transfers ownership of the contract to `newOwner`.
+
+NOTE: Ownership transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
+This restriction prevents permanently disabling access to a circuit.
+
+Requirements:
+
+- Contract is initialized.
+- The caller is the current contract owner.
+- `newOwner` is not a ContractAddress.
+- `newOwner` is not the zero address.
+
+[.contract-item]
+[[Ownable-_unsafeTransferOwnership]]
+==== `[.contract-item-name]#++_unsafeTransferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+Unsafe variant of <<Ownable-transferOwnership,transferOwnership>>.
+
+WARNING: Ownership transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
+Ownership privileges sent to a contract address may become uncallable.
+Once contract-to-contract calls are supported, this circuit may be deprecated.
+
+Requirements:
+
+- Contract is initialized.
+- The caller is the current contract owner.
+- `newOwner` is not the zero address.
+
+[.contract-item]
+[[Ownable-renounceOwnership]]
+==== `[.contract-item-name]#++renounceOwnership++#++() → []++` [.item-kind]#circuit#
+
+Leaves the contract without an owner.
+It will not be possible to call <<Ownable-assertOnlyOwner,assertOnlyOwner>> circuits anymore.
+Can only be called by the current owner.
+
+Requirements:
+
+- Contract is initialized.
+- The caller is the current contract owner.
+
+[.contract-item]
+[[Ownable-assertOnlyOwner]]
+==== `[.contract-item-name]#++assertOnlyOwner++#++() → []++` [.item-kind]#circuit#
+
+Throws if called by any account other than the owner.
+Use this to restrict access of specific circuits to the owner.
+
+Requirements:
+
+- Contract is initialized.
+- The caller is the current contract owner.
+
+[.contract-item]
+[[Ownable-_transferOwnership]]
+==== `[.contract-item-name]#++_transferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+Transfers ownership of the contract to a `newOwner` without enforcing permission checks on the caller.
+
+NOTE: Ownership transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
+This restriction prevents permanently disabling access to a circuit.
+
+Requirements:
+
+- Contract is initialized.
+- `newOwner` is not a ContractAddress.
+
+[.contract-item]
+[[Ownable-_unsafeUncheckedTransferOwnership]]
+==== `[.contract-item-name]#++_unsafeUncheckedTransferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+Unsafe variant of <<Ownable-_transferOwnership,_transferOwnership>>.
+
+WARNING: Ownership transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
+Ownership privileges sent to a contract address may become uncallable.
+Once contract-to-contract calls are supported, this circuit may be deprecated.
+
+Requirements:
+
+- Contract is initialized.
