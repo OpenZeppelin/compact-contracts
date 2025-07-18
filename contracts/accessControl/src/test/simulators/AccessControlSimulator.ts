@@ -111,8 +111,8 @@ export class AccessControlSimulator
    * @param caller - Optional. Sets the caller context if provided.
    * @param roleId - The role identifier.
    */
-  public _checkRole(roleId: Uint8Array, caller?: CoinPublicKey) {
-    const res = this.contract.impureCircuits._checkRole(
+  public assertOnlyRole(roleId: Uint8Array, caller?: CoinPublicKey) {
+    const res = this.contract.impureCircuits.assertOnlyRole(
       {
         ...this.circuitContext,
         currentZswapLocalState: caller
@@ -130,11 +130,11 @@ export class AccessControlSimulator
    * @param roleId - The role identifier.
    * @param account - A ZswapCoinPublicKey or a ContractAddress.
    */
-  public _checkRoleAndAccount(
+  public _checkRole(
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ) {
-    this.circuitContext = this.contract.impureCircuits._checkRoleAndAccount(
+    this.circuitContext = this.contract.impureCircuits._checkRole(
       this.circuitContext,
       roleId,
       account,

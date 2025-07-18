@@ -26,11 +26,11 @@ export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, Co
   return AccessControl_hasRole(roleId, account);
 }
 
-export circuit _checkRole(roleId: Bytes<32>): [] {
-  AccessControl__checkRole(roleId);
+export circuit assertOnlyRole(roleId: Bytes<32>): [] {
+  AccessControl_assertOnlyRole(roleId);
 }
 
-export circuit _checkRoleAndAccount(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   AccessControl__checkRole(roleId, account);
 }
 

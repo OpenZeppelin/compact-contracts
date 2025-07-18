@@ -152,7 +152,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    */
-  export circuit _checkRole(roleId: Bytes<32>): [] {
+  export circuit assertOnlyRole(roleId: Bytes<32>): [] {
     Initializable_assertInitialized();
     _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
   }
@@ -212,7 +212,7 @@ module AccessControl {
    */
   export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    _checkRole(getRoleAdmin(roleId));
+    assertOnlyRole(getRoleAdmin(roleId));
     _grantRole(roleId, account);
   }
 
@@ -231,7 +231,7 @@ module AccessControl {
    */
   export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    _checkRole(getRoleAdmin(roleId));
+    assertOnlyRole(getRoleAdmin(roleId));
     _revokeRole(roleId, account);
   }
 
