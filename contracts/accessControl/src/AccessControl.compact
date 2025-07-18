@@ -84,11 +84,11 @@ module AccessControl {
   export ledger _operatorRoles: Map<Bytes<32>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
 
   /**
-   * @description Mapping from a role identifier to an admin role identifier .
+   * @description Mapping from a role identifier to an admin role identifier.
    * @type {Bytes<32>} roleId - A hash representing a role identifier.
    * @type {Bytes<32>} adminId - A hash representing an admin identifier.
    * @type {Map<roleId, adminId>}
-   * @type {Map<Bytes<32>, Bytes<32>>} _adminRoles;
+   * @type {Map<Bytes<32>, Bytes<32>>} _adminRoles
    */
   export ledger _adminRoles: Map<Bytes<32>, Bytes<32>>;
 
@@ -205,7 +205,7 @@ module AccessControl {
    *
    * - The contract must have been initialized.
    * - `account` must not be a ContractAddress.
-   * - the caller must have `roleId`'s admin role.
+   * - The caller must have `roleId`'s admin role.
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
@@ -238,7 +238,7 @@ module AccessControl {
  /**
   * @description Revokes `roleId` from the calling account.
   *
-  * @notice Roles are often managed via {grantRole} and {revokeRole}: this function's
+  * @notice Roles are often managed via {grantRole} and {revokeRole}: this circuit's
   * purpose is to provide a mechanism for accounts to lose their privileges
   * if they are compromised (such as when a trusted device is misplaced).
   *
@@ -278,7 +278,7 @@ module AccessControl {
 
   /**
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
-   * Internal function without access restriction.
+   * Internal circuit without access restriction.
    *
    * @circuitInfo
    *
@@ -298,7 +298,7 @@ module AccessControl {
 
   /**
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
-   * Internal function without access restriction. It does NOT check if the role is granted to a ContractAddress.
+   * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
    * @circuitInfo
    *
@@ -340,7 +340,7 @@ module AccessControl {
 
   /**
    * @description Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
-   * Internal function without access restriction.
+   * Internal circuit without access restriction.
    *
    * @circuitInfo
    *
