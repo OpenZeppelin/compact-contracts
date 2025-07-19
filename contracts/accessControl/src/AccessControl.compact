@@ -145,7 +145,7 @@ module AccessControl {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
    */
   export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert hasRole(roleId, account) "Access Control: unauthorized account";
+    assert hasRole(roleId, account) "AccessControl: unauthorized account";
   }
 
   /**
@@ -216,7 +216,7 @@ module AccessControl {
   * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
   */
   export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(own_public_key()) "Access Control: Bad Confirmation";
+    assert callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(own_public_key()) "AccessControl: bad confirmation";
 
     _revokeRole(roleId, callerConfirmation);
   }
@@ -248,7 +248,7 @@ module AccessControl {
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
   export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    assert !Utils_isContractAddress(account) "Access Control: unsafe role approval";
+    assert !Utils_isContractAddress(account) "AccessControl: unsafe role approval";
     return _unsafeGrantRole(roleId, account);
   }
 
