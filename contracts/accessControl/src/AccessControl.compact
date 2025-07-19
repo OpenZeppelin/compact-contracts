@@ -296,7 +296,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
-   * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
+   * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
   export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     if (!hasRole(roleId, account)) {
