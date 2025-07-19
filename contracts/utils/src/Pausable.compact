@@ -25,6 +25,10 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is paused.
    *
+   * Requirements:
+   *
+   * - Contract must be paused.
+   *
    * @return {[]} - Empty tuple.
    */
   export circuit assertPaused(): [] {
@@ -33,6 +37,10 @@ module Pausable {
 
   /**
    * @description Makes a circuit only callable when the contract is not paused.
+   *
+   * Requirements:
+   *
+   * - Contract must not be paused.
    *
    * @return {[]} - Empty tuple.
    */
@@ -43,6 +51,10 @@ module Pausable {
   /**
    * @description Triggers a stopped state.
    *
+   * Requirements:
+   *
+   * - Contract must not be paused.
+   *
    * @return {[]} - Empty tuple.
    */
   export circuit _pause(): [] {
@@ -52,6 +64,10 @@ module Pausable {
 
   /**
    * @description Lifts the pause on the contract.
+   *
+   * Requirements:
+   *
+   * - Contract must be paused.
    *
    * @return {[]} - Empty tuple.
    */

@@ -57,7 +57,7 @@ module Utils {
   }
 
   /**
-   * @description Returns whether `keyOrAddress` is a ContractAddress type
+   * @description Returns whether `keyOrAddress` is a ContractAddress type.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress

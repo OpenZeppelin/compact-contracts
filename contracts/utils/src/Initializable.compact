@@ -14,6 +14,10 @@ module Initializable {
   /**
    * @description Initializes the state thus ensuring the calling circuit can only be called once.
    *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
    * @return {[]} - Empty tuple.
    */
   export circuit initialize(): [] {
@@ -24,8 +28,11 @@ module Initializable {
   /**
    * @description Asserts that the contract has been initialized, throwing an error if not.
    *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
    * @return {[]} - Empty tuple.
-   * @throws Will throw "Initializable: contract not initialized" if the contract is not initialized.
    */
   export circuit assertInitialized(): [] {
     assert _isInitialized "Initializable: contract not initialized";
@@ -34,8 +41,11 @@ module Initializable {
   /**
    * @description Asserts that the contract has not been initialized, throwing an error if it has.
    *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
    * @return {[]} - Empty tuple.
-   * @throws Will throw "Initializable: Contract already initialized" if the contract is already initialized.
    */
   export circuit assertNotInitialized(): [] {
     assert !_isInitialized "Initializable: contract already initialized";
