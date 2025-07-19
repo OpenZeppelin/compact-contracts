@@ -1,6 +1,6 @@
 :github-icon: pass:[<svg class="icon"><use href="#github-icon"/></svg>]
 :multiToken-guide: xref:multitoken.adoc[MultiToken guide]
-:erc1155-metadata: https://eips.ethereum.org/EIPS/eip-1155#metadata
+:erc1155-metadata: https://eips.ethereum.org/EIPS/eip-1155#metadata[ERC1155-Metadata]
 
 = MultiToken
 
@@ -59,7 +59,7 @@ Requirements:
 ==== `[.contract-item-name]#++uri++#++(id: Uint<128>) → Opaque<"string">++` [.item-kind]#circuit#
 
 This implementation returns the same URI for *all* token types.
-It relies on the token type ID substitution mechanism defined in the EIP: {erc1155-metadata}[ERC1155-Metadata].
+It relies on the token type ID substitution mechanism defined in the EIP: {erc1155-metadata}.
 Clients calling this function must replace the `\{id\}` substring with the actual token type ID.
 
 Requirements:
