@@ -27,8 +27,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class AccessControlSimulator
-  implements IContractSimulator<AccessControlPrivateState, Ledger>
-{
+  implements IContractSimulator<AccessControlPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockAccessControl<AccessControlPrivateState>;
 
@@ -211,7 +210,7 @@ export class AccessControlSimulator
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     caller?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.grantRole(
+    const res = this.contract.impureCircuits.renounceRole(
       {
         ...this.circuitContext,
         currentZswapLocalState: caller
