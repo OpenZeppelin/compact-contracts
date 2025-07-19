@@ -211,6 +211,7 @@ module AccessControl {
   * Requirements:
   *
   * - The caller must be `callerConfirmation`.
+  * - The caller must not be a `ContractAddress`.
   *
   * @param {Bytes<32>} roleId - The role identifier.
   * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
