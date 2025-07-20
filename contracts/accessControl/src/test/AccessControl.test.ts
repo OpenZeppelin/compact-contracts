@@ -1,4 +1,7 @@
-import { convert_bigint_to_Uint8Array, type CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import {
+  type CoinPublicKey,
+  convert_bigint_to_Uint8Array,
+} from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
 import * as utils from './utils/address.js';
@@ -48,11 +51,15 @@ describe('AccessControl', () => {
     });
 
     it('should return false when unauthorized', () => {
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED)).toBe(false);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED)).toBe(
+        false,
+      );
     });
 
     it('should return false when role does not exist', () => {
-      expect(accessControl.hasRole(UNINITIALIZED_ROLE, Z_OPERATOR_1)).toBe(false);
+      expect(accessControl.hasRole(UNINITIALIZED_ROLE, Z_OPERATOR_1)).toBe(
+        false,
+      );
     });
   });
 
@@ -63,12 +70,16 @@ describe('AccessControl', () => {
     });
 
     it('should allow operator with role to call', () => {
-      expect(() => accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller)).not.toThrow();
+      expect(() =>
+        accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
+      ).not.toThrow();
     });
 
     it('should throw if caller is unauthorized', () => {
       caller = UNAUTHORIZED;
-      expect(() => accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller)).toThrow('AccessControl: unauthorized account');
+      expect(() =>
+        accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
+      ).toThrow('AccessControl: unauthorized account');
     });
   });
 
@@ -78,22 +89,30 @@ describe('AccessControl', () => {
     });
 
     it('should not throw if account has role', () => {
-      expect(() => accessControl._checkRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).not.toThrow();
+      expect(() =>
+        accessControl._checkRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).not.toThrow();
     });
 
     it('should throw if account is unauthorized', () => {
-      expect(() => accessControl._checkRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED)).toThrow('AccessControl: unauthorized account');
+      expect(() =>
+        accessControl._checkRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED),
+      ).toThrow('AccessControl: unauthorized account');
     });
   });
 
   describe('getRoleAdmin', () => {
     it('should return default admin role if admin role not set', () => {
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(DEFAULT_ADMIN_ROLE);
+      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        DEFAULT_ADMIN_ROLE,
+      );
     });
 
     it('should return custom admin role if set', () => {
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(CUSTOM_ADMIN_ROLE);
+      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
     });
   });
 
@@ -150,7 +169,9 @@ describe('AccessControl', () => {
           caller = ADMIN;
 
           accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR, caller);
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(false);
+          expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(
+            false,
+          );
         });
 
         it('should throw if operator revokes role', () => {
@@ -181,14 +202,16 @@ describe('AccessControl', () => {
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(false);
       expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(false);
       expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(false);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(false);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(
+        false,
+      );
     });
   });
 
   describe('renounceRole', () => {
     beforeEach(() => {
       accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
-      caller = OPERATOR_1
+      caller = OPERATOR_1;
     });
 
     it('should allow operator to renounce own role', () => {
@@ -198,16 +221,22 @@ describe('AccessControl', () => {
 
     it('ContractAddress renounce should throw', () => {
       caller = OPERATOR_CONTRACT;
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT),
+      ).toBe(true);
       expect(() => {
-        accessControl.renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT, caller);
+        accessControl.renounceRole(
+          OPERATOR_ROLE_1,
+          Z_OPERATOR_CONTRACT,
+          caller,
+        );
       }).toThrow('AccessControl: bad confirmation');
     });
 
     it('unauthorized renounce should throw', () => {
       caller = UNAUTHORIZED;
       expect(() => {
-        accessControl.renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller)
+        accessControl.renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
       }).toThrow('AccessControl: bad confirmation');
     });
   });
@@ -215,7 +244,9 @@ describe('AccessControl', () => {
   describe('_setRoleAdmin', () => {
     it('should set role admin', () => {
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(CUSTOM_ADMIN_ROLE);
+      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
     });
 
     it('should set multiple role admins', () => {
@@ -223,15 +254,23 @@ describe('AccessControl', () => {
       accessControl._setRoleAdmin(OPERATOR_ROLE_2, CUSTOM_ADMIN_ROLE);
       accessControl._setRoleAdmin(OPERATOR_ROLE_3, CUSTOM_ADMIN_ROLE);
 
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(CUSTOM_ADMIN_ROLE);
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_2)).toEqual(CUSTOM_ADMIN_ROLE);
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_3)).toEqual(CUSTOM_ADMIN_ROLE);
+      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
+      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_2)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
+      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_3)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
     });
   });
 
   describe('_grantRole', () => {
     it('should grant role', () => {
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
+      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
+        true,
+      );
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
     });
 
@@ -242,10 +281,18 @@ describe('AccessControl', () => {
     });
 
     it('should grant multiple roles', () => {
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
-      expect(accessControl._grantRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl._grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(true);
+      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
+        true,
+      );
+      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(
+        true,
+      );
+      expect(accessControl._grantRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(
+        true,
+      );
+      expect(accessControl._grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(
+        true,
+      );
 
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
@@ -256,20 +303,34 @@ describe('AccessControl', () => {
 
   describe('_unsafeGrantRole', () => {
     it('should grant role', () => {
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).toBe(true);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
     });
 
     it('should grant role to a ContractAddress', () => {
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT),
+      ).toBe(true);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(
+        true,
+      );
     });
 
     it('should grant multiple roles', () => {
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_2),
+      ).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_2, Z_OPERATOR_1),
+      ).toBe(true);
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_2, Z_OPERATOR_2),
+      ).toBe(true);
 
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
@@ -281,11 +342,15 @@ describe('AccessControl', () => {
   describe('_revokeRole', () => {
     describe.each(operatorTypes)(
       'when the operator is a %s',
-      (_, Z_OPERATOR, OPERATOR_CALLER) => {
+      (_, Z_OPERATOR, _OPERATOR_CALLER) => {
         it('should revoke role', () => {
           accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR);
-          expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(true);
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(false);
+          expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(
+            true,
+          );
+          expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(
+            false,
+          );
         });
       },
     );
