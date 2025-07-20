@@ -1,6 +1,5 @@
 :ownable-guide: xref:ownable.adoc[Ownable guide]
 
-
 = Ownable
 
 An unshielded Ownable library.
