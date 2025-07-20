@@ -46,13 +46,15 @@ export circuit checkFieldAfterDeployment(): Field {
 == Pausable
 
 :ownable: xref:ownable.adoc[Ownable]
+:assertPaused: xref:api/utils.adoc#PausableModule-assertPaused[assertPaused]
+:assertNotPaused: xref:api/utils.adoc#PausableModule-assertNotPaused[assertNotPaused]
 
 The Pausable module allows contracts to implement an emergency stop mechanism.
 This can be useful for scenarios such as preventing trades until the end of an evaluation period or having an emergency switch to freeze all transactions in the event of a large bug.
 
 To become pausable, the contract should include `pause` and `unpause` circuits (which should be protected).
 For circuits that should be available only when paused or not,
-insert calls to `assertPaused` and `assertNotPaused` respectively.
+insert calls to {assertPaused} and {assertNotPaused} respectively.
 
 === Usage
 
