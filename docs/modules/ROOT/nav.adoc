@@ -7,5 +7,8 @@
 ** xref:ownable.adoc[Ownable]
 *** xref:api/ownable.adoc[API Reference]
 
+** xref:accessControl.adoc[Access Control]
+*** xref:api/accessControl.adoc[API Reference]
+
 ** xref:fungibleToken.adoc[FungibleToken]
 *** xref:/api/fungibleToken.adoc[API Reference]
