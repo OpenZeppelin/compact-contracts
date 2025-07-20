@@ -149,8 +149,10 @@ module AccessControl {
   }
 
   /**
-   * @description Returns the admin role that controls `roleId`. See {grantRole} and
-   * {revokeRole} or a byte array with all zero bytes if `roleId` doesn't exist.
+   * @description Returns the admin role that controls `roleId` or
+   * a byte array with all zero bytes if `roleId` doesn't exist. See {grantRole} and {revokeRole}.
+   *
+   * To change a role’s admin use {_setRoleAdmin}.
    *
    * @circuitInfo
    *
