@@ -45,6 +45,8 @@ export circuit checkFieldAfterDeployment(): Field {
 
 == Pausable
 
+:ownable: xref:ownable.adoc[Ownable]
+
 The Pausable module allows contracts to implement an emergency stop mechanism.
 This can be useful for scenarios such as preventing trades until the end of an evaluation period or having an emergency switch to freeze all transactions in the event of a large bug.
 
@@ -54,7 +56,7 @@ insert calls to `assertPaused` and `assertNotPaused` respectively.
 
 === Usage
 
-For example (using the Ownable module for access control):
+For example (using the {ownable} module for access control):
 
 ```typescript
 // OwnablePausable.compact
