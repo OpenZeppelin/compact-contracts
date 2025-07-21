@@ -355,6 +355,10 @@ module NonFungibleToken {
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
+   * @notice NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions
+   * are supported in Compact. This restriction prevents assets from being inadvertently locked in contracts that cannot
+   * currently handle token receipt.
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transfered
