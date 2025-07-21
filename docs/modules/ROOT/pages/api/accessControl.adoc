@@ -38,7 +38,7 @@ TIP: For an overview of the module, read the {accessControl-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/access-control" prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
 ```
 
 [.contract]
