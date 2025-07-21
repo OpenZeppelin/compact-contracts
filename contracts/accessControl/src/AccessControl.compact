@@ -18,7 +18,7 @@ pragma language_version >= 0.15.0;
  *
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
- * constructor(myRole: Bytes<32>) {
+ * constructor() {
  *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
  * }
  * ```
