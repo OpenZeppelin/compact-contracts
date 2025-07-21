@@ -11,7 +11,7 @@ TIP: For an overview of the module, read the {nonfungible-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node-modules/@openzeppelin-compact/tokens/non-fungible-token/NonFungibleToken" prefix NonFungibleToken_;
+import "./node-modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
 ```
 
 [.contract]
