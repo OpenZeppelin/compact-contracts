@@ -116,7 +116,7 @@ Requirements:
 - The contract is initialized.
 - The `tokenId` must exist.
 
-NOTE: Native strings and string operations aren't supportedwithin the Compact language, e.g. concatenating a base URI + token ID is not possible like in other NFT implementations.
+NOTE: Native strings and string operations aren't supported within the Compact language, e.g. concatenating a base URI + token ID is not possible like in other NFT implementations.
 Therefore, we propose the URI storage approach; whereby, NFTs may or may not have unique "base" URIs.
 It's up to the implementation to decide on how to handle this.
 
