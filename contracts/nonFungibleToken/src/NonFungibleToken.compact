@@ -378,6 +378,10 @@ module NonFungibleToken {
   /**
    * @description Transfers `tokenId` token from `from` to `to`. It does NOT check if the recipient is a ContractAddress.
    *
+   * WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls
+   * are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
    * @circuitInfo k=11, rows=2020
    *
    * Requirements:
@@ -387,10 +391,6 @@ module NonFungibleToken {
    * - `to` is not the zero address.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
-   *
-   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
-   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
-   * ContractAddress
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
