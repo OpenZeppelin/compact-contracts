@@ -6,7 +6,7 @@ pragma language_version >= 0.15.0;
  * @module NonFungibleToken
  * @description An unshielded Non-Fungible Token library.
  *
- * @notice One notable difference regarding this implementation and the EIP20 spec
+ * @notice One notable difference regarding this implementation and the EIP721 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
  * cannot be supported.
  * This is due to encoding limits on the midnight circuit backend:
