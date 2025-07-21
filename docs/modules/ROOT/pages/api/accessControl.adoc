@@ -5,6 +5,33 @@
 
 This page provides the full AccessControl module API.
 
+Roles are referred to by their `Bytes<32>` identifier. These should be exposed in the top-level contract and be unique. The best way to achieve this is by using `export sealed ledger` hash digests that are initialized in the top-level contract:
+
+```typescript
+import CompactStandardLibrary;
+import "AccessControl" prefix AccessControl_;
+
+export sealed ledger MY_ROLE: Bytes<32>;
+
+constructor() {
+  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
+}
+```
+
+To restrict access to a circuit, use <<assertOnlyRole>>:
+```typescript
+circuit foo(): [] {
+  assertOnlyRole(MY_ROLE);
+  ...
+}
+```
+
+Roles can be granted and revoked dynamically via the <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>> functions. Each role has an associated admin role, and only accounts that have a role's admin role can call <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>>.
+
+By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means that only accounts with this role will be able to grant or revoke other roles. More complex role relationships can be created by using <<AccessControl-_setRoleAdmin, _setRoleAdmin>>. To set a custom `DEFAULT_ADMIN_ROLE`, implement the `Initializable` module and set `DEFAULT_ADMIN_ROLE` in the `initialize()` function.
+
+WARNING: The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to grant and revoke this role. Extra precautions should be taken to secure accounts that have been granted it.
+
 TIP: For an overview of the module, read the {accessControl-guide}.
 
 == Core
@@ -66,9 +93,9 @@ Requirements:
 [[AccessControl-getRoleAdmin]]
 ==== `[.contract-item-name]#++getRoleAdmin++#++(roleId: Bytes<32>) → Bytes<32>++` [.item-kind]#circuit#
 
-Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn't exist. See xref:#AccessControl-grantRole[grantRole] and xref:#AccessControl-revokeRole[revokeRole].
+Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn't exist. See <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>>.
 
-To change a role's admin use xref:#AccessControl-_setRoleAdmin[_setRoleAdmin].
+To change a role's admin use <<AccessControl-_setRoleAdmin, _setRoleAdmin>>.
 
 [.contract-item]
 [[AccessControl-grantRole]]
@@ -100,7 +127,7 @@ Requirements:
 
 Revokes `roleId` from the calling account.
 
-Roles are often managed via xref:#AccessControl-grantRole[grantRole] and xref:#AccessControl-revokeRole[revokeRole]: this circuit's
+Roles are often managed via <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>>: this circuit's
 purpose is to provide a mechanism for accounts to lose their privileges
 if they are compromised (such as when a trusted device is misplaced).
 
