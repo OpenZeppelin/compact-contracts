@@ -9,3 +9,6 @@
 
 ** xref:fungibleToken.adoc[FungibleToken]
 *** xref:/api/fungibleToken.adoc[API Reference]
+
+** xref:nonFungibleToken.adoc[NonFungibleToken]
+*** xref:/api/nonFungibleToken.adoc[API Reference]
