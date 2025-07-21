@@ -649,6 +649,10 @@ module NonFungibleToken {
    * @description Transfers `tokenId` from `from` to `to`.
    *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
    *
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from being inadvertently
+   * locked in contracts that cannot currently handle token receipt.
+   *
    * @circuitInfo k=11, rows=1284
    *
    * Requirements:
@@ -658,9 +662,7 @@ module NonFungibleToken {
    * - `to` is not a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from being inadvertently
-   * locked in contracts that cannot currently handle token receipt.
+
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer

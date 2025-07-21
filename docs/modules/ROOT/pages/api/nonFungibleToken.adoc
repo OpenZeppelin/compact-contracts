@@ -323,6 +323,8 @@ Requirements:
 
 Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-transferFrom,transferFrom>>, this imposes no restrictions on `own_public_key()`.
 
+NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
+This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
 
 Requirements:
 
@@ -330,9 +332,6 @@ Requirements:
 - `to` is not the zero address.
 - `to` is not a ContractAddress.
 - `tokenId` token must be owned by `from`.
-
-NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
-This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
 
 [.contract-item]
 [[NonFungibleTokenModule-_unsafeTransfer]]
