@@ -12,7 +12,7 @@ TIP: For an overview of the module, read the {multiToken-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/multi-token/MultiToken" prefix MultiToken_;
+import "./node_modules/@openzeppelin-compact/multi-token/src/MultiToken" prefix MultiToken_;
 ```
 
 [.contract]
@@ -76,8 +76,6 @@ Requirements:
 
 - Contract is initialized.
 
-
-
 [.contract-item]
 [[MultiTokenModule-setApprovalForAll]]
 ==== `[.contract-item-name]#++setApprovalForAll++#++(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean) → []++` [.item-kind]#circuit#
@@ -89,7 +87,6 @@ Requirements:
 - Contract is initialized.
 - `operator` is not the zero address.
 
-
 [.contract-item]
 [[MultiTokenModule-isApprovedForAll]]
 ==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
@@ -99,7 +96,6 @@ Queries if `operator` is an authorized operator for `owner`.
 Requirements:
 
 - Contract is initialized.
-
 
 [.contract-item]
 [[MultiTokenModule-transferFrom]]
