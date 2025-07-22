@@ -2,18 +2,18 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  QueryContext,
   constructorContext,
   emptyZswapLocalState,
+  QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type ContractAddress,
   type Either,
   type Ledger,
+  ledger,
   Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
-  ledger,
 } from '../../artifacts/MockNonFungibleToken/contract/index.cjs'; // Combined imports
 import {
   type NonFungibleTokenPrivateState,
