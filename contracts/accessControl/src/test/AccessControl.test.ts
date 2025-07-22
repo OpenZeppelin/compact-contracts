@@ -383,9 +383,7 @@ describe('AccessControl', () => {
           expect(accessControl._revokeRole(OPERATOR_ROLE_1, _operator)).toBe(
             true,
           );
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
-            false,
-          );
+          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
         });
       },
     );
