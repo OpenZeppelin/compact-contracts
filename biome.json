@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -8,31 +8,34 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "tsconfig.base.json",
-      "tsconfig*.json",
-      "*.compact",
-      "artifacts/*",
-      "coverage/*",
-      "dist/*",
-      "reports/*"
+    "includes": [
+      "**",
+      "!**/tsconfig.base.json",
+      "!**/tsconfig*.json",
+      "!**/*.compact",
+      "!**/artifacts/**/*",
+      "!**/coverage/**/*",
+      "!**/dist/**/*",
+      "!**/reports/**/*"
     ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "ignore": ["package.json"]
+    "includes": ["**"]
   },
-  "organizeImports": {
-    "enabled": true
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
-      "a11y": {
-        "all": false
-      },
+      "a11y": {},
       "correctness": {
         "noUnusedVariables": "error",
         "noUnusedImports": "error",
@@ -56,12 +59,26 @@
       },
       "style": {
         "noNonNullAssertion": "off",
-        "useShorthandArrayType": "error"
+        "noParameterAssign": "error",
+        "useAsConstAssertion": "error",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useNumberNamespace": "error",
+        "noInferrableTypes": "error",
+        "noUselessElse": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": {
+            "syntax": "shorthand"
+          }
+        }
       },
       "suspicious": {
         "noArrayIndexKey": "off",
         "noConfusingVoidType": "off",
-        "noConsoleLog": "error",
         "noExplicitAny": "off",
         "noCommentText": "off",
         "noDuplicateAtImportRules": "off",
@@ -72,7 +89,13 @@
         "noImportantInKeyframe": "off",
         "noShorthandPropertyOverrides": "off",
         "noSuspiciousSemicolonInJsx": "off",
-        "useErrorMessage": "error"
+        "useErrorMessage": "error",
+        "noConsole": {
+          "level": "error",
+          "options": {
+            "allow": ["log"]
+          }
+        }
       },
       "security": {
         "noDangerouslySetInnerHtml": "off",
