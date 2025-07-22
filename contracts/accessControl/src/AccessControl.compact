@@ -125,6 +125,7 @@ module AccessControl {
    * Requirements:
    *
    * - The caller must have `roleId`.
+   * - The caller must not be a ContractAddress
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {[]} - Empty tuple.

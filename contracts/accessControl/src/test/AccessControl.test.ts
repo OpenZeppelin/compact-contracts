@@ -91,6 +91,15 @@ describe('AccessControl', () => {
         accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
       ).toThrow('AccessControl: unauthorized account');
     });
+
+    it('should throw if ContractAddress with role is caller', () => {
+      caller = OPERATOR_CONTRACT;
+      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
+
+      expect(() =>
+        accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
+      ).toThrow('AccessControl: unauthorized account');
+    });
   });
 
   describe('_checkRole', () => {
