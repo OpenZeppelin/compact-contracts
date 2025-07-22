@@ -224,9 +224,8 @@ describe('AccessControl', () => {
 
     it('ContractAddress renounce should throw', () => {
       caller = OPERATOR_CONTRACT;
-      expect(
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT),
-      ).toBe(true);
+      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
+
       expect(() => {
         accessControl.renounceRole(
           OPERATOR_ROLE_1,
