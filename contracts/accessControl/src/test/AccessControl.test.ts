@@ -270,6 +270,35 @@ describe('AccessControl', () => {
         CUSTOM_ADMIN_ROLE,
       );
     });
+
+    it('should authorize new admin to grant / revoke roles', () => {
+      caller = CUSTOM_ADMIN;
+
+      accessControl._grantRole(CUSTOM_ADMIN_ROLE, Z_CUSTOM_ADMIN);
+      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+
+      expect(() =>
+        accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+      ).not.toThrow();
+      expect(() =>
+        accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+      ).not.toThrow();
+    });
+
+    it('should disallow previous admin from granting / revoking roles', () => {
+      caller = ADMIN;
+
+      accessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      accessControl._grantRole(CUSTOM_ADMIN_ROLE, Z_CUSTOM_ADMIN);
+      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+
+      expect(() =>
+        accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+      ).toThrow('AccessControl: unauthorized account');
+      expect(() =>
+        accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+      ).toThrow('AccessControl: unauthorized account');
+    });
   });
 
   describe('_grantRole', () => {
