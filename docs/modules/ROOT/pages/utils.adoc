@@ -20,7 +20,7 @@ Many modules also use the initializable pattern which ensures that implementing 
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import './node_modules/@openzeppelin-compact/utils/Initializable' prefix Initializable_;
+import './node_modules/@openzeppelin-compact/utils/src/Initializable' prefix Initializable_;
 
 export ledger _fieldAfterDeployment: Field;
 
@@ -66,11 +66,11 @@ For example (using the {ownable} module for access control):
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import './node_modules/@openzeppelin-compact/utils/Initializable' prefix Initializable_;
-import './node_modules/@openzeppelin-compact/ownable/Ownable' prefix Ownable_;
+import './node_modules/@openzeppelin-compact/utils/src/Initializable' prefix Initializable_;
+import './node_modules/@openzeppelin-compact/ownable/src/Ownable' prefix Ownable_;
 
 constructor(initOwner: Either<ZswapCoinPublicKey, ContractAddress>) {
-  Ownable_initializer(initOwner);
+  Ownable_initialize(initOwner);
 }
 
 export circuit pause(): [] {
@@ -106,7 +106,7 @@ The Utils module provides miscellaneous circuits and common utilities for Compac
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import './node_modules/@openzeppelin-compact/utils/Utils' prefix Utils_;
+import './node_modules/@openzeppelin-compact/utils/src/Utils' prefix Utils_;
 
 export circuit performActionWhenEqual(
   a: Either<ZswapCoinPublicKey, ContractAddress>,
