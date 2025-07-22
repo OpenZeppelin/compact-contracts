@@ -310,16 +310,16 @@ describe('AccessControl', () => {
     });
 
     it('should return false if hasRole already', () => {
-     expect(
-        accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
-      ).toBe(true);
+      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
+        true,
+      );
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
 
-      expect(
-        accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
-      ).toBe(false);
+      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
+        false,
+      );
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
-    })
+    });
 
     it('should fail to grant role to a ContractAddress', () => {
       expect(() => {
@@ -349,7 +349,7 @@ describe('AccessControl', () => {
     });
 
     it('should return false if hasRole already', () => {
-     expect(
+      expect(
         accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).toBe(true);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
@@ -372,7 +372,9 @@ describe('AccessControl', () => {
     it('should grant multiple roles', () => {
       for (let i = 0; i < operatorRoles.length; i++) {
         for (let j = 0; j < operatorPKs.length; j++) {
-          expect(accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j])).toBe(true);
+          expect(
+            accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]),
+          ).toBe(true);
           expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
             true,
           );
@@ -396,14 +398,18 @@ describe('AccessControl', () => {
     );
 
     it('should return false if account does not have role', () => {
-      expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(false);
+      expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
+        false,
+      );
     });
 
     it('should revoke multiple roles', () => {
       for (let i = 0; i < operatorRoles.length; i++) {
         for (let j = 0; j < operatorPKs.length; j++) {
           accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]);
-          expect(accessControl._revokeRole(operatorRoles[i], operatorPKs[j])).toBe(true);
+          expect(
+            accessControl._revokeRole(operatorRoles[i], operatorPKs[j]),
+          ).toBe(true);
           expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
             false,
           );
