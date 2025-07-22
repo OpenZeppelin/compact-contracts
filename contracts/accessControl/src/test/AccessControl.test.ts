@@ -31,10 +31,10 @@ const UNINITIALIZED_ROLE = convert_bigint_to_Uint8Array(32, 5n);
 let accessControl: AccessControlSimulator;
 let caller: CoinPublicKey;
 
-const callerTypes = [
-  ['contract', OPERATOR_CONTRACT],
-  ['pubkey', OPERATOR_1],
-] as const;
+const callerTypes = {
+  contract: OPERATOR_CONTRACT,
+  pubkey: OPERATOR_1
+}
 
 const operatorTypes = [
   ['contract', Z_OPERATOR_CONTRACT],
