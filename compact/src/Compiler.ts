@@ -127,6 +127,7 @@ export class CompactCompiler {
           }
           return [];
         } catch (err) {
+          // biome-ignore lint/suspicious/noConsole: Displays file path that failed to parse
           console.warn(`Error accessing ${fullPath}:`, err);
           return [];
         }
@@ -135,6 +136,7 @@ export class CompactCompiler {
       const results = await Promise.all(filePromises);
       return results.flat();
     } catch (err) {
+      // biome-ignore lint/suspicious/noConsole: Displays which directory failed to be read
       console.error(`Failed to read dir: ${dir}`, err);
       return [];
     }
@@ -193,7 +195,6 @@ export class CompactCompiler {
       .split('\n')
       .filter((line: string): boolean => line.trim() !== '')
       .map((line: string): string => `    ${line}`);
-    // biome-ignore lint/suspicious/noConsoleLog: needed for debugging
     console.log(colorFn(lines.join('\n')));
   }
 }
