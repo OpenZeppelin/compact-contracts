@@ -9,6 +9,7 @@ import * as utils from './utils/address.js';
 // Callers
 const OPERATOR_1 = utils.toHexPadded('OPERATOR_1');
 const ADMIN = utils.toHexPadded('ADMIN');
+const CUSTOM_ADMIN = utils.toHexPadded('CUSTOM_ADMIN');
 const UNAUTHORIZED = utils.toHexPadded('UNAUTHORIZED');
 const OPERATOR_CONTRACT = utils.toHexPadded('OPERATOR_CONTRACT');
 
@@ -16,6 +17,7 @@ const OPERATOR_CONTRACT = utils.toHexPadded('OPERATOR_CONTRACT');
 const Z_OPERATOR_1 = utils.createEitherTestUser('OPERATOR_1');
 const Z_OPERATOR_2 = utils.createEitherTestUser('OPERATOR_2');
 const Z_ADMIN = utils.createEitherTestUser('ADMIN');
+const Z_CUSTOM_ADMIN = utils.createEitherTestUser('CUSTOM_ADMIN');
 const Z_UNAUTHORIZED = utils.createEitherTestUser('UNAUTHORIZED');
 const Z_OPERATOR_CONTRACT =
   utils.createEitherTestContractAddress('OPERATOR_CONTRACT');
