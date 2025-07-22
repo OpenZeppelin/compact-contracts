@@ -1,9 +1,11 @@
 * xref:index.adoc[Overview]
 
 * Learn
+
 ** xref:extensibility.adoc[Extensibility]
 
 * Modules
+
 ** xref:ownable.adoc[Ownable]
 *** xref:api/ownable.adoc[API Reference]
 
@@ -12,3 +14,6 @@
 
 ** xref:fungibleToken.adoc[FungibleToken]
 *** xref:/api/fungibleToken.adoc[API Reference]
+
+** xref:multitoken.adoc[MultiToken]
+*** xref:api/multitoken.adoc[API Reference]

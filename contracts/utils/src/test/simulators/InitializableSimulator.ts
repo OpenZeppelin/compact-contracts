@@ -1,14 +1,14 @@
 import {
   type CircuitContext,
   type ContractState,
-  QueryContext,
   constructorContext,
+  QueryContext,
   sampleContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
 import {
   type Ledger,
-  Contract as MockInitializable,
   ledger,
+  Contract as MockInitializable,
 } from '../../artifacts/MockInitializable/contract/index.cjs';
 import {
   type InitializablePrivateState,

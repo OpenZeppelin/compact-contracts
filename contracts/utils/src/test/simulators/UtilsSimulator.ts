@@ -1,17 +1,17 @@
 import {
   type CircuitContext,
   type ContractState,
-  QueryContext,
   constructorContext,
+  QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type ContractAddress,
   type Either,
   type Ledger,
+  ledger,
   Contract as MockUtils,
   type ZswapCoinPublicKey,
-  ledger,
 } from '../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
 import {
   type UtilsPrivateState,
