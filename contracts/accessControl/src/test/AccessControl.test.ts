@@ -198,24 +198,16 @@ describe('AccessControl', () => {
     it('admin should revoke multiple roles', () => {
       caller = ADMIN;
 
-      accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_2, caller);
-      accessControl.grantRole(OPERATOR_ROLE_2, Z_OPERATOR_1, caller);
-      accessControl.grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2, caller);
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
+      const operatorRoles = [OPERATOR_ROLE_1, OPERATOR_ROLE_2];
+      const operatorPKs = [Z_OPERATOR_1, Z_OPERATOR_2, Z_OPERATOR_CONTRACT];
 
-      accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
-      accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_2, caller);
-      accessControl.revokeRole(OPERATOR_ROLE_2, Z_OPERATOR_1, caller);
-      accessControl.revokeRole(OPERATOR_ROLE_2, Z_OPERATOR_2, caller);
-      accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT, caller);
-
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(false);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(false);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(false);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(false);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT)).toBe(
-        false,
-      );
+      for (let i = 0; i < operatorRoles.length; i++) {
+        for (let j = 0; j < operatorPKs.length; j++) {
+          accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]);
+          accessControl.revokeRole(operatorRoles[i], operatorPKs[j], caller);
+          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(false);
+        }
+      }
     });
   });
 
