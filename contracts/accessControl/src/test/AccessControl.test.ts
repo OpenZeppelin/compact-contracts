@@ -35,8 +35,8 @@ let caller: CoinPublicKey;
 
 const callerTypes = {
   contract: OPERATOR_CONTRACT,
-  pubkey: OPERATOR_1
-}
+  pubkey: OPERATOR_1,
+};
 
 const operatorTypes = [
   ['contract', Z_OPERATOR_CONTRACT],
@@ -182,9 +182,7 @@ describe('AccessControl', () => {
           caller = ADMIN;
 
           accessControl.revokeRole(OPERATOR_ROLE_1, _operator, caller);
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
-            false,
-          );
+          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
         });
 
         it('should throw if operator revokes role', () => {
@@ -207,7 +205,9 @@ describe('AccessControl', () => {
         for (let j = 0; j < operatorPKs.length; j++) {
           accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]);
           accessControl.revokeRole(operatorRoles[i], operatorPKs[j], caller);
-          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(false);
+          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
+            false,
+          );
         }
       }
     });
