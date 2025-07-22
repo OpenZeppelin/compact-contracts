@@ -31,9 +31,14 @@ const UNINITIALIZED_ROLE = convert_bigint_to_Uint8Array(32, 5n);
 let accessControl: AccessControlSimulator;
 let caller: CoinPublicKey;
 
+const callerTypes = [
+  ['contract', OPERATOR_CONTRACT],
+  ['pubkey', OPERATOR_1],
+] as const;
+
 const operatorTypes = [
-  ['contract', Z_OPERATOR_CONTRACT, OPERATOR_CONTRACT],
-  ['pubkey', Z_OPERATOR_1, OPERATOR_1],
+  ['contract', Z_OPERATOR_CONTRACT],
+  ['pubkey', Z_OPERATOR_1],
 ] as const;
 
 describe('AccessControl', () => {
@@ -86,15 +91,21 @@ describe('AccessControl', () => {
   describe('_checkRole', () => {
     beforeEach(() => {
       accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
     });
 
-    it('should not throw if account has role', () => {
-      expect(() =>
-        accessControl._checkRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
-      ).not.toThrow();
-    });
+    describe.each(operatorTypes)(
+      'when the operator is a %s',
+      (_operatorType, _operator) => {
+        it(`should not throw if ${_operatorType} has role`, () => {
+          expect(() =>
+            accessControl._checkRole(OPERATOR_ROLE_1, _operator),
+          ).not.toThrow();
+        });
+      },
+    );
 
-    it('should throw if account is unauthorized', () => {
+    it('should throw if operator is unauthorized', () => {
       expect(() =>
         accessControl._checkRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED),
       ).toThrow('AccessControl: unauthorized account');
