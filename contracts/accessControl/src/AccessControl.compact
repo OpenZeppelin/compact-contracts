@@ -9,7 +9,7 @@ pragma language_version >= 0.15.0;
  * represent a set of permissions.
  *
  * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
- * in the top-level contract and be unique. The best way to achieve this is by
+ * in the top-level contract and be unique. One way to achieve this is by
  * using `export sealed ledger` hash digests that are initialized in the top-level contract:
  *
  * ```typescript
