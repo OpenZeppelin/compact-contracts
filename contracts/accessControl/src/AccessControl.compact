@@ -14,7 +14,7 @@ pragma language_version >= 0.15.0;
  *
  * ```typescript
  * import CompactStandardLibrary;
- * import "AccessControl" prefix AccessControl_;
+ * import "./node_modules/@openzeppelin-compact/accessControl/src/AccessControl" prefix AccessControl_;
  *
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
@@ -102,7 +102,7 @@ module AccessControl {
     * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
     * @return {Boolean} - Whether the account has the specified role.
     */
-   export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     if (
       _operatorRoles.member(roleId) &&
       _operatorRoles
@@ -110,12 +110,12 @@ module AccessControl {
         .member(account)
       ) {
       return _operatorRoles
-                .lookup(roleId)
-                .lookup(account);
+        .lookup(roleId)
+        .lookup(account);
     } else {
       return false;
     }
-   }
+  }
 
   /**
    * @description Reverts if `own_public_key()` is missing `roleId`.
@@ -127,6 +127,7 @@ module AccessControl {
    * - The caller must have `roleId`.
    *
    * @param {Bytes<32>} roleId - The role identifier.
+   * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(roleId: Bytes<32>): [] {
     _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
