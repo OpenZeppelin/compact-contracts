@@ -246,8 +246,11 @@ describe('AccessControl', () => {
   });
 
   describe('_setRoleAdmin', () => {
-    it('should set role admin', () => {
+    beforeEach(() => {
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+    });
+
+    it('should set role admin', () => {
       expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
         CUSTOM_ADMIN_ROLE,
       );
