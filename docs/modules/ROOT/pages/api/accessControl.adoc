@@ -18,7 +18,7 @@ constructor() {
 }
 ```
 
-To restrict access to a circuit, use <<assertOnlyRole>>:
+To restrict access to a circuit, use <<AccessControl-assertOnlyRole,assertOnlyRole>>:
 ```typescript
 circuit foo(): [] {
   assertOnlyRole(MY_ROLE);
@@ -73,7 +73,7 @@ Returns `true` if `account` has been granted `roleId`.
 [[AccessControl-assertOnlyRole]]
 ==== `[.contract-item-name]#++assertOnlyRole++#++(roleId: Bytes<32>) → []++` [.item-kind]#circuit#
 
-Reverts if `own_public_key()` is missing `roleId`.
+Reverts if caller is missing `roleId`.
 
 Requirements:
 

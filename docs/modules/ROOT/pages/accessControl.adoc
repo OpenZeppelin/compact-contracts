@@ -12,17 +12,24 @@ This module does not require initialization; however, one must implement the `In
 
 == Role-Based Access Control
 
-While the simplicity of _ownership_ can be useful for simple systems or quick prototyping, different levels of authorization are often needed. You may want for an account to have permission to ban users from a system, but not create new tokens. https://en.wikipedia.org/wiki/Role-based_access_control[Role-Based Access Control (RBAC)] offers flexibility in this regard.
+While the simplicity of _ownership_ can be useful for simple systems or quick prototyping, different levels of authorization are often needed.
+You may want for an account to have permission to ban users from a system, but not create new tokens.
+https://en.wikipedia.org/wiki/Role-based_access_control[Role-Based Access Control (RBAC)] offers flexibility in this regard.
 
-In essence, we will be defining multiple _roles_, each allowed to perform different sets of actions. An account may have, for example, 'moderator', 'minter' or 'admin' roles, which you will then check for instead of simply using `assertOnlyOwner`. This check can be enforced through the `assertOnlyRole` circuit. Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
+In essence, we will be defining multiple _roles_, each allowed to perform different sets of actions.
+An account may have, for example, 'moderator', 'minter' or 'admin' roles, which you will then check for instead of simply using `assertOnlyOwner`.
+This check can be enforced through the `assertOnlyRole` circuit.
+Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
 
 Most software uses access control systems that are role-based: some users are regular users, some may be supervisors or managers, and a few will often have administrative privileges.
 
 === Using `AccessControl`
 
-OpenZeppelin Compact provides xref:api/accessControl.adoc#accessControl[AccessControl] for implementing role-based access control. Its usage is straightforward: for each role that you want to define, you will create a new role identifier that is used to grant, revoke, and check if an account has that role.
+OpenZeppelin Compact provides xref:api/accessControl.adoc#accessControl[AccessControl] for implementing role-based access control.
+Its usage is straightforward: for each role that you want to define,
+you will create a new role identifier that is used to grant, revoke, and check if an account has that role.
 
-Here’s a simple example of using `AccessControl` in a xref:fungibleToken.adoc[FungibleToken] to define a 'minter' role, which allows accounts that have it create new tokens:
+Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[FungibleToken] to define a 'minter' role, which allows accounts that have this role to create new tokens:
 
 ```ts
 // AccessControlMinter.compact
@@ -101,15 +108,17 @@ export circuit burn(recipient: Either<ZswapCointPublicKey, ContractAddress>, val
 }
 ```
 
-So clean! By splitting concerns this way, more granular levels of permission may be implemented than were possible with the simpler _ownership_ approach to access control. Limiting what each component of a system is able to do is known as the https://en.wikipedia.org/wiki/Principle_of_least_privilege[principle of least privilege], and is a good security practice. Note that each account may still have more than one role, if so desired.
+So clean! By splitting concerns this way, more granular levels of permission may be implemented than were possible with the simpler _ownership_ approach to access control.
+Limiting what each component of a system is able to do is known as the https://en.wikipedia.org/wiki/Principle_of_least_privilege[principle of least privilege], and is a good security practice.
+Note that each account may still have more than one role, if so desired.
 
 === Granting and Revoking Roles
 
-The FungibleToken example above uses `_grantRole`, an internal function that is useful when programmatically assigning roles (such as during construction). But what if we later want to grant the 'minter' role to additional accounts?
+The FungibleToken example above uses `_grantRole`, an internal circuit that is useful when programmatically assigning roles (such as during construction). But what if we later want to grant the 'minter' role to additional accounts?
 
 By default, *accounts with a role cannot grant it or revoke it from other accounts*: all having a role does is making the `hasRole` check pass. To grant and revoke roles dynamically, you will need help from the _role’s admin_.
 
-Every role has an associated admin role, which grants permission to call the `grantRole` and `revokeRole` functions. A role can be granted or revoked by using these if the calling account has the corresponding admin role. Multiple roles may have the same admin role to make management easier. A role’s admin can even be the same role itself, which would cause accounts with that role to be able to also grant and revoke it.
+Every role has an associated admin role, which grants permission to call the `grantRole` and `revokeRole` circuits. A role can be granted or revoked by using these if the calling account has the corresponding admin role. Multiple roles may have the same admin role to make management easier. A role’s admin can even be the same role itself, which would cause accounts with that role to be able to also grant and revoke it.
 
 This mechanism can be used to create complex permissioning structures resembling organizational charts, but it also provides an easy way to manage simpler applications. `AccessControl` includes a special role, called `DEFAULT_ADMIN_ROLE`, which acts as the *default admin role for all roles*. An account with this role will be able to manage any other role, unless `_setRoleAdmin` is used to select a new admin role.
 
