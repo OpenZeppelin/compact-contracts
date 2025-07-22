@@ -144,6 +144,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
+   * @return {[]} - Empty tuple.
    */
   export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     assert hasRole(roleId, account) "AccessControl: unauthorized account";
@@ -179,6 +180,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @return {[]} - Empty tuple.
    */
   export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     assertOnlyRole(getRoleAdmin(roleId));
@@ -196,6 +198,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @return {[]} - Empty tuple.
    */
   export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     assertOnlyRole(getRoleAdmin(roleId));
@@ -218,6 +221,7 @@ module AccessControl {
   *
   * @param {Bytes<32>} roleId - The role identifier.
   * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
+  * @return {[]} - Empty tuple.
   */
   export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     assert callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(own_public_key()) "AccessControl: bad confirmation";
@@ -232,6 +236,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
+   * @return {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
     _adminRoles.insert(roleId, adminRole);
