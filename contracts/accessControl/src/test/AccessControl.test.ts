@@ -175,18 +175,18 @@ describe('AccessControl', () => {
 
     describe.each(operatorTypes)(
       'when the operator is a %s',
-      (_, Z_OPERATOR, OPERATOR_CALLER) => {
+      (_operatorType, _operator) => {
         it('admin should revoke role', () => {
           caller = ADMIN;
 
-          accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR, caller);
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(
+          accessControl.revokeRole(OPERATOR_ROLE_1, _operator, caller);
+          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
             false,
           );
         });
 
         it('should throw if operator revokes role', () => {
-          caller = OPERATOR_CALLER;
+          caller = callerTypes[_operatorType];
 
           expect(() => {
             accessControl.revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED, caller);
