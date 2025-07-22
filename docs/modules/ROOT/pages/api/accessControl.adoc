@@ -1,5 +1,7 @@
 :github-icon: pass:[<svg class="icon"><use href="#github-icon"/></svg>]
 :accessControl-guide: xref:accessControl.adoc[AccessControl guide]
+:grantRole: <<AccessControl-grantRole, grantRole>>
+:revokeRole: <<AccessControl-revokeRole, revokeRole>>
 
 = AccessControl
 
@@ -26,7 +28,7 @@ circuit foo(): [] {
 }
 ```
 
-Roles can be granted and revoked dynamically via the <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>> functions. Each role has an associated admin role, and only accounts that have a role's admin role can call <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>>.
+Roles can be granted and revoked dynamically via the {grantRole} and {revokeRole} functions. Each role has an associated admin role, and only accounts that have a role's admin role can call {grantRole} and {revokeRole}.
 
 By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means that only accounts with this role will be able to grant or revoke other roles. More complex role relationships can be created by using <<AccessControl-_setRoleAdmin, _setRoleAdmin>>. To set a custom `DEFAULT_ADMIN_ROLE`, implement the `Initializable` module and set `DEFAULT_ADMIN_ROLE` in the `initialize()` function.
 
@@ -78,6 +80,7 @@ Reverts if caller is missing `roleId`.
 Requirements:
 
 - The caller must have `roleId`.
+- The caller must not be a `ContractAddress`.
 
 [.contract-item]
 [[AccessControl-_checkRole]]
@@ -93,7 +96,7 @@ Requirements:
 [[AccessControl-getRoleAdmin]]
 ==== `[.contract-item-name]#++getRoleAdmin++#++(roleId: Bytes<32>) → Bytes<32>++` [.item-kind]#circuit#
 
-Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn't exist. See <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>>.
+Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn't exist. See {grantRole} and {revokeRole}.
 
 To change a role's admin use <<AccessControl-_setRoleAdmin, _setRoleAdmin>>.
 
@@ -127,7 +130,7 @@ Requirements:
 
 Revokes `roleId` from the calling account.
 
-Roles are often managed via <<AccessControl-grantRole, grantRole>> and <<AccessControl-revokeRole, revokeRole>>: this circuit's
+Roles are often managed via {grantRole} and {revokeRole}: this circuit's
 purpose is to provide a mechanism for accounts to lose their privileges
 if they are compromised (such as when a trusted device is misplaced).
 
@@ -152,7 +155,7 @@ Attempts to grant `roleId` to `account` and returns a boolean indicating if `rol
 
 Internal circuit without access restriction.
 
-NOTE: Granting roles to contract addresses is currently disallowed until contract-to-contract interactions are supported in Compact.
+NOTE: Granting roles to contract addresses is currently disallowed in this circuit until contract-to-contract interactions are supported in Compact.
 This restriction prevents permanently disabling access to a circuit.
 
 Requirements:
