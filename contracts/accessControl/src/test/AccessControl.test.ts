@@ -43,6 +43,9 @@ const operatorTypes = [
   ['pubkey', Z_OPERATOR_1],
 ] as const;
 
+const operatorRoles = [OPERATOR_ROLE_1, OPERATOR_ROLE_2];
+const operatorPKs = [Z_OPERATOR_1, Z_OPERATOR_2, Z_OPERATOR_CONTRACT];
+
 describe('AccessControl', () => {
   beforeEach(() => {
     accessControl = new AccessControlSimulator();
@@ -73,10 +76,10 @@ describe('AccessControl', () => {
   describe('assertOnlyRole', () => {
     beforeEach(() => {
       accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
-      caller = OPERATOR_1;
     });
 
     it('should allow operator with role to call', () => {
+      caller = OPERATOR_1;
       expect(() =>
         accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
       ).not.toThrow();
@@ -141,15 +144,15 @@ describe('AccessControl', () => {
     });
 
     it('admin should grant multiple roles', () => {
-      accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
-      accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_2, caller);
-      accessControl.grantRole(OPERATOR_ROLE_2, Z_OPERATOR_1, caller);
-      accessControl.grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2, caller);
-
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(true);
+      for (let i = 0; i < operatorRoles.length; i++) {
+        // length - 1 because we test ContractAddress separately
+        for (let j = 0; j < operatorPKs.length - 1; j++) {
+          accessControl.grantRole(operatorRoles[i], operatorPKs[j], caller);
+          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
+            true,
+          );
+        }
+      }
     });
 
     it('should throw if operator grants role', () => {
@@ -197,9 +200,6 @@ describe('AccessControl', () => {
 
     it('admin should revoke multiple roles', () => {
       caller = ADMIN;
-
-      const operatorRoles = [OPERATOR_ROLE_1, OPERATOR_ROLE_2];
-      const operatorPKs = [Z_OPERATOR_1, Z_OPERATOR_2, Z_OPERATOR_CONTRACT];
 
       for (let i = 0; i < operatorRoles.length; i++) {
         for (let j = 0; j < operatorPKs.length; j++) {
@@ -309,6 +309,18 @@ describe('AccessControl', () => {
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
     });
 
+    it('should return false if hasRole already', () => {
+     expect(
+        accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).toBe(true);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
+
+      expect(
+        accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).toBe(false);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
+    })
+
     it('should fail to grant role to a ContractAddress', () => {
       expect(() => {
         accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
@@ -316,23 +328,15 @@ describe('AccessControl', () => {
     });
 
     it('should grant multiple roles', () => {
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
-        true,
-      );
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(
-        true,
-      );
-      expect(accessControl._grantRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(
-        true,
-      );
-      expect(accessControl._grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(
-        true,
-      );
-
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(true);
+      for (let i = 0; i < operatorRoles.length; i++) {
+        // length - 1 because we test ContractAddress in the above test
+        for (let j = 0; j < operatorPKs.length - 1; j++) {
+          accessControl._grantRole(operatorRoles[i], operatorPKs[j]);
+          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
+            true,
+          );
+        }
+      }
     });
   });
 
@@ -341,6 +345,18 @@ describe('AccessControl', () => {
       expect(
         accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).toBe(true);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
+    });
+
+    it('should return false if hasRole already', () => {
+     expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).toBe(true);
+      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
+
+      expect(
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+      ).toBe(false);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
     });
 
@@ -354,23 +370,14 @@ describe('AccessControl', () => {
     });
 
     it('should grant multiple roles', () => {
-      expect(
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
-      ).toBe(true);
-      expect(
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_2),
-      ).toBe(true);
-      expect(
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_2, Z_OPERATOR_1),
-      ).toBe(true);
-      expect(
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_2, Z_OPERATOR_2),
-      ).toBe(true);
-
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_2)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_1)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, Z_OPERATOR_2)).toBe(true);
+      for (let i = 0; i < operatorRoles.length; i++) {
+        for (let j = 0; j < operatorPKs.length; j++) {
+          expect(accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j])).toBe(true);
+          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
+            true,
+          );
+        }
+      }
     });
   });
 
@@ -387,5 +394,21 @@ describe('AccessControl', () => {
         });
       },
     );
+
+    it('should return false if account does not have role', () => {
+      expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(false);
+    });
+
+    it('should revoke multiple roles', () => {
+      for (let i = 0; i < operatorRoles.length; i++) {
+        for (let j = 0; j < operatorPKs.length; j++) {
+          accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]);
+          expect(accessControl._revokeRole(operatorRoles[i], operatorPKs[j])).toBe(true);
+          expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
+            false,
+          );
+        }
+      }
+    });
   });
 });
