@@ -344,13 +344,13 @@ describe('AccessControl', () => {
   describe('_revokeRole', () => {
     describe.each(operatorTypes)(
       'when the operator is a %s',
-      (_, Z_OPERATOR, _OPERATOR_CALLER) => {
+      (_, _operator) => {
         it('should revoke role', () => {
-          accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR);
-          expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(
+          accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
+          expect(accessControl._revokeRole(OPERATOR_ROLE_1, _operator)).toBe(
             true,
           );
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR)).toBe(
+          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
             false,
           );
         });
