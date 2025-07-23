@@ -4,7 +4,7 @@
     "compact": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME"],
-      "inputs": ["src/**/*.compact"],
+      "inputs": ["contracts/src/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["src/artifacts/**", "src/gen/**", "gen/**"]
     },
