@@ -1,0 +1,179 @@
+:accessControl-guide: xref:accessControl.adoc[AccessControl guide]
+:role-based-access: https://en.wikipedia.org/wiki/Role-based_access_control[Role-Based Access Control (RBAC)]
+
+
+= Access Control
+
+An unshielded Access Control library.
+This module provides a role-based access control mechanism, where roles can be used to represent a set of permissions providing the flexibility to create different levels of account authorization.
+
+Roles can be enforced using the `assertOnlyRole` circuit. Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
+
+This module does not require initialization; however, one must implement the `Initializable` module in `AccessControl` if a custom `DEFAULT_ADMIN_ROLE` is required.
+
+== Role-Based Access Control
+
+While the simplicity of _ownership_ can be useful for simple systems or quick prototyping, different levels of authorization are often needed.
+You may want for an account to have permission to ban users from a system, but not create new tokens.
+{role-based-access} offers flexibility in this regard.
+
+In essence, we will be defining multiple _roles_, each allowed to perform different sets of actions.
+An account may have, for example, 'moderator', 'minter' or 'admin' roles, which you will then check for instead of simply using `assertOnlyOwner`.
+This check can be enforced through the `assertOnlyRole` circuit.
+Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
+
+Most software uses access control systems that are role-based: some users are regular users, some may be supervisors or managers, and a few will often have administrative privileges.
+
+=== Using `AccessControl`
+
+The Compact contracts library provides `AccessControl` for implementing role-based access control.
+Its usage is straightforward: for each role that you want to define,
+you will create a new role identifier that is used to grant, revoke, and check if an account has that role.
+
+Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[FungibleToken] to define a 'minter' role, which allows accounts that have this role to create new tokens:
+
+```ts
+// AccessControlMinter.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+
+export sealed ledger MINTER_ROLE: Bytes<32>;
+
+/**
+ * Initialize FungibleToken and MINTER_ROLE
+ */
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  decimals: Uint<8>,
+  minter: Either<ZswapCoinPublicKey, ContractAddress>
+) {
+  FungibleToken_initialize(name, symbol, decimals);
+  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  AccessControl__grantRole(MINTER_ROLE, minter);
+}
+
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+  AccessControl_assertOnlyRole(MINTER_ROLE);
+  FungibleToken__mint(recipient, value);
+}
+```
+
+NOTE: Make sure you fully understand how xref:api/accessControl.adoc#accessControl[AccessControl] works before using it on your system, or copy-pasting the examples from this guide.
+
+While clear and explicit, this isn’t anything we wouldn’t have been able to achieve with xref:ownable.adoc[Ownable]. Indeed, where `AccessControl` shines is in scenarios where granular permissions are required, which can be implemented by defining _multiple_ roles.
+
+Let’s augment our FungibleToken example by also defining a 'burner' role, which lets accounts destroy tokens.
+
+```ts
+// AccessControlMinter.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+
+export sealed ledger MINTER_ROLE: Bytes<32>;
+export sealed ledger BURNER_ROLE: Bytes<32>;
+
+/**
+ * Initialize FungibleToken and MINTER_ROLE
+ */
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  decimals: Uint<8>,
+  minter: Either<ZswapCoinPublicKey, ContractAddress>,
+  burner: Either<ZswapCoinPublicKey, ContractAddress>
+) {
+  FungibleToken_initialize(name, symbol, decimals);
+  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  BURNER_ROLE = persistent_hash<Bytes<32>>(pad(32, "BURNER_ROLE"));
+  AccessControl__grantRole(MINTER_ROLE, minter);
+  AccessControl__grantRole(BURNER_ROLE, burner);
+}
+
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+  AccessControl_assertOnlyRole(MINTER_ROLE);
+  FungibleToken__mint(recipient, value);
+}
+
+export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+  AccessControl_assertOnlyRole(BURNER_ROLE);
+  FungibleToken__burn(recipient, value);
+}
+```
+
+So clean! By splitting concerns this way, more granular levels of permission may be implemented than were possible with the simpler _ownership_ approach to access control.
+Limiting what each component of a system is able to do is known as the https://en.wikipedia.org/wiki/Principle_of_least_privilege[principle of least privilege], and is a good security practice.
+Note that each account may still have more than one role, if so desired.
+
+=== Granting and Revoking Roles
+
+The FungibleToken example above uses `_grantRole`, an internal circuit that is useful when programmatically assigning roles (such as during construction). But what if we later want to grant the 'minter' role to additional accounts?
+
+By default, *accounts with a role cannot grant it or revoke it from other accounts*: all having a role does is making the `hasRole` check pass. To grant and revoke roles dynamically, you will need help from the _role’s admin_.
+
+Every role has an associated admin role, which grants permission to call the `grantRole` and `revokeRole` circuits. A role can be granted or revoked by using these if the calling account has the corresponding admin role. Multiple roles may have the same admin role to make management easier. A role’s admin can even be the same role itself, which would cause accounts with that role to be able to also grant and revoke it.
+
+This mechanism can be used to create complex permissioning structures resembling organizational charts, but it also provides an easy way to manage simpler applications. `AccessControl` includes a special role, called `DEFAULT_ADMIN_ROLE`, which acts as the *default admin role for all roles*. An account with this role will be able to manage any other role, unless `_setRoleAdmin` is used to select a new admin role.
+
+Since it is the admin for all roles by default, and in fact it is also its own admin, this role carries significant risk.
+
+Let’s take a look at the FungibleToken example, this time taking advantage of the default admin role:
+
+```ts
+// AccessControlMinter.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+
+export sealed ledger MINTER_ROLE: Bytes<32>;
+export sealed ledger BURNER_ROLE: Bytes<32>;
+
+/**
+ * Initialize FungibleToken and MINTER_ROLE
+ */
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  decimals: Uint<8>,
+) {
+  FungibleToken_initialize(name, symbol, decimals);
+  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  BURNER_ROLE = persistent_hash<Bytes<32>>(pad(32, "BURNER_ROLE"));
+  // Grant the contract deployer the default admin role: it will be able
+  // to grant and revoke any roles
+  AccessControl__grantRole(AccessControl_DEFAULT_ADMIN_ROLE, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
+}
+
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+  AccessControl_assertOnlyRole(MINTER_ROLE);
+  FungibleToken__mint(recipient, value);
+}
+
+export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+  AccessControl_assertOnlyRole(BURNER_ROLE);
+  FungibleToken__burn(recipient, value);
+}
+```
+
+Note that, unlike the previous examples, no accounts are granted the 'minter' or 'burner' roles. However, because those roles' admin role is the default admin role, and _that_ role was granted to `own_public_key()`, that same account can call `grantRole` to give minting or burning permission, and `revokeRole` to remove it.
+
+Dynamic role allocation is often a desirable property, for example in systems where trust in a participant may vary over time. It can also be used to support use cases such as KYC, where the list of role-bearers may not be known up-front, or may be prohibitively expensive to include in a single transaction.
+
+=== Experimental features
+
+This module offers an experimental circuit that allow access control permissions to be granted to contract addresses xref:api/accessControl.adoc#AccessControl-_unsafeGrantRole[_unsafeGrantRole].
+Note that the circuit name is very explicit ("unsafe") with this experimental circuit.
+Until contract-to-contract calls are supported, there is no direct way for a contract to call permissioned circuits of other contracts or grant/revoke role permissions.
+
+NOTE: The unsafe circuits are planned to become deprecated once contract-to-contract calls become available.
