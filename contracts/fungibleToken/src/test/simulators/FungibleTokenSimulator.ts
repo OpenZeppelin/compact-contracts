@@ -2,18 +2,18 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  QueryContext,
   constructorContext,
   emptyZswapLocalState,
+  QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type ContractAddress,
   type Either,
   type Ledger,
+  ledger,
   Contract as MockFungibleToken,
   type ZswapCoinPublicKey,
-  ledger,
 } from '../../artifacts/MockFungibleToken/contract/index.cjs'; // Combined imports
 import {
   type FungibleTokenPrivateState,
@@ -397,7 +397,6 @@ export class FungibleTokenSimulator
    * @param owner The owner of the tokens.
    * @param spender The spender of the tokens.
    * @param value The amount of tokens `spender` may spend on behalf of `owner`.
-   * @returns None.
    */
   public _approve(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,

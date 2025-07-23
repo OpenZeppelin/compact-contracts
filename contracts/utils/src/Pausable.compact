@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma language_version >= 0.15.0;
 
 /**
@@ -15,7 +16,7 @@ module Pausable {
   /**
    * @description Returns true if the contract is paused, and false otherwise.
    *
-   * @returns {Boolean} True if paused.
+   * @return {Boolean} True if paused.
    */
   export circuit isPaused(): Boolean {
     return _isPaused;
@@ -24,7 +25,7 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is paused.
    *
-   * @returns None.
+   * @return {[]} - Empty tuple.
    */
   export circuit assertPaused(): [] {
     assert _isPaused "Pausable: not paused";
@@ -33,7 +34,7 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is not paused.
    *
-   * @returns None.
+   * @return {[]} - Empty tuple.
    */
   export circuit assertNotPaused(): [] {
     assert !_isPaused "Pausable: paused";
@@ -42,7 +43,7 @@ module Pausable {
   /**
    * @description Triggers a stopped state.
    *
-   * @returns None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _pause(): [] {
     assertNotPaused();
@@ -52,7 +53,7 @@ module Pausable {
   /**
    * @description Lifts the pause on the contract.
    *
-   * @returns None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unpause(): [] {
     assertPaused();

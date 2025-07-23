@@ -1,14 +1,14 @@
 import {
   type CircuitContext,
   type ContractState,
-  QueryContext,
   constructorContext,
+  QueryContext,
   sampleContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
 import {
   type Ledger,
-  Contract as MockInitializable,
   ledger,
+  Contract as MockInitializable,
 } from '../../artifacts/MockInitializable/contract/index.cjs';
 import {
   type InitializablePrivateState,
@@ -83,7 +83,6 @@ export class InitializableSimulator
 
   /**
    * @description Initializes the state.
-   * @returns None.
    */
   public initialize() {
     this.circuitContext = this.contract.impureCircuits.initialize(
@@ -93,7 +92,6 @@ export class InitializableSimulator
 
   /**
    * @description Asserts that the contract has been initialized, throwing an error if not.
-   * @returns None.
    * @throws Will throw "Initializable: contract not initialized" if the contract is not initialized.
    */
   public assertInitialized() {
@@ -103,7 +101,6 @@ export class InitializableSimulator
 
   /**
    * @description Asserts that the contract has not been initialized, throwing an error if it has.
-   * @returns None.
    * @throws Will throw "Initializable: contract already initialized" if the contract is already initialized.
    */
   public assertNotInitialized() {

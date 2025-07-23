@@ -2,18 +2,18 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  QueryContext,
   constructorContext,
   emptyZswapLocalState,
+  QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type ContractAddress,
   type Either,
   type Ledger,
+  ledger,
   Contract as MockMultiToken,
   type ZswapCoinPublicKey,
-  ledger,
 } from '../../artifacts/MockMultiToken/contract/index.cjs'; // Combined imports
 import {
   type MultiTokenPrivateState,
@@ -175,7 +175,6 @@ export class MultiTokenSimulator
    * @param id The unique identifier of the asset type.
    * @param value The quantity of `id` tokens to transfer.
    * @param sender - Optional. Sets the caller context if provided.
-   * @returns None.
    */
   public transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -237,7 +236,6 @@ export class MultiTokenSimulator
    * @param id The unique identifier of the asset type.
    * @param value The quantity of `id` tokens to transfer.
    * @param sender - Optional. Sets the caller context if provided.
-   * @returns None.
    */
   public _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,

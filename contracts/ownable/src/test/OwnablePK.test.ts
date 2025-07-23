@@ -3,8 +3,8 @@ import {
   convert_bigint_to_Uint8Array,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { OwnablePKSimulator } from './simulators/OwnablePKSimulator';
-import * as utils from './utils/address';
+import { OwnablePKSimulator } from './simulators/OwnablePKSimulator.js';
+import * as utils from './utils/address.js';
 
 const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
   64,

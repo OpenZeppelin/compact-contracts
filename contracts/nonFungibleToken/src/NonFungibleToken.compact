@@ -101,7 +101,7 @@ module NonFungibleToken {
    *
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit initialize(name_: Opaque<"string">, symbol_: Opaque<"string">): [] {
     Initializable_initialize();
@@ -193,7 +193,7 @@ module NonFungibleToken {
    * It's up to the implementation to decide on how to handle this.
    *
    * @param {Uint<128>} tokenId - The identifier for a token.
-   * @returns {Opaque<"string">} - the token id's URI.
+   * @return {Opaque<"string">} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
     Initializable_assertInitialized();
@@ -219,7 +219,7 @@ module NonFungibleToken {
    *
    * @param {Uint<128>} tokenId - The identifier of the token.
    * @param {Opaque<"string">} tokenURI - The URI of `tokenId`.
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
     Initializable_assertInitialized();
@@ -243,7 +243,7 @@ module NonFungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving the approval
    * @param {Uint<128>} tokenId - The token `to` may be permitted to transfer
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit approve(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -289,7 +289,7 @@ module NonFungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An operator to manage the caller's tokens
    * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(
     operator: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -344,7 +344,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transfered
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit transferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -376,7 +376,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transfered
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -479,7 +479,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of the token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - Account operating on `tokenId`
    * @param {Uint<128>} tokenId - The token to spend
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _checkAuthorized(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -556,7 +556,7 @@ module NonFungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _mint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -583,7 +583,7 @@ module NonFungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -609,7 +609,7 @@ module NonFungibleToken {
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token to burn
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
     Initializable_assertInitialized();
@@ -632,7 +632,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -664,7 +664,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(
     from: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -693,7 +693,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to approve
    * @param {Uint<128>} tokenId - The token to approve
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner the token
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _approve(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -723,7 +723,7 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of a token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The account to approve
    * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens
-   * @return {[]} - None.
+   * @return {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
