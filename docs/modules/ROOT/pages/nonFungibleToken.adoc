@@ -1,4 +1,3 @@
-:nonFungibleToken-guide: xref:nonFungibleToken.adoc[NonFungibleToken guide]
 :non-fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[non-fungible tokens]
 :eip-721: https://eips.ethereum.org/EIPS/eip-721[EIP-721]
 
