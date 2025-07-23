@@ -28,7 +28,8 @@ This library offers modules of contracts with free floating circuits;
 nevertheless, there are no means of enforcing that all circuits are provided.
 - **ERC-165 Standard** - Since Compact doesn't provide a way to define a contract interace,
 it's not possible to implement an https://eips.ethereum.org/EIPS/eip-165[ERC-165] like interface standard at this time.
-
+- **Safe Transfers** - It's not possible to implement safe transfers without an https://eips.ethereum.org/EIPS/eip-165[ERC-165] like
+interface standard at this time.
 
 == Contract-to-contract calls
 
