@@ -359,6 +359,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/midnight-js-network-id@npm:^2.0.1":
+  version: 2.0.2
+  resolution: "@midnight-ntwrk/midnight-js-network-id@npm:2.0.2"
+  checksum: 10/116399be0e0038e7acfb8d7172c207fd23d54eff66526a6f6ca65ce26402cb2ceb3ad6f888cb02b46acb1cf0662a2f933bb71e7a014026b05b83909916af9134
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/onchain-runtime@npm:^0.3.0":
   version: 0.3.0
   resolution: "@midnight-ntwrk/onchain-runtime@npm:0.3.0"
@@ -419,9 +426,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-compact/compact@workspace:^, @openzeppelin-compact/compact@workspace:compact":
+"@openzeppelin-compact/compact-std@workspace:^, @openzeppelin-compact/compact-std@workspace:packages/compact-std":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-compact/compact@workspace:compact"
+  resolution: "@openzeppelin-compact/compact-std@workspace:packages/compact-std"
+  dependencies:
+    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
+    "@midnight-ntwrk/midnight-js-network-id": "npm:^2.0.1"
+    "@midnight-ntwrk/zswap": "npm:^4.0.0"
+    "@openzeppelin-compact/compact": "workspace:^"
+    "@types/node": "npm:22.14.0"
+    fast-check: "npm:^3.15.0"
+    typescript: "npm:^5.8.3"
+    vitest: "npm:^3.1.4"
+  languageName: unknown
+  linkType: soft
+
+"@openzeppelin-compact/compact@workspace:^, @openzeppelin-compact/compact@workspace:packages/compact":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-compact/compact@workspace:packages/compact"
   dependencies:
     "@types/node": "npm:22.14.0"
     chalk: "npm:^5.4.1"
@@ -464,6 +486,8 @@ __metadata:
   resolution: "@openzeppelin-compact/non-fungible-token@workspace:contracts/nonFungibleToken"
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
+    "@openzeppelin-compact/compact-std": "workspace:^"
+    "@openzeppelin-compact/testing": "workspace:^"
     "@types/node": "npm:22.14.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
@@ -476,6 +500,19 @@ __metadata:
   resolution: "@openzeppelin-compact/ownable@workspace:contracts/ownable"
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
+    "@types/node": "npm:22.14.0"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.2.2"
+    vitest: "npm:^3.1.3"
+  languageName: unknown
+  linkType: soft
+
+"@openzeppelin-compact/testing@workspace:^, @openzeppelin-compact/testing@workspace:packages/testing":
+  version: 0.0.0-use.local
+  resolution: "@openzeppelin-compact/testing@workspace:packages/testing"
+  dependencies:
+    "@openzeppelin-compact/compact": "workspace:^"
+    "@openzeppelin-compact/compact-std": "workspace:^"
     "@types/node": "npm:22.14.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
@@ -2507,7 +2544,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.2.2, typescript@npm:^5.8.2":
+"typescript@npm:^5.2.2, typescript@npm:^5.8.2, typescript@npm:^5.8.3":
   version: 5.8.3
   resolution: "typescript@npm:5.8.3"
   bin:
@@ -2517,7 +2554,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.2.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.8.2#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.2.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.8.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.8.3#optional!builtin<compat/typescript>":
   version: 5.8.3
   resolution: "typescript@patch:typescript@npm%3A5.8.3#optional!builtin<compat/typescript>::version=5.8.3&hash=d69c25"
   bin:
@@ -2629,7 +2666,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^3.1.3":
+"vitest@npm:^3.1.3, vitest@npm:^3.1.4":
   version: 3.2.4
   resolution: "vitest@npm:3.2.4"
   dependencies:

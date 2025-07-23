@@ -1,0 +1,31 @@
+{
+  "name": "@openzeppelin-compact/compact-std",
+  "private": true,
+  "version": "0.0.1",
+  "description": "",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "compact": "compact-compiler",
+    "build": "compact-builder && tsc",
+    "test": "vitest run",
+    "types": "tsc -p tsconfig.json --noEmit",
+    "clean": "git clean -fXd"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "22.14.0",
+    "fast-check": "^3.15.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.8.1",
+    "@midnight-ntwrk/midnight-js-network-id": "^2.0.1",
+    "@midnight-ntwrk/zswap": "^4.0.0",
+    "@openzeppelin-compact/compact": "workspace:^"
+  }
+}
