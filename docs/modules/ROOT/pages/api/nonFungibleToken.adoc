@@ -32,7 +32,7 @@ import "./node-modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleT
 * xref:#NonFungibleTokenModule-approve[`++approve(to, tokenId)++`]
 * xref:#NonFungibleTokenModule-getApproved[`++getApproved(tokenId)++`]
 * xref:#NonFungibleTokenModule-setApprovalForAll[`++setApprovalForAll(operator, approved)++`]
-* xref:#NonFungibleTokenModule-isApprovalForAll[`++isApprovalForAll(owner, operator)++`]
+* xref:#NonFungibleTokenModule-isApprovedForAll[`++isApprovedForAll(owner, operator)++`]
 * xref:#NonFungibleTokenModule-transferFrom[`++transferFrom(from, to, tokenId)++`]
 * xref:#NonFungibleTokenModule-_unsafeTransferFrom[`++_unsafeTransferFrom(from, to, tokenId)++`]
 * xref:#NonFungibleTokenModule-_ownerOf[`++_ownerOf(tokenId)++`]
@@ -67,7 +67,7 @@ Requirements:
 [[NonFungibleTokenModule-balanceOf]]
 ==== `[.contract-item-name]#++balanceOf++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
 
-Returns the number of tokens in `owner`'s account.
+Returns the number of tokens in ``owner``'s account.
 
 Requirements:
 
@@ -109,7 +109,7 @@ Requirements:
 ==== `[.contract-item-name]#++tokenURI++#++(tokenId: Uint<128>) → Opaque<"string">++` [.item-kind]#circuit#
 
 Returns the token URI for the given `tokenId`.
-Returns the empty string if a tokenURI does not exist.
+Returns an empty string if a tokenURI does not exist.
 
 Requirements:
 
@@ -170,7 +170,7 @@ Operators can call <<NonFungibleTokenModule-transferFrom, transferFrom>> for any
 Requirements:
 
 - The contract is initialized.
-- The `operator` cannot be the address zero.
+- The `operator` cannot be the zero address.
 
 [.contract-item]
 [[NonFungibleTokenModule-isApprovedForAll]]
@@ -242,7 +242,7 @@ Requirements:
 [[NonFungibleTokenModule-_isAuthorized]]
 ==== `[.contract-item-name]#++_isAuthorized++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128> ) → Boolean++` [.item-kind]#circuit#
 
-Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in particular (ignoring whether it is owned by `owner`).
+Returns whether `spender` is allowed to manage ``owner``'s tokens, or `tokenId` in particular (ignoring whether it is owned by `owner`).
 
 Requirements:
 
@@ -265,7 +265,7 @@ WARNING: This function assumes that `owner` is the actual owner of `tokenId` and
 
 [.contract-item]
 [[NonFungibleTokenModule-_update]]
-==== `[.contract-item-name]#++_update++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>, auth: Either<ZswapCoinPublicKey, ContractAddress>) → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++_update++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>, auth: Either<ZswapCoinPublicKey, ContractAddress>) → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#internal#
 
 Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner (or `to`) is the zero address.
 Returns the owner of the `tokenId` before the update.
@@ -339,7 +339,7 @@ Requirements:
 
 Unsafe variant of <<NonFungibleTokenModule-_transfer,_transfer>> which allows transfers to contract addresses.
 
-Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule_unsafeTransferFrom,_unsafeTransferFrom>>, this imposes no restrictions on `own_public_key()`. It does NOT check if the recipient is a `ContractAddress`.
+Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-_unsafeTransferFrom,_unsafeTransferFrom>>, this imposes no restrictions on `own_public_key()`. It does NOT check if the recipient is a `ContractAddress`.
 
 WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported. Tokens sent to a contract address may become irretrievable.
 Once contract-to-contract calls are supported, this circuit may be deprecated.
@@ -370,7 +370,7 @@ Approve `operator` to operate on all of `owner` tokens
 Requirements:
 
 - The contract is initialized.
-- `operator` is not the address zero.
+- `operator` is not the zero address.
 
 [.contract-item]
 [[NonFungibleTokenModule-_requireOwned]]

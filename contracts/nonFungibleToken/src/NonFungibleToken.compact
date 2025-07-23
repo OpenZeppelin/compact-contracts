@@ -662,8 +662,6 @@ module NonFungibleToken {
    * - `to` is not a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    *
-
-   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
    * @param {Uint<128>} tokenId - The token to transfer

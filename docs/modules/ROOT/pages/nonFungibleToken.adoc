@@ -131,8 +131,8 @@ export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAd
   NonFungibleToken_setApprovalForAll(operator, approved);
 }
 
-export circuit isApprovalForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-  return NonFungibleToken_isApprovalForAll(owner, operator);
+export circuit isApprovedForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return NonFungibleToken_isApprovedForAll(owner, operator);
 }
 
 export circuit transferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
