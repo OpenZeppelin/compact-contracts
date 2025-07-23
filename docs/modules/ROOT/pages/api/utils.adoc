@@ -1,0 +1,185 @@
+:github-icon: pass:[<svg class="icon"><use href="#github-icon"/></svg>]
+:utils-guide: xref:utils.adoc[Utils guide]
+
+= Utils
+
+This package provides the API for all Utils modules.
+
+TIP: For an overview of the module, read the {utils-guide}.
+
+== Initializable
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
+```
+
+[.contract]
+[[Initializable]]
+=== `++Initializable++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/utils/src/Initializable.compact[{github-icon},role=heading-link]
+
+[.contract-index]
+.Circuits
+--
+
+[.sub-index#InitializableModule]
+* xref:#InitializableModule-initialize[`++initialize()++`]
+* xref:#InitializableModule-assertInitialized[`++assertInitialized()++`]
+* xref:#InitializableModule-assertNotInitialized[`++assertNotInitialized()++`]
+--
+
+[.contract-item]
+[[InitializableModule-initialize]]
+==== `[.contract-item-name]#++initialize++#++() → []++` [.item-kind]#circuit#
+
+Initializes the state thus ensuring the calling circuit can only be called once.
+
+Requirements:
+
+- Contract must not be initialized.
+
+[.contract-item]
+[[InitializableModule-assertInitialized]]
+==== `[.contract-item-name]#++assertInitialized++#++() → []++` [.item-kind]#circuit#
+
+Asserts that the contract has been initialized, throwing an error if not.
+
+Requirements:
+
+- Contract must be initialized.
+
+[.contract-item]
+[[InitializableModule-assertNotInitialized]]
+==== `[.contract-item-name]#++assertNotInitialized++#++() → []++` [.item-kind]#circuit#
+
+Asserts that the contract has not been initialized, throwing an error if it has.
+
+Requirements:
+
+- Contract must not be initialized.
+
+== Pausable
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/utils/src/Pausable" prefix Pausable_;
+```
+
+[.contract]
+[[Pausable]]
+=== `++Pausable++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/utils/src/Pausable.compact[{github-icon},role=heading-link]
+
+[.contract-index]
+.Circuits
+--
+
+[.sub-index#PausableModule]
+* xref:#PausableModule-isPaused[`++isPaused()++`]
+* xref:#PausableModule-assertPaused[`++assertPaused()++`]
+* xref:#PausableModule-assertNotPaused[`++assertNotPaused()++`]
+* xref:#PausableModule-_pause[`++_pause()++`]
+* xref:#PausableModule-_unpause[`++_unpause()++`]
+--
+
+[.contract-item]
+[[PausableModule-isPaused]]
+==== `[.contract-item-name]#++isPaused++#++() → Boolean++` [.item-kind]#circuit#
+
+Returns true if the contract is paused, and false otherwise.
+
+[.contract-item]
+[[PausableModule-assertPaused]]
+==== `[.contract-item-name]#++assertPaused++#++() → []++` [.item-kind]#circuit#
+
+Makes a circuit only callable when the contract is paused.
+
+Requirements:
+
+- Contract must be paused.
+
+[.contract-item]
+[[PausableModule-assertNotPaused]]
+==== `[.contract-item-name]#++assertNotPaused++#++() → []++` [.item-kind]#circuit#
+
+Makes a circuit only callable when the contract is not paused.
+
+Requirements:
+
+- Contract must not be paused.
+
+[.contract-item]
+[[PausableModule-_pause]]
+==== `[.contract-item-name]#++_pause++#++() → []++` [.item-kind]#circuit#
+
+Triggers a stopped state.
+
+Requirements:
+
+- Contract must not be paused.
+
+[.contract-item]
+[[PausableModule-_unpause]]
+==== `[.contract-item-name]#++_unpause++#++() → []++` [.item-kind]#circuit#
+
+Lifts the pause on the contract.
+
+Requirements:
+
+- Contract must be paused.
+
+== Utils
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
+```
+
+[.contract]
+[[Utils]]
+=== `++Utils++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/utils/src/Utils.compact[{github-icon},role=heading-link]
+
+[.contract-index]
+.Circuits
+--
+
+[.sub-index#UtilsModule]
+* xref:#UtilsModule-isKeyOrAddressZero[`++isKeyOrAddressZero(keyOrAddress)++`]
+* xref:#UtilsModule-isKeyZero[`++isKeyZero(key)++`]
+* xref:#UtilsModule-isKeyOrAddressEqual[`++isKeyOrAddressEqual(keyOrAddress, other)++`]
+* xref:#UtilsModule-isContractAddress[`++isContractAddress(keyOrAddress)++`]
+* xref:#UtilsModule-emptyString[`++emptyString()++`]
+--
+
+[.contract-item]
+[[UtilsModule-isKeyOrAddressZero]]
+==== `[.contract-item-name]#++isKeyOrAddressZero++#++(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
+
+Returns whether `keyOrAddress` is the zero address.
+
+NOTE: Midnight's burn address is represented as `left<ZswapCoinPublicKey, ContractAddress>(default<ZswapCoinPublicKey>)` in Compact,
+so we've chosen to represent the zero address as this structure as well
+
+[.contract-item]
+[[UtilsModule-isKeyZero]]
+==== `[.contract-item-name]#++isKeyZero++#++(key: ZswapCoinPublicKey) → Boolean++` [.item-kind]#circuit#
+
+Returns whether `key` is the zero address.
+
+[.contract-item]
+[[UtilsModule-isKeyOrAddressEqual]]
+==== `[.contract-item-name]#++isKeyOrAddressEqual++#++(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>, other: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
+
+Returns whether `keyOrAddress` is equal to `other`.
+Assumes that a `ZswapCoinPublicKey` and a `ContractAddress` can never be equal
+
+[.contract-item]
+[[UtilsModule-isContractAddress]]
+==== `[.contract-item-name]#++isContractAddress++#++(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
+
+Returns whether `keyOrAddress` is a `ContractAddress` type.
+
+[.contract-item]
+[[UtilsModule-emptyString]]
+==== `[.contract-item-name]#++emptyString++#++() → Opaque<"string">++` [.item-kind]#circuit#
+
+A helper function that returns the empty string: "".

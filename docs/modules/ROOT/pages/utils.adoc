@@ -1,0 +1,122 @@
+= Utils
+
+The following documentation provides context, reasoning, and examples of modules found in the Utils package.
+
+== Initializable
+
+The Initializable module provides a simple mechanism that mimics the functionality of a constructor.
+More specifically, it enables logic to be performed once and only once which is useful to set up a contract’s initial state when a constructor cannot be used, for example when there are circular dependencies at construction time.
+
+Many modules also use the initializable pattern which ensures that implementing contracts:
+
+- Don't allow circuit calls until the contract is initialized.
+- Can only initialize the contract once.
+
+=== Usage
+
+```typescript
+// CustomContractStateSetup.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import './node_modules/@openzeppelin-compact/utils/src/Initializable' prefix Initializable_;
+
+export ledger _fieldAfterDeployment: Field;
+
+export circuit doSomethingBeforeInitialized(): [] {
+  // Ensure action can only be done prior to custom initialization
+  Initializable_assertNotInitialized();
+  // Do the thing
+}
+
+export circuit setFieldAfterDeployment(f: Field): [] {
+  // Initialize so the circuit cannot be called again
+  Initializable_initialize();
+  _fieldAfterDeployment = f;
+}
+
+export circuit checkFieldAfterDeployment(): Field {
+  // Can only be called after the contract is initialized
+  Initializable_assertInitialized();
+  return _fieldAfterDeployment;
+}
+```
+
+== Pausable
+
+:ownable: xref:ownable.adoc[Ownable]
+:assertPaused: xref:api/utils.adoc#PausableModule-assertPaused[assertPaused]
+:assertNotPaused: xref:api/utils.adoc#PausableModule-assertNotPaused[assertNotPaused]
+
+The Pausable module allows contracts to implement an emergency stop mechanism.
+This can be useful for scenarios such as preventing trades until the end of an evaluation period or having an emergency switch to freeze all transactions in the event of a large bug.
+
+To become pausable, the contract should include `pause` and `unpause` circuits (which should be protected).
+For circuits that should be available only when paused or not,
+insert calls to {assertPaused} and {assertNotPaused} respectively.
+
+=== Usage
+
+For example (using the {ownable} module for access control):
+
+```typescript
+// OwnablePausable.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import './node_modules/@openzeppelin-compact/utils/src/Initializable' prefix Initializable_;
+import './node_modules/@openzeppelin-compact/ownable/src/Ownable' prefix Ownable_;
+
+constructor(initOwner: Either<ZswapCoinPublicKey, ContractAddress>) {
+  Ownable_initialize(initOwner);
+}
+
+export circuit pause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__unpause();
+}
+
+export circuit whenNotPaused(): [] {
+  Pausable_assertNotPaused();
+  // Do something
+}
+
+export circuit whenPaused(): [] {
+  Pausable_assertPaused();
+  // Do something
+}
+```
+
+== Utils
+
+The Utils module provides miscellaneous circuits and common utilities for Compact contract development.
+
+=== Usage
+
+```typescript
+// UtilsExample.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import './node_modules/@openzeppelin-compact/utils/src/Utils' prefix Utils_;
+
+export circuit performActionWhenEqual(
+  a: Either<ZswapCoinPublicKey, ContractAddress>,
+  b: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  const isEqual = Utils_isKeyOrAddressEqual(a, b);
+  if (isEqual) {
+    // Do something
+  } else {
+    // Do something else
+  }
+}
+```

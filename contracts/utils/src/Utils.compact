@@ -57,19 +57,19 @@ module Utils {
   }
 
   /**
-   * @description Returns whether `keyOrAddress` is a ContractAddress type
+   * @description Returns whether `keyOrAddress` is a ContractAddress type.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress
+   * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress.
    */
   export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return !keyOrAddress.is_left;
   }
 
   /**
-   * @description A helper function that returns the empty string: ""
+   * @description A helper function that returns the empty string: "".
    *
-   * @return {Opaque<"string">} - The empty string: ""
+   * @return {Opaque<"string">} - The empty string: "".
    */
   export pure circuit emptyString(): Opaque<"string"> {
     return default<Opaque<"string">>;

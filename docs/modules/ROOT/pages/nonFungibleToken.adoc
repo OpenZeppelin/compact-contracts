@@ -1,0 +1,144 @@
+:non-fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[non-fungible tokens]
+:eip-721: https://eips.ethereum.org/EIPS/eip-721[EIP-721]
+
+
+= NonFungibleToken
+
+FungibleToken is a specification for {non-fungible-tokens},
+a type of token where all the units are unique and distinct from each other.
+This module is an approximation of {eip-721} written in the Compact programming language for the Midnight network.
+
+== ERC721 Compatbility
+
+Even though Midnight is not EVM-compatible, this implementation attempts to be an approximation of the standard.
+Some features and behaviors are either not possible, not possible yet,
+or changed because of the vastly different tech stack and Compact language constraints.
+
+**Notable changes**
+
+- **Uint<128> tokenIds** - Since 256-bit unsigned integers are not supported, the library uses the Compact type `Uint<128>`.
+- **No _baseURI() support** - Native strings and string operations are not supported within the Compact language, so concatenating a base URI + token ID is not possible like in other NFT implementations. Therefore, we propose the URI storage approach; whereby, NFTs may or may not have unique "base" URIs. It's up to the implementation to decide on how to handle this.
+
+**Features and specifications NOT supported**
+
+- **Events** - Midnight does not currently support events, but this is planned on being supported in the future.
+- **Uint256 type** - There's ongoing research on ways to support uint256 in the future.
+- **Interface** - Compact currently does not have a way to define a contract interface.
+This library offers modules of contracts with free floating circuits;
+nevertheless, there are no means of enforcing that all circuits are provided.
+- **ERC-165 Standard** - Since Compact doesn't provide a way to define a contract interace,
+it's not possible to implement an https://eips.ethereum.org/EIPS/eip-165[ERC-165] like interface standard at this time.
+- **Safe Transfers** - It's not possible to implement safe transfers without an https://eips.ethereum.org/EIPS/eip-165[ERC-165] like
+interface standard at this time.
+
+== Contract-to-contract calls
+
+Contract-to-contract calls are currently not supported in the Compact language.
+Due to this limitation, the current iteration of NonFungibleToken disallows transfers and mints to the `ContractAddress` type.
+Transferring tokens to a contract may result in those tokens being locked forever.
+The NonFungibleToken module, however, does provide `unsafe` circuit variants for users who wish to experiment with sending tokens to contracts.
+
+WARNING: The `unsafe` circuits will eventually be deprecated after Compact supports contract-to-contract calls—meaning
+`_transfer`, `_mint`, etc. are planned to eventually allow the recipients to be of the `ContractAddress` type.
+
+== Usage
+
+:extensibility-pattern: xref:extensibility.adoc#the_module_contract_pattern[Module/Contract Pattern]
+:nonfungible-mint: xref:/api/NonFungibleToken.adoc#NonFungibleTokenModule-_mint[_mint]
+
+Import the NonFungibleToken module into the implementing contract.
+It's recommended to prefix the module with `NonFungibleToken_` to avoid circuit signature clashes.
+
+```typescript
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
+
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">
+) {
+  NonFungibleToken_initialize(name, symbol);
+}
+```
+
+Next, expose the ciruits that users may call in the contract.
+This library enables extensibility by following the rules of the {extensibility-pattern}.
+Note that circuits with a preceding underscore (`_likeThis`) are meant to be building blocks for implementing contracts.
+Exposing {nonfungible-mint} without some sort of access control, for example, would allow ANYONE to mint tokens.
+
+```typescript
+export circuit name(): Opaque<"string"> {
+  return NonFungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NonFungibleToken_symbol();
+}
+
+(...)
+```
+
+The following example is a simple non-fungible token contract that mints an NFT to the passed recipient upon construction.
+
+```typescript
+// SimpleNonFungibleToken.compact
+
+pragma language_version >= 0.15.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
+
+constructor(
+  name: Opaque<"string">,
+  symbol: Opaque<"string">,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenURI: Opaque<"string">
+) {
+  const tokenId = 1 as Uint<128>;
+  NonFungibleToken_initialize(name, symbol);
+  NonFungibleToken__mint(recipient, tokenId);
+  NonFungibleToken__setTokenURI(tokenId, tokenURI);
+}
+
+export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+  return NonFungibleToken_balanceOf(owner);
+}
+
+export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+  return NonFungibleToken_ownerOf(tokenId);
+}
+
+export circuit name(): Opaque<"string"> {
+  return NonFungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NonFungibleToken_symbol();
+}
+
+export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
+  return NonFungibleToken_tokenURI(tokenId);
+}
+
+export circuit approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
+  NonFungibleToken_approve(to, tokenId);
+}
+
+export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+  return NonFungibleToken_getApproved(tokenId);
+}
+
+export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+  NonFungibleToken_setApprovalForAll(operator, approved);
+}
+
+export circuit isApprovedForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return NonFungibleToken_isApprovedForAll(owner, operator);
+}
+
+export circuit transferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
+  NonFungibleToken_transferFrom(from, to, tokenId);
+}
+```

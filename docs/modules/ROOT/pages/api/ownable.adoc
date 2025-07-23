@@ -11,7 +11,7 @@ TIP: For an overview of the module, read the {ownable-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
+import "./node_modules/@openzeppelin-compact/ownable/src/Ownable" prefix Ownable_;
 ```
 
 [.contract]
