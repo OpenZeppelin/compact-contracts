@@ -94,9 +94,12 @@ constructor(
   name: Opaque<"string">,
   symbol: Opaque<"string">,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenURI: Opaque<"string">
 ) {
+  const tokenId = 1 as Uint<128>;
   NonFungibleToken_initialize(name, symbol);
-  NonFungibleToken__mint(recipient, 1 as Uint<128>);
+  NonFungibleToken__mint(recipient, tokenId);
+  NonFungibleToken__setTokenURI(tokenId, tokenURI);
 }
 
 export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
