@@ -53,11 +53,11 @@ constructor(
   minter: Either<ZswapCoinPublicKey, ContractAddress>
 ) {
   FungibleToken_initialize(name, symbol, decimals);
-  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
   AccessControl__grantRole(MINTER_ROLE, minter);
 }
 
-export circuit mint(recipient: Either<ZswapCointPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   AccessControl_assertOnlyRole(MINTER_ROLE);
   FungibleToken__mint(recipient, value);
 }
@@ -92,18 +92,18 @@ constructor(
   burner: Either<ZswapCoinPublicKey, ContractAddress>
 ) {
   FungibleToken_initialize(name, symbol, decimals);
-  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
-  BURNER_ROLE = persistentHash<Bytes<32>>(pad(32, "BURNER_ROLE"));
+  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  BURNER_ROLE = persistent_hash<Bytes<32>>(pad(32, "BURNER_ROLE"));
   AccessControl__grantRole(MINTER_ROLE, minter);
   AccessControl__grantRole(BURNER_ROLE, burner);
 }
 
-export circuit mint(recipient: Either<ZswapCointPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   AccessControl_assertOnlyRole(MINTER_ROLE);
   FungibleToken__mint(recipient, value);
 }
 
-export circuit burn(recipient: Either<ZswapCointPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   AccessControl_assertOnlyRole(BURNER_ROLE);
   FungibleToken__burn(recipient, value);
 }
@@ -145,22 +145,22 @@ export sealed ledger BURNER_ROLE: Bytes<32>;
 constructor(
   name: Opaque<"string">,
   symbol: Opaque<"string">,
-  decimals: Uint<8>
+  decimals: Uint<8>,
 ) {
   FungibleToken_initialize(name, symbol, decimals);
-  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
-  BURNER_ROLE = persistentHash<Bytes<32>>(pad(32, "BURNER_ROLE"));
+  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  BURNER_ROLE = persistent_hash<Bytes<32>>(pad(32, "BURNER_ROLE"));
   // Grant the contract deployer the default admin role: it will be able
   // to grant and revoke any roles
-  AccessControl__grantRole(AccessControl_DEFAULT_ADMIN_ROLE, own_public_key());
+  AccessControl__grantRole(AccessControl_DEFAULT_ADMIN_ROLE, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
 }
 
-export circuit mint(recipient: Either<ZswapCointPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   AccessControl_assertOnlyRole(MINTER_ROLE);
   FungibleToken__mint(recipient, value);
 }
 
-export circuit burn(recipient: Either<ZswapCointPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   AccessControl_assertOnlyRole(BURNER_ROLE);
   FungibleToken__burn(recipient, value);
 }

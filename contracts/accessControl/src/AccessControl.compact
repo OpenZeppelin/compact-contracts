@@ -33,14 +33,14 @@ pragma language_version >= 0.15.0;
  * ```
  *
  * Roles can be granted and revoked dynamically via the {grantRole} and
- * {revokeRole} functions. Each role has an associated admin role, and only
+ * {revokeRole} circuits. Each role has an associated admin role, and only
  * accounts that have a role's admin role can call {grantRole} and {revokeRole}.
  *
  * By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means
  * that only accounts with this role will be able to grant or revoke other
  * roles. More complex role relationships can be created by using
  * {_setRoleAdmin}. To set a custom `DEFAULT_ADMIN_ROLE`, implement the `Initializable`
- * module and set `DEFAULT_ADMIN_ROLE` in the `initialize()` function.
+ * module and set `DEFAULT_ADMIN_ROLE` in the `initialize()` circuit.
  *
  * WARNING: The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to
  * grant and revoke this role. Extra precautions should be taken to secure
