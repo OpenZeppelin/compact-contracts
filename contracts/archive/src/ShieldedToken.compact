@@ -74,7 +74,7 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
   /**
    * @description Returns the symbol of the token.
    *
-   * @return {Maybe<Opaque<"string">>} - The token name.
+   * @return {Maybe<Opaque<"string">>} - The token symbol.
    */
   export circuit symbol(): Maybe<Opaque<"string">> {
     return _symbol;

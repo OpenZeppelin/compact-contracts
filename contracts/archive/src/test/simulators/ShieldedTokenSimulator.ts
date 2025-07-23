@@ -3,9 +3,9 @@ import {
   type CircuitResults,
   type CoinPublicKey,
   type ContractState,
-  QueryContext,
   constructorContext,
   emptyZswapLocalState,
+  QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -13,10 +13,10 @@ import {
   type ContractAddress,
   type Either,
   type Ledger,
+  ledger,
   Contract as MockShielded,
   type SendResult,
   type ZswapCoinPublicKey,
-  ledger,
 } from '../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
 import {
   type ShieldedTokenPrivateState,
