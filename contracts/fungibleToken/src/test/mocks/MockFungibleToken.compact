@@ -21,7 +21,7 @@ constructor(
   _decimals:Uint<8>,
   init: Boolean
 ) {
-  if (init) {
+  if (disclose(init)) {
     FungibleToken_initialize(_name, _symbol, _decimals);
   }
 }
