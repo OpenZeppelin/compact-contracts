@@ -44,7 +44,7 @@ Import the FungibleToken module into the implementing contract.
 It's recommended to prefix the module with `FungibleToken_` to avoid circuit signature clashes.
 
 ```typescript
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
@@ -84,7 +84,7 @@ The following example is a simple token contract with a fixed supply that's mint
 ```typescript
 // FungibleTokenFixedSupply.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;

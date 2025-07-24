@@ -55,11 +55,11 @@ describe('Shielded token', () => {
     it('should set public state', () => {
       token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
 
-      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
-      expect(token.getCurrentPublicState().shieldedToken_Domain).toEqual(
+      expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(0n);
+      expect(token.getCurrentPublicState().ShieldedToken__domain).toEqual(
         DOMAIN,
       );
-      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
+      expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(0n);
     });
   });
 
@@ -71,7 +71,7 @@ describe('Shielded token', () => {
   describe('mint', () => {
     it('should mint', () => {
       const res = token.mint(Z_OWNER, AMOUNT);
-      const thisNonce = token.getCurrentPublicState().shieldedToken_Nonce;
+      const thisNonce = token.getCurrentPublicState().ShieldedToken__nonce;
       const thisCoinInfo = {
         color: encodeTokenType(thisTokenType),
         nonce: thisNonce,
@@ -92,21 +92,21 @@ describe('Shielded token', () => {
     });
 
     it('should bump counter', () => {
-      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(0n);
+      expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(0n);
       token.mint(Z_OWNER, AMOUNT);
 
-      expect(token.getCurrentPublicState().shieldedToken_Counter).toEqual(1n);
+      expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(1n);
     });
 
     it('should bump nonce', () => {
-      const initNonce = token.getCurrentPublicState().shieldedToken_Nonce;
+      const initNonce = token.getCurrentPublicState().ShieldedToken__nonce;
       expect(initNonce).toEqual(NONCE);
 
       token.mint(Z_OWNER, AMOUNT);
 
       // TODO: create js equivalent of `evolve_nonce` circuit to derive correct value
       expect(initNonce).not.toEqual(
-        token.getCurrentPublicState().shieldedToken_Nonce,
+        token.getCurrentPublicState().ShieldedToken__nonce,
       );
     });
 

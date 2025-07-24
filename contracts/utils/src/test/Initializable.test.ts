@@ -18,14 +18,14 @@ describe('Initializable', () => {
   describe('initialize', () => {
     it('should not be initialized', () => {
       expect(
-        initializable.getCurrentPublicState().initializable_IsInitialized,
+        initializable.getCurrentPublicState().Initializable__isInitialized,
       ).toEqual(false);
     });
 
     it('should initialize', () => {
       initializable.initialize();
       expect(
-        initializable.getCurrentPublicState().initializable_IsInitialized,
+        initializable.getCurrentPublicState().Initializable__isInitialized,
       ).toEqual(true);
     });
   });

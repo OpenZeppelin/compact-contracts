@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module AccessControl
@@ -19,7 +19,7 @@ pragma language_version >= 0.15.0;
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
  * constructor() {
- *  MY_ROLE = persistent_hash<Bytes<32>>(pad(32, "MY_ROLE"));
+ *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
  * }
  * ```
  *
@@ -104,21 +104,21 @@ module AccessControl {
     */
   export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     if (
-      _operatorRoles.member(roleId) &&
+      _operatorRoles.member(disclose(roleId)) &&
       _operatorRoles
         .lookup(roleId)
-        .member(account)
+        .member(disclose(account))
       ) {
       return _operatorRoles
         .lookup(roleId)
-        .lookup(account);
+        .lookup(disclose(account));
     } else {
       return false;
     }
   }
 
   /**
-   * @description Reverts if `own_public_key()` is missing `roleId`.
+   * @description Reverts if `ownPublicKey()` is missing `roleId`.
    *
    * @circuitInfo
    *
@@ -131,7 +131,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-    _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
+    _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()));
   }
 
   /**
@@ -148,7 +148,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert hasRole(roleId, account) "AccessControl: unauthorized account";
+    assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
 
   /**
@@ -163,8 +163,8 @@ module AccessControl {
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
    */
   export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
-    if (_adminRoles.member(roleId)) {
-      return _adminRoles.lookup(roleId);
+    if (_adminRoles.member(disclose(roleId))) {
+      return _adminRoles.lookup(disclose(roleId));
     }
     return default<Bytes<32>>;
   }
@@ -225,7 +225,7 @@ module AccessControl {
   * @return {[]} - Empty tuple.
   */
   export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(own_public_key()) "AccessControl: bad confirmation";
+    assert(callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()), "AccessControl: bad confirmation");
 
     _revokeRole(roleId, callerConfirmation);
   }
@@ -240,7 +240,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
-    _adminRoles.insert(roleId, adminRole);
+    _adminRoles.insert(disclose(roleId), disclose(adminRole));
   }
 
   /**
@@ -258,7 +258,7 @@ module AccessControl {
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
   export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    assert !Utils_isContractAddress(account) "AccessControl: unsafe role approval";
+    assert(!Utils_isContractAddress(account), "AccessControl: unsafe role approval");
     return _unsafeGrantRole(roleId, account);
   }
 
@@ -280,9 +280,9 @@ module AccessControl {
       return false;
     }
 
-    if (!_operatorRoles.member(roleId)) {
+    if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
-        roleId,
+        disclose(roleId),
         default<Map<
           Either<ZswapCoinPublicKey, ContractAddress>,
           Boolean
@@ -290,11 +290,11 @@ module AccessControl {
       );
       _operatorRoles
         .lookup(roleId)
-        .insert(account, true);
+        .insert(disclose(account), true);
       return true;
     }
 
-    _operatorRoles.lookup(roleId).insert(account, true);
+    _operatorRoles.lookup(roleId).insert(disclose(account), true);
     return true;
   }
 
@@ -315,7 +315,7 @@ module AccessControl {
 
     _operatorRoles
       .lookup(roleId)
-      .insert(account, false);
+      .insert(disclose(account), false);
     return true;
   }
 }

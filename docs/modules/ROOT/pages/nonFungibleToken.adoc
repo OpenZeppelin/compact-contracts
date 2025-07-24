@@ -50,7 +50,7 @@ Import the NonFungibleToken module into the implementing contract.
 It's recommended to prefix the module with `NonFungibleToken_` to avoid circuit signature clashes.
 
 ```typescript
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
@@ -85,7 +85,7 @@ The following example is a simple non-fungible token contract that mints an NFT 
 ```typescript
 // SimpleNonFungibleToken.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;

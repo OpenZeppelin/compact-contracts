@@ -321,7 +321,7 @@ Requirements:
 [[NonFungibleTokenModule-_transfer]]
 ==== `[.contract-item-name]#++_transfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>) → []++` [.item-kind]#circuit#
 
-Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-transferFrom,transferFrom>>, this imposes no restrictions on `own_public_key()`.
+Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-transferFrom,transferFrom>>, this imposes no restrictions on `ownPublicKey()`.
 
 NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
 This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
@@ -339,7 +339,7 @@ Requirements:
 
 Unsafe variant of <<NonFungibleTokenModule-_transfer,_transfer>> which allows transfers to contract addresses.
 
-Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-_unsafeTransferFrom,_unsafeTransferFrom>>, this imposes no restrictions on `own_public_key()`. It does NOT check if the recipient is a `ContractAddress`.
+Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-_unsafeTransferFrom,_unsafeTransferFrom>>, this imposes no restrictions on `ownPublicKey()`. It does NOT check if the recipient is a `ContractAddress`.
 
 WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported. Tokens sent to a contract address may become irretrievable.
 Once contract-to-contract calls are supported, this circuit may be deprecated.

@@ -35,7 +35,7 @@ Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
@@ -53,7 +53,7 @@ constructor(
   minter: Either<ZswapCoinPublicKey, ContractAddress>
 ) {
   FungibleToken_initialize(name, symbol, decimals);
-  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
   AccessControl__grantRole(MINTER_ROLE, minter);
 }
 
@@ -72,7 +72,7 @@ Let’s augment our FungibleToken example by also defining a 'burner' role, whic
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
@@ -92,8 +92,8 @@ constructor(
   burner: Either<ZswapCoinPublicKey, ContractAddress>
 ) {
   FungibleToken_initialize(name, symbol, decimals);
-  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
-  BURNER_ROLE = persistent_hash<Bytes<32>>(pad(32, "BURNER_ROLE"));
+  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  BURNER_ROLE = persistentHash<Bytes<32>>(pad(32, "BURNER_ROLE"));
   AccessControl__grantRole(MINTER_ROLE, minter);
   AccessControl__grantRole(BURNER_ROLE, burner);
 }
@@ -130,7 +130,7 @@ Let’s take a look at the FungibleToken example, this time taking advantage of 
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
@@ -148,11 +148,11 @@ constructor(
   decimals: Uint<8>,
 ) {
   FungibleToken_initialize(name, symbol, decimals);
-  MINTER_ROLE = persistent_hash<Bytes<32>>(pad(32, "MINTER_ROLE"));
-  BURNER_ROLE = persistent_hash<Bytes<32>>(pad(32, "BURNER_ROLE"));
+  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  BURNER_ROLE = persistentHash<Bytes<32>>(pad(32, "BURNER_ROLE"));
   // Grant the contract deployer the default admin role: it will be able
   // to grant and revoke any roles
-  AccessControl__grantRole(AccessControl_DEFAULT_ADMIN_ROLE, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
+  AccessControl__grantRole(AccessControl_DEFAULT_ADMIN_ROLE, left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()));
 }
 
 export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
@@ -166,7 +166,7 @@ export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, valu
 }
 ```
 
-Note that, unlike the previous examples, no accounts are granted the 'minter' or 'burner' roles. However, because those roles' admin role is the default admin role, and _that_ role was granted to `own_public_key()`, that same account can call `grantRole` to give minting or burning permission, and `revokeRole` to remove it.
+Note that, unlike the previous examples, no accounts are granted the 'minter' or 'burner' roles. However, because those roles' admin role is the default admin role, and _that_ role was granted to `ownPublicKey()`, that same account can call `grantRole` to give minting or burning permission, and `revokeRole` to remove it.
 
 Dynamic role allocation is often a desirable property, for example in systems where trust in a participant may vary over time. It can also be used to support use cases such as KYC, where the list of role-bearers may not be known up-front, or may be prohibitively expensive to include in a single transaction.
 

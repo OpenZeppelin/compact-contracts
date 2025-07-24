@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Ownable
@@ -52,7 +52,7 @@ module Ownable {
    */
   export circuit initialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_initialize();
-    assert !Utils_isKeyOrAddressZero(initialOwner) "Ownable: invalid initial owner";
+    assert(!Utils_isKeyOrAddressZero(initialOwner), "Ownable: invalid initial owner");
     _transferOwnership(initialOwner);
   }
 
@@ -89,7 +89,7 @@ module Ownable {
    */
   export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(newOwner) "Ownable: unsafe ownership transfer";
+    assert(!Utils_isContractAddress(newOwner), "Ownable: unsafe ownership transfer");
     _unsafeTransferOwnership(newOwner);
   }
 
@@ -113,7 +113,7 @@ module Ownable {
   export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
     assertOnlyOwner();
-    assert !Utils_isKeyOrAddressZero(newOwner) "Ownable: invalid new owner";
+    assert(!Utils_isKeyOrAddressZero(newOwner), "Ownable: invalid new owner");
     _unsafeUncheckedTransferOwnership(newOwner);
   }
 
@@ -132,7 +132,7 @@ module Ownable {
   export circuit renounceOwnership(): [] {
     Initializable_assertInitialized();
     assertOnlyOwner();
-    _transferOwnership(burn_address());
+    _transferOwnership(burnAddress());
   }
 
   /**
@@ -148,8 +148,8 @@ module Ownable {
    */
   export circuit assertOnlyOwner(): [] {
     Initializable_assertInitialized();
-    const caller = own_public_key();
-    assert caller == _owner.left "Ownable: caller is not the owner";
+    const caller = ownPublicKey();
+    assert(caller == _owner.left, "Ownable: caller is not the owner");
   }
 
   /**
@@ -170,7 +170,7 @@ module Ownable {
    */
   export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(newOwner) "Ownable: unsafe ownership transfer";
+    assert(!Utils_isContractAddress(newOwner), "Ownable: unsafe ownership transfer");
     _unsafeUncheckedTransferOwnership(newOwner);
   }
 
@@ -191,6 +191,6 @@ module Ownable {
    */
   export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    _owner = newOwner;
+    _owner = disclose(newOwner);
   }
 }

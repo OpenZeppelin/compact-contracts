@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 
@@ -16,7 +16,7 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
  * contract is initialized.
 */
 constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isInit: Boolean) {
-  if (isInit) {
+  if (disclose(isInit)) {
     Ownable_initialize(initialOwner);
   }
 }

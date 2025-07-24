@@ -17,7 +17,7 @@ Many modules also use the initializable pattern which ensures that implementing 
 ```typescript
 // CustomContractStateSetup.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import './node_modules/@openzeppelin-compact/utils/src/Initializable' prefix Initializable_;
@@ -63,7 +63,7 @@ For example (using the {ownable} module for access control):
 ```typescript
 // OwnablePausable.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import './node_modules/@openzeppelin-compact/utils/src/Initializable' prefix Initializable_;
@@ -103,7 +103,7 @@ The Utils module provides miscellaneous circuits and common utilities for Compac
 ```typescript
 // UtilsExample.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import './node_modules/@openzeppelin-compact/utils/src/Utils' prefix Utils_;
