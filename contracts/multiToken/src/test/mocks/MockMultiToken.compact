@@ -15,7 +15,7 @@ export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
 constructor(
   _uri: Maybe<Opaque<"string">>
 ) {
-  if (_uri.is_some) {
+  if (disclose(_uri.is_some)) {
     MultiToken_initialize(_uri.value);
   }
 }

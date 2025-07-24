@@ -143,10 +143,10 @@ module MultiToken {
   export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
     Initializable_assertInitialized();
 
-    if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
+    if (!_balances.member(disclose(id)) || !_balances.lookup(id).member(disclose(account))) {
       return 0;
     }
-    return _balances.lookup(id).lookup(account);
+    return _balances.lookup(id).lookup(disclose(account));
   }
 
   /**
@@ -188,11 +188,11 @@ module MultiToken {
   ): Boolean {
     Initializable_assertInitialized();
 
-    if (!_operatorApprovals.member(account) || !_operatorApprovals.lookup(account).member(operator)) {
+    if (!_operatorApprovals.member(disclose(account)) || !_operatorApprovals.lookup(account).member(disclose(operator))) {
       return false;
     }
 
-    return _operatorApprovals.lookup(account).lookup(operator);
+    return _operatorApprovals.lookup(account).lookup(disclose(operator));
   }
 
   /**
@@ -287,25 +287,25 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    if (!Utils_isKeyOrAddressZero(from)) {
+    if (!Utils_isKeyOrAddressZero(disclose(from))) {
       const fromBalance = balanceOf(from, id);
       assert(fromBalance >= value, "MultiToken: insufficient balance");
       // overflow not possible
       const newBalance = fromBalance - value;
-      _balances.lookup(id).insert(from, newBalance);
+      _balances.lookup(id).insert(disclose(from), disclose(newBalance));
     }
 
-    if (!Utils_isKeyOrAddressZero(to)) {
+    if (!Utils_isKeyOrAddressZero(disclose(to))) {
       // id not initialized
-      if (!_balances.member(id)) {
-        _balances.insert(id, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
-        _balances.lookup(id).insert(to, value as Uint<128>);
+      if (!_balances.member(disclose(id))) {
+        _balances.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
+        _balances.lookup(id).insert(disclose(to), disclose(value as Uint<128>));
       } else {
         const toBalance = balanceOf(to, id);
        // TODO: Replace with Max_Uint128()
         const MAX_UINT128 = 340282366920938463463374607431768211455;
         assert(MAX_UINT128 - toBalance >= value, "MultiToken: arithmetic overflow");
-        _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
+        _balances.lookup(id).insert(disclose(to), disclose(toBalance + value as Uint<128>));
       }
     }
   }
@@ -343,7 +343,7 @@ module MultiToken {
     // TODO: Contract-to-contract calls not yet supported.
     // Once available, handle ContractAddress recipients here.
     const caller = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
-    if (from != caller) {
+    if (disclose(from) != caller) {
       assert(isApprovedForAll(from, caller), "MultiToken: unauthorized operator");
     }
 
@@ -409,7 +409,7 @@ module MultiToken {
   export circuit _setURI(newURI: Opaque<"string">): [] {
     Initializable_assertInitialized();
 
-    _uri = newURI;
+    _uri = disclose(newURI);
   }
 
   /**
@@ -505,10 +505,10 @@ module MultiToken {
     Initializable_assertInitialized();
 
     assert(!Utils_isKeyOrAddressZero(operator), "MultiToken: invalid operator");
-    if (!_operatorApprovals.member(owner)) {
-      _operatorApprovals.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+    if (!_operatorApprovals.member(disclose(owner))) {
+      _operatorApprovals.insert(disclose(owner), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
     }
 
-    _operatorApprovals.lookup(owner).insert(operator, approved);
+    _operatorApprovals.lookup(owner).insert(disclose(operator), disclose(approved));
   }
 }
