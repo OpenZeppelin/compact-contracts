@@ -191,6 +191,6 @@ module Ownable {
    */
   export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    _owner = newOwner;
+    _owner = disclose(newOwner);
   }
 }

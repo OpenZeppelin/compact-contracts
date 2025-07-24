@@ -16,7 +16,7 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
  * contract is initialized.
 */
 constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isInit: Boolean) {
-  if (isInit) {
+  if (disclose(isInit)) {
     Ownable_initialize(initialOwner);
   }
 }
