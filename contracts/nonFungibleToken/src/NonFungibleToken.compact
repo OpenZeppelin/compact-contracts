@@ -260,7 +260,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
     _approve(
       to,
       tokenId,
@@ -308,7 +308,7 @@ module NonFungibleToken {
     approved: Boolean
   ): [] {
     Initializable_assertInitialized();
-    const owner = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const owner = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
     _setApprovalForAll(
       owner,
       operator,
@@ -406,7 +406,7 @@ module NonFungibleToken {
     assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
     const previousOwner = _update(
       to,
       tokenId,
@@ -647,7 +647,7 @@ module NonFungibleToken {
 
   /**
    * @description Transfers `tokenId` from `from` to `to`.
-   *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
+   *  As opposed to {transferFrom}, this imposes no restrictions on ownPublicKey().
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from being inadvertently
@@ -680,7 +680,7 @@ module NonFungibleToken {
 
   /**
    * @description Transfers `tokenId` from `from` to `to`.
-   * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on own_public_key().
+   * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on ownPublicKey().
    * It does NOT check if the recipient is a ContractAddress.
    *
    * @circuitInfo k=11, rows=1281
