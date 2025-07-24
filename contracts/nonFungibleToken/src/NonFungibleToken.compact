@@ -109,8 +109,8 @@ module NonFungibleToken {
    */
   export circuit initialize(name_: Opaque<"string">, symbol_: Opaque<"string">): [] {
     Initializable_initialize();
-    _name = name_;
-    _symbol = symbol_;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
   }
 
   /**
@@ -127,11 +127,11 @@ module NonFungibleToken {
    */
   export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
     Initializable_assertInitialized();
-    if (!_balances.member(owner)) {
+    if (!_balances.member(disclose(owner))) {
       return 0;
     }
 
-    return _balances.lookup(owner);
+    return _balances.lookup(disclose(owner));
   }
 
   /**
@@ -207,11 +207,11 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     _requireOwned(tokenId);
 
-    if (!_tokenURIs.member(tokenId)) {
+    if (!_tokenURIs.member(disclose(tokenId))) {
       return Utils_emptyString();
     }
 
-    return _tokenURIs.lookup(tokenId);
+    return _tokenURIs.lookup(disclose(tokenId));
   }
 
   /**
@@ -234,7 +234,7 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     _requireOwned(tokenId);
 
-    return _tokenURIs.insert(tokenId, tokenURI);
+    return _tokenURIs.insert(disclose(tokenId), disclose(tokenURI));
   }
 
   /**
@@ -334,8 +334,8 @@ module NonFungibleToken {
     operator: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
     Initializable_assertInitialized();
-    if (_operatorApprovals.member(owner) && _operatorApprovals.lookup(owner).member(operator)) {
-      return _operatorApprovals.lookup(owner).lookup(operator);
+    if (_operatorApprovals.member(disclose(owner)) && _operatorApprovals.lookup(owner).member(disclose(operator))) {
+      return _operatorApprovals.lookup(owner).lookup(disclose(operator));
     } else {
       return false;
     }
@@ -429,11 +429,11 @@ module NonFungibleToken {
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
-    if (!_owners.member(tokenId)) {
+    if (!_owners.member(disclose(tokenId))) {
       return burnAddress();
     }
 
-    return _owners.lookup(tokenId);
+    return _owners.lookup(disclose(tokenId));
   }
 
   /**
@@ -450,10 +450,10 @@ module NonFungibleToken {
    */
   export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
-    if (!_tokenApprovals.member(tokenId)) {
+    if (!_tokenApprovals.member(disclose(tokenId))) {
       return burnAddress();
     }
-    return _tokenApprovals.lookup(tokenId);
+    return _tokenApprovals.lookup(disclose(tokenId));
   }
 
   /**
@@ -481,8 +481,8 @@ module NonFungibleToken {
   ): Boolean {
     Initializable_assertInitialized();
     return (
-      !Utils_isKeyOrAddressZero(spender) &&
-      (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender)
+      !Utils_isKeyOrAddressZero(disclose(spender)) &&
+      (disclose(owner) == disclose(spender) || isApprovedForAll(owner, spender) || _getApproved(tokenId) == disclose(spender))
     );
   }
 
@@ -542,27 +542,27 @@ module NonFungibleToken {
     const from = _ownerOf(tokenId);
 
     // Perform (optional) operator check
-    if (!Utils_isKeyOrAddressZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(disclose(auth))) {
         _checkAuthorized(from, auth, tokenId);
     }
 
     // Execute the update
-    if (!Utils_isKeyOrAddressZero(from)) {
+    if (!Utils_isKeyOrAddressZero(disclose(from))) {
       // Clear approval. No need to re-authorize
       _approve(burnAddress(), tokenId, burnAddress());
-      const newBalance = _balances.lookup(from) - 1 as Uint<128>;
-      _balances.insert(from, newBalance);
+      const newBalance = _balances.lookup(disclose(from)) - 1 as Uint<128>;
+      _balances.insert(disclose(from), disclose(newBalance));
     }
 
-    if (!Utils_isKeyOrAddressZero(to)) {
-      if (!_balances.member(to)) {
-        _balances.insert(to, 0);
+    if (!Utils_isKeyOrAddressZero(disclose(to))) {
+      if (!_balances.member(disclose(to))) {
+        _balances.insert(disclose(to), 0);
       }
-      const newBalance = _balances.lookup(to) + 1 as Uint<128>;
-      _balances.insert(to, newBalance);
+      const newBalance = _balances.lookup(disclose(to)) + 1 as Uint<128>;
+      _balances.insert(disclose(to), disclose(newBalance));
     }
 
-    _owners.insert(tokenId, to);
+    _owners.insert(disclose(tokenId), disclose(to));
 
     return from;
   }
@@ -736,14 +736,14 @@ module NonFungibleToken {
     auth: Either<ZswapCoinPublicKey, ContractAddress>
   ): [] {
     Initializable_assertInitialized();
-    if (!Utils_isKeyOrAddressZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(disclose(auth))) {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
-      assert((owner == auth || isApprovedForAll(owner, auth)), "NonFungibleToken: Invalid Approver");
+      assert((owner == disclose(auth) || isApprovedForAll(owner, auth)), "NonFungibleToken: Invalid Approver");
     }
 
-    _tokenApprovals.insert(tokenId, to);
+    _tokenApprovals.insert(disclose(tokenId), disclose(to));
   }
 
   /**
@@ -769,14 +769,14 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     assert(!Utils_isKeyOrAddressZero(operator), "NonFungibleToken: Invalid Operator");
 
-    if (!_operatorApprovals.member(owner)) {
+    if (!_operatorApprovals.member(disclose(owner))) {
       _operatorApprovals.insert(
-        owner,
+        disclose(owner),
         default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
       );
     }
 
-    _operatorApprovals.lookup(owner).insert(operator, approved);
+    _operatorApprovals.lookup(owner).insert(disclose(operator), disclose(approved));
   }
 
   /**
