@@ -104,14 +104,14 @@ module AccessControl {
     */
   export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     if (
-      _operatorRoles.member(roleId) &&
+      _operatorRoles.member(disclose(roleId)) &&
       _operatorRoles
         .lookup(roleId)
-        .member(account)
+        .member(disclose(account))
       ) {
       return _operatorRoles
         .lookup(roleId)
-        .lookup(account);
+        .lookup(disclose(account));
     } else {
       return false;
     }
@@ -163,8 +163,8 @@ module AccessControl {
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
    */
   export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
-    if (_adminRoles.member(roleId)) {
-      return _adminRoles.lookup(roleId);
+    if (_adminRoles.member(disclose(roleId))) {
+      return _adminRoles.lookup(disclose(roleId));
     }
     return default<Bytes<32>>;
   }
@@ -240,7 +240,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
-    _adminRoles.insert(roleId, adminRole);
+    _adminRoles.insert(disclose(roleId), disclose(adminRole));
   }
 
   /**
@@ -280,9 +280,9 @@ module AccessControl {
       return false;
     }
 
-    if (!_operatorRoles.member(roleId)) {
+    if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
-        roleId,
+        disclose(roleId),
         default<Map<
           Either<ZswapCoinPublicKey, ContractAddress>,
           Boolean
@@ -290,11 +290,11 @@ module AccessControl {
       );
       _operatorRoles
         .lookup(roleId)
-        .insert(account, true);
+        .insert(disclose(account), true);
       return true;
     }
 
-    _operatorRoles.lookup(roleId).insert(account, true);
+    _operatorRoles.lookup(roleId).insert(disclose(account), true);
     return true;
   }
 
@@ -315,7 +315,7 @@ module AccessControl {
 
     _operatorRoles
       .lookup(roleId)
-      .insert(account, false);
+      .insert(disclose(account), false);
     return true;
   }
 }
