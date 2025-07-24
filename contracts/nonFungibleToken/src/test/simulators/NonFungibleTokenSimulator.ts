@@ -27,7 +27,8 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class NonFungibleTokenSimulator
-  implements IContractSimulator<NonFungibleTokenPrivateState, Ledger> {
+  implements IContractSimulator<NonFungibleTokenPrivateState, Ledger>
+{
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockNonFungibleToken<NonFungibleTokenPrivateState>;
 
