@@ -35,7 +35,7 @@ Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
@@ -72,7 +72,7 @@ Let’s augment our FungibleToken example by also defining a 'burner' role, whic
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
@@ -130,7 +130,7 @@ Let’s take a look at the FungibleToken example, this time taking advantage of 
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
