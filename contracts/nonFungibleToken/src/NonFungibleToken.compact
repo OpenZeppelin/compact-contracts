@@ -370,7 +370,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
+    assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
     _unsafeTransferFrom(from, to, tokenId);
   }
@@ -403,7 +403,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
+    assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
     const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
@@ -412,7 +412,7 @@ module NonFungibleToken {
       tokenId,
       auth
     );
-    assert previousOwner == from "NonFungibleToken: Incorrect Owner";
+    assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
   }
 
   /**
@@ -430,7 +430,7 @@ module NonFungibleToken {
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
     if (!_owners.member(tokenId)) {
-      return burn_address();
+      return burnAddress();
     }
 
     return _owners.lookup(tokenId);
@@ -451,7 +451,7 @@ module NonFungibleToken {
   export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
     if (!_tokenApprovals.member(tokenId)) {
-      return burn_address();
+      return burnAddress();
     }
     return _tokenApprovals.lookup(tokenId);
   }
@@ -511,8 +511,8 @@ module NonFungibleToken {
   ): [] {
     Initializable_assertInitialized();
     if (!_isAuthorized(owner, spender, tokenId)) {
-      assert !Utils_isKeyOrAddressZero(owner) "NonFungibleToken: Nonexistent Token";
-      assert false "NonFungibleToken: Insufficient Approval";
+      assert(!Utils_isKeyOrAddressZero(owner), "NonFungibleToken: Nonexistent Token");
+      assert(false, "NonFungibleToken: Insufficient Approval");
     }
   }
 
@@ -549,7 +549,7 @@ module NonFungibleToken {
     // Execute the update
     if (!Utils_isKeyOrAddressZero(from)) {
       // Clear approval. No need to re-authorize
-      _approve(burn_address(), tokenId, burn_address());
+      _approve(burnAddress(), tokenId, burnAddress());
       const newBalance = _balances.lookup(from) - 1 as Uint<128>;
       _balances.insert(from, newBalance);
     }
@@ -588,7 +588,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
+    assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
     _unsafeMint(to, tokenId);
   }
@@ -617,11 +617,11 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
+    assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
-    const previousOwner = _update(to, tokenId, burn_address());
+    const previousOwner = _update(to, tokenId, burnAddress());
 
-    assert Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Invalid Sender";
+    assert(Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Invalid Sender");
   }
 
   /**
@@ -641,8 +641,8 @@ module NonFungibleToken {
    */
   export circuit _burn(tokenId: Uint<128>): [] {
     Initializable_assertInitialized();
-    const previousOwner = _update(burn_address(), tokenId, burn_address());
-    assert !Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Invalid Sender";
+    const previousOwner = _update(burnAddress(), tokenId, burnAddress());
+    assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Invalid Sender");
   }
 
   /**
@@ -673,7 +673,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
+    assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
     _unsafeTransfer(from, to, tokenId);
   }
@@ -706,12 +706,12 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
+    assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
-    const previousOwner = _update(to, tokenId, burn_address());
+    const previousOwner = _update(to, tokenId, burnAddress());
 
-    assert !Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Nonexistent Token";
-    assert previousOwner == from "NonFungibleToken: Incorrect Owner";
+    assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Nonexistent Token");
+    assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
   }
 
   /**
@@ -740,7 +740,7 @@ module NonFungibleToken {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
-      assert (owner == auth || isApprovedForAll(owner, auth)) "NonFungibleToken: Invalid Approver";
+      assert((owner == auth || isApprovedForAll(owner, auth)), "NonFungibleToken: Invalid Approver");
     }
 
     _tokenApprovals.insert(tokenId, to);
@@ -767,7 +767,7 @@ module NonFungibleToken {
     approved: Boolean
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(operator) "NonFungibleToken: Invalid Operator";
+    assert(!Utils_isKeyOrAddressZero(operator), "NonFungibleToken: Invalid Operator");
 
     if (!_operatorApprovals.member(owner)) {
       _operatorApprovals.insert(
@@ -797,7 +797,7 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     const owner = _ownerOf(tokenId);
 
-    assert !Utils_isKeyOrAddressZero(owner) "NonFungibleToken: Nonexistent Token";
+    assert(!Utils_isKeyOrAddressZero(owner), "NonFungibleToken: Nonexistent Token");
     return owner;
   }
 }

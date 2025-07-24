@@ -139,11 +139,11 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
     receive(coin);
     _totalSupply = _totalSupply - amount;
 
-    const sendRes = send_immediate(coin, burn_address(), amount);
+    const sendRes = send_immediate(coin, burnAddress(), amount);
     if (sendRes.change.is_some) {
       // tmp for only zswap because we should be able to handle contracts burning tokens
       // and returning change.
-      const tmpAddr = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+      const tmpAddr = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
       send_immediate(sendRes.change.value, tmpAddr, sendRes.change.value.value);
     }
 

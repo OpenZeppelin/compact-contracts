@@ -19,7 +19,7 @@ pragma language_version >= 0.16.0;
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
  * constructor() {
- *  MY_ROLE = persistent_hash<Bytes<32>>(pad(32, "MY_ROLE"));
+ *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
  * }
  * ```
  *
@@ -118,7 +118,7 @@ module AccessControl {
   }
 
   /**
-   * @description Reverts if `own_public_key()` is missing `roleId`.
+   * @description Reverts if `ownPublicKey()` is missing `roleId`.
    *
    * @circuitInfo
    *
@@ -131,7 +131,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-    _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(own_public_key()));
+    _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()));
   }
 
   /**
@@ -148,7 +148,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert hasRole(roleId, account) "AccessControl: unauthorized account";
+    assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
 
   /**
@@ -225,7 +225,7 @@ module AccessControl {
   * @return {[]} - Empty tuple.
   */
   export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(own_public_key()) "AccessControl: bad confirmation";
+    assert(callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()), "AccessControl: bad confirmation");
 
     _revokeRole(roleId, callerConfirmation);
   }
@@ -258,7 +258,7 @@ module AccessControl {
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
   export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    assert !Utils_isContractAddress(account) "AccessControl: unsafe role approval";
+    assert(!Utils_isContractAddress(account), "AccessControl: unsafe role approval");
     return _unsafeGrantRole(roleId, account);
   }
 

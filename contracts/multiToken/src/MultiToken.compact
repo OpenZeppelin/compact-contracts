@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module MultiToken
@@ -167,7 +167,7 @@ module MultiToken {
     Initializable_assertInitialized();
 
     // TODO: Contract-to-contract calls not yet supported.
-    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
     _setApprovalForAll(caller, operator, approved);
   }
 
@@ -227,7 +227,7 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
-    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    assert(!Utils_isContractAddress(to), "MultiToken: unsafe transfer");
     _unsafeTransferFrom(from, to, id, value);
   }
 
@@ -260,7 +260,7 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
-    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    assert(!Utils_isContractAddress(to), "MultiToken: unsafe transfer");
     _unsafeTransfer(from, to, id, value);
   }
 
@@ -289,7 +289,7 @@ module MultiToken {
 
     if (!Utils_isKeyOrAddressZero(from)) {
       const fromBalance = balanceOf(from, id);
-      assert fromBalance >= value "MultiToken: insufficient balance";
+      assert(fromBalance >= value, "MultiToken: insufficient balance");
       // overflow not possible
       const newBalance = fromBalance - value;
       _balances.lookup(id).insert(from, newBalance);
@@ -304,7 +304,7 @@ module MultiToken {
         const toBalance = balanceOf(to, id);
        // TODO: Replace with Max_Uint128()
         const MAX_UINT128 = 340282366920938463463374607431768211455;
-        assert MAX_UINT128 - toBalance >= value "MultiToken: arithmetic overflow";
+        assert(MAX_UINT128 - toBalance >= value, "MultiToken: arithmetic overflow");
         _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
       }
     }
@@ -342,9 +342,9 @@ module MultiToken {
 
     // TODO: Contract-to-contract calls not yet supported.
     // Once available, handle ContractAddress recipients here.
-    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
     if (from != caller) {
-      assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
+      assert(isApprovedForAll(from, caller), "MultiToken: unauthorized operator");
     }
 
     _unsafeTransfer(from, to, id, value);
@@ -380,8 +380,8 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
-    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
+    assert(!Utils_isKeyOrAddressZero(from), "MultiToken: invalid sender");
+    assert(!Utils_isKeyOrAddressZero(to), "MultiToken: invalid receiver");
     _update(from, to, id, value);
   }
 
@@ -431,7 +431,7 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
-    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    assert(!Utils_isContractAddress(to), "MultiToken: unsafe transfer");
     _unsafeMint(to, id, value);
   }
 
@@ -455,8 +455,8 @@ module MultiToken {
   export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
-    _update(burn_address(), to, id, value);
+    assert(!Utils_isKeyOrAddressZero(to), "MultiToken: invalid receiver");
+    _update(burnAddress(), to, id, value);
   }
 
   /**
@@ -476,8 +476,8 @@ module MultiToken {
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
-    _update(from, burn_address(), id, value);
+    assert(!Utils_isKeyOrAddressZero(from), "MultiToken: invalid sender");
+    _update(from, burnAddress(), id, value);
   }
 
   /**
@@ -504,7 +504,7 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(operator) "MultiToken: invalid operator";
+    assert(!Utils_isKeyOrAddressZero(operator), "MultiToken: invalid operator");
     if (!_operatorApprovals.member(owner)) {
       _operatorApprovals.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
     }
