@@ -91,11 +91,15 @@ import "./node_modules/@openzeppelin-compact/utils/src/Pausable" prefix Pausable
 [[PausableModule-isPaused]]
 ==== `[.contract-item-name]#++isPaused++#++() → Boolean++` [.item-kind]#circuit#
 
+k=10, rows=32
+
 Returns true if the contract is paused, and false otherwise.
 
 [.contract-item]
 [[PausableModule-assertPaused]]
 ==== `[.contract-item-name]#++assertPaused++#++() → []++` [.item-kind]#circuit#
+
+k=10, rows=31
 
 Makes a circuit only callable when the contract is paused.
 
@@ -107,6 +111,8 @@ Requirements:
 [[PausableModule-assertNotPaused]]
 ==== `[.contract-item-name]#++assertNotPaused++#++() → []++` [.item-kind]#circuit#
 
+k=10, rows=35
+
 Makes a circuit only callable when the contract is not paused.
 
 Requirements:
@@ -117,6 +123,8 @@ Requirements:
 [[PausableModule-_pause]]
 ==== `[.contract-item-name]#++_pause++#++() → []++` [.item-kind]#circuit#
 
+k=10, rows=38
+
 Triggers a stopped state.
 
 Requirements:
@@ -126,6 +134,8 @@ Requirements:
 [.contract-item]
 [[PausableModule-_unpause]]
 ==== `[.contract-item-name]#++_unpause++#++() → []++` [.item-kind]#circuit#
+
+k=10, rows=34
 
 Lifts the pause on the contract.
 
