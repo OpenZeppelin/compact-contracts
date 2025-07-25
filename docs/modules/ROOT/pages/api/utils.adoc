@@ -32,6 +32,8 @@ import "./node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Ini
 [[InitializableModule-initialize]]
 ==== `[.contract-item-name]#++initialize++#++() → []++` [.item-kind]#circuit#
 
+k=10, rows=38
+
 Initializes the state thus ensuring the calling circuit can only be called once.
 
 Requirements:
@@ -42,6 +44,8 @@ Requirements:
 [[InitializableModule-assertInitialized]]
 ==== `[.contract-item-name]#++assertInitialized++#++() → []++` [.item-kind]#circuit#
 
+k=10, rows=31
+
 Asserts that the contract has been initialized, throwing an error if not.
 
 Requirements:
@@ -51,6 +55,8 @@ Requirements:
 [.contract-item]
 [[InitializableModule-assertNotInitialized]]
 ==== `[.contract-item-name]#++assertNotInitialized++#++() → []++` [.item-kind]#circuit#
+
+k=10, rows=35
 
 Asserts that the contract has not been initialized, throwing an error if it has.
 
