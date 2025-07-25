@@ -67,13 +67,17 @@ import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" p
 
 [.contract-item]
 [[AccessControl-hasRole]]
-==== `[.contract-item-name]#++hasRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
+==== `[.contract-item-name]#++hasRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++`  [.item-kind]#circuit#
+
+k=10, rows=487
 
 Returns `true` if `account` has been granted `roleId`.
 
 [.contract-item]
 [[AccessControl-assertOnlyRole]]
 ==== `[.contract-item-name]#++assertOnlyRole++#++(roleId: Bytes<32>) → []++` [.item-kind]#circuit#
+
+k=10, rows=345
 
 Reverts if caller is missing `roleId`.
 
@@ -86,6 +90,8 @@ Requirements:
 [[AccessControl-_checkRole]]
 ==== `[.contract-item-name]#++_checkRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
 
+k=10, rows=467
+
 Reverts if `account` is missing `roleId`.
 
 Requirements:
@@ -96,6 +102,8 @@ Requirements:
 [[AccessControl-getRoleAdmin]]
 ==== `[.contract-item-name]#++getRoleAdmin++#++(roleId: Bytes<32>) → Bytes<32>++` [.item-kind]#circuit#
 
+k=10, rows=207
+
 Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn't exist. See {grantRole} and {revokeRole}.
 
 To change a role's admin use <<AccessControl-_setRoleAdmin, _setRoleAdmin>>.
@@ -103,6 +111,8 @@ To change a role's admin use <<AccessControl-_setRoleAdmin, _setRoleAdmin>>.
 [.contract-item]
 [[AccessControl-grantRole]]
 ==== `[.contract-item-name]#++grantRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+k=10, rows=994
 
 Grants `roleId` to `account`.
 
@@ -118,6 +128,8 @@ Requirements:
 [[AccessControl-revokeRole]]
 ==== `[.contract-item-name]#++revokeRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
 
+k=10, rows=827
+
 Revokes `roleId` from `account`.
 
 Requirements:
@@ -127,6 +139,8 @@ Requirements:
 [.contract-item]
 [[AccessControl-renounceRole]]
 ==== `[.contract-item-name]#++renounceRole++#++(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+k=10, rows=640
 
 Revokes `roleId` from the calling account.
 
@@ -144,6 +158,8 @@ Requirements:
 [.contract-item]
 [[AccessControl-_setRoleAdmin]]
 ==== `[.contract-item-name]#++_setRoleAdmin++#++(roleId: Bytes<32>, adminRole: Bytes<32>) → []++` [.item-kind]#circuit#
+
+k=10, rows=209
 
 Sets `adminRole` as ``roleId``'s admin role.
 
@@ -166,6 +182,8 @@ Requirements:
 [[AccessControl-_unsafeGrantRole]]
 ==== `[.contract-item-name]#++_unsafeGrantRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
 
+k=10, rows=733
+
 Unsafe variant of <<AccessControl-_grantRole,_grantRole>>.
 
 WARNING: Granting roles to contract addresses is considered unsafe because contract-to-contract calls are not currently supported.
@@ -175,6 +193,8 @@ Once contract-to-contract calls are supported, this circuit may be deprecated.
 [.contract-item]
 [[AccessControl-_revokeRole]]
 ==== `[.contract-item-name]#++_revokeRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
+
+k=10, rows=563
 
 Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
 
