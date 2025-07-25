@@ -67,7 +67,7 @@ import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" p
 
 [.contract-item]
 [[AccessControl-hasRole]]
-==== `[.contract-item-name]#++hasRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++`  [.item-kind]#circuit#
+==== `[.contract-item-name]#++hasRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
 
 k=10, rows=487
 
