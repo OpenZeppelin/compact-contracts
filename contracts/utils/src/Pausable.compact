@@ -16,6 +16,8 @@ module Pausable {
   /**
    * @description Returns true if the contract is paused, and false otherwise.
    *
+   * @circuitInfo k=10, rows=32
+   *
    * @return {Boolean} True if paused.
    */
   export circuit isPaused(): Boolean {
@@ -24,6 +26,8 @@ module Pausable {
 
   /**
    * @description Makes a circuit only callable when the contract is paused.
+   *
+   * @circuitInfo k=10, rows=31
    *
    * Requirements:
    *
@@ -38,6 +42,8 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is not paused.
    *
+   * @circuitInfo k=10, rows=35
+   *
    * Requirements:
    *
    * - Contract must not be paused.
@@ -50,6 +56,8 @@ module Pausable {
 
   /**
    * @description Triggers a stopped state.
+   *
+   * @circuitInfo k=10, rows=38
    *
    * Requirements:
    *
@@ -64,6 +72,8 @@ module Pausable {
 
   /**
    * @description Lifts the pause on the contract.
+   *
+   * @circuitInfo k=10, rows=34
    *
    * Requirements:
    *

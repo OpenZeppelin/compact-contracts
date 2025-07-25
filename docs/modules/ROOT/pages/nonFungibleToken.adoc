@@ -44,7 +44,7 @@ WARNING: The `unsafe` circuits will eventually be deprecated after Compact suppo
 == Usage
 
 :extensibility-pattern: xref:extensibility.adoc#the_module_contract_pattern[Module/Contract Pattern]
-:nonfungible-mint: xref:/api/NonFungibleToken.adoc#NonFungibleTokenModule-_mint[_mint]
+:nonfungible-mint: xref:/api/nonFungibleToken.adoc#NonFungibleTokenModule-_mint[_mint]
 
 Import the NonFungibleToken module into the implementing contract.
 It's recommended to prefix the module with `NonFungibleToken_` to avoid circuit signature clashes.

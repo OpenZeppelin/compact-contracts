@@ -50,6 +50,8 @@ Requirements:
 [[Ownable-owner]]
 ==== `[.contract-item-name]#++owner++#++() → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
 
+k=10, rows=84
+
 Returns the current contract owner.
 
 Requirements:
@@ -59,6 +61,8 @@ Requirements:
 [.contract-item]
 [[Ownable-transferOwnership]]
 ==== `[.contract-item-name]#++transferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+k=10, rows=338
 
 Transfers ownership of the contract to `newOwner`.
 
@@ -76,6 +80,8 @@ Requirements:
 [[Ownable-_unsafeTransferOwnership]]
 ==== `[.contract-item-name]#++_unsafeTransferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
 
+k=10, rows=335
+
 Unsafe variant of <<Ownable-transferOwnership,transferOwnership>>.
 
 WARNING: Ownership transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported.
@@ -92,6 +98,8 @@ Requirements:
 [[Ownable-renounceOwnership]]
 ==== `[.contract-item-name]#++renounceOwnership++#++() → []++` [.item-kind]#circuit#
 
+k=10, rows=124
+
 Leaves the contract without an owner.
 It will not be possible to call <<Ownable-assertOnlyOwner,assertOnlyOwner>> circuits anymore.
 Can only be called by the current owner.
@@ -105,6 +113,8 @@ Requirements:
 [[Ownable-assertOnlyOwner]]
 ==== `[.contract-item-name]#++assertOnlyOwner++#++() → []++` [.item-kind]#circuit#
 
+k=10, rows=115
+
 Throws if called by any account other than the owner.
 Use this to restrict access of specific circuits to the owner.
 
@@ -116,6 +126,8 @@ Requirements:
 [.contract-item]
 [[Ownable-_transferOwnership]]
 ==== `[.contract-item-name]#++_transferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+k=10, rows=219
 
 Transfers ownership of the contract to a `newOwner` without enforcing permission checks on the caller.
 
@@ -130,6 +142,8 @@ Requirements:
 [.contract-item]
 [[Ownable-_unsafeUncheckedTransferOwnership]]
 ==== `[.contract-item-name]#++_unsafeUncheckedTransferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
+
+k=10, rows=216
 
 Unsafe variant of <<Ownable-_transferOwnership,_transferOwnership>>.
 
