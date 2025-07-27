@@ -137,7 +137,7 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId` token.
    *
-   * @circuitInfo k=10, rows=320
+   * @circuitInfo k=10, rows=290
    *
    * Requirements:
    *
@@ -188,7 +188,7 @@ module NonFungibleToken {
    * @description Returns the token URI for the given `tokenId`. Returns the empty
    * string if a tokenURI does not exist.
    *
-   * @circuitInfo k=10, rows=326
+   * @circuitInfo k=10, rows=296
    *
    * Requirements:
    *
@@ -217,7 +217,7 @@ module NonFungibleToken {
   /**
    * @description Sets the the URI as `tokenURI` for the given `tokenId`.
    *
-   * @circuitInfo k=10, rows=283
+   * @circuitInfo k=10, rows=253
    *
    * Requirements:
    *
@@ -243,7 +243,7 @@ module NonFungibleToken {
    *
    * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
    *
-   * @circuitInfo k=10, rows=993
+   * @circuitInfo k=10, rows=966
    *
    * Requirements:
    *
@@ -271,7 +271,7 @@ module NonFungibleToken {
   /**
    * @description Returns the account approved for `tokenId` token.
    *
-   * @circuitInfo k=10, rows=439
+   * @circuitInfo k=10, rows=409
    *
    * Requirements:
    *
@@ -292,7 +292,7 @@ module NonFungibleToken {
    * @description Approve or remove `operator` as an operator for the caller.
    * Operators can call {transferFrom} for any token owned by the caller.
    *
-   * @circuitInfo k=10, rows=439
+   * @circuitInfo k=10, rows=409
    *
    * Requirements:
    *
@@ -348,7 +348,7 @@ module NonFungibleToken {
    * are supported in Compact. This restriction prevents assets from being inadvertently locked in contracts that cannot
    * currently handle token receipt.
    *
-   * @circuitInfo k=11, rows=2023
+   * @circuitInfo k=11, rows=1966
    *
    * Requirements:
    *
@@ -382,7 +382,7 @@ module NonFungibleToken {
    * are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=11, rows=2020
+   * @circuitInfo k=11, rows=1963
    *
    * Requirements:
    *
@@ -460,7 +460,7 @@ module NonFungibleToken {
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
    *
-   * @circuitInfo k=11, rows=1128
+   * @circuitInfo k=11, rows=1098
    *
    * Requirements:
    *
@@ -489,7 +489,7 @@ module NonFungibleToken {
   /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
    *
-   * @circuitInfo k=11, rows=1181
+   * @circuitInfo k=11, rows=1121
    *
    * Requirements:
    *
@@ -520,7 +520,7 @@ module NonFungibleToken {
    * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
    * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
    *
-   * @circuitInfo k=12, rows=2049
+   * @circuitInfo k=11, rows=1959
    *
    * Requirements:
    *
@@ -570,7 +570,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
-   * @circuitInfo k=11, rows=1073
+   * @circuitInfo k=11, rows=1013
    *
    * Requirements:
    *
@@ -596,7 +596,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1070
+   * @circuitInfo k=11, rows=1010
    *
    * Requirements:
    *
@@ -629,7 +629,7 @@ module NonFungibleToken {
    * The approval is cleared when the token is burned.
    * This circuit does not check if the sender is authorized to operate on the token.
    *
-   * @circuitInfo k=10, rows=509
+   * @circuitInfo k=10, rows=479
    *
    * Requirements:
    *
@@ -653,7 +653,7 @@ module NonFungibleToken {
    * interactions are supported in Compact. This restriction prevents assets from being inadvertently
    * locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=11, rows=1284
+   * @circuitInfo k=11, rows=1224
    *
    * Requirements:
    *
@@ -683,7 +683,7 @@ module NonFungibleToken {
    * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on own_public_key().
    * It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1281
+   * @circuitInfo k=11, rows=1221
    *
    * Requirements:
    *
@@ -717,7 +717,7 @@ module NonFungibleToken {
   /**
    * @description Approve `to` to operate on `tokenId`
    *
-   * @circuitInfo k=11, rows=1169
+   * @circuitInfo k=11, rows=1109
    *
    * Requirements:
    *
@@ -749,7 +749,7 @@ module NonFungibleToken {
   /**
    * @description Approve `operator` to operate on all of `owner` tokens
    *
-   * @circuitInfo k=10, rows=554
+   * @circuitInfo k=10, rows=524
    *
    * Requirements:
    *
@@ -783,7 +783,7 @@ module NonFungibleToken {
    * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
    * Returns the owner.
    *
-   * @circuitInfo k=10, rows=318
+   * @circuitInfo k=10, rows=288
    *
    * Requirements:
    *
