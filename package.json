@@ -4,9 +4,10 @@
   "private": true,
   "packageManager": "yarn@4.1.0",
   "workspaces": [
-    "compact/",
-    "contracts/*/",
-    "docs/"
+    "docs/",
+    "contracts/*",
+    "packages/*",
+    "packages/contracts/*"
   ],
   "scripts": {
     "docs": "turbo run docs --filter=docs",

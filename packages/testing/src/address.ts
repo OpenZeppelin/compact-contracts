@@ -3,7 +3,10 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import type * as Compact from '../../artifacts/MockNonFungibleToken/contract/index.cjs';
+import type {
+  ContractAddress,
+  ZswapCoinPublicKey,
+} from '@openzeppelin-compact/compact-std';
 
 const PREFIX_ADDRESS = '0200';
 
@@ -23,10 +26,9 @@ export const toHexPadded = (str: string, len = 64) =>
  * @param str String to hexify and encode.
  * @returns Encoded `ZswapCoinPublicKey`.
  */
-export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => {
-  const toHex = Buffer.from(str, 'ascii').toString('hex');
-  return { bytes: encodeCoinPublicKey(String(toHex).padStart(64, '0')) };
-};
+export const encodeToPK = (str: string): ZswapCoinPublicKey => ({
+  bytes: encodeCoinPublicKey(toHexPadded(str)),
+});
 
 /**
  * @description Generates ContractAddress from `str` for testing purposes.
@@ -34,11 +36,9 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => {
  * @param str String to hexify and encode.
  * @returns Encoded `ZswapCoinPublicKey`.
  */
-export const encodeToAddress = (str: string): Compact.ContractAddress => {
-  const toHex = Buffer.from(str, 'ascii').toString('hex');
-  const fullAddress = PREFIX_ADDRESS + String(toHex).padStart(64, '0');
-  return { bytes: encodeContractAddress(fullAddress) };
-};
+export const encodeToAddress = (str: string): ContractAddress => ({
+  bytes: encodeContractAddress(PREFIX_ADDRESS + toHexPadded(str)),
+});
 
 /**
  * @description Generates an Either object for ZswapCoinPublicKey for testing.
@@ -46,13 +46,11 @@ export const encodeToAddress = (str: string): Compact.ContractAddress => {
  * @param str String to hexify and encode.
  * @returns Defined Either object for ZswapCoinPublicKey.
  */
-export const createEitherTestUser = (str: string) => {
-  return {
-    is_left: true,
-    left: encodeToPK(str),
-    right: encodeToAddress(''),
-  };
-};
+export const createEitherTestUser = (str: string) => ({
+  is_left: true,
+  left: encodeToPK(str),
+  right: encodeToAddress(''),
+});
 
 /**
  * @description Generates an Either object for ContractAddress for testing.
@@ -60,22 +58,23 @@ export const createEitherTestUser = (str: string) => {
  * @param str String to hexify and encode.
  * @returns Defined Either object for ContractAddress.
  */
-export const createEitherTestContractAddress = (str: string) => {
-  return {
-    is_left: false,
-    left: encodeToPK(''),
-    right: encodeToAddress(str),
-  };
-};
+export const createEitherTestContractAddress = (str: string) => ({
+  is_left: false,
+  left: encodeToPK(''),
+  right: encodeToAddress(str),
+});
+
+const zeroUint8Array = (length = 32) =>
+  convert_bigint_to_Uint8Array(length, 0n);
 
 export const ZERO_KEY = {
   is_left: true,
-  left: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+  left: { bytes: zeroUint8Array() },
   right: encodeToAddress(''),
 };
 
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
-  right: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+  right: { bytes: zeroUint8Array() },
 };
