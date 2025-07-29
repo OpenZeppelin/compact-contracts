@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Shielded AccessControl
@@ -24,7 +24,7 @@ pragma language_version >= 0.15.0;
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
  * constructor() {
- *  MY_ROLE = persistent_hash<Bytes<32>>(pad(32, "MY_ROLE"));
+ *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
  * }
  * ```
  *
@@ -80,10 +80,17 @@ module ShieldedAccessControl {
   /**
    * @description A MerkleTree of role commitments stored as H(PK | role | nonce)
    * @type {Bytes<32>} roleCommitment - A roleCommitment created by the following hash: SHA256(PK | role | nonce).
-   * @type {MerkleTree<4, roleCommitment>}
-   * @type {MerkleTree<4, Bytes<32>>} _operatorRoles
+   * @type {MerkleTree<10, roleCommitment>}
+   * @type {MerkleTree<10, Bytes<32>>} _operatorRoles
    */
-  export ledger _operatorRoles: MerkleTree<4, Bytes<32>;
+  export ledger _operatorRoles: MerkleTree<10, Bytes<32>>;
+
+  /**
+   * @description A set of nullifiers used to revoke permissions from a role
+   * @type {Bytes<32>} roleCommitment - A roleCommitment created by the following hash: SHA256(PK | role | nonce).
+   * @type {Set<Bytes<32>} _roleNullifiers
+   */
+  export ledger _roleNullifiers: Set<Bytes<32>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -96,24 +103,28 @@ module ShieldedAccessControl {
 
   export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
 
-   /**
-    * @description Returns `true` if `account` has been granted `roleId`.
-    *
-    * @circuitInfo
-    *
-    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
-    * @param {Bytes<32>} roleId - The role identifier.
-    * @param {Bytes<16>} nonce - The nonce - H(SK | "role-nonce" | role | PK) - used to generate
-    * the role commitment stored in `_operatorRoles`
-    * @return {Boolean} - Whether the account has the specified role.
-    */
-  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<16>): Boolean {
-    const authPath = persistent_hash<Vector<3, Bytes<32>>>(roleId, account.left.bytes, pad(32, nonce));
-    return _operatorRoles.checkRoot(merkleTreePathRoot<4, Bytes<32>>(authPath))
+  witness getRoleCommitmentPath(roleCommitment: Bytes<32>): MerkleTreePath<10, Bytes<32>>;
+
+  /**
+   * @description Returns `true` if `account` has been granted `roleId`.
+   *
+   * @circuitInfo
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {Boolean} - Whether the account has the specified role.
+   */
+  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
+    const roleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account.left.bytes, nonce]);
+    const authPath = getRoleCommitmentPath(roleCommitment);
+    const isNullified = _roleNullifiers.member(disclose(roleCommitment));
+    return _operatorRoles
+      .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath))) && !isNullified;
   }
 
   /**
-   * @description Reverts if `own_public_key()` is missing `roleId`.
+   * @description Reverts if `ownPublicKey()` is missing `roleId`.
    *
    * @circuitInfo
    *
@@ -123,14 +134,15 @@ module ShieldedAccessControl {
    * - The caller must not be a ContractAddress
    *
    * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {[]} - Empty tuple.
    */
-  export circuit assertOnlyRole(roleId: Bytes<32>, nonce: Bytes<16>): [] {
+  export circuit assertOnlyRole(roleId: Bytes<32>, nonce: Bytes<32>): [] {
     _checkRole(
       roleId,
-      left<ZswapCoinPublicKey,ContractAddress>(own_public_key(),
+      left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()),
       nonce
-    ));
+    );
   }
 
   /**
@@ -144,10 +156,11 @@ module ShieldedAccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {[]} - Empty tuple.
    */
-  export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<16>): [] {
-    assert hasRole(roleId, account, nonce) "ShieldedAccessControl: unauthorized account";
+  export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): [] {
+    assert(hasRole(roleId, account, nonce), "ShieldedAccessControl: unauthorized account");
   }
 
   /**
@@ -162,8 +175,8 @@ module ShieldedAccessControl {
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
    */
   export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
-    if (_adminRoles.member(roleId)) {
-      return _adminRoles.lookup(roleId);
+    if (_adminRoles.member(disclose(roleId))) {
+      return _adminRoles.lookup(disclose(roleId));
     }
     return default<Bytes<32>>;
   }
@@ -180,11 +193,12 @@ module ShieldedAccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {[]} - Empty tuple.
    */
-  export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<16>): [] {
+  export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): [] {
     assertOnlyRole(getRoleAdmin(roleId), nonce);
-    _grantRole(roleId, account);
+    _grantRole(roleId, account, nonce);
   }
 
   /**
@@ -198,9 +212,10 @@ module ShieldedAccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {[]} - Empty tuple.
    */
-  export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<16>): [] {
+  export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): [] {
     assertOnlyRole(getRoleAdmin(roleId), nonce);
     _revokeRole(roleId, account, nonce);
   }
@@ -221,12 +236,13 @@ module ShieldedAccessControl {
   *
   * @param {Bytes<32>} roleId - The role identifier.
   * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
   * @return {[]} - Empty tuple.
   */
-  export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(own_public_key()) "AccessControl: bad confirmation";
+  export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): [] {
+    assert(callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()), "ShieldedAccessControl: bad confirmation");
 
-    _revokeRole(roleId, callerConfirmation);
+    _revokeRole(roleId, callerConfirmation, nonce);
   }
 
   /**
@@ -239,7 +255,7 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
-    _adminRoles.insert(roleId, adminRole);
+    _adminRoles.insert(disclose(roleId), disclose(adminRole));
   }
 
   /**
@@ -254,10 +270,11 @@ module ShieldedAccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
-  export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<16>): Boolean {
-    assert !Utils_isContractAddress(account) "AccessControl: unsafe role approval";
+  export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
+    assert(!Utils_isContractAddress(account), "ShieldedAccessControl: unsafe role approval");
     return _unsafeGrantRole(roleId, account, nonce);
   }
 
@@ -272,21 +289,22 @@ module ShieldedAccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
    */
-  export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress, nonce: Bytes<16>): Boolean {
+  export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
     if (hasRole(roleId, account, nonce)) {
       return false;
     }
 
-    if (account.isLeft) {
-      const commitment = persistent_hash<Vector<3, Bytes<32>>>([roleId, account.left.bytes, pad(32, nonce)])
-      _operatorRoles.insertHash(commitment);
+    if (!Utils_isContractAddress(account)) {
+      const roleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account.left.bytes, nonce]);
+      _operatorRoles.insertHash(disclose(roleCommitment));
       return true;
     }
 
-    const commitment = persistent_hash<Vector<3, Bytes<32>>>([roleId, account.right.bytes, pad(32, nonce)])
-    _operatorRoles.insertHash(commitment);
+    const roleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account.right.bytes, nonce]);
+    _operatorRoles.insertHash(disclose(roleCommitment));
     return true;
   }
 
@@ -298,16 +316,22 @@ module ShieldedAccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
-  export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    if (!hasRole(roleId, account)) {
+  export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
+    if (!hasRole(roleId, account, nonce)) {
       return false;
     }
 
-    _operatorRoles
-      .lookup(roleId)
-      .insert(account, false);
+    if(!Utils_isContractAddress(account)) {
+      const roleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account.left.bytes, nonce]);
+      _roleNullifiers.insert(disclose(roleCommitment));
+      return true;
+    }
+
+    const roleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account.right.bytes, nonce]);
+    _roleNullifiers.insert(disclose(roleCommitment));
     return true;
   }
 }
