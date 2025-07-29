@@ -57,11 +57,13 @@ Requirements:
 
 - Contract is not initialized.
 
+Constraints:
+
+- k=10, rows=71
+
 [.contract-item]
 [[FungibleTokenModule-name]]
 ==== `[.contract-item-name]#++name++#++() → Opaque<"string">++` [.item-kind]#circuit#
-
-k=10, rows=37
 
 Returns the token name.
 
@@ -69,12 +71,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=37
 
 [.contract-item]
 [[FungibleTokenModule-symbol]]
 ==== `[.contract-item-name]#++symbol++#++() → Opaque<"string">++` [.item-kind]#circuit#
-
-k=10, rows=37
 
 Returns the symbol of the token.
 
@@ -82,12 +85,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=37
 
 [.contract-item]
 [[FungibleTokenModule-decimals]]
 ==== `[.contract-item-name]#++decimals++#++() → Uint<8>++` [.item-kind]#circuit#
-
-k=10, rows=36
 
 Returns the number of decimals used to get its user representation.
 
@@ -95,12 +99,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=36
 
 [.contract-item]
 [[FungibleTokenModule-totalSupply]]
 ==== `[.contract-item-name]#++totalSupply++#++() → Uint<128>++` [.item-kind]#circuit#
-
-k=10, rows=36
 
 Returns the value of tokens in existence.
 
@@ -108,12 +113,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=36
 
 [.contract-item]
 [[FungibleTokenModule-balanceOf]]
 ==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
-
-k=10, rows=310
 
 Returns the value of tokens owned by `account`.
 
@@ -121,12 +127,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=310
 
 [.contract-item]
 [[FungibleTokenModule-transfer]]
 ==== `[.contract-item-name]#++transfer++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
-
-k=11, rows=1173
 
 Moves a `value` amount of tokens from the caller's account to `to`.
 
@@ -140,11 +147,13 @@ Requirements:
 - `to` is not the zero address.
 - The caller has a balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1173
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeTransfer]]
 ==== `[.contract-item-name]#++_unsafeTransfer++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
-
-k=11, rows=1170
 
 Unsafe variant of <<FungibleTokenModule-transfer,transfer>> which allows transfers to contract addresses.
 
@@ -157,11 +166,13 @@ Requirements:
 - `to` is not the zero address.
 - The caller has a balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1170
+
 [.contract-item]
 [[FungibleTokenModule-allowance]]
 ==== `[.contract-item-name]#++allowance++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
-
-k=10, rows=624
 
 Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner` through <<FungibleTokenModule-transferFrom,transferFrom>>.
 This value changes when <<FungibleTokenModule-approve,approve>> or <<FungibleTokenModule-transferFrom,transferFrom>> are called.
@@ -170,11 +181,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=624
+
 [.contract-item]
 [[FungibleTokenModule-approve]]
 ==== `[.contract-item-name]#++approve++#++(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
-
-k=10, rows=452
 
 Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
 
@@ -183,11 +196,13 @@ Requirements:
 - Contract is initialized.
 - `spender` is not the zero address.
 
+Constraints:
+
+- k=10, rows=452
+
 [.contract-item]
 [[FungibleTokenModule-transferFrom]]
 ==== `[.contract-item-name]#++transferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
-
-k=11, rows=1821
 
 Moves `value` tokens from `from` to `to` using the allowance mechanism.
 `value` is the deducted from the caller's allowance.
@@ -204,11 +219,13 @@ Requirements:
 - `to` is not a ContractAddress.
 - The caller has an allowance of ``from``'s tokens of at least `value`.
 
+Constraints:
+
+- k=11, rows=1821
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeTransferFrom]]
 ==== `[.contract-item-name]#++_unsafeTransferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
-
-k=11, rows=1818
 
 Unsafe variant of <<FungibleTokenModule-transferFrom,transferFrom>> which allows transfers to contract addresses.
 
@@ -224,11 +241,13 @@ Requirements:
 - `to` is not the zero address.
 - The caller has an allowance of ``from``'s tokens of at least `value`.
 
+Constraints:
+
+- k=11, rows=1818
+
 [.contract-item]
 [[FungibleTokenModule-_transfer]]
 ==== `[.contract-item-name]#++_transfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=11, rows=1312
 
 Moves a `value` amount of tokens from `from` to `to`.
 This circuit is equivalent to <<FungibleTokenModule-transfer,transfer>>, and can be used to e.g.
@@ -245,11 +264,13 @@ Requirements:
 - `to` must not be the zero address.
 - `to` must not be a ContractAddress.
 
+Constraints:
+
+- k=11, rows=1312
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeUncheckedTransfer]]
 ==== `[.contract-item-name]#++_unsafeUncheckedTransfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=11, rows=1309
 
 Unsafe variant of <<FungibleTokenModule-_transfer,_transfer>> which allows transfers to contract addresses.
 
@@ -262,11 +283,13 @@ Requirements:
 - `from` is not the zero address.
 - `to` is not the zero address.
 
+Constraints:
+
+- k=11, rows=1309
+
 [.contract-item]
 [[FungibleTokenModule-_update]]
 ==== `[.contract-item-name]#++_update++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=11, rows=1305
 
 Transfers a `value` amount of tokens from `from` to `to`,
 or alternatively mints (or burns) if `from` (or `to`) is the zero address.
@@ -275,11 +298,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=11, rows=1305
+
 [.contract-item]
 [[FungibleTokenModule-_mint]]
 ==== `[.contract-item-name]#++_mint++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=752
 
 Creates a `value` amount of tokens and assigns them to `account`, by transferring it from the zero address.
 Relies on the `update` mechanism.
@@ -290,11 +315,13 @@ Requirements:
 - `to` is not a ContractAddress.
 - `account` is not the zero address.
 
+Constraints:
+
+- k=10, rows=752
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeMint]]
 ==== `[.contract-item-name]#++_unsafeMint++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=749
 
 Unsafe variant of <<FungibleTokenModule-_mint,_mint>> which allows transfers to contract addresses.
 
@@ -307,11 +334,13 @@ Requirements:
 - Contract is initialized.
 - `account` is not the zero address.
 
+Constraints:
+
+- k=10, rows=749
+
 [.contract-item]
 [[FungibleTokenModule-_burn]]
 ==== `[.contract-item-name]#++_burn++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=773
 
 Destroys a `value` amount of tokens from `account`, lowering the total supply.
 Relies on the `_update` mechanism.
@@ -322,11 +351,13 @@ Requirements:
 - `account` is not the zero address.
 - `account` must have at least a balance of `value`.
 
+Constraints:
+
+- k=10, rows=773
+
 [.contract-item]
 [[FungibleTokenModule-_approve]]
 ==== `[.contract-item-name]#++_approve++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=583
 
 Sets `value` as the allowance of `spender` over the ``owner``'s tokens.
 This circuit is equivalent to `approve`, and can be used to e.g. set automatic allowances for certain subsystems, etc.
@@ -337,11 +368,13 @@ Requirements:
 - `owner` is not the zero address.
 - `spender` is not the zero address.
 
+Constraints:
+
+- k=10, rows=583
+
 [.contract-item]
 [[FungibleTokenModule-_spendAllowance]]
 ==== `[.contract-item-name]#++_spendAllowance++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=931
 
 Updates ``owner``'s allowance for `spender` based on spent `value`.
 Does not update the allowance value in case of infinite allowance.
@@ -350,3 +383,7 @@ Requirements:
 
 - Contract is initialized.
 - `spender` must have at least an allowance of `value` from `owner`.
+
+Constraints:
+
+- k=10, rows=931
