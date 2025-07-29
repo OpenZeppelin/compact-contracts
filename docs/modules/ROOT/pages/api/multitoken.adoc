@@ -54,11 +54,13 @@ Requirements:
 
 - Contract is not initialized.
 
+Constraints:
+
+- k=10, rows=45
+
 [.contract-item]
 [[MultiTokenModule-uri]]
 ==== `[.contract-item-name]#++uri++#++(id: Uint<128>) → Opaque<"string">++` [.item-kind]#circuit#
-
-k=10, rows=90
 
 This implementation returns the same URI for *all* token types.
 It relies on the token type ID substitution mechanism defined in the EIP: {erc1155-metadata}.
@@ -68,11 +70,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=90
+
 [.contract-item]
 [[MultiTokenModule-balanceOf]]
 ==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>) → Uint<128>++` [.item-kind]#circuit#
-
-k=10, rows=439
 
 Returns the amount of `id` tokens owned by `account`.
 
@@ -80,11 +84,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=439
+
 [.contract-item]
 [[MultiTokenModule-setApprovalForAll]]
 ==== `[.contract-item-name]#++setApprovalForAll++#++(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean) → []++` [.item-kind]#circuit#
-
-k=10, rows=404
 
 Enables or disables approval for `operator` to manage all of the caller's assets.
 
@@ -93,11 +99,13 @@ Requirements:
 - Contract is initialized.
 - `operator` is not the zero address.
 
+Constraints:
+
+- k=10, rows=404
+
 [.contract-item]
 [[MultiTokenModule-isApprovedForAll]]
 ==== `[.contract-item-name]#++balanceOf++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
-
-k=10, rows=619
 
 Queries if `operator` is an authorized operator for `owner`.
 
@@ -105,11 +113,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=619
+
 [.contract-item]
 [[MultiTokenModule-transferFrom]]
 ==== `[.contract-item-name]#++transferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=11, rows=1882
 
 Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
 The caller must be `from` or approved to transfer on their behalf.
@@ -126,11 +136,13 @@ Requirements:
 - Caller must be `from` or approved via `setApprovalForAll`.
 - `from` must have an `id` balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1882
+
 [.contract-item]
 [[MultiTokenModule-_transfer]]
 ==== `[.contract-item-name]#++_transfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>)++` [.item-kind]#circuit#
-
-k=11, rows=1487
 
 Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
 Does not impose restrictions on the caller, making it suitable for composition in higher-level contract logic.
@@ -146,11 +158,13 @@ Requirements:
 - `from` is not the zero address.
 - `from` must have an `id` balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1487
+
 [.contract-item]
 [[MultiTokenModule-_update]]
 ==== `[.contract-item-name]#++_update++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>)++` [.item-kind]#internal#
-
-k=11, rows=1482
 
 Transfers a value amount of tokens of type id from from to to.
 This circuit will mint (or burn) if `from` (or `to`) is the zero address.
@@ -160,11 +174,13 @@ Requirements:
 - Contract is initialized.
 - If `from` is not zero, the balance of `id` of `from` must be >= `value`.
 
+Constraints:
+
+- k=11, rows=1482
+
 [.contract-item]
 [[MultiTokenModule-_unsafeTransferFrom]]
 ==== `[.contract-item-name]#++_unsafeTransferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=11, rows=1881
 
 Unsafe variant of <<MultiTokenModule-transferFrom,transferFrom>> which allows transfers to contract addresses.
 The caller must be `from` or approved to transfer on their behalf.
@@ -180,11 +196,13 @@ Requirements:
 - Caller must be `from` or approved via `setApprovalForAll`.
 - `from` must have an `id` balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1881
+
 [.contract-item]
 [[MultiTokenModule-_unsafeTransfer]]
 ==== `[.contract-item-name]#++_unsafeTransfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=11, rows=1486
 
 Unsafe variant of <<MultiTokenModule-_transfer,_transfer>> which allows transfers to contract addresses.
 Does not impose restrictions on the caller, making it suitable as a low-level building block for advanced contract logic.
@@ -199,11 +217,13 @@ Requirements:
 - `to` is not the zero address.
 - `from` must have an `id` balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1486
+
 [.contract-item]
 [[MultiTokenModule-_setURI]]
 ==== `[.contract-item-name]#++_setURI++#++(newURI: Opaque<"string">) → []++` [.item-kind]#circuit#
-
-k=10, rows=39
 
 Sets a new URI for all token types, by relying on the token type ID substitution mechanism defined in the MultiToken standard.
 See https://eips.ethereum.org/EIPS/eip-1155#metadata.
@@ -218,11 +238,13 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=39
+
 [.contract-item]
 [[MultiTokenModule-_mint]]
 ==== `[.contract-item-name]#++_mint++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=912
 
 Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
 
@@ -235,11 +257,13 @@ Requirements:
 - `to` is not the zero address.
 - `to` is not a ContractAddress
 
+Constraints:
+
+- k=10, rows=912
+
 [.contract-item]
 [[MultiTokenModule-_unsafeMint]]
 ==== `[.contract-item-name]#++_unsafeMint++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=911
 
 Unsafe variant of `_mint` which allows transfers to contract addresses.
 
@@ -252,11 +276,13 @@ Requirements:
 - Contract is initialized.
 - `to` is not the zero address.
 
+Constraints:
+
+- k=10, rows=911
+
 [.contract-item]
 [[MultiTokenModule-_burn]]
 ==== `[.contract-item-name]#++_burn++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>) → []++` [.item-kind]#circuit#
-
-k=10, rows=688
 
 Destroys a `value` amount of tokens of type `token_id` from `from`.
 
@@ -266,11 +292,13 @@ Requirements:
 - `from` is not the zero address.
 - `from` must have an `id` balance of at least `value`.
 
+Constraints:
+
+- k=10, rows=688
+
 [.contract-item]
 [[MultiTokenModule-_setApprovalForAll]]
 ==== `[.contract-item-name]#++_setApprovalForAll++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean) → []++` [.item-kind]#circuit#
-
-k=10, rows=518
 
 Enables or disables approval for `operator` to manage all of the caller's assets.
 This circuit does not check for access permissions but can be useful as a building block for more complex contract logic.
@@ -279,3 +307,7 @@ Requirements:
 
 - Contract is initialized.
 - `operator` is not the zero address.
+
+Constraints:
+
+- k=10, rows=518
