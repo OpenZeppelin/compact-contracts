@@ -2,7 +2,7 @@
 
 Compact code is compiled into arithmetic circuits, which are mathematical representations of the contract's logic.
 These circuits are made up of arithmetic gates. The gates enforce the rules and constraints defined in the Compact program.
-At a high level, ZK circuits can be thoughtt of as a magic puzzle board that proves a series of steps was followed correctly - like a recipe.
+At a high level, ZK circuits can be thought of as a magic puzzle board that proves a series of steps was followed correctly - like a recipe.
 The puzzle board is laid out in a grid like a giant sheet of graph paper with a certain number of rows.
 Each row is a space where a step or rule that needs to be followed is written.
 These steps/rules correspond to the gates that make up the arithmetic circuit.
