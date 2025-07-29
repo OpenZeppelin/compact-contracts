@@ -10,23 +10,6 @@ This library consists of modules to build custom smart contracts.
 
 WARNING: This repo contains highly experimental code. Expect rapid iteration. *Use at your own risk.*
 
-== ZK Circuit Primer
-
-Compact code is compiled into zero-knowledge circuits, which are mathematical representations of the contract's logic.
-These circuits are made up of arithmetic gates that enforce the rules and constraints defined in the Compact program.
-At a high level, we can think of ZK circuits as a magic puzzle board that proves we've done a series of steps correctly - like a recipe.
-The puzzle board is laid out in a grid like a giant sheet of graph paper with a certain number of rows.
-Each row is a space where you can write a step or rule that needs to be followed.
-
-The size of the board is called the **domain size** which we refer to as `k` in our documentation. It’s always a power of 2 (like 256, 512, 1024, etc.), because the math behind the scenes needs it that way.
-Now, just because our board has 1024 rows doesn’t mean we use all of them. Maybe our recipe takes only 563 steps, so we fill in 563 rows and leave the rest blank. These filled in rows are called **used rows**.
-So when we say "k = 10, rows = 563" in our API Reference documentation, that means "this circuit has a size of 2^10 = 1024 rows and only uses 563 rows".
-
-Why is this important? Well, when we're writing ZK circuits we want to make the size and number of gates (rules) as small as possible.
-The number of gates in a zero-knowledge circuit directly impacts both the prover time (how long it takes to generate a proof) and, to a lesser extent, the proof size and verifier time.
-Larger circuits with more gates require more computation to generate a proof, which can make proof generation slower and more resource-intensive.
-This is especially relevant for privacy-preserving blockchains like Midnight, where proof generation is often the most computationally expensive part of a transaction.
-
 == Installation
 
 Make sure you have {nvm} and {yarn} installed on your machine.
