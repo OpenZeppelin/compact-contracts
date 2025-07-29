@@ -41,6 +41,8 @@ module Ownable {
    * @description Initializes the contract by setting the `initialOwner`.
    * This must be called in the contract's constructor.
    *
+   * @circuitInfo k=10, rows=258
+   *
    * Requirements:
    *
    * - Contract is not already initialized.
@@ -75,7 +77,7 @@ module Ownable {
   /**
    * @description Transfers ownership of the contract to `newOwner`.
    *
-   * @circuitInfo k=10, rows=219
+   * @circuitInfo k=10, rows=338
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
