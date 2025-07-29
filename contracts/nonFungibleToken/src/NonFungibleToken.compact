@@ -99,6 +99,8 @@ module NonFungibleToken {
    * This MUST be called in the implementing contract's constructor.
    * Failure to do so can lead to an irreparable contract.
    *
+   * @circuitInfo k=10, rows=65
+   *
    * Requirements:
    *
    * - Contract is not initialized.
