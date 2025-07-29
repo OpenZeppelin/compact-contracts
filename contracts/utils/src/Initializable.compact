@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Initializable
@@ -35,7 +35,7 @@ module Initializable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertInitialized(): [] {
-    assert _isInitialized "Initializable: contract not initialized";
+    assert(_isInitialized, "Initializable: contract not initialized");
   }
 
   /**
@@ -48,6 +48,6 @@ module Initializable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertNotInitialized(): [] {
-    assert !_isInitialized "Initializable: contract already initialized";
+    assert(!_isInitialized, "Initializable: contract already initialized");
   }
 }

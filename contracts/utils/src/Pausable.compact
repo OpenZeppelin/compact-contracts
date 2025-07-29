@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Pausable
@@ -32,7 +32,7 @@ module Pausable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertPaused(): [] {
-    assert _isPaused "Pausable: not paused";
+    assert(_isPaused, "Pausable: not paused");
   }
 
   /**
@@ -45,7 +45,7 @@ module Pausable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertNotPaused(): [] {
-    assert !_isPaused "Pausable: paused";
+    assert(!_isPaused, "Pausable: paused");
   }
 
   /**

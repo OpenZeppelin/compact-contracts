@@ -1,4 +1,4 @@
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 
@@ -17,7 +17,7 @@ constructor(
   _symbol: Opaque<"string">,
   init: Boolean
 ) {
-  if (init) {
+  if (disclose(init)) {
     NonFungibleToken_initialize(_name, _symbol);
   }
 }
