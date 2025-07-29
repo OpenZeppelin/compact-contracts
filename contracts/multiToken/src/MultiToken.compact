@@ -97,6 +97,8 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
+   * @circuitInfo k=10, rows=45
+   *
    * Requirements:
    *
    * - Must be called in the contract's constructor.
