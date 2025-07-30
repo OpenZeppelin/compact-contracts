@@ -406,7 +406,7 @@ module FungibleToken {
     value: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    if (Utils_isKeyOrAddressZero(disclose(from))) {
+    if (Utils_isKeyOrAddressZero(from)) {
       // Mint
       const MAX_UINT128 = 340282366920938463463374607431768211455;
       assert(MAX_UINT128 - _totalSupply >= value, "FungibleToken: arithmetic overflow");
@@ -418,7 +418,7 @@ module FungibleToken {
       _balances.insert(disclose(from), disclose(fromBal - value as Uint<128>));
     }
 
-    if (Utils_isKeyOrAddressZero(disclose(to))) {
+    if (Utils_isKeyOrAddressZero(to)) {
       // Burn
       _totalSupply = disclose(_totalSupply - value as Uint<128>);
     } else {

@@ -481,7 +481,7 @@ module NonFungibleToken {
   ): Boolean {
     Initializable_assertInitialized();
     return (
-      !Utils_isKeyOrAddressZero(disclose(spender)) &&
+      !Utils_isKeyOrAddressZero(spender) &&
       (disclose(owner) == disclose(spender) || isApprovedForAll(owner, spender) || _getApproved(tokenId) == disclose(spender))
     );
   }
@@ -542,19 +542,19 @@ module NonFungibleToken {
     const from = _ownerOf(tokenId);
 
     // Perform (optional) operator check
-    if (!Utils_isKeyOrAddressZero(disclose(auth))) {
+    if (!Utils_isKeyOrAddressZero(auth)) {
         _checkAuthorized(from, auth, tokenId);
     }
 
     // Execute the update
-    if (!Utils_isKeyOrAddressZero(disclose(from))) {
+    if (!Utils_isKeyOrAddressZero(from)) {
       // Clear approval. No need to re-authorize
       _approve(burnAddress(), tokenId, burnAddress());
       const newBalance = _balances.lookup(disclose(from)) - 1 as Uint<128>;
       _balances.insert(disclose(from), disclose(newBalance));
     }
 
-    if (!Utils_isKeyOrAddressZero(disclose(to))) {
+    if (!Utils_isKeyOrAddressZero(to)) {
       if (!_balances.member(disclose(to))) {
         _balances.insert(disclose(to), 0);
       }
@@ -736,7 +736,7 @@ module NonFungibleToken {
     auth: Either<ZswapCoinPublicKey, ContractAddress>
   ): [] {
     Initializable_assertInitialized();
-    if (!Utils_isKeyOrAddressZero(disclose(auth))) {
+    if (!Utils_isKeyOrAddressZero(auth)) {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve

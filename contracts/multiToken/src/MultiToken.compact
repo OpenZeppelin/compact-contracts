@@ -287,7 +287,7 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    if (!Utils_isKeyOrAddressZero(disclose(from))) {
+    if (!Utils_isKeyOrAddressZero(from)) {
       const fromBalance = balanceOf(from, id);
       assert(fromBalance >= value, "MultiToken: insufficient balance");
       // overflow not possible
@@ -295,7 +295,7 @@ module MultiToken {
       _balances.lookup(id).insert(disclose(from), disclose(newBalance));
     }
 
-    if (!Utils_isKeyOrAddressZero(disclose(to))) {
+    if (!Utils_isKeyOrAddressZero(to)) {
       // id not initialized
       if (!_balances.member(disclose(id))) {
         _balances.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);

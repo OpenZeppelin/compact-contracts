@@ -15,24 +15,32 @@ module Utils {
    * @notice Midnight's burn address is represented as left<ZswapCoinPublicKey, ContractAddress>(default<ZswapCoinPublicKey>)
    * in Compact, so we've chosen to represent the zero address as this structure as well.
    *
+   * Disclosures:
+   *
+   * - Leaks the ZSwapCoinPublicKey or ContractAddress data of `keyOrAddress`
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is zero.
    */
-  export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  export circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return isContractAddress(keyOrAddress)
-    ? default<ContractAddress> == keyOrAddress.right
-    : default<ZswapCoinPublicKey> == keyOrAddress.left;
+    ? default<ContractAddress> == disclose(keyOrAddress.right)
+    : default<ZswapCoinPublicKey> == disclose(keyOrAddress.left);
   }
 
   /**
    * @description Returns whether `key` is the zero address.
    *
+   * Disclosures:
+   *
+   * - Leaks the ZSwapCoinPublicKey data of `key`
+   *
    * @param {ZswapCoinPublicKey} key - A ZswapCoinPublicKey
    * @return {Boolean} - Returns true if `key` is zero.
    */
-  export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
+  export circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
     const zero = default<ZswapCoinPublicKey>;
-    return zero == key;
+    return zero == disclose(key);
   }
 
   /**
@@ -43,7 +51,7 @@ module Utils {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
    */
-  export pure circuit isKeyOrAddressEqual(
+  export circuit isKeyOrAddressEqual(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     other: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
@@ -59,11 +67,15 @@ module Utils {
   /**
    * @description Returns whether `keyOrAddress` is a ContractAddress type.
    *
+   * Disclosures:
+   *
+   * - Leaks the type of `keyOrAddress` either a ZswapCoinPublicKey or a ContractAddress
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress.
    */
-  export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    return !keyOrAddress.is_left;
+  export circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    return disclose(!keyOrAddress.is_left);
   }
 
   /**
