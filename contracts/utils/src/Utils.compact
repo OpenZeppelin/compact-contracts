@@ -47,6 +47,11 @@ module Utils {
    * @description Returns whether `keyOrAddress` is equal to `other`. Assumes that a ZswapCoinPublicKey
    * and a ContractAddress can never be equal
    *
+   * Disclosures:
+   *
+   * - Leaks data regarding the types of `keyOrAddress` and `other`
+   * - Leaks values of `keyOrAddress` and `other`
+   *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
@@ -55,10 +60,10 @@ module Utils {
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     other: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
-    if (keyOrAddress.is_left && other.is_left) {
-      return keyOrAddress.left == other.left;
-    } else if (!keyOrAddress.is_left && !other.is_left) {
-      return keyOrAddress.right == other.right;
+    if (disclose(keyOrAddress.is_left) && disclose(other.is_left)) {
+      return disclose(keyOrAddress.left) == disclose(other.left);
+    } else if (disclose(!keyOrAddress.is_left) && disclose(!other.is_left)) {
+      return disclose(keyOrAddress.right) == disclose(other.right);
     } else {
       return false;
     }
