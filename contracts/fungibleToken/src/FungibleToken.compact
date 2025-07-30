@@ -40,8 +40,8 @@ pragma language_version >= 0.16.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
-  import "../../node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
-  import "../../node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
+  import "../../../node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
+  import "../../../node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
 
   /**
    * @description Mapping from account addresses to their token balances.
@@ -353,7 +353,7 @@ module FungibleToken {
    * This circuit is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
    *
-   * @circuitInfo k=11, rows=1818
+   * @circuitInfo k=11, rows=1312
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
