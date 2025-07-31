@@ -57,6 +57,10 @@ Requirements:
 
 - Contract is not initialized.
 
+Constraints:
+
+- k=10, rows=71
+
 [.contract-item]
 [[FungibleTokenModule-name]]
 ==== `[.contract-item-name]#++name++#++() → Opaque<"string">++` [.item-kind]#circuit#
@@ -67,6 +71,9 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=37
 
 [.contract-item]
 [[FungibleTokenModule-symbol]]
@@ -78,6 +85,9 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=37
 
 [.contract-item]
 [[FungibleTokenModule-decimals]]
@@ -89,6 +99,9 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=36
 
 [.contract-item]
 [[FungibleTokenModule-totalSupply]]
@@ -100,6 +113,9 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=36
 
 [.contract-item]
 [[FungibleTokenModule-balanceOf]]
@@ -111,6 +127,9 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=310
 
 [.contract-item]
 [[FungibleTokenModule-transfer]]
@@ -128,6 +147,10 @@ Requirements:
 - `to` is not the zero address.
 - The caller has a balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1173
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeTransfer]]
 ==== `[.contract-item-name]#++_unsafeTransfer++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
@@ -143,6 +166,10 @@ Requirements:
 - `to` is not the zero address.
 - The caller has a balance of at least `value`.
 
+Constraints:
+
+- k=11, rows=1170
+
 [.contract-item]
 [[FungibleTokenModule-allowance]]
 ==== `[.contract-item-name]#++allowance++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
@@ -154,6 +181,10 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=624
+
 [.contract-item]
 [[FungibleTokenModule-approve]]
 ==== `[.contract-item-name]#++approve++#++(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
@@ -164,6 +195,10 @@ Requirements:
 
 - Contract is initialized.
 - `spender` is not the zero address.
+
+Constraints:
+
+- k=10, rows=452
 
 [.contract-item]
 [[FungibleTokenModule-transferFrom]]
@@ -184,6 +219,10 @@ Requirements:
 - `to` is not a ContractAddress.
 - The caller has an allowance of ``from``'s tokens of at least `value`.
 
+Constraints:
+
+- k=11, rows=1821
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeTransferFrom]]
 ==== `[.contract-item-name]#++_unsafeTransferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → Boolean++` [.item-kind]#circuit#
@@ -201,6 +240,10 @@ Requirements:
 - `from` must have a balance of at least `value`.
 - `to` is not the zero address.
 - The caller has an allowance of ``from``'s tokens of at least `value`.
+
+Constraints:
+
+- k=11, rows=1818
 
 [.contract-item]
 [[FungibleTokenModule-_transfer]]
@@ -221,6 +264,10 @@ Requirements:
 - `to` must not be the zero address.
 - `to` must not be a ContractAddress.
 
+Constraints:
+
+- k=11, rows=1312
+
 [.contract-item]
 [[FungibleTokenModule-_unsafeUncheckedTransfer]]
 ==== `[.contract-item-name]#++_unsafeUncheckedTransfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
@@ -236,6 +283,10 @@ Requirements:
 - `from` is not the zero address.
 - `to` is not the zero address.
 
+Constraints:
+
+- k=11, rows=1309
+
 [.contract-item]
 [[FungibleTokenModule-_update]]
 ==== `[.contract-item-name]#++_update++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
@@ -246,6 +297,10 @@ or alternatively mints (or burns) if `from` (or `to`) is the zero address.
 Requirements:
 
 - Contract is initialized.
+
+Constraints:
+
+- k=11, rows=1305
 
 [.contract-item]
 [[FungibleTokenModule-_mint]]
@@ -259,6 +314,10 @@ Requirements:
 - Contract is initialized.
 - `to` is not a ContractAddress.
 - `account` is not the zero address.
+
+Constraints:
+
+- k=10, rows=752
 
 [.contract-item]
 [[FungibleTokenModule-_unsafeMint]]
@@ -275,6 +334,10 @@ Requirements:
 - Contract is initialized.
 - `account` is not the zero address.
 
+Constraints:
+
+- k=10, rows=749
+
 [.contract-item]
 [[FungibleTokenModule-_burn]]
 ==== `[.contract-item-name]#++_burn++#++(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
@@ -287,6 +350,10 @@ Requirements:
 - Contract is initialized.
 - `account` is not the zero address.
 - `account` must have at least a balance of `value`.
+
+Constraints:
+
+- k=10, rows=773
 
 [.contract-item]
 [[FungibleTokenModule-_approve]]
@@ -301,6 +368,10 @@ Requirements:
 - `owner` is not the zero address.
 - `spender` is not the zero address.
 
+Constraints:
+
+- k=10, rows=583
+
 [.contract-item]
 [[FungibleTokenModule-_spendAllowance]]
 ==== `[.contract-item-name]#++_spendAllowance++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>) → []++` [.item-kind]#circuit#
@@ -312,3 +383,7 @@ Requirements:
 
 - Contract is initialized.
 - `spender` must have at least an allowance of `value` from `owner`.
+
+Constraints:
+
+- k=10, rows=931

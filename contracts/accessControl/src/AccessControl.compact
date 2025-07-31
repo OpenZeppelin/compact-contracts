@@ -96,7 +96,7 @@ module AccessControl {
    /**
     * @description Returns `true` if `account` has been granted `roleId`.
     *
-    * @circuitInfo
+    * @circuitInfo k=10, rows=487
     *
     * @param {Bytes<32>} roleId - The role identifier.
     * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
@@ -120,7 +120,7 @@ module AccessControl {
   /**
    * @description Reverts if `ownPublicKey()` is missing `roleId`.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=345
    *
    * Requirements:
    *
@@ -137,7 +137,7 @@ module AccessControl {
   /**
    * @description Reverts if `account` is missing `roleId`.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=467
    *
    * Requirements:
    *
@@ -157,7 +157,7 @@ module AccessControl {
    *
    * To change a role’s admin use {_setRoleAdmin}.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=207
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
@@ -172,7 +172,7 @@ module AccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=994
    *
    * Requirements:
    *
@@ -191,7 +191,7 @@ module AccessControl {
   /**
    * @description Revokes `roleId` from `account`.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=827
    *
    * Requirements:
    *
@@ -213,7 +213,7 @@ module AccessControl {
   * purpose is to provide a mechanism for accounts to lose their privileges
   * if they are compromised (such as when a trusted device is misplaced).
   *
-  * @circuitInfo
+  * @circuitInfo k=10, rows=640
   *
   * Requirements:
   *
@@ -233,7 +233,7 @@ module AccessControl {
   /**
    * @description Sets `adminRole` as `roleId`'s admin role.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=209
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
@@ -247,7 +247,7 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=734
    *
    * Requirements:
    *
@@ -266,7 +266,7 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=733
    *
    * @notice External smart contracts cannot call the token contract at this time, so granting a role to an ContractAddress may
    * render a circuit permanently inaccessible.
@@ -302,7 +302,7 @@ module AccessControl {
    * @description Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo
+   * @circuitInfo k=10, rows=563
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.

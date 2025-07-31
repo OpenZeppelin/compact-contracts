@@ -1,0 +1,17 @@
+= ZK Circuits 101
+
+Compact code is compiled into arithmetic circuits, which are mathematical representations of the contract's logic.
+These circuits are made up of arithmetic gates. The gates enforce the rules and constraints defined in the Compact program.
+At a high level, ZK circuits can be thought of as a magic puzzle board that proves a series of steps was followed correctly - like a recipe.
+The puzzle board is laid out in a grid like a giant sheet of graph paper with a certain number of rows.
+Each row is a space where a step or rule that needs to be followed is written.
+These steps/rules correspond to the gates that make up the arithmetic circuit.
+
+The size of the board is called the **domain size** which is referred to as `k` in the documentation. It’s always a power of 2 (like 256, 512, 1024, etc.), because https://zkhack.dev/whiteboard/module-three/[the math behind the scenes needs it that way].
+Now, just because the board has 1024 rows doesn’t mean it uses all of them. Maybe the recipe takes only 563 steps, so only 563 rows are filled and the rest are left blank. These filled-in rows are called **used rows**.
+So "k = 10, rows = 563" in the API Reference documentation that means "this circuit has a size of 2^10 = 1024 rows and only uses 563 rows".
+
+Why is this important? Well, when writing ZK circuits the size and number of rules to follow as should be as small as possible.
+The number of rules in a zero-knowledge circuit directly impacts both the prover time (how long it takes to generate a proof) and, to a lesser extent, the proof size and verifier time.
+Larger circuits with more rules require more computation to generate a proof, which can make proof generation slower and more resource-intensive.
+This is especially relevant for privacy-preserving blockchains like Midnight, where proof generation is often the most computationally expensive part of a transaction.

@@ -97,6 +97,8 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
+   * @circuitInfo k=10, rows=45
+   *
    * Requirements:
    *
    * - Must be called in the contract's constructor.
@@ -116,6 +118,8 @@ module MultiToken {
    * Clients calling this function must replace the `\{id\}` substring with the
    * actual token type ID.
    *
+   * @circuitInfo k=10, rows=90
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -131,6 +135,8 @@ module MultiToken {
 
   /**
    * @description Returns the amount of `id` tokens owned by `account`.
+   *
+   * @circuitInfo k=10, rows=439
    *
    * Requirements:
    *
@@ -151,6 +157,8 @@ module MultiToken {
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   *
+   * @circuitInfo k=10, rows=404
    *
    * Requirements:
    *
@@ -173,6 +181,8 @@ module MultiToken {
 
   /**
    * @description Queries if `operator` is an authorized operator for `owner`.
+   *
+   * @circuitInfo k=10, rows=619
    *
    * Requirements:
    *
@@ -198,6 +208,8 @@ module MultiToken {
   /**
    * @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
    * The caller must be `from` or approved to transfer on their behalf.
+   *
+   * @circuitInfo k=11, rows=1882
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -236,6 +248,8 @@ module MultiToken {
    * Does not impose restrictions on the caller, making it suitable for composition
    * in higher-level contract logic.
    *
+   * @circuitInfo k=11, rows=1487
+   *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
@@ -267,6 +281,8 @@ module MultiToken {
   /**
    * @description Transfers a value amount of tokens of type id from from to to.
    * This circuit will mint (or burn) if `from` (or `to`) is the zero address.
+   *
+   * @circuitInfo k=11, rows=1482
    *
    * Requirements:
    *
@@ -314,6 +330,8 @@ module MultiToken {
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    * The caller must be `from` or approved to transfer on their behalf.
    *
+   * @circuitInfo k=11, rows=1881
+   *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
@@ -355,6 +373,8 @@ module MultiToken {
    * Does not impose restrictions on the caller, making it suitable as a low-level
    * building block for advanced contract logic.
    *
+   * @circuitInfo k=11, rows=1486
+   *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
@@ -390,6 +410,8 @@ module MultiToken {
    * substitution mechanism defined in the MultiToken standard.
    * See https://eips.ethereum.org/EIPS/eip-1155#metadata.
    *
+   * @circuitInfo k=10, rows=39
+   *
    * @notice By this mechanism, any occurrence of the `\{id\}` substring in either the
    * URI or any of the values in the JSON file at said URI will be replaced by
    * clients with the token type ID.
@@ -415,6 +437,8 @@ module MultiToken {
   /**
    * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
    *
+   * @circuitInfo k=10, rows=912
+   *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
@@ -437,6 +461,8 @@ module MultiToken {
 
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
+   *
+   * @circuitInfo k=10, rows=911
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -462,6 +488,8 @@ module MultiToken {
   /**
    * @description Destroys a `value` amount of tokens of type `token_id` from `from`.
    *
+   * @circuitInfo k=10, rows=688
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -482,6 +510,9 @@ module MultiToken {
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   *
+   * @circuitInfo k=10, rows=518
+   *
    * @notice This circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *

@@ -72,6 +72,8 @@ module FungibleToken {
    * @dev This MUST be called in the implementing contract's constructor. Failure to do so
    * can lead to an irreparable contract.
    *
+   * @circuitInfo k=10, rows=71
+   *
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
@@ -91,6 +93,8 @@ module FungibleToken {
   /**
    * @description Returns the token name.
    *
+   * @circuitInfo k=10, rows=37
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -104,6 +108,8 @@ module FungibleToken {
 
   /**
    * @description Returns the symbol of the token.
+   *
+   * @circuitInfo k=10, rows=37
    *
    * Requirements:
    *
@@ -119,6 +125,8 @@ module FungibleToken {
   /**
    * @description Returns the number of decimals used to get its user representation.
    *
+   * @circuitInfo k=10, rows=36
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -133,6 +141,8 @@ module FungibleToken {
   /**
    * @description Returns the value of tokens in existence.
    *
+   * @circuitInfo k=10, rows=36
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -146,6 +156,8 @@ module FungibleToken {
 
   /**
    * @description Returns the value of tokens owned by `account`.
+   *
+   * @circuitInfo k=10, rows=310
    *
    * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
    *
@@ -167,6 +179,8 @@ module FungibleToken {
 
   /**
    * @description Moves a `value` amount of tokens from the caller's account to `to`.
+   *
+   * @circuitInfo k=11, rows=1173
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -191,6 +205,8 @@ module FungibleToken {
 
   /**
    * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
+   *
+   * @circuitInfo k=11, rows=1170
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -217,6 +233,8 @@ module FungibleToken {
    * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
    * through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
    *
+   * @circuitInfo k=10, rows=624
+   *
    * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
    *
    * Requirements:
@@ -242,6 +260,8 @@ module FungibleToken {
   /**
    * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
    *
+   * @circuitInfo k=10, rows=452
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -262,6 +282,8 @@ module FungibleToken {
   /**
    * @description Moves `value` tokens from `from` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
+   *
+   * @circuitInfo k=11, rows=1821
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -293,6 +315,8 @@ module FungibleToken {
 
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   *
+   * @circuitInfo k=11, rows=1818
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -329,6 +353,8 @@ module FungibleToken {
    * This circuit is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
    *
+   * @circuitInfo k=11, rows=1312
+   *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
@@ -358,6 +384,8 @@ module FungibleToken {
 
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
+   *
+   * @circuitInfo k=11, rows=1309
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -390,6 +418,8 @@ module FungibleToken {
    * @description Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
    * (or `to`) is the zero address.
    * @dev Checks for a mint overflow in order to output a more readable error message.
+   *
+   * @circuitInfo k=11, rows=1305
    *
    * Requirements:
    *
@@ -431,6 +461,8 @@ module FungibleToken {
    * @description Creates a `value` amount of tokens and assigns them to `account`,
    * by transferring it from the zero address. Relies on the `update` mechanism.
    *
+   * @circuitInfo k=10, rows=752
+   *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
@@ -456,6 +488,8 @@ module FungibleToken {
 
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
+   *
+   * @circuitInfo k=10, rows=749
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -483,6 +517,8 @@ module FungibleToken {
    * @description Destroys a `value` amount of tokens from `account`, lowering the total supply.
    * Relies on the `_update` mechanism.
    *
+   * @circuitInfo k=10, rows=773
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -505,6 +541,9 @@ module FungibleToken {
   /**
    * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
    * This circuit is equivalent to `approve`, and can be used to
+   *
+   * @circuitInfo k=10, rows=583
+   *
    * e.g. set automatic allowances for certain subsystems, etc.
    *
    * Requirements:
@@ -536,6 +575,8 @@ module FungibleToken {
   /**
    * @description Updates `owner`'s allowance for `spender` based on spent `value`.
    * Does not update the allowance value in case of infinite allowance.
+   *
+   * @circuitInfo k=10, rows=931
    *
    * Requirements:
    *

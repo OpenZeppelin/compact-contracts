@@ -71,6 +71,10 @@ import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" p
 
 Returns `true` if `account` has been granted `roleId`.
 
+Constraints:
+
+- k=10, rows=487
+
 [.contract-item]
 [[AccessControl-assertOnlyRole]]
 ==== `[.contract-item-name]#++assertOnlyRole++#++(roleId: Bytes<32>) → []++` [.item-kind]#circuit#
@@ -82,6 +86,10 @@ Requirements:
 - The caller must have `roleId`.
 - The caller must not be a `ContractAddress`.
 
+Constraints:
+
+- k=10, rows=345
+
 [.contract-item]
 [[AccessControl-_checkRole]]
 ==== `[.contract-item-name]#++_checkRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
@@ -92,6 +100,10 @@ Requirements:
 
 - `account` must have `roleId`.
 
+Constraints:
+
+- k=10, rows=467
+
 [.contract-item]
 [[AccessControl-getRoleAdmin]]
 ==== `[.contract-item-name]#++getRoleAdmin++#++(roleId: Bytes<32>) → Bytes<32>++` [.item-kind]#circuit#
@@ -99,6 +111,10 @@ Requirements:
 Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn't exist. See {grantRole} and {revokeRole}.
 
 To change a role's admin use <<AccessControl-_setRoleAdmin, _setRoleAdmin>>.
+
+Constraints:
+
+- k=10, rows=207
 
 [.contract-item]
 [[AccessControl-grantRole]]
@@ -114,6 +130,10 @@ Requirements:
 - `account` must not be a ContractAddress.
 - The caller must have ``roleId``'s admin role.
 
+Constraints:
+
+- k=10, rows=994
+
 [.contract-item]
 [[AccessControl-revokeRole]]
 ==== `[.contract-item-name]#++revokeRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
@@ -123,6 +143,10 @@ Revokes `roleId` from `account`.
 Requirements:
 
 - The caller must have ``roleId``'s admin role.
+
+Constraints:
+
+- k=10, rows=827
 
 [.contract-item]
 [[AccessControl-renounceRole]]
@@ -141,11 +165,19 @@ Requirements:
 - The caller must be `callerConfirmation`.
 - The caller must not be a `ContractAddress`.
 
+Constraints:
+
+- k=10, rows=640
+
 [.contract-item]
 [[AccessControl-_setRoleAdmin]]
 ==== `[.contract-item-name]#++_setRoleAdmin++#++(roleId: Bytes<32>, adminRole: Bytes<32>) → []++` [.item-kind]#circuit#
 
 Sets `adminRole` as ``roleId``'s admin role.
+
+Constraints:
+
+- k=10, rows=209
 
 [.contract-item]
 [[AccessControl-_grantRole]]
@@ -162,6 +194,10 @@ Requirements:
 
 - `account` must not be a ContractAddress.
 
+Constraints:
+
+- k=10, rows=734
+
 [.contract-item]
 [[AccessControl-_unsafeGrantRole]]
 ==== `[.contract-item-name]#++_unsafeGrantRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
@@ -172,6 +208,10 @@ WARNING: Granting roles to contract addresses is considered unsafe because contr
 Granting a role to a smart contract may render a circuit permanently inaccessible.
 Once contract-to-contract calls are supported, this circuit may be deprecated.
 
+Constraints:
+
+- k=10, rows=733
+
 [.contract-item]
 [[AccessControl-_revokeRole]]
 ==== `[.contract-item-name]#++_revokeRole++#++(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
@@ -179,3 +219,7 @@ Once contract-to-contract calls are supported, this circuit may be deprecated.
 Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
 
 Internal circuit without access restriction.
+
+Constraints:
+
+- k=10, rows=563

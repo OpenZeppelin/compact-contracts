@@ -46,6 +46,10 @@ Requirements:
 - `initialOwner` is not a ContractAddress.
 - `initialOwner` is not the zero address.
 
+Constraints:
+
+- k=10, rows=258
+
 [.contract-item]
 [[Ownable-owner]]
 ==== `[.contract-item-name]#++owner++#++() → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
@@ -55,6 +59,10 @@ Returns the current contract owner.
 Requirements:
 
 - Contract is initialized.
+
+Constraints:
+
+- k=10, rows=84
 
 [.contract-item]
 [[Ownable-transferOwnership]]
@@ -72,6 +80,10 @@ Requirements:
 - `newOwner` is not a ContractAddress.
 - `newOwner` is not the zero address.
 
+Constraints:
+
+- k=10, rows=338
+
 [.contract-item]
 [[Ownable-_unsafeTransferOwnership]]
 ==== `[.contract-item-name]#++_unsafeTransferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
@@ -88,6 +100,10 @@ Requirements:
 - The caller is the current contract owner.
 - `newOwner` is not the zero address.
 
+Constraints:
+
+- k=10, rows=335
+
 [.contract-item]
 [[Ownable-renounceOwnership]]
 ==== `[.contract-item-name]#++renounceOwnership++#++() → []++` [.item-kind]#circuit#
@@ -101,6 +117,10 @@ Requirements:
 - Contract is initialized.
 - The caller is the current contract owner.
 
+Constraints:
+
+- k=10, rows=124
+
 [.contract-item]
 [[Ownable-assertOnlyOwner]]
 ==== `[.contract-item-name]#++assertOnlyOwner++#++() → []++` [.item-kind]#circuit#
@@ -112,6 +132,10 @@ Requirements:
 
 - Contract is initialized.
 - The caller is the current contract owner.
+
+Constraints:
+
+- k=10, rows=115
 
 [.contract-item]
 [[Ownable-_transferOwnership]]
@@ -127,6 +151,10 @@ Requirements:
 - Contract is initialized.
 - `newOwner` is not a ContractAddress.
 
+Constraints:
+
+- k=10, rows=219
+
 [.contract-item]
 [[Ownable-_unsafeUncheckedTransferOwnership]]
 ==== `[.contract-item-name]#++_unsafeUncheckedTransferOwnership++#++(newOwner: Either<ZswapCoinPublicKey, ContractAddress>) → []++` [.item-kind]#circuit#
@@ -140,3 +168,7 @@ Once contract-to-contract calls are supported, this circuit may be deprecated.
 Requirements:
 
 - Contract is initialized.
+
+Constraints:
+
+- k=10, rows=216

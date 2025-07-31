@@ -41,6 +41,8 @@ module Ownable {
    * @description Initializes the contract by setting the `initialOwner`.
    * This must be called in the contract's constructor.
    *
+   * @circuitInfo k=10, rows=258
+   *
    * Requirements:
    *
    * - Contract is not already initialized.
@@ -59,6 +61,8 @@ module Ownable {
   /**
    * @description Returns the current contract owner.
    *
+   * @circuitInfo k=10, rows=84
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -72,6 +76,8 @@ module Ownable {
 
   /**
    * @description Transfers ownership of the contract to `newOwner`.
+   *
+   * @circuitInfo k=10, rows=338
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
@@ -95,6 +101,8 @@ module Ownable {
 
   /**
    * @description Unsafe variant of `transferOwnership`.
+   *
+   * @circuitInfo k=10, rows=335
    *
    * @warning Ownership transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported.
@@ -122,6 +130,8 @@ module Ownable {
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    *
+   * @circuitInfo k=10, rows=124
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -139,6 +149,8 @@ module Ownable {
    * @description Throws if called by any account other than the owner.
    * Use this to restrict access of specific circuits to the owner.
    *
+   * @circuitInfo k=10, rows=115
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -155,6 +167,8 @@ module Ownable {
   /**
    * @description Transfers ownership of the contract to `newOwner` without
    * enforcing permission checks on the caller.
+   *
+   * @circuitInfo k=10, rows=219
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
@@ -176,6 +190,8 @@ module Ownable {
 
   /**
    * @description Unsafe variant of `_transferOwnership`.
+   *
+   * @circuitInfo k=10, rows=216
    *
    * @warning Ownership transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported.
