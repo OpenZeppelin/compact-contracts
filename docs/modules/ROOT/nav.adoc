@@ -2,7 +2,7 @@
 
 * Learn
 
-** xref:zkCircuitDevelopment101.adoc[ZK Circuit Development 101]
+** xref:zkCircuits101.adoc[ZK Circuits 101]
 
 ** xref:extensibility.adoc[Extensibility]
 

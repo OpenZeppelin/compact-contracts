@@ -1,4 +1,4 @@
-= ZK Circuit Development 101
+= ZK Circuits 101
 
 Compact code is compiled into arithmetic circuits, which are mathematical representations of the contract's logic.
 These circuits are made up of arithmetic gates. The gates enforce the rules and constraints defined in the Compact program.
