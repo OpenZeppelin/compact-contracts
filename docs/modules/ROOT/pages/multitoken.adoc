@@ -101,7 +101,7 @@ import "./node_modules/@openzeppelin-compact/multi-token/src/MultiToken" prefix 
 constructor(
   _uri: Opaque<"string">,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  fungibleFixedSupply: Uint<128>
+  fungibleFixedSupply: Uint<128>,
 ) {
   // `initialize` sets the URI (base) for all tokens minted from this contract
   MultiToken_initialize(_uri);
@@ -138,7 +138,7 @@ export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
-  value: Uint<128>
+  value: Uint<128>,
 ): [] {
   return MultiToken_transferFrom(from, to, id, value);
 }
