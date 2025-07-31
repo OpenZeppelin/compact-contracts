@@ -63,7 +63,7 @@ module Utils {
    * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress.
    */
   export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    return disclose(!keyOrAddress.is_left);
+    return !keyOrAddress.is_left;
   }
 
   /**
