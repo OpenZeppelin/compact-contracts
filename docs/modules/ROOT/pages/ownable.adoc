@@ -1,6 +1,5 @@
 :ownable-guide: xref:ownable.adoc[Ownable guide]
 
-
 = Ownable
 
 An unshielded Ownable library.
@@ -34,10 +33,10 @@ It's recommended to prefix the module with `Ownable_` to avoid circuit signature
 ```ts
 // MyOwnableContract.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
+import "./node_modules/@openzeppelin-compact/ownable/src/Ownable" prefix Ownable_;
 
 constructor(
   initialOwner: Either<ZswapCoinPublicKey, ContractAddress>
@@ -70,10 +69,10 @@ Here's a complete contract showcasing how to integrate the Ownable module and pr
 ```ts
 // SimpleOwnable.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/ownable" prefix Ownable_;
+import "./node_modules/@openzeppelin-compact/ownable/src/Ownable" prefix Ownable_;
 
 /**
  * Set `initialOwner` as the owner of the contract.

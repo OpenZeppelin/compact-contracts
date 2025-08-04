@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module NonFungibleToken
  * @description An unshielded Non-Fungible Token library.
  *
- * @notice One notable difference regarding this implementation and the EIP20 spec
+ * @notice One notable difference regarding this implementation and the EIP721 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
  * cannot be supported.
  * This is due to encoding limits on the midnight circuit backend:
@@ -96,8 +96,14 @@ module NonFungibleToken {
   /**
    * @description Initializes the contract by setting the name and symbol.
    *
+   * This MUST be called in the implementing contract's constructor.
+   * Failure to do so can lead to an irreparable contract.
+   *
+   * @circuitInfo k=10, rows=65
+   *
    * Requirements:
-   * - The contract must not have been initialized.
+   *
+   * - Contract is not initialized.
    *
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
@@ -105,8 +111,8 @@ module NonFungibleToken {
    */
   export circuit initialize(name_: Opaque<"string">, symbol_: Opaque<"string">): [] {
     Initializable_initialize();
-    _name = name_;
-    _symbol = symbol_;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
   }
 
   /**
@@ -115,27 +121,29 @@ module NonFungibleToken {
    * @circuitInfo k=10, rows=309
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>)} owner - The account to query.
    * @return {Uint<128>} - The number of tokens in `owner`'s account.
    */
   export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
     Initializable_assertInitialized();
-    if (!_balances.member(owner)) {
+    if (!_balances.member(disclose(owner))) {
       return 0;
     }
 
-    return _balances.lookup(owner);
+    return _balances.lookup(disclose(owner));
   }
 
   /**
    * @description Returns the owner of the `tokenId` token.
    *
-   * @circuitInfo k=10, rows=320
+   * @circuitInfo k=10, rows=290
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - The `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The identifier for a token.
@@ -152,7 +160,8 @@ module NonFungibleToken {
    * @circuitInfo k=10, rows=36
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * @return {Opaque<"string">} - The token name.
    */
@@ -167,7 +176,8 @@ module NonFungibleToken {
    * @circuitInfo k=10, rows=36
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * @return {Opaque<"string">} - The token symbol.
    */
@@ -180,16 +190,16 @@ module NonFungibleToken {
    * @description Returns the token URI for the given `tokenId`. Returns the empty
    * string if a tokenURI does not exist.
    *
-   * @circuitInfo k=10, rows=326
+   * @circuitInfo k=10, rows=296
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - The `tokenId` must exist.
    *
-   * @notice Midnight does not support native strings and string operations
-   * within the Compact language, e.g. concatenating a base URI + token ID are not possible
-   * like in other NFT implementations. Therefore, we propose the URI storage
-   * approach; whereby, NFTs may or may not have unique "base" URIs.
+   * @notice Native strings and string operations aren't supported within the Compact language,
+   * e.g. concatenating a base URI + token ID is not possible like in other NFT implementations.
+   * Therefore, we propose the URI storage approach; whereby, NFTs may or may not have unique "base" URIs.
    * It's up to the implementation to decide on how to handle this.
    *
    * @param {Uint<128>} tokenId - The identifier for a token.
@@ -199,20 +209,21 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     _requireOwned(tokenId);
 
-    if (!_tokenURIs.member(tokenId)) {
+    if (!_tokenURIs.member(disclose(tokenId))) {
       return Utils_emptyString();
     }
 
-    return _tokenURIs.lookup(tokenId);
+    return _tokenURIs.lookup(disclose(tokenId));
   }
 
   /**
    * @description Sets the the URI as `tokenURI` for the given `tokenId`.
    *
-   * @circuitInfo k=10, rows=283
+   * @circuitInfo k=10, rows=253
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - The `tokenId` must exist.
    *
    * @notice The URI for a given NFT is usually set when the NFT is minted.
@@ -225,7 +236,7 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     _requireOwned(tokenId);
 
-    return _tokenURIs.insert(tokenId, tokenURI);
+    return _tokenURIs.insert(disclose(tokenId), disclose(tokenURI));
   }
 
   /**
@@ -234,10 +245,11 @@ module NonFungibleToken {
    *
    * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
    *
-   * @circuitInfo k=10, rows=993
+   * @circuitInfo k=10, rows=966
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - The caller must either own the token or be an approved operator.
    * - `tokenId` must exist.
    *
@@ -250,7 +262,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
     _approve(
       to,
       tokenId,
@@ -261,10 +273,11 @@ module NonFungibleToken {
   /**
    * @description Returns the account approved for `tokenId` token.
    *
-   * @circuitInfo k=10, rows=439
+   * @circuitInfo k=10, rows=409
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token an account may be approved to manage
@@ -281,10 +294,11 @@ module NonFungibleToken {
    * @description Approve or remove `operator` as an operator for the caller.
    * Operators can call {transferFrom} for any token owned by the caller.
    *
-   * @circuitInfo k=10, rows=439
+   * @circuitInfo k=10, rows=409
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - The `operator` cannot be the address zero.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An operator to manage the caller's tokens
@@ -296,7 +310,7 @@ module NonFungibleToken {
     approved: Boolean
   ): [] {
     Initializable_assertInitialized();
-    const owner = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const owner = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
     _setApprovalForAll(
       owner,
       operator,
@@ -310,7 +324,8 @@ module NonFungibleToken {
    * @circuitInfo k=10, rows=621
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of a token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - An account that may operate on `owner`'s tokens
@@ -321,8 +336,8 @@ module NonFungibleToken {
     operator: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
     Initializable_assertInitialized();
-    if (_operatorApprovals.member(owner) && _operatorApprovals.lookup(owner).member(operator)) {
-      return _operatorApprovals.lookup(owner).lookup(operator);
+    if (_operatorApprovals.member(disclose(owner)) && _operatorApprovals.lookup(owner).member(disclose(operator))) {
+      return _operatorApprovals.lookup(owner).lookup(disclose(operator));
     } else {
       return false;
     }
@@ -331,13 +346,18 @@ module NonFungibleToken {
   /**
    * @description Transfers `tokenId` token from `from` to `to`.
    *
-   * @circuitInfo k=11, rows=2023
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract interactions
+   * are supported in Compact. This restriction prevents assets from being inadvertently locked in contracts that cannot
+   * currently handle token receipt.
+   *
+   * @circuitInfo k=11, rows=1966
    *
    * Requirements:
-   * - The contract must have been initialized.
-   * - `from` cannot be the zero address.
-   * - `to` cannot be the zero address.
-   * - `to` cannot be ContractAddress.
+   *
+   * - The contract is initialized.
+   * - `from` is not the zero address.
+   * - `to` is not the zero address.
+   * - `to` is not a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
@@ -352,7 +372,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
+    assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
     _unsafeTransferFrom(from, to, tokenId);
   }
@@ -360,18 +380,19 @@ module NonFungibleToken {
   /**
    * @description Transfers `tokenId` token from `from` to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=2020
+   * WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls
+   * are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   *
+   * @circuitInfo k=11, rows=1963
    *
    * Requirements:
-   * - The contract must have been initialized.
-   * - `from` cannot be the zero address.
-   * - `to` cannot be the zero address.
+   *
+   * - The contract is initialized.
+   * - `from` is not the zero address.
+   * - `to` is not the zero address.
    * - `tokenId` token must be owned by `from`.
    * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
-   *
-   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
-   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
-   * ContractAddress
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account from which the token is being transfered
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
@@ -384,16 +405,16 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
+    assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(own_public_key());
+    const auth = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
     const previousOwner = _update(
       to,
       tokenId,
       auth
     );
-    assert previousOwner == from "NonFungibleToken: Incorrect Owner";
+    assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
   }
 
   /**
@@ -402,18 +423,19 @@ module NonFungibleToken {
    * @circuitInfo k=10, rows=253
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * @param {Uint<128>} tokenId - The target token of the owner query
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The owner of the token
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
-    if (!_owners.member(tokenId)) {
-      return burn_address();
+    if (!_owners.member(disclose(tokenId))) {
+      return burnAddress();
     }
 
-    return _owners.lookup(tokenId);
+    return _owners.lookup(disclose(tokenId));
   }
 
   /**
@@ -422,27 +444,29 @@ module NonFungibleToken {
    * @circuitInfo k=10, rows=253
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * @param {Uint<128>} tokenId - The token to query
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - An account approved to spend `tokenId`
    */
   export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
-    if (!_tokenApprovals.member(tokenId)) {
-      return burn_address();
+    if (!_tokenApprovals.member(disclose(tokenId))) {
+      return burnAddress();
     }
-    return _tokenApprovals.lookup(tokenId);
+    return _tokenApprovals.lookup(disclose(tokenId));
   }
 
   /**
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
    *
-   * @circuitInfo k=11, rows=1128
+   * @circuitInfo k=11, rows=1098
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    *
    * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
    * assumption.
@@ -459,18 +483,19 @@ module NonFungibleToken {
   ): Boolean {
     Initializable_assertInitialized();
     return (
-      !Utils_isKeyOrAddressZero(spender) &&
-      (owner == spender || isApprovedForAll(owner, spender) || _getApproved(tokenId) == spender)
+      !Utils_isKeyOrAddressZero(disclose(spender)) &&
+      (disclose(owner) == disclose(spender) || isApprovedForAll(owner, spender) || _getApproved(tokenId) == disclose(spender))
     );
   }
 
   /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
    *
-   * @circuitInfo k=11, rows=1181
+   * @circuitInfo k=11, rows=1121
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - `spender` has approval from `owner` for `tokenId` OR `spender` has approval to manage all of `owner`'s assets.
    *
    * WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this
@@ -488,8 +513,8 @@ module NonFungibleToken {
   ): [] {
     Initializable_assertInitialized();
     if (!_isAuthorized(owner, spender, tokenId)) {
-      assert !Utils_isKeyOrAddressZero(owner) "NonFungibleToken: Nonexistent Token";
-      assert false "NonFungibleToken: Insufficient Approval";
+      assert(!Utils_isKeyOrAddressZero(owner), "NonFungibleToken: Nonexistent Token");
+      assert(false, "NonFungibleToken: Insufficient Approval");
     }
   }
 
@@ -497,10 +522,11 @@ module NonFungibleToken {
    * @description Transfers `tokenId` from its current owner to `to`, or alternatively mints (or burns) if the current owner
    * (or `to`) is the zero address. Returns the owner of the `tokenId` before the update.
    *
-   * @circuitInfo k=12, rows=2049
+   * @circuitInfo k=11, rows=1959
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
    * or approved to operate on the token (by the owner).
    *
@@ -518,27 +544,27 @@ module NonFungibleToken {
     const from = _ownerOf(tokenId);
 
     // Perform (optional) operator check
-    if (!Utils_isKeyOrAddressZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(disclose(auth))) {
         _checkAuthorized(from, auth, tokenId);
     }
 
     // Execute the update
-    if (!Utils_isKeyOrAddressZero(from)) {
+    if (!Utils_isKeyOrAddressZero(disclose(from))) {
       // Clear approval. No need to re-authorize
-      _approve(burn_address(), tokenId, burn_address());
-      const newBalance = _balances.lookup(from) - 1 as Uint<128>;
-      _balances.insert(from, newBalance);
+      _approve(burnAddress(), tokenId, burnAddress());
+      const newBalance = _balances.lookup(disclose(from)) - 1 as Uint<128>;
+      _balances.insert(disclose(from), disclose(newBalance));
     }
 
-    if (!Utils_isKeyOrAddressZero(to)) {
-      if (!_balances.member(to)) {
-        _balances.insert(to, 0);
+    if (!Utils_isKeyOrAddressZero(disclose(to))) {
+      if (!_balances.member(disclose(to))) {
+        _balances.insert(disclose(to), 0);
       }
-      const newBalance = _balances.lookup(to) + 1 as Uint<128>;
-      _balances.insert(to, newBalance);
+      const newBalance = _balances.lookup(disclose(to)) + 1 as Uint<128>;
+      _balances.insert(disclose(to), disclose(newBalance));
     }
 
-    _owners.insert(tokenId, to);
+    _owners.insert(disclose(tokenId), disclose(to));
 
     return from;
   }
@@ -546,13 +572,14 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
-   * @circuitInfo k=11, rows=1073
+   * @circuitInfo k=11, rows=1013
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - `tokenId` must not exist.
-   * - `to` cannot be the zero address.
-   * - `to` cannot be ContractAddress.
+   * - `to` is not the zero address.
+   * - `to` is not a ContractAddress.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
@@ -563,7 +590,7 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
+    assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
     _unsafeMint(to, tokenId);
   }
@@ -571,15 +598,17 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1070
+   * @circuitInfo k=11, rows=1010
    *
    * Requirements:
-   * - The contract must have been initialized.
-   * - `tokenId` must not exist.
-   * - `to` cannot be the zero address.
    *
-   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
-   * may result in a permanent loss of the token.
+   * - The contract is initialized.
+   * - `tokenId` must not exist.
+   * - `to` is not the zero address.
+   *
+   * WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
@@ -590,11 +619,11 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
+    assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
-    const previousOwner = _update(to, tokenId, burn_address());
+    const previousOwner = _update(to, tokenId, burnAddress());
 
-    assert Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Invalid Sender";
+    assert(Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Invalid Sender");
   }
 
   /**
@@ -602,10 +631,11 @@ module NonFungibleToken {
    * The approval is cleared when the token is burned.
    * This circuit does not check if the sender is authorized to operate on the token.
    *
-   * @circuitInfo k=10, rows=509
+   * @circuitInfo k=10, rows=479
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token to burn
@@ -613,20 +643,25 @@ module NonFungibleToken {
    */
   export circuit _burn(tokenId: Uint<128>): [] {
     Initializable_assertInitialized();
-    const previousOwner = _update(burn_address(), tokenId, burn_address());
-    assert !Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Invalid Sender";
+    const previousOwner = _update(burnAddress(), tokenId, burnAddress());
+    assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Invalid Sender");
   }
 
   /**
    * @description Transfers `tokenId` from `from` to `to`.
-   *  As opposed to {transferFrom}, this imposes no restrictions on own_public_key().
+   *  As opposed to {transferFrom}, this imposes no restrictions on ownPublicKey().
    *
-   * @circuitInfo k=11, rows=1284
+   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
+   * interactions are supported in Compact. This restriction prevents assets from being inadvertently
+   * locked in contracts that cannot currently handle token receipt.
+   *
+   * @circuitInfo k=11, rows=1224
    *
    * Requirements:
-   * - The contract must have been initialized.
-   * - `to` cannot be the zero address.
-   * - `to` cannot be ContractAddress.
+   *
+   * - The contract is initialized.
+   * - `to` is not the zero address.
+   * - `to` is not a ContractAddress.
    * - `tokenId` token must be owned by `from`.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
@@ -640,26 +675,27 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(to) "NonFungibleToken: Unsafe Transfer";
+    assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
     _unsafeTransfer(from, to, tokenId);
   }
 
   /**
    * @description Transfers `tokenId` from `from` to `to`.
-   * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on own_public_key().
+   * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on ownPublicKey().
    * It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1281
+   * @circuitInfo k=11, rows=1221
    *
    * Requirements:
-   * - The contract must have been initialized.
-   * - `to` cannot be the zero address.
+   *
+   * - The contract is initialized.
+   * - `to` is not the zero address.
    * - `tokenId` token must be owned by `from`.
    *
-   * @notice External smart contracts cannot call the token contract at this time, so any transfers to external contracts
-   * may result in a permanent loss of the token. All transfers to external contracts will be permanently "stuck" at the
-   * ContractAddress
+   * WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract
+   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
+   * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} from - The source account of the token transfer
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
@@ -672,21 +708,22 @@ module NonFungibleToken {
     tokenId: Uint<128>
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(to) "NonFungibleToken: Invalid Receiver";
+    assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
-    const previousOwner = _update(to, tokenId, burn_address());
+    const previousOwner = _update(to, tokenId, burnAddress());
 
-    assert !Utils_isKeyOrAddressZero(previousOwner) "NonFungibleToken: Nonexistent Token";
-    assert previousOwner == from "NonFungibleToken: Incorrect Owner";
+    assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Nonexistent Token");
+    assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
   }
 
   /**
    * @description Approve `to` to operate on `tokenId`
    *
-   * @circuitInfo k=11, rows=1169
+   * @circuitInfo k=11, rows=1109
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
    * or approved to operate on the token (by the owner).
    *
@@ -701,24 +738,25 @@ module NonFungibleToken {
     auth: Either<ZswapCoinPublicKey, ContractAddress>
   ): [] {
     Initializable_assertInitialized();
-    if (!Utils_isKeyOrAddressZero(auth)) {
+    if (!Utils_isKeyOrAddressZero(disclose(auth))) {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
-      assert (owner == auth || isApprovedForAll(owner, auth)) "NonFungibleToken: Invalid Approver";
+      assert((owner == disclose(auth) || isApprovedForAll(owner, auth)), "NonFungibleToken: Invalid Approver");
     }
 
-    _tokenApprovals.insert(tokenId, to);
+    _tokenApprovals.insert(disclose(tokenId), disclose(to));
   }
 
   /**
    * @description Approve `operator` to operate on all of `owner` tokens
    *
-   * @circuitInfo k=10, rows=554
+   * @circuitInfo k=10, rows=524
    *
    * Requirements:
-   * - The contract must have been initialized.
-   * - `operator` can't be the address zero.
+   *
+   * - The contract is initialized.
+   * - `operator` is not the address zero.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - Owner of a token
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} operator - The account to approve
@@ -731,26 +769,27 @@ module NonFungibleToken {
     approved: Boolean
   ): [] {
     Initializable_assertInitialized();
-    assert !Utils_isKeyOrAddressZero(operator) "NonFungibleToken: Invalid Operator";
+    assert(!Utils_isKeyOrAddressZero(operator), "NonFungibleToken: Invalid Operator");
 
-    if (!_operatorApprovals.member(owner)) {
+    if (!_operatorApprovals.member(disclose(owner))) {
       _operatorApprovals.insert(
-        owner,
+        disclose(owner),
         default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
       );
     }
 
-    _operatorApprovals.lookup(owner).insert(operator, approved);
+    _operatorApprovals.lookup(owner).insert(disclose(operator), disclose(approved));
   }
 
   /**
    * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
    * Returns the owner.
    *
-   * @circuitInfo k=10, rows=318
+   * @circuitInfo k=10, rows=288
    *
    * Requirements:
-   * - The contract must have been initialized.
+   *
+   * - The contract is initialized.
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token that should be owned
@@ -760,7 +799,7 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     const owner = _ownerOf(tokenId);
 
-    assert !Utils_isKeyOrAddressZero(owner) "NonFungibleToken: Nonexistent Token";
+    assert(!Utils_isKeyOrAddressZero(owner), "NonFungibleToken: Nonexistent Token");
     return owner;
   }
 }

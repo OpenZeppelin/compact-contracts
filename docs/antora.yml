@@ -5,4 +5,4 @@ nav:
   - modules/ROOT/nav.adoc
 asciidoc:
   attributes:
-    page-sidebar-collapse-default: 'FungibleToken,MultiToken,Ownable'
+    page-sidebar-collapse-default: 'FungibleToken,NonFungibleToken,MultiToken,Access Control,Ownable,Utils'
