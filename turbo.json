@@ -6,7 +6,7 @@
       "env": ["COMPACT_HOME"],
       "inputs": ["contracts/src/**/*.compact"],
       "outputLogs": "new-only",
-      "outputs": ["src/artifacts/**", "src/gen/**", "gen/**"]
+      "outputs": ["artifacts/**"]
     },
     "test": {
       "dependsOn": ["^build", "compact"],
@@ -19,7 +19,6 @@
       "inputs": [
         "src/**/*.ts",
         "!src/**/*.test.ts",
-        "!tests/**/*.ts",
         "tsconfig.json",
         "tsconfig.build.json",
         ".env"
