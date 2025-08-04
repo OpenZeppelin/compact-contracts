@@ -70,7 +70,7 @@ pragma language_version >= 0.16.0;
  */
 module AccessControl {
   import CompactStandardLibrary;
-  import "../../node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
+  import "../utils/Utils" prefix Utils_;
 
   /**
    * @description Mapping from a role identifier -> account -> its permissions.
