@@ -32,7 +32,7 @@ pragma language_version >= 0.16.0;
  */
 module Ownable {
   import CompactStandardLibrary;
-  import "../utils/Initializable" prefix Initializable_;
+  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   export ledger _owner: Either<ZswapCoinPublicKey, ContractAddress>;

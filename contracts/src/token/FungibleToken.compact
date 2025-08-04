@@ -40,7 +40,7 @@ pragma language_version >= 0.16.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
-  import "../utils/Initializable" prefix Initializable_;
+  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   /**
