@@ -8,6 +8,9 @@
 
 * Modules
 
+** xref:access.adoc[Access]
+*** xref:api/access.adoc[API Reference]
+
 ** xref:fungibleToken.adoc[FungibleToken]
 *** xref:/api/fungibleToken.adoc[API Reference]
 
@@ -19,9 +22,6 @@
 
 ** xref:ownable.adoc[Ownable]
 *** xref:api/ownable.adoc[API Reference]
-
-** xref:accessControl.adoc[Access Control]
-*** xref:api/accessControl.adoc[API Reference]
 
 ** xref:utils.adoc[Utils]
 *** xref:api/utils.adoc[API Reference]

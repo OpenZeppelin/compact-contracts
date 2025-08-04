@@ -1,15 +1,137 @@
 :accessControl-guide: xref:accessControl.adoc[AccessControl guide]
 :role-based-access: https://en.wikipedia.org/wiki/Role-based_access_control[Role-Based Access Control (RBAC)]
 
-
 = Access Control
+:steals-system: https://blog.openzeppelin.com/on-the-parity-wallet-multisig-hack-405a8c12e8f7[steals your whole system]
 
-An unshielded Access Control library.
-This module provides a role-based access control mechanism, where roles can be used to represent a set of permissions providing the flexibility to create different levels of account authorization.
+Access control—that is, "who is allowed to do this thing"—is incredibly important in the world of smart contracts.
+The access control of your contract may govern who can mint tokens, vote on proposals, freeze transfers, and many other things.
+It is therefore critical to understand how you implement it, lest someone else {steals-system}.
 
-Roles can be enforced using the `assertOnlyRole` circuit. Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
+== Ownership and `Ownable`
 
-This module does not require initialization; however, one must implement the `Initializable` module in `AccessControl` if a custom `DEFAULT_ADMIN_ROLE` is required.
+The most common and basic form of access control is the concept of ownership:
+there’s an account that is the owner of a contract and can do administrative tasks on it.
+This approach is perfectly reasonable for contracts that have a single administrative user.
+
+OpenZeppelin Contracts for Compact provides an Ownable module for implementing ownership in your contracts.
+The initial owner must be set by using the xref:api/ownable.adoc#Ownable-initialize[initialize] circuit during construction.
+This can later be changed with xref:api/ownable.adoc#Ownable-transferOwnership[transferOwnership].
+
+=== Usage
+
+Import the Ownable module into the implementing contract.
+It's recommended to prefix the module with `Ownable_` to avoid circuit signature clashes.
+
+```ts
+// MyOwnableContract.compact
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/contracts/access/Ownable"
+  prefix Ownable_;
+
+constructor(
+  initialOwner: Either<ZswapCoinPublicKey, ContractAddress>
+) {
+  Ownable_initialize(initialOwner);
+}
+```
+
+To protect a circuit so that only the contract owner may call it,
+insert the `assertOnlyOwner` circuit in the beginning of the circuit body like this:
+
+```ts
+export circuit mySensitiveCircuit(): [] {
+  Ownable_assertOnlyOwner();
+
+  // Do something
+}
+```
+
+Contracts may expose xref:api/ownable.adoc#Ownable-transferOwnership[transferOwnership] to allow the owner to transfer ownership.
+
+```ts
+export circuit transferOwnership(
+  newOwner: Either<ZswapCoinPublicKey, ContractAddress>
+): [] {
+  Ownable_transferOwnership(newOwner);
+}
+```
+
+Here's a complete contract showcasing how to integrate the Ownable module and protect sensitive circuits.
+
+```ts
+// SimpleOwnable.compact
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/contracts/access/Ownable"
+  prefix Ownable_;
+
+/**
+ * Set `initialOwner` as the owner of the contract.
+*/
+constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>) {
+  Ownable_initialize(initialOwner);
+}
+
+/**
+ * The current owner of the contact.
+ */
+export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Ownable_owner();
+}
+
+/**
+ * Transfers ownership of the contract.
+ * Can only be called by the current owner.
+ */
+export circuit transferOwnership(
+  newOwner: Either<ZswapCoinPublicKey, ContractAddress>
+): [] {
+  Ownable_transferOwnership(newOwner);
+}
+
+/**
+ * Leaves the contract without an owner.
+ * Can only be called by the current owner.
+ * Renouncing ownership means `mySensitiveCircuit` can never be called again.
+ */
+export circuit renounceOwnership(): [] {
+  Ownable_renounceOwnership();
+}
+
+/**
+ * This is the protected circuit that only the current owner can call.
+ */
+export circuit mySensitiveCircuit(): [] {
+  // Protects the circuit
+  Ownable_assertOnlyOwner();
+
+  // Do something
+}
+```
+
+TIP: For more complex logic, contracts may transfer ownership to another user irrespective of the caller by leveraging xref:api/ownable.adoc#Ownable-_transferOwnership[_transferOwnership].
+This is generally more useful when contract addresses are the owner or when a contract has a unique deployment process.
+
+=== Ownership transfers
+
+Ownership can only be transferred to `ZswapCoinPublicKeys` through the main transfer circuits (xref:api/ownable.adoc#Ownable-transferOwnership[transferOwnership] and xref:api/ownable.adoc#Ownable-_transferOwnership[_transferOwnership]).
+In other words, ownership transfers to contract addresses are disallowed through these circuits.
+This is because Compact currently does not support contract-to-contract calls which means if a contract is granted ownership, the owner contract cannot directly call the protected circuit.
+
+=== Experimental features
+
+This module offers experimental circuits that allow ownership to be granted to contract addresses (xref:api/ownable.adoc#Ownable-_unsafeTransferOwnership[_unsafeTransferOwnership] and xref:api/ownable.adoc#Ownable-_unsafeUncheckedTransferOwnership[_unsafeUncheckedTransferOwnership]).
+Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
+Until contract-to-contract calls are supported,
+there is no direct way for a contract to call circuits of other contracts or transfer ownership back to a user.
+
+NOTE: The unsafe circuits are planned to become deprecated once contract-to-contract calls become available.
 
 == Role-Based Access Control
 
@@ -38,8 +160,10 @@ Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
-import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+  prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+  prefix FungibleToken_;
 
 export sealed ledger MINTER_ROLE: Bytes<32>;
 
@@ -57,7 +181,10 @@ constructor(
   AccessControl__grantRole(MINTER_ROLE, minter);
 }
 
-export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): [] {
   AccessControl_assertOnlyRole(MINTER_ROLE);
   FungibleToken__mint(recipient, value);
 }
@@ -75,8 +202,10 @@ Let’s augment our FungibleToken example by also defining a 'burner' role, whic
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
-import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+  prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+  prefix FungibleToken_;
 
 export sealed ledger MINTER_ROLE: Bytes<32>;
 export sealed ledger BURNER_ROLE: Bytes<32>;
@@ -98,12 +227,18 @@ constructor(
   AccessControl__grantRole(BURNER_ROLE, burner);
 }
 
-export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): [] {
   AccessControl_assertOnlyRole(MINTER_ROLE);
   FungibleToken__mint(recipient, value);
 }
 
-export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit burn(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): [] {
   AccessControl_assertOnlyRole(BURNER_ROLE);
   FungibleToken__burn(recipient, value);
 }
@@ -133,8 +268,10 @@ Let’s take a look at the FungibleToken example, this time taking advantage of 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/access-control/src/AccessControl" prefix AccessControl_;
-import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+  prefix AccessControl_;
+import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+  prefix FungibleToken_;
 
 export sealed ledger MINTER_ROLE: Bytes<32>;
 export sealed ledger BURNER_ROLE: Bytes<32>;
@@ -152,15 +289,24 @@ constructor(
   BURNER_ROLE = persistentHash<Bytes<32>>(pad(32, "BURNER_ROLE"));
   // Grant the contract deployer the default admin role: it will be able
   // to grant and revoke any roles
-  AccessControl__grantRole(AccessControl_DEFAULT_ADMIN_ROLE, left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()));
+  AccessControl__grantRole(
+    AccessControl_DEFAULT_ADMIN_ROLE,
+    left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()),
+  );
 }
 
-export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+  ): [] {
   AccessControl_assertOnlyRole(MINTER_ROLE);
   FungibleToken__mint(recipient, value);
 }
 
-export circuit burn(recipient: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
+export circuit burn(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+  ): [] {
   AccessControl_assertOnlyRole(BURNER_ROLE);
   FungibleToken__burn(recipient, value);
 }
