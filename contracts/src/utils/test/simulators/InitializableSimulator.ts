@@ -9,7 +9,7 @@ import {
   type Ledger,
   ledger,
   Contract as MockInitializable,
-} from '../../../artifacts/MockInitializable/contract/index.cjs';
+} from '../../../../artifacts/MockInitializable/contract/index.cjs';
 import {
   type InitializablePrivateState,
   InitializableWitnesses,

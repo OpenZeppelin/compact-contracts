@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
-} from '../../../artifacts/MockNonFungibleToken/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockNonFungibleToken/contract/index.cjs'; // Combined imports
 import {
   type NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,

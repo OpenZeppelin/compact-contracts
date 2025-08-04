@@ -9,7 +9,7 @@ import {
   type Ledger,
   ledger,
   Contract as MockPausable,
-} from '../../../artifacts/MockPausable/contract/index.cjs';
+} from '../../../../artifacts/MockPausable/contract/index.cjs';
 import {
   type PausablePrivateState,
   PausableWitnesses,

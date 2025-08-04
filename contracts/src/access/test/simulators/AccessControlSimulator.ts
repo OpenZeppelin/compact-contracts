@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockAccessControl,
   type ZswapCoinPublicKey,
-} from '../../../artifacts/MockAccessControl/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockAccessControl/contract/index.cjs'; // Combined imports
 import {
   type AccessControlPrivateState,
   AccessControlWitnesses,

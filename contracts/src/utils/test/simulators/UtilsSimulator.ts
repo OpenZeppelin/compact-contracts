@@ -12,7 +12,7 @@ import {
   ledger,
   Contract as MockUtils,
   type ZswapCoinPublicKey,
-} from '../../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
 import {
   type UtilsPrivateState,
   UtilsWitnesses,

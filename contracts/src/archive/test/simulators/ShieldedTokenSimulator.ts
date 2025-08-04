@@ -18,7 +18,7 @@ import {
   Contract as MockShielded,
   type SendResult,
   type ZswapCoinPublicKey,
-} from '../../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
 import {
   type ShieldedTokenPrivateState,
   ShieldedTokenWitnesses,

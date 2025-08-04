@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockOwnable,
   type ZswapCoinPublicKey,
-} from '../../../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
 import {
   type OwnablePrivateState,
   OwnableWitnesses,
