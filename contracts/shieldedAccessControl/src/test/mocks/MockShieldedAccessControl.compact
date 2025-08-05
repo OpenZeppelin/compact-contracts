@@ -6,7 +6,14 @@ import CompactStandardLibrary;
 
 import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
 
-export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, ShieldedAccessControl_DEFAULT_ADMIN_ROLE };
+export {
+  ZswapCoinPublicKey,
+  ContractAddress,
+  Either,
+  Maybe,
+  ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
+  ShieldedAccessControl__operatorRoles
+};
 
 export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
   return ShieldedAccessControl_hasRole(roleId, account, nonce);
