@@ -12,7 +12,8 @@ export {
   Either,
   Maybe,
   ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
-  ShieldedAccessControl__operatorRoles
+  ShieldedAccessControl__operatorRoles,
+  ShieldedAccessControl__roleIds
 };
 
 export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
@@ -61,4 +62,12 @@ export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPubl
 
 export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
   return ShieldedAccessControl__revokeRole(roleId, account, nonce);
+}
+
+export circuit recoverNonce(): [] {
+  ShieldedAccessControl_recoverNonce();
+}
+
+export circuit requestRole(roleId: Bytes<32>): [] {
+  ShieldedAccessControl_requestRole(roleId);
 }
