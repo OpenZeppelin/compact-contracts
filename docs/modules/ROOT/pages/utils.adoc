@@ -14,7 +14,7 @@ The Utils module provides miscellaneous circuits and common utilities for Compac
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import './node_modules/@openzeppelin-compact/contracts/utils/Utils';
+import './node_modules/@openzeppelin-compact/contracts/src/utils/Utils';
 
 export circuit performActionWhenEqual(
   a: Either<ZswapCoinPublicKey, ContractAddress>,

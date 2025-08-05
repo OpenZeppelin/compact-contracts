@@ -15,7 +15,7 @@ TIP: For an overview of the module, read the {security-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/contracts/security/Initializable";
+import "./node_modules/@openzeppelin-compact/contracts/src/security/Initializable";
 ```
 
 [.contract-index]
@@ -78,7 +78,7 @@ Constraints:
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/contracts/security/Pausable";
+import "./node_modules/@openzeppelin-compact/contracts/src/security/Pausable";
 
 ```
 

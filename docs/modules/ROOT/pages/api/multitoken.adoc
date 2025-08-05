@@ -16,7 +16,7 @@ TIP: For an overview of the module, read the {multiToken-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/contracts/token/MultiToken";
+import "./node_modules/@openzeppelin-compact/contracts/src/token/MultiToken";
 ```
 
 [.contract-index]

@@ -20,7 +20,7 @@ Many modules also use the initializable pattern which ensures that implementing 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import './node_modules/@openzeppelin-compact/contracts/security/Initializable';
+import './node_modules/@openzeppelin-compact/contracts/src/security/Initializable';
 
 export ledger _fieldAfterDeployment: Field;
 
@@ -66,8 +66,8 @@ For example (using the {ownable} module for access control):
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import './node_modules/@openzeppelin-compact/contracts/security/Initializable' prefix Initializable_;
-import './node_modules/@openzeppelin-compact/contracts/access/Ownable' prefix Ownable_;
+import './node_modules/@openzeppelin-compact/contracts/src/security/Initializable' prefix Initializable_;
+import './node_modules/@openzeppelin-compact/contracts/src/access/Ownable' prefix Ownable_;
 
 constructor(initOwner: Either<ZswapCoinPublicKey, ContractAddress>) {
   Ownable_initialize(initOwner);

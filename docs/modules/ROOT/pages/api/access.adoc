@@ -20,14 +20,14 @@ This directory provides ways to restrict who can access the circuits of a contra
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl";
+import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl";
 ```
 
 Roles are referred to by their `Bytes<32>` identifier. These should be exposed in the top-level contract and be unique. The best way to achieve this is by using `export sealed ledger` hash digests that are initialized in the top-level contract:
 
 ```typescript
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
   prefix AccessControl_;
 
 export sealed ledger MY_ROLE: Bytes<32>;
@@ -236,7 +236,7 @@ Constraints:
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/contracts/access/Ownable";
+import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable";
 ```
 
 Ownable provides a basic access control mechanism where an account (an owner) can be granted exclusive access to specific circuits.

@@ -29,7 +29,7 @@ It's recommended to prefix the module with `Ownable_` to avoid circuit signature
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/access/Ownable"
+import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
   prefix Ownable_;
 
 constructor(
@@ -68,7 +68,7 @@ Here's a complete contract showcasing how to integrate the Ownable module and pr
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/access/Ownable"
+import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
   prefix Ownable_;
 
 /**
@@ -160,9 +160,9 @@ Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
   prefix AccessControl_;
-import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
   prefix FungibleToken_;
 
 export sealed ledger MINTER_ROLE: Bytes<32>;
@@ -202,9 +202,9 @@ Let’s augment our FungibleToken example by also defining a 'burner' role, whic
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
   prefix AccessControl_;
-import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
   prefix FungibleToken_;
 
 export sealed ledger MINTER_ROLE: Bytes<32>;
@@ -268,9 +268,9 @@ Let’s take a look at the FungibleToken example, this time taking advantage of 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/access/AccessControl"
+import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
   prefix AccessControl_;
-import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
   prefix FungibleToken_;
 
 export sealed ledger MINTER_ROLE: Bytes<32>;

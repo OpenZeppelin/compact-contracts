@@ -52,7 +52,7 @@ It's recommended to prefix the module with `NonFungibleToken_` to avoid circuit 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/token/NonFungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/NonFungibleToken"
   prefix NonFungibleToken_;
 
 constructor(
@@ -88,7 +88,7 @@ The following example is a simple non-fungible token contract that mints an NFT 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/token/NonFungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/NonFungibleToken"
   prefix NonFungibleToken_;
 
 constructor(

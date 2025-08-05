@@ -11,7 +11,7 @@ TIP: For an overview of the module, read the {utils-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
+import "./node_modules/@openzeppelin-compact/contracts/src/utils/Utils" prefix Utils_;
 ```
 
 [.contract]

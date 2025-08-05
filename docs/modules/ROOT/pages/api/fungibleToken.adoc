@@ -15,7 +15,7 @@ TIP: For an overview of the module, read the {fungible-guide}.
 
 [.hljs-theme-dark]
 ```ts
-import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken";
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken";
 ```
 
 [.contract-index]

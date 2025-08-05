@@ -47,7 +47,7 @@ It's recommended to prefix the module with `FungibleToken_` to avoid circuit sig
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
   prefix FungibleToken_;
 
 constructor(
@@ -88,7 +88,7 @@ The following example is a simple token contract with a fixed supply that's mint
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/token/FungibleToken"
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
   prefix FungibleToken_;
 
 constructor(
