@@ -110,8 +110,6 @@ module ShieldedAccessControl {
    */
   export ledger _roleCommitmentIndex: Map<Bytes<32>, Uint<64>>;
 
-  export ledger _roleIds: Set<Bytes<32>>;
-
   export ledger _nextIndex: Counter;
 
   export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
@@ -541,10 +539,6 @@ module ShieldedAccessControl {
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
   circuit _addRoleCommitmentToLedger(roleId: Bytes<32>, account: Bytes<32>, nonce: Bytes<32>): [] {
-    if (!_roleIds.member(disclose(roleId))) {
-      _roleIds.insert(disclose(roleId));
-    }
-
     const intermediateRoleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account, nonce]);
     const index = _nextIndex.read();
     const finalRoleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Bytes<32>]);
