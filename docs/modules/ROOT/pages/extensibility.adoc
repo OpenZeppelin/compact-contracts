@@ -41,18 +41,21 @@ This pattern balances modularity with local control, avoids tight coupling, and 
 
 ```ts
 /** FungibleTokenMintablePausableOwnableContract */
+
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-
-import FungibleToken prefix FungibleToken_;
-import Pausable prefix Pausable_;
-import Ownable prefix Ownable_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+  prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/security/Pausable"
+  prefix Pausable_;
+import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
+  prefix Ownable_;
 
 constructor(
-  _name: Maybe<Opaque<"string">>,
-  _symbol: Maybe<Opaque<"string">>,
-  _decimals:Uint<8>,
+  _name: Opaque<"string">,
+  _symbol: Opaque<"string">,
+  _decimals: Uint<8>,
   _owner: Either<ZswapCoinPublicKey, ContractAddress>
 ) {
   FungibleToken_initialize(_name, _symbol, _decimals);
@@ -94,7 +97,7 @@ export circuit allowance(
 
 export circuit transfer(
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
+  value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
   return FungibleToken_transfer(to, value);
@@ -103,7 +106,7 @@ export circuit transfer(
 export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
+  value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
   return FungibleToken_transferFrom(from, to, value);
@@ -111,7 +114,7 @@ export circuit transferFrom(
 
 export circuit approve(
   spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
+  value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
   return FungibleToken_approve(spender, value);
@@ -121,7 +124,7 @@ export circuit approve(
 
 export circuit mint(
   account: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
+  value: Uint<128>,
 ): [] {
   Pausable_assertNotPaused();
   Ownable_assertOnlyOwner();
