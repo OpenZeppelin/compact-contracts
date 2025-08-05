@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Initializable
@@ -13,6 +13,8 @@ module Initializable {
 
   /**
    * @description Initializes the state thus ensuring the calling circuit can only be called once.
+   *
+   * @circuitInfo k=10, rows=38
    *
    * Requirements:
    *
@@ -28,6 +30,8 @@ module Initializable {
   /**
    * @description Asserts that the contract has been initialized, throwing an error if not.
    *
+   * @circuitInfo k=10, rows=31
+   *
    * Requirements:
    *
    * - Contract must be initialized.
@@ -35,11 +39,13 @@ module Initializable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertInitialized(): [] {
-    assert _isInitialized "Initializable: contract not initialized";
+    assert(_isInitialized, "Initializable: contract not initialized");
   }
 
   /**
    * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * @circuitInfo k=10, rows=35
    *
    * Requirements:
    *
@@ -48,6 +54,6 @@ module Initializable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertNotInitialized(): [] {
-    assert !_isInitialized "Initializable: contract already initialized";
+    assert(!_isInitialized, "Initializable: contract already initialized");
   }
 }

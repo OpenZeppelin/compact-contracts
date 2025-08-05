@@ -19,7 +19,7 @@ import { CompactCompiler } from './Compiler.js';
  * ℹ [COMPILE] COMPACTC_PATH: /path/to/compactc/compactc
  * ℹ [COMPILE] Found 1 .compact file(s) to compile
  * ✔ [COMPILE] [1/1] Compiled Foo.compact
- *     Compactc version: 0.22.0
+ *     Compactc version: 0.24.0
  * ```
  */
 async function runCompiler(): Promise<void> {

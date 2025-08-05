@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module MultiToken
@@ -97,6 +97,8 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
+   * @circuitInfo k=10, rows=45
+   *
    * Requirements:
    *
    * - Must be called in the contract's constructor.
@@ -116,6 +118,8 @@ module MultiToken {
    * Clients calling this function must replace the `\{id\}` substring with the
    * actual token type ID.
    *
+   * @circuitInfo k=10, rows=90
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -132,6 +136,8 @@ module MultiToken {
   /**
    * @description Returns the amount of `id` tokens owned by `account`.
    *
+   * @circuitInfo k=10, rows=439
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -143,14 +149,16 @@ module MultiToken {
   export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
     Initializable_assertInitialized();
 
-    if (!_balances.member(id) || !_balances.lookup(id).member(account)) {
+    if (!_balances.member(disclose(id)) || !_balances.lookup(id).member(disclose(account))) {
       return 0;
     }
-    return _balances.lookup(id).lookup(account);
+    return _balances.lookup(id).lookup(disclose(account));
   }
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   *
+   * @circuitInfo k=10, rows=404
    *
    * Requirements:
    *
@@ -167,12 +175,14 @@ module MultiToken {
     Initializable_assertInitialized();
 
     // TODO: Contract-to-contract calls not yet supported.
-    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
     _setApprovalForAll(caller, operator, approved);
   }
 
   /**
    * @description Queries if `operator` is an authorized operator for `owner`.
+   *
+   * @circuitInfo k=10, rows=619
    *
    * Requirements:
    *
@@ -188,16 +198,18 @@ module MultiToken {
   ): Boolean {
     Initializable_assertInitialized();
 
-    if (!_operatorApprovals.member(account) || !_operatorApprovals.lookup(account).member(operator)) {
+    if (!_operatorApprovals.member(disclose(account)) || !_operatorApprovals.lookup(account).member(disclose(operator))) {
       return false;
     }
 
-    return _operatorApprovals.lookup(account).lookup(operator);
+    return _operatorApprovals.lookup(account).lookup(disclose(operator));
   }
 
   /**
    * @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
    * The caller must be `from` or approved to transfer on their behalf.
+   *
+   * @circuitInfo k=11, rows=1882
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -227,7 +239,7 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
-    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    assert(!Utils_isContractAddress(to), "MultiToken: unsafe transfer");
     _unsafeTransferFrom(from, to, id, value);
   }
 
@@ -235,6 +247,8 @@ module MultiToken {
    * @description Transfers ownership of `value` amount of `id` tokens from `from` to `to`.
    * Does not impose restrictions on the caller, making it suitable for composition
    * in higher-level contract logic.
+   *
+   * @circuitInfo k=11, rows=1487
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -260,13 +274,15 @@ module MultiToken {
     id: Uint<128>,
     value: Uint<128>
   ): [] {
-    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    assert(!Utils_isContractAddress(to), "MultiToken: unsafe transfer");
     _unsafeTransfer(from, to, id, value);
   }
 
   /**
    * @description Transfers a value amount of tokens of type id from from to to.
    * This circuit will mint (or burn) if `from` (or `to`) is the zero address.
+   *
+   * @circuitInfo k=11, rows=1482
    *
    * Requirements:
    *
@@ -287,25 +303,25 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    if (!Utils_isKeyOrAddressZero(from)) {
+    if (!Utils_isKeyOrAddressZero(disclose(from))) {
       const fromBalance = balanceOf(from, id);
-      assert fromBalance >= value "MultiToken: insufficient balance";
+      assert(fromBalance >= value, "MultiToken: insufficient balance");
       // overflow not possible
       const newBalance = fromBalance - value;
-      _balances.lookup(id).insert(from, newBalance);
+      _balances.lookup(id).insert(disclose(from), disclose(newBalance));
     }
 
-    if (!Utils_isKeyOrAddressZero(to)) {
+    if (!Utils_isKeyOrAddressZero(disclose(to))) {
       // id not initialized
-      if (!_balances.member(id)) {
-        _balances.insert(id, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
-        _balances.lookup(id).insert(to, value as Uint<128>);
+      if (!_balances.member(disclose(id))) {
+        _balances.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
+        _balances.lookup(id).insert(disclose(to), disclose(value as Uint<128>));
       } else {
         const toBalance = balanceOf(to, id);
        // TODO: Replace with Max_Uint128()
         const MAX_UINT128 = 340282366920938463463374607431768211455;
-        assert MAX_UINT128 - toBalance >= value "MultiToken: arithmetic overflow";
-        _balances.lookup(id).insert(to, toBalance + value as Uint<128>);
+        assert(MAX_UINT128 - toBalance >= value, "MultiToken: arithmetic overflow");
+        _balances.lookup(id).insert(disclose(to), disclose(toBalance + value as Uint<128>));
       }
     }
   }
@@ -313,6 +329,8 @@ module MultiToken {
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    * The caller must be `from` or approved to transfer on their behalf.
+   *
+   * @circuitInfo k=11, rows=1881
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -342,9 +360,9 @@ module MultiToken {
 
     // TODO: Contract-to-contract calls not yet supported.
     // Once available, handle ContractAddress recipients here.
-    const caller = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-    if (from != caller) {
-      assert isApprovedForAll(from, caller) "MultiToken: unauthorized operator";
+    const caller = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    if (disclose(from) != caller) {
+      assert(isApprovedForAll(from, caller), "MultiToken: unauthorized operator");
     }
 
     _unsafeTransfer(from, to, id, value);
@@ -354,6 +372,8 @@ module MultiToken {
    * @description Unsafe variant of `_transfer` which allows transfers to contract addresses.
    * Does not impose restrictions on the caller, making it suitable as a low-level
    * building block for advanced contract logic.
+   *
+   * @circuitInfo k=11, rows=1486
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -380,8 +400,8 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
-    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
+    assert(!Utils_isKeyOrAddressZero(from), "MultiToken: invalid sender");
+    assert(!Utils_isKeyOrAddressZero(to), "MultiToken: invalid receiver");
     _update(from, to, id, value);
   }
 
@@ -389,6 +409,8 @@ module MultiToken {
    * @description Sets a new URI for all token types, by relying on the token type ID
    * substitution mechanism defined in the MultiToken standard.
    * See https://eips.ethereum.org/EIPS/eip-1155#metadata.
+   *
+   * @circuitInfo k=10, rows=39
    *
    * @notice By this mechanism, any occurrence of the `\{id\}` substring in either the
    * URI or any of the values in the JSON file at said URI will be replaced by
@@ -409,11 +431,13 @@ module MultiToken {
   export circuit _setURI(newURI: Opaque<"string">): [] {
     Initializable_assertInitialized();
 
-    _uri = newURI;
+    _uri = disclose(newURI);
   }
 
   /**
    * @description Creates a `value` amount of tokens of type `token_id`, and assigns them to `to`.
+   *
+   * @circuitInfo k=10, rows=912
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -431,12 +455,14 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
-    assert !Utils_isContractAddress(to) "MultiToken: unsafe transfer";
+    assert(!Utils_isContractAddress(to), "MultiToken: unsafe transfer");
     _unsafeMint(to, id, value);
   }
 
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
+   *
+   * @circuitInfo k=10, rows=911
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -455,12 +481,14 @@ module MultiToken {
   export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(to) "MultiToken: invalid receiver";
-    _update(burn_address(), to, id, value);
+    assert(!Utils_isKeyOrAddressZero(to), "MultiToken: invalid receiver");
+    _update(burnAddress(), to, id, value);
   }
 
   /**
    * @description Destroys a `value` amount of tokens of type `token_id` from `from`.
+   *
+   * @circuitInfo k=10, rows=688
    *
    * Requirements:
    *
@@ -476,12 +504,15 @@ module MultiToken {
   export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(from) "MultiToken: invalid sender";
-    _update(from, burn_address(), id, value);
+    assert(!Utils_isKeyOrAddressZero(from), "MultiToken: invalid sender");
+    _update(from, burnAddress(), id, value);
   }
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
+   *
+   * @circuitInfo k=10, rows=518
+   *
    * @notice This circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *
@@ -504,11 +535,11 @@ module MultiToken {
   ): [] {
     Initializable_assertInitialized();
 
-    assert !Utils_isKeyOrAddressZero(operator) "MultiToken: invalid operator";
-    if (!_operatorApprovals.member(owner)) {
-      _operatorApprovals.insert(owner, default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+    assert(!Utils_isKeyOrAddressZero(operator), "MultiToken: invalid operator");
+    if (!_operatorApprovals.member(disclose(owner))) {
+      _operatorApprovals.insert(disclose(owner), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
     }
 
-    _operatorApprovals.lookup(owner).insert(operator, approved);
+    _operatorApprovals.lookup(owner).insert(disclose(operator), disclose(approved));
   }
 }

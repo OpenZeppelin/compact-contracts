@@ -38,6 +38,10 @@ Requirements:
 
 - Contract must not be initialized.
 
+Constraints:
+
+- k=10, rows=38
+
 [.contract-item]
 [[InitializableModule-assertInitialized]]
 ==== `[.contract-item-name]#++assertInitialized++#++() → []++` [.item-kind]#circuit#
@@ -48,6 +52,10 @@ Requirements:
 
 - Contract must be initialized.
 
+Constraints:
+
+- k=10, rows=31
+
 [.contract-item]
 [[InitializableModule-assertNotInitialized]]
 ==== `[.contract-item-name]#++assertNotInitialized++#++() → []++` [.item-kind]#circuit#
@@ -57,6 +65,10 @@ Asserts that the contract has not been initialized, throwing an error if it has.
 Requirements:
 
 - Contract must not be initialized.
+
+Constraints:
+
+- k=10, rows=35
 
 == Pausable
 
@@ -87,6 +99,10 @@ import "./node_modules/@openzeppelin-compact/utils/src/Pausable" prefix Pausable
 
 Returns true if the contract is paused, and false otherwise.
 
+Constraints:
+
+- k=10, rows=32
+
 [.contract-item]
 [[PausableModule-assertPaused]]
 ==== `[.contract-item-name]#++assertPaused++#++() → []++` [.item-kind]#circuit#
@@ -96,6 +112,10 @@ Makes a circuit only callable when the contract is paused.
 Requirements:
 
 - Contract must be paused.
+
+Constraints:
+
+- k=10, rows=31
 
 [.contract-item]
 [[PausableModule-assertNotPaused]]
@@ -107,6 +127,10 @@ Requirements:
 
 - Contract must not be paused.
 
+Constraints:
+
+- k=10, rows=35
+
 [.contract-item]
 [[PausableModule-_pause]]
 ==== `[.contract-item-name]#++_pause++#++() → []++` [.item-kind]#circuit#
@@ -116,6 +140,10 @@ Triggers a stopped state.
 Requirements:
 
 - Contract must not be paused.
+
+Constraints:
+
+- k=10, rows=38
 
 [.contract-item]
 [[PausableModule-_unpause]]
@@ -127,6 +155,10 @@ Requirements:
 
 - Contract must be paused.
 
+Constraints:
+
+- k=10, rows=34
+
 == Utils
 
 [.hljs-theme-dark]
@@ -137,6 +169,8 @@ import "./node_modules/@openzeppelin-compact/utils/src/Utils" prefix Utils_;
 [.contract]
 [[Utils]]
 === `++Utils++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/utils/src/Utils.compact[{github-icon},role=heading-link]
+
+NOTE: There's no easy way to get the constraints of pure circuits at this time so the constraints of the circuits listed below have been omitted.
 
 [.contract-index]
 .Circuits

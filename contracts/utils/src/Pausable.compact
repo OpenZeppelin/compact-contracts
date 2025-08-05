@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Pausable
@@ -16,6 +16,8 @@ module Pausable {
   /**
    * @description Returns true if the contract is paused, and false otherwise.
    *
+   * @circuitInfo k=10, rows=32
+   *
    * @return {Boolean} True if paused.
    */
   export circuit isPaused(): Boolean {
@@ -25,6 +27,8 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is paused.
    *
+   * @circuitInfo k=10, rows=31
+   *
    * Requirements:
    *
    * - Contract must be paused.
@@ -32,11 +36,13 @@ module Pausable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertPaused(): [] {
-    assert _isPaused "Pausable: not paused";
+    assert(_isPaused, "Pausable: not paused");
   }
 
   /**
    * @description Makes a circuit only callable when the contract is not paused.
+   *
+   * @circuitInfo k=10, rows=35
    *
    * Requirements:
    *
@@ -45,11 +51,13 @@ module Pausable {
    * @return {[]} - Empty tuple.
    */
   export circuit assertNotPaused(): [] {
-    assert !_isPaused "Pausable: paused";
+    assert(!_isPaused, "Pausable: paused");
   }
 
   /**
    * @description Triggers a stopped state.
+   *
+   * @circuitInfo k=10, rows=38
    *
    * Requirements:
    *
@@ -64,6 +72,8 @@ module Pausable {
 
   /**
    * @description Lifts the pause on the contract.
+   *
+   * @circuitInfo k=10, rows=34
    *
    * Requirements:
    *

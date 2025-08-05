@@ -63,6 +63,10 @@ Requirements:
 
 - Contract is not initialized.
 
+Constraints:
+
+- k=10, rows=65
+
 [.contract-item]
 [[NonFungibleTokenModule-balanceOf]]
 ==== `[.contract-item-name]#++balanceOf++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>) → Uint<128>++` [.item-kind]#circuit#
@@ -72,6 +76,10 @@ Returns the number of tokens in ``owner``'s account.
 Requirements:
 
 - Contract is initialized.
+
+Constraints:
+
+- k=10, rows=309
 
 [.contract-item]
 [[NonFungibleTokenModule-ownerOf]]
@@ -84,6 +92,10 @@ Requirements:
 - The contract is initialized.
 - The `tokenId` must exist.
 
+Constraints:
+
+- k=10, rows=290
+
 [.contract-item]
 [[NonFungibleTokenModule-name]]
 ==== `[.contract-item-name]#++name++#++() → Opaque<"string">++` [.item-kind]#circuit#
@@ -94,6 +106,10 @@ Requirements:
 
 - Contract is initialized.
 
+Constraints:
+
+- k=10, rows=36
+
 [.contract-item]
 [[NonFungibleTokenModule-symbol]]
 ==== `[.contract-item-name]#++symbol++#++() → Opaque<"string">++` [.item-kind]#circuit#
@@ -103,6 +119,10 @@ Returns the symbol of the token.
 Requirements:
 
 - Contract is initialized.
+
+Constraints:
+
+- k=10, rows=36
 
 [.contract-item]
 [[NonFungibleTokenModule-tokenURI]]
@@ -120,6 +140,10 @@ NOTE: Native strings and string operations aren't supported within the Compact l
 Therefore, we propose the URI storage approach; whereby, NFTs may or may not have unique "base" URIs.
 It's up to the implementation to decide on how to handle this.
 
+Constraints:
+
+- k=10, rows=296
+
 [.contract-item]
 [[NonFungibleTokenModule-_setTokenURI]]
 ==== `[.contract-item-name]#++_setTokenURI++#++(tokenId: Uint<128>, tokenURI: Opaque<"string">) → []++` [.item-kind]#circuit#
@@ -132,6 +156,10 @@ Requirements:
 - The `tokenId` must exist.
 
 NOTE: The URI for a given NFT is usually set when the NFT is minted.
+
+Constraints:
+
+- k=10, rows=253
 
 [.contract-item]
 [[NonFungibleTokenModule-approve]]
@@ -149,6 +177,10 @@ Requirements:
 - The caller must either own the token or be an approved operator.
 - `tokenId` must exist.
 
+Constraints:
+
+- k=10, rows=966
+
 [.contract-item]
 [[NonFungibleTokenModule-getApproved]]
 ==== `[.contract-item-name]#++getApproved++#++(tokenId: Uint<128>) → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
@@ -159,6 +191,10 @@ Requirements:
 
 - The contract is initialized.
 - `tokenId` must exist.
+
+Constraints:
+
+- k=10, rows=409
 
 [.contract-item]
 [[NonFungibleTokenModule-setApprovalForAll]]
@@ -172,6 +208,10 @@ Requirements:
 - The contract is initialized.
 - The `operator` cannot be the zero address.
 
+Constraints:
+
+- k=10, rows=409
+
 [.contract-item]
 [[NonFungibleTokenModule-isApprovedForAll]]
 ==== `[.contract-item-name]#++isApprovedForAll++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean++` [.item-kind]#circuit#
@@ -181,6 +221,10 @@ Returns if the `operator` is allowed to manage all of the assets of `owner`.
 Requirements:
 
 - The contract must have been initialized.
+
+Constraints:
+
+- k=10, rows=621
 
 [.contract-item]
 [[NonFungibleTokenModule-transferFrom]]
@@ -200,6 +244,10 @@ Requirements:
 - `tokenId` token must be owned by `from`.
 - If the caller is not `from`, it must be approved to move this token by either <<NonFungibleTokenModule-approve, approve>> or <<NonFungibleTokenModule-setApprovalForAll, setApprovalForAll>>.
 
+Constraints:
+
+- k=11, rows=1966
+
 [.contract-item]
 [[NonFungibleTokenModule-_unsafeTransferFrom]]
 ==== `[.contract-item-name]#++_unsafeTransferFrom++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>) → []++` [.item-kind]#circuit#
@@ -218,6 +266,10 @@ Requirements:
 - `tokenId` token must be owned by `from`.
 - If the caller is not `from`, it must be approved to move this token by either <<NonFungibleTokenModule-approve, approve>> or <<NonFungibleTokenModule-setApprovalForAll, setApprovalForAll>>.
 
+Constraints:
+
+- k=11, rows=1963
+
 [.contract-item]
 [[NonFungibleTokenModule-_ownerOf]]
 ==== `[.contract-item-name]#++_ownerOf++#++(tokenId: Uint<128>) → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
@@ -228,6 +280,10 @@ Requirements:
 
 - The contract is initialized.
 
+Constraints:
+
+- k=10, rows=253
+
 [.contract-item]
 [[NonFungibleTokenModule-_getApproved]]
 ==== `[.contract-item-name]#++_getApproved++#++(tokenId: Uint<128>) → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#circuit#
@@ -237,6 +293,10 @@ Returns the approved address for `tokenId`. Returns the zero address if `tokenId
 Requirements:
 
 - The contract is initialized.
+
+Constraints:
+
+- k=10, rows=253
 
 [.contract-item]
 [[NonFungibleTokenModule-_isAuthorized]]
@@ -249,6 +309,10 @@ Requirements:
 - The contract is initialized.
 
 WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this assumption.
+
+Constraints:
+
+- k=11, rows=1098
 
 [.contract-item]
 [[NonFungibleTokenModule-_checkAuthorized]]
@@ -263,6 +327,10 @@ Requirements:
 
 WARNING: This function assumes that `owner` is the actual owner of `tokenId` and does not verify this assumption.
 
+Constraints:
+
+- k=11, rows=1121
+
 [.contract-item]
 [[NonFungibleTokenModule-_update]]
 ==== `[.contract-item-name]#++_update++#++(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>, auth: Either<ZswapCoinPublicKey, ContractAddress>) → Either<ZswapCoinPublicKey, ContractAddress>++` [.item-kind]#internal#
@@ -274,6 +342,10 @@ Requirements:
 
 - The contract is initialized.
 - If `auth` is non 0, then this function will check that `auth` is either the owner of the token, or approved to operate on the token (by the owner).
+
+Constraints:
+
+- k=12, rows=2049
 
 [.contract-item]
 [[NonFungibleTokenModule-_mint]]
@@ -287,6 +359,10 @@ Requirements:
 - `tokenId` must not exist.
 - `to` is not the zero address.
 - `to` is not a ContractAddress.
+
+Constraints:
+
+- k=10, rows=1013
 
 [.contract-item]
 [[NonFungibleTokenModule-_unsafeMint]]
@@ -304,6 +380,10 @@ WARNING: Transfers to contract addresses are considered unsafe because contract-
 Tokens sent to a contract address may become irretrievable.
 Once contract-to-contract calls are supported, this circuit may be deprecated.
 
+Constraints:
+
+- k=10, rows=1010
+
 [.contract-item]
 [[NonFungibleTokenModule-_burn]]
 ==== `[.contract-item-name]#++_burn++#++(tokenId: Uint<128>) → []++` [.item-kind]#circuit#
@@ -317,11 +397,15 @@ Requirements:
 - The contract is initialized.
 - `tokenId` must exist.
 
+Constraints:
+
+- k=10, rows=479
+
 [.contract-item]
 [[NonFungibleTokenModule-_transfer]]
 ==== `[.contract-item-name]#++_transfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>) → []++` [.item-kind]#circuit#
 
-Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-transferFrom,transferFrom>>, this imposes no restrictions on `own_public_key()`.
+Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-transferFrom,transferFrom>>, this imposes no restrictions on `ownPublicKey()`.
 
 NOTE: Transfers to contract addresses are currently disallowed until contract-to-contract interactions are supported in Compact.
 This restriction prevents assets from being inadvertently locked in contracts that cannot currently handle token receipt.
@@ -333,13 +417,17 @@ Requirements:
 - `to` is not a ContractAddress.
 - `tokenId` token must be owned by `from`.
 
+Constraints:
+
+- k=11, rows=1224
+
 [.contract-item]
 [[NonFungibleTokenModule-_unsafeTransfer]]
 ==== `[.contract-item-name]#++_unsafeTransfer++#++(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>) → []++` [.item-kind]#circuit#
 
 Unsafe variant of <<NonFungibleTokenModule-_transfer,_transfer>> which allows transfers to contract addresses.
 
-Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-_unsafeTransferFrom,_unsafeTransferFrom>>, this imposes no restrictions on `own_public_key()`. It does NOT check if the recipient is a `ContractAddress`.
+Transfers `tokenId` from `from` to `to`. As opposed to <<NonFungibleTokenModule-_unsafeTransferFrom,_unsafeTransferFrom>>, this imposes no restrictions on `ownPublicKey()`. It does NOT check if the recipient is a `ContractAddress`.
 
 WARNING: Transfers to contract addresses are considered unsafe because contract-to-contract calls are not currently supported. Tokens sent to a contract address may become irretrievable.
 Once contract-to-contract calls are supported, this circuit may be deprecated.
@@ -349,6 +437,10 @@ Requirements:
 - Contract is initialized.
 - `to` is not the zero address.
 - `tokenId` token must be owned by `from`.
+
+Constraints:
+
+- k=11, rows=1221
 
 [.contract-item]
 [[NonFungibleTokenModule-_approve]]
@@ -361,6 +453,10 @@ Requirements:
 - The contract is initialized.
 - If `auth` is non 0, then this function will check that `auth` is either the owner of the token, or approved to operate on the token (by the owner).
 
+Constraints:
+
+- k=11, rows=1109
+
 [.contract-item]
 [[NonFungibleTokenModule-_setApprovalForAll]]
 ==== `[.contract-item-name]#++_setApprovalForAll++#++(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean) → []++` [.item-kind]#circuit#
@@ -371,6 +467,10 @@ Requirements:
 
 - The contract is initialized.
 - `operator` is not the zero address.
+
+Constraints:
+
+- k=10, rows=524
 
 [.contract-item]
 [[NonFungibleTokenModule-_requireOwned]]
@@ -383,3 +483,7 @@ Requirements:
 
 - The contract is initialized.
 - `tokenId` must exist.
+
+Constraints:
+
+- k=10, rows=288

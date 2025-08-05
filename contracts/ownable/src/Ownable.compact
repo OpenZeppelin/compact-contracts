@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module Ownable
@@ -41,6 +41,8 @@ module Ownable {
    * @description Initializes the contract by setting the `initialOwner`.
    * This must be called in the contract's constructor.
    *
+   * @circuitInfo k=10, rows=258
+   *
    * Requirements:
    *
    * - Contract is not already initialized.
@@ -52,12 +54,14 @@ module Ownable {
    */
   export circuit initialize(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_initialize();
-    assert !Utils_isKeyOrAddressZero(initialOwner) "Ownable: invalid initial owner";
+    assert(!Utils_isKeyOrAddressZero(initialOwner), "Ownable: invalid initial owner");
     _transferOwnership(initialOwner);
   }
 
   /**
    * @description Returns the current contract owner.
+   *
+   * @circuitInfo k=10, rows=84
    *
    * Requirements:
    *
@@ -72,6 +76,8 @@ module Ownable {
 
   /**
    * @description Transfers ownership of the contract to `newOwner`.
+   *
+   * @circuitInfo k=10, rows=338
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
@@ -89,12 +95,14 @@ module Ownable {
    */
   export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(newOwner) "Ownable: unsafe ownership transfer";
+    assert(!Utils_isContractAddress(newOwner), "Ownable: unsafe ownership transfer");
     _unsafeTransferOwnership(newOwner);
   }
 
   /**
    * @description Unsafe variant of `transferOwnership`.
+   *
+   * @circuitInfo k=10, rows=335
    *
    * @warning Ownership transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported.
@@ -113,7 +121,7 @@ module Ownable {
   export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
     assertOnlyOwner();
-    assert !Utils_isKeyOrAddressZero(newOwner) "Ownable: invalid new owner";
+    assert(!Utils_isKeyOrAddressZero(newOwner), "Ownable: invalid new owner");
     _unsafeUncheckedTransferOwnership(newOwner);
   }
 
@@ -121,6 +129,8 @@ module Ownable {
    * @description Leaves the contract without an owner.
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
+   *
+   * @circuitInfo k=10, rows=124
    *
    * Requirements:
    *
@@ -132,12 +142,14 @@ module Ownable {
   export circuit renounceOwnership(): [] {
     Initializable_assertInitialized();
     assertOnlyOwner();
-    _transferOwnership(burn_address());
+    _transferOwnership(burnAddress());
   }
 
   /**
    * @description Throws if called by any account other than the owner.
    * Use this to restrict access of specific circuits to the owner.
+   *
+   * @circuitInfo k=10, rows=115
    *
    * Requirements:
    *
@@ -148,13 +160,15 @@ module Ownable {
    */
   export circuit assertOnlyOwner(): [] {
     Initializable_assertInitialized();
-    const caller = own_public_key();
-    assert caller == _owner.left "Ownable: caller is not the owner";
+    const caller = ownPublicKey();
+    assert(caller == _owner.left, "Ownable: caller is not the owner");
   }
 
   /**
    * @description Transfers ownership of the contract to `newOwner` without
    * enforcing permission checks on the caller.
+   *
+   * @circuitInfo k=10, rows=219
    *
    * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact.
@@ -170,12 +184,14 @@ module Ownable {
    */
   export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    assert !Utils_isContractAddress(newOwner) "Ownable: unsafe ownership transfer";
+    assert(!Utils_isContractAddress(newOwner), "Ownable: unsafe ownership transfer");
     _unsafeUncheckedTransferOwnership(newOwner);
   }
 
   /**
    * @description Unsafe variant of `_transferOwnership`.
+   *
+   * @circuitInfo k=10, rows=216
    *
    * @warning Ownership transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported.
@@ -191,6 +207,6 @@ module Ownable {
    */
   export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
-    _owner = newOwner;
+    _owner = disclose(newOwner);
   }
 }

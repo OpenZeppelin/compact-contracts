@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 /**
  * @module ShieldedToken (archived until further notice, DO NOT USE IN PRODUCTION)
@@ -55,11 +55,11 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
     symbol_: Maybe<Opaque<"string">>,
     decimals_ :Uint<8>
   ): [] {
-    _nonce = initNonce;
+    _nonce = disclose(initNonce);
     _domain = pad(32, "ShieldedToken");
-    _name = name_;
-    _symbol = symbol_;
-    _decimals = decimals_;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
+    _decimals = disclose(decimals_);
   }
 
   /**
@@ -111,13 +111,13 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
    * @return {CoinInfo} - The description of the newly created coin.
    */
   export circuit mint(recipient: Either<ZswapCoinPublicKey, ContractAddress>, amount: Uint<64>): CoinInfo {
-    assert !Utils_isKeyOrAddressZero(recipient) "ShieldedToken: invalid recipient";
+    assert(!Utils_isKeyOrAddressZero(recipient), "ShieldedToken: invalid recipient");
 
     _counter.increment(1);
-    const newNonce = evolve_nonce(_counter, _nonce);
+    const newNonce = evolveNonce(_counter, _nonce);
     _nonce = newNonce;
-    const ret = mint_token(_domain, amount, _nonce, recipient);
-    _totalSupply = _totalSupply + amount as Uint<64>;
+    const ret = mintToken(_domain, disclose(amount), _nonce, disclose(recipient));
+    _totalSupply = disclose(_totalSupply + amount as Uint<64>);
     return ret;
   }
 
@@ -133,18 +133,18 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
    * spending the output if available.
    */
   export circuit burn(coin: CoinInfo, amount: Uint<64>): SendResult {
-    assert coin.color == token_type(_domain, kernel.self()) "ShieldedToken: token not created from this contract";
-    assert coin.value >= amount "ShieldedToken: insufficient token amount to burn";
+    assert(coin.color == tokenType(_domain, kernel.self()), "ShieldedToken: token not created from this contract");
+    assert(coin.value >= amount, "ShieldedToken: insufficient token amount to burn");
 
-    receive(coin);
-    _totalSupply = _totalSupply - amount;
+    receive(disclose(coin));
+    _totalSupply = disclose(_totalSupply - amount);
 
-    const sendRes = send_immediate(coin, burn_address(), amount);
-    if (sendRes.change.is_some) {
+    const sendRes = sendImmediate(disclose(coin), burnAddress(), disclose(amount));
+    if (disclose(sendRes.change.is_some)) {
       // tmp for only zswap because we should be able to handle contracts burning tokens
       // and returning change.
-      const tmpAddr = left<ZswapCoinPublicKey, ContractAddress>(own_public_key());
-      send_immediate(sendRes.change.value, tmpAddr, sendRes.change.value.value);
+      const tmpAddr = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+      sendImmediate(disclose(sendRes.change.value), tmpAddr, disclose(sendRes.change.value.value));
     }
 
     return sendRes;
