@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
 
@@ -18,6 +18,10 @@ export circuit assertOnlyRole(roleId: Bytes<32>, nonce: Bytes<32>): [] {
 
 export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): [] {
   ShieldedAccessControl__checkRole(roleId, account, nonce);
+}
+
+export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>, nonce: Bytes<32>): Boolean {
+  return ShieldedAccessControl__checkMerkleTree(roleId, account, nonce);
 }
 
 export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
