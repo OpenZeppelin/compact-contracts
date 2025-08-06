@@ -110,13 +110,27 @@ module ShieldedAccessControl {
    */
   export ledger _roleCommitmentIndex: Map<Bytes<32>, Uint<64>>;
 
+  /**
+   * @description A counter tracking the next available index in the `_operatorRoles` MerkleTree
+   */
   export ledger _nextIndex: Counter;
 
   export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
 
+  /**
+   * @description Returns the Merkle path, given the knowledge that a `roleCommitment` is at the given index.
+   *
+   * Requirements:
+   *
+   * - It is an error to call this if this if `roleCommitment` is not contained at the given index.
+   *
+   * @circuitInfo
+   *
+   * @param {Bytes<32>} roleCommitment - The role identifier.
+   * @param {Uint<64>} index - An index in the `_operatorRoles` MerkleTree
+   * @return {MerkleTreePath<10, Bytes<32>>} - The Merkle path of `roleCommitment` in the `_operatorRoles` Merkle Tree
+   */
   witness getRoleCommitmentPath(roleCommitment: Bytes<32>, index: Uint<64>): MerkleTreePath<10, Bytes<32>>;
-  witness _requestRole(roleId: Bytes<32>): [];
-  witness _recoverNonce(): [];
 
   /**
    * @description Returns `true` if `account` has been granted `roleId`.
@@ -570,13 +584,5 @@ module ShieldedAccessControl {
     const index = _roleCommitmentIndex.lookup(disclose(intermediateRoleCommitment));
     const finalRoleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Bytes<32>]);
     _roleCommitmentNullifiers.insert(disclose(finalRoleCommitment));
-  }
-
-  export circuit requestRole(roleId: Bytes<32>): [] {
-    _requestRole(roleId);
-  }
-
-  export circuit recoverNonce(): [] {
-    _recoverNonce();
   }
 }
