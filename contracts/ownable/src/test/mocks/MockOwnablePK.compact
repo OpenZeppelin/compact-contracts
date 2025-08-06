@@ -21,7 +21,7 @@ export circuit pendingOwner(): Bytes<32> {
 }
 
 export circuit transferOwnership(newOwner: ZswapCoinPublicKey): [] {
-  return OwnablePK_transferOwnership(newOwner);
+  return OwnablePK_transferOwnership(disclose(newOwner));
 }
 
 export circuit acceptOwnership(): [] {
@@ -45,5 +45,5 @@ export circuit _transferOwnership(newOwner: Bytes<32>): [] {
 }
 
 export circuit _proposeOwner(newOwner: ZswapCoinPublicKey): [] {
-  return OwnablePK__proposeOwner(newOwner);
+  return OwnablePK__proposeOwner(disclose(newOwner));
 }

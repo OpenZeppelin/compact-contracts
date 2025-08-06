@@ -42,9 +42,9 @@ module OwnablePK {
    * @returns {[]} - None.
    */
   export circuit initializer(initOwner: ZswapCoinPublicKey): [] {
-    assert initOwner != burn_address().left "OwnablePK: new owner cannot be zero";
+    assert(initOwner != burnAddress().left, "OwnablePK: new owner cannot be zero");
     const nextInstance = _instance + 1 as Field as Bytes<32>;
-    const shieldedOwner = shieldOwner(initOwner, nextInstance);
+    const shieldedOwner = shieldOwner(disclose(initOwner), nextInstance);
     _transferOwnership(shieldedOwner);
   }
 
@@ -93,10 +93,10 @@ module OwnablePK {
    * @returns {[]} - None.
    */
   export circuit acceptOwnership(): [] {
-    const caller = own_public_key();
+    const caller = ownPublicKey();
     const nextInstance = _instance + 1 as Field as Bytes<32>;
     const shieldedOwner = shieldOwner(caller, nextInstance);
-    assert shieldedOwner == _pendingOwner "OwnablePK: caller is not pending owner";
+    assert(shieldedOwner == _pendingOwner, "OwnablePK: caller is not pending owner");
 
     // Reset pending owner and assign new owner
     _transferOwnership(shieldedOwner);
@@ -125,8 +125,8 @@ module OwnablePK {
    * @returns {[]} - None.
    */
   export circuit assertOnlyOwner(): [] {
-    const caller = own_public_key();
-    assert _owner == shieldOwner(caller, _instance as Field as Bytes<32>) "OwnablePK: not owner";
+    const caller = ownPublicKey();
+    assert(_owner == shieldOwner(caller, _instance as Field as Bytes<32>), "OwnablePK: not owner");
   }
 
   /**
@@ -136,7 +136,7 @@ module OwnablePK {
    * @returns {Bytes<32>} - The shielded hash of the owner and instance.
    */
   export circuit shieldOwner(ownerPK: ZswapCoinPublicKey, instance: Bytes<32>): Bytes<32> {
-    return persistent_hash<Vector<3, Bytes<32>>>([pad(32, "OwnablePK:shield:"), instance, ownerPK.bytes]);
+    return persistentHash<Vector<3, Bytes<32>>>([pad(32, "OwnablePK:shield:"), instance, ownerPK.bytes]);
   }
 
   /**
@@ -150,7 +150,7 @@ module OwnablePK {
   export circuit _transferOwnership(newOwner: Bytes<32>): [] {
     _pendingOwner = default<Bytes<32>>;
     _instance.increment(1);
-    _owner = newOwner;
+    _owner = disclose(newOwner);
   }
 
   /**
@@ -162,7 +162,7 @@ module OwnablePK {
    * @returns {[]} - None.
    */
   export circuit _proposeOwner(newOwner: ZswapCoinPublicKey): [] {
-    if (newOwner == burn_address().left) {
+    if (newOwner == burnAddress().left) {
       _pendingOwner = pad(32, "");
     } else {
       const nextInstance = _instance + 1 as Field as Bytes<32>;

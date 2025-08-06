@@ -31,7 +31,7 @@ describe('OwnablePK', () => {
       ownable = new OwnablePKSimulator(Z_OWNER, OWNER);
 
       // Check instance
-      const instance = ownable.getCurrentPublicState().ownablePK_Instance;
+      const instance = ownable.getCurrentPublicState().OwnablePK__instance;
       expect(instance).toEqual(1n);
 
       // Check shielded owner
@@ -43,7 +43,7 @@ describe('OwnablePK', () => {
 
       // Check pending owner
       const pendingOwner =
-        ownable.getCurrentPublicState().ownablePK_PendingOwner;
+        ownable.getCurrentPublicState().OwnablePK__pendingOwner;
       expect(pendingOwner).toEqual(EMPTY_BYTES);
     });
 
@@ -62,7 +62,7 @@ describe('OwnablePK', () => {
     describe('owner', () => {
       it('should return correct owner', () => {
         expect(ownable.owner()).toEqual(
-          ownable.getCurrentPublicState().ownablePK_Owner,
+          ownable.getCurrentPublicState().OwnablePK__owner,
         );
       });
 
@@ -76,7 +76,7 @@ describe('OwnablePK', () => {
     describe('pendingOwner', () => {
       it('should return pending owner', () => {
         const nextInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance + 1n;
+          ownable.getCurrentPublicState().OwnablePK__instance + 1n;
         const expPending = ownable.shieldOwner(
           Z_NEW_OWNER,
           convert_bigint_to_Uint8Array(32, nextInstance),
@@ -98,7 +98,7 @@ describe('OwnablePK', () => {
 
         // Check pending owner
         const nextInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance + 1n;
+          ownable.getCurrentPublicState().OwnablePK__instance + 1n;
         const expPending = ownable.shieldOwner(
           Z_NEW_OWNER,
           convert_bigint_to_Uint8Array(32, nextInstance),
@@ -106,7 +106,7 @@ describe('OwnablePK', () => {
         expect(ownable.pendingOwner()).toEqual(expPending);
 
         // Check current owner
-        const thisInstance = ownable.getCurrentPublicState().ownablePK_Instance;
+        const thisInstance = ownable.getCurrentPublicState().OwnablePK__instance;
         const expOwner = ownable.shieldOwner(
           Z_OWNER,
           convert_bigint_to_Uint8Array(32, thisInstance),
@@ -140,7 +140,7 @@ describe('OwnablePK', () => {
 
         // Check new pending owner
         const nextInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance + 1n;
+          ownable.getCurrentPublicState().OwnablePK__instance + 1n;
         const expPending = ownable.shieldOwner(
           Z_NEW_NEW_OWNER,
           convert_bigint_to_Uint8Array(32, nextInstance),
@@ -158,13 +158,13 @@ describe('OwnablePK', () => {
         it('should accept ownership from pending owner', () => {
           caller = NEW_OWNER;
           const beforeInstance =
-            ownable.getCurrentPublicState().ownablePK_Instance;
+            ownable.getCurrentPublicState().OwnablePK__instance;
 
           ownable.acceptOwnership(caller);
 
           // Check instance is bumped
           const afterInstance =
-            ownable.getCurrentPublicState().ownablePK_Instance;
+            ownable.getCurrentPublicState().OwnablePK__instance;
           expect(afterInstance).toEqual(beforeInstance + 1n);
 
           // Check new owner
@@ -215,12 +215,12 @@ describe('OwnablePK', () => {
       it('should renounce ownership', () => {
         caller = OWNER;
         const beforeInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance;
+          ownable.getCurrentPublicState().OwnablePK__instance;
         ownable.renounceOwnership(caller);
 
         expect(ownable.owner()).toEqual(EMPTY_BYTES);
         expect(ownable.pendingOwner()).toEqual(EMPTY_BYTES);
-        expect(ownable.getCurrentPublicState().ownablePK_Instance).toEqual(
+        expect(ownable.getCurrentPublicState().OwnablePK__instance).toEqual(
           beforeInstance + 1n,
         );
       });
@@ -258,7 +258,7 @@ describe('OwnablePK', () => {
 
         // Transfer to new owner
         const nextInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance + 1n;
+          ownable.getCurrentPublicState().OwnablePK__instance + 1n;
         const newOwner = ownable.shieldOwner(
           Z_NEW_OWNER,
           convert_bigint_to_Uint8Array(32, nextInstance),
@@ -286,7 +286,7 @@ describe('OwnablePK', () => {
     describe('_transferOwnership', () => {
       it('should transfer ownership', () => {
         const beforeInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance;
+          ownable.getCurrentPublicState().OwnablePK__instance;
         ownable._proposeOwner(Z_NEW_NEW_OWNER);
 
         ownable._transferOwnership(Z_NEW_OWNER.bytes);
@@ -294,7 +294,7 @@ describe('OwnablePK', () => {
         // _transferownership does not shield the input so it should be a == a
         expect(ownable.owner()).toEqual(Z_NEW_OWNER.bytes);
         // Check instance is bumped
-        expect(ownable.getCurrentPublicState().ownablePK_Instance).toEqual(
+        expect(ownable.getCurrentPublicState().OwnablePK__instance).toEqual(
           beforeInstance + 1n,
         );
         // Check pending owner is reset
@@ -313,7 +313,7 @@ describe('OwnablePK', () => {
         ownable._proposeOwner(Z_NEW_OWNER);
 
         const nextInstance =
-          ownable.getCurrentPublicState().ownablePK_Instance + 1n;
+          ownable.getCurrentPublicState().OwnablePK__instance + 1n;
         const expOwner = ownable.shieldOwner(
           Z_NEW_OWNER,
           convert_bigint_to_Uint8Array(32, nextInstance),
