@@ -1,24 +1,22 @@
+import { Buffer } from 'node:buffer';
 import {
-  type WitnessContext,
-  type MerkleTreePath,
   constructorContext,
   decodeCoinPublicKey,
-  QueryContext
+  type MerkleTreePath,
+  QueryContext,
+  type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
+import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type ContractAddress,
   type Either,
   type Ledger,
   Contract as MockShieldedAccessControl,
   type ZswapCoinPublicKey,
-  type ContractAddress
 } from '../artifacts/MockShieldedAccessControl/contract/index.cjs'; // Combined imports
-import { Buffer } from 'node:buffer';
-import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 
-const {
-  hkdfSync,
-} = await import('node:crypto');
+const { hkdfSync } = await import('node:crypto');
 
 const KEYLEN = 32;
 
@@ -41,8 +39,12 @@ export type ShieldedAccessControlPrivateState = {
  *
  * @returns A unique nonce value for `roleId`
  */
-function generateNonce(secretKey: Buffer, roleId: Buffer, salt: Buffer, account: Buffer):
-  Buffer {
+function generateNonce(
+  secretKey: Buffer,
+  roleId: Buffer,
+  salt: Buffer,
+  account: Buffer,
+): Buffer {
   const domainString = Buffer.from('role-nonce');
   const info = Buffer.concat([domainString, roleId, account]);
   const nonce = hkdfSync('sha512', secretKey, salt, info, KEYLEN);
@@ -58,7 +60,11 @@ function generateNonce(secretKey: Buffer, roleId: Buffer, salt: Buffer, account:
  *
  * @returns Whether the account was approved for a role
  */
-function sendRoleRequestToAdmin(account: Buffer, roleId: Buffer, nonce: Buffer) {
+function sendRoleRequestToAdmin(
+  account: Buffer,
+  roleId: Buffer,
+  nonce: Buffer,
+) {
   return true;
 }
 
@@ -73,15 +79,20 @@ export const ShieldedAccessControlWitnesses = {
    * @returns An array of the private state and the Merkle tree path of `roleCommitment`
    * in the `_operatorRoles` Merkle tree.
    */
-  getRoleCommitmentPath: ({
-    ledger,
-    privateState,
-  }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleCommitment: Uint8Array, index: bigint): [
-      ShieldedAccessControlPrivateState,
-      MerkleTreePath<Uint8Array>,
-    ] => {
-    const merkleTreePath = ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(index, roleCommitment);
-    return [privateState, merkleTreePath]
+  getRoleCommitmentPath: (
+    {
+      ledger,
+      privateState,
+    }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+    roleCommitment: Uint8Array,
+    index: bigint,
+  ): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] => {
+    const merkleTreePath =
+      ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(
+        index,
+        roleCommitment,
+      );
+    return [privateState, merkleTreePath];
   },
   /**
    * @description Typescript implementation of the `recoverNonce` witness function. Simulates calls to the `hasRole` circuit
@@ -94,30 +105,37 @@ export const ShieldedAccessControlWitnesses = {
    *
    * @returns An array of the new private state and the empty tuple
    */
-  recoverRoles: ({
-    ledger,
-    privateState,
-    contractAddress
-  }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, account: Uint8Array, salt: Uint8Array): [
-      ShieldedAccessControlPrivateState,
-      [],
-    ] => {
+  recoverRoles: (
+    {
+      ledger,
+      privateState,
+      contractAddress,
+    }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+    account: Uint8Array,
+    salt: Uint8Array,
+  ): [ShieldedAccessControlPrivateState, []] => {
     const roles = [ledger.ShieldedAccessControl_DEFAULT_ADMIN_ROLE];
     const coinPubKey = decodeCoinPublicKey(account);
-    let newPrivateState: ShieldedAccessControlPrivateState = {
+    const newPrivateState: ShieldedAccessControlPrivateState = {
       secretKey: privateState.secretKey,
       roleIds: [],
-      nonces: []
+      nonces: [],
     };
 
-    const contract = new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
-      ShieldedAccessControlWitnesses,
-    );
+    const contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        ShieldedAccessControlWitnesses,
+      );
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = contract.initialState(constructorContext({ secretKey: privateState.secretKey, nonces: [], roleIds: [] }, coinPubKey));
+    } = contract.initialState(
+      constructorContext(
+        { secretKey: privateState.secretKey, nonces: [], roleIds: [] },
+        coinPubKey,
+      ),
+    );
     const circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -129,26 +147,36 @@ export const ShieldedAccessControlWitnesses = {
     };
 
     for (let i = 0; i < roles.length; i++) {
-      let role = roles[i];
-      const nonce = generateNonce(privateState.secretKey, Buffer.from(role), Buffer.from(salt), Buffer.from(account));
+      const role = roles[i];
+      const nonce = generateNonce(
+        privateState.secretKey,
+        Buffer.from(role),
+        Buffer.from(salt),
+        Buffer.from(account),
+      );
       const eitherAccount: Either<ZswapCoinPublicKey, ContractAddress> = {
         is_left: true,
         left: { bytes: account },
         right: { bytes: encodeContractAddress(sampleContractAddress()) },
-      }
+      };
 
       try {
-        const hasRole = contract.impureCircuits.hasRole(circuitContext, role, eitherAccount, nonce);
+        const hasRole = contract.impureCircuits.hasRole(
+          circuitContext,
+          role,
+          eitherAccount,
+          nonce,
+        );
         if (hasRole) {
           newPrivateState.nonces.push(nonce);
-          newPrivateState.roleIds.push(Buffer.from(role))
+          newPrivateState.roleIds.push(Buffer.from(role));
         }
       } catch (err) {
         console.log(err);
       }
     }
 
-    return [newPrivateState, []]
+    return [newPrivateState, []];
   },
   /**
    * @description Typescript implementation of the `requestRole` witness function.
@@ -159,16 +187,21 @@ export const ShieldedAccessControlWitnesses = {
    *
    * @returns An array of the new private state and an empty array
    */
-  requestRole: ({
-    privateState,
-  }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleId: Uint8Array, account: Uint8Array, salt: Uint8Array): [
-      ShieldedAccessControlPrivateState,
-      [],
-    ] => {
+  requestRole: (
+    { privateState }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+    roleId: Uint8Array,
+    account: Uint8Array,
+    salt: Uint8Array,
+  ): [ShieldedAccessControlPrivateState, []] => {
     const saltBuff = Buffer.from(salt);
     const roleIdBuff = Buffer.from(roleId);
     const accountBuff = Buffer.from(account);
-    const nonce = generateNonce(privateState.secretKey, roleIdBuff, saltBuff, accountBuff);
+    const nonce = generateNonce(
+      privateState.secretKey,
+      roleIdBuff,
+      saltBuff,
+      accountBuff,
+    );
     const isApproved = sendRoleRequestToAdmin(accountBuff, roleIdBuff, nonce);
 
     if (isApproved) {
@@ -176,6 +209,6 @@ export const ShieldedAccessControlWitnesses = {
       privateState.roleIds.push(roleIdBuff);
     }
 
-    return [privateState, []]
+    return [privateState, []];
   },
 };
