@@ -61,9 +61,9 @@ function generateNonce(
  * @returns Whether the account was approved for a role
  */
 function sendRoleRequestToAdmin(
-  account: Buffer,
-  roleId: Buffer,
-  nonce: Buffer,
+  _account: Buffer,
+  _roleId: Buffer,
+  _nonce: Buffer,
 ) {
   return true;
 }
