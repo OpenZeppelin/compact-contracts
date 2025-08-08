@@ -12,6 +12,7 @@ export {
   Either,
   Maybe,
   ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
+  ShieldedAccessControl__salt,
   ShieldedAccessControl__operatorRoles
 };
 
@@ -61,4 +62,12 @@ export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPubl
 
 export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Boolean {
   return ShieldedAccessControl__revokeRole(roleId, account, nonce);
+}
+
+export circuit _requestRole(roleId: Bytes<32>): [] {
+  ShieldedAccessControl__requestRole(roleId);
+}
+
+export circuit _recoverRoles(): [] {
+  ShieldedAccessControl__recoverRoles();
 }

@@ -51,6 +51,12 @@ pragma language_version >= 0.16.0;
  * grant and revoke this role. Extra precautions should be taken to secure
  * accounts that have been granted it.
  *
+ * By default, the salt value used to generate nonce values in the `requestRole` witness
+ * is set to 0. The use of a random salt value adds significantly to the strength of the
+ * underlying HKDF function and is highly encouraged. A random salt value can be set
+ * by implementing the `Initializable` module and setting `_salt` in the `initialize()
+ * circuit.
+ *
  * @notice Roles can only be granted to ZswapCoinPublicKeys
  * through the main role approval circuits (`grantRole` and `_grantRole`).
  * In other words, role approvals to contract addresses are disallowed through these
@@ -115,6 +121,11 @@ module ShieldedAccessControl {
    */
   export ledger _nextIndex: Counter;
 
+  /**
+   * @description A random salt value used to strengthen the HKDF function used in the `requestRole` witness function.
+   */
+  export ledger _salt: Bytes<32>;
+
   export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
 
   /**
@@ -122,7 +133,7 @@ module ShieldedAccessControl {
    *
    * Requirements:
    *
-   * - It is an error to call this if this if `roleCommitment` is not contained at the given index.
+   * - It is an error to call this if `roleCommitment` is not contained at the given index.
    *
    * @circuitInfo
    *
@@ -131,6 +142,30 @@ module ShieldedAccessControl {
    * @return {MerkleTreePath<10, Bytes<32>>} - The Merkle path of `roleCommitment` in the `_operatorRoles` Merkle tree
    */
   witness getRoleCommitmentPath(roleCommitment: Bytes<32>, index: Uint<64>): MerkleTreePath<10, Bytes<32>>;
+
+  /**
+   * @description Locally creates and stores a nonce value using the HKDF function and the associated role identifier.
+   *
+   * @dev Developers must provide an implementation to privately send the account's public key, roleId, and nonce to an admin. One
+   * possible solution is by using an HTTP API.
+   *
+   * @param {Bytes<32>} roleId - A hash representing a role identifier.
+   * @param {Bytes<32>} account - The account requesting a role.
+   * @param {Bytes<32>} salt - A salt value for the underlying HKDF function.
+   * @return {[]} - Empty tuple.
+   */
+  witness requestRole(roleId: Bytes<32>, account: Bytes<32>, salt: Bytes<32>): [];
+
+  /**
+   * @description Used to recover roles in the event of data loss.
+   *
+   * @dev Developers must export publicly declared roles from the top-level contract to generate possible roles for each.
+   *
+   * @param {Bytes<32>} account - The account requesting a role.
+   * @param {Bytes<32>}salt - A salt value for the underlying HKDF function.
+   * @return {[]} - Empty tuple.
+   */
+  witness recoverRoles(account: Bytes<32>, salt: Bytes<32>): [];
 
   /**
    * @description Returns `true` if `account` has been granted `roleId`.
@@ -584,5 +619,38 @@ module ShieldedAccessControl {
     const index = _roleCommitmentIndex.lookup(disclose(intermediateRoleCommitment));
     const finalRoleCommitment = persistentHash<Vector<2, Bytes<32>>>([intermediateRoleCommitment, index as Field as Bytes<32>]);
     _roleCommitmentNullifiers.insert(disclose(finalRoleCommitment));
+  }
+
+  /**
+   * @description A wrapper circuit for the `requestRole` witness.
+   *
+   * @circuitInfo k=10, rows=188
+   *
+   * Requirements:
+   *
+   * - The caller must not be a ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - A hash representing a role identifier.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _requestRole(roleId: Bytes<32>): [] {
+    const publicKey = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    requestRole(roleId, publicKey.left.bytes, _salt);
+  }
+
+  /**
+   * @description A wrapper circuit for the `recoverRoles` witness.
+   *
+   * @circuitInfo k=10, rows=99
+   *
+   * Requirements:
+   *
+   * - The caller must not be a ContractAddress.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _recoverRoles(): [] {
+    const publicKey = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    recoverRoles(publicKey.left.bytes, _salt);
   }
 }
