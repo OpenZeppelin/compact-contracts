@@ -1,0 +1,11 @@
+{
+  "name": "midnight-dev",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["/tmp/compact.vsix"]
+    }
+  }
+}
