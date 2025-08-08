@@ -18,7 +18,6 @@ Z_OwnablePKPrivateState,
   Z_OwnablePKWitnesses,
 } from '../../witnesses/Z_OwnablePKWitnesses.js';
 import type { IContractSimulator } from '../types/test.js';
-//import { types, padBytes, fieldToBytes } from 'compact-runtime';
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
