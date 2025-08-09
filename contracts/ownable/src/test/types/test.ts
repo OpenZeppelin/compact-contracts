@@ -93,3 +93,10 @@ export type ContextlessCircuits<Circuits, TState> = {
     ? (...args: P) => R
     : never;
 };
+
+export type SimulatorOptions<PS, WGen extends (...args: any[]) => any> = {
+  address?: string;
+  coinPK?: string;
+  privateState?: PS;
+  witnesses?: ReturnType<WGen>;
+};
