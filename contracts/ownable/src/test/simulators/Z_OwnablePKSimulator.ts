@@ -17,8 +17,9 @@ Z_OwnablePKPrivateState,
 } from '../../witnesses/Z_OwnablePKWitnesses.js';
 import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js';
 import { SimulatorStateManager } from '../utils/SimualatorStateManager.js';
-import { ContextlessCircuits, ExtractImpureCircuits, ExtractPureCircuits } from '../types/test.js';
+import { ContextlessCircuits, ExtractImpureCircuits, ExtractPureCircuits, SimulatorOptions } from '../types/test.js';
 
+type OwnableSimOptions = SimulatorOptions<Z_OwnablePKPrivateState, typeof Z_OwnablePKWitnesses>;
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
@@ -44,16 +45,21 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
     Z_OwnablePKPrivateState
   >;
 
-  constructor(initOwner: Uint8Array) {
+  constructor(initOwner: Uint8Array, options: OwnableSimOptions = {}, ) {
     super();
-    this.contract = new MockOwnable<Z_OwnablePKPrivateState>(
-      Z_OwnablePKWitnesses(),
-    );
+
     // Setup initial state
-    const privateState: Z_OwnablePKPrivateState = Z_OwnablePKPrivateState.generate();
-    const coinPK = '0'.repeat(64);
-    const address = sampleContractAddress();
+    const {
+      privateState = Z_OwnablePKPrivateState.generate(),
+      witnesses = Z_OwnablePKWitnesses(),
+      coinPK = '0'.repeat(64),
+      address = sampleContractAddress(),
+    } = options;
     const constructorArgs = [initOwner];
+
+    this.contract = new MockOwnable<Z_OwnablePKPrivateState>(
+      witnesses,
+    );
 
     this.stateManager = new SimulatorStateManager(
       this.contract,
@@ -222,5 +228,21 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
    */
   public _transferOwnership(newOwnerCommitment: Uint8Array) {
     this.circuits.impure._transferOwnership(newOwnerCommitment);
+  }
+
+  public readonly privateState = {
+    /**
+     * @description Stubs a new nonce into the private state.
+     */
+    injectSecretNonce: (newNonce: Buffer<ArrayBufferLike>): Z_OwnablePKPrivateState => {
+      const currentState = this.stateManager.getContext().currentPrivateState;
+      const updatedState = { ...currentState, offchainNonce: newNonce };
+      this.stateManager.updatePrivateState(updatedState);
+      return updatedState;
+    },
+
+    getCurrentSecretNonce: (): Uint8Array => {
+      return this.stateManager.getContext().currentPrivateState.offchainNonce;
+    }
   }
 }
