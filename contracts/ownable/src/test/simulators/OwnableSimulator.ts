@@ -71,7 +71,7 @@ export class OwnableSimulator
    * @description Retrieves the current public ledger state of the contract.
    * @returns The ledger state as defined by the contract.
    */
-  public getCurrentPublicState(): Ledger {
+  public getPublicState(): Ledger {
     return ledger(this.circuitContext.transactionContext.state);
   }
 
@@ -79,7 +79,7 @@ export class OwnableSimulator
    * @description Retrieves the current private state of the contract.
    * @returns The private state of type OwnablePrivateState.
    */
-  public getCurrentPrivateState(): OwnablePrivateState {
+  public getPrivateState(): OwnablePrivateState {
     return this.circuitContext.currentPrivateState;
   }
 
@@ -87,7 +87,7 @@ export class OwnableSimulator
    * @description Retrieves the current contract state.
    * @returns The contract state object.
    */
-  public getCurrentContractState(): ContractState {
+  public getContractState(): ContractState {
     return this.circuitContext.originalState;
   }
 

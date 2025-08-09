@@ -15,8 +15,8 @@ import {
 Z_OwnablePKPrivateState,
   Z_OwnablePKWitnesses,
 } from '../../witnesses/Z_OwnablePKWitnesses.js';
-import { AbstractContractSimulator } from '../types/AbstractContractSimulator.js';
-import { SimulatorStateManager } from '../types/SimualatorStateManager.js';
+import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js';
+import { SimulatorStateManager } from '../utils/SimualatorStateManager.js';
 import { ContextlessCircuits, ExtractImpureCircuits, ExtractPureCircuits } from '../types/test.js';
 
 
@@ -168,30 +168,6 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
       pure: this.pureCircuit,
       impure: this.impureCircuit,
     };
-  }
-
-  /**
-   * @description Retrieves the current public ledger state of the contract.
-   * @returns The ledger state as defined by the contract.
-   */
-  public getCurrentPublicState(): Ledger {
-    return ledger(this.circuitContext.transactionContext.state);
-  }
-
-  /**
-   * @description Retrieves the current private state of the contract.
-   * @returns The private state of type Z_OwnablePKPrivateState.
-   */
-  public getCurrentPrivateState(): Z_OwnablePKPrivateState {
-    return this.circuitContext.currentPrivateState;
-  }
-
-  /**
-   * @description Retrieves the current contract state.
-   * @returns The contract state object.
-   */
-  public getCurrentContractState(): ContractState {
-    return this.circuitContext.originalState;
   }
 
   /**
