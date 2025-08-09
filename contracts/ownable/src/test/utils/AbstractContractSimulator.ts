@@ -2,7 +2,7 @@ import type {
   CircuitContext,
   ContractState,
 } from '@midnight-ntwrk/compact-runtime';
-import type { ContextlessCircuits, IContractSimulator } from './test.js';
+import type { ContextlessCircuits, IContractSimulator } from '../types/test.js';
 
 /**
  * Abstract base class for simulating contract behavior.
