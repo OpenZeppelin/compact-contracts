@@ -20,8 +20,7 @@ export const Z_OwnablePKPrivateState = {
    * @returns A fresh Z_OwnablePKPrivateState instance.
    */
   generate: (): Z_OwnablePKPrivateState => {
-    //return { offchainNonce: getRandomValues(Buffer.alloc(32))};
-    return { offchainNonce: Buffer.from(Array(32).fill(0xab))};
+    return { offchainNonce: getRandomValues(Buffer.alloc(32))};
   }
 };
 
