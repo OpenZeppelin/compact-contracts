@@ -6,7 +6,7 @@ import CompactStandardLibrary;
 import "../../Z_OwnablePK" prefix Z_OwnablePK_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
-export { Z_OwnablePK__ownerCommitment, Z_OwnablePK__instance };
+export { Z_OwnablePK__ownerCommitment, Z_OwnablePK__counter };
 
 constructor(initOwnerCommitment: Bytes<32>) {
   Z_OwnablePK_initialize(initOwnerCommitment);
@@ -28,8 +28,8 @@ export circuit assertOnlyOwner(): [] {
   return Z_OwnablePK_assertOnlyOwner();
 }
 
-export circuit shieldPK(ownerPK: ZswapCoinPublicKey, instance: Uint<64>, nonce: Bytes<32>): Bytes<32> {
-  return Z_OwnablePK_shieldPK(ownerPK, instance, nonce);
+export circuit hashCommitment(idHash: Bytes<32>, counter: Uint<64>): Bytes<32> {
+  return Z_OwnablePK_hashCommitment(idHash, counter);
 }
 
 export circuit _transferOwnership(newOwnerCommitment: Bytes<32>): [] {

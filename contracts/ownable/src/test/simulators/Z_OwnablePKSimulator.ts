@@ -188,9 +188,9 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
    * @description
    */
   public transferOwnership(
-    newOwner: Uint8Array,
+    newOwnerId: Uint8Array,
   ) {
-    this.circuits.impure.transferOwnership(newOwner);
+    this.circuits.impure.transferOwnership(newOwnerId);
   }
 
   /**
@@ -211,23 +211,20 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
   }
 
   /**
-   * @description Obfuscates the `pk` be hashing it with a domain separator and
-   * the passed `instance`.
-   * @returns The shielded hash of the owner and instance.
+   * @description
    */
-  public shieldPK(
-    pk: ZswapCoinPublicKey,
-    instance: bigint,
-    nonce: Uint8Array
+  public hashCommitment(
+    idHash: Uint8Array,
+    counter: bigint,
   ): Uint8Array {
-    return this.circuits.pure.shieldPK(pk, instance, nonce);
+    return this.circuits.pure.hashCommitment(idHash, counter);
   }
 
   /**
    * @description Internal circuit that transfers ownership of the contract to `newOwner`.
    */
-  public _transferOwnership(newOwnerCommitment: Uint8Array) {
-    this.circuits.impure._transferOwnership(newOwnerCommitment);
+  public _transferOwnership(newOwnerId: Uint8Array) {
+    this.circuits.impure._transferOwnership(newOwnerId);
   }
 
   public readonly privateState = {

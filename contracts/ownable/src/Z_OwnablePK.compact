@@ -6,7 +6,7 @@ module Z_OwnablePK {
   import CompactStandardLibrary;
 
   export ledger _ownerCommitment: Bytes<32>;
-  export ledger _instance: Counter;
+  export ledger _counter: Counter;
 
   export witness offchainNonce(): Bytes<32>;
 
@@ -19,10 +19,10 @@ module Z_OwnablePK {
     return _ownerCommitment;
   }
 
-  export circuit transferOwnership(newOwnerCommitment: Bytes<32>): [] {
+  export circuit transferOwnership(newOwnerIdHash: Bytes<32>): [] {
     assertOnlyOwner();
-    assert(newOwnerCommitment != default<Bytes<32>>, "Invalid parameters");
-    _transferOwnership(newOwnerCommitment);
+    assert(newOwnerIdHash != default<Bytes<32>>, "Invalid parameters");
+    _transferOwnership(newOwnerIdHash);
   }
 
   export circuit renounceOwnership(): [] {
@@ -37,7 +37,7 @@ module Z_OwnablePK {
       [
         pad(32, "Z_OwnablePK:renounced:"),
         default<Bytes<32>>,
-        _instance as Field as Bytes<32>,
+        _counter as Field as Bytes<32>,
         nonce
       ]
     );
@@ -48,28 +48,23 @@ module Z_OwnablePK {
   export circuit assertOnlyOwner(): [] {
     const caller = ownPublicKey();
     const nonce = offchainNonce();
-    assert(
-      _ownerCommitment == shieldPK(caller, _instance, nonce
-    ), "Forbidden");
+    const idHash = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
+    assert(_ownerCommitment == hashCommitment(idHash, _counter), "Forbidden");
   }
 
-  export circuit shieldPK(
-    pk: ZswapCoinPublicKey,
-    instance: Uint<64>,
-    nonce: Bytes<32>
+  export circuit hashCommitment(
+    idHash: Bytes<32>,
+    counter: Uint<64>,
   ): Bytes<32> {
-    return persistentHash<Vector<4, Bytes<32>>>(
-      [
-        pad(32, "Z_OwnablePK:shield:"),
-        pk.bytes,
-        instance as Field as Bytes<32>,
-        nonce
-      ]
-    );
+    //const contextHash = persistentHash<Vector<2, Bytes<32>>>([kernel.self().bytes, idHash]);
+    //const counterHash = persistentHash<Vector<2, Bytes<32>>>([counter as Field as Bytes<32>, contextHash]);
+    const counterHash = persistentHash<Vector<2, Bytes<32>>>([counter as Field as Bytes<32>, idHash]);
+    const commitment = persistentHash<Vector<2, Bytes<32>>>([pad(32, "Z_OwnablePK:shield:"), counterHash]);
+    return commitment;
   }
 
-  export circuit _transferOwnership(newOwnerCommitment: Bytes<32>): [] {
-    _instance.increment(1);
-    _ownerCommitment = disclose(newOwnerCommitment);
+  export circuit _transferOwnership(newOwnerIdHash: Bytes<32>): [] {
+    _counter.increment(1);
+    _ownerCommitment = hashCommitment(disclose(newOwnerIdHash), _counter);
   }
 }
