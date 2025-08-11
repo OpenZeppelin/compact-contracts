@@ -8,11 +8,11 @@ import {
   type Ledger,
   ledger,
   Contract as MockOwnable,
-} from '../../artifacts/MockZ_OwnablePK/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockZOwnablePK/contract/index.cjs'; // Combined imports
 import {
-  Z_OwnablePKPrivateState,
-  Z_OwnablePKWitnesses,
-} from '../../witnesses/Z_OwnablePKWitnesses.js';
+  ZOwnablePKPrivateState,
+  ZOwnablePKWitnesses,
+} from '../../witnesses/ZOwnablePKWitnesses.js';
 import type {
   ContextlessCircuits,
   ExtractImpureCircuits,
@@ -23,32 +23,32 @@ import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js
 import { SimulatorStateManager } from '../utils/SimualatorStateManager.js';
 
 type OwnableSimOptions = SimulatorOptions<
-  Z_OwnablePKPrivateState,
-  typeof Z_OwnablePKWitnesses
+  ZOwnablePKPrivateState,
+  typeof ZOwnablePKWitnesses
 >;
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
- * @template P - The private state type, fixed to Z_OwnablePKPrivateState.
+ * @template P - The private state type, fixed to ZOwnablePKPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class Z_OwnablePKSimulator extends AbstractContractSimulator<
-  Z_OwnablePKPrivateState,
+export class ZOwnablePKSimulator extends AbstractContractSimulator<
+  ZOwnablePKPrivateState,
   Ledger
 > {
-  readonly contract: MockOwnable<Z_OwnablePKPrivateState>;
+  readonly contract: MockOwnable<ZOwnablePKPrivateState>;
   readonly contractAddress: string;
-  private stateManager: SimulatorStateManager<Z_OwnablePKPrivateState>;
+  private stateManager: SimulatorStateManager<ZOwnablePKPrivateState>;
   private callerOverride: CoinPublicKey | null = null;
 
   private _pureCircuitProxy?: ContextlessCircuits<
-    ExtractPureCircuits<MockOwnable<Z_OwnablePKPrivateState>>,
-    Z_OwnablePKPrivateState
+    ExtractPureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
+    ZOwnablePKPrivateState
   >;
 
   private _impureCircuitProxy?: ContextlessCircuits<
-    ExtractImpureCircuits<MockOwnable<Z_OwnablePKPrivateState>>,
-    Z_OwnablePKPrivateState
+    ExtractImpureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
+    ZOwnablePKPrivateState
   >;
 
   constructor(
@@ -60,14 +60,14 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
 
     // Setup initial state
     const {
-      privateState = Z_OwnablePKPrivateState.generate(),
-      witnesses = Z_OwnablePKWitnesses(),
+      privateState = ZOwnablePKPrivateState.generate(),
+      witnesses = ZOwnablePKWitnesses(),
       coinPK = '0'.repeat(64),
       address = sampleContractAddress(),
     } = options;
     const constructorArgs = [initOwner, instanceSalt];
 
-    this.contract = new MockOwnable<Z_OwnablePKPrivateState>(witnesses);
+    this.contract = new MockOwnable<ZOwnablePKPrivateState>(witnesses);
 
     this.stateManager = new SimulatorStateManager(
       this.contract,
@@ -97,7 +97,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
    * scoped to the overridden caller. Otherwise, the existing context is reused as-is.
    * @returns A circuit context adjusted for the current simulated caller.
    */
-  protected getCallerContext(): CircuitContext<Z_OwnablePKPrivateState> {
+  protected getCallerContext(): CircuitContext<ZOwnablePKPrivateState> {
     return {
       ...this.circuitContext,
       currentZswapLocalState: this.callerOverride
@@ -116,12 +116,12 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
    * @returns A proxy object exposing pure circuit functions without requiring explicit context.
    */
   protected get pureCircuit(): ContextlessCircuits<
-    ExtractPureCircuits<MockOwnable<Z_OwnablePKPrivateState>>,
-    Z_OwnablePKPrivateState
+    ExtractPureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
+    ZOwnablePKPrivateState
   > {
     if (!this._pureCircuitProxy) {
       this._pureCircuitProxy = this.createPureCircuitProxy<
-        MockOwnable<Z_OwnablePKPrivateState>['circuits']
+        MockOwnable<ZOwnablePKPrivateState>['circuits']
       >(this.contract.circuits, () => this.circuitContext);
     }
     return this._pureCircuitProxy;
@@ -137,12 +137,12 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
    * @returns A proxy object exposing impure circuit functions without requiring explicit context management.
    */
   protected get impureCircuit(): ContextlessCircuits<
-    ExtractImpureCircuits<MockOwnable<Z_OwnablePKPrivateState>>,
-    Z_OwnablePKPrivateState
+    ExtractImpureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
+    ZOwnablePKPrivateState
   > {
     if (!this._impureCircuitProxy) {
       this._impureCircuitProxy = this.createImpureCircuitProxy<
-        MockOwnable<Z_OwnablePKPrivateState>['impureCircuits']
+        MockOwnable<ZOwnablePKPrivateState>['impureCircuits']
       >(
         this.contract.impureCircuits,
         () => this.getCallerContext(),
@@ -236,7 +236,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
      */
     injectSecretNonce: (
       newNonce: Buffer<ArrayBufferLike>,
-    ): Z_OwnablePKPrivateState => {
+    ): ZOwnablePKPrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
       const updatedState = { ...currentState, offchainNonce: newNonce };
       this.stateManager.updatePrivateState(updatedState);

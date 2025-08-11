@@ -3,35 +3,35 @@
 pragma language_version >= 0.15.0;
 
 import CompactStandardLibrary;
-import "../../Z_OwnablePK" prefix Z_OwnablePK_;
+import "../../ZOwnablePK" prefix ZOwnablePK_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
-export { Z_OwnablePK__ownerCommitment, Z_OwnablePK__counter };
+export { ZOwnablePK__ownerCommitment, ZOwnablePK__counter };
 
 constructor(initOwnerCommitment: Bytes<32>, instanceSalt: Bytes<32>) {
-  Z_OwnablePK_initialize(initOwnerCommitment, instanceSalt);
+  ZOwnablePK_initialize(initOwnerCommitment, instanceSalt);
 }
 
 export circuit owner(): Bytes<32> {
-  return Z_OwnablePK_owner();
+  return ZOwnablePK_owner();
 }
 
 export circuit transferOwnership(newOwnerCommitment: Bytes<32>): [] {
-  return Z_OwnablePK_transferOwnership(disclose(newOwnerCommitment));
+  return ZOwnablePK_transferOwnership(disclose(newOwnerCommitment));
 }
 
 export circuit renounceOwnership(): [] {
-  return Z_OwnablePK_renounceOwnership();
+  return ZOwnablePK_renounceOwnership();
 }
 
 export circuit assertOnlyOwner(): [] {
-  return Z_OwnablePK_assertOnlyOwner();
+  return ZOwnablePK_assertOnlyOwner();
 }
 
 export circuit hashCommitment(id: Bytes<32>, counter: Uint<64>): Bytes<32> {
-  return Z_OwnablePK_hashCommitment(id, counter);
+  return ZOwnablePK_hashCommitment(id, counter);
 }
 
 export circuit _transferOwnership(newOwnerCommitment: Bytes<32>): [] {
-  return Z_OwnablePK__transferOwnership(newOwnerCommitment);
+  return ZOwnablePK__transferOwnership(newOwnerCommitment);
 }

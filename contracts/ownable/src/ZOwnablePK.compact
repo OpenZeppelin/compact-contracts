@@ -3,10 +3,10 @@
 pragma language_version >= 0.16.0;
 
 /**
- * @module Z_OwnablePK
+ * @module ZOwnablePK
  * @description A shielded Ownable library.
  */
-module Z_OwnablePK {
+module ZOwnablePK {
   import CompactStandardLibrary;
 
   export ledger _ownerCommitment: Bytes<32>;
@@ -59,7 +59,7 @@ module Z_OwnablePK {
         persistentHash<Vector<2, Bytes<32>>>([default<Bytes<32>>, nonce]),
         _instanceSalt,
         _counter as Field as Bytes<32>,
-        pad(32, "Z_OwnablePK:renounced:"),
+        pad(32, "ZOwnablePK:renounced:"),
       ]
     );
 
@@ -89,7 +89,7 @@ module Z_OwnablePK {
         id,
         _instanceSalt,
         counter as Field as Bytes<32>,
-        pad(32, "Z_OwnablePK:shield:")
+        pad(32, "ZOwnablePK:shield:")
       ]
     );
   }

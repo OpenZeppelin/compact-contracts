@@ -6,8 +6,8 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ZswapCoinPublicKey } from '../artifacts/MockOwnable/contract/index.cjs';
-import { Z_OwnablePKPrivateState } from '../witnesses/Z_OwnablePKWitnesses.js';
-import { Z_OwnablePKSimulator } from './simulators/Z_OwnablePKSimulator.js';
+import { ZOwnablePKPrivateState } from '../witnesses/ZOwnablePKWitnesses.js';
+import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import * as utils from './utils/address.js';
 
 const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
@@ -24,11 +24,11 @@ const Z_OWNER = utils.encodeToPK('OWNER');
 const Z_NEW_OWNER = utils.encodeToPK('NEW_OWNER');
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 
-const DOMAIN = 'Z_OwnablePK:shield:';
+const DOMAIN = 'ZOwnablePK:shield:';
 const INIT_COUNTER = 1n;
 
 let secretNonce: Uint8Array;
-let ownable: Z_OwnablePKSimulator;
+let ownable: ZOwnablePKSimulator;
 
 /** Helpers */
 const createIdHash = (
@@ -81,12 +81,12 @@ const buildCommitment = (
   return commitment;
 };
 
-describe('Z_OwnablePK', () => {
+describe('ZOwnablePK', () => {
   describe('before initialize', () => {
     it('should fail when setting owner commitment as 0', () => {
       expect(() => {
         const badCommitment = new Uint8Array(32).fill(0);
-        new Z_OwnablePKSimulator(badCommitment, INSTANCE_SALT);
+        new ZOwnablePKSimulator(badCommitment, INSTANCE_SALT);
       }).toThrow('Invalid parameters');
     });
 
@@ -94,7 +94,7 @@ describe('Z_OwnablePK', () => {
       const notZeroPK = utils.encodeToPK('NOT_ZERO');
       const notZeroNonce = new Uint8Array(32).fill(1);
       const nonZeroId = createIdHash(notZeroPK, notZeroNonce);
-      ownable = new Z_OwnablePKSimulator(nonZeroId, INSTANCE_SALT);
+      ownable = new ZOwnablePKSimulator(nonZeroId, INSTANCE_SALT);
 
       const nonZeroCommitment = buildCommitmentFromId(
         nonZeroId,
@@ -108,13 +108,13 @@ describe('Z_OwnablePK', () => {
   describe('after initialization', () => {
     beforeEach(() => {
       // Create private state object and generate nonce
-      const PS = Z_OwnablePKPrivateState.generate();
+      const PS = ZOwnablePKPrivateState.generate();
       // Bind nonce for convenience
       secretNonce = PS.offchainNonce;
       // Prepare owner ID with gen nonce
       const ownerId = createIdHash(Z_OWNER, secretNonce);
       // Deploy contract with derived owner commitment and PS
-      ownable = new Z_OwnablePKSimulator(ownerId, INSTANCE_SALT, {
+      ownable = new ZOwnablePKSimulator(ownerId, INSTANCE_SALT, {
         privateState: PS,
       });
     });
@@ -228,7 +228,7 @@ describe('Z_OwnablePK', () => {
 
       beforeEach(() => {
         // Prepare new owner commitment
-        newOwnerNonce = Z_OwnablePKPrivateState.generate().offchainNonce;
+        newOwnerNonce = ZOwnablePKPrivateState.generate().offchainNonce;
         newCounter = INIT_COUNTER + 1n;
         newIdHash = createIdHash(Z_NEW_OWNER, newOwnerNonce);
         newOwnerCommitment = buildCommitment(
@@ -282,14 +282,14 @@ describe('Z_OwnablePK', () => {
        * @description More thoroughly tested in `_transferOwnership`
        * */
       it('should bump instance after transfer', () => {
-        const beforeInstance = ownable.getPublicState().Z_OwnablePK__counter;
+        const beforeInstance = ownable.getPublicState().ZOwnablePK__counter;
 
         // Transfer
         ownable.setCaller(OWNER);
         ownable.transferOwnership(newOwnerCommitment);
 
         // Check counter
-        const afterInstance = ownable.getPublicState().Z_OwnablePK__counter;
+        const afterInstance = ownable.getPublicState().ZOwnablePK__counter;
         expect(afterInstance).toEqual(beforeInstance + 1n);
       });
 
