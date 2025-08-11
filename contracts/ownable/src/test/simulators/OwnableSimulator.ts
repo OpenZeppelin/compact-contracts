@@ -19,7 +19,7 @@ import {
   type OwnablePrivateState,
   OwnableWitnesses,
 } from '../../witnesses/OwnableWitnesses.js';
-import { IContractSimulator } from '../types/test.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a Ownable contract for testing purposes.

@@ -1,7 +1,7 @@
 import { getRandomValues } from 'node:crypto';
-import type { Ledger } from '../artifacts/MockZ_OwnablePK/contract/index.cjs';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import { IZ_OwnablePKWitnesses } from './interface.js'
+import type { Ledger } from '../artifacts/MockZ_OwnablePK/contract/index.cjs';
+import type { IZ_OwnablePKWitnesses } from './interface.js';
 
 /**
  * @description Represents the private state of an ownable contract, storing a secret nonce.
@@ -20,18 +20,19 @@ export const Z_OwnablePKPrivateState = {
    * @returns A fresh Z_OwnablePKPrivateState instance.
    */
   generate: (): Z_OwnablePKPrivateState => {
-    return { offchainNonce: getRandomValues(Buffer.alloc(32))};
-  }
+    return { offchainNonce: getRandomValues(Buffer.alloc(32)) };
+  },
 };
 
 /**
  * @description Factory function creating witness implementations for Ownable operations.
  * @returns An object implementing the Witnesses interface for Z_OwnablePKPrivateState.
  */
-export const Z_OwnablePKWitnesses = (): IZ_OwnablePKWitnesses<Z_OwnablePKPrivateState> => ({
+export const Z_OwnablePKWitnesses =
+  (): IZ_OwnablePKWitnesses<Z_OwnablePKPrivateState> => ({
     offchainNonce(
       context: WitnessContext<Ledger, Z_OwnablePKPrivateState>,
     ): [Z_OwnablePKPrivateState, Uint8Array] {
       return [context.privateState, context.privateState.offchainNonce];
     },
-});
+  });

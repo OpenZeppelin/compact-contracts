@@ -2,13 +2,16 @@ import type { CircuitContext } from '@midnight-ntwrk/compact-runtime';
 import type {
   ContextlessCircuits,
   ExtractImpureCircuits,
-  ExtractPureCircuits
+  ExtractPureCircuits,
 } from '../types/test.js';
 
 /**
  * Creates lazily-initialized circuit proxies for pure and impure contract functions.
  */
-export function createCircuitProxies<P, ContractType extends { circuits: any; impureCircuits: any }>(
+export function createCircuitProxies<
+  P,
+  ContractType extends { circuits: any; impureCircuits: any },
+>(
   contract: ContractType,
   getContext: () => CircuitContext<P>,
   getCallerContext: () => CircuitContext<P>,
@@ -23,22 +26,28 @@ export function createCircuitProxies<P, ContractType extends { circuits: any; im
     updateContext: (ctx: CircuitContext<P>) => void,
   ) => ContextlessCircuits<C, P>,
 ) {
-  let pureProxy: ContextlessCircuits<ExtractPureCircuits<ContractType>, P> | undefined;
-  let impureProxy: ContextlessCircuits<ExtractImpureCircuits<ContractType>, P> | undefined;
+  let pureProxy:
+    | ContextlessCircuits<ExtractPureCircuits<ContractType>, P>
+    | undefined;
+  let impureProxy:
+    | ContextlessCircuits<ExtractImpureCircuits<ContractType>, P>
+    | undefined;
 
   return {
     get circuits() {
+      if (!pureProxy) {
+        pureProxy = createPureProxy(contract.circuits, getContext);
+      }
+      if (!impureProxy) {
+        impureProxy = createImpureProxy(
+          contract.impureCircuits,
+          getCallerContext,
+          updateContext,
+        );
+      }
       return {
-        pure:
-          pureProxy ??
-          (pureProxy = createPureProxy(contract.circuits, getContext)),
-        impure:
-          impureProxy ??
-          (impureProxy = createImpureProxy(
-            contract.impureCircuits,
-            getCallerContext,
-            updateContext,
-          )),
+        pure: pureProxy,
+        impure: impureProxy,
       };
     },
     resetProxies() {

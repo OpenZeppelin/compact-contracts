@@ -1,25 +1,31 @@
 import {
   type CircuitContext,
   type CoinPublicKey,
-  type ContractState,
   emptyZswapLocalState,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
-import type { ZswapCoinPublicKey } from '../../artifacts/MockZ_OwnablePK/contract/index.cjs';
 import {
   type Ledger,
   ledger,
   Contract as MockOwnable,
 } from '../../artifacts/MockZ_OwnablePK/contract/index.cjs'; // Combined imports
 import {
-Z_OwnablePKPrivateState,
+  Z_OwnablePKPrivateState,
   Z_OwnablePKWitnesses,
 } from '../../witnesses/Z_OwnablePKWitnesses.js';
+import type {
+  ContextlessCircuits,
+  ExtractImpureCircuits,
+  ExtractPureCircuits,
+  SimulatorOptions,
+} from '../types/test.js';
 import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js';
 import { SimulatorStateManager } from '../utils/SimualatorStateManager.js';
-import { ContextlessCircuits, ExtractImpureCircuits, ExtractPureCircuits, SimulatorOptions } from '../types/test.js';
 
-type OwnableSimOptions = SimulatorOptions<Z_OwnablePKPrivateState, typeof Z_OwnablePKWitnesses>;
+type OwnableSimOptions = SimulatorOptions<
+  Z_OwnablePKPrivateState,
+  typeof Z_OwnablePKWitnesses
+>;
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
@@ -45,7 +51,11 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
     Z_OwnablePKPrivateState
   >;
 
-  constructor(initOwner: Uint8Array, instanceSalt: Uint8Array, options: OwnableSimOptions = {}, ) {
+  constructor(
+    initOwner: Uint8Array,
+    instanceSalt: Uint8Array,
+    options: OwnableSimOptions = {},
+  ) {
     super();
 
     // Setup initial state
@@ -57,9 +67,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
     } = options;
     const constructorArgs = [initOwner, instanceSalt];
 
-    this.contract = new MockOwnable<Z_OwnablePKPrivateState>(
-      witnesses,
-    );
+    this.contract = new MockOwnable<Z_OwnablePKPrivateState>(witnesses);
 
     this.stateManager = new SimulatorStateManager(
       this.contract,
@@ -187,9 +195,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
   /**
    * @description
    */
-  public transferOwnership(
-    newOwnerId: Uint8Array,
-  ) {
+  public transferOwnership(newOwnerId: Uint8Array) {
     this.circuits.impure.transferOwnership(newOwnerId);
   }
 
@@ -213,10 +219,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
   /**
    * @description
    */
-  public hashCommitment(
-    id: Uint8Array,
-    counter: bigint,
-  ): Uint8Array {
+  public hashCommitment(id: Uint8Array, counter: bigint): Uint8Array {
     return this.circuits.impure.hashCommitment(id, counter);
   }
 
@@ -231,7 +234,9 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
     /**
      * @description Stubs a new nonce into the private state.
      */
-    injectSecretNonce: (newNonce: Buffer<ArrayBufferLike>): Z_OwnablePKPrivateState => {
+    injectSecretNonce: (
+      newNonce: Buffer<ArrayBufferLike>,
+    ): Z_OwnablePKPrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
       const updatedState = { ...currentState, offchainNonce: newNonce };
       this.stateManager.updatePrivateState(updatedState);
@@ -240,6 +245,6 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
 
     getCurrentSecretNonce: (): Uint8Array => {
       return this.stateManager.getContext().currentPrivateState.offchainNonce;
-    }
-  }
+    },
+  };
 }
