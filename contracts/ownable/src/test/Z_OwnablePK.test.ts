@@ -1,14 +1,13 @@
 import {
-  type CoinPublicKey,
   convert_bigint_to_Uint8Array,
   persistentHash,
   CompactTypeVector,
-  CompactTypeBytes
+  CompactTypeBytes,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Z_OwnablePKSimulator } from './simulators/Z_OwnablePKSimulator.js';
 import * as utils from './utils/address.js';
-import { ZswapCoinPublicKey, ContractAddress } from '../artifacts/MockOwnable/contract/index.cjs';
+import { ZswapCoinPublicKey } from '../artifacts/MockOwnable/contract/index.cjs';
 import { Z_OwnablePKPrivateState } from '../witnesses/Z_OwnablePKWitnesses.js';
 
 const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
@@ -21,34 +20,17 @@ const NEW_OWNER = String(
 const UNAUTHORIZED = String(
   Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
 ).padStart(64, '0');
-const Z_ZERO = utils.encodeToPK('');
 const Z_OWNER = utils.encodeToPK('OWNER');
 const Z_NEW_OWNER = utils.encodeToPK('NEW_OWNER');
-const Z_NEW_NEW_OWNER = utils.encodeToPK('Z_NEW_NEW_OWNER');
-const EMPTY_BYTES = utils.ZERO_KEY.left.bytes;
+const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 
 const DOMAIN = "Z_OwnablePK:shield:";
 const INIT_COUNTER = 1n;
 
 let secretNonce: Uint8Array;
 let ownable: Z_OwnablePKSimulator;
-let bOwnableAddress: Uint8Array;
 
-//const createZPKCommitment = (
-//    domain: string,
-//    pk: ZswapCoinPublicKey,
-//    counter: bigint,
-//    nonce: Uint8Array
-//): Uint8Array => {
-//  const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
-//  const encoder = new TextEncoder();
-//
-//  const bDomain = encoder.encode(domain);
-//  const bPK = pk.bytes;
-//  const bCounter = convert_bigint_to_Uint8Array(32, counter);
-//  return persistentHash(rt_type, [bDomain, bPK, bCounter, nonce]);
-//}
-
+/** Helpers */
 const createIdHash = (
     pk: ZswapCoinPublicKey,
     nonce: Uint8Array
@@ -61,40 +43,32 @@ const createIdHash = (
 
 const buildCommitmentFromId = (
   id: Uint8Array,
-  counter: bigint
+  instanceSalt: Uint8Array,
+  counter: bigint,
 ): Uint8Array => {
-  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
-  const encoder = new TextEncoder();
-
-  //const contextHash = persistentHash(rt_type, [address, id]);
-
+  const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
   const bCounter = convert_bigint_to_Uint8Array(32, counter);
-  const innerHash = persistentHash(rt_type, [bCounter, id]);
+  const bDomain = new TextEncoder().encode(DOMAIN);
 
-  const bDomain = encoder.encode(DOMAIN);
-  const outerHash = persistentHash(rt_type, [bDomain, innerHash]);
-  return outerHash;
+  const commitment = persistentHash(rt_type, [id, instanceSalt, bCounter, bDomain]);
+  return commitment;
 }
 
 const buildCommitment = (
-    domain: string,
-    pk: ZswapCoinPublicKey,
-    counter: bigint,
-    nonce: Uint8Array,
+  pk: ZswapCoinPublicKey,
+  nonce: Uint8Array,
+  instanceSalt: Uint8Array,
+  counter: bigint,
+  domain: string
 ): Uint8Array => {
-  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
-  const encoder = new TextEncoder();
+  const id = createIdHash(pk, nonce);
 
-  const idHash = createIdHash(pk, nonce);
-  //const contextHash = persistentHash(rt_type, [address, idHash]);
-
+  const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
   const bCounter = convert_bigint_to_Uint8Array(32, counter);
-  const counterHash = persistentHash(rt_type, [bCounter, idHash]);
+  const bDomain = new TextEncoder().encode(domain);
 
-  const bDomain = encoder.encode(domain);
-  const outerHash = persistentHash(rt_type, [bDomain, counterHash]);
-  return outerHash;
-  //return innerHash;
+  const commitment = persistentHash(rt_type, [id, instanceSalt, bCounter, bDomain]);
+  return commitment;
 }
 
 describe('Z_OwnablePK', () => {
@@ -102,7 +76,7 @@ describe('Z_OwnablePK', () => {
     it('should fail when setting owner commitment as 0', () => {
       expect(() => {
         const badCommitment = new Uint8Array(32).fill(0);
-        new Z_OwnablePKSimulator(badCommitment);
+        new Z_OwnablePKSimulator(badCommitment, INSTANCE_SALT);
       }).toThrow('Invalid parameters');
     });
 
@@ -110,9 +84,9 @@ describe('Z_OwnablePK', () => {
       const notZeroPK = utils.encodeToPK('NOT_ZERO');
       const notZeroNonce = new Uint8Array(32).fill(1);
       const nonZeroId = createIdHash(notZeroPK, notZeroNonce);
-      ownable = new Z_OwnablePKSimulator(nonZeroId);
+      ownable = new Z_OwnablePKSimulator(nonZeroId, INSTANCE_SALT);
 
-      const nonZeroCommitment = buildCommitment(DOMAIN, notZeroPK, INIT_COUNTER, notZeroNonce);
+      const nonZeroCommitment = buildCommitmentFromId(nonZeroId, INSTANCE_SALT, INIT_COUNTER);
       expect(ownable.owner()).toEqual(nonZeroCommitment);
     });
   });
@@ -124,17 +98,35 @@ describe('Z_OwnablePK', () => {
       // Bind nonce for convenience
       secretNonce = PS.offchainNonce;
       // Prepare owner ID with gen nonce
-      const ownerCommitment = createIdHash(Z_OWNER, secretNonce);
+      const ownerId = createIdHash(Z_OWNER, secretNonce);
       // Deploy contract with derived owner commitment and PS
-      ownable = new Z_OwnablePKSimulator(ownerCommitment, {privateState: PS});
-
-      const encoder = new TextEncoder();
-      bOwnableAddress = encoder.encode(ownable.contractAddress);
+      ownable = new Z_OwnablePKSimulator(ownerId, INSTANCE_SALT, {privateState: PS});
     });
+
+    /**
+     * @TODO parameterize
+     */
+    describe('hashCommitment', () => {
+      it('should match local and contract commitment algorithms', () => {
+        const address = ownable.contractAddress;
+        const id = createIdHash(Z_OWNER, secretNonce);
+        const counter = INIT_COUNTER;
+
+        // Check buildCommitmentFromId
+        const hashFromContract = ownable.hashCommitment(id, counter);
+        const hashFromHelper1 = buildCommitmentFromId(id, INSTANCE_SALT, counter);
+        expect(hashFromContract).toEqual(hashFromHelper1);
+
+        // Check buildCommitment
+        const hashFromHelper2 = buildCommitment(Z_OWNER, secretNonce, INSTANCE_SALT, counter, DOMAIN);
+        expect(hashFromContract).toEqual(hashFromHelper1);
+        expect(hashFromHelper1).toEqual(hashFromHelper2);
+      })
+    })
 
     describe('owner', () => {
       it('should return the correct owner commitment', () => {
-        const expCommitment = buildCommitment(DOMAIN, Z_OWNER, INIT_COUNTER, secretNonce);
+        const expCommitment = buildCommitment(Z_OWNER, secretNonce, INSTANCE_SALT, INIT_COUNTER, DOMAIN);
         expect(ownable.owner()).toEqual(expCommitment);
       });
     });
@@ -200,7 +192,7 @@ describe('Z_OwnablePK', () => {
         newOwnerNonce = Z_OwnablePKPrivateState.generate().offchainNonce;
         newCounter = INIT_COUNTER + 1n;
         newIdHash = createIdHash(Z_NEW_OWNER, newOwnerNonce);
-        newOwnerCommitment = buildCommitment(DOMAIN, Z_NEW_OWNER, newCounter, newOwnerNonce);
+        newOwnerCommitment = buildCommitment(Z_NEW_OWNER, newOwnerNonce, INSTANCE_SALT, newCounter, DOMAIN);
       });
 
       it('should transfer ownership', () => {
@@ -260,7 +252,7 @@ describe('Z_OwnablePK', () => {
         // Confirm current commitment
         const repeatedId = createIdHash(Z_OWNER, secretNonce);
         const initCommitment = ownable.owner();
-        const expInitCommitment = buildCommitmentFromId(repeatedId, INIT_COUNTER);
+        const expInitCommitment = buildCommitmentFromId(repeatedId, INSTANCE_SALT, INIT_COUNTER);
         expect(initCommitment).toEqual(expInitCommitment);
 
         // Transfer ownership to self with the same id -> `H(pk, nonce)`
@@ -273,7 +265,7 @@ describe('Z_OwnablePK', () => {
 
         // Build commitment locally and validate new commitment == expected
         const bumpedCounter = INIT_COUNTER + 1n;
-        const expNewCommitment = buildCommitmentFromId(repeatedId, bumpedCounter);
+        const expNewCommitment = buildCommitmentFromId(repeatedId, INSTANCE_SALT, bumpedCounter);
         expect(newCommitment).toEqual(expNewCommitment);
 
         // Check same owner maintains permissions after transfer
