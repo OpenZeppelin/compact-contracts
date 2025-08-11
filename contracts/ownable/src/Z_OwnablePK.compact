@@ -2,69 +2,103 @@
 
 pragma language_version >= 0.16.0;
 
+/**
+ * @module Z_OwnablePK
+ * @description A shielded Ownable library.
+ */
 module Z_OwnablePK {
   import CompactStandardLibrary;
 
   export ledger _ownerCommitment: Bytes<32>;
   export ledger _counter: Counter;
+  export sealed ledger _instanceSalt: Bytes<32>;
 
   export witness offchainNonce(): Bytes<32>;
 
-  export circuit initialize(initCommitment: Bytes<32>): [] {
-    assert(initCommitment != default<Bytes<32>>, "Invalid parameters");
-    _transferOwnership(initCommitment);
+  /**
+   * @description Add me!!!
+   */
+  export circuit initialize(ownerId: Bytes<32>, instanceSalt: Bytes<32>): [] {
+    assert(ownerId != default<Bytes<32>>, "Invalid parameters");
+    _instanceSalt = disclose(instanceSalt);
+    _transferOwnership(ownerId);
   }
 
+  /**
+   * @description Add me!!!
+   */
   export circuit owner(): Bytes<32> {
     return _ownerCommitment;
   }
 
-  export circuit transferOwnership(newOwnerIdHash: Bytes<32>): [] {
+  /**
+   * @description Add me!!!
+   */
+  export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
     assertOnlyOwner();
-    assert(newOwnerIdHash != default<Bytes<32>>, "Invalid parameters");
-    _transferOwnership(newOwnerIdHash);
+    assert(newOwnerId != default<Bytes<32>>, "Invalid parameters");
+    _transferOwnership(newOwnerId);
   }
 
+  /**
+   * @description Add me!!!
+   */
   export circuit renounceOwnership(): [] {
     assertOnlyOwner();
     _transferOwnership(default<Bytes<32>>);
   }
 
+  /**
+   * @description Add me!!!
+   */
   export circuit renounceOwnershipObfuscated(): [] {
     assertOnlyOwner();
     const nonce = offchainNonce();
     const obfuscatedCommitment = persistentHash<Vector<4, Bytes<32>>>(
       [
-        pad(32, "Z_OwnablePK:renounced:"),
-        default<Bytes<32>>,
+        persistentHash<Vector<2, Bytes<32>>>([default<Bytes<32>>, nonce]),
+        _instanceSalt,
         _counter as Field as Bytes<32>,
-        nonce
+        pad(32, "Z_OwnablePK:renounced:"),
       ]
     );
 
     _transferOwnership(obfuscatedCommitment);
   }
 
+  /**
+   * @description Add me!!!
+   */
   export circuit assertOnlyOwner(): [] {
     const caller = ownPublicKey();
     const nonce = offchainNonce();
-    const idHash = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
-    assert(_ownerCommitment == hashCommitment(idHash, _counter), "Forbidden");
+    const id = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
+    assert(_ownerCommitment == hashCommitment(id, _counter), "Forbidden");
   }
 
+  // computePKCommitment || generateCommitment
+  /**
+   * @description Add me!!!
+   */
   export circuit hashCommitment(
-    idHash: Bytes<32>,
+    id: Bytes<32>,
     counter: Uint<64>,
   ): Bytes<32> {
-    //const contextHash = persistentHash<Vector<2, Bytes<32>>>([kernel.self().bytes, idHash]);
-    //const counterHash = persistentHash<Vector<2, Bytes<32>>>([counter as Field as Bytes<32>, contextHash]);
-    const counterHash = persistentHash<Vector<2, Bytes<32>>>([counter as Field as Bytes<32>, idHash]);
-    const commitment = persistentHash<Vector<2, Bytes<32>>>([pad(32, "Z_OwnablePK:shield:"), counterHash]);
-    return commitment;
+    return persistentHash<Vector<4, Bytes<32>>>(
+      [
+        id,
+        _instanceSalt,
+        counter as Field as Bytes<32>,
+        pad(32, "Z_OwnablePK:shield:")
+      ]
+    );
   }
 
-  export circuit _transferOwnership(newOwnerIdHash: Bytes<32>): [] {
+  /**
+   * @description Add me!!!
+   */
+  export circuit _transferOwnership(newOwnerId: Bytes<32>): [] {
     _counter.increment(1);
-    _ownerCommitment = hashCommitment(disclose(newOwnerIdHash), _counter);
+    _ownerCommitment = hashCommitment(disclose(newOwnerId), _counter);
   }
 }
