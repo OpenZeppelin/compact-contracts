@@ -45,7 +45,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
     Z_OwnablePKPrivateState
   >;
 
-  constructor(initOwner: Uint8Array, options: OwnableSimOptions = {}, ) {
+  constructor(initOwner: Uint8Array, instanceSalt: Uint8Array, options: OwnableSimOptions = {}, ) {
     super();
 
     // Setup initial state
@@ -55,7 +55,7 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
       coinPK = '0'.repeat(64),
       address = sampleContractAddress(),
     } = options;
-    const constructorArgs = [initOwner];
+    const constructorArgs = [initOwner, instanceSalt];
 
     this.contract = new MockOwnable<Z_OwnablePKPrivateState>(
       witnesses,
@@ -214,10 +214,10 @@ export class Z_OwnablePKSimulator extends AbstractContractSimulator<
    * @description
    */
   public hashCommitment(
-    idHash: Uint8Array,
+    id: Uint8Array,
     counter: bigint,
   ): Uint8Array {
-    return this.circuits.pure.hashCommitment(idHash, counter);
+    return this.circuits.impure.hashCommitment(id, counter);
   }
 
   /**
