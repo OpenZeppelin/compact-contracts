@@ -7,7 +7,6 @@ import {
   type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
   type ContractAddress,
   type Either,
@@ -21,13 +20,14 @@ const { hkdfSync } = await import('node:crypto');
 const KEYLEN = 32;
 
 /**
- * @description The respective `nonce` value for a given `roleId` should be at the same index
+ * @description The respective nonce and contract value for a given `roleId` should be at the same index
  * for each array of `Buffer`s
  */
 export type ShieldedAccessControlPrivateState = {
   secretKey: Buffer;
   nonces: Buffer[];
   roleIds: Buffer[];
+  contractAddress: Buffer;
 };
 
 /**
@@ -36,6 +36,7 @@ export type ShieldedAccessControlPrivateState = {
  * @param roleId - The role identifier.
  * @param salt - A salt value.
  * @param account - The public key of an account.
+ * @param contractAddress - The contract address of the contract being called.
  *
  * @returns A unique nonce value for `roleId`
  */
@@ -44,9 +45,10 @@ function generateNonce(
   roleId: Buffer,
   salt: Buffer,
   account: Buffer,
+  contractAddress: Buffer,
 ): Buffer {
   const domainString = Buffer.from('role-nonce');
-  const info = Buffer.concat([domainString, roleId, account]);
+  const info = Buffer.concat([domainString, roleId, account, contractAddress]);
   const nonce = hkdfSync('sha512', secretKey, salt, info, KEYLEN);
 
   return Buffer.from(nonce);
@@ -57,6 +59,7 @@ function generateNonce(
  * @param account - The public key of an account.
  * @param roleId - The role identifier.
  * @param nonce - The nonce associated with `roleId`.
+ * @param contractAddress - The address of the contract being called.
  *
  * @returns Whether the account was approved for a role
  */
@@ -64,6 +67,7 @@ function sendRoleRequestToAdmin(
   _account: Buffer,
   _roleId: Buffer,
   _nonce: Buffer,
+  _contractAddress: Buffer,
 ) {
   return true;
 }
@@ -120,6 +124,7 @@ export const ShieldedAccessControlWitnesses = {
       secretKey: privateState.secretKey,
       roleIds: [],
       nonces: [],
+      contractAddress: privateState.contractAddress,
     };
 
     const contract =
@@ -132,7 +137,12 @@ export const ShieldedAccessControlWitnesses = {
       currentZswapLocalState,
     } = contract.initialState(
       constructorContext(
-        { secretKey: privateState.secretKey, nonces: [], roleIds: [] },
+        {
+          secretKey: privateState.secretKey,
+          nonces: [],
+          roleIds: [],
+          contractAddress: privateState.contractAddress,
+        },
         coinPubKey,
       ),
     );
@@ -147,17 +157,18 @@ export const ShieldedAccessControlWitnesses = {
     };
 
     for (let i = 0; i < roles.length; i++) {
-      const role = roles[i];
+      const role = Buffer.from(roles[i]);
       const nonce = generateNonce(
         privateState.secretKey,
-        Buffer.from(role),
+        role,
         Buffer.from(salt),
         Buffer.from(account),
+        privateState.contractAddress,
       );
       const eitherAccount: Either<ZswapCoinPublicKey, ContractAddress> = {
         is_left: true,
         left: { bytes: account },
-        right: { bytes: encodeContractAddress(sampleContractAddress()) },
+        right: { bytes: new Uint8Array(32) },
       };
 
       try {
@@ -169,7 +180,7 @@ export const ShieldedAccessControlWitnesses = {
         );
         if (hasRole) {
           newPrivateState.nonces.push(nonce);
-          newPrivateState.roleIds.push(Buffer.from(role));
+          newPrivateState.roleIds.push(role);
         }
       } catch (err) {
         console.log(err);
@@ -184,11 +195,15 @@ export const ShieldedAccessControlWitnesses = {
    * @param roleId - The role identifier.
    * @param account - The public key requesting a role.
    * @param salt - A salt value.
+   * @param contractAddress - The address of the contract being called.
    *
    * @returns An array of the new private state and an empty array
    */
   requestRole: (
-    { privateState }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+    {
+      privateState,
+      contractAddress,
+    }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
     roleId: Uint8Array,
     account: Uint8Array,
     salt: Uint8Array,
@@ -196,13 +211,22 @@ export const ShieldedAccessControlWitnesses = {
     const saltBuff = Buffer.from(salt);
     const roleIdBuff = Buffer.from(roleId);
     const accountBuff = Buffer.from(account);
+    const contractAddressBuff = Buffer.from(
+      encodeContractAddress(contractAddress),
+    );
     const nonce = generateNonce(
       privateState.secretKey,
       roleIdBuff,
       saltBuff,
       accountBuff,
+      contractAddressBuff,
     );
-    const isApproved = sendRoleRequestToAdmin(accountBuff, roleIdBuff, nonce);
+    const isApproved = sendRoleRequestToAdmin(
+      accountBuff,
+      roleIdBuff,
+      nonce,
+      contractAddressBuff,
+    );
 
     if (isApproved) {
       privateState.nonces.push(nonce);
