@@ -19,7 +19,7 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit initialize(ownerId: Bytes<32>, instanceSalt: Bytes<32>): [] {
-    assert(ownerId != default<Bytes<32>>, "Invalid parameters");
+    assert(ownerId != default<Bytes<32>>, "ZOwnablePK: invalid id");
     _instanceSalt = disclose(instanceSalt);
     _transferOwnership(ownerId);
   }
@@ -36,7 +36,7 @@ module ZOwnablePK {
    */
   export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
     assertOnlyOwner();
-    assert(newOwnerId != default<Bytes<32>>, "Invalid parameters");
+    assert(newOwnerId != default<Bytes<32>>, "ZOwnablePK: invalid id");
     _transferOwnership(newOwnerId);
   }
 
@@ -55,10 +55,9 @@ module ZOwnablePK {
     const caller = ownPublicKey();
     const nonce = offchainNonce();
     const id = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
-    assert(_ownerCommitment == computeOwnerCommitment(id, _counter), "Forbidden");
+    assert(_ownerCommitment == computeOwnerCommitment(id, _counter), "ZOwnablePK: caller is not the owner");
   }
 
-  // computePKCommitment || generateCommitment
   /**
    * @description Add me!!!
    */
