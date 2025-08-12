@@ -222,6 +222,14 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
     this.circuits.impure.renounceOwnership();
   }
 
+
+  /**
+   * @description
+   */
+  public renounceOwnershipObfuscated(revealKey: Uint8Array) {
+    this.circuits.impure.renounceOwnershipObfuscated(revealKey);
+  }
+
   /**
    * @description Throws if called by any account other than the owner.
    * Use this to restrict access to sensitive circuits.

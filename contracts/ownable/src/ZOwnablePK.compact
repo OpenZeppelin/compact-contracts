@@ -45,18 +45,17 @@ module ZOwnablePK {
    */
   export circuit renounceOwnership(): [] {
     assertOnlyOwner();
-    _transferOwnership(default<Bytes<32>>);
+    _ownerCommitment.resetToDefault();
   }
 
   /**
    * @description Add me!!!
    */
-  export circuit renounceOwnershipObfuscated(): [] {
+  export circuit renounceOwnershipObfuscated(revealKey: Bytes<32>): [] {
     assertOnlyOwner();
-    const nonce = offchainNonce();
     const obfuscatedCommitment = persistentHash<Vector<4, Bytes<32>>>(
       [
-        persistentHash<Vector<2, Bytes<32>>>([default<Bytes<32>>, nonce]),
+        persistentHash<Vector<2, Bytes<32>>>([default<Bytes<32>>, revealKey]),
         _instanceSalt,
         _counter as Field as Bytes<32>,
         pad(32, "ZOwnablePK:renounced:"),

@@ -23,6 +23,7 @@ const UNAUTHORIZED = String(
 const Z_OWNER = utils.encodeToPK('OWNER');
 const Z_NEW_OWNER = utils.encodeToPK('NEW_OWNER');
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
+const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
 
 const DOMAIN = 'ZOwnablePK:shield:';
 const INIT_COUNTER = 1n;
@@ -175,8 +176,7 @@ describe('ZOwnablePK', () => {
 
       it('should fail when the authorized caller has the wrong nonce', () => {
         // Inject bad nonce
-        const badNonce = Buffer.alloc(32, 'badNonce');
-        ownable.privateState.injectSecretNonce(badNonce);
+        ownable.privateState.injectSecretNonce(BAD_NONCE);
 
         // Check nonce does not match
         expect(ownable.privateState.getCurrentSecretNonce()).not.toEqual(
@@ -204,8 +204,7 @@ describe('ZOwnablePK', () => {
 
       it('should fail when unauthorized caller has the wrong nonce', () => {
         // Inject bad nonce
-        const badNonce = Buffer.alloc(32, 'badNonce');
-        ownable.privateState.injectSecretNonce(badNonce);
+        ownable.privateState.injectSecretNonce(BAD_NONCE);
 
         // Check nonce does not match
         expect(ownable.privateState.getCurrentSecretNonce()).not.toEqual(
@@ -329,8 +328,47 @@ describe('ZOwnablePK', () => {
 
     describe('renounceOwnership', () => {
       it('should renounce ownership', () => {
+        ownable.callerCtx.setCaller(OWNER);
+        ownable.renounceOwnership();
 
-      })
-    })
+        // Check owner is reset
+        expect(ownable.owner()).toEqual(new Uint8Array(32).fill(0));
+
+        // Check revoked permissions
+        expect(() => {
+          ownable.assertOnlyOwner()
+        }).toThrow('Forbidden');
+      });
+
+      it('should fail when renouncing from unauthorized', () => {
+        ownable.callerCtx.setCaller(UNAUTHORIZED);
+        expect(() => {
+          ownable.renounceOwnership();
+        });
+      });
+
+      it('should fail when renouncing from authorized with bad nonce', () => {
+        ownable.callerCtx.setCaller(OWNER);
+        ownable.privateState.injectSecretNonce(BAD_NONCE);
+        expect(() => {
+          ownable.renounceOwnership();
+        });
+      });
+
+      it('should fail when renouncing from unauthorized with bad nonce', () => {
+        ownable.callerCtx.setCaller(UNAUTHORIZED);
+        ownable.privateState.injectSecretNonce(BAD_NONCE);
+        expect(() => {
+          ownable.renounceOwnership();
+        });
+      });
+
+      //describe('renounceOwnershipObfuscated', () => {
+      //  it('should renounce and obfuscate', () => {
+      //    ownable.callerCtx.setCaller(OWNER);
+      //
+      // })
+      //})
+    });
   });
 });
