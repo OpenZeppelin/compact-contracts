@@ -190,7 +190,7 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
 
   public overrideWitness<K extends keyof typeof this._witnesses>(
     key: K,
-    fn: typeof this._witnesses[K],
+    fn: (typeof this._witnesses)[K],
   ) {
     this.witnesses = {
       ...this._witnesses,
@@ -233,8 +233,8 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   /**
    * @description
    */
-  public hashCommitment(id: Uint8Array, counter: bigint): Uint8Array {
-    return this.circuits.impure.hashCommitment(id, counter);
+  public computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
+    return this.circuits.impure.computeOwnerCommitment(id, counter);
   }
 
   /**
@@ -270,5 +270,5 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
     setCaller: (caller: CoinPublicKey) => {
       this.callerOverride = caller;
     },
-  }
+  };
 }

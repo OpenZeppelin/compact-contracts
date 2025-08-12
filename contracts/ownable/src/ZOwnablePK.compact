@@ -55,14 +55,14 @@ module ZOwnablePK {
     const caller = ownPublicKey();
     const nonce = offchainNonce();
     const id = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
-    assert(_ownerCommitment == hashCommitment(id, _counter), "Forbidden");
+    assert(_ownerCommitment == computeOwnerCommitment(id, _counter), "Forbidden");
   }
 
   // computePKCommitment || generateCommitment
   /**
    * @description Add me!!!
    */
-  export circuit hashCommitment(
+  export circuit computeOwnerCommitment(
     id: Bytes<32>,
     counter: Uint<64>,
   ): Bytes<32> {
@@ -81,6 +81,6 @@ module ZOwnablePK {
    */
   export circuit _transferOwnership(newOwnerId: Bytes<32>): [] {
     _counter.increment(1);
-    _ownerCommitment = hashCommitment(disclose(newOwnerId), _counter);
+    _ownerCommitment = computeOwnerCommitment(disclose(newOwnerId), _counter);
   }
 }

@@ -123,13 +123,13 @@ describe('ZOwnablePK', () => {
     /**
      * @TODO parameterize
      */
-    describe('hashCommitment', () => {
+    describe('computeOwnerCommitment', () => {
       it('should match local and contract commitment algorithms', () => {
         const id = createIdHash(Z_OWNER, secretNonce);
         const counter = INIT_COUNTER;
 
         // Check buildCommitmentFromId
-        const hashFromContract = ownable.hashCommitment(id, counter);
+        const hashFromContract = ownable.computeOwnerCommitment(id, counter);
         const hashFromHelper1 = buildCommitmentFromId(
           id,
           INSTANCE_SALT,
@@ -336,7 +336,7 @@ describe('ZOwnablePK', () => {
 
         // Check revoked permissions
         expect(() => {
-          ownable.assertOnlyOwner()
+          ownable.assertOnlyOwner();
         }).toThrow('Forbidden');
       });
 

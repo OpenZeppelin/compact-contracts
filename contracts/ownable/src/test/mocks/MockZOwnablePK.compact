@@ -28,8 +28,8 @@ export circuit assertOnlyOwner(): [] {
   return ZOwnablePK_assertOnlyOwner();
 }
 
-export circuit hashCommitment(id: Bytes<32>, counter: Uint<64>): Bytes<32> {
-  return ZOwnablePK_hashCommitment(id, counter);
+export circuit computeOwnerCommitment(id: Bytes<32>, counter: Uint<64>): Bytes<32> {
+  return ZOwnablePK_computeOwnerCommitment(id, counter);
 }
 
 export circuit _transferOwnership(newOwnerCommitment: Bytes<32>): [] {
