@@ -8,7 +8,7 @@ import {
   type Ledger,
   ledger,
   Contract as MockOwnable,
-} from '../../artifacts/MockZOwnablePK/contract/index.cjs'; // Combined imports
+} from '../../artifacts/MockZOwnablePK/contract/index.cjs';
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,
@@ -36,10 +36,11 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   ZOwnablePKPrivateState,
   Ledger
 > {
-  readonly contract: MockOwnable<ZOwnablePKPrivateState>;
+  contract: MockOwnable<ZOwnablePKPrivateState>;
   readonly contractAddress: string;
   private stateManager: SimulatorStateManager<ZOwnablePKPrivateState>;
   private callerOverride: CoinPublicKey | null = null;
+  private _witnesses: ReturnType<typeof ZOwnablePKWitnesses>;
 
   private _pureCircuitProxy?: ContextlessCircuits<
     ExtractPureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
@@ -77,6 +78,8 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
       ...constructorArgs,
     );
     this.contractAddress = this.circuitContext.transactionContext.address;
+    this._witnesses = witnesses;
+    this.contract = new MockOwnable<ZOwnablePKPrivateState>(this._witnesses);
   }
 
   get circuitContext() {
@@ -181,6 +184,25 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
     return {
       pure: this.pureCircuit,
       impure: this.impureCircuit,
+    };
+  }
+
+  public get witnesses(): ReturnType<typeof ZOwnablePKWitnesses> {
+    return this._witnesses;
+  }
+
+  public set witnesses(newWitnesses: ReturnType<typeof ZOwnablePKWitnesses>) {
+    this._witnesses = newWitnesses;
+    this.contract = new MockOwnable<ZOwnablePKPrivateState>(this._witnesses);
+  }
+
+  public overrideWitness<K extends keyof typeof this._witnesses>(
+    key: K,
+    fn: typeof this._witnesses[K],
+  ) {
+    this.witnesses = {
+      ...this._witnesses,
+      [key]: fn,
     };
   }
 
