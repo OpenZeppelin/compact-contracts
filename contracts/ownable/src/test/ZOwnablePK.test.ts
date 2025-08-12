@@ -334,7 +334,7 @@ describe('ZOwnablePK', () => {
      * @TODO parameterize
      */
     describe('_computeOwnerCommitment', () => {
-      it('should match local and contract commitment algorithms', () => {
+      it('should match local and contract commitment', () => {
         const id = createIdHash(Z_OWNER, secretNonce);
         const counter = INIT_COUNTER;
 
