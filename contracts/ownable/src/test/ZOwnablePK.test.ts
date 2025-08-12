@@ -10,28 +10,24 @@ import { ZOwnablePKPrivateState } from '../witnesses/ZOwnablePKWitnesses.js';
 import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import * as utils from './utils/address.js';
 
-const OWNER = String(Buffer.from('OWNER', 'ascii').toString('hex')).padStart(
-  64,
-  '0',
-);
-const NEW_OWNER = String(
-  Buffer.from('NEW_OWNER', 'ascii').toString('hex'),
-).padStart(64, '0');
-const UNAUTHORIZED = String(
-  Buffer.from('UNAUTHORIZED', 'ascii').toString('hex'),
-).padStart(64, '0');
+// Callers
+const OWNER = utils.toHexPadded('OWNER');
+const NEW_OWNER = utils.toHexPadded('NEW_OWNER');
+const UNAUTHORIZED = utils.toHexPadded('UNAUTHORIZED');
+
+// ZPKs
 const Z_OWNER = utils.encodeToPK('OWNER');
 const Z_NEW_OWNER = utils.encodeToPK('NEW_OWNER');
+
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
-
 const DOMAIN = 'ZOwnablePK:shield:';
 const INIT_COUNTER = 1n;
 
 let secretNonce: Uint8Array;
 let ownable: ZOwnablePKSimulator;
 
-/** Helpers */
+// Helpers
 const createIdHash = (
   pk: ZswapCoinPublicKey,
   nonce: Uint8Array,
