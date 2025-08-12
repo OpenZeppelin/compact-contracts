@@ -162,7 +162,7 @@ module ShieldedAccessControl {
    * @dev Developers must export publicly declared roles from the top-level contract to generate possible roles for each.
    *
    * @param {Bytes<32>} account - The account requesting a role.
-   * @param {Bytes<32>}salt - A salt value for the underlying HKDF function.
+   * @param {Bytes<32>} salt - A salt value for the underlying HKDF function.
    * @return {[]} - Empty tuple.
    */
   witness recoverRoles(account: Bytes<32>, salt: Bytes<32>): [];
