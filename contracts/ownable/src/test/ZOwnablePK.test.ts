@@ -362,13 +362,6 @@ describe('ZOwnablePK', () => {
           ownable.renounceOwnership();
         });
       });
-
-      //describe('renounceOwnershipObfuscated', () => {
-      //  it('should renounce and obfuscate', () => {
-      //    ownable.callerCtx.setCaller(OWNER);
-      //
-      // })
-      //})
     });
   });
 });

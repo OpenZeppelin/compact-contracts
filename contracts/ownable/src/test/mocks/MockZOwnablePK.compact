@@ -24,10 +24,6 @@ export circuit renounceOwnership(): [] {
   return ZOwnablePK_renounceOwnership();
 }
 
-export circuit renounceOwnershipObfuscated(revealKey: Bytes<32>): [] {
-  return ZOwnablePK_renounceOwnershipObfuscated(revealKey);
-}
-
 export circuit assertOnlyOwner(): [] {
   return ZOwnablePK_assertOnlyOwner();
 }
