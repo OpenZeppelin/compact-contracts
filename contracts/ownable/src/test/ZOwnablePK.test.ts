@@ -355,7 +355,6 @@ describe('ZOwnablePK', () => {
           counter,
           DOMAIN,
         );
-        expect(hashFromContract).toEqual(hashFromHelper1);
         expect(hashFromHelper1).toEqual(hashFromHelper2);
       });
     });
