@@ -1,10 +1,7 @@
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-
 import "../../NonFungibleToken" prefix NonFungibleToken_;
-
-export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 /**
  * @description `init` is a param for testing.

@@ -1,0 +1,20 @@
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+/**
+ * @description Standard structs from CompactStandardLibrary for use in contracts and TypeScript.
+ */
+export {
+  Maybe,              // Encapsulates an optionally present value
+  Either,             // Disjoint union of two types
+  CurvePoint,         // Point on the proof system's embedded curve
+  MerkleTreeDigest,   // Root hash of a Merkle tree
+  MerkleTreePathEntry,// Entry in a Merkle tree path
+  MerkleTreePath,     // Path in a Merkle tree leading to a leaf
+  ContractAddress,    // Address of a contract
+  CoinInfo,           // Description of a newly created coin
+  QualifiedCoinInfo,  // Description of an existing coin in the ledger
+  ZswapCoinPublicKey, // Public key for coin outputs
+  SendResult          // Result of send/send_immediate operations
+};
