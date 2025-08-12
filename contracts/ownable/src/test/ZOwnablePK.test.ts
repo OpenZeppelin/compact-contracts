@@ -333,13 +333,13 @@ describe('ZOwnablePK', () => {
     /**
      * @TODO parameterize
      */
-    describe('computeOwnerCommitment', () => {
+    describe('_computeOwnerCommitment', () => {
       it('should match local and contract commitment algorithms', () => {
         const id = createIdHash(Z_OWNER, secretNonce);
         const counter = INIT_COUNTER;
 
         // Check buildCommitmentFromId
-        const hashFromContract = ownable.computeOwnerCommitment(id, counter);
+        const hashFromContract = ownable._computeOwnerCommitment(id, counter);
         const hashFromHelper1 = buildCommitmentFromId(
           id,
           INSTANCE_SALT,

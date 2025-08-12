@@ -233,8 +233,8 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   /**
    * @description
    */
-  public computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
-    return this.circuits.impure.computeOwnerCommitment(id, counter);
+  public _computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
+    return this.circuits.impure._computeOwnerCommitment(id, counter);
   }
 
   /**

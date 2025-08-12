@@ -8,6 +8,7 @@ pragma language_version >= 0.16.0;
  */
 module ZOwnablePK {
   import CompactStandardLibrary;
+  import "../../node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
 
   export ledger _ownerCommitment: Bytes<32>;
   export ledger _counter: Counter;
@@ -19,6 +20,8 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit initialize(ownerId: Bytes<32>, instanceSalt: Bytes<32>): [] {
+    Initializable_initialize();
+
     assert(ownerId != default<Bytes<32>>, "ZOwnablePK: invalid id");
     _instanceSalt = disclose(instanceSalt);
     _transferOwnership(ownerId);
@@ -28,6 +31,7 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit owner(): Bytes<32> {
+    Initializable_assertInitialized();
     return _ownerCommitment;
   }
 
@@ -35,6 +39,8 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
+    Initializable_assertInitialized();
+
     assertOnlyOwner();
     assert(newOwnerId != default<Bytes<32>>, "ZOwnablePK: invalid id");
     _transferOwnership(newOwnerId);
@@ -44,6 +50,8 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit renounceOwnership(): [] {
+    Initializable_assertInitialized();
+
     assertOnlyOwner();
     _ownerCommitment.resetToDefault();
   }
@@ -52,19 +60,22 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit assertOnlyOwner(): [] {
+    Initializable_assertInitialized();
+
     const caller = ownPublicKey();
     const nonce = offchainNonce();
     const id = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
-    assert(_ownerCommitment == computeOwnerCommitment(id, _counter), "ZOwnablePK: caller is not the owner");
+    assert(_ownerCommitment == _computeOwnerCommitment(id, _counter), "ZOwnablePK: caller is not the owner");
   }
 
   /**
    * @description Add me!!!
    */
-  export circuit computeOwnerCommitment(
+  export circuit _computeOwnerCommitment(
     id: Bytes<32>,
     counter: Uint<64>,
   ): Bytes<32> {
+    Initializable_assertInitialized();
     return persistentHash<Vector<4, Bytes<32>>>(
       [
         id,
@@ -79,7 +90,9 @@ module ZOwnablePK {
    * @description Add me!!!
    */
   export circuit _transferOwnership(newOwnerId: Bytes<32>): [] {
+    Initializable_assertInitialized();
+
     _counter.increment(1);
-    _ownerCommitment = computeOwnerCommitment(disclose(newOwnerId), _counter);
+    _ownerCommitment = _computeOwnerCommitment(disclose(newOwnerId), _counter);
   }
 }
