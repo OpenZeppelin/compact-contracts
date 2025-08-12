@@ -85,8 +85,8 @@ describe('ZOwnablePK', () => {
   describe('before initialize', () => {
     it('should fail when setting owner commitment as 0', () => {
       expect(() => {
-        const badCommitment = new Uint8Array(32).fill(0);
-        new ZOwnablePKSimulator(badCommitment, INSTANCE_SALT);
+        const badId = new Uint8Array(32).fill(0);
+        new ZOwnablePKSimulator(badId, INSTANCE_SALT);
       }).toThrow('Invalid parameters');
     });
 
@@ -263,11 +263,11 @@ describe('ZOwnablePK', () => {
         expect(ownable.assertOnlyOwner()).not.to.throw;
       });
 
-      it('should fail when transferring to zero', () => {
+      it('should fail when transferring to id zero', () => {
         ownable.setCaller(OWNER);
-        const badCommitment = new Uint8Array(32).fill(0);
+        const badId = new Uint8Array(32).fill(0);
         expect(() => {
-          ownable.transferOwnership(badCommitment);
+          ownable.transferOwnership(badId);
         }).toThrow('Invalid parameters');
       });
 
