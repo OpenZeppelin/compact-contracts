@@ -14,7 +14,7 @@ module ZOwnablePK {
   export ledger _counter: Counter;
   export sealed ledger _instanceSalt: Bytes<32>;
 
-  export witness offchainNonce(): Bytes<32>;
+  export witness secretNonce(): Bytes<32>;
 
   /**
    * @description Add me!!!
@@ -63,7 +63,7 @@ module ZOwnablePK {
     Initializable_assertInitialized();
 
     const caller = ownPublicKey();
-    const nonce = offchainNonce();
+    const nonce = secretNonce();
     const id = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
     assert(_ownerCommitment == _computeOwnerCommitment(id, _counter), "ZOwnablePK: caller is not the owner");
   }

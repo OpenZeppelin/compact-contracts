@@ -11,5 +11,5 @@ export interface IZOwnablePKWitnesses<P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret nonce as a Uint8Array.
    */
-  offchainNonce(context: WitnessContext<Ledger, P>): [P, Uint8Array];
+  secretNonce(context: WitnessContext<Ledger, P>): [P, Uint8Array];
 }

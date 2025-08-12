@@ -8,7 +8,7 @@ import type { IZOwnablePKWitnesses } from './interface.js';
  */
 export type ZOwnablePKPrivateState = {
   /** @description A 32-byte secret nonce used as a privacy additive. */
-  offchainNonce: Buffer;
+  secretNonce: Buffer;
 };
 
 /**
@@ -20,7 +20,7 @@ export const ZOwnablePKPrivateState = {
    * @returns A fresh ZOwnablePKPrivateState instance.
    */
   generate: (): ZOwnablePKPrivateState => {
-    return { offchainNonce: getRandomValues(Buffer.alloc(32)) };
+    return { secretNonce: getRandomValues(Buffer.alloc(32)) };
   },
 };
 
@@ -30,9 +30,9 @@ export const ZOwnablePKPrivateState = {
  */
 export const ZOwnablePKWitnesses =
   (): IZOwnablePKWitnesses<ZOwnablePKPrivateState> => ({
-    offchainNonce(
+    secretNonce(
       context: WitnessContext<Ledger, ZOwnablePKPrivateState>,
     ): [ZOwnablePKPrivateState, Uint8Array] {
-      return [context.privateState, context.privateState.offchainNonce];
+      return [context.privateState, context.privateState.secretNonce];
     },
   });

@@ -252,13 +252,13 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
       newNonce: Buffer<ArrayBufferLike>,
     ): ZOwnablePKPrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
-      const updatedState = { ...currentState, offchainNonce: newNonce };
+      const updatedState = { ...currentState, secretNonce: newNonce };
       this.stateManager.updatePrivateState(updatedState);
       return updatedState;
     },
 
     getCurrentSecretNonce: (): Uint8Array => {
-      return this.stateManager.getContext().currentPrivateState.offchainNonce;
+      return this.stateManager.getContext().currentPrivateState.secretNonce;
     },
   };
 

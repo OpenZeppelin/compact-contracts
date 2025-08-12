@@ -107,7 +107,7 @@ describe('ZOwnablePK', () => {
       // Create private state object and generate nonce
       const PS = ZOwnablePKPrivateState.generate();
       // Bind nonce for convenience
-      secretNonce = PS.offchainNonce;
+      secretNonce = PS.secretNonce;
       // Prepare owner ID with gen nonce
       const ownerId = createIdHash(Z_OWNER, secretNonce);
       // Deploy contract with derived owner commitment and PS
@@ -137,7 +137,7 @@ describe('ZOwnablePK', () => {
 
       beforeEach(() => {
         // Prepare new owner commitment
-        newOwnerNonce = ZOwnablePKPrivateState.generate().offchainNonce;
+        newOwnerNonce = ZOwnablePKPrivateState.generate().secretNonce;
         newCounter = INIT_COUNTER + 1n;
         newIdHash = createIdHash(Z_NEW_OWNER, newOwnerNonce);
         newOwnerCommitment = buildCommitment(
@@ -366,7 +366,11 @@ describe('ZOwnablePK', () => {
         ownable._transferOwnership(id);
 
         const nextCounter = INIT_COUNTER + 1n;
-        const expCommitment = buildCommitmentFromId(id, INSTANCE_SALT, nextCounter);
+        const expCommitment = buildCommitmentFromId(
+          id,
+          INSTANCE_SALT,
+          nextCounter,
+        );
         expect(ownable.owner()).toEqual(expCommitment);
       });
 
@@ -375,11 +379,13 @@ describe('ZOwnablePK', () => {
         const counterStart = 2; // count starts at 2 bc the constructor bumps the count to 1
         for (let i = counterStart; i <= nTransfers; i++) {
           const pk = utils.encodeToPK(`Id${i}`);
-          const nonce = new Uint8Array(32).fill(i)
+          const nonce = new Uint8Array(32).fill(i);
           const id = createIdHash(pk, nonce);
           ownable._transferOwnership(id);
 
-          expect(ownable.getPublicState().ZOwnablePK__counter).toEqual(BigInt(i))
+          expect(ownable.getPublicState().ZOwnablePK__counter).toEqual(
+            BigInt(i),
+          );
         }
       });
 
@@ -388,7 +394,11 @@ describe('ZOwnablePK', () => {
         ownable._transferOwnership(zerosId);
 
         const nextCounter = INIT_COUNTER + 1n;
-        const expCommitment = buildCommitmentFromId(zerosId, INSTANCE_SALT, nextCounter);
+        const expCommitment = buildCommitmentFromId(
+          zerosId,
+          INSTANCE_SALT,
+          nextCounter,
+        );
         expect(ownable.owner()).toEqual(expCommitment);
       });
 
