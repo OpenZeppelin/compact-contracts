@@ -158,14 +158,6 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   }
 
   /**
-   * @description Sets the caller context.
-   * @param caller The caller in context of the proceeding circuit calls.
-   */
-  public setCaller(caller: CoinPublicKey | null): void {
-    this.callerOverride = caller;
-  }
-
-  /**
    * @description Resets the cached circuit proxy instances.
    * This is useful if the underlying contract state or circuit context has changed,
    * and you want to ensure the proxies are recreated with updated context on next access.
@@ -269,4 +261,14 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
       return this.stateManager.getContext().currentPrivateState.offchainNonce;
     },
   };
+
+  public callerCtx = {
+    /**
+     * @description Sets the caller context.
+     * @param caller The caller in context of the proceeding circuit calls.
+     */
+    setCaller: (caller: CoinPublicKey) => {
+      this.callerOverride = caller;
+    },
+  }
 }

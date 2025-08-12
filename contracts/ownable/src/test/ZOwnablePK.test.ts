@@ -169,7 +169,7 @@ describe('ZOwnablePK', () => {
           secretNonce,
         );
 
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         expect(ownable.assertOnlyOwner()).to.not.throw;
       });
 
@@ -184,7 +184,7 @@ describe('ZOwnablePK', () => {
         );
 
         // Set caller and call circuit
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         expect(() => {
           ownable.assertOnlyOwner();
         }).toThrow('Forbidden');
@@ -196,7 +196,7 @@ describe('ZOwnablePK', () => {
           secretNonce,
         );
 
-        ownable.setCaller(UNAUTHORIZED);
+        ownable.callerCtx.setCaller(UNAUTHORIZED);
         expect(() => {
           ownable.assertOnlyOwner();
         }).toThrow('Forbidden');
@@ -213,7 +213,7 @@ describe('ZOwnablePK', () => {
         );
 
         // Set unauthorized caller and call circuit
-        ownable.setCaller(UNAUTHORIZED);
+        ownable.callerCtx.setCaller(UNAUTHORIZED);
         expect(() => {
           ownable.assertOnlyOwner();
         }).toThrow('Forbidden');
@@ -241,30 +241,30 @@ describe('ZOwnablePK', () => {
       });
 
       it('should transfer ownership', () => {
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         ownable.transferOwnership(newIdHash);
         expect(ownable.owner()).toEqual(newOwnerCommitment);
 
         // Old owner
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         expect(() => {
           ownable.assertOnlyOwner();
         }).toThrow('Forbidden');
 
         // Unauthorized
-        ownable.setCaller(UNAUTHORIZED);
+        ownable.callerCtx.setCaller(UNAUTHORIZED);
         expect(() => {
           ownable.assertOnlyOwner();
         }).toThrow('Forbidden');
 
         // New owner
-        ownable.setCaller(NEW_OWNER);
+        ownable.callerCtx.setCaller(NEW_OWNER);
         ownable.privateState.injectSecretNonce(Buffer.from(newOwnerNonce));
         expect(ownable.assertOnlyOwner()).not.to.throw;
       });
 
       it('should fail when transferring to id zero', () => {
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         const badId = new Uint8Array(32).fill(0);
         expect(() => {
           ownable.transferOwnership(badId);
@@ -272,7 +272,7 @@ describe('ZOwnablePK', () => {
       });
 
       it('should fail when unauthorized transfers ownership', () => {
-        ownable.setCaller(UNAUTHORIZED);
+        ownable.callerCtx.setCaller(UNAUTHORIZED);
         expect(() => {
           ownable.transferOwnership(newOwnerCommitment);
         }).toThrow('Forbidden');
@@ -285,7 +285,7 @@ describe('ZOwnablePK', () => {
         const beforeInstance = ownable.getPublicState().ZOwnablePK__counter;
 
         // Transfer
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         ownable.transferOwnership(newOwnerCommitment);
 
         // Check counter
@@ -305,7 +305,7 @@ describe('ZOwnablePK', () => {
         expect(initCommitment).toEqual(expInitCommitment);
 
         // Transfer ownership to self with the same id -> `H(pk, nonce)`
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         ownable.transferOwnership(repeatedId);
 
         // Check commitments don't match
@@ -322,9 +322,15 @@ describe('ZOwnablePK', () => {
         expect(newCommitment).toEqual(expNewCommitment);
 
         // Check same owner maintains permissions after transfer
-        ownable.setCaller(OWNER);
+        ownable.callerCtx.setCaller(OWNER);
         expect(ownable.assertOnlyOwner()).not.to.throw;
       });
     });
+
+    describe('renounceOwnership', () => {
+      it('should renounce ownership', () => {
+
+      })
+    })
   });
 });
