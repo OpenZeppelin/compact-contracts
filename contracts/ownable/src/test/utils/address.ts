@@ -76,7 +76,6 @@ export const generatePubKeyPair = (str: string) =>
 export const generateEitherPubKeyPair = (str: string) =>
   baseGeneratePubKeyPair(str, true) as [string, Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>];
 
-
 export const zeroUint8Array = (length = 32) =>
   convert_bigint_to_Uint8Array(length, 0n);
 
