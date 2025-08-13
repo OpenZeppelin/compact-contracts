@@ -11,8 +11,8 @@ import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import * as utils from './utils/address.js';
 
 // PKs
-const [OWNER, Z_OWNER] = utils.generatePubKeyPair("OWNER");
-const [NEW_OWNER, Z_NEW_OWNER] = utils.generatePubKeyPair("NEW_OWNER");
+const [OWNER, Z_OWNER] = utils.generatePubKeyPair('OWNER');
+const [NEW_OWNER, Z_NEW_OWNER] = utils.generatePubKeyPair('NEW_OWNER');
 const [UNAUTHORIZED, _] = utils.generatePubKeyPair('UNAUTHORIZED');
 
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
@@ -100,8 +100,10 @@ describe('ZOwnablePK', () => {
   });
 
   describe('when not initialized correctly', () => {
+    let isNotInit = false;
+
     beforeEach(() => {
-      ownable = new ZOwnablePKSimulator(randomByteArray, INSTANCE_SALT, false);
+      ownable = new ZOwnablePKSimulator(randomByteArray, INSTANCE_SALT, isNotInit);
     });
     type FailingCircuits = [method: keyof ZOwnablePKSimulator, args: unknown[]];
     const randomByteArray = new Uint8Array(32).fill(123);
@@ -122,7 +124,7 @@ describe('ZOwnablePK', () => {
     });
 
     it('should allow pure computeOwnerId', () => {
-      const eitherOwner = utils.createEitherTestUser("OWNER");
+      const eitherOwner = utils.createEitherTestUser('OWNER');
 
       expect(() => {
         ownable._computeOwnerId(eitherOwner, randomByteArray);
@@ -358,50 +360,87 @@ describe('ZOwnablePK', () => {
       });
     });
 
-    /**
-     * @TODO parameterize
-     */
     describe('_computeOwnerCommitment', () => {
-      it('should match local and contract commitment', () => {
-        const id = createIdHash(Z_OWNER, secretNonce);
-        const counter = INIT_COUNTER;
+      const MAX_U64 = 2n ** 64n - 1n;
+      const testCases = [
+        ...Array.from({ length: 10 }, (_, i) => ({
+          label: `User${i}`,
+          ownerPK: utils.encodeToPK(`User${i}`),
+          counter: BigInt(Math.floor(Math.random() * 2 ** 64 - 1)),
+        })),
+        {
+          label: 'ZeroCounter',
+          ownerPK: utils.encodeToPK('ZeroCounter'),
+          counter: 0n,
+        },
+        {
+          label: 'MaxCounter',
+          ownerPK: utils.encodeToPK('MaxUser'),
+          counter: MAX_U64,
+        },
+      ];
+      it.each(testCases)(
+        'should match commitment for $label with counter $counter',
+        ({ ownerPK, counter }) => {
+          const id = createIdHash(ownerPK, secretNonce);
 
-        // Check buildCommitmentFromId
-        const hashFromContract = ownable._computeOwnerCommitment(id, counter);
-        const hashFromHelper1 = buildCommitmentFromId(
-          id,
-          INSTANCE_SALT,
-          counter,
-        );
-        expect(hashFromContract).toEqual(hashFromHelper1);
+          // Check buildCommitmentFromId
+          const hashFromContract = ownable._computeOwnerCommitment(id, counter);
+          const hashFromHelper1 = buildCommitmentFromId(
+            id,
+            INSTANCE_SALT,
+            counter,
+          );
+          expect(hashFromContract).toEqual(hashFromHelper1);
 
-        // Check buildCommitment
-        const hashFromHelper2 = buildCommitment(
-          Z_OWNER,
-          secretNonce,
-          INSTANCE_SALT,
-          counter,
-          DOMAIN,
-        );
-        expect(hashFromHelper1).toEqual(hashFromHelper2);
-      });
+          // Check buildCommitment
+          const hashFromHelper2 = buildCommitment(
+            ownerPK,
+            secretNonce,
+            INSTANCE_SALT,
+            counter,
+            DOMAIN,
+          );
+          expect(hashFromHelper1).toEqual(hashFromHelper2);
+        },
+      );
     });
 
     describe('_computeOwnerId', () => {
-      it('should match local and contract owner id', () => {
-        const eitherOwner = utils.createEitherTestUser("OWNER");
-        const ownerId = ownable._computeOwnerId(eitherOwner, secretNonce);
-        const expId = createIdHash(Z_OWNER, secretNonce);
+      const testCases = [
+        ...Array.from({ length: 10 }, (_, i) => ({
+          label: `User${i}`,
+          eitherOwner: utils.createEitherTestUser(`User${i}`),
+          nonce: new Uint8Array(32).fill(i),
+        })),
+        {
+          label: 'All-zero nonce',
+          eitherOwner: utils.createEitherTestUser('ZeroUser'),
+          nonce: new Uint8Array(32).fill(0),
+        },
+        {
+          label: 'Max nonce',
+          eitherOwner: utils.createEitherTestUser('MaxUser'),
+          nonce: new Uint8Array(32).fill(255),
+        },
+      ];
 
-        expect(ownerId).toEqual(expId);
-      });
+      it.each(testCases)(
+        'should match local and contract owner id for $label',
+        ({ eitherOwner, nonce }) => {
+          const ownerId = ownable._computeOwnerId(eitherOwner, nonce);
+          const expId = createIdHash(eitherOwner.left, nonce);
+          expect(ownerId).toEqual(expId);
+        },
+      );
 
       it('should fail to compute ContractAddress id', () => {
-        const eitherContract = utils.createEitherTestContractAddress("CONTRACT");
+        const eitherContract =
+          utils.createEitherTestContractAddress('CONTRACT');
         expect(() => {
           ownable._computeOwnerId(eitherContract, secretNonce);
-        }).toThrow('ZOwnablePK: contract address owners are not yet supported')
-      })
+        }).toThrow('ZOwnablePK: contract address owners are not yet supported');
+      });
     });
 
     describe('_transferOwnership', () => {
