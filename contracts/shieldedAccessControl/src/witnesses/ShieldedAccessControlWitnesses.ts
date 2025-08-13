@@ -47,7 +47,7 @@ function generateNonce(
 ): Buffer {
   const domainString = Buffer.from('role-nonce');
   const info = Buffer.concat([domainString, roleId, account]);
-  const nonce = hkdfSync('sha512', secretKey, salt, info, KEYLEN);
+  const nonce = hkdfSync('sha256', secretKey, salt, info, KEYLEN);
 
   return Buffer.from(nonce);
 }
