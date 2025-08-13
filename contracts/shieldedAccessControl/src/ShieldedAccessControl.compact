@@ -8,7 +8,7 @@ pragma language_version >= 0.16.0;
  * This module provides a shielded role-based access control mechanism, where roles can be used to
  * represent a set of permissions. Roles are stored as Merkle tree commitments to avoid
  * disclosing information about role holder. Role commitments are created with the following
- * hashing scheme SHA256( SHA256(PublicKey | roleIdentifier | nonce) | index).
+ * hashing scheme SHA256( SHA256(roleIdentifier | account | nonce | contractAddress) | index).
  *
  * @notice Using the SHA256 hashing function comes at a significant performace cost. In the future, we
  * plan on migrating to a ZK-friendly hashing function like Poseidon when an implementation is available.
@@ -84,8 +84,8 @@ module ShieldedAccessControl {
   import "ShieldedAccessControlUtils" prefix Utils_;
 
   /**
-   * @description A Merkle tree of role commitments stored as SHA256( SHA256(PK | role | nonce) | index)
-   * @type {Bytes<32>} roleCommitment - A commitment created by the following hash: SHA256( SHA256(PK | role | nonce) | index).
+   * @description A Merkle tree of role commitments stored as SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
+   * @type {Bytes<32>} roleCommitment - A commitment created by the following hash: SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * @type {MerkleTree<10, roleCommitment>}
    * @type {MerkleTree<10, Bytes<32>>} _operatorRoles
    */
@@ -102,14 +102,14 @@ module ShieldedAccessControl {
 
   /**
    * @description A set of nullifiers used to revoke the permissions of a role
-   * @type {Bytes<32> roleCommitment - A roleCommitment created by the following hash: SHA256( SHA256(PK | role | nonce) | index).
+   * @type {Bytes<32> roleCommitment - A roleCommitment created by the following hash: SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * @type {Set<Bytes<32>} _roleCommitmentNullifiers
    */
   export ledger _roleCommitmentNullifiers: Set<Bytes<32>>;
 
   /**
    * @description Mapping from an intermediate role commitment hash to an index in the `_operatorRoles` Merkle tree.
-   * @type {Bytes<32>} intermediateRoleCommitment - An intermediate role commitment hash created by the following hashing scheme: SHA256(PK | role | nonce).
+   * @type {Bytes<32>} intermediateRoleCommitment - An intermediate role commitment hash created by the following hashing scheme: SHA256(roleId | account | nonce | contractAddress).
    * @type {Uint<64>} index - The index of a role commitment in the `_operatorRoles` Merkle tree.
    * @type {Map<intermediateRoleCommitment, index>}
    * @type {Map<Bytes<32>, Uint<64>>} _roleCommitmentIndex
@@ -137,7 +137,7 @@ module ShieldedAccessControl {
    *
    * @circuitInfo
    *
-   * @param {Bytes<32>} roleCommitment - A commitment created by the following hash: SHA256( SHA256(PK | role | nonce) | index).
+   * @param {Bytes<32>} roleCommitment - A commitment created by the following hash: SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * @param {Uint<64>} index - An index in the `_operatorRoles` Merkle tree
    * @return {MerkleTreePath<10, Bytes<32>>} - The Merkle path of `roleCommitment` in the `_operatorRoles` Merkle tree
    */
@@ -170,21 +170,21 @@ module ShieldedAccessControl {
   /**
    * @description Returns `true` if `account` has been granted `roleId`.
    *
-   * @circuitInfo k=16, rows=50605
+   * @circuitInfo k=16, rows=60150
    *
    * Requirements:
    *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -205,24 +205,24 @@ module ShieldedAccessControl {
   }
 
   /**
-   * @description Reverts if `ownPublicKey()` is missing `roleId`.
+   * @description Reverts if caller is missing `roleId`.
    *
-   * @circuitInfo k=15, rows=25046
+   * @circuitInfo k=15, rows=29780
    *
    * Requirements:
    *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    * - The caller must not be a ContractAddress.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -242,21 +242,21 @@ module ShieldedAccessControl {
   /**
    * @description Reverts if `account` is missing `roleId`.
    *
-   * @circuitInfo k=16, rows=50584
+   * @circuitInfo k=16, rows=60129
    *
    * Requirements:
    *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -273,21 +273,21 @@ module ShieldedAccessControl {
   /**
    * @description Checks if a path exists for a role commitment.
    *
-   * @circuitInfo k=15, rows=25067
+   * @circuitInfo k=15, rows=29801
    *
    * Requirements:
    *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    *
@@ -295,10 +295,11 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} account - The account to check represented as a Bytes<32>.
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {Boolean} - A boolean determining if a path for for the role commitment
-   * produced by SHA256( SHA256(roleId | account | nonce) | index) exists in the `_operatorRoles` Merkle tree
+   * produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) exists in the `_operatorRoles` Merkle tree
    */
   export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>, nonce: Bytes<32>): Boolean {
-    const intermediateRoleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account, nonce]);
+    const contractAddress = kernel.self().bytes;
+    const intermediateRoleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, contractAddress]);
     assert(_roleCommitmentIndex.member(disclose(intermediateRoleCommitment)), "ShieldedAccessControl: role commitment index not found");
 
     const index = _roleCommitmentIndex.lookup(disclose(intermediateRoleCommitment));
@@ -331,22 +332,22 @@ module ShieldedAccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @circuitInfo k=17, rows=114944
+   * @circuitInfo k=18, rows=138761
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -364,22 +365,22 @@ module ShieldedAccessControl {
   /**
    * @description Revokes `roleId` from `account`.
    *
-   * @circuitInfo k=17, rows=114699
+   * @circuitInfo k=18, rows=138517
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -401,23 +402,23 @@ module ShieldedAccessControl {
   * purpose is to provide a mechanism for accounts to lose their privileges
   * if they are compromised (such as when a trusted device is misplaced).
   *
-  * @circuitInfo k=17, rows=89905
+  * @circuitInfo k=17, rows=108992
   *
   * Requirements:
   *
   * - The caller must be `callerConfirmation`.
   * - The caller must not be a `ContractAddress`.
-  * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+  * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
   * must exist in the `_roleCommitmentIndex` map.
-  * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+  * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
   * must not exist in the `_roleCommitmentNullifiers` set.
-  * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+  * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
   * exist at `index` in the `_operatorRoles` Merkle tree.
   *
   * Disclosures:
   *
-  * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-  * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+  * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+  * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
   * Merkle tree.
    * - The type data of `callerConfirmation` - a ZswapCoinPublicKey or ContractAddress.
@@ -450,22 +451,22 @@ module ShieldedAccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo k=17, rows=90077
+   * @circuitInfo k=17, rows=109163
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -484,24 +485,24 @@ module ShieldedAccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
-   * @circuitInfo k=17, rows=90076
+   * @circuitInfo k=17, rows=109162
    *
    * @notice External smart contracts cannot call the token contract at this time, so granting a role to an ContractAddress may
    * render a circuit permanently inaccessible.
    *
    * Requirements:
    *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -531,21 +532,21 @@ module ShieldedAccessControl {
    * @description Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo k=17, rows=89829
+   * @circuitInfo k=17, rows=108916
    *
    * Requirements:
    *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress)
    * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index)
+   * - A nullifier for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index)
    * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce) | index) must
+   * - A path for the role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index) must
    * exist at `index` in the `_operatorRoles` Merkle tree.
    *
    * Disclosures:
    *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
    * Merkle tree.
    * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
@@ -576,11 +577,11 @@ module ShieldedAccessControl {
    *
    * WARNING: Exposing this circuit in the implementing contract would allow anyone to add roles.
    *
-   * @circuitInfo k=15, rows=19832
+   * @circuitInfo k=15, rows=24565
    *
    * Disclosures:
    *
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} account - The account to add represented as a Bytes<32>.
@@ -588,7 +589,8 @@ module ShieldedAccessControl {
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
   circuit _addRoleCommitmentToLedger(roleId: Bytes<32>, account: Bytes<32>, nonce: Bytes<32>): [] {
-    const intermediateRoleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account, nonce]);
+    const contractAddress = kernel.self().bytes;
+    const intermediateRoleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, contractAddress]);
     const index = _nextIndex.read();
     const finalRoleCommitment = persistentHash<Vector<2, Bytes<32>>>([intermediateRoleCommitment, index as Field as Bytes<32>]);
 
@@ -602,12 +604,12 @@ module ShieldedAccessControl {
    *
    * WARNING: Exposing this circuit in the implementing contract would allow anyone to revoke roles.
    *
-   * @circuitInfo k=15, rows=19824
+   * @circuitInfo k=15, rows=24559
    *
    * Disclosures:
    *
-   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce) | index).
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256( SHA256(roleId | account | nonce | contractAddress) | index).
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce | contractAddress).
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} account - The account to add represented as a Bytes<32>.
@@ -615,7 +617,8 @@ module ShieldedAccessControl {
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
   circuit _nullifyRoleCommitment(roleId: Bytes<32>, account: Bytes<32>, nonce: Bytes<32>): [] {
-    const intermediateRoleCommitment = persistentHash<Vector<3, Bytes<32>>>([roleId, account, nonce]);
+    const contractAddress = kernel.self().bytes;
+    const intermediateRoleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, contractAddress]);
     const index = _roleCommitmentIndex.lookup(disclose(intermediateRoleCommitment));
     const finalRoleCommitment = persistentHash<Vector<2, Bytes<32>>>([intermediateRoleCommitment, index as Field as Bytes<32>]);
     _roleCommitmentNullifiers.insert(disclose(finalRoleCommitment));
