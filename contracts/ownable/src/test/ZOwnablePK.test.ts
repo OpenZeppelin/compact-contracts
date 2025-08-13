@@ -10,14 +10,10 @@ import { ZOwnablePKPrivateState } from '../witnesses/ZOwnablePKWitnesses.js';
 import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import * as utils from './utils/address.js';
 
-// Callers
-const OWNER = utils.toHexPadded('OWNER');
-const NEW_OWNER = utils.toHexPadded('NEW_OWNER');
-const UNAUTHORIZED = utils.toHexPadded('UNAUTHORIZED');
-
-// ZPKs
-const Z_OWNER = utils.encodeToPK('OWNER');
-const Z_NEW_OWNER = utils.encodeToPK('NEW_OWNER');
+// PKs
+const [OWNER, Z_OWNER] = utils.generatePubKeyPair("OWNER");
+const [NEW_OWNER, Z_NEW_OWNER] = utils.generatePubKeyPair("NEW_OWNER");
+const [UNAUTHORIZED, _] = utils.generatePubKeyPair('UNAUTHORIZED');
 
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
