@@ -241,7 +241,10 @@ module ZOwnablePK {
    * @param {Bytes<32>} nonce - A private nonce to scope the commitment.
    * @returns {Bytes<32>} The computed owner ID.
    */
-  export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+  export pure circuit _computeOwnerId(
+    pk: Either<ZswapCoinPublicKey, ContractAddress>,
+    nonce: Bytes<32>
+  ): Bytes<32> {
     if (!pk.is_left) {
       assert(false, "ZOwnablePK: contract address owners are not yet supported");
     }

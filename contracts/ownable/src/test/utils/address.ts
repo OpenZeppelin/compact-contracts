@@ -64,7 +64,13 @@ export const createEitherTestContractAddress = (str: string) => ({
 const baseGeneratePubKeyPair = (
   str: string,
   asEither: boolean,
-): [string, Compact.ZswapCoinPublicKey | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>] => {
+): [
+  string,
+  (
+    | Compact.ZswapCoinPublicKey
+    | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
+  ),
+] => {
   const pk = toHexPadded(str);
   const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
   return [pk, zpk];
@@ -74,7 +80,10 @@ export const generatePubKeyPair = (str: string) =>
   baseGeneratePubKeyPair(str, false) as [string, Compact.ZswapCoinPublicKey];
 
 export const generateEitherPubKeyPair = (str: string) =>
-  baseGeneratePubKeyPair(str, true) as [string, Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>];
+  baseGeneratePubKeyPair(str, true) as [
+    string,
+    Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>,
+  ];
 
 export const zeroUint8Array = (length = 32) =>
   convert_bigint_to_Uint8Array(length, 0n);

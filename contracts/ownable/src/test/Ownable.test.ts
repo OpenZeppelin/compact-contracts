@@ -4,8 +4,8 @@ import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 import * as utils from './utils/address.js';
 
 // PKs
-const [OWNER, Z_OWNER] = utils.generateEitherPubKeyPair("OWNER");
-const [NEW_OWNER, Z_NEW_OWNER] = utils.generateEitherPubKeyPair("NEW_OWNER");
+const [OWNER, Z_OWNER] = utils.generateEitherPubKeyPair('OWNER');
+const [NEW_OWNER, Z_NEW_OWNER] = utils.generateEitherPubKeyPair('NEW_OWNER');
 const [UNAUTHORIZED, _] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
 
 // Encoded contract addresses

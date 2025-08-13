@@ -5,12 +5,12 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
+  type ContractAddress,
+  type Either,
   type Ledger,
   ledger,
   Contract as MockOwnable,
-  Either,
-  ZswapCoinPublicKey,
-  ContractAddress
+  type ZswapCoinPublicKey,
 } from '../../artifacts/MockZOwnablePK/contract/index.cjs';
 import {
   ZOwnablePKPrivateState,
@@ -244,7 +244,10 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   /**
    * @description
    */
-  public _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Uint8Array): Uint8Array {
+  public _computeOwnerId(
+    pk: Either<ZswapCoinPublicKey, ContractAddress>,
+    nonce: Uint8Array,
+  ): Uint8Array {
     return this.circuits.pure._computeOwnerId(pk, nonce);
   }
 
