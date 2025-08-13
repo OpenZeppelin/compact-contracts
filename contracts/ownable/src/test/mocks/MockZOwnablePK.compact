@@ -8,8 +8,17 @@ import "../../ZOwnablePK" prefix ZOwnablePK_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ZOwnablePK__ownerCommitment, ZOwnablePK__counter };
 
-constructor(initOwnerCommitment: Bytes<32>, instanceSalt: Bytes<32>) {
-  ZOwnablePK_initialize(initOwnerCommitment, instanceSalt);
+/**
+ * @description `isInit` is a param for testing.
+ *
+ * If `isInit` is false, the constructor will not initialize the contract.
+ * This behavior is to test that circuits are not callable unless the
+ * contract is initialized.
+*/
+constructor(initOwnerCommitment: Bytes<32>, instanceSalt: Bytes<32>, isInit: Boolean) {
+  if (disclose(isInit)) {
+    ZOwnablePK_initialize(initOwnerCommitment, instanceSalt);
+  }
 }
 
 export circuit owner(): Bytes<32> {

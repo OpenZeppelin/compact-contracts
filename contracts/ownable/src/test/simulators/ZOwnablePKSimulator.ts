@@ -58,6 +58,7 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   constructor(
     initOwner: Uint8Array,
     instanceSalt: Uint8Array,
+    isInit: boolean,
     options: OwnableSimOptions = {},
   ) {
     super();
@@ -69,7 +70,7 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
       coinPK = '0'.repeat(64),
       address = sampleContractAddress(),
     } = options;
-    const constructorArgs = [initOwner, instanceSalt];
+    const constructorArgs = [initOwner, instanceSalt, isInit];
 
     this.contract = new MockOwnable<ZOwnablePKPrivateState>(witnesses);
 

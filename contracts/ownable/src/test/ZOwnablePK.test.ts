@@ -20,6 +20,7 @@ const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
 const DOMAIN = 'ZOwnablePK:shield:';
 const INIT_COUNTER = 1n;
 
+let isInit = true;
 let secretNonce: Uint8Array;
 let ownable: ZOwnablePKSimulator;
 
@@ -79,7 +80,7 @@ describe('ZOwnablePK', () => {
     it('should fail when setting owner commitment as 0', () => {
       expect(() => {
         const badId = new Uint8Array(32).fill(0);
-        new ZOwnablePKSimulator(badId, INSTANCE_SALT);
+        new ZOwnablePKSimulator(badId, INSTANCE_SALT, isInit);
       }).toThrow('ZOwnablePK: invalid id');
     });
 
@@ -87,7 +88,7 @@ describe('ZOwnablePK', () => {
       const notZeroPK = utils.encodeToPK('NOT_ZERO');
       const notZeroNonce = new Uint8Array(32).fill(1);
       const nonZeroId = createIdHash(notZeroPK, notZeroNonce);
-      ownable = new ZOwnablePKSimulator(nonZeroId, INSTANCE_SALT);
+      ownable = new ZOwnablePKSimulator(nonZeroId, INSTANCE_SALT, isInit);
 
       const nonZeroCommitment = buildCommitmentFromId(
         nonZeroId,
@@ -95,6 +96,37 @@ describe('ZOwnablePK', () => {
         INIT_COUNTER,
       );
       expect(ownable.owner()).toEqual(nonZeroCommitment);
+    });
+  });
+
+  describe('when not initialized correctly', () => {
+    beforeEach(() => {
+      ownable = new ZOwnablePKSimulator(randomByteArray, INSTANCE_SALT, false);
+    });
+    type FailingCircuits = [method: keyof ZOwnablePKSimulator, args: unknown[]];
+    const randomByteArray = new Uint8Array(32).fill(123);
+    const randomCounter = 321n;
+    // Circuit calls should fail before the args are used
+    const circuitsToFail: FailingCircuits[] = [
+      ['owner', []],
+      ['assertOnlyOwner', []],
+      ['transferOwnership', [randomByteArray]],
+      ['renounceOwnership', []],
+      ['_computeOwnerCommitment', [randomByteArray, randomCounter]],
+      ['_transferOwnership', [randomByteArray]],
+    ];
+    it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
+      expect(() => {
+        (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
+      }).toThrow('Initializable: contract not initialized');
+    });
+
+    it('should allow pure computeOwnerId', () => {
+      const eitherOwner = utils.createEitherTestUser("OWNER");
+
+      expect(() => {
+        ownable._computeOwnerId(eitherOwner, randomByteArray);
+      }).not.toThrow();
     });
   });
 
@@ -107,7 +139,7 @@ describe('ZOwnablePK', () => {
       // Prepare owner ID with gen nonce
       const ownerId = createIdHash(Z_OWNER, secretNonce);
       // Deploy contract with derived owner commitment and PS
-      ownable = new ZOwnablePKSimulator(ownerId, INSTANCE_SALT, {
+      ownable = new ZOwnablePKSimulator(ownerId, INSTANCE_SALT, isInit, {
         privateState: PS,
       });
     });
