@@ -359,6 +359,23 @@ describe('ZOwnablePK', () => {
       });
     });
 
+    describe('_computeOwnerId', () => {
+      it('should match local and contract owner id', () => {
+        const eitherOwner = utils.createEitherTestUser("OWNER");
+        const ownerId = ownable._computeOwnerId(eitherOwner, secretNonce);
+        const expId = createIdHash(Z_OWNER, secretNonce);
+
+        expect(ownerId).toEqual(expId);
+      });
+
+      it('should fail to compute ContractAddress id', () => {
+        const eitherContract = utils.createEitherTestContractAddress("CONTRACT");
+        expect(() => {
+          ownable._computeOwnerId(eitherContract, secretNonce);
+        }).toThrow('ZOwnablePK: contract address owners are not yet supported')
+      })
+    });
+
     describe('_transferOwnership', () => {
       it('should transfer ownership', () => {
         const id = createIdHash(Z_OWNER, secretNonce);

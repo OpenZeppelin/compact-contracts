@@ -8,6 +8,9 @@ import {
   type Ledger,
   ledger,
   Contract as MockOwnable,
+  Either,
+  ZswapCoinPublicKey,
+  ContractAddress
 } from '../../artifacts/MockZOwnablePK/contract/index.cjs';
 import {
   ZOwnablePKPrivateState,
@@ -235,6 +238,13 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    */
   public _computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
     return this.circuits.impure._computeOwnerCommitment(id, counter);
+  }
+
+  /**
+   * @description
+   */
+  public _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Uint8Array): Uint8Array {
+    return this.circuits.pure._computeOwnerId(pk, nonce);
   }
 
   /**

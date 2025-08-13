@@ -32,6 +32,10 @@ export circuit _computeOwnerCommitment(id: Bytes<32>, counter: Uint<64>): Bytes<
   return ZOwnablePK__computeOwnerCommitment(id, counter);
 }
 
+export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+  return ZOwnablePK__computeOwnerId(pk, nonce);
+}
+
 export circuit _transferOwnership(newOwnerCommitment: Bytes<32>): [] {
   return ZOwnablePK__transferOwnership(newOwnerCommitment);
 }
