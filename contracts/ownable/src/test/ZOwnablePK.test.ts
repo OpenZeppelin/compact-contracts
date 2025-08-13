@@ -434,12 +434,12 @@ describe('ZOwnablePK', () => {
       });
 
       it('should allow transfer to all zeroes id', () => {
-        const zerosId = new Uint8Array(32).fill(0);
-        ownable._transferOwnership(zerosId);
+        const zeroId = utils.zeroUint8Array();
+        ownable._transferOwnership(zeroId);
 
         const nextCounter = INIT_COUNTER + 1n;
         const expCommitment = buildCommitmentFromId(
-          zerosId,
+          zeroId,
           INSTANCE_SALT,
           nextCounter,
         );
