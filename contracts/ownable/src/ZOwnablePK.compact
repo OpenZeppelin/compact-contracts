@@ -45,10 +45,40 @@ module ZOwnablePK {
   import CompactStandardLibrary;
   import "../../node_modules/@openzeppelin-compact/utils/src/Initializable" prefix Initializable_;
 
+  /**
+   * @ledger _ownerCommitment
+   * @description Stores the current hashed commitment representing the owner.
+   * This commitment is derived from the public identifier (e.g., `H(pk, nonce)`),
+   * the `instanceSalt`, the transfer `counter`, and a domain separator.
+   *
+   * A commitment of `default<Bytes<32>>` (i.e., zero) indicates the contract is unowned.
+   */
   export ledger _ownerCommitment: Bytes<32>;
+  /**
+   * @ledger _counter
+   * @description Internal transfer counter used to prevent commitment reuse.
+   *
+   * Increments by 1 on every successful ownership transfer. Combined with `id` and
+   * `instanceSalt` to compute unique owner commitments over time.
+   */
   export ledger _counter: Counter;
+  /**
+   * @sealed @ledger _instanceSalt
+   * @description A per-instance value provided at initialization used to namespace
+   * commitments for this contract instance.
+   *
+   * This salt prevents commitment collisions across contracts that might otherwise use
+   * the same owner identifiers or domain parameters. It is immutable after initialization.
+   */
   export sealed ledger _instanceSalt: Bytes<32>;
 
+  /**
+   * @witness secretNonce
+   * @description A private per-user nonce used in deriving the shielded owner identifier.
+   *
+   * Combined with the user's public key as `H(pk, nonce)` to produce an obfuscated,
+   * unlinkable identity commitment. Users are encouraged to rotate this value on ownership changes.
+   */
   export witness secretNonce(): Bytes<32>;
 
   /**
