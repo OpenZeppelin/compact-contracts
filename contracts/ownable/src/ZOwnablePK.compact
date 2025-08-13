@@ -233,6 +233,10 @@ module ZOwnablePK {
    *
    * @circuitInfo k=???, rows=???
    *
+   * Requirements:
+   *
+   * - `pk` is not a ContractAddress.
+   *
    * @param {Bytes<32>} pk - The public key of the identity being committed.
    * @param {Bytes<32>} nonce - A private nonce to scope the commitment.
    * @returns {Bytes<32>} The computed owner ID.
