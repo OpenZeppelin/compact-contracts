@@ -275,9 +275,7 @@ module ZOwnablePK {
     pk: Either<ZswapCoinPublicKey, ContractAddress>,
     nonce: Bytes<32>
   ): Bytes<32> {
-    if (!pk.is_left) {
-      assert(false, "ZOwnablePK: contract address owners are not yet supported");
-    }
+    assert(pk.is_left, "ZOwnablePK: contract address owners are not yet supported");
 
     return persistentHash<Vector<2, Bytes<32>>>([pk.left.bytes, nonce]);
   }
