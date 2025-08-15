@@ -20,7 +20,7 @@ const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
 const DOMAIN = 'ZOwnablePK:shield:';
 const INIT_COUNTER = 1n;
 
-let isInit = true;
+const isInit = true;
 let secretNonce: Uint8Array;
 let ownable: ZOwnablePKSimulator;
 
@@ -100,10 +100,14 @@ describe('ZOwnablePK', () => {
   });
 
   describe('when not initialized correctly', () => {
-    let isNotInit = false;
+    const isNotInit = false;
 
     beforeEach(() => {
-      ownable = new ZOwnablePKSimulator(randomByteArray, INSTANCE_SALT, isNotInit);
+      ownable = new ZOwnablePKSimulator(
+        randomByteArray,
+        INSTANCE_SALT,
+        isNotInit,
+      );
     });
     type FailingCircuits = [method: keyof ZOwnablePKSimulator, args: unknown[]];
     const randomByteArray = new Uint8Array(32).fill(123);
