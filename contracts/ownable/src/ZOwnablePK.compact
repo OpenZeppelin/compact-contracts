@@ -187,9 +187,13 @@ module ZOwnablePK {
   export circuit assertOnlyOwner(): [] {
     Initializable_assertInitialized();
 
-    const caller = ownPublicKey();
     const nonce = secretNonce();
-    const id = persistentHash<Vector<2, Bytes<32>>>([caller.bytes, nonce]);
+    const callerAsEither = Either<ZswapCoinPublicKey, ContractAddress> {
+      is_left: true,
+      left: ownPublicKey(),
+      right: ContractAddress { bytes: pad(32, "") }
+    };
+    const id = _computeOwnerId(callerAsEither, nonce);
     assert(_ownerCommitment == _computeOwnerCommitment(id, _counter), "ZOwnablePK: caller is not the owner");
   }
 
@@ -267,7 +271,7 @@ module ZOwnablePK {
    *
    * - `pk` is not a ContractAddress.
    *
-   * @param {Bytes<32>} pk - The public key of the identity being committed.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} pk - The public key of the identity being committed.
    * @param {Bytes<32>} nonce - A private nonce to scope the commitment.
    * @returns {Bytes<32>} The computed owner ID.
    */
