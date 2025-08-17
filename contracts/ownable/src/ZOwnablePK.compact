@@ -217,6 +217,8 @@ module ZOwnablePK {
    *   even with repeated `id` values.
    * - `domain`: A domain separator to prevent hash collisions when extending the module.
    *
+   * @circuitInfo k=???, rows=???
+   *
    * Requirements:
    *
    * - Contract is initialized.
