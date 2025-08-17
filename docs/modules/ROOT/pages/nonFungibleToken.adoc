@@ -1,7 +1,6 @@
 :non-fungible-tokens: https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens[non-fungible tokens]
 :eip-721: https://eips.ethereum.org/EIPS/eip-721[EIP-721]
 
-
 = NonFungibleToken
 
 FungibleToken is a specification for {non-fungible-tokens},
@@ -53,11 +52,12 @@ It's recommended to prefix the module with `NonFungibleToken_` to avoid circuit 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/NonFungibleToken"
+  prefix NonFungibleToken_;
 
 constructor(
   name: Opaque<"string">,
-  symbol: Opaque<"string">
+  symbol: Opaque<"string">,
 ) {
   NonFungibleToken_initialize(name, symbol);
 }
@@ -88,13 +88,14 @@ The following example is a simple non-fungible token contract that mints an NFT 
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/NonFungibleToken"
+  prefix NonFungibleToken_;
 
 constructor(
   name: Opaque<"string">,
   symbol: Opaque<"string">,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenURI: Opaque<"string">
+  tokenURI: Opaque<"string">,
 ) {
   const tokenId = 1 as Uint<128>;
   NonFungibleToken_initialize(name, symbol);
@@ -102,11 +103,15 @@ constructor(
   NonFungibleToken__setTokenURI(tokenId, tokenURI);
 }
 
-export circuit balanceOf(owner: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+export circuit balanceOf(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>
+): Uint<128> {
   return NonFungibleToken_balanceOf(owner);
 }
 
-export circuit ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit ownerOf(
+  tokenId: Uint<128>,
+): Either<ZswapCoinPublicKey, ContractAddress> {
   return NonFungibleToken_ownerOf(tokenId);
 }
 
@@ -122,23 +127,38 @@ export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
   return NonFungibleToken_tokenURI(tokenId);
 }
 
-export circuit approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
+export circuit approve(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  tokenId: Uint<128>,
+): [] {
   NonFungibleToken_approve(to, tokenId);
 }
 
-export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit getApproved(
+  tokenId: Uint<128>,
+): Either<ZswapCoinPublicKey, ContractAddress> {
   return NonFungibleToken_getApproved(tokenId);
 }
 
-export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+export circuit setApprovalForAll(
+  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  approved: Boolean
+): [] {
   NonFungibleToken_setApprovalForAll(operator, approved);
 }
 
-export circuit isApprovedForAll(owner: Either<ZswapCoinPublicKey, ContractAddress>, operator: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+export circuit isApprovedForAll(
+  owner: Either<ZswapCoinPublicKey, ContractAddress>,
+  operator: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
   return NonFungibleToken_isApprovedForAll(owner, operator);
 }
 
-export circuit transferFrom(from: Either<ZswapCoinPublicKey, ContractAddress>, to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
+export circuit transferFrom(
+  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<ZswapCoinPublicKey, ContractAddress>
+  tokenId: Uint<128>,
+): [] {
   NonFungibleToken_transferFrom(from, to, tokenId);
 }
 ```

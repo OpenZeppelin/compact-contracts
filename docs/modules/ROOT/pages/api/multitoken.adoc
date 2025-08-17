@@ -10,14 +10,14 @@ TIP: For an overview of the module, read the {multiToken-guide}.
 
 == Core
 
-[.hljs-theme-dark]
-```ts
-import "./node_modules/@openzeppelin-compact/multi-token/src/MultiToken" prefix MultiToken_;
-```
-
 [.contract]
 [[MultiToken]]
 === `++MultiToken++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/multiToken/src/MultiToken.compact[{github-icon},role=heading-link]
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/contracts/src/token/MultiToken";
+```
 
 [.contract-index]
 .Circuits

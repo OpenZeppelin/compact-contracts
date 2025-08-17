@@ -47,12 +47,13 @@ It's recommended to prefix the module with `FungibleToken_` to avoid circuit sig
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+  prefix FungibleToken_;
 
 constructor(
   name: Opaque<"string">,
   symbol: Opaque<"string">,
-  decimals: Uint<8>
+  decimals: Uint<8>,
 ) {
   FungibleToken_initialize(name, symbol, decimals);
 }
@@ -87,7 +88,8 @@ The following example is a simple token contract with a fixed supply that's mint
 pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+  prefix FungibleToken_;
 
 constructor(
   name: Opaque<"string">,
@@ -116,18 +118,23 @@ export circuit totalSupply(): Uint<128> {
   return FungibleToken_totalSupply();
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+export circuit balanceOf(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Uint<128> {
   return FungibleToken_balanceOf(account);
 }
 
 export circuit allowance(
   owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>
+  spender: Either<ZswapCoinPublicKey, ContractAddress>,
 ): Uint<128> {
   return FungibleToken_allowance(owner, spender);
 }
 
-export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
   return FungibleToken_transfer(to, value);
 }
 
@@ -139,7 +146,10 @@ export circuit transferFrom(
   return FungibleToken_transferFrom(from, to, value);
 }
 
-export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+export circuit approve(
+  spender: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
   return FungibleToken_approve(spender, value);
 }
 ```
