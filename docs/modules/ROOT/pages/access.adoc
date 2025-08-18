@@ -133,6 +133,131 @@ there is no direct way for a contract to call circuits of other contracts or tra
 
 NOTE: The unsafe circuits are planned to become deprecated once contract-to-contract calls become available.
 
+== Shielded Ownership and `ZOwnablePK`
+
+Privacy-preserving access control is a fundamental building block for confidential smart contracts on Midnight.
+While traditional ownership patterns expose the owner's identity on-chain,
+many applications require administrative control without revealing who holds that authority.
+
+=== Privacy-First Ownership
+
+The most common approach to access control in traditional smart contracts is ownership:
+there's an account that is the owner of a contract and can perform administrative tasks.
+However, this approach reveals the owner's identity to all observers, creating privacy and security risks.
+In privacy-sensitive applications—such as confidential voting systems, private treasuries, or anonymous governance—revealing the administrator's identity may compromise the entire system's confidentiality.
+This library provides the `ZOwnablePK` module that implements shielded ownership—administrative control without identity disclosure.
+The owner's public key is never revealed on-chain; instead,
+the contract stores only a cryptographic commitment that proves ownership without exposing the underlying identity.
+
+=== Commitment Scheme
+
+The `ZOwnablePK` module employs a two-layer cryptographic commitment scheme designed to provide privacy,
+unlinkability, and collision resistance across deployments and ownership transfers.
+
+==== Owner ID Computation
+
+The foundation of the system is the owner identifier, computed as:
+
+```ts
+id = H(pk, nonce)
+```
+
+Where `pk` is the owner's public key and `nonce` is a secret value that may be either randomly generated
+for maximum privacy or deterministically derived for recoverability.
+This identifier serves as a privacy-preserving alternative to exposing the raw public key,
+ensuring the owner's identity remains confidential.
+
+==== Owner Commitment Computation
+
+The final ownership commitment stored on-chain is computed as:
+
+```ts
+commitment = H(id, instanceSalt, counter, pad(32, "ZOwnablePK:shield:"))
+```
+
+This multi-element hash provides several security properties:
+
+- `id`: The privacy-preserving owner identifier described above.
+- `instanceSalt`: A unique per-deployment salt that prevents commitment collisions across different contract instances, even when the same owner and nonce are used.
+- `counter`: Incremented with each ownership transfer to ensure unlinkability—each transfer produces a completely different commitment even with the same underlying owner.
+- `pad(32, "ZOwnablePK:shield:")`: A domain separator padded to 32 bytes that prevents hash collisions with other commitment schemes and enables safe protocol extensions.
+
+==== Security Properties
+
+This commitment scheme ensures that:
+
+- Owner identities remain completely private—public keys are never revealed on-chain.
+- Ownership transfers are unlinkable—observers cannot correlate past and future ownership.
+- Cross-contract attacks are prevented through instance-specific salting.
+
+=== Nonce Generation Strategies
+
+The choice of nonce generation strategy represents a fundamental trade-off between simplicity/security and recoverability.
+Both approaches are valid, and the best choice depends on your specific threat model and operational requirements.
+
+==== Random Nonce
+
+Generating a cryptographically random nonce provides the strongest privacy guarantees:
+
+```typescript
+const randomNonce = crypto.getRandomValues(new Uint8Array(32));
+const ownerId = ZOwnablePK._computeOwnerId(publicKey, randomNonce);
+```
+
+This approach is easy to generate and ensures maximum unlinkability—even with sophisticated analysis,
+observers cannot correlate ownership across different contracts or time periods.
+However, it requires secure backup of both the private key and the nonce.
+*Loss of either component results in permanent, irrecoverable loss of ownership.*
+
+==== Deterministic Nonce
+
+Deriving the nonce deterministically enables recovery through derivation schemes.
+Some examples:
+
+- `H(passphrase + context)` - recoverable from passphrase only, but passphrase becomes critical single point of failure.
+- `H(publicKey + userPassphrase + context)` - requires both public key and passphrase.
+- `H(signature + context)` where `signature = sign(context)` - leverages wallet without exposing private key.
+
+*Context-Dependent Derivations:*
+
+- Include contract address, deployment timestamp, user ID, etc.
+- Trade-off: more context is more unique but harder to recreate.
+
+WARNING: Approaches that avoid private key exposure (public key + passphrase, signature-based)
+are generally recommended for operational security.
+
+Deriving the nonce deterministically from the public key and user passphrase provides a balance of security and recoverability:
+
+```typescript
+// Example: Scrypt-based derivation
+import { scryptSync } from 'node:crypto';
+
+const deterministicNonce = scryptSync(
+  userPassphrase
+  publicKey + ":ZOwnablePK:nonce:v1",
+  32,
+  { N: 16384, r: 8, p: 1 } // Standard scrypt parameters
+);
+const recoverableOwnerId = ZOwnablePK._computeOwnerId(publicKey, deterministicNonce);
+```
+
+**Security Considerations**
+
+The `ZOwnablePK` module remains agnostic to nonce generation methods, placing the security/convenience decision entirely with the user. Key considerations include:
+
+- **Backup requirements**: Random nonces require additional secure storage.
+- **Recovery scenarios**: Deterministic nonces enable recovery.
+- **Cross-contract correlation**: Reusing nonce strategies may reduce privacy across deployments.
+- **Rotation costs**: Changing nonces requires ownership transfer transactions with associated DUST costs.
+
+Users should carefully evaluate their threat model, operational requirements,
+and privacy needs when selecting a nonce generation strategy,
+as this choice cannot be easily changed without transferring ownership.
+
+=== Setup
+
+Add meee!
+
 == Role-Based Access Control
 
 While the simplicity of _ownership_ can be useful for simple systems or quick prototyping, different levels of authorization are often needed.
