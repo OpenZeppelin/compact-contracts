@@ -34,6 +34,24 @@ export const ZOwnablePKPrivateState = {
   generate: (): ZOwnablePKPrivateState => {
     return { secretNonce: getRandomValues(Buffer.alloc(32)) };
   },
+
+  /**
+   * @description Generates a new private state with a user-defined secret nonce.
+   * Useful for deterministic nonce generation or advanced use cases.
+   *
+   * @param nonce - The 32-byte secret nonce to use.
+   * @returns A fresh ZOwnablePKPrivateState instance with the provided nonce.
+   *
+   * @example
+   * ```typescript
+   * // For deterministic nonces (user-defined scheme)
+   * const deterministicNonce = myDeterministicScheme(...);
+   * const privateState = ZOwnablePKPrivateState.withNonce(deterministicNonce);
+   * ```
+   */
+  withNonce: (nonce: Buffer): ZOwnablePKPrivateState => {
+    return { secretNonce: nonce };
+  },
 };
 
 /**
