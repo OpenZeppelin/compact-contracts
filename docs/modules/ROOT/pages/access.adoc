@@ -254,9 +254,86 @@ Users should carefully evaluate their threat model, operational requirements,
 and privacy needs when selecting a nonce generation strategy,
 as this choice cannot be easily changed without transferring ownership.
 
-=== Setup
+=== Usage
 
-Add meee!
+Import the `ZOwnablePK` module into the implementing contract and expose the ownership-handling circuits.
+It’s recommended to prefix the module with `ZOwnablePK_` to avoid circuit signature clashes.
+
+```typescript
+// MyZOwnablePKContract.compact
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+import "./node_modules/@openzeppelin-compact/contracts/src/access/ZOwnablePK"
+  prefix ZOwnablePK_;
+
+constructor(
+  initOwnerCommitment: Bytes<32>,
+  instanceSalt: Bytes<32>,
+) {
+  ZOwnablePK_initialize(initOwnerCommitment, instanceSalt);
+}
+
+export circuit owner(): Bytes<32> {
+  return ZOwnablePK_owner();
+}
+
+export circuit transferOwnership(newOwnerCommitment: Bytes<32>): [] {
+  return ZOwnablePK_transferOwnership(disclose(newOwnerCommitment));
+}
+
+export circuit renounceOwnership(): [] {
+  return ZOwnablePK_renounceOwnership();
+}
+```
+
+Similar to the Ownable module,
+circuits can be protected so that only the contract owner may them by adding `assertOnlyOwner`
+as the first line in the circuit body like this:
+
+```typescript
+export circuit mySensitiveCircuit(): [] {
+  ZOwnablePK_assertOnlyOwner();
+
+  // Do something
+}
+```
+
+This covers the basic for creating a contract, but before deploying the contract,
+the owner's id must be derived for the commitment scheme because it's required to deploy the contract.
+
+First, the owner needs to generate a secret nonce that's stored in the owner's private state.
+See <<nonce_generation_strategies,Nonce Generation Strategies>>.
+
+Once the owner has the secret nonce generated, they can insert their public key and nonce into the following:
+
+```typescript
+import {
+  CompactTypeBytes,
+  CompactTypeVector,
+  persistentHash,
+} from '@midnight-ntwrk/compact-runtime';
+import { getRandomValues } from 'node:crypto';
+
+// Owner ID
+const generateId = (
+  pk: Uint8Array,
+  nonce: Uint8Array,
+): Uint8Array => {
+  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
+  return persistentHash(rt_type, [pk, nonce]);
+};
+
+// Instance salt for the constructor
+const generateInstanceSalt = (): Uint8Array => {
+  return getRandomValues(new Uint8Array(32));
+}
+```
+
+TIP: Another way to get the user ID is to expose `_computeOwnerId` in the contract
+and call this circuit off chain through a contract simulator.
+Be on the lookout for future tooling that makes this process easier.
 
 == Role-Based Access Control
 
