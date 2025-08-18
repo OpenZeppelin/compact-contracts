@@ -93,7 +93,7 @@ module ZOwnablePK {
    * Requirements:
    *
    * - Contract is not initialized.
-   * - `ownerId` is not all zeroes.
+   * - `ownerId` is not an empty array.
    *
    * @param {Bytes<32>} ownerId - The owner's unique identifier H(pk, nonce).
    * @param {Bytes<32>} instanceSalt - Contract salt to prevent duplicate commitments if
@@ -134,8 +134,8 @@ module ZOwnablePK {
    * Requirements:
    *
    * - Contract is initialized.
-   * - Caller must be the current owner.
-   * - `newOwnerId` must not be all zeroes.
+   * - Caller is the the current owner.
+   * - `newOwnerId` is not an empty array.
    *
    * @param {Bytes<32>} newOwnerId - The new owner's unique identifier (`H(pk, nonce)`).
    * @returns {[]} Empty tuple.
@@ -158,7 +158,7 @@ module ZOwnablePK {
    * Requirements:
    *
    * - Contract is initialized.
-   * - Caller must be the current owner.
+   * - Caller is the the current owner.
    *
    * @returns {[]} Empty tuple.
    */
@@ -172,14 +172,14 @@ module ZOwnablePK {
   /**
    * @description Throws if called by any account whose id hash `H(pk, nonce)` does not match
    * the stored owner commitment.
-   * Use this to restrict access of specific circuits to the owner.
+   * Use this to only allow the owner to call specific circuits.
    *
    * @circuitInfo k=???, rows=???
    *
    * Requirements:
    *
    * - Contract is initialized.
-   * - Caller's id (`H(pk, nonce)`) when used in `_computeOwnerCommitment` must equal
+   * - Caller's id (`H(pk, nonce)`) when used in `_computeOwnerCommitment` equals
    * the stored `_ownerCommitment`, thus verifying themselves as the owner.
    *
    * @returns {[]} Empty tuple.
@@ -212,10 +212,11 @@ module ZOwnablePK {
    *
    * - `id`: See above.
    * - `instanceSalt`: A unique per-deployment salt, stored during initialization.
-   *   This prevents commitment collisions across deployments.
+   * This prevents commitment collisions across deployments.
    * - `counter`: Incremented with each ownership transfer, ensuring uniqueness
-   *   even with repeated `id` values.
-   * - `domain`: A domain separator to prevent hash collisions when extending the module.
+   * even with repeated `id` values. Cast to `Field` then `Bytes<32>` for hashing.
+   * - `domain`: Domain separator `"ZOwnablePK:shield:"` (padded to 32 bytes) to prevent
+   * hash collisions when extending the module or using similar commitment schemes.
    *
    * @circuitInfo k=???, rows=???
    *
@@ -253,13 +254,12 @@ module ZOwnablePK {
    * - `pk`: The public key of the caller. This is passed explicitly to allow
    *   for off-chain derivation, testing, or scenarios where the caller is
    *   different from the subject of the computation.
-   * - `nonce`: A secret nonce tied to the identity. This value should be
-   *   randomly generated and kept private. It may be rotated periodically
-   *   for enhanced unlinkability.
+   * - `nonce`: A secret nonce tied to the identity. The generation strategy is
+   *   left to the user, offering different security/convenience trade-offs.
    *
    * The result is a 32-byte commitment that uniquely identifies the owner.
-   * This value is later used in owner commitment hashing, and acts as a privacy-preserving
-   * alternative to a raw public key.
+   * This value is later used in owner commitment hashing,
+   * and acts as a privacy-preserving alternative to a raw public key.
    *
    * @notice This module allows ownership to be tied to an identity commitment derived
    * from a public key and secret nonce.
