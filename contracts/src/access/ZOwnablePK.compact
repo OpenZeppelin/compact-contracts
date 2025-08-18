@@ -252,10 +252,10 @@ module ZOwnablePK {
    * `id = H(pk, nonce)`
    *
    * - `pk`: The public key of the caller. This is passed explicitly to allow
-   *   for off-chain derivation, testing, or scenarios where the caller is
-   *   different from the subject of the computation.
+   * for off-chain derivation, testing, or scenarios where the caller is
+   * different from the subject of the computation.
    * - `nonce`: A secret nonce tied to the identity. The generation strategy is
-   *   left to the user, offering different security/convenience trade-offs.
+   * left to the user, offering different security/convenience trade-offs.
    *
    * The result is a 32-byte commitment that uniquely identifies the owner.
    * This value is later used in owner commitment hashing,
