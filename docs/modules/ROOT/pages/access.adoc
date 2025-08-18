@@ -186,9 +186,9 @@ This multi-element hash provides several security properties:
 
 This commitment scheme ensures that:
 
-- Owner identities remain completely private—public keys are never revealed on-chain.
-- Ownership transfers are unlinkable—observers cannot correlate past and future ownership.
-- Cross-contract attacks are prevented through instance-specific salting.
+- Public keys are never revealed on-chain.
+- Observers cannot correlate past and future ownership.
+- Cross-contract collisions are prevented through instance-specific salting.
 
 === Nonce Generation Strategies
 
