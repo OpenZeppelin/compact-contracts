@@ -14,7 +14,7 @@ pragma language_version >= 0.16.0;
  *
  * @notice This module explicitly supports commitments derived from public keys;
  * however, it may be possible to use contract addresses when contract-to-contract
- * calls become available. This will be revisited when it is know if/how witnesses
+ * calls become available. This will be revisited when it's known if/how witnesses
  * are used from a contract address context.
  *
  * @dev Features:
