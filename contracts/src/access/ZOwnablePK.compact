@@ -88,7 +88,7 @@ module ZOwnablePK {
    *
    * @dev The `ownerId` must be calculated prior to contract deployment.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=14, rows=14933
    *
    * Requirements:
    *
@@ -112,7 +112,7 @@ module ZOwnablePK {
    * @description Returns the current commitment representing the contract owner.
    * The full commitment is: `H(H(pk, nonce), instanceSalt, counter, domain)`.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=10, rows=57
    *
    * Requirements:
    *
@@ -129,7 +129,7 @@ module ZOwnablePK {
    * @description Transfers ownership to `newOwnerId`.
    * `newOwnerId` must be precalculated and given to the current owner off chain.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=16, rows=39240
    *
    * Requirements:
    *
@@ -153,7 +153,7 @@ module ZOwnablePK {
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=24442, rows=24442
    *
    * Requirements:
    *
@@ -174,7 +174,7 @@ module ZOwnablePK {
    * the stored owner commitment.
    * Use this to only allow the owner to call specific circuits.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=15, rows=24437
    *
    * Requirements:
    *
@@ -218,7 +218,7 @@ module ZOwnablePK {
    * - `domain`: Domain separator `"ZOwnablePK:shield:"` (padded to 32 bytes) to prevent
    * hash collisions when extending the module or using similar commitment schemes.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=14, rows=14853
    *
    * Requirements:
    *
@@ -267,8 +267,6 @@ module ZOwnablePK {
    * support contract addresses as identifiers in future contract-to-contract
    * interactions. Both are treated as 32-byte values (`Bytes<32>`).
    *
-   * @circuitInfo k=???, rows=???
-   *
    * Requirements:
    *
    * - `pk` is not a ContractAddress.
@@ -290,7 +288,7 @@ module ZOwnablePK {
    * @description Transfers ownership to owner id `newOwnerId` without
    * enforcing permission checks on the caller.
    *
-   * @circuitInfo k=???, rows=???
+   * @circuitInfo k=14, rows=14823
    *
    * Requirements:
    *
