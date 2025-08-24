@@ -88,10 +88,10 @@ Cached:    0 cached, 2 total
   Time:    7.178s
 ```
 
-**Note:** Speed up the development process by skipping the prover and verifier key file generation:
+**Note:** Speed up the development process by targeting a single directory and skipping the prover and verifier key file generation:
 
 ```bash
-turbo compact -- --skip-zk
+turbo compact:token -- --skip-zk
 ```
 
 ### Run tests

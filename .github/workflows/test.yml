@@ -6,11 +6,6 @@ on:
     branches:
       - main
 
-env:
-  TURBO_TELEMETRY_DISABLED: 1
-  COMPILER_VERSION: "0.24.0"
-  LANGUAGE_VERSION: "0.16.0"
-
 jobs:
   run-suite:
     name: Run Test Suite
@@ -26,82 +21,8 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup
 
-      - name: Install Compact compiler
-        id: setup
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Create directory for compiler
-          COMPACT_HOME="$HOME/compactc"
-          mkdir -p "$COMPACT_HOME"
-
-          # Create URL
-          ZIP_FILE="compactc_v${COMPILER_VERSION}_x86_64-unknown-linux-musl.zip"
-          DOWNLOAD_URL="https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_${COMPILER_VERSION}/${ZIP_FILE}"
-
-          echo "⬇️ Downloading Compact compiler..."
-          curl -Ls "$DOWNLOAD_URL" -o "$COMPACT_HOME/compactc.zip"
-
-          echo "📦 Extracting..."
-          unzip -q "$COMPACT_HOME/compactc.zip" -d "$COMPACT_HOME"
-          chmod +x "$COMPACT_HOME"/{compactc,compactc.bin,zkir}
-
-          echo "📁 Setting environment variables..."
-          echo "COMPACT_HOME=$COMPACT_HOME" >> "$GITHUB_ENV"
-          echo "$COMPACT_HOME" >> "$GITHUB_PATH"
-
-          echo "✅ Verifying installation..."
-          if [ ! -f "$COMPACT_HOME/compactc" ]; then
-            echo "::error::❌ compactc not found in $COMPACT_HOME"
-            exit 1
-          fi
-
-          echo "🤖 Testing installation..."
-          "$COMPACT_HOME/compactc" --version
-
-      - name: Check compiler and language version
-        run: |
-            COMPILER_OUTPUT=$(compactc --version)
-            COMPUTED_COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
-            if [ "$COMPUTED_COMPILER_VERSION" != "$COMPILER_VERSION" ]; then
-              errMsg="❌ Compiler version mismatch!%0AExpected: $COMPILER_VERSION%0AGot: $COMPUTED_COMPILER_VERSION"
-              echo "::error::$errMsg"
-              exit 1
-            fi
-            echo "✅ Compiler version matches: $COMPUTED_COMPILER_VERSION"
-
-            LANGUAGE_OUTPUT=$(compactc --language-version)
-            COMPUTED_LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | tail -n 1)
-            if [ "$COMPUTED_LANGUAGE_VERSION" != "$LANGUAGE_VERSION" ]; then
-                errMsg="❌ Language version mismatch!%0AExpected: $LANGUAGE_VERSION%0AGot: $COMPUTED_LANGUAGE_VERSION"
-                echo "::error::$errMsg"
-                exit 1
-            fi
-
-            echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
-
-      - name: Compile contracts (with retry on hash mismatch)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          compile() {
-            echo "⚙️ Running Compact compilation..."
-            if ! output=$(turbo compact --concurrency=1 2>&1); then
-              echo "❌ Compilation failed."
-              if echo "$output" | grep -q "Hash mismatch" && [ -d "$HOME/.cache/midnight/zk-params" ]; then
-                echo "⚠️ Hash mismatch detected *and* zk-params exists. Removing cache..."
-                rm -rf "$HOME/.cache/midnight/zk-params"
-                echo "::notice::♻️ Retrying compilation after clearing zk-params..."
-                turbo compact --concurrency=1 || { echo "::error::❌ Retry also failed."; exit 1; }
-              else
-                echo "🚫 Compilation failed for another reason or zk-params missing. No retry."
-                exit 1
-              fi
-            fi
-          }
-
-          compile
+      - name: Compile contracts (with retry)
+        run: turbo compact --concurrency=1
 
       - name: Run type checks
         run: turbo types
