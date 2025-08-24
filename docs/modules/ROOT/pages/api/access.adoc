@@ -451,7 +451,7 @@ Requirements:
 
 Constraints:
 
-- k=???, rows=???
+- k=14, rows=14933
 
 [.contract-item]
 [[ZOwnablePK-owner]]
@@ -466,7 +466,7 @@ Requirements:
 
 Constraints:
 
-- k=???, rows=???
+- k=10, rows=57
 
 [.contract-item]
 [[ZOwnablePK-transferOwnership]]
@@ -483,7 +483,7 @@ Requirements:
 
 Constraints:
 
-- k=???, rows=???
+- k=16, rows=39240
 
 [.contract-item]
 [[ZOwnablePK-renounceOwnership]]
@@ -500,7 +500,7 @@ Requirements:
 
 Constraints:
 
-- k=???, rows=???
+- k=15, rows=24442
 
 [.contract-item]
 [[ZOwnablePK-assertOnlyOwner]]
@@ -517,7 +517,7 @@ thus verifying themselves as the owner.
 
 Constraints:
 
-- k=???, rows=???
+- k=15, rows=24437
 
 [.contract-item]
 [[ZOwnablePK-_computeOwnerCommitment]]
@@ -550,7 +550,7 @@ Requirements:
 
 Constraints:
 
-- k=???, rows=???
+- k=14, rows=14853
 
 [.contract-item]
 [[ZOwnablePK-_computeOwnerId]]
@@ -582,10 +582,6 @@ Requirements:
 - Contract is initialized.
 - `newOwner` is not a ContractAddress.
 
-Constraints:
-
-- k=???, rows=???
-
 [.contract-item]
 [[ZOwnablePK-_transferOwnership]]
 ==== `[.contract-item-name]#++_transferOwnership++#++(newOwnerId: Bytes<32>) → []++` [.item-kind]#circuit#
@@ -598,4 +594,4 @@ Requirements:
 
 Constraints:
 
-- k=???, rows=???
+- k=14, rows=14823

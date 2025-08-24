@@ -153,7 +153,7 @@ module ZOwnablePK {
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    *
-   * @circuitInfo k=24442, rows=24442
+   * @circuitInfo k=15, rows=24442
    *
    * Requirements:
    *
