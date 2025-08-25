@@ -159,7 +159,7 @@ unlinkability, and collision resistance across deployments and ownership transfe
 The foundation of the system is the owner identifier, computed as:
 
 ```ts
-id = H(pk, nonce)
+id = SHA256(pk, nonce)
 ```
 
 Where `pk` is the owner's public key and `nonce` is a secret value that may be either randomly generated
@@ -172,7 +172,7 @@ ensuring the owner's identity remains confidential.
 The final ownership commitment stored on-chain is computed as:
 
 ```ts
-commitment = H(id, instanceSalt, counter, pad(32, "ZOwnablePK:shield:"))
+commitment = SHA256(id, instanceSalt, counter, pad(32, "ZOwnablePK:shield:"))
 ```
 
 This multi-element hash provides several security properties:

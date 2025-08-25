@@ -458,7 +458,7 @@ Constraints:
 ==== `[.contract-item-name]#++owner++#++() → Bytes<32>++` [.item-kind]#circuit#
 
 Returns the current commitment representing the contract owner.
-The full commitment is: `H(H(pk, nonce), instanceSalt, counter, domain)`.
+The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
 
 Requirements:
 
@@ -506,13 +506,13 @@ Constraints:
 [[ZOwnablePK-assertOnlyOwner]]
 ==== `[.contract-item-name]#++assertOnlyOwner++#++() → []++` [.item-kind]#circuit#
 
-Throws if called by any account whose id hash `H(pk, nonce)` does not match the stored owner commitment.
+Throws if called by any account whose id hash `SHA256(pk, nonce)` does not match the stored owner commitment.
 Use this to only allow the owner to call specific circuits.
 
 Requirements:
 
 - Contract is initialized.
-- Caller's id (`H(pk, nonce)`) when used in <<ZOwnablePK-_computeOwnerCommitment,ZOwnablePK-_computeOwnerCommitment>> equals the stored `_ownerCommitment`,
+- Caller's id (`SHA256(pk, nonce)`) when used in <<ZOwnablePK-_computeOwnerCommitment,ZOwnablePK-_computeOwnerCommitment>> equals the stored `_ownerCommitment`,
 thus verifying themselves as the owner.
 
 Constraints:
@@ -527,14 +527,14 @@ Computes the owner commitment from the given `id` and `counter`.
 
 **Owner ID (`id`)**
 
-The `id` is expected to be computed off-chain as: `id = H(pk, nonce)`
+The `id` is expected to be computed off-chain as: `id = SHA256(pk, nonce)`
 
 - `pk`: The owner's public key.
 - `nonce`: A secret nonce scoped to the instance, ideally rotated with each transfer.
 
 **Commitment Derivation**
 
-`commitment = H(id, instanceSalt, counter, domain)`
+`commitment = SHA256(id, instanceSalt, counter, domain)`
 
 - `id`: See above.
 - `instanceSalt`: A unique per-deployment salt, stored during initialization.
@@ -559,7 +559,7 @@ Constraints:
 Computes the unique identifier (`id`) of the owner from their public key and a secret nonce.
 
 **ID Derivation**
-`id = H(pk, nonce)`
+`id = SHA256(pk, nonce)`
 
 - `pk`: The public key of the caller.
 This is passed explicitly to allow for off-chain derivation, testing, or scenarios
