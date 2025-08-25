@@ -8,38 +8,33 @@ import { CompactCompiler } from './Compiler.js';
  * Executes the Compact compiler CLI.
  * Compiles `.compact` files using the `CompactCompiler` class with provided flags.
  *
- * Supports both CLI flags and environment variables for common development flags.
- * Environment variables take precedence and are useful when using with Turbo monorepo tasks.
+ * For individual module compilation, CLI flags work directly.
+ * For full compilation with dependencies, use environment variables due to Turbo task orchestration.
  *
- * @example CLI usage with flags
+ * @example Individual module compilation (CLI flags work directly)
  * ```bash
- * npx compact-compiler --skip-zk
+ * npx compact-compiler --dir security --skip-zk
+ * turbo compact:access -- --skip-zk
+ * turbo compact:security -- --skip-zk --other-flag
  * ```
  *
- * @example Compile specific directory with CLI flags
+ * @example Full compilation (environment variables required)
  * ```bash
- * npx compact-compiler --dir access --skip-zk
- * ```
- *
- * @example Environment variable usage (recommended with Turbo)
- * ```bash
- * SKIP_ZK=true npx compact-compiler --dir access
- * ```
- *
- * @example Turbo monorepo usage
- * ```bash
- * # Compile specific module with skip-zk for development
- * SKIP_ZK=true turbo compact:access
- *
- * # Full build with skip-zk
+ * # Use environment variables for full builds due to task dependencies
  * SKIP_ZK=true turbo compact
  *
- * # Normal compilation without flags
- * turbo compact:access
+ * # Normal full build
+ * turbo compact
  * ```
  *
- * Environment Variables:
- * - `SKIP_ZK=true`: Adds --skip-zk flag to compilation (skips zero-knowledge proof generation for faster development builds)
+ * @example Direct CLI usage
+ * ```bash
+ * npx compact-compiler --skip-zk
+ * npx compact-compiler --dir security --skip-zk
+ * ```
+ *
+ * Environment Variables (only needed for full builds):
+ * - `SKIP_ZK=true`: Adds --skip-zk flag when running full compilation via `turbo compact`
  *
  * Expected output:
  * ```
