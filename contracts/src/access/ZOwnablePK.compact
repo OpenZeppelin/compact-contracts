@@ -26,12 +26,11 @@ pragma language_version >= 0.16.0;
  *
  * @dev Commitment structure:
  * ```
- * id = H(pk, secretNonce)
- * commitment = H256(id, instanceSalt, counter, "ZOwnablePK:shield:")
+ * id = SHA256(pk, secretNonce)
+ * commitment = SHA256(id, instanceSalt, counter, "ZOwnablePK:shield:")
  * ```
- * Where `H()` is the SHA256 hash algorithm. The commitment changes
- * on each transfer due to the incrementing `counter`, providing
- * unlinkability across ownership changes.
+ * The commitment changes on each transfer due to the incrementing `counter`,
+ * providing unlinkability across ownership changes.
  *
  * @dev Security Considerations:
  * - The `secretNonce` must be kept private. Loss of the nonce prevents the
@@ -49,7 +48,7 @@ module ZOwnablePK {
   /**
    * @ledger _ownerCommitment
    * @description Stores the current hashed commitment representing the owner.
-   * This commitment is derived from the public identifier (e.g., `H(pk, nonce)`),
+   * This commitment is derived from the public identifier (e.g., `SHA256(pk, nonce)`),
    * the `instanceSalt`, the transfer `counter`, and a domain separator.
    *
    * A commitment of `default<Bytes<32>>` (i.e., zero) indicates the contract is unowned.
@@ -77,7 +76,7 @@ module ZOwnablePK {
    * @witness secretNonce
    * @description A private per-user nonce used in deriving the shielded owner identifier.
    *
-   * Combined with the user's public key as `H(pk, nonce)` to produce an obfuscated,
+   * Combined with the user's public key as `SHA256(pk, nonce)` to produce an obfuscated,
    * unlinkable identity commitment. Users are encouraged to rotate this value on ownership changes.
    */
   export witness secretNonce(): Bytes<32>;
@@ -88,7 +87,7 @@ module ZOwnablePK {
    * duplicate commitments among other contracts implementing ZOwnablePK.
    *
    * @warning The `ownerId` must be calculated prior to contract deployment using the SHA256 hashing algorithm.
-   * Using any other algorithm will result in a permanent loss of contract access.   
+   * Using any other algorithm will result in a permanent loss of contract access.
    *
    * @circuitInfo k=14, rows=14933
    *
@@ -97,7 +96,7 @@ module ZOwnablePK {
    * - Contract is not initialized.
    * - `ownerId` is not zero.
    *
-   * @param {Bytes<32>} ownerId - The owner's unique identifier H(pk, nonce).
+   * @param {Bytes<32>} ownerId - The owner's unique identifier SHA256(pk, nonce).
    * @param {Bytes<32>} instanceSalt - Contract salt to prevent duplicate commitments if
    * users reuse their PK and secretNonce witness (not recommended).
    * @returns {[]} Empty tuple.
@@ -112,7 +111,7 @@ module ZOwnablePK {
 
   /**
    * @description Returns the current commitment representing the contract owner.
-   * The full commitment is: `H(H(pk, nonce), instanceSalt, counter, domain)`.
+   * The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
    *
    * @circuitInfo k=10, rows=57
    *
@@ -139,7 +138,7 @@ module ZOwnablePK {
    * - Caller is the the current owner.
    * - `newOwnerId` is not an empty array.
    *
-   * @param {Bytes<32>} newOwnerId - The new owner's unique identifier (`H(pk, nonce)`).
+   * @param {Bytes<32>} newOwnerId - The new owner's unique identifier (`SHA256(pk, nonce)`).
    * @returns {[]} Empty tuple.
    */
   export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
@@ -172,7 +171,7 @@ module ZOwnablePK {
   }
 
   /**
-   * @description Throws if called by any account whose id hash `H(pk, nonce)` does not match
+   * @description Throws if called by any account whose id hash `SHA256(pk, nonce)` does not match
    * the stored owner commitment.
    * Use this to only allow the owner to call specific circuits.
    *
@@ -181,7 +180,7 @@ module ZOwnablePK {
    * Requirements:
    *
    * - Contract is initialized.
-   * - Caller's id (`H(pk, nonce)`) when used in `_computeOwnerCommitment` equals
+   * - Caller's id (`SHA256(pk, nonce)`) when used in `_computeOwnerCommitment` equals
    * the stored `_ownerCommitment`, thus verifying themselves as the owner.
    *
    * @returns {[]} Empty tuple.
@@ -204,13 +203,13 @@ module ZOwnablePK {
    *
    * ## Owner ID (`id`)
    * The `id` is expected to be computed off-chain as:
-   * `id = H(pk, nonce)`
+   * `id = SHA256(pk, nonce)`
    *
    * - `pk`: The owner's public key.
    * - `nonce`: A secret nonce scoped to the instance, ideally rotated with each transfer.
    *
    * ## Commitment Derivation
-   * `commitment = H(id, instanceSalt, counter, domain)`
+   * `commitment = SHA256(id, instanceSalt, counter, domain)`
    *
    * - `id`: See above.
    * - `instanceSalt`: A unique per-deployment salt, stored during initialization.
@@ -226,7 +225,7 @@ module ZOwnablePK {
    *
    * - Contract is initialized.
    *
-   * @param {Bytes<32>} id - The unique identifier of the owner calculated by `H(pk, nonce)`.
+   * @param {Bytes<32>} id - The unique identifier of the owner calculated by `SHA256(pk, nonce)`.
    * @param {Uint<64>} counter - The current counter or round. This increments by `1`
    * after every transfer to prevent duplicate commitments given the same `id`.
    * @returns {Bytes<32>} The commitment derived from `id` and `counter`.
@@ -251,7 +250,7 @@ module ZOwnablePK {
    * public key and a secret nonce.
    *
    * ## ID Derivation
-   * `id = H(pk, nonce)`
+   * `id = SHA256(pk, nonce)`
    *
    * - `pk`: The public key of the caller. This is passed explicitly to allow
    * for off-chain derivation, testing, or scenarios where the caller is
@@ -297,7 +296,7 @@ module ZOwnablePK {
    * - Contract is initialized.
    *
    * @param {Bytes<32>} newOwnerId - The unique identifier of the new owner
-   * calculated by `H(pk, nonce)`.
+   * calculated by `SHA256(pk, nonce)`.
    * @returns {[]} Empty tuple.
    */
   export circuit _transferOwnership(newOwnerId: Bytes<32>): [] {
