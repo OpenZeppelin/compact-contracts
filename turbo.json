@@ -3,35 +3,35 @@
   "tasks": {
     "compact:security": {
       "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/security/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:utils": {
       "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/utils/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:access": {
       "dependsOn": ["^build", "compact:security", "compact:utils"],
-      "env": ["COMPACT_HOME"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/access/**/*.compact", "artifacts/**"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:archive": {
       "dependsOn": ["^build", "compact:utils"],
-      "env": ["COMPACT_HOME"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/archive/**/*.compact", "artifacts/**"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:token": {
       "dependsOn": ["^build", "compact:security", "compact:utils"],
-      "env": ["COMPACT_HOME"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/token/**/*.compact", "artifacts/**"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
@@ -44,7 +44,7 @@
         "compact:archive",
         "compact:token"
       ],
-      "env": ["COMPACT_HOME"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/**/*.compact", "test/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**"]
