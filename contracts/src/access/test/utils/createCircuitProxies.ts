@@ -10,17 +10,20 @@ import type {
  */
 export function createCircuitProxies<
   P,
-  ContractType extends { circuits: Record<PropertyKey, unknown>; impureCircuits: Record<PropertyKey, unknown>;},
+  ContractType extends {
+    circuits: Record<PropertyKey, unknown>;
+    impureCircuits: Record<PropertyKey, unknown>;
+  },
 >(
   contract: ContractType,
   getContext: () => CircuitContext<P>,
   getCallerContext: () => CircuitContext<P>,
   updateContext: (ctx: CircuitContext<P>) => void,
-  createPureProxy: <C extends object>(
+  createPureProxy: <C extends Record<PropertyKey, unknown>>(
     circuits: C,
     context: () => CircuitContext<P>,
   ) => ContextlessCircuits<C, P>,
-  createImpureProxy: <C extends object>(
+  createImpureProxy: <C extends Record<PropertyKey, unknown>>(
     circuits: C,
     context: () => CircuitContext<P>,
     updateContext: (ctx: CircuitContext<P>) => void,
@@ -36,11 +39,14 @@ export function createCircuitProxies<
   return {
     get circuits() {
       if (!pureProxy) {
-        pureProxy = createPureProxy(contract.circuits, getContext);
+        pureProxy = createPureProxy(
+          contract.circuits as ExtractPureCircuits<ContractType>,
+          getContext,
+        );
       }
       if (!impureProxy) {
         impureProxy = createImpureProxy(
-          contract.impureCircuits,
+          contract.impureCircuits as ExtractImpureCircuits<ContractType>,
           getCallerContext,
           updateContext,
         );
