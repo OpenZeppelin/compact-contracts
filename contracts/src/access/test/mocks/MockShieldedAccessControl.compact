@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+
+export {
+  ZswapCoinPublicKey,
+  ContractAddress,
+  Either,
+  Maybe,
+  ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
+  ShieldedAccessControl__operatorRoles
+};
+
+export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return ShieldedAccessControl_hasRole(roleId, account);
+}
+
+export circuit assertOnlyRole(roleId: Bytes<32>): [] {
+  ShieldedAccessControl_assertOnlyRole(roleId);
+}
+
+export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  ShieldedAccessControl__checkRole(roleId, account);
+}
+
+export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): Boolean {
+  return ShieldedAccessControl__checkMerkleTree(roleId, account);
+}
+
+export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
+  return ShieldedAccessControl_getRoleAdmin(roleId);
+}
+
+export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  ShieldedAccessControl_grantRole(roleId, account);
+}
+
+export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  ShieldedAccessControl_revokeRole(roleId, account);
+}
+
+export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  ShieldedAccessControl_renounceRole(roleId, callerConfirmation);
+}
+
+export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
+  ShieldedAccessControl__setRoleAdmin(roleId, adminRole);
+}
+
+export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return ShieldedAccessControl__grantRole(roleId, account);
+}
+
+export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return ShieldedAccessControl__unsafeGrantRole(roleId, account);
+}
+
+export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return ShieldedAccessControl__revokeRole(roleId, account);
+}

@@ -14,7 +14,7 @@ import {
   type Ledger,
   Contract as MockShieldedAccessControl,
   type ZswapCoinPublicKey,
-} from '../artifacts/MockShieldedAccessControl/contract/index.cjs'; // Combined imports
+} from '../shieldedAccessControl/src/artifacts/MockShieldedAccessControl/contract/index.cjs'; // Combined imports
 
 const { hkdfSync } = await import('node:crypto');
 
