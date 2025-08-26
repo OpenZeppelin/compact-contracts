@@ -50,8 +50,8 @@ export interface IContractSimulator<P, L> {
  * @template TContract - Contract type with `circuits` and `impureCircuits`.
  */
 export type ExtractPureCircuits<TContract> = TContract extends {
-  circuits: infer TCircuits;
-  impureCircuits: infer TImpureCircuits;
+  circuits: infer TCircuits extends Record<PropertyKey, unknown>;
+  impureCircuits: infer TImpureCircuits extends Record<PropertyKey, unknown>;
 }
   ? Omit<TCircuits, keyof TImpureCircuits>
   : never;

@@ -10,7 +10,7 @@ import type {
  */
 export function createCircuitProxies<
   P,
-  ContractType extends { circuits: any; impureCircuits: any },
+  ContractType extends { circuits: Record<PropertyKey, unknown>; impureCircuits: Record<PropertyKey, unknown>;},
 >(
   contract: ContractType,
   getContext: () => CircuitContext<P>,
