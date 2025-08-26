@@ -3,6 +3,8 @@ import {
   CompactTypeVector,
   convert_bigint_to_Uint8Array,
   persistentHash,
+  transientHash,
+  upgradeFromTransient,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ZswapCoinPublicKey } from '../../../artifacts/MockOwnable/contract/index.cjs';
@@ -99,7 +101,7 @@ describe('ZOwnablePK', () => {
     });
   });
 
-  describe('when not initialized correctly', () => {
+  describe('when not deployed and not initialized', () => {
     const isNotInit = false;
 
     beforeEach(() => {
@@ -133,6 +135,36 @@ describe('ZOwnablePK', () => {
       expect(() => {
         ownable._computeOwnerId(eitherOwner, randomByteArray);
       }).not.toThrow();
+    });
+  });
+
+  describe('when incorrect hashing algo (not SHA256) is used to generate initial owner id', () => {
+    // ZOwnablePK only supports sha256 for owner id calculation
+    // Obviously, using any other algo for the id will not work
+    const badHashAlgo = (pk: ZswapCoinPublicKey, nonce: Uint8Array) => {
+      const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
+      return upgradeFromTransient(transientHash(rt_type, [pk.bytes, nonce]));
+    };
+    const secretNonce = ZOwnablePKPrivateState.generate().secretNonce;
+    const badOwnerId = badHashAlgo(Z_OWNER, secretNonce);
+
+    beforeEach(() => {
+      ownable = new ZOwnablePKSimulator(badOwnerId, INSTANCE_SALT, isInit);
+    });
+    //
+    type FailingCircuits = [method: keyof ZOwnablePKSimulator, args: unknown[]];
+    const protectedCircuits: FailingCircuits[] = [
+      ['assertOnlyOwner', []],
+      ['transferOwnership', [badOwnerId]],
+      ['renounceOwnership', []],
+    ];
+
+    it.each(protectedCircuits)('%s should fail', (circuitName, args) => {
+      ownable.callerCtx.setCaller(OWNER);
+
+      expect(() => {
+        (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
+      }).toThrow('ZOwnablePK: caller is not the owner');
     });
   });
 
