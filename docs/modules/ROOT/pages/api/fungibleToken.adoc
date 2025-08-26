@@ -9,14 +9,14 @@ TIP: For an overview of the module, read the {fungible-guide}.
 
 == Core
 
-[.hljs-theme-dark]
-```ts
-import "./node-modules/@openzeppelin-compact/fungible-token/src/FungibleToken" prefix FungibleToken_;
-```
-
 [.contract]
 [[FungibleToken]]
 === `++FungibleToken++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/fungibleToken/src/FungibleToken.compact[{github-icon},role=heading-link]
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken";
+```
 
 [.contract-index]
 .Circuits

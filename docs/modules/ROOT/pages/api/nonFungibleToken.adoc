@@ -9,14 +9,14 @@ TIP: For an overview of the module, read the {nonfungible-guide}.
 
 == Core
 
-[.hljs-theme-dark]
-```ts
-import "./node-modules/@openzeppelin-compact/non-fungible-token/src/NonFungibleToken" prefix NonFungibleToken_;
-```
-
 [.contract]
 [[NonFungibleToken]]
 === `++NonFungibleToken++` link:https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/nonFungibleToken/src/NonFungibleToken.compact[{github-icon},role=heading-link]
+
+[.hljs-theme-dark]
+```ts
+import "./node_modules/@openzeppelin-compact/contracts/src/token/NonFungibleToken";
+```
 
 [.contract-index]
 .Circuits

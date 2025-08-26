@@ -5,7 +5,7 @@
   "packageManager": "yarn@4.1.0",
   "workspaces": [
     "compact/",
-    "contracts/*/",
+    "contracts/",
     "docs/"
   ],
   "scripts": {

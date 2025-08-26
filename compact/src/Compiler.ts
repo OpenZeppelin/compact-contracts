@@ -12,7 +12,7 @@ import { isPromisifiedChildProcessError } from './types/errors.ts';
 
 const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR: string = 'src';
-const ARTIFACTS_DIR: string = 'src/artifacts';
+const ARTIFACTS_DIR: string = 'artifacts';
 const COMPACT_HOME: string =
   process.env.COMPACT_HOME ?? resolve(DIRNAME, '../compactc');
 const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
