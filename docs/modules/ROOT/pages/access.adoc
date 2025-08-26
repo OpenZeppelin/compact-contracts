@@ -197,7 +197,7 @@ Both approaches are valid, and the best choice depends on your specific threat m
 
 ==== Random Nonce
 
-Generating a cryptographically random nonce provides the strongest privacy guarantees:
+Generating a cryptographically strong random nonce provides the strongest privacy guarantees:
 
 ```typescript
 const randomNonce = crypto.getRandomValues(new Uint8Array(32));
@@ -300,7 +300,7 @@ export circuit mySensitiveCircuit(): [] {
 }
 ```
 
-This covers the basic for creating a contract, but before deploying the contract,
+This covers the basics for creating a contract, but before deploying the contract,
 the owner's id must be derived for the commitment scheme because it's required to deploy the contract.
 
 First, the owner needs to generate a secret nonce that's stored in the owner's private state.

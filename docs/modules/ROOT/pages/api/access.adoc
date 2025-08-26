@@ -427,7 +427,7 @@ TIP: For an overview of the module, read the {ownable-guide}.
 * xref:#ZOwnablePK-owner[`++owner()++`]
 * xref:#ZOwnablePK-transferOwnership[`++transferOwnership(newOwnerId)++`]
 * xref:#ZOwnablePK-renounceOwnership[`++renounceOwnership()++`]
-* xref:#ZOwnablePK-assertOnlyOwner[`++assertOnlyOwner(operator, approved)++`]
+* xref:#ZOwnablePK-assertOnlyOwner[`++assertOnlyOwner()++`]
 * xref:#ZOwnablePK-_computeOwnerCommitment[`++_computeOwnerCommitment(id, counter)++`]
 * xref:#ZOwnablePK-_computeOwnerId[`++_computeOwnerId(pk, nonce)++`]
 * xref:#ZOwnablePK-_transferOwnership[`++_transferOwnership(newOwnerId)++`]
@@ -580,7 +580,7 @@ Both are treated as 32-byte values (`Bytes<32>`).
 Requirements:
 
 - Contract is initialized.
-- `newOwner` is not a ContractAddress.
+- `pk` is not a ContractAddress.
 
 [.contract-item]
 [[ZOwnablePK-_transferOwnership]]
