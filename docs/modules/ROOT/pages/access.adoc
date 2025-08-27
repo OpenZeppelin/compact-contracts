@@ -286,7 +286,7 @@ has never generated any public key that appears in any on-chain transaction, acr
 The key material must be cryptographically virgin.
 - *Never used elsewhere:* From the moment of AGPK generation until its destruction,
 the private key material is used exclusively for this contract's administrative functions (i.e. `assertOnlyOwner`).
-No other public keys may be derived from or generated with the same key material during this period.
+No other public keys may ever be derived from or generated with the same key material.
 - *Never used again:* Users commit to destroying all copies of the private key material
 upon ownership renunciation or transfer.
 This relies entirely on user discipline and cannot be externally verified or enforced.
