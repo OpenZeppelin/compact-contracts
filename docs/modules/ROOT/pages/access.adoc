@@ -280,9 +280,16 @@ through transaction pattern analysis.
 
 An Air-Gapped Public Key must adhere to strict isolation principles:
 
-- *Never used before:* The public key has no prior transaction history on any blockchain network.
-- *Never used elsewhere:* The key is exclusively reserved for the specific contract's administrative circuits i.e. `assertOnlyOwner`.
-- *Never used again:* The private key is destroyed once ownership is renounced or transferred to another account.
+- *Never used before:* The private key material
+(including any seed, parent key, or entropy source from which this key is derived)
+has never generated any public key that appears in any on-chain transaction, across any blockchain network.
+The key material must be cryptographically virgin.
+- *Never used elsewhere:* From the moment of AGPK generation until its destruction,
+the private key material is used exclusively for this contract's administrative functions (i.e. `assertOnlyOwner`).
+No other public keys may be derived from or generated with the same key material during this period.
+- *Never used again:* Users commit to destroying all copies of the private key material
+upon ownership renunciation or transfer.
+This relies entirely on user discipline and cannot be externally verified or enforced.
 
 ==== Best Practices Recommendation
 
