@@ -1,24 +1,29 @@
 #!/usr/bin/env node
 
 import { exec as execCallback } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { basename, dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { basename, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import { isPromisifiedChildProcessError } from './types/errors.ts';
 
-const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
+const exec = promisify(execCallback);
 const SRC_DIR: string = 'src';
 const ARTIFACTS_DIR: string = 'artifacts';
-const COMPACT_HOME: string =
-  process.env.COMPACT_HOME ?? resolve(DIRNAME, '../compactc');
-const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
+
+// Check if compact CLI is available in PATH
+async function checkCompactAvailable(): Promise<boolean> {
+  try {
+    await exec('compact --version');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
- * A class to handle compilation of `.compact` files using the `compactc` compiler.
+ * A class to handle compilation of `.compact` files using the `compact compile` command.
  * Provides progress feedback and colored output for success and error states.
  *
  * @example
@@ -31,9 +36,9 @@ const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✔ [COMPILE] [1/2] Compiled AccessControl.compact
- *     Compactc version: 0.24.0
+ *     Compact version: 0.24.0
  * ✔ [COMPILE] [2/2] Compiled MockAccessControl.compact
- *     Compactc version: 0.24.0
+ *     Compact version: 0.24.0
  *     Compiling circuit "src/artifacts/MockAccessControl/zkir/grantRole.zkir"... (skipped proving keys)
  * ```
  *
@@ -41,46 +46,98 @@ const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✖ [COMPILE] [1/2] Failed AccessControl.compact
- *     Compactc version: 0.24.0
+ *     Compact version: 0.24.0
  *     Error: Expected ';' at line 5 in AccessControl.compact
  * ```
  */
 export class CompactCompiler {
   /** Stores the compiler flags passed via command-line arguments */
   private readonly flags: string;
+  /** Optional toolchain version to use (e.g., "+0.23.0") */
+  private readonly version?: string;
 
   /**
-   * Constructs a new CompactCompiler instance, validating the `compactc` binary path.
+   * Constructs a new CompactCompiler instance, validating the `compact` CLI availability.
    *
-   * @param flags - Space-separated string of `compactc` flags (e.g., "--skip-zk --no-communications-commitment")
-   * @throws {Error} If the `compactc` binary is not found at the resolved path
+   * @param flags - Space-separated string of compiler flags (e.g., "--skip-zk --no-communications-commitment")
+   * @param version - Optional toolchain version to use (e.g., "0.23.0")
+   * @throws {Error} If the `compact` CLI is not found in PATH
    */
-  constructor(flags: string) {
+  constructor(flags: string, version?: string) {
     this.flags = flags.trim();
+    this.version = version;
+  }
+
+  /**
+   * Validates that the compact CLI is available and shows version info.
+   */
+  async validateEnvironment(): Promise<void> {
     const spinner = ora();
 
-    spinner.info(chalk.blue(`[COMPILE] COMPACT_HOME: ${COMPACT_HOME}`));
-    spinner.info(chalk.blue(`[COMPILE] COMPACTC_PATH: ${COMPACTC_PATH}`));
+    try {
+      // Check if compact CLI is available
+      const isAvailable = await checkCompactAvailable();
+      if (!isAvailable) {
+        spinner.fail(
+          chalk.red(
+            `[COMPILE] Error: 'compact' CLI not found in PATH. Please install the Compact developer tools.`,
+          ),
+        );
+        spinner.info(
+          chalk.blue(
+            `[COMPILE] Install with: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh`,
+          ),
+        );
+        throw new Error(`'compact' CLI not found in PATH`);
+      }
 
-    if (!existsSync(COMPACTC_PATH)) {
-      spinner.fail(
-        chalk.red(
-          `[COMPILE] Error: compactc not found at ${COMPACTC_PATH}. Set COMPACT_HOME to the compactc binary path.`,
+      // Show version information
+      const { stdout: devToolsVersion } = await exec('compact --version');
+      spinner.info(
+        chalk.blue(
+          `[COMPILE] Compact developer tools: ${devToolsVersion.trim()}`,
         ),
       );
-      throw new Error(`compactc not found at ${COMPACTC_PATH}`);
+
+      const versionFlag = this.version ? `+${this.version}` : '';
+      const { stdout: toolchainVersion } = await exec(
+        `compact compile ${versionFlag} --version`,
+      );
+      spinner.info(
+        chalk.blue(`[COMPILE] Compact toolchain: ${toolchainVersion.trim()}`),
+      );
+
+      console.log("jfjfjfjf", this.version)
+
+      if (this.version) {
+        spinner.info(
+          chalk.blue(`[COMPILE] Using toolchain version: ${this.version}`),
+        );
+      }
+    } catch (error) {
+      if (isPromisifiedChildProcessError(error)) {
+        spinner.fail(
+          chalk.red(
+            `[COMPILE] Environment validation failed: ${error.message}`,
+          ),
+        );
+        throw error;
+      }
+      throw error;
     }
   }
 
   /**
    * Compiles all `.compact` files in the source directory and its subdirectories (e.g., `src/test/mock/`).
-   * Scans the `src` directory recursively for `.compact` files, compiles each one using `compactc`,
+   * Scans the `src` directory recursively for `.compact` files, compiles each one using `compact compile`,
    * and displays progress with a spinner and colored output.
    *
    * @returns A promise that resolves when all files are compiled successfully
    * @throws {Error} If compilation fails for any file
    */
   public async compile(): Promise<void> {
+    await this.validateEnvironment();
+
     const compactFiles: string[] = await this.getCompactFiles(SRC_DIR);
 
     const spinner = ora();
@@ -144,7 +201,7 @@ export class CompactCompiler {
 
   /**
    * Compiles a single `.compact` file.
-   * Executes the `compactc` compiler with the provided flags, input file, and output directory.
+   * Executes the `compact compile` command with the provided flags, input file, and output directory.
    *
    * @param file - Relative path of the `.compact` file to compile (e.g., "test/mock/MockFile.compact")
    * @param index - Current file index (0-based) for progress display
@@ -157,7 +214,6 @@ export class CompactCompiler {
     index: number,
     total: number,
   ): Promise<void> {
-    const execAsync = promisify(execCallback);
     const inputPath: string = join(SRC_DIR, file);
     const outputDir: string = join(ARTIFACTS_DIR, basename(file, '.compact'));
     const step: string = `[${index + 1}/${total}]`;
@@ -166,11 +222,13 @@ export class CompactCompiler {
     ).start();
 
     try {
-      const command: string =
-        `${COMPACTC_PATH} ${this.flags} "${inputPath}" "${outputDir}"`.trim();
+      const versionFlag = this.version ? `+${this.version}` : '';
+      const flagsStr = this.flags ? ` ${this.flags}` : '';
+      const command: string = `compact compile${versionFlag ? ` ${versionFlag}` : ''}${flagsStr} "${inputPath}" "${outputDir}"`;
+
       spinner.text = chalk.blue(`[COMPILE] ${step} Running: ${command}`);
       const { stdout, stderr }: { stdout: string; stderr: string } =
-        await execAsync(command);
+        await exec(command);
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       this.printOutput(stdout, chalk.cyan);
       this.printOutput(stderr, chalk.yellow);
