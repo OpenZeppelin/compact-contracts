@@ -34,12 +34,14 @@ async function checkCompactAvailable(): Promise<boolean> {
  *
  * @example Successful Compilation Output
  * ```
+ * ℹ [COMPILE] Compact compiler started
+ * ℹ [COMPILE] Compact developer tools: compact 0.1.0
+ * ℹ [COMPILE] Compact toolchain: Compactc version: 0.24.0
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✔ [COMPILE] [1/2] Compiled AccessControl.compact
  *     Compact version: 0.24.0
  * ✔ [COMPILE] [2/2] Compiled MockAccessControl.compact
  *     Compact version: 0.24.0
- *     Compiling circuit "src/artifacts/MockAccessControl/zkir/grantRole.zkir"... (skipped proving keys)
  * ```
  *
  * @example Failed Compilation Output
@@ -53,14 +55,14 @@ async function checkCompactAvailable(): Promise<boolean> {
 export class CompactCompiler {
   /** Stores the compiler flags passed via command-line arguments */
   private readonly flags: string;
-  /** Optional toolchain version to use (e.g., "+0.23.0") */
+  /** Optional toolchain version to use (e.g., "+0.24.0") */
   private readonly version?: string;
 
   /**
    * Constructs a new CompactCompiler instance, validating the `compact` CLI availability.
    *
    * @param flags - Space-separated string of compiler flags (e.g., "--skip-zk --no-communications-commitment")
-   * @param version - Optional toolchain version to use (e.g., "0.23.0")
+   * @param version - Optional toolchain version to use (e.g., "0.24.0")
    * @throws {Error} If the `compact` CLI is not found in PATH
    */
   constructor(flags: string, version?: string) {
