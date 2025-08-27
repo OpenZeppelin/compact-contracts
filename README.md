@@ -32,7 +32,7 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 > - [node](https://nodejs.org/)
 > - [yarn](https://yarnpkg.com/getting-started/install)
 > - [turbo](https://turborepo.com/docs/getting-started/installation)
-> - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
+> - [compact](https://docs.midnight.network/blog/compact-developer-tools)
 
 Clone the repository:
 
