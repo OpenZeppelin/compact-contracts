@@ -4,6 +4,7 @@ import {
   type ContractState,
   constructorContext,
   QueryContext,
+  sampleContractAddress
 } from '@midnight-ntwrk/compact-runtime';
 
 /**
@@ -28,9 +29,9 @@ import {
  * const contract = new MyContract(witnesses);
  * const manager = new SimulatorStateManager(
  *   contract,
- *   { foo: 1n },                  // initial private state
+ *   { foo: 1n },                 // initial private state
  *   '0'.repeat(64),              // coin public key
- *   undefined,                   // optional contract address
+ *   sampleContractAddress(),     // optional contract address
  *   arg1, arg2                   // additional constructor args
  * );
  *
@@ -45,8 +46,8 @@ export class SimulatorStateManager<P> {
    *
    * @param contract - A compiled Compact contract instance (from artifacts), exposing `initialState()`.
    * @param privateState - The initial private state to inject into the contract.
-   * @param coinPK - The caller's coin public key (used to create the constructor context and as default address).
-   * @param contractAddress - Optional override for the contract's address. Defaults to `coinPK` if not provided.
+   * @param coinPK - The caller's coin public key (used to create the constructor context).
+   * @param contractAddress - Optional override for the contract's address. Defaults to `sampleContractAddress` if not provided.
    * @param contractArgs - Additional arguments to pass to the contract constructor (e.g., circuit params).
    */
   constructor(
@@ -79,7 +80,7 @@ export class SimulatorStateManager<P> {
       originalState: currentContractState,
       transactionContext: new QueryContext(
         currentContractState.data,
-        contractAddress ?? coinPK,
+        contractAddress ?? sampleContractAddress(),
       ),
     };
   }
