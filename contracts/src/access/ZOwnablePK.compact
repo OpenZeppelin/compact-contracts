@@ -11,6 +11,7 @@ pragma language_version >= 0.16.0;
  * `Ownable` implementations that store or expose the owner's public key
  * on-chain, this module stores only a commitment to a hashed identifier
  * derived from the owner's public key and a secret nonce.
+ * For the strongest security guarantees, use an Air-Gapped Public Key.
  *
  * @notice This module explicitly supports commitments derived from public keys;
  * however, it may be possible to use contract addresses when contract-to-contract
@@ -255,6 +256,7 @@ module ZOwnablePK {
    * - `pk`: The public key of the caller. This is passed explicitly to allow
    * for off-chain derivation, testing, or scenarios where the caller is
    * different from the subject of the computation.
+   * We recommend using an Air-Gapped Public Key.
    * - `nonce`: A secret nonce tied to the identity. The generation strategy is
    * left to the user, offering different security/convenience trade-offs.
    *

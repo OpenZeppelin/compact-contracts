@@ -444,7 +444,7 @@ TIP: For an overview of the module, read the {zownablepk-guide}.
 
 Initializes the contract by setting the initial owner via `ownerId`
 and storing the `instanceSalt` that acts as a privacy additive
-for preventing duplicate commitments among other contracts implementing ZOwnablePK.
+for preventing duplicate commitments among other contracts implementing `ZOwnablePK`.
 
 NOTE: The `ownerId` must be calculated prior to contract deployment.
 See <<ZOwnablePK-_computeOwnerId,ZOwnablePK-_computeOwnerId]>>
@@ -569,6 +569,7 @@ Computes the unique identifier (`id`) of the owner from their public key and a s
 - `pk`: The public key of the caller.
 This is passed explicitly to allow for off-chain derivation, testing, or scenarios
 where the caller is different from the subject of the computation.
+We recommend using an {agpk}.
 - `nonce`: A secret nonce tied to the identity.
 This value should be randomly generated and kept private.
 It may be rotated periodically for enhanced unlinkability.
