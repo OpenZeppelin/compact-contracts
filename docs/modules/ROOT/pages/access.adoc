@@ -211,12 +211,20 @@ However, it requires secure backup of both the private key and the nonce.
 
 ==== Deterministic Nonce
 
+:rfc6979: https://datatracker.ietf.org/doc/html/rfc6979[RFC 6979]
+:ed25519: https://ed25519.cr.yp.to/[Ed25519]
+
 Deriving the nonce deterministically enables recovery through derivation schemes.
 Some examples:
 
 - `H(passphrase + context)` - recoverable from passphrase only, but passphrase becomes critical single point of failure.
 - `H(publicKey + userPassphrase + context)` - requires both public key and passphrase.
-- `H(signature + context)` where `signature = sign(context)` - leverages wallet without exposing private key.
+- `H(signature + context)` where `signature = sign(context)` - leverages wallet without exposing private key
+
+WARNING: When using signature-based nonce derivation,
+ensure the wallet/library uses deterministic signatures ({ed25519} or {rfc6979} for ECDSA).
+Non-deterministic signatures will generate different nonces on each signing, making recovery impossible.
+Test the implementation by signing the same message twice then verify that the signatures match.
 
 *Context-Dependent Derivations:*
 
