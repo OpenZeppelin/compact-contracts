@@ -203,46 +203,57 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   }
 
   /**
-   * @description Returns the shielded owner.
-   * @returns The shielded owner.
+   * @description Returns the current commitment representing the contract owner.
+   * The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
+   * @returns The current owner's commitment.
    */
   public owner(): Uint8Array {
     return this.circuits.impure.owner();
   }
 
   /**
-   * @description
+   * @description Transfers ownership to `newOwnerId`.
+   * `newOwnerId` must be precalculated and given to the current owner off chain.
+   * @param newOwnerId The new owner's unique identifier (`SHA256(pk, nonce)`).
    */
   public transferOwnership(newOwnerId: Uint8Array) {
     this.circuits.impure.transferOwnership(newOwnerId);
   }
 
   /**
-   * @description Leaves the contract without an owner. It will not be
-   * possible to call `assertOnlyOnwer` circuits anymore. Can only be
-   * called by the current owner.
+   * @description Leaves the contract without an owner.
+   * It will not be possible to call `assertOnlyOnwer` circuits anymore.
+   * Can only be called by the current owner.
    */
   public renounceOwnership() {
     this.circuits.impure.renounceOwnership();
   }
 
   /**
-   * @description Throws if called by any account other than the owner.
-   * Use this to restrict access to sensitive circuits.
+   * @description Throws if called by any account whose id hash `SHA256(pk, nonce)` does not match
+   * the stored owner commitment. Use this to only allow the owner to call specific circuits.
    */
   public assertOnlyOwner() {
     this.circuits.impure.assertOnlyOwner();
   }
 
   /**
-   * @description
+   * @description Computes the owner commitment from the given `id` and `counter`.
+   * @param id - The unique identifier of the owner calculated by `SHA256(pk, nonce)`.
+   * @param counter - The current counter or round. This increments by `1`
+   * after every transfer to prevent duplicate commitments given the same `id`.
+   * @returns The commitment derived from `id` and `counter`.
    */
   public _computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
     return this.circuits.impure._computeOwnerCommitment(id, counter);
   }
 
   /**
-   * @description
+   * @description Computes the unique identifier (`id`) of the owner from their
+   * public key and a secret nonce.
+   * @param pk - The public key of the identity being committed.
+   * @param nonce - A private nonce to scope the commitment.
+   * @returns The computed owner ID.
    */
   public _computeOwnerId(
     pk: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -252,7 +263,9 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
   }
 
   /**
-   * @description Internal circuit that transfers ownership of the contract to `newOwner`.
+   * @description Transfers ownership to owner id `newOwnerId` without
+   * enforcing permission checks on the caller.
+   * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
   public _transferOwnership(newOwnerId: Uint8Array) {
     this.circuits.impure._transferOwnership(newOwnerId);
@@ -260,7 +273,9 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
 
   public readonly privateState = {
     /**
-     * @description Stubs a new nonce into the private state.
+     * @description Contextually sets a new nonce into the private state.
+     * @param newNonce The secret nonce.
+     * @returns The ZOwnablePK private state after setting the new nonce.
      */
     injectSecretNonce: (
       newNonce: Buffer<ArrayBufferLike>,
@@ -271,6 +286,10 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
       return updatedState;
     },
 
+    /**
+     * @description Returns the secret nonce given the context.
+     * @returns The secret nonce.
+     */
     getCurrentSecretNonce: (): Uint8Array => {
       return this.stateManager.getContext().currentPrivateState.secretNonce;
     },
