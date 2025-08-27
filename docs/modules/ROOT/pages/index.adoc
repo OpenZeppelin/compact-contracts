@@ -1,7 +1,7 @@
 :midnight: https://midnight.network/[Midnight]
 :nvm: https://github.com/nvm-sh/nvm[nvm]
 :yarn: https://yarnpkg.com/getting-started/install[yarn]
-:compact-installation: https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler[compact installation]
+:compact-dev-tools: https://docs.midnight.network/blog/compact-developer-tools[Compact Developer Tools]
 
 = Contracts for Compact
 
@@ -14,14 +14,13 @@ WARNING: This repo contains highly experimental code. Expect rapid iteration. *U
 
 Make sure you have {nvm} and {yarn} installed on your machine.
 
-Follow Midnight's {compact-installation} guide and confirm that `compactc` is in the `PATH` env variable.
+Follow Midnight's {compact-dev-tools} installation guide and confirm that `compact` is in the PATH env variable.
 
 ```bash
-$ compactc
+$ compact compile --version
 
 Compactc version: 0.24.0
-Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
-       --help displays detailed usage information
+0.24.0
 ```
 
 === Project setup
@@ -45,7 +44,7 @@ yarn prepare
 Compile the contracts:
 
 ```bash
-$ npx turbo compact
+$ turbo compact
 
 (...)
 ✔ [COMPILE] [1/2] Compiled FungibleToken.compact
@@ -81,10 +80,10 @@ Cached:    0 cached, 2 total
 ```
 
 NOTE: Speed up the development process by skipping the prover and verifier key file generation: +
-`npx turbo compact -- --skip-zk`
+`turbo compact -- --skip-zk`
 
 Run tests:
 
 ```bash
-npx turbo test
+turbo test
 ```
