@@ -41,7 +41,7 @@ import { CompactCompiler } from './Compiler.js';
  * ℹ [COMPILE] Compact compiler started
  * ℹ [COMPILE] COMPACT_HOME: /path/to/compactc
  * ℹ [COMPILE] COMPACTC_PATH: /path/to/compactc/compactc
- * ℹ [COMPILE] TARGET_DIR: accesss:compact:access:
+ * ℹ [COMPILE] TARGET_DIR: access:compact:access:
  * ℹ [COMPILE] Found 4 .compact file(s) to compile in access/
  * ✔ [COMPILE] [1/4] Compiled access/AccessControl.compact
  * ✔ [COMPILE] [2/4] Compiled access/Ownable.compact
@@ -68,7 +68,8 @@ async function runCompiler(): Promise<void> {
 
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--dir') {
-        if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+      	const dirNameExists = i + 1 < args.length && !args[i + 1].startsWith('--');
+        if (dirNameExists) {
           targetDir = args[i + 1];
           i++; // Skip the next argument (directory name)
         } else {
