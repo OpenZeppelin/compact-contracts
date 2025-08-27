@@ -4,7 +4,7 @@ import {
   type ContractState,
   constructorContext,
   QueryContext,
-  sampleContractAddress
+  sampleContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
 
 /**
