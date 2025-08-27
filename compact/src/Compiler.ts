@@ -107,8 +107,6 @@ export class CompactCompiler {
         chalk.blue(`[COMPILE] Compact toolchain: ${toolchainVersion.trim()}`),
       );
 
-      console.log("jfjfjfjf", this.version)
-
       if (this.version) {
         spinner.info(
           chalk.blue(`[COMPILE] Using toolchain version: ${this.version}`),
