@@ -101,6 +101,8 @@ module ShieldedAccessControl {
    */
   export ledger _roleCommitmentNullifiers: Set<Bytes<32>>;
 
+  export ledger _currentMerkleTreeIndex: Counter;
+
   export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
 
   /**
@@ -114,9 +116,12 @@ module ShieldedAccessControl {
 
   witness secretNonce(roleId: Bytes<32>): Bytes<32>;
 
-  witness merkleTreeIndex(roleId: Bytes<32>): Uint<64>;
+  witness getRoleCommitmentIndex(roleId: Bytes<32>): Uint<64>;
 
-  witness getFirstFreeMerkleTreeIndex(): Uint<64>;
+  struct Role {
+    hasRole: Boolean;
+    roleCommitment: Bytes<32>;
+  }
 
   /**
    * @description Returns `true` if `account` has been granted `roleId`.
@@ -145,7 +150,7 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK).
    * @return {Boolean} - A boolean determining if the account has the specified role.
    */
-  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Role {
     if (!Utils_isContractAddress(account)) {
       const zswapPubKey = account.left.bytes;
       return _checkMerkleTree(roleId, zswapPubKey);
@@ -216,7 +221,8 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert(hasRole(roleId, account), "ShieldedAccessControl: unauthorized account");
+    const role = hasRole(roleId, account);
+    assert(role.hasRole, "ShieldedAccessControl: unauthorized account");
   }
 
   /**
@@ -246,15 +252,16 @@ module ShieldedAccessControl {
    * @return {Boolean} - A boolean determining if a path for for the role commitment
    * produced by SHA256(roleId | account | nonce) exists in the `_operatorRoles` Merkle tree
    */
-  export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): Boolean {
+  export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): Role {
     const nonce = secretNonce(roleId);
-    const index = merkleTreeIndex(roleId);
+    const index = getMerkleTreeIndex(roleId);
     const roleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Bytes<32>]);
     assert(!_roleCommitmentNullifiers.member(disclose(roleCommitment)), "ShieldedAccessControl: role commitment access revoked");
 
     const authPath = getRoleCommitmentPath(roleCommitment);
-    return _operatorRoles
+    const hasRole = _operatorRoles
       .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
+    return Role {hasRole, roleCommitment};
   }
 
   /**
@@ -459,18 +466,22 @@ module ShieldedAccessControl {
    * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
    */
   export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    if (hasRole(roleId, account)) {
+    const role = hasRole(roleId, account);
+    if (role.hasRole) {
       return false;
     }
 
     if (!Utils_isContractAddress(account)) {
       const zswapPubKey = account.left.bytes;
-      _addRoleCommitmentToLedger(roleId, zswapPubKey);
+      _operatorRoles.insertHashIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
+      _currentMerkleTreeIndex.increment(1);
       return true;
     }
 
     const contractAddress = account.right.bytes;
-    _addRoleCommitmentToLedger(roleId, contractAddress);
+    // Use ledger index as source of truth
+    _operatorRoles.insertHashIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
+    _currentMerkleTreeIndex.increment(1);
     return true;
   }
 
@@ -503,66 +514,19 @@ module ShieldedAccessControl {
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
   export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    if (!hasRole(roleId, account)) {
+    const role = hasRole(roleId, account);
+    if (!role.hasRole) {
       return false;
     }
 
     if(!Utils_isContractAddress(account)) {
       const zswapPubKey = account.left.bytes;
-      _nullifyRoleCommitment(roleId, zswapPubKey);
+      _roleCommitmentNullifiers.insert(disclose(role.roleCommitment));
       return true;
     }
 
     const contractAddress = account.right.bytes;
-    _nullifyRoleCommitment(roleId, contractAddress);
+    _roleCommitmentNullifiers.insert(disclose(role.roleCommitment));
     return true;
-  }
-
-  /**
-   * @description Adds a role commitment to the `_operatorRoles` Merkle tree.
-   *
-   * WARNING: Exposing this circuit in the implementing contract would allow anyone to add roles.
-   *
-   * @circuitInfo k=15, rows=24565
-   *
-   * Disclosures:
-   *
-   * - The role commitment produced by SHA256(roleId | account | nonce).
-   *
-   * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Bytes<32>} account - The account to add represented as a Bytes<32>.
-   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
-   * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
-   */
-  circuit _addRoleCommitmentToLedger(roleId: Bytes<32>, account: Bytes<32>): [] {
-    const nonce = secretNonce(roleId);
-    const index = getFirstFreeMerkleTreeIndex();
-    const roleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Byes<32>]);
-
-    _operatorRoles.insertHashIndex(disclose(roleCommitment), index);
-  }
-
-  /**
-   * @description Adds a role commitment to the `_roleNullifiers` nullifer set.
-   *
-   * WARNING: Exposing this circuit in the implementing contract would allow anyone to revoke roles.
-   *
-   * @circuitInfo k=15, rows=24559
-   *
-   * Disclosures:
-   *
-   * - The role commitment produced by SHA256(roleId | account | nonce).
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   *
-   * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Bytes<32>} account - The account to add represented as a Bytes<32>.
-   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
-   * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
-   */
-  circuit _nullifyRoleCommitment(roleId: Bytes<32>, account: Bytes<32>): [] {
-    const nonce = secretNonce(roleId);
-    const index = merkleTreeIndex(roleId);
-    const roleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Bytes<32>]);
-    _roleCommitmentNullifiers.insert(disclose(roleCommitment));
   }
 }
