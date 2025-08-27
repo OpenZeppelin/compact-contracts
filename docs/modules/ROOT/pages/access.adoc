@@ -226,7 +226,7 @@ Some examples:
 WARNING: Approaches that avoid private key exposure (public key + passphrase, signature-based)
 are generally recommended for operational security.
 
-Deriving the nonce deterministically from the public key and user passphrase provides a balance of security and recoverability:
+Deriving the nonce deterministically from an <<air_gapped_public_key_agpk,Air-Gapped Public Key>> and user passphrase provides a balance of security and recoverability:
 
 ```typescript
 // Example: Scrypt-based derivation
@@ -253,6 +253,37 @@ The `ZOwnablePK` module remains agnostic to nonce generation methods, placing th
 Users should carefully evaluate their threat model, operational requirements,
 and privacy needs when selecting a nonce generation strategy,
 as this choice cannot be easily changed without transferring ownership.
+
+=== Air-Gapped Public Key (AGPK)
+
+For maximum privacy guarantees,
+users should employ an Air-Gapped Public Key (AGPK) exclusively for contract ownership and administrative circuits.
+An AGPK is a public key that maintains complete isolation from all other on-chain activities,
+similar to how air-gapped systems are isolated from networks to prevent data leakage.
+
+==== The Privacy Enhancement
+
+While `ZOwnablePK` provides cryptographic privacy through its commitment scheme,
+operational security practices like using an AGPK provide an additional layer of protection against correlation attacks. Even with the strongest cryptographic commitments,
+reusing a public key across different on-chain activities can potentially compromise privacy
+through transaction pattern analysis.
+
+==== AGPK Principles
+
+An Air-Gapped Public Key must adhere to strict isolation principles:
+
+- *Never used before:* The public key has no prior transaction history on any blockchain network.
+- *Never used elsewhere:* The key is exclusively reserved for the specific contract's administrative circuits i.e. `assertOnlyOwner`.
+- *Never used again:* The private key is destroyed once ownership is renounced or transferred to another account.
+
+==== Best Practices Recommendation
+
+While neither required nor enforced by the `ZOwnablePK` module,
+an Air-Gapped Public Key provides strong operational privacy hygiene for shielded contract administration.
+Users should evaluate their threat model and privacy requirements when deciding whether to implement AGPK practices.
+
+WARNING: The effectiveness of an AGPK depends entirely on abiding by the AGPK principles.
+A single transaction using the key outside the administrative context compromises all privacy benefits.
 
 === Usage
 
