@@ -2,20 +2,35 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "compact": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
-      "inputs": ["contracts/src/**/*.compact"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
+      "inputs": [
+        "contracts/src/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**"]
+      "outputs": [
+        "artifacts/**"
+      ]
     },
     "test": {
-      "dependsOn": ["^build", "compact"],
+      "dependsOn": [
+        "^build",
+        "compact"
+      ],
       "outputs": [],
       "cache": false
     },
     "build": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
       "inputs": [
         "src/**/*.ts",
         "!src/**/*.test.ts",
@@ -23,10 +38,15 @@
         "tsconfig.build.json",
         ".env"
       ],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
     "types": {
-      "dependsOn": ["compact"],
+      "dependsOn": [
+        "@openzeppelin-compact/compact#build",
+        "@openzeppelin-compact/contracts#compact"
+      ],
       "outputs": [],
       "cache": false
     },
