@@ -74,13 +74,13 @@ module ZOwnablePK {
   export sealed ledger _instanceSalt: Bytes<32>;
 
   /**
-   * @witness secretNonce
+   * @witness wit_secretNonce
    * @description A private per-user nonce used in deriving the shielded owner identifier.
    *
    * Combined with the user's public key as `SHA256(pk, nonce)` to produce an obfuscated,
    * unlinkable identity commitment. Users are encouraged to rotate this value on ownership changes.
    */
-  export witness secretNonce(): Bytes<32>;
+  export witness wit_secretNonce(): Bytes<32>;
 
   /**
    * @description Initializes the contract by setting the initial owner via `ownerId`
@@ -189,7 +189,7 @@ module ZOwnablePK {
   export circuit assertOnlyOwner(): [] {
     Initializable_assertInitialized();
 
-    const nonce = secretNonce();
+    const nonce = wit_secretNonce();
     const callerAsEither = Either<ZswapCoinPublicKey, ContractAddress> {
       is_left: true,
       left: ownPublicKey(),
