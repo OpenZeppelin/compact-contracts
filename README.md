@@ -93,7 +93,7 @@ and skipping the prover and verifier key file generation:
 
 ```bash
 # Individual module compilation (recommended for development)
-turbo compact:token -- --skip-zk
+turbo compact:token  --filter=@openzeppelin-compact/contracts -- --skip-zk
 
 # Full compilation with skip-zk (use environment variable)
 SKIP_ZK=true turbo compact
