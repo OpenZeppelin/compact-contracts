@@ -25,14 +25,14 @@
     "compact:archive": {
       "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/archive/**/*.compact", "artifacts/**"],
+      "inputs": ["src/archive/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:token": {
       "dependsOn": ["^build", "compact:security", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/token/**/*.compact", "artifacts/**"],
+      "inputs": ["src/token/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
