@@ -3,14 +3,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 import * as utils from './utils/address.js';
 
-// Callers
-const OWNER = utils.toHexPadded('OWNER');
-const NEW_OWNER = utils.toHexPadded('NEW_OWNER');
-const UNAUTHORIZED = utils.toHexPadded('UNAUTHORIZED');
+// PKs
+const [OWNER, Z_OWNER] = utils.generateEitherPubKeyPair('OWNER');
+const [NEW_OWNER, Z_NEW_OWNER] = utils.generateEitherPubKeyPair('NEW_OWNER');
+const [UNAUTHORIZED, _] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
 
-// Encoded PK/Addresses
-const Z_OWNER = utils.createEitherTestUser('OWNER');
-const Z_NEW_OWNER = utils.createEitherTestUser('NEW_OWNER');
+// Encoded contract addresses
 const Z_OWNER_CONTRACT =
   utils.createEitherTestContractAddress('OWNER_CONTRACT');
 const Z_RECIPIENT_CONTRACT =
