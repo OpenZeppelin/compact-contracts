@@ -59,10 +59,11 @@ Import the MultiToken module into the implementing contract.
 It's recommended to prefix the module with `MultiToken_` to avoid circuit signature clashes.
 
 ```typescript
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/multi-token/src/MultiToken" prefix MultiToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/MultiToken"
+  prefix MultiToken_;
 
 constructor(
   uri: Opaque<"string">,
@@ -81,7 +82,9 @@ export circuit uri(id: Uint<128>): Opaque<"string"> {
   return MultiToken_uri();
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
+export circuit balanceOf(
+  account: Either<ZswapCoinPublicKey, ContractAddress>
+): Uint<128> {
   return MultiToken_balanceOf(account);
 }
 
@@ -93,15 +96,16 @@ The following example is a simple multi-token contract that creates both a fixed
 ```typescript
 // MultiTokenTwoTokenTypes.compact
 
-pragma language_version >= 0.15.0;
+pragma language_version >= 0.16.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/multi-token/src/MultiToken" prefix MultiToken_;
+import "./node_modules/@openzeppelin-compact/contracts/src/token/MultiToken"
+  prefix MultiToken_;
 
 constructor(
   _uri: Opaque<"string">,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  fungibleFixedSupply: Uint<128>
+  fungibleFixedSupply: Uint<128>,
 ) {
   // `initialize` sets the URI (base) for all tokens minted from this contract
   MultiToken_initialize(_uri);
@@ -119,11 +123,17 @@ export circuit uri(id: Uint<128>): Opaque<"string"> {
   return MultiToken_uri(id);
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
+export circuit balanceOf(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  id: Uint<128>,
+): Uint<128> {
   return MultiToken_balanceOf(account, id);
 }
 
-export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+export circuit setApprovalForAll(
+  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  approved: Boolean
+): [] {
   return MultiToken_setApprovalForAll(operator, approved);
 }
 
@@ -138,7 +148,7 @@ export circuit transferFrom(
   from: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
-  value: Uint<128>
+  value: Uint<128>,
 ): [] {
   return MultiToken_transferFrom(from, to, id, value);
 }

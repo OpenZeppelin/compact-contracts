@@ -12,7 +12,7 @@ import { isPromisifiedChildProcessError } from './types/errors.ts';
 
 const DIRNAME: string = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR: string = 'src';
-const ARTIFACTS_DIR: string = 'src/artifacts';
+const ARTIFACTS_DIR: string = 'artifacts';
 const COMPACT_HOME: string =
   process.env.COMPACT_HOME ?? resolve(DIRNAME, '../compactc');
 const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
@@ -31,9 +31,9 @@ const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✔ [COMPILE] [1/2] Compiled AccessControl.compact
- *     Compactc version: 0.22.0
+ *     Compactc version: 0.24.0
  * ✔ [COMPILE] [2/2] Compiled MockAccessControl.compact
- *     Compactc version: 0.22.0
+ *     Compactc version: 0.24.0
  *     Compiling circuit "src/artifacts/MockAccessControl/zkir/grantRole.zkir"... (skipped proving keys)
  * ```
  *
@@ -41,7 +41,7 @@ const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✖ [COMPILE] [1/2] Failed AccessControl.compact
- *     Compactc version: 0.22.0
+ *     Compactc version: 0.24.0
  *     Error: Expected ';' at line 5 in AccessControl.compact
  * ```
  */
