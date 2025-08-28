@@ -283,7 +283,7 @@ An Air-Gapped Public Key must adhere to strict isolation principles:
 - *Never used before:* The private key material
 (including any seed, parent key, or entropy source from which this key is derived)
 has never generated any public key that appears in any on-chain transaction, across any blockchain network.
-The key material must be cryptographically virgin.
+The key material must be cryptographically pure.
 - *Never used elsewhere:* From the moment of AGPK generation until its destruction,
 the private key material is used exclusively for this contract's administrative functions (i.e. `assertOnlyOwner`).
 No other public keys may ever be derived from or generated with the same key material.

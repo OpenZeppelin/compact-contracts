@@ -27,6 +27,12 @@ const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
  * compiler.compile().catch(err => console.error(err));
  * ```
  *
+ * @example Compile specific directory
+ * ```typescript
+ * const compiler = new CompactCompiler('--skip-zk', 'security');
+ * compiler.compile().catch(err => console.error(err));
+ * ```
+ *
  * @example Successful Compilation Output
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
@@ -48,19 +54,26 @@ const COMPACTC_PATH: string = join(COMPACT_HOME, 'compactc');
 export class CompactCompiler {
   /** Stores the compiler flags passed via command-line arguments */
   private readonly flags: string;
+  /** Optional target directory to limit compilation scope */
+  private readonly targetDir?: string;
 
   /**
    * Constructs a new CompactCompiler instance, validating the `compactc` binary path.
    *
    * @param flags - Space-separated string of `compactc` flags (e.g., "--skip-zk --no-communications-commitment")
+   * @param targetDir - Optional subdirectory within src/ to limit compilation (e.g., "security", "utils")
    * @throws {Error} If the `compactc` binary is not found at the resolved path
    */
-  constructor(flags: string) {
+  constructor(flags: string, targetDir?: string) {
     this.flags = flags.trim();
+    this.targetDir = targetDir;
     const spinner = ora();
 
     spinner.info(chalk.blue(`[COMPILE] COMPACT_HOME: ${COMPACT_HOME}`));
     spinner.info(chalk.blue(`[COMPILE] COMPACTC_PATH: ${COMPACTC_PATH}`));
+    if (this.targetDir) {
+      spinner.info(chalk.blue(`[COMPILE] TARGET_DIR: ${this.targetDir}`));
+    }
 
     if (!existsSync(COMPACTC_PATH)) {
       spinner.fail(
@@ -73,25 +86,42 @@ export class CompactCompiler {
   }
 
   /**
-   * Compiles all `.compact` files in the source directory and its subdirectories (e.g., `src/test/mock/`).
-   * Scans the `src` directory recursively for `.compact` files, compiles each one using `compactc`,
-   * and displays progress with a spinner and colored output.
+   * Compiles all `.compact` files in the source directory (or target subdirectory) and its subdirectories.
+   * Scans the `src` directory (or `src/{targetDir}`) recursively for `.compact` files,
+   * compiles each one using `compactc`, and displays progress with a spinner and colored output.
    *
    * @returns A promise that resolves when all files are compiled successfully
    * @throws {Error} If compilation fails for any file
    */
   public async compile(): Promise<void> {
-    const compactFiles: string[] = await this.getCompactFiles(SRC_DIR);
+    const searchDir = this.targetDir ? join(SRC_DIR, this.targetDir) : SRC_DIR;
+
+    // Validate target directory exists
+    if (this.targetDir && !existsSync(searchDir)) {
+      const spinner = ora();
+      spinner.fail(
+        chalk.red(
+          `[COMPILE] Error: Target directory ${searchDir} does not exist.`,
+        ),
+      );
+      throw new Error(`Target directory ${searchDir} does not exist`);
+    }
+
+    const compactFiles: string[] = await this.getCompactFiles(searchDir);
 
     const spinner = ora();
     if (compactFiles.length === 0) {
-      spinner.warn(chalk.yellow('[COMPILE] No .compact files found.'));
+      const searchLocation = this.targetDir ? `${this.targetDir}/` : '';
+      spinner.warn(
+        chalk.yellow(`[COMPILE] No .compact files found in ${searchLocation}.`),
+      );
       return;
     }
 
+    const searchLocation = this.targetDir ? ` in ${this.targetDir}/` : '';
     spinner.info(
       chalk.blue(
-        `[COMPILE] Found ${compactFiles.length} .compact file(s) to compile`,
+        `[COMPILE] Found ${compactFiles.length} .compact file(s) to compile${searchLocation}`,
       ),
     );
 
@@ -123,6 +153,7 @@ export class CompactCompiler {
           }
 
           if (entry.isFile() && fullPath.endsWith('.compact')) {
+            // Always return relative path from SRC_DIR, regardless of search directory
             return [relative(SRC_DIR, fullPath)];
           }
           return [];
