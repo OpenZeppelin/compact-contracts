@@ -68,7 +68,8 @@ async function runCompiler(): Promise<void> {
 
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--dir') {
-      	const dirNameExists = i + 1 < args.length && !args[i + 1].startsWith('--');
+        const dirNameExists =
+          i + 1 < args.length && !args[i + 1].startsWith('--');
         if (dirNameExists) {
           targetDir = args[i + 1];
           i++; // Skip the next argument (directory name)
