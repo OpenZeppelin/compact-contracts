@@ -1,5 +1,8 @@
 {
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/witnesses/**/*.ts"
+  ],
+  "exclude": ["src/archive/"],
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
@@ -13,7 +16,6 @@
     "noImplicitAny": true,
     "strict": true,
     "isolatedModules": true,
-    "sourceMap": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true

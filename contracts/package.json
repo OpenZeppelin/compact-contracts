@@ -1,18 +1,25 @@
 {
   "name": "@openzeppelin-compact/contracts",
-  "private": true,
-  "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
+  "version": "0.0.1",
+  "description": "OpenZeppelin Compact contract library",
+  "keywords": [
+    "openzeppelin",
+    "compact",
+    "midnight",
+    "contracts",
+    "security"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OpenZeppelin/compact-contracts.git"
   },
+  "license": "MIT",
+  "author": "OpenZeppelin Community <maintainers@openzeppelin.org>",
+  "bugs": {
+    "url": "https://github.com/OpenZeppelin/compact-contracts/issues"
+  },
+  "homepage": "https://docs.openzeppelin.com/contracts-compact/",
+  "type": "module",
   "scripts": {
     "compact": "compact-compiler",
     "compact:access": "compact-compiler --dir access",
@@ -20,7 +27,7 @@
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
-    "build": "compact-builder && tsc",
+    "build": "compact-builder",
     "test": "compact-compiler --skip-zk && vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"

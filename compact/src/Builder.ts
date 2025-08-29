@@ -13,8 +13,9 @@ const execAsync = promisify(exec);
 /**
  * A class to handle the build process for a project.
  * Runs CompactCompiler as a prerequisite, then executes build steps (TypeScript compilation,
- * artifact copying, etc.)
- * with progress feedback and colored output for success and error states.
+ * artifact copying, etc.) with progress feedback and colored output for success and error states.
+ *
+ * Creates a clean distribution structure without src/ paths for professional import experience.
  *
  * @notice `cmd` scripts discard `stderr` output and fail silently because this is
  * handled in `executeStep`.
@@ -32,45 +33,51 @@ const execAsync = promisify(exec);
  *     Compactc version: 0.24.0
  * ✔ [COMPILE] [2/2] Compiled MockAccessControl.compact
  *     Compactc version: 0.24.0
- * ✔ [BUILD] [1/3] Compiling TypeScript
- * ✔ [BUILD] [2/3] Copying artifacts
- * ✔ [BUILD] [3/3] Copying and cleaning .compact files
- * ```
- *
- * @example <caption>Failed Compilation Output</caption>
- * ```
- * ℹ [COMPILE] Found 2 .compact file(s) to compile
- * ✖ [COMPILE] [1/2] Failed AccessControl.compact
- *     Compactc version: 0.24.0
- *     Error: Expected ';' at line 5 in AccessControl.compact
- * ```
- *
- * @example <caption>Failed Build Step Output</caption>
- * ```
- * ℹ [COMPILE] Found 2 .compact file(s) to compile
- * ✔ [COMPILE] [1/2] Compiled AccessControl.compact
- * ✔ [COMPILE] [2/2] Compiled MockAccessControl.compact
- * ✖ [BUILD] [1/3] Failed Compiling TypeScript
- *     error TS1005: ';' expected at line 10 in file.ts
- *     [BUILD] ❌ Build failed: Command failed: tsc --project tsconfig.build.json
+ * ✔ [BUILD] [1/4] Cleaning dist directory
+ * ✔ [BUILD] [2/4] Compiling TypeScript
+ * ✔ [BUILD] [3/4] Copying .compact files
+ * ✔ [BUILD] [4/4] Copying package metadata
  * ```
  */
 export class CompactBuilder {
   private readonly compilerFlags: string;
   private readonly steps: Array<{ cmd: string; msg: string; shell?: string }> =
     [
+      // Step 1: Clean dist directory
+      {
+        cmd: 'rm -rf dist && mkdir -p dist',
+        msg: 'Cleaning dist directory',
+        shell: '/bin/bash',
+      },
+
+      // Step 2: TypeScript compilation (witnesses/ -> dist/witnesses/)
       {
         cmd: 'tsc --project tsconfig.build.json',
         msg: 'Compiling TypeScript',
       },
+
+      // Step 3: Copy .compact files preserving structure (excludes Mock* files and archive/)
       {
-        cmd: 'mkdir -p dist/artifacts && cp -Rf src/artifacts/* dist/artifacts/ 2>/dev/null || true',
-        msg: 'Copying artifacts',
+        cmd: `
+        find src -type f -name "*.compact" ! -name "Mock*" ! -path "*/archive/*" | while read file; do
+          # Remove src/ prefix from path
+          rel_path="\${file#src/}"
+          mkdir -p "dist/\$(dirname "\$rel_path")"
+          cp "\$file" "dist/\$rel_path"
+        done
+      `,
+        msg: 'Copying .compact files (excluding mocks and archive)',
         shell: '/bin/bash',
       },
+
+      // Step 4: Copy essential files for distribution
       {
-        cmd: 'mkdir -p dist && find src -type f -name "*.compact" -exec cp {} dist/ \\; 2>/dev/null && rm dist/Mock*.compact 2>/dev/null || true',
-        msg: 'Copying and cleaning .compact files',
+        cmd: `
+        # Copy package.json and README
+        cp package.json dist/ 2>/dev/null || true
+        cp ../README.md dist/  # Go up one level to monorepo root
+      `,
+        msg: 'Copying package metadata',
         shell: '/bin/bash',
       },
     ];
@@ -99,6 +106,8 @@ export class CompactBuilder {
     for (const [index, step] of this.steps.entries()) {
       await this.executeStep(step, index, this.steps.length);
     }
+
+    console.log(chalk.green('\n✅ Build complete!'));
   }
 
   /**
@@ -155,6 +164,8 @@ export class CompactBuilder {
       .split('\n')
       .filter((line: string): boolean => line.trim() !== '')
       .map((line: string): string => `    ${line}`);
-    console.log(colorFn(lines.join('\n')));
+    if (lines.length > 0) {
+      console.log(colorFn(lines.join('\n')));
+    }
   }
 }
