@@ -4,6 +4,10 @@ description: "Sets up the environment with yarn, Node.js, and turbo"
 runs:
   using: "composite"
   steps:
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable
+
     - name: Get yarn cache directory path
       shell: bash
       id: yarn-cache-dir-path
