@@ -1,0 +1,533 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.16.0;
+
+/**
+ * @module Shielded AccessControl
+ * @description A Shielded AccessControl library.
+ * This module provides a shielded role-based access control mechanism, where roles can be used to
+ * represent a set of permissions. Roles are stored as Merkle tree commitments to avoid
+ * disclosing information about role holder. Role commitments are created with the following
+ * hashing scheme SHA256(roleId | account | nonce | merkleTreeIndex).
+ *
+ * @notice Using the SHA256 hashing function comes at a significant performace cost. In the future, we
+ * plan on migrating to a ZK-friendly hashing function when an implementation is available.
+ *
+ * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
+ * in the top-level contract and be unique. One way to achieve this is by
+ * using `export sealed ledger` hash digests that are initialized in the top-level contract:
+ *
+ * ```typescript
+ * import CompactStandardLibrary;
+ * import "./node_modules/@openzeppelin-compact/accessControl/src/ShieldedAccessControl" prefix ShieldedAccessControl_;
+ *
+ * export sealed ledger MY_ROLE: Bytes<32>;
+ *
+ * constructor() {
+ *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
+ * }
+ * ```
+ *
+ * To restrict access to a circuit, use {assertOnlyRole}:
+ *
+ * ```typescript
+ * circuit foo(): [] {
+ *  assertOnlyRole(MY_ROLE);
+ *  ...
+ * }
+ * ```
+ *
+ * Roles can be granted and revoked dynamically via the {grantRole} and
+ * {revokeRole} circuits. Each role has an associated admin role, and only
+ * accounts that have a role's admin role can call {grantRole} and {revokeRole}.
+ *
+ * By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means
+ * that only accounts with this role will be able to grant or revoke other
+ * roles. More complex role relationships can be created by using
+ * {_setRoleAdmin}. To set a custom `DEFAULT_ADMIN_ROLE`, implement the `Initializable`
+ * module and set `DEFAULT_ADMIN_ROLE` in the `initialize()` circuit.
+ *
+ * WARNING: The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to
+ * grant and revoke this role. Extra precautions should be taken to secure
+ * accounts that have been granted it.
+ *
+ * @notice Roles can only be granted to ZswapCoinPublicKeys
+ * through the main role approval circuits (`grantRole` and `_grantRole`).
+ * In other words, role approvals to contract addresses are disallowed through these
+ * circuits.
+ * This is because Compact currently does not support contract-to-contract calls which means
+ * if a contract is granted a role, the contract cannot directly call the protected
+ * circuit.
+ *
+ * @notice This module does offer an experimental circuit that allows roles to be granted
+ * to contract addresses (`_unsafeGrantRole`).
+ * Note that the circuit name is very explicit ("unsafe") with this experimental circuit.
+ * Until contract-to-contract calls are supported,
+ * there is no direct way for a contract to call protected circuits.
+ *
+ * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
+ * are supported.
+ *
+ * @notice Missing Features and Improvements:
+ *
+ * - Role events
+ * - An ERC165-like interface
+ */
+module ShieldedAccessControl {
+  import CompactStandardLibrary;
+  import "ShieldedAccessControlUtils" prefix Utils_;
+
+  /**
+   * @description A Merkle tree of role commitments stored as SHA256(roleId | account | nonce | merkleTreeIndex)
+   * @type {Bytes<32>} roleCommitment - A role commitment created by the following hash: SHA256(roleId | account | nonce | merkleTreeIndex).
+   * @type {MerkleTree<10, roleCommitment>}
+   * @type {MerkleTree<10, Bytes<32>>} _operatorRoles
+   */
+  export ledger _operatorRoles: MerkleTree<10, Bytes<32>>;
+
+  /**
+   * @description Mapping from a role identifier to an admin role identifier.
+   * @type {Bytes<32>} roleId - A hash representing a role identifier.
+   * @type {Bytes<32>} adminId - A hash representing an admin identifier.
+   * @type {Map<roleId, adminId>}
+   * @type {Map<Bytes<32>, Bytes<32>>} _adminRoles
+   */
+  export ledger _adminRoles: Map<Bytes<32>, Bytes<32>>;
+
+  /**
+   * @description A set of nullifiers used to revoke the permissions of a role
+   * @type {Bytes<32> roleCommitment - A role commitment created by the following hash: SHA256(roleId | account | nonce | merkleTreeIndex).
+   * @type {Set<Bytes<32>} _roleCommitmentNullifiers
+   */
+  export ledger _roleCommitmentNullifiers: Set<Bytes<32>>;
+
+  export ledger _currentMerkleTreeIndex: Counter;
+
+  export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
+
+  /**
+   * @description Returns a Merkle path in the `_operatorRoles` Merkle tree, given the knowledge that a `roleCommitment` is at the given index.
+   *
+   * @param {Bytes<32>} roleCommitment - A commitment created by the following hash: SHA256(roleId | account | nonce | merkleTreeIndex).
+   * @param {Uint<64>} index - An index in the `_operatorRoles` Merkle tree
+   * @return {MerkleTreePath<10, Bytes<32>>} - The Merkle path of `roleCommitment` in the `_operatorRoles` Merkle tree
+   */
+  witness wit_getRoleCommitmentPath(roleCommitment: Bytes<32>): MerkleTreePath<10, Bytes<32>>;
+
+  witness wit_secretNonce(roleId: Bytes<32>): Bytes<32>;
+
+  witness wit_getRoleIndex(roleId: Bytes<32>): Uint<64>;
+
+  export struct Role {
+    hasRole: Boolean;
+    roleCommitment: Bytes<32>;
+  }
+
+  /**
+   * @description Returns `true` if `account` has been granted `roleId`.
+   *
+   * @circuitInfo k=16, rows=60150
+   *
+   * Requirements:
+   *
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to check.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK).
+   * @return {Boolean} - A boolean determining if the account has the specified role.
+   */
+  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Role {
+    if (!Utils_isContractAddress(account)) {
+      const zswapPubKey = account.left.bytes;
+      return _checkMerkleTree(roleId, zswapPubKey);
+    }
+
+    const contractAddress = account.right.bytes;
+    return _checkMerkleTree(roleId, contractAddress);
+  }
+
+  /**
+   * @description Reverts if caller is missing `roleId`.
+   *
+   * @circuitInfo k=15, rows=29780
+   *
+   * Requirements:
+   *
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   * - The caller must not be a ContractAddress.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertOnlyRole(roleId: Bytes<32>): [] {
+    _checkRole(
+      roleId,
+      left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey())
+    );
+  }
+
+  /**
+   * @description Reverts if `account` is missing `roleId`.
+   *
+   * @circuitInfo k=16, rows=60129
+   *
+   * Requirements:
+   *
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to check.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    const role = hasRole(roleId, account);
+    assert(role.hasRole, "ShieldedAccessControl: unauthorized account");
+  }
+
+  /**
+   * @description Checks if a path exists for a role commitment.
+   *
+   * @circuitInfo k=15, rows=29801
+   *
+   * Requirements:
+   *
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Bytes<32>} account - The account to check represented as a Bytes<32>.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {Boolean} - A boolean determining if a path for for the role commitment
+   * produced by SHA256(roleId | account | nonce) exists in the `_operatorRoles` Merkle tree
+   */
+  export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): Role {
+    const nonce = wit_secretNonce(roleId);
+    const index = wit_getRoleIndex(roleId);
+    const roleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Bytes<32>]);
+    assert(!_roleCommitmentNullifiers.member(disclose(roleCommitment)), "ShieldedAccessControl: role commitment access revoked");
+
+    const authPath = wit_getRoleCommitmentPath(roleCommitment);
+    const hasRole = _operatorRoles
+      .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
+    return Role {hasRole, disclose(roleCommitment)};
+  }
+
+  /**
+   * @description Returns the admin role that controls `roleId` or
+   * a byte array with all zero bytes if `roleId` doesn't exist. See {grantRole} and {revokeRole}.
+   *
+   * To change a role’s admin use {_setRoleAdmin}.
+   *
+   * @circuitInfo k=10, rows=207
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
+   */
+  export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
+    if (_adminRoles.member(disclose(roleId))) {
+      return _adminRoles.lookup(disclose(roleId));
+    }
+    return default<Bytes<32>>;
+  }
+
+  /**
+   * @description Grants `roleId` to `account`.
+   *
+   * @circuitInfo k=18, rows=138761
+   *
+   * Requirements:
+   *
+   * - `account` must not be a ContractAddress.
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {[]} - Empty tuple.
+   */
+  export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assertOnlyRole(getRoleAdmin(roleId));
+    _grantRole(roleId, account);
+  }
+
+  /**
+   * @description Revokes `roleId` from `account`.
+   *
+   * @circuitInfo k=18, rows=138517
+   *
+   * Requirements:
+   *
+   * - `account` must not be a ContractAddress.
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {[]} - Empty tuple.
+   */
+  export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assertOnlyRole(getRoleAdmin(roleId));
+    _revokeRole(roleId, account);
+  }
+
+ /**
+  * @description Revokes `roleId` from the calling account.
+  *
+  * @notice Roles are often managed via {grantRole} and {revokeRole}: this circuit's
+  * purpose is to provide a mechanism for accounts to lose their privileges
+  * if they are compromised (such as when a trusted device is misplaced).
+  *
+  * @circuitInfo k=17, rows=108992
+  *
+  * Requirements:
+  *
+  * - The caller must be `callerConfirmation`.
+  * - The caller must not be a `ContractAddress`.
+  * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+  * must exist in the `_roleCommitmentIndex` map.
+  * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+  * must not exist in the `_roleCommitmentNullifiers` set.
+  * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+  * exist at `index` in the `_operatorRoles` Merkle tree.
+  *
+  * Disclosures:
+  *
+  * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+  * - The role commitment produced by SHA256(roleId | account | nonce).
+  * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+  * Merkle tree.
+   * - The type data of `callerConfirmation` - a ZswapCoinPublicKey or ContractAddress.
+  *
+  * @param {Bytes<32>} roleId - The role identifier.
+  * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+  * @return {[]} - Empty tuple.
+  */
+  export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assert(callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()), "ShieldedAccessControl: bad confirmation");
+
+    _revokeRole(roleId, callerConfirmation);
+  }
+
+  /**
+   * @description Sets `adminRole` as `roleId`'s admin role.
+   *
+   * @circuitInfo k=10, rows=209
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Bytes<32>} adminRole - The admin role identifier.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
+    _adminRoles.insert(disclose(roleId), disclose(adminRole));
+  }
+
+  /**
+   * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
+   * Internal circuit without access restriction.
+   *
+   * @circuitInfo k=17, rows=109163
+   *
+   * Requirements:
+   *
+   * - `account` must not be a ContractAddress.
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
+   */
+  export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    assert(!Utils_isContractAddress(account), "ShieldedAccessControl: unsafe role approval");
+    return _unsafeGrantRole(roleId, account);
+  }
+
+  /**
+   * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
+   * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
+   *
+   * @circuitInfo k=17, rows=109162
+   *
+   * @notice External smart contracts cannot call the token contract at this time, so granting a role to an ContractAddress may
+   * render a circuit permanently inaccessible.
+   *
+   * Requirements:
+   *
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
+   */
+  export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    const role = hasRole(roleId, account);
+    if (role.hasRole) {
+      return false;
+    }
+
+    if (!Utils_isContractAddress(account)) {
+      const zswapPubKey = account.left.bytes;
+      // Use ledger index as source of truth
+      _operatorRoles.insertHashIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
+      _currentMerkleTreeIndex.increment(1);
+      return true;
+    }
+
+    const contractAddress = account.right.bytes;
+    // Use ledger index as source of truth
+    _operatorRoles.insertHashIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
+    _currentMerkleTreeIndex.increment(1);
+    return true;
+  }
+
+  /**
+   * @description Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
+   * Internal circuit without access restriction.
+   *
+   * @circuitInfo k=17, rows=108916
+   *
+   * Requirements:
+   *
+   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
+   * must exist in the `_roleCommitmentIndex` map.
+   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
+   * must not exist in the `_roleCommitmentNullifiers` set.
+   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
+   * exist at `index` in the `_operatorRoles` Merkle tree.
+   *
+   * Disclosures:
+   *
+   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
+   * - The role commitment produced by SHA256(roleId | account | nonce).
+   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
+   * Merkle tree.
+   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
+   * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
+   */
+  export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+    const role = hasRole(roleId, account);
+    if (!role.hasRole) {
+      return false;
+    }
+
+    if(!Utils_isContractAddress(account)) {
+      const zswapPubKey = account.left.bytes;
+      _roleCommitmentNullifiers.insert(disclose(role.roleCommitment));
+      return true;
+    }
+
+    const contractAddress = account.right.bytes;
+    _roleCommitmentNullifiers.insert(disclose(role.roleCommitment));
+    return true;
+  }
+}
