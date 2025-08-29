@@ -14,7 +14,7 @@ WARNING: This repo contains highly experimental code. Expect rapid iteration. *U
 
 Make sure you have {nvm} and {yarn} installed on your machine.
 
-Follow Midnight's {compact-dev-tools} installation guide and confirm that `compact` is in the PATH env variable.
+Follow Midnight's {compact-dev-tools} installation guide and confirm that `compact` is in the `PATH` env variable.
 
 ```bash
 $ compact compile --version
