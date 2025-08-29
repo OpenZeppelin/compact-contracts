@@ -88,10 +88,15 @@ Cached:    0 cached, 2 total
   Time:    7.178s
 ```
 
-**Note:** Speed up the development process by skipping the prover and verifier key file generation:
+Speed up the development process by targeting a single directory
+and skipping the prover and verifier key file generation:
 
 ```bash
-turbo compact -- --skip-zk
+# Individual module compilation (recommended for development)
+turbo compact:token  --filter=@openzeppelin-compact/contracts -- --skip-zk
+
+# Full compilation with skip-zk (use environment variable)
+SKIP_ZK=true turbo compact
 ```
 
 ### Run tests
