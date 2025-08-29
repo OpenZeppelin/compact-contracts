@@ -1,214 +1,132 @@
-import { Buffer } from 'node:buffer';
-import {
-  constructorContext,
-  decodeCoinPublicKey,
-  type MerkleTreePath,
-  QueryContext,
-  type WitnessContext,
-} from '@midnight-ntwrk/compact-runtime';
-import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import { sampleContractAddress } from '@midnight-ntwrk/zswap';
-import {
-  type ContractAddress,
-  type Either,
-  type Ledger,
-  Contract as MockShieldedAccessControl,
-  type ZswapCoinPublicKey,
-} from '../shieldedAccessControl/src/artifacts/MockShieldedAccessControl/contract/index.cjs'; // Combined imports
+import { getRandomValues } from 'node:crypto';
+import { CompactTypeVector, CompactTypeBytes, persistentHash, type WitnessContext, convert_bigint_to_Uint8Array } from '@midnight-ntwrk/compact-runtime';
+import type { Ledger, MerkleTreePath } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 
-const { hkdfSync } = await import('node:crypto');
-
-const KEYLEN = 32;
+const MERKLE_TREE_DEPTH = 2 ** 10;
 
 /**
- * @description The respective `nonce` value for a given `roleId` should be at the same index
- * for each array of `Buffer`s
+ * @description Interface defining the witness methods for ShieldedAccessControl operations.
+ * @template P - The private state type.
+ */
+export interface IShieldedAccessControlWitnesses<P> {
+  /**
+   * Retrieves the secret nonce from the private state.
+   * @param context - The witness context containing the private state.
+   * @returns A tuple of the private state and the secret nonce as a Uint8Array.
+   */
+  wit_secretNonce(context: WitnessContext<Ledger, P>, roleId: Uint8Array): [P, Uint8Array];
+  wit_getRoleCommitmentPath(context: WitnessContext<Ledger, P>, roleCommitment: Uint8Array): [P, MerkleTreePath<Uint8Array>];
+  wit_getRoleIndex(context: WitnessContext<Ledger, P>, roleId: Uint8Array): [P, bigint];
+}
+
+type RoleId = string;
+type SecretNonce = Uint8Array;
+
+/**
+ * @description Represents the private state of an ownable contract, storing a secret nonce.
  */
 export type ShieldedAccessControlPrivateState = {
-  secretKey: Buffer;
-  nonces: Buffer[];
-  roleIds: Buffer[];
+  /** @description A 32-byte secret nonce used as a privacy additive. */
+  roles: Record<RoleId, SecretNonce>,
+  account: Uint8Array
 };
 
 /**
- * @description Generates a nonce value using the following scheme: HKDF-SHA256(SK, "role-nonce" | roleId | PK)
- * @param secretKey - The secret key associated with the contract.
- * @param roleId - The role identifier.
- * @param salt - A salt value.
- * @param account - The public key of an account.
- *
- * @returns A unique nonce value for `roleId`
+ * @description Utility object for managing the private state of a Shielded AccessControl contract.
  */
-function generateNonce(
-  secretKey: Buffer,
-  roleId: Buffer,
-  salt: Buffer,
-  account: Buffer,
-): Buffer {
-  const domainString = Buffer.from('role-nonce');
-  const info = Buffer.concat([domainString, roleId, account]);
-  const nonce = hkdfSync('sha256', secretKey, salt, info, KEYLEN);
-
-  return Buffer.from(nonce);
-}
-
-/**
- * @description A stub function that simulates a successful role approval
- * @param account - The public key of an account.
- * @param roleId - The role identifier.
- * @param nonce - The nonce associated with `roleId`.
- *
- * @returns Whether the account was approved for a role
- */
-function sendRoleRequestToAdmin(
-  _account: Buffer,
-  _roleId: Buffer,
-  _nonce: Buffer,
-) {
-  return true;
-}
-
-export const ShieldedAccessControlWitnesses = {
+export const ShieldedAccessControlPrivateState = {
   /**
-   * @description Typescript implementation of the `getRoleCommitmentPath` witness function.
-   * @param privateState - The current private state.
-   * @param ledger - A snapshot of the current ledger state.
-   * @param roleCommitment - The role commitment to query.
-   * @param index - The index of `roleCommitment`in the Merkle tree.
-   *
-   * @returns An array of the private state and the Merkle tree path of `roleCommitment`
-   * in the `_operatorRoles` Merkle tree.
+   * @description Generates a new private state with a random secret nonce.
+   * @returns A fresh ShieldedAccessControlPrivateState instance.
    */
-  getRoleCommitmentPath: (
-    {
-      ledger,
-      privateState,
-    }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
-    roleCommitment: Uint8Array,
-    index: bigint,
-  ): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] => {
-    const merkleTreePath =
-      ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(
-        index,
-        roleCommitment,
-      );
-    return [privateState, merkleTreePath];
+  generate: (account: Uint8Array): ShieldedAccessControlPrivateState => {
+    const defaultRoleId: string = Buffer.alloc(32).toString('hex');
+    const privateState: ShieldedAccessControlPrivateState = { roles: {}, account };
+    privateState.roles[defaultRoleId] = getRandomValues(Buffer.alloc(32));
+    return privateState;
   },
+
   /**
-   * @description Typescript implementation of the `recoverNonce` witness function. Simulates calls to the `hasRole` circuit
-   * to determine if the account has the specified role. Updates the private state with any found roles.
-   * @param privateState - The current private state.
-   * @param ledger - A snapshot of the current ledger state.
-   * @param contractAddress - The address of the contract.
-   * @param account - The public key associated with a role.
-   * @param salt - A salt value.
+   * @description Generates a new private state with a user-defined secret nonce.
+   * Useful for deterministic nonce generation or advanced use cases.
    *
-   * @returns An array of the new private state and the empty tuple
+   * @param nonce - The 32-byte secret nonce to use.
+   * @returns A fresh ShieldedAccessControlPrivateState instance with the provided nonce.
+   *
+   * @example
+   * ```typescript
+   * // For deterministic nonces (user-defined scheme)
+   * const deterministicNonce = myDeterministicScheme(...);
+   * const privateState = ShieldedAccessControlPrivateState.withNonce(deterministicNonce);
+   * ```
    */
-  recoverRoles: (
-    {
-      ledger,
-      privateState,
-      contractAddress,
-    }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
-    account: Uint8Array,
-    salt: Uint8Array,
-  ): [ShieldedAccessControlPrivateState, []] => {
-    const roles = [ledger.ShieldedAccessControl_DEFAULT_ADMIN_ROLE];
-    const coinPubKey = decodeCoinPublicKey(account);
-    const newPrivateState: ShieldedAccessControlPrivateState = {
-      secretKey: privateState.secretKey,
-      roleIds: [],
-      nonces: [],
-    };
+  withRoleAndNonce: (account: Uint8Array, roleId: Buffer, nonce: Buffer): ShieldedAccessControlPrivateState => {
+    const roleString = roleId.toString('hex');
+    const privateState: ShieldedAccessControlPrivateState = { roles: {}, account };
+    privateState.roles[roleString] = nonce;
+    return privateState;
+  },
 
-    const contract =
-      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
-        ShieldedAccessControlWitnesses,
-      );
-    const {
-      currentPrivateState,
-      currentContractState,
-      currentZswapLocalState,
-    } = contract.initialState(
-      constructorContext(
-        { secretKey: privateState.secretKey, nonces: [], roleIds: [] },
-        coinPubKey,
-      ),
-    );
-    const circuitContext = {
-      currentPrivateState,
-      currentZswapLocalState,
-      originalState: currentContractState,
-      transactionContext: new QueryContext(
-        currentContractState.data,
-        contractAddress,
-      ),
-    };
+  setRole: (privateState: ShieldedAccessControlPrivateState, roleId: Buffer, nonce: Buffer): ShieldedAccessControlPrivateState => {
+    const roleString = roleId.toString('hex');
+    privateState.roles[roleString] = nonce;
+    return privateState;
+  },
 
-    for (let i = 0; i < roles.length; i++) {
-      const role = roles[i];
-      const nonce = generateNonce(
-        privateState.secretKey,
-        Buffer.from(role),
-        Buffer.from(salt),
-        Buffer.from(account),
-      );
-      const eitherAccount: Either<ZswapCoinPublicKey, ContractAddress> = {
-        is_left: true,
-        left: { bytes: account },
-        right: { bytes: encodeContractAddress(sampleContractAddress()) },
-      };
+  getRoleCommitmentPath: (ledger: Ledger, roleCommitment: Uint8Array): MerkleTreePath<Uint8Array> => {
+    const path = ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(roleCommitment);
+    const defaultPath: MerkleTreePath<Uint8Array> = {
+      leaf: Buffer.alloc(32),
+      path: []
+    }
+    return path ? path : defaultPath;
+  },
 
+  // If index cannot be found in MT return _currentMTIndex
+  getRoleIndex: ({ ledger, privateState }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleId: Uint8Array): bigint => {
+    const roleIdString = Buffer.from(roleId).toString('hex');
+    // Iterate over each MT to determine if commitment exists
+    for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
+      const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
+      const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
+      const commitment = persistentHash(rt_type, [roleId, privateState.account, privateState.roles[roleIdString], bIndex]);
       try {
-        const hasRole = contract.impureCircuits.hasRole(
-          circuitContext,
-          role,
-          eitherAccount,
-          nonce,
-        );
-        if (hasRole) {
-          newPrivateState.nonces.push(nonce);
-          newPrivateState.roleIds.push(Buffer.from(role));
-        }
-      } catch (err) {
-        console.log(err);
+        ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(BigInt(i), commitment);
+        return BigInt(i);
+      } catch (e) {
+        console.error(e);
       }
     }
 
-    return [newPrivateState, []];
-  },
-  /**
-   * @description Typescript implementation of the `requestRole` witness function.
-   * @param privateState - The current private state.
-   * @param roleId - The role identifier.
-   * @param account - The public key requesting a role.
-   * @param salt - A salt value.
-   *
-   * @returns An array of the new private state and an empty array
-   */
-  requestRole: (
-    { privateState }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
-    roleId: Uint8Array,
-    account: Uint8Array,
-    salt: Uint8Array,
-  ): [ShieldedAccessControlPrivateState, []] => {
-    const saltBuff = Buffer.from(salt);
-    const roleIdBuff = Buffer.from(roleId);
-    const accountBuff = Buffer.from(account);
-    const nonce = generateNonce(
-      privateState.secretKey,
-      roleIdBuff,
-      saltBuff,
-      accountBuff,
-    );
-    const isApproved = sendRoleRequestToAdmin(accountBuff, roleIdBuff, nonce);
-
-    if (isApproved) {
-      privateState.nonces.push(nonce);
-      privateState.roleIds.push(roleIdBuff);
-    }
-
-    return [privateState, []];
+    // If commitment doesn't exist return currentMTIndex
+    // Used for adding roles or as a standard default
+    return ledger.ShieldedAccessControl__currentMerkleTreeIndex;
   },
 };
+
+/**
+ * @description Factory function creating witness implementations for Shielded AccessControl operations.
+ * @returns An object implementing the Witnesses interface for ShieldedAccessControlPrivateState.
+ */
+export const ShieldedAccessControlWitnesses =
+  (): IShieldedAccessControlWitnesses<ShieldedAccessControlPrivateState> => ({
+    wit_secretNonce(
+      context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+      roleId: Uint8Array
+    ): [ShieldedAccessControlPrivateState, Uint8Array] {
+      const roleString = Buffer.from(roleId).toString('hex');
+      return [context.privateState, context.privateState.roles[roleString]];
+    },
+    wit_getRoleCommitmentPath(
+      context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+      roleCommitment: Uint8Array
+    ): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] {
+      return [context.privateState, ShieldedAccessControlPrivateState.getRoleCommitmentPath(context.ledger, roleCommitment)];
+    },
+    wit_getRoleIndex(
+      context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+      roleId: Uint8Array
+    ): [ShieldedAccessControlPrivateState, bigint] {
+      return [context.privateState, ShieldedAccessControlPrivateState.getRoleIndex(context, roleId)];
+    },
+  });

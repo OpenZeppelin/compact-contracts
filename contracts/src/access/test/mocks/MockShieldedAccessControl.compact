@@ -11,11 +11,14 @@ export {
   ContractAddress,
   Either,
   Maybe,
+  MerkleTreePath,
   ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
-  ShieldedAccessControl__operatorRoles
+  ShieldedAccessControl__operatorRoles,
+  ShieldedAccessControl__currentMerkleTreeIndex,
+  ShieldedAccessControl_Role
 };
 
-export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): ShieldedAccessControl_Role {
   return ShieldedAccessControl_hasRole(roleId, account);
 }
 
@@ -27,7 +30,7 @@ export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey,
   ShieldedAccessControl__checkRole(roleId, account);
 }
 
-export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): Boolean {
+export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): ShieldedAccessControl_Role {
   return ShieldedAccessControl__checkMerkleTree(roleId, account);
 }
 

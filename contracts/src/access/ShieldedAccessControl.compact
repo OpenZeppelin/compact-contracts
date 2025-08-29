@@ -112,13 +112,13 @@ module ShieldedAccessControl {
    * @param {Uint<64>} index - An index in the `_operatorRoles` Merkle tree
    * @return {MerkleTreePath<10, Bytes<32>>} - The Merkle path of `roleCommitment` in the `_operatorRoles` Merkle tree
    */
-  witness getRoleCommitmentPath(roleCommitment: Bytes<32>): MerkleTreePath<10, Bytes<32>>;
+  witness wit_getRoleCommitmentPath(roleCommitment: Bytes<32>): MerkleTreePath<10, Bytes<32>>;
 
-  witness secretNonce(roleId: Bytes<32>): Bytes<32>;
+  witness wit_secretNonce(roleId: Bytes<32>): Bytes<32>;
 
-  witness getRoleCommitmentIndex(roleId: Bytes<32>): Uint<64>;
+  witness wit_getRoleIndex(roleId: Bytes<32>): Uint<64>;
 
-  struct Role {
+  export struct Role {
     hasRole: Boolean;
     roleCommitment: Bytes<32>;
   }
@@ -253,15 +253,15 @@ module ShieldedAccessControl {
    * produced by SHA256(roleId | account | nonce) exists in the `_operatorRoles` Merkle tree
    */
   export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): Role {
-    const nonce = secretNonce(roleId);
-    const index = getMerkleTreeIndex(roleId);
+    const nonce = wit_secretNonce(roleId);
+    const index = wit_getRoleIndex(roleId);
     const roleCommitment = persistentHash<Vector<4, Bytes<32>>>([roleId, account, nonce, index as Field as Bytes<32>]);
     assert(!_roleCommitmentNullifiers.member(disclose(roleCommitment)), "ShieldedAccessControl: role commitment access revoked");
 
-    const authPath = getRoleCommitmentPath(roleCommitment);
+    const authPath = wit_getRoleCommitmentPath(roleCommitment);
     const hasRole = _operatorRoles
       .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
-    return Role {hasRole, roleCommitment};
+    return Role {hasRole, disclose(roleCommitment)};
   }
 
   /**
@@ -473,6 +473,7 @@ module ShieldedAccessControl {
 
     if (!Utils_isContractAddress(account)) {
       const zswapPubKey = account.left.bytes;
+      // Use ledger index as source of truth
       _operatorRoles.insertHashIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
       _currentMerkleTreeIndex.increment(1);
       return true;
