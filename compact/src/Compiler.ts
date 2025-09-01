@@ -9,20 +9,64 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { isPromisifiedChildProcessError, CompactCliNotFoundError, CompilationError, DirectoryNotFoundError } from './types/errors.ts';
 
+/** Source directory containing .compact files */
 const SRC_DIR: string = 'src';
+/** Output directory for compiled artifacts */
 const ARTIFACTS_DIR: string = 'artifacts';
 
+/**
+ * Function interface for executing shell commands.
+ * Allows dependency injection for testing and customization.
+ *
+ * @interface ExecFunction
+ */
 export interface ExecFunction {
+  /**
+   * Executes a shell command and returns stdout/stderr.
+   *
+   * @param command - The shell command to execute
+   * @returns Promise resolving to command output
+   */
   (command: string): Promise<{ stdout: string; stderr: string }>;
 }
 
+/**
+ * Service responsible for validating the Compact CLI environment.
+ * Checks CLI availability, retrieves version information, and ensures
+ * the toolchain is properly configured before compilation.
+ *
+ * @class EnvironmentValidator
+ * @example
+ * ```typescript
+ * const validator = new EnvironmentValidator();
+ * await validator.validate('0.24.0');
+ * const version = await validator.getDevToolsVersion();
+ * ```
+ */
 export class EnvironmentValidator {
   private execFn: ExecFunction;
 
+  /**
+   * Creates a new EnvironmentValidator instance.
+   *
+   * @param execFn - Function to execute shell commands (defaults to promisified child_process.exec)
+   */
   constructor(execFn: ExecFunction = promisify(execCallback)) {
     this.execFn = execFn;
   }
 
+  /**
+   * Checks if the Compact CLI is available in the system PATH.
+   *
+   * @returns Promise resolving to true if CLI is available, false otherwise
+   * @example
+   * ```typescript
+   * const isAvailable = await validator.checkCompactAvailable();
+   * if (!isAvailable) {
+   *   throw new Error('Compact CLI not found');
+   * }
+   * ```
+   */
   async checkCompactAvailable(): Promise<boolean> {
     try {
       await this.execFn('compact --version');
@@ -32,17 +76,59 @@ export class EnvironmentValidator {
     }
   }
 
+  /**
+   * Retrieves the version of the Compact developer tools.
+   *
+   * @returns Promise resolving to the version string
+   * @throws {Error} If the CLI is not available or command fails
+   * @example
+   * ```typescript
+   * const version = await validator.getDevToolsVersion();
+   * console.log(`Using Compact ${version}`);
+   * ```
+   */
   async getDevToolsVersion(): Promise<string> {
     const { stdout } = await this.execFn('compact --version');
     return stdout.trim();
   }
 
+  /**
+   * Retrieves the version of the Compact toolchain/compiler.
+   *
+   * @param version - Optional specific toolchain version to query
+   * @returns Promise resolving to the toolchain version string
+   * @throws {Error} If the CLI is not available or command fails
+   * @example
+   * ```typescript
+   * const toolchainVersion = await validator.getToolchainVersion('0.24.0');
+   * console.log(`Toolchain: ${toolchainVersion}`);
+   * ```
+   */
   async getToolchainVersion(version?: string): Promise<string> {
     const versionFlag = version ? `+${version}` : '';
     const { stdout } = await this.execFn(`compact compile ${versionFlag} --version`);
     return stdout.trim();
   }
 
+  /**
+   * Validates the entire Compact environment and ensures it's ready for compilation.
+   * Checks CLI availability and retrieves version information.
+   *
+   * @param version - Optional specific toolchain version to validate
+   * @throws {CompactCliNotFoundError} If the Compact CLI is not available
+   * @throws {Error} If version commands fail
+   * @example
+   * ```typescript
+   * try {
+   *   await validator.validate('0.24.0');
+   *   console.log('Environment validated successfully');
+   * } catch (error) {
+   *   if (error instanceof CompactCliNotFoundError) {
+   *     console.error('Please install Compact CLI');
+   *   }
+   * }
+   * ```
+   */
   async validate(version?: string): Promise<void> {
     const isAvailable = await this.checkCompactAvailable();
     if (!isAvailable) {
@@ -57,7 +143,31 @@ export class EnvironmentValidator {
   }
 }
 
+/**
+ * Service responsible for discovering .compact files in the source directory.
+ * Recursively scans directories and filters for .compact file extensions.
+ *
+ * @class FileDiscovery
+ * @example
+ * ```typescript
+ * const discovery = new FileDiscovery();
+ * const files = await discovery.getCompactFiles('src/security');
+ * console.log(`Found ${files.length} .compact files`);
+ * ```
+ */
 export class FileDiscovery {
+  /**
+   * Recursively discovers all .compact files in a directory.
+   * Returns relative paths from the SRC_DIR for consistent processing.
+   *
+   * @param dir - Directory path to search (relative or absolute)
+   * @returns Promise resolving to array of relative file paths
+   * @example
+   * ```typescript
+   * const files = await discovery.getCompactFiles('src');
+   * // Returns: ['contracts/Token.compact', 'security/AccessControl.compact']
+   * ```
+   */
   async getCompactFiles(dir: string): Promise<string[]> {
     try {
       const dirents = await readdir(dir, { withFileTypes: true });
@@ -87,13 +197,59 @@ export class FileDiscovery {
   }
 }
 
+/**
+ * Service responsible for compiling individual .compact files.
+ * Handles command construction, execution, and error processing.
+ *
+ * @class CompilerService
+ * @example
+ * ```typescript
+ * const compiler = new CompilerService();
+ * const result = await compiler.compileFile(
+ *   'contracts/Token.compact',
+ *   '--skip-zk --verbose',
+ *   '0.24.0'
+ * );
+ * console.log('Compilation output:', result.stdout);
+ * ```
+ */
 export class CompilerService {
   private execFn: ExecFunction;
 
+  /**
+   * Creates a new CompilerService instance.
+   *
+   * @param execFn - Function to execute shell commands (defaults to promisified child_process.exec)
+   */
   constructor(execFn: ExecFunction = promisify(execCallback)) {
     this.execFn = execFn;
   }
 
+  /**
+   * Compiles a single .compact file using the Compact CLI.
+   * Constructs the appropriate command with flags and version, then executes it.
+   *
+   * @param file - Relative path to the .compact file from SRC_DIR
+   * @param flags - Space-separated compiler flags (e.g., '--skip-zk --verbose')
+   * @param version - Optional specific toolchain version to use
+   * @returns Promise resolving to compilation output (stdout/stderr)
+   * @throws {CompilationError} If compilation fails for any reason
+   * @example
+   * ```typescript
+   * try {
+   *   const result = await compiler.compileFile(
+   *     'security/AccessControl.compact',
+   *     '--skip-zk',
+   *     '0.24.0'
+   *   );
+   *   console.log('Success:', result.stdout);
+   * } catch (error) {
+   *   if (error instanceof CompilationError) {
+   *     console.error('Compilation failed for', error.file);
+   *   }
+   * }
+   * ```
+   */
   async compileFile(
     file: string,
     flags: string,
@@ -122,7 +278,30 @@ export class CompilerService {
   }
 }
 
+/**
+ * Static utility service for handling user interface output and formatting.
+ * Provides consistent styling and formatting for compiler messages and output.
+ *
+ * @class UIService
+ * @example
+ * ```typescript
+ * UIService.displayEnvInfo('compact 0.1.0', 'Compactc 0.24.0', 'security');
+ * UIService.printOutput('Compilation successful', chalk.green);
+ * ```
+ */
 export class UIService {
+  /**
+   * Prints formatted output with consistent indentation and coloring.
+   * Filters empty lines and adds consistent indentation for readability.
+   *
+   * @param output - Raw output text to format
+   * @param colorFn - Chalk color function for styling
+   * @example
+   * ```typescript
+   * UIService.printOutput(stdout, chalk.cyan);
+   * UIService.printOutput(stderr, chalk.red);
+   * ```
+   */
   static printOutput(output: string, colorFn: (text: string) => string): void {
     const lines = output
       .split('\n')
@@ -131,7 +310,25 @@ export class UIService {
     console.log(colorFn(lines.join('\n')));
   }
 
-  static showEnvironmentInfo(
+  /**
+   * Displays environment information including tool versions and configuration.
+   * Shows developer tools version, toolchain version, and optional settings.
+   *
+   * @param devToolsVersion - Version string of the Compact developer tools
+   * @param toolchainVersion - Version string of the Compact toolchain/compiler
+   * @param targetDir - Optional target directory being compiled
+   * @param version - Optional specific version being used
+   * @example
+   * ```typescript
+   * UIService.displayEnvInfo(
+   *   'compact 0.1.0',
+   *   'Compactc version: 0.24.0',
+   *   'security',
+   *   '0.24.0'
+   * );
+   * ```
+   */
+  static displayEnvInfo(
     devToolsVersion: string,
     toolchainVersion: string,
     targetDir?: string,
@@ -151,6 +348,17 @@ export class UIService {
     }
   }
 
+  /**
+   * Displays compilation start message with file count and optional location.
+   *
+   * @param fileCount - Number of files to be compiled
+   * @param targetDir - Optional target directory being compiled
+   * @example
+   * ```typescript
+   * UIService.showCompilationStart(5, 'security');
+   * // Output: "Found 5 .compact file(s) to compile in security/"
+   * ```
+   */
   static showCompilationStart(fileCount: number, targetDir?: string): void {
     const searchLocation = targetDir ? ` in ${targetDir}/` : '';
     const spinner = ora();
@@ -161,6 +369,16 @@ export class UIService {
     );
   }
 
+  /**
+   * Displays a warning message when no .compact files are found.
+   *
+   * @param targetDir - Optional target directory that was searched
+   * @example
+   * ```typescript
+   * UIService.showNoFiles('security');
+   * // Output: "No .compact files found in security/."
+   * ```
+   */
   static showNoFiles(targetDir?: string): void {
     const searchLocation = targetDir ? `${targetDir}/` : '';
     const spinner = ora();
@@ -171,17 +389,72 @@ export class UIService {
 }
 
 /**
- * Main compiler class with improved separation of concerns and testability.
+ * Main compiler class that orchestrates the compilation process.
+ * Coordinates environment validation, file discovery, and compilation services
+ * to provide a complete .compact file compilation solution.
+ *
+ * Features:
+ * - Dependency injection for testability
+ * - Comprehensive error handling
+ * - Progress reporting and user feedback
+ * - Support for compiler flags and toolchain versions
+ * - Environment variable integration
+ *
+ * @class CompactCompiler
+ * @example
+ * ```typescript
+ * // Basic usage
+ * const compiler = new CompactCompiler('--skip-zk', 'security', '0.24.0');
+ * await compiler.compile();
+ *
+ * // Factory method usage
+ * const compiler = CompactCompiler.fromArgs(['--dir', 'security', '--skip-zk']);
+ * await compiler.compile();
+ *
+ * // With environment variables
+ * process.env.SKIP_ZK = 'true';
+ * const compiler = CompactCompiler.fromArgs(['--dir', 'token']);
+ * await compiler.compile();
+ * ```
  */
 export class CompactCompiler {
+  /** Environment validation service */
   private readonly environmentValidator: EnvironmentValidator;
+  /** File discovery service */
   private readonly fileDiscovery: FileDiscovery;
+  /** Compilation execution service */
   private readonly compilerService: CompilerService;
 
+  /** Compiler flags to pass to the Compact CLI */
   private readonly flags: string;
+  /** Optional target directory to limit compilation scope */
   private readonly targetDir?: string;
+  /** Optional specific toolchain version to use */
   private readonly version?: string;
 
+  /**
+   * Creates a new CompactCompiler instance with specified configuration.
+   *
+   * @param flags - Space-separated compiler flags (e.g., '--skip-zk --verbose')
+   * @param targetDir - Optional subdirectory within src/ to compile (e.g., 'security', 'token')
+   * @param version - Optional toolchain version to use (e.g., '0.24.0')
+   * @param execFn - Optional custom exec function for dependency injection
+   * @example
+   * ```typescript
+   * // Compile all files with flags
+   * const compiler = new CompactCompiler('--skip-zk --verbose');
+   *
+   * // Compile specific directory
+   * const compiler = new CompactCompiler('', 'security');
+   *
+   * // Compile with specific version
+   * const compiler = new CompactCompiler('--skip-zk', undefined, '0.24.0');
+   *
+   * // For testing with custom exec function
+   * const mockExec = vi.fn();
+   * const compiler = new CompactCompiler('', undefined, undefined, mockExec);
+   * ```
+   */
   constructor(
     flags: string = '',
     targetDir?: string,
@@ -198,6 +471,36 @@ export class CompactCompiler {
 
   /**
    * Factory method to create a CompactCompiler from command-line arguments.
+   * Parses various argument formats including flags, directories, versions, and environment variables.
+   *
+   * Supported argument patterns:
+   * - `--dir <directory>` - Target specific directory
+   * - `+<version>` - Use specific toolchain version
+   * - Other arguments - Treated as compiler flags
+   * - `SKIP_ZK=true` environment variable - Adds --skip-zk flag
+   *
+   * @param args - Array of command-line arguments
+   * @param env - Environment variables (defaults to process.env)
+   * @returns New CompactCompiler instance configured from arguments
+   * @throws {Error} If --dir flag is provided without a directory name
+   * @example
+   * ```typescript
+   * // Parse command line: compact-compiler --dir security --skip-zk +0.24.0
+   * const compiler = CompactCompiler.fromArgs([
+   *   '--dir', 'security',
+   *   '--skip-zk',
+   *   '+0.24.0'
+   * ]);
+   *
+   * // With environment variable
+   * const compiler = CompactCompiler.fromArgs(
+   *   ['--dir', 'token'],
+   *   { SKIP_ZK: 'true' }
+   * );
+   *
+   * // Empty args with environment
+   * const compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
+   * ```
    */
   static fromArgs(args: string[], env: NodeJS.ProcessEnv = process.env): CompactCompiler {
     let targetDir: string | undefined;
@@ -228,7 +531,22 @@ export class CompactCompiler {
   }
 
   /**
-   * Validates the environment and shows version information.
+   * Validates the compilation environment and displays version information.
+   * Checks CLI availability, retrieves version info, and shows configuration.
+   *
+   * @throws {CompactCliNotFoundError} If Compact CLI is not available
+   * @throws {Error} If environment validation fails
+   * @example
+   * ```typescript
+   * try {
+   *   await compiler.validateEnvironment();
+   *   console.log('Environment ready for compilation');
+   * } catch (error) {
+   *   if (error instanceof CompactCliNotFoundError) {
+   *     console.error('Please install Compact CLI');
+   *   }
+   * }
+   * ```
    */
   async validateEnvironment(): Promise<void> {
     try {
@@ -237,7 +555,7 @@ export class CompactCompiler {
       const devToolsVersion = await this.environmentValidator.getDevToolsVersion();
       const toolchainVersion = await this.environmentValidator.getToolchainVersion(this.version);
 
-      UIService.showEnvironmentInfo(devToolsVersion, toolchainVersion, this.targetDir, this.version);
+      UIService.displayEnvInfo(devToolsVersion, toolchainVersion, this.targetDir, this.version);
     } catch (error) {
       const spinner = ora();
 
@@ -261,7 +579,32 @@ export class CompactCompiler {
   }
 
   /**
-   * Main compilation method.
+   * Main compilation method that orchestrates the entire compilation process.
+   *
+   * Process flow:
+   * 1. Validates environment and shows configuration
+   * 2. Discovers .compact files in target directory
+   * 3. Compiles each file with progress reporting
+   * 4. Handles errors and provides user feedback
+   *
+   * @throws {CompactCliNotFoundError} If Compact CLI is not available
+   * @throws {DirectoryNotFoundError} If target directory doesn't exist
+   * @throws {CompilationError} If any file compilation fails
+   * @example
+   * ```typescript
+   * const compiler = new CompactCompiler('--skip-zk', 'security');
+   *
+   * try {
+   *   await compiler.compile();
+   *   console.log('All files compiled successfully');
+   * } catch (error) {
+   *   if (error instanceof DirectoryNotFoundError) {
+   *     console.error(`Directory not found: ${error.directory}`);
+   *   } else if (error instanceof CompilationError) {
+   *     console.error(`Failed to compile: ${error.file}`);
+   *   }
+   * }
+   * ```
    */
   async compile(): Promise<void> {
     await this.validateEnvironment();
@@ -295,7 +638,14 @@ export class CompactCompiler {
   }
 
   /**
-   * Compiles a single file with progress reporting.
+   * Compiles a single file with progress reporting and error handling.
+   * Private method used internally by the main compile() method.
+   *
+   * @param file - Relative path to the .compact file
+   * @param index - Current file index (0-based) for progress tracking
+   * @param total - Total number of files being compiled
+   * @throws {CompilationError} If compilation fails
+   * @private
    */
   private async compileFile(file: string, index: number, total: number): Promise<void> {
     const step = `[${index + 1}/${total}]`;
