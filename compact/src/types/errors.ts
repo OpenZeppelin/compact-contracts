@@ -26,3 +26,30 @@ export function isPromisifiedChildProcessError(
 ): error is PromisifiedChildProcessError {
   return error instanceof Error && 'stdout' in error && 'stderr' in error;
 }
+
+export class CompactCliNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CompactCliNotFoundError';
+  }
+}
+
+export class CompilationError extends Error {
+  public readonly file?: string;
+
+  constructor(message: string, file?: string) {
+    super(message);
+    this.file = file;
+    this.name = 'CompilationError';
+  }
+}
+
+export class DirectoryNotFoundError extends Error {
+  public readonly directory: string;
+
+  constructor(message: string, directory: string) {
+    super(message);
+    this.directory = directory;
+    this.name = 'DirectoryNotFoundError';
+  }
+}
