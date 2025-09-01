@@ -11,14 +11,14 @@
   "scripts": {
     "docs": "turbo run docs --filter=docs",
     "docs:watch": "turbo run docs:watch --filter=docs",
-    "compact": "turbo run compact",
-    "build": "turbo run build",
-    "test": "turbo run test",
+    "compact": "turbo run compact --filter=@openzeppelin-compact/contracts",
+    "build": "turbo run build --filter=!'docs'",
+    "test": "turbo run test --filter=@openzeppelin-compact/contracts",
     "fmt-and-lint": "biome check . --changed",
     "fmt-and-lint:fix": "biome check . --changed --write",
     "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
-    "types": "turbo run types",
-    "clean": "turbo run clean"
+    "types": "turbo run types --filter=!'docs'",
+    "clean": "turbo run clean --filter=!'docs'"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.8.1"

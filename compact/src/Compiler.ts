@@ -32,6 +32,12 @@ async function checkCompactAvailable(): Promise<boolean> {
  * compiler.compile().catch(err => console.error(err));
  * ```
  *
+ * @example Compile specific directory
+ * ```typescript
+ * const compiler = new CompactCompiler('--skip-zk', 'security');
+ * compiler.compile().catch(err => console.error(err));
+ * ```
+ *
  * @example Successful Compilation Output
  * ```
  * ℹ [COMPILE] Compact compiler started
@@ -57,6 +63,8 @@ export class CompactCompiler {
   private readonly flags: string;
   /** Optional toolchain version to use (e.g., "+0.24.0") */
   private readonly version?: string;
+  /** Optional target directory to limit compilation scope */
+  private readonly targetDir?: string;
 
   /**
    * Constructs a new CompactCompiler instance, validating the `compact` CLI availability.
@@ -65,8 +73,9 @@ export class CompactCompiler {
    * @param version - Optional toolchain version to use (e.g., "0.24.0")
    * @throws {Error} If the `compact` CLI is not found in PATH
    */
-  constructor(flags: string, version?: string) {
+  constructor(flags: string, targetDir?: string, version?: string) {
     this.flags = flags.trim();
+    this.targetDir = targetDir;
     this.version = version;
   }
 
@@ -151,7 +160,6 @@ export class CompactCompiler {
         `[COMPILE] Found ${compactFiles.length} .compact file(s) to compile`,
       ),
     );
-
     for (const [index, file] of compactFiles.entries()) {
       await this.compileFile(file, index, compactFiles.length);
     }
@@ -180,6 +188,7 @@ export class CompactCompiler {
           }
 
           if (entry.isFile() && fullPath.endsWith('.compact')) {
+            // Always return relative path from SRC_DIR, regardless of search directory
             return [relative(SRC_DIR, fullPath)];
           }
           return [];
