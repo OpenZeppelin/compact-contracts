@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, vi, type MockedFunction } from 'vitest';
-import { 
-  CompactCompiler, 
-  EnvironmentValidator, 
-  FileDiscovery, 
-  CompilerService, 
+import {
+  CompactCompiler,
+  EnvironmentValidator,
+  FileDiscovery,
+  CompilerService,
   UIService,
-  type ExecFunction 
+  type ExecFunction
 } from '../src/Compiler.js';
-import { 
-  CompactCliNotFoundError, 
-  CompilationError, 
-  DirectoryNotFoundError 
+import {
+  CompactCliNotFoundError,
+  CompilationError,
+  DirectoryNotFoundError
 } from '../src/types/errors.js';
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
@@ -138,7 +138,7 @@ describe('FileDiscovery', () => {
         { name: 'README.md', isFile: () => true, isDirectory: () => false },
         { name: 'utils', isFile: () => false, isDirectory: () => true },
       ];
-      
+
       mockReaddir
         .mockResolvedValueOnce(mockDirents as any)
         .mockResolvedValueOnce([{ name: 'Utils.compact', isFile: () => true, isDirectory: () => false }] as any);
@@ -173,7 +173,7 @@ describe('FileDiscovery', () => {
         { name: 'Token.compact', isFile: () => { throw new Error('Access denied'); }, isDirectory: () => false },
         { name: 'Security.compact', isFile: () => true, isDirectory: () => false },
       ];
-      
+
       mockReaddir.mockResolvedValue(mockDirents as any);
 
       const files = await discovery.getCompactFiles('src');
@@ -250,7 +250,7 @@ describe('UIService', () => {
   describe('printOutput', () => {
     it('should format output with indentation', () => {
       const mockColorFn = vi.fn((text: string) => `colored(${text})`);
-      
+
       UIService.printOutput('line 1\nline 2\n\nline 3', mockColorFn);
 
       expect(mockColorFn).toHaveBeenCalledWith('    line 1\n    line 2\n    line 3');
@@ -259,7 +259,7 @@ describe('UIService', () => {
 
     it('should handle empty output', () => {
       const mockColorFn = vi.fn((text: string) => `colored(${text})`);
-      
+
       UIService.printOutput('', mockColorFn);
 
       expect(mockColorFn).toHaveBeenCalledWith('');
@@ -492,34 +492,34 @@ describe('CompactCompiler', () => {
 
     it('should handle turbo compact command', () => {
       compiler = CompactCompiler.fromArgs([]);
-      
+
       expect(compiler['flags']).toBe('');
       expect(compiler['targetDir']).toBeUndefined();
     });
 
     it('should handle SKIP_ZK=true turbo compact command', () => {
       compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
-      
+
       expect(compiler['flags']).toBe('--skip-zk');
     });
 
     it('should handle turbo compact:access command', () => {
       compiler = CompactCompiler.fromArgs(['--dir', 'access']);
-      
+
       expect(compiler['flags']).toBe('');
       expect(compiler['targetDir']).toBe('access');
     });
 
     it('should handle turbo compact:security -- --skip-zk command', () => {
       compiler = CompactCompiler.fromArgs(['--dir', 'security', '--skip-zk']);
-      
+
       expect(compiler['flags']).toBe('--skip-zk');
       expect(compiler['targetDir']).toBe('security');
     });
 
     it('should handle version specification', () => {
       compiler = CompactCompiler.fromArgs(['+0.24.0']);
-      
+
       expect(compiler['version']).toBe('0.24.0');
     });
 
