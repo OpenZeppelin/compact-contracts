@@ -77,7 +77,6 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
       privateState,
       coinPK,
       address,
-      [],
     );
     this.contractAddress = this.circuitContext.transactionContext.address;
     this._witnesses = witnesses;
