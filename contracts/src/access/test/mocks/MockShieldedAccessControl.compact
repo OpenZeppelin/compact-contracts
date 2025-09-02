@@ -30,10 +30,6 @@ export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey,
   ShieldedAccessControl__checkRole(roleId, account);
 }
 
-export circuit _checkMerkleTree(roleId: Bytes<32>, account: Bytes<32>): ShieldedAccessControl_Role {
-  return ShieldedAccessControl__checkMerkleTree(roleId, account);
-}
-
 export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
   return ShieldedAccessControl_getRoleAdmin(roleId);
 }

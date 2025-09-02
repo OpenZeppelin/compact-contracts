@@ -57,7 +57,7 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
   >;
 
   constructor(
-    initUser: Uint8Array,
+    initUser: Either<ZswapCoinPublicKey, ContractAddress>,
     options: ShieldedAccessControlSimOptions = {},
   ) {
     super();
@@ -225,14 +225,6 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    */
   public _checkRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>) {
     this.circuits.impure._checkRole(roleId, account);
-  }
-
-  /**
-   * @description Throws if called by any account whose id hash `SHA256(pk, nonce)` does not match
-   * the stored owner commitment. Use this to only allow the owner to call specific circuits.
-   */
-  public _checkMerkleTree(roleId: Uint8Array, account: Uint8Array): Role {
-    return this.circuits.impure._checkMerkleTree(roleId, account);
   }
 
   /**
