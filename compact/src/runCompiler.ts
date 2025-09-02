@@ -2,10 +2,12 @@
 
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
+import { CompactCompiler } from './Compiler.js';
 import {
-  CompactCompiler,
-} from './Compiler.js';
-import { CompactCliNotFoundError, CompilationError, DirectoryNotFoundError } from './types/errors.ts';
+  CompactCliNotFoundError,
+  CompilationError,
+  DirectoryNotFoundError,
+} from './types/errors.ts';
 
 /**
  * Executes the Compact compiler CLI with improved error handling and user feedback.
@@ -35,7 +37,6 @@ async function runCompiler(): Promise<void> {
     const args = process.argv.slice(2);
     const compiler = CompactCompiler.fromArgs(args);
     await compiler.compile();
-
   } catch (error) {
     handleError(error, spinner);
     process.exit(1);
@@ -54,7 +55,9 @@ function handleError(error: unknown, spinner: Ora): void {
   if (error instanceof DirectoryNotFoundError) {
     spinner.fail(chalk.red(`[COMPILE] Error: ${error.message}`));
     console.log(chalk.yellow('Available directories:'));
-    console.log(chalk.yellow('  --dir access    # Compile access control contracts'));
+    console.log(
+      chalk.yellow(' --dir access # Compile access control contracts'),
+    );
     console.log(chalk.yellow('  --dir archive   # Compile archive contracts'));
     console.log(chalk.yellow('  --dir security  # Compile security contracts'));
     console.log(chalk.yellow('  --dir token     # Compile token contracts'));
@@ -71,7 +74,9 @@ function handleError(error: unknown, spinner: Ora): void {
 
   // Handle argument parsing errors
   if (errorMessage.includes('--dir flag requires a directory name')) {
-    spinner.fail(chalk.red('[COMPILE] Error: --dir flag requires a directory name'));
+    spinner.fail(
+      chalk.red('[COMPILE] Error: --dir flag requires a directory name'),
+    );
     showUsageHelp();
     return;
   }
@@ -90,19 +95,45 @@ function handleError(error: unknown, spinner: Ora): void {
 function showUsageHelp(): void {
   console.log(chalk.yellow('\nUsage: compact-compiler [options]'));
   console.log(chalk.yellow('\nOptions:'));
-  console.log(chalk.yellow('  --dir <directory>  Compile specific directory (access, archive, security, token, utils)'));
-  console.log(chalk.yellow('  --skip-zk          Skip zero-knowledge proof generation'));
-  console.log(chalk.yellow('  +<version>         Use specific toolchain version (e.g., +0.24.0)'));
+  console.log(
+    chalk.yellow(
+      ' --dir <directory> Compile specific directory (access, archive, security, token, utils)',
+    ),
+  );
+  console.log(chalk.yellow(' --skip-zk Skip zero-knowledge proof generation'));
+  console.log(
+    chalk.yellow(' +<version> Use specific toolchain version (e.g., +0.24.0)'),
+  );
   console.log(chalk.yellow('\nExamples:'));
-  console.log(chalk.yellow('  compact-compiler                           # Compile all files'));
-  console.log(chalk.yellow('  compact-compiler --dir security            # Compile security directory'));
-  console.log(chalk.yellow('  compact-compiler --dir access --skip-zk    # Compile access with flags'));
-  console.log(chalk.yellow('  SKIP_ZK=true compact-compiler --dir token  # Use environment variable'));
-  console.log(chalk.yellow('  compact-compiler --skip-zk +0.24.0         # Use specific version'));
+  console.log(chalk.yellow('  compact-compiler # Compile all files'));
+  console.log(
+    chalk.yellow(
+      '  compact-compiler --dir security # Compile security directory',
+    ),
+  );
+  console.log(
+    chalk.yellow(
+      '  compact-compiler --dir access --skip-zk # Compile access with flags',
+    ),
+  );
+  console.log(
+    chalk.yellow(
+      '  SKIP_ZK=true compact-compiler --dir token # Use environment variable',
+    ),
+  );
+  console.log(
+    chalk.yellow('  compact-compiler --skip-zk +0.24.0 # Use specific version'),
+  );
   console.log(chalk.yellow('\nTurbo integration:'));
-  console.log(chalk.yellow('  turbo compact                              # Full build'));
-  console.log(chalk.yellow('  turbo compact:security -- --skip-zk       # Directory with flags'));
-  console.log(chalk.yellow('  SKIP_ZK=true turbo compact                 # Environment variables'));
+  console.log(chalk.yellow(' turbo compact # Full build'));
+  console.log(
+    chalk.yellow(
+      '  turbo compact:security -- --skip-zk # Directory with flags',
+    ),
+  );
+  console.log(
+    chalk.yellow('  SKIP_ZK=true turbo compact # Environment variables'),
+  );
 }
 
 runCompiler();
