@@ -283,7 +283,7 @@ export class CompilerService {
 }
 
 /**
- * Static utility service for handling user interface output and formatting.
+ * Utility service for handling user interface output and formatting.
  * Provides consistent styling and formatting for compiler messages and output.
  *
  * @class UIService
