@@ -74,6 +74,7 @@ describe('EnvironmentValidator', () => {
       const result = await validator.checkCompactAvailable();
 
       expect(result).toBe(false);
+      expect(mockExec).toHaveBeenCalledWith('compact --version');
     });
   });
 
