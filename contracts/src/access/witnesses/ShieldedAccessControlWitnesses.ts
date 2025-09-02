@@ -1,6 +1,7 @@
 import { getRandomValues } from 'node:crypto';
 import { CompactTypeVector, CompactTypeBytes, persistentHash, type WitnessContext, convert_bigint_to_Uint8Array } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger, MerkleTreePath } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
+import type { Ledger, MerkleTreePath, Either, ZswapCoinPublicKey, ContractAddress } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
+import { eitherToBytes } from '../test/utils/address';
 
 const MERKLE_TREE_DEPTH = 2 ** 10;
 
@@ -36,12 +37,13 @@ export type ShieldedAccessControlPrivateState = {
  */
 export const ShieldedAccessControlPrivateState = {
   /**
-   * @description Generates a new private state with a random secret nonce.
+   * @description Generates a new private state with a random secret nonce and a default roleId of 0.
    * @returns A fresh ShieldedAccessControlPrivateState instance.
    */
-  generate: (account: Uint8Array): ShieldedAccessControlPrivateState => {
+  generate: (account: Either<ZswapCoinPublicKey, ContractAddress>): ShieldedAccessControlPrivateState => {
     const defaultRoleId: string = Buffer.alloc(32).toString('hex');
-    const privateState: ShieldedAccessControlPrivateState = { roles: {}, account };
+    const bAccount = eitherToBytes(account);
+    const privateState: ShieldedAccessControlPrivateState = { roles: {}, account: bAccount };
     privateState.roles[defaultRoleId] = getRandomValues(Buffer.alloc(32));
     return privateState;
   },
