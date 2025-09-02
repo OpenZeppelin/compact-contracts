@@ -7,7 +7,12 @@ import { basename, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora from 'ora';
-import { isPromisifiedChildProcessError, CompactCliNotFoundError, CompilationError, DirectoryNotFoundError } from './types/errors.ts';
+import {
+  CompactCliNotFoundError,
+  CompilationError,
+  DirectoryNotFoundError,
+  isPromisifiedChildProcessError,
+} from './types/errors.ts';
 
 /** Source directory containing .compact files */
 const SRC_DIR: string = 'src';
@@ -15,20 +20,15 @@ const SRC_DIR: string = 'src';
 const ARTIFACTS_DIR: string = 'artifacts';
 
 /**
- * Function interface for executing shell commands.
+ * Function type for executing shell commands.
  * Allows dependency injection for testing and customization.
  *
- * @interface ExecFunction
+ * @param command - The shell command to execute
+ * @returns Promise resolving to command output
  */
-export interface ExecFunction {
-  /**
-   * Executes a shell command and returns stdout/stderr.
-   *
-   * @param command - The shell command to execute
-   * @returns Promise resolving to command output
-   */
-  (command: string): Promise<{ stdout: string; stderr: string }>;
-}
+export type ExecFunction = (
+  command: string,
+) => Promise<{ stdout: string; stderr: string }>;
 
 /**
  * Service responsible for validating the Compact CLI environment.
@@ -106,7 +106,9 @@ export class EnvironmentValidator {
    */
   async getToolchainVersion(version?: string): Promise<string> {
     const versionFlag = version ? `+${version}` : '';
-    const { stdout } = await this.execFn(`compact compile ${versionFlag} --version`);
+    const { stdout } = await this.execFn(
+      `compact compile ${versionFlag} --version`,
+    );
     return stdout.trim();
   }
 
@@ -133,7 +135,7 @@ export class EnvironmentValidator {
     const isAvailable = await this.checkCompactAvailable();
     if (!isAvailable) {
       throw new CompactCliNotFoundError(
-        "'compact' CLI not found in PATH. Please install the Compact developer tools."
+        "'compact' CLI not found in PATH. Please install the Compact developer tools.",
       );
     }
 
@@ -183,6 +185,7 @@ export class FileDiscovery {
           }
           return [];
         } catch (err) {
+          // biome-ignore lint/suspicious/noConsole: Needed to display error and file path
           console.warn(`Error accessing ${fullPath}:`, err);
           return [];
         }
@@ -191,6 +194,7 @@ export class FileDiscovery {
       const results = await Promise.all(filePromises);
       return results.flat();
     } catch (err) {
+      // biome-ignore lint/suspicious/noConsole: Needed to display error and dir path
       console.error(`Failed to read dir: ${dir}`, err);
       return [];
     }
@@ -289,7 +293,7 @@ export class CompilerService {
  * UIService.printOutput('Compilation successful', chalk.green);
  * ```
  */
-export class UIService {
+export const UIService = {
   /**
    * Prints formatted output with consistent indentation and coloring.
    * Filters empty lines and adds consistent indentation for readability.
@@ -302,13 +306,13 @@ export class UIService {
    * UIService.printOutput(stderr, chalk.red);
    * ```
    */
-  static printOutput(output: string, colorFn: (text: string) => string): void {
+  printOutput(output: string, colorFn: (text: string) => string): void {
     const lines = output
       .split('\n')
       .filter((line) => line.trim() !== '')
       .map((line) => `    ${line}`);
     console.log(colorFn(lines.join('\n')));
-  }
+  },
 
   /**
    * Displays environment information including tool versions and configuration.
@@ -328,7 +332,7 @@ export class UIService {
    * );
    * ```
    */
-  static displayEnvInfo(
+  displayEnvInfo(
     devToolsVersion: string,
     toolchainVersion: string,
     targetDir?: string,
@@ -340,13 +344,17 @@ export class UIService {
       spinner.info(chalk.blue(`[COMPILE] TARGET_DIR: ${targetDir}`));
     }
 
-    spinner.info(chalk.blue(`[COMPILE] Compact developer tools: ${devToolsVersion}`));
-    spinner.info(chalk.blue(`[COMPILE] Compact toolchain: ${toolchainVersion}`));
+    spinner.info(
+      chalk.blue(`[COMPILE] Compact developer tools: ${devToolsVersion}`),
+    );
+    spinner.info(
+      chalk.blue(`[COMPILE] Compact toolchain: ${toolchainVersion}`),
+    );
 
     if (version) {
       spinner.info(chalk.blue(`[COMPILE] Using toolchain version: ${version}`));
     }
-  }
+  },
 
   /**
    * Displays compilation start message with file count and optional location.
@@ -359,7 +367,7 @@ export class UIService {
    * // Output: "Found 5 .compact file(s) to compile in security/"
    * ```
    */
-  static showCompilationStart(fileCount: number, targetDir?: string): void {
+  showCompilationStart(fileCount: number, targetDir?: string): void {
     const searchLocation = targetDir ? ` in ${targetDir}/` : '';
     const spinner = ora();
     spinner.info(
@@ -367,7 +375,7 @@ export class UIService {
         `[COMPILE] Found ${fileCount} .compact file(s) to compile${searchLocation}`,
       ),
     );
-  }
+  },
 
   /**
    * Displays a warning message when no .compact files are found.
@@ -379,14 +387,14 @@ export class UIService {
    * // Output: "No .compact files found in security/."
    * ```
    */
-  static showNoFiles(targetDir?: string): void {
+  showNoFiles(targetDir?: string): void {
     const searchLocation = targetDir ? `${targetDir}/` : '';
     const spinner = ora();
     spinner.warn(
       chalk.yellow(`[COMPILE] No .compact files found in ${searchLocation}.`),
     );
-  }
-}
+  },
+};
 
 /**
  * Main compiler class that orchestrates the compilation process.
@@ -456,7 +464,7 @@ export class CompactCompiler {
    * ```
    */
   constructor(
-    flags: string = '',
+    flags = '',
     targetDir?: string,
     version?: string,
     execFn?: ExecFunction,
@@ -502,9 +510,12 @@ export class CompactCompiler {
    * const compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
    * ```
    */
-  static fromArgs(args: string[], env: NodeJS.ProcessEnv = process.env): CompactCompiler {
+  static fromArgs(
+    args: string[],
+    env: NodeJS.ProcessEnv = process.env,
+  ): CompactCompiler {
     let targetDir: string | undefined;
-    let flags: string[] = [];
+    const flags: string[] = [];
     let version: string | undefined;
 
     if (env.SKIP_ZK === 'true') {
@@ -513,7 +524,8 @@ export class CompactCompiler {
 
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--dir') {
-        const dirNameExists = i + 1 < args.length && !args[i + 1].startsWith('--');
+        const dirNameExists =
+          i + 1 < args.length && !args[i + 1].startsWith('--');
         if (dirNameExists) {
           targetDir = args[i + 1];
           i++;
@@ -552,10 +564,17 @@ export class CompactCompiler {
     try {
       await this.environmentValidator.validate(this.version);
 
-      const devToolsVersion = await this.environmentValidator.getDevToolsVersion();
-      const toolchainVersion = await this.environmentValidator.getToolchainVersion(this.version);
+      const devToolsVersion =
+        await this.environmentValidator.getDevToolsVersion();
+      const toolchainVersion =
+        await this.environmentValidator.getToolchainVersion(this.version);
 
-      UIService.displayEnvInfo(devToolsVersion, toolchainVersion, this.targetDir, this.version);
+      UIService.displayEnvInfo(
+        devToolsVersion,
+        toolchainVersion,
+        this.targetDir,
+        this.version,
+      );
     } catch (error) {
       const spinner = ora();
 
@@ -567,8 +586,12 @@ export class CompactCompiler {
           ),
         );
       } else if (isPromisifiedChildProcessError(error)) {
-        spinner.fail(chalk.red(`[COMPILE] Environment validation failed: ${error.message}`));
-      } else if(error instanceof Error){
+        spinner.fail(
+          chalk.red(
+            `[COMPILE] Environment validation failed: ${error.message}`,
+          ),
+        );
+      } else if (error instanceof Error) {
         spinner.fail(chalk.red(`[COMPILE] Unexpected error: ${error.message}`));
       } else {
         spinner.fail(chalk.red('An unknown, non-Error value was thrown.'));
@@ -615,7 +638,9 @@ export class CompactCompiler {
     if (this.targetDir && !existsSync(searchDir)) {
       const spinner = ora();
       spinner.fail(
-        chalk.red(`[COMPILE] Error: Target directory ${searchDir} does not exist.`),
+        chalk.red(
+          `[COMPILE] Error: Target directory ${searchDir} does not exist.`,
+        ),
       );
       throw new DirectoryNotFoundError(
         `Target directory ${searchDir} does not exist`,
@@ -647,12 +672,22 @@ export class CompactCompiler {
    * @throws {CompilationError} If compilation fails
    * @private
    */
-  private async compileFile(file: string, index: number, total: number): Promise<void> {
+  private async compileFile(
+    file: string,
+    index: number,
+    total: number,
+  ): Promise<void> {
     const step = `[${index + 1}/${total}]`;
-    const spinner = ora(chalk.blue(`[COMPILE] ${step} Compiling ${file}`)).start();
+    const spinner = ora(
+      chalk.blue(`[COMPILE] ${step} Compiling ${file}`),
+    ).start();
 
     try {
-      const result = await this.compilerService.compileFile(file, this.flags, this.version);
+      const result = await this.compilerService.compileFile(
+        file,
+        this.flags,
+        this.version,
+      );
 
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       UIService.printOutput(result.stdout, chalk.cyan);
@@ -660,7 +695,10 @@ export class CompactCompiler {
     } catch (error) {
       spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
 
-      if (error instanceof CompilationError && isPromisifiedChildProcessError(error.cause)) {
+      if (
+        error instanceof CompilationError &&
+        isPromisifiedChildProcessError(error.cause)
+      ) {
         const execError = error.cause;
         UIService.printOutput(execError.stdout, chalk.cyan);
         UIService.printOutput(execError.stderr, chalk.red);
@@ -668,5 +706,18 @@ export class CompactCompiler {
 
       throw error;
     }
+  }
+
+  /**
+   * For testing
+   */
+  get testFlags(): string {
+    return this.flags;
+  }
+  get testTargetDir(): string | undefined {
+    return this.targetDir;
+  }
+  get testVersion(): string | undefined {
+    return this.version;
   }
 }
