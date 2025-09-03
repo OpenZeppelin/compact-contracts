@@ -4,6 +4,7 @@ import type { Ledger, MerkleTreePath, Either, ZswapCoinPublicKey, ContractAddres
 import { eitherToBytes } from '../test/utils/address';
 
 const MERKLE_TREE_DEPTH = 2 ** 10;
+const DOMAIN = new TextEncoder().encode("ShieldedAccessControl:shield:");
 
 /**
  * @description Interface defining the witness methods for ShieldedAccessControl operations.
@@ -89,9 +90,9 @@ export const ShieldedAccessControlPrivateState = {
     const roleIdString = Buffer.from(roleId).toString('hex');
     // Iterate over each MT to determine if commitment exists
     for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
-      const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
+      const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
-      const commitment = persistentHash(rt_type, [roleId, privateState.account, privateState.roles[roleIdString], bIndex]);
+      const commitment = persistentHash(rt_type, [roleId, privateState.account, privateState.roles[roleIdString], bIndex, DOMAIN]);
       try {
         ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(BigInt(i), commitment);
         return BigInt(i);
