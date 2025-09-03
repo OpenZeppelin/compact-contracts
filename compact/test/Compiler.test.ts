@@ -153,7 +153,11 @@ describe('FileDiscovery', () => {
   describe('getCompactFiles', () => {
     it('should find .compact files in directory', async () => {
       const mockDirents = [
-        { name: 'MyToken.compact', isFile: () => true, isDirectory: () => false },
+        {
+          name: 'MyToken.compact',
+          isFile: () => true,
+          isDirectory: () => false,
+        },
         {
           name: 'Ownable.compact',
           isFile: () => true,
@@ -530,7 +534,11 @@ describe('CompactCompiler', () => {
 
     it('should compile files successfully', async () => {
       const mockDirents = [
-        { name: 'MyToken.compact', isFile: () => true, isDirectory: () => false },
+        {
+          name: 'MyToken.compact',
+          isFile: () => true,
+          isDirectory: () => false,
+        },
         {
           name: 'Ownable.compact',
           isFile: () => true,
