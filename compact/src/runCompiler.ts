@@ -81,6 +81,7 @@ function handleError(error: unknown, spinner: Ora): void {
   console.log(chalk.gray('\nIf this error persists, please check:'));
   console.log(chalk.gray('  • Compact CLI is installed and in PATH'));
   console.log(chalk.gray('  • Source files exist and are readable'));
+  console.log(chalk.gray('  • Specified Compact version exists'));
   console.log(chalk.gray('  • File system permissions are correct'));
 }
 
