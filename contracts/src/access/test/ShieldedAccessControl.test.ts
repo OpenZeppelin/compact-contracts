@@ -23,6 +23,7 @@ const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
 const DOMAIN = 'ShieldedAccessControl:shield:';
 const INIT_COUNTER = 0n;
+const EMPTY_ROOT = { field: 0n };
 
 // Roles
 const DEFAULT_ADMIN_ROLE = utils.zeroUint8Array();
@@ -77,14 +78,36 @@ describe('ShieldedAccessControl', () => {
     shieldedAccessControl = new ShieldedAccessControlSimulator(Z_ADMIN, {
       privateState: PS,
     });
-
-    describe('hasRole', () => {
-      it('should throw if caller is contract address', () => {
-        shieldedAccessControl.callerCtx.setCaller(OPERATOR_CONTRACT);
-        expect(() => {
-          shieldedAccessControl.hasRole(UNINITIALIZED_ROLE, Z_OPERATOR_CONTRACT)
-        }).toThrow('ShieldedAccessControl: contract address roles are not yet supported');
-      })
-    })
   });
+
+  describe('initialization checks', () => {
+    it('DEFAULT_ADMIN_ROLE should be 0', () => {
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl_DEFAULT_ADMIN_ROLE).toEqual(DEFAULT_ADMIN_ROLE);
+    });
+
+    it('Merkle tree root should be 0', () => {
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.root()).toEqual(EMPTY_ROOT);
+    });
+  });
+
+  describe('hasRole', () => {
+    it('should throw if caller is contract address', () => {
+      shieldedAccessControl.callerCtx.setCaller(OPERATOR_CONTRACT);
+      expect(() => {
+        shieldedAccessControl.hasRole(UNINITIALIZED_ROLE, Z_OPERATOR_CONTRACT)
+      }).toThrow('ShieldedAccessControl: contract address roles are not yet supported');
+    });
+
+    it('should return correct role commitment', () => {
+      const expCommitment = buildCommitment(
+        DEFAULT_ADMIN_ROLE,
+        Z_ADMIN,
+        secretNonce,
+        INIT_COUNTER,
+      );
+
+      const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      expect(role.roleCommitment).toEqual(expCommitment);
+    });
+  })
 });
