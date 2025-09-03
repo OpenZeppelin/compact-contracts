@@ -535,7 +535,10 @@ export class CompactCompiler {
       } else if (args[i].startsWith('+')) {
         version = args[i].slice(1);
       } else {
-        flags.push(args[i]);
+        // Only add flag if it's not already present
+        if (!flags.includes(args[i])) {
+          flags.push(args[i]);
+        }
       }
     }
 

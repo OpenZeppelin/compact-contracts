@@ -640,21 +640,26 @@ describe('CompactCompiler', () => {
       expect(compiler.testVersion).toBe('0.24.0');
     });
 
-    it('should handle complex command with environment variables', () => {
-      compiler = CompactCompiler.fromArgs(
-        [
-          '--dir',
-          'security',
-          '--skip-zk',
-          '--no-communications-commitment',
-          '+0.24.0',
-        ],
-        { SKIP_ZK: 'true' },
-      );
+    it.each([
+      {
+        name: 'with skip zk env var only',
+        args: ['--dir', 'security', '--no-communications-commitment', '+0.24.0'],
+        env: { SKIP_ZK: 'true' },
+      },
+      {
+        name: 'with skip-zk flag only',
+        args: ['--dir', 'security', '--skip-zk', '--no-communications-commitment', '+0.24.0'],
+        env: { SKIP_ZK: 'false' },
+      },
+      {
+        name: 'with both skip-zk flag and env var',
+        args: ['--dir', 'security', '--skip-zk', '--no-communications-commitment', '+0.24.0'],
+        env: { SKIP_ZK: 'true' },
+      },
+    ])('should handle complex command $name', ({ args, env }) => {
+      compiler = CompactCompiler.fromArgs(args, env);
 
-      expect(compiler.testFlags).toBe(
-        '--skip-zk --skip-zk --no-communications-commitment',
-      );
+      expect(compiler.testFlags).toBe('--skip-zk --no-communications-commitment');
       expect(compiler.testTargetDir).toBe('security');
       expect(compiler.testVersion).toBe('0.24.0');
     });
