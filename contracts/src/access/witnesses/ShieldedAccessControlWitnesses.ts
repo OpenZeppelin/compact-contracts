@@ -79,8 +79,11 @@ export const ShieldedAccessControlPrivateState = {
   getRoleCommitmentPath: (ledger: Ledger, roleCommitment: Uint8Array): MerkleTreePath<Uint8Array> => {
     const path = ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(roleCommitment);
     const defaultPath: MerkleTreePath<Uint8Array> = {
-      leaf: Buffer.alloc(32),
-      path: []
+      leaf: new Uint8Array(32),
+      path: Array.from({ length: 10 }, () => ({
+        sibling: { field: 0n },
+        goes_left: false,
+      }))
     }
     return path ? path : defaultPath;
   },
