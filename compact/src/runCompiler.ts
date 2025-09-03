@@ -3,11 +3,6 @@
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import { CompactCompiler } from './Compiler.js';
-import {
-  CompactCliNotFoundError,
-  CompilationError,
-  DirectoryNotFoundError,
-} from './types/errors.ts';
 
 /**
  * Executes the Compact compiler CLI with improved error handling and user feedback.
@@ -47,12 +42,12 @@ async function runCompiler(): Promise<void> {
  * Centralized error handling with specific error types and user-friendly messages.
  */
 function handleError(error: unknown, spinner: Ora): void {
-  if (error instanceof CompactCliNotFoundError) {
+  if (error instanceof Error && error.name === 'CompactCliNotFoundError') {
     // Error already handled by validateEnvironment, just exit
     return;
   }
 
-  if (error instanceof DirectoryNotFoundError) {
+  if (error instanceof Error && error.name === 'DirectoryNotFoundError') {
     spinner.fail(chalk.red(`[COMPILE] Error: ${error.message}`));
     console.log(chalk.yellow('Available directories:'));
     console.log(
@@ -65,7 +60,7 @@ function handleError(error: unknown, spinner: Ora): void {
     return;
   }
 
-  if (error instanceof CompilationError) {
+  if (error instanceof Error && error.name === 'CompilationError') {
     // Compilation errors are already handled by the compiler with detailed output
     return;
   }
@@ -82,7 +77,7 @@ function handleError(error: unknown, spinner: Ora): void {
   }
 
   // Handle unexpected errors
-  spinner.fail(chalk.red('[COMPILE] Unexpected error:', errorMessage));
+  spinner.fail(chalk.red(`[COMPILE] Unexpected error: ${errorMessage}`));
   console.log(chalk.gray('\nIf this error persists, please check:'));
   console.log(chalk.gray('  • Compact CLI is installed and in PATH'));
   console.log(chalk.gray('  • Source files exist and are readable'));
