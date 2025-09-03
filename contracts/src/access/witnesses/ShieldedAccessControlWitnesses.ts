@@ -99,13 +99,20 @@ export const ShieldedAccessControlPrivateState = {
       try {
         ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(BigInt(i), commitment);
         return BigInt(i);
-      } catch (e) {
-        console.error(e);
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          const [msg, index] = e.message.split(":");
+          if (msg === "invalid index into sparse merkle tree") {
+            // console.log(`${roleIdString} not found at index ${index}`);
+          } else {
+            throw e;
+          }
+        }
       }
     }
 
     // If commitment doesn't exist return currentMTIndex
-    // Used for adding roles or as a standard default
+    // Used for adding roles
     return ledger.ShieldedAccessControl__currentMerkleTreeIndex;
   },
 };
