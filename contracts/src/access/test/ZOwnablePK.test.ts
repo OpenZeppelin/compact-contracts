@@ -320,7 +320,7 @@ describe('ZOwnablePK', () => {
         ownable.callerCtx.setCaller(UNAUTHORIZED);
         expect(() => {
           ownable.renounceOwnership();
-        });
+        }).toThrow('ZOwnablePK: caller is not the owner');
       });
 
       it('should fail when renouncing from authorized with bad nonce', () => {
@@ -328,7 +328,7 @@ describe('ZOwnablePK', () => {
         ownable.privateState.injectSecretNonce(BAD_NONCE);
         expect(() => {
           ownable.renounceOwnership();
-        });
+        }).toThrow('ZOwnablePK: caller is not the owner');
       });
 
       it('should fail when renouncing from unauthorized with bad nonce', () => {
@@ -336,7 +336,7 @@ describe('ZOwnablePK', () => {
         ownable.privateState.injectSecretNonce(BAD_NONCE);
         expect(() => {
           ownable.renounceOwnership();
-        });
+        }).toThrow('ZOwnablePK: caller is not the owner');
       });
     });
 
