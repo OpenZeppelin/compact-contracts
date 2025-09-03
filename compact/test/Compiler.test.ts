@@ -153,9 +153,9 @@ describe('FileDiscovery', () => {
   describe('getCompactFiles', () => {
     it('should find .compact files in directory', async () => {
       const mockDirents = [
-        { name: 'Token.compact', isFile: () => true, isDirectory: () => false },
+        { name: 'MyToken.compact', isFile: () => true, isDirectory: () => false },
         {
-          name: 'Security.compact',
+          name: 'Ownable.compact',
           isFile: () => true,
           isDirectory: () => false,
         },
@@ -176,8 +176,8 @@ describe('FileDiscovery', () => {
       const files = await discovery.getCompactFiles('src');
 
       expect(files).toEqual([
-        'Token.compact',
-        'Security.compact',
+        'MyToken.compact',
+        'Ownable.compact',
         'utils/Utils.compact',
       ]);
     });
@@ -210,14 +210,14 @@ describe('FileDiscovery', () => {
     it('should handle file access errors gracefully', async () => {
       const mockDirents = [
         {
-          name: 'Token.compact',
+          name: 'MyToken.compact',
           isFile: () => {
             throw new Error('Access denied');
           },
           isDirectory: () => false,
         },
         {
-          name: 'Security.compact',
+          name: 'Ownable.compact',
           isFile: () => true,
           isDirectory: () => false,
         },
@@ -227,7 +227,7 @@ describe('FileDiscovery', () => {
 
       const files = await discovery.getCompactFiles('src');
 
-      expect(files).toEqual(['Security.compact']);
+      expect(files).toEqual(['Ownable.compact']);
     });
   });
 });
@@ -249,11 +249,11 @@ describe('CompilerService', () => {
         stderr: '',
       });
 
-      const result = await service.compileFile('Token.compact', '--skip-zk');
+      const result = await service.compileFile('MyToken.compact', '--skip-zk');
 
       expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
       expect(mockExec).toHaveBeenCalledWith(
-        'compact compile --skip-zk "src/Token.compact" "artifacts/Token"',
+        'compact compile --skip-zk "src/MyToken.compact" "artifacts/MyToken"',
       );
     });
 
@@ -264,14 +264,14 @@ describe('CompilerService', () => {
       });
 
       const result = await service.compileFile(
-        'Token.compact',
+        'MyToken.compact',
         '--skip-zk',
         '0.24.0',
       );
 
       expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
       expect(mockExec).toHaveBeenCalledWith(
-        'compact compile +0.24.0 --skip-zk "src/Token.compact" "artifacts/Token"',
+        'compact compile +0.24.0 --skip-zk "src/MyToken.compact" "artifacts/MyToken"',
       );
     });
 
@@ -281,11 +281,11 @@ describe('CompilerService', () => {
         stderr: '',
       });
 
-      const result = await service.compileFile('Token.compact', '');
+      const result = await service.compileFile('MyToken.compact', '');
 
       expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
       expect(mockExec).toHaveBeenCalledWith(
-        'compact compile "src/Token.compact" "artifacts/Token"',
+        'compact compile "src/MyToken.compact" "artifacts/MyToken"',
       );
     });
 
@@ -293,7 +293,7 @@ describe('CompilerService', () => {
       mockExec.mockRejectedValue(new Error('Syntax error on line 10'));
 
       await expect(
-        service.compileFile('Token.compact', '--skip-zk'),
+        service.compileFile('MyToken.compact', '--skip-zk'),
       ).rejects.toThrow(CompilationError);
     });
 
@@ -301,10 +301,10 @@ describe('CompilerService', () => {
       mockExec.mockRejectedValue(new Error('Syntax error'));
 
       try {
-        await service.compileFile('Token.compact', '--skip-zk');
+        await service.compileFile('MyToken.compact', '--skip-zk');
       } catch (error) {
         expect(error).toBeInstanceOf(CompilationError);
-        expect((error as CompilationError).file).toBe('Token.compact');
+        expect((error as CompilationError).file).toBe('MyToken.compact');
       }
     });
   });
@@ -530,9 +530,9 @@ describe('CompactCompiler', () => {
 
     it('should compile files successfully', async () => {
       const mockDirents = [
-        { name: 'Token.compact', isFile: () => true, isDirectory: () => false },
+        { name: 'MyToken.compact', isFile: () => true, isDirectory: () => false },
         {
-          name: 'Security.compact',
+          name: 'Ownable.compact',
           isFile: () => true,
           isDirectory: () => false,
         },
