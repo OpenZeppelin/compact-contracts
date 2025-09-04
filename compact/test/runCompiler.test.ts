@@ -7,14 +7,14 @@ import {
   isPromisifiedChildProcessError,
 } from '../src/types/errors.js';
 
-// Mock the CompactCompiler
+// Mock CompactCompiler
 vi.mock('../src/Compiler.js', () => ({
   CompactCompiler: {
     fromArgs: vi.fn(),
   },
 }));
 
-// Mock the error utilities
+// Mock error utilities
 vi.mock('../src/types/errors.js', async () => {
   const actual = await vi.importActual('../src/types/errors.js');
   return {
