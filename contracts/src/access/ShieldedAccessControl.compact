@@ -436,7 +436,7 @@ module ShieldedAccessControl {
     }
 
     // Use ledger index as source of truth
-    _operatorRoles.insertHashIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
+    _operatorRoles.insertIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
     _currentMerkleTreeIndex.increment(1);
     return true;
   }
