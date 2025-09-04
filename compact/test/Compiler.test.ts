@@ -35,14 +35,18 @@ vi.mock('chalk', () => ({
     gray: (text: string) => text,
   },
 }));
+
+// Mock spinner
+const mockSpinner = {
+  start: () => ({ succeed: vi.fn(), fail: vi.fn(), text: '' }),
+  info: vi.fn(),
+  warn: vi.fn(),
+  fail: vi.fn(),
+  succeed: vi.fn(),
+};
+
 vi.mock('ora', () => ({
-  default: () => ({
-    start: () => ({ succeed: vi.fn(), fail: vi.fn(), text: '' }),
-    info: vi.fn(),
-    warn: vi.fn(),
-    fail: vi.fn(),
-    succeed: vi.fn(),
-  }),
+  default: () => mockSpinner,
 }));
 
 const mockExistsSync = vi.mocked(existsSync);
@@ -345,7 +349,7 @@ describe('UIService', () => {
   });
 
   describe('displayEnvInfo', () => {
-    it('should display all environment information', () => {
+    it('should display environment information with all parameters', () => {
       UIService.displayEnvInfo(
         'compact 0.1.0',
         'Compactc 0.24.0',
@@ -353,8 +357,19 @@ describe('UIService', () => {
         '0.24.0',
       );
 
-      // Test passes if no errors are thrown
-      expect(true).toBe(true);
+      expect(mockSpinner.info).toHaveBeenCalledWith('[COMPILE] TARGET_DIR: security');
+      expect(mockSpinner.info).toHaveBeenCalledWith('[COMPILE] Compact developer tools: compact 0.1.0');
+      expect(mockSpinner.info).toHaveBeenCalledWith('[COMPILE] Compact toolchain: Compactc 0.24.0');
+      expect(mockSpinner.info).toHaveBeenCalledWith('[COMPILE] Using toolchain version: 0.24.0');
+    });
+
+    it('should display environment information without optional parameters', () => {
+      UIService.displayEnvInfo('compact 0.1.0', 'Compactc 0.24.0');
+
+      expect(mockSpinner.info).toHaveBeenCalledWith('[COMPILE] Compact developer tools: compact 0.1.0');
+      expect(mockSpinner.info).toHaveBeenCalledWith('[COMPILE] Compact toolchain: Compactc 0.24.0');
+      expect(mockSpinner.info).not.toHaveBeenCalledWith(expect.stringContaining('TARGET_DIR'));
+      expect(mockSpinner.info).not.toHaveBeenCalledWith(expect.stringContaining('Using toolchain version'));
     });
   });
 
@@ -362,24 +377,35 @@ describe('UIService', () => {
     it('should show file count without target directory', () => {
       UIService.showCompilationStart(5);
 
-      expect(true).toBe(true);
+      expect(mockSpinner.info).toHaveBeenCalledWith(
+        '[COMPILE] Found 5 .compact file(s) to compile'
+      );
     });
 
     it('should show file count with target directory', () => {
       UIService.showCompilationStart(3, 'security');
 
-      expect(true).toBe(true);
+      expect(mockSpinner.info).toHaveBeenCalledWith(
+        '[COMPILE] Found 3 .compact file(s) to compile in security/'
+      );
     });
   });
 
   describe('showNoFiles', () => {
-    it('should show no files message', () => {
-       expect(() => UIService.displayEnvInfo(
-        'compact 0.1.0',
-        'Compactc 0.24.0',
-        'security',
-        '0.24.0',
-      )).not.toThrow();
+    it('should show no files message with target directory', () => {
+      UIService.showNoFiles('security');
+
+      expect(mockSpinner.warn).toHaveBeenCalledWith(
+        '[COMPILE] No .compact files found in security/.'
+      );
+    });
+
+    it('should show no files message without target directory', () => {
+      UIService.showNoFiles();
+
+      expect(mockSpinner.warn).toHaveBeenCalledWith(
+        '[COMPILE] No .compact files found in .'
+      );
     });
   });
 });
