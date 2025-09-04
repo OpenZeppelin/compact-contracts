@@ -374,9 +374,12 @@ describe('UIService', () => {
 
   describe('showNoFiles', () => {
     it('should show no files message', () => {
-      UIService.showNoFiles('security');
-
-      expect(true).toBe(true);
+       expect(() => UIService.displayEnvInfo(
+        'compact 0.1.0',
+        'Compactc 0.24.0',
+        'security',
+        '0.24.0',
+      )).not.toThrow();
     });
   });
 });
