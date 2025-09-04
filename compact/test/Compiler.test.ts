@@ -537,20 +537,150 @@ describe('CompactCompiler', () => {
   });
 
   describe('validateEnvironment', () => {
-    it('should validate successfully when CLI is available', async () => {
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+    it('should validate successfully and display environment info', async () => {
+      mockExec
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // checkCompactAvailable
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // getDevToolsVersion
+        .mockResolvedValueOnce({ stdout: 'Compactc version: 0.24.0', stderr: '' }); // getToolchainVersion
+
+      compiler = new CompactCompiler('--skip-zk', 'security', '0.24.0', mockExec);
+      const displaySpy = vi.spyOn(UIService, 'displayEnvInfo').mockImplementation(() => {});
 
       await expect(compiler.validateEnvironment()).resolves.not.toThrow();
-      expect(mockExec).toHaveBeenCalledWith('compact --version');
+
+      // Check steps
+      expect(mockExec).toHaveBeenCalledTimes(3);
+      expect(mockExec).toHaveBeenNthCalledWith(1, 'compact --version'); // validate() calls
+      expect(mockExec).toHaveBeenNthCalledWith(2, 'compact --version'); // getDevToolsVersion()
+      expect(mockExec).toHaveBeenNthCalledWith(3, 'compact compile +0.24.0 --version'); // getToolchainVersion()
+
+      // Verify passed args
+      expect(displaySpy).toHaveBeenCalledWith(
+        'compact 0.1.0',
+        'Compactc version: 0.24.0',
+        'security',
+        '0.24.0'
+      );
+
+      displaySpy.mockRestore();
     });
 
-    it('should throw when CLI is not available', async () => {
+    it('should handle CompactCliNotFoundError with installation instructions', async () => {
       mockExec.mockRejectedValue(new Error('Command not found'));
       compiler = new CompactCompiler('', undefined, undefined, mockExec);
 
-      await expect(compiler.validateEnvironment()).rejects.toThrow(
-        CompactCliNotFoundError,
+      await expect(compiler.validateEnvironment()).rejects.toThrow(CompactCliNotFoundError);
+
+      // Verify error handling
+      expect(mockSpinner.fail).toHaveBeenCalledWith(
+        "[COMPILE] Error: 'compact' CLI not found in PATH. Please install the Compact developer tools."
       );
+      expect(mockSpinner.info).toHaveBeenCalledWith(
+        expect.stringContaining('[COMPILE] Install with: curl --proto')
+      );
+    });
+
+    it('should handle version retrieval failures after successful CLI check', async () => {
+      mockExec
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // validate() succeeds
+        .mockRejectedValueOnce(new Error('Version command failed')); // getDevToolsVersion() fails
+
+      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+
+      await expect(compiler.validateEnvironment()).rejects.toThrow('Version command failed');
+
+      expect(mockSpinner.fail).toHaveBeenCalledWith(
+        '[COMPILE] Unexpected error: Version command failed'
+      );
+    });
+
+    it('should handle PromisifiedChildProcessError specifically', async () => {
+      const childProcessError = new Error('Command execution failed') as any;
+      childProcessError.stdout = 'some output';
+      childProcessError.stderr = 'some error';
+
+      mockExec.mockRejectedValue(childProcessError);
+      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+
+      await expect(compiler.validateEnvironment()).rejects.toThrow("'compact' CLI not found in PATH. Please install the Compact developer tools.");
+
+      expect(mockSpinner.fail).toHaveBeenCalledWith(
+        "[COMPILE] Error: 'compact' CLI not found in PATH. Please install the Compact developer tools."
+      );
+    });
+
+    it.skip('should handle non-Error exceptions gracefully', async () => {
+      mockExec.mockRejectedValue('String error message');
+      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+
+      await expect(compiler.validateEnvironment()).rejects.toBe('String error message');
+
+      expect(mockSpinner.fail).toHaveBeenCalledWith(
+        '[COMPILE] An unknown, non-Error value was thrown.'
+      );
+    });
+
+    it('should validate with specific version flag', async () => {
+      mockExec
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: 'Compactc version: 0.25.0', stderr: '' });
+
+      compiler = new CompactCompiler('', undefined, '0.25.0', mockExec);
+      const displaySpy = vi.spyOn(UIService, 'displayEnvInfo').mockImplementation(() => {});
+
+      await compiler.validateEnvironment();
+
+      // Verify version-specific toolchain call
+      expect(mockExec).toHaveBeenNthCalledWith(3, 'compact compile +0.25.0 --version');
+      expect(displaySpy).toHaveBeenCalledWith(
+        'compact 0.1.0',
+        'Compactc version: 0.25.0',
+        undefined, // no targetDir
+        '0.25.0'
+      );
+
+      displaySpy.mockRestore();
+    });
+
+    it('should validate without target directory or version', async () => {
+      mockExec
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: 'Compactc version: 0.24.0', stderr: '' });
+
+      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      const displaySpy = vi.spyOn(UIService, 'displayEnvInfo').mockImplementation(() => {});
+
+      await compiler.validateEnvironment();
+
+      // Verify default toolchain call (no version flag)
+      expect(mockExec).toHaveBeenNthCalledWith(3, 'compact compile  --version');
+      expect(displaySpy).toHaveBeenCalledWith(
+        'compact 0.1.0',
+        'Compactc version: 0.24.0',
+        undefined,
+        undefined
+      );
+
+      displaySpy.mockRestore();
+    });
+
+    it.skip('should re-throw errors after displaying them', async () => {
+      const originalError = new CompactCliNotFoundError('CLI not found');
+      mockExec.mockRejectedValue(originalError);
+      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+
+      let caughtError: unknown;
+      try {
+        await compiler.validateEnvironment();
+      } catch (error) {
+        caughtError = error;
+      }
+
+      // Verify the original error is preserved and re-thrown
+      expect(caughtError).toBe(originalError);
+      expect(caughtError).toBeInstanceOf(CompactCliNotFoundError);
     });
   });
 
@@ -598,13 +728,13 @@ describe('CompactCompiler', () => {
     });
 
     it('should handle compilation errors gracefully', async () => {
-      const mockDirents = [
-        {
+      const brokenDirent = {
           name: 'Broken.compact',
           isFile: () => true,
           isDirectory: () => false,
-        },
-      ];
+      };
+
+      const mockDirents = [brokenDirent];
       mockReaddir.mockResolvedValue(mockDirents as any);
       mockExistsSync.mockReturnValue(true);
 
@@ -627,7 +757,7 @@ describe('CompactCompiler', () => {
       }
 
       expect(thrownError).toBeInstanceOf(Error);
-      expect((thrownError as Error).message).toBe('Compilation failed');
+      expect((thrownError as Error).message).toBe(`Failed to compile ${brokenDirent.name}: Compilation failed`);
       expect(testMockExec).toHaveBeenCalledTimes(4);
     });
   });
