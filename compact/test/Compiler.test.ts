@@ -515,6 +515,14 @@ describe('CompactCompiler', () => {
       expect(compiler.testFlags).toBe('--skip-zk --verbose');
     });
 
+    it('should deduplicate flags when both env var and CLI flag are present', () => {
+      compiler = CompactCompiler.fromArgs(['--skip-zk', '--verbose'], {
+        SKIP_ZK: 'true',
+      });
+
+      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+    });
+
     it('should throw error for --dir without argument', () => {
       expect(() => CompactCompiler.fromArgs(['--dir'])).toThrow(
         '--dir flag requires a directory name',
