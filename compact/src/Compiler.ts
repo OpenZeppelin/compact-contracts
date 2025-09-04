@@ -131,11 +131,13 @@ export class EnvironmentValidator {
    * }
    * ```
    */
-  async validate(version?: string): Promise<{ devToolsVersion: string; toolchainVersion: string }> {
+  async validate(
+    version?: string,
+  ): Promise<{ devToolsVersion: string; toolchainVersion: string }> {
     const isAvailable = await this.checkCompactAvailable();
     if (!isAvailable) {
       throw new CompactCliNotFoundError(
-        "'compact' CLI not found in PATH. Please install the Compact developer tools."
+        "'compact' CLI not found in PATH. Please install the Compact developer tools.",
       );
     }
 
@@ -404,7 +406,7 @@ export const UIService = {
  *
  * Features:
  * - Dependency injection for testability
- * - Comprehensive error handling
+ * - Structured error propagation with custom error types
  * - Progress reporting and user feedback
  * - Support for compiler flags and toolchain versions
  * - Environment variable integration
@@ -555,7 +557,6 @@ export class CompactCompiler {
    * 1. Validates CLI availability and toolchain compatibility
    * 2. Retrieves developer tools and compiler versions
    * 3. Displays environment configuration information
-   * 4. Handles and displays any validation errors with user-friendly messages
    *
    * @throws {CompactCliNotFoundError} If Compact CLI is not available in PATH
    * @throws {Error} If version retrieval or other validation steps fail
@@ -572,13 +573,14 @@ export class CompactCompiler {
    * ```
    */
   async validateEnvironment(): Promise<void> {
-    try {
-      const { devToolsVersion, toolchainVersion } = await this.environmentValidator.validate(this.version);
-      UIService.displayEnvInfo(devToolsVersion, toolchainVersion, this.targetDir, this.version);
-    } catch (error) {
-      this.handleValidationError(error);
-      throw error;
-    }
+    const { devToolsVersion, toolchainVersion } =
+      await this.environmentValidator.validate(this.version);
+    UIService.displayEnvInfo(
+      devToolsVersion,
+      toolchainVersion,
+      this.targetDir,
+      this.version,
+    );
   }
 
   /**
@@ -616,12 +618,6 @@ export class CompactCompiler {
 
     // Validate target directory exists
     if (this.targetDir && !existsSync(searchDir)) {
-      const spinner = ora();
-      spinner.fail(
-        chalk.red(
-          `[COMPILE] Error: Target directory ${searchDir} does not exist.`,
-        ),
-      );
       throw new DirectoryNotFoundError(
         `Target directory ${searchDir} does not exist`,
         searchDir,
@@ -685,44 +681,6 @@ export class CompactCompiler {
       }
 
       throw error;
-    }
-  }
-
-  /**
-   * Handles validation errors with appropriate user feedback and styling.
-   * Provides specific error messages and installation guidance based on error type.
-   *
-   * Error handling hierarchy:
-   *
-   * - CompactCliNotFoundError: Shows installation instructions
-   * - PromisifiedChildProcessError: Shows command execution failure details
-   * - Generic Error: Shows error message with troubleshooting context
-   * - Unknown types: Shows safe fallback message
-   *
-   * @param error - The error that occurred during validation
-   * @private
-   * @example
-   * ```typescript
-   * try {
-   *   await someValidation();
-   * } catch (error) {
-   *   this.handleValidationError(error); // Shows appropriate user message
-   *   throw error; // Re-throw for caller handling
-   * }
-   * ```
-   */
-  private handleValidationError(error: unknown): void {
-    const spinner = ora();
-
-    if (error instanceof CompactCliNotFoundError) {
-      spinner.fail(chalk.red(`[COMPILE] Error: ${error.message}`));
-      spinner.info(chalk.blue(`[COMPILE] Install with: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh`));
-    } else if (isPromisifiedChildProcessError(error)) {
-      spinner.fail(chalk.red(`[COMPILE] Environment validation failed: ${error.message}`));
-    } else if (error instanceof Error) {
-      spinner.fail(chalk.red(`[COMPILE] Unexpected error: ${error.message}`));
-    } else {
-      spinner.fail(chalk.red('An unknown, non-Error value was thrown.'));
     }
   }
 
