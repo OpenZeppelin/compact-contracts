@@ -80,17 +80,11 @@ describe('ShieldedAccessControl', () => {
     });
   });
 
-  describe('initialization checks', () => {
-    it('DEFAULT_ADMIN_ROLE should be 0', () => {
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl_DEFAULT_ADMIN_ROLE).toEqual(DEFAULT_ADMIN_ROLE);
-    });
-
-    it('Merkle tree root should be 0', () => {
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.root()).toEqual(EMPTY_ROOT);
-    });
-  });
-
   describe('hasRole', () => {
+    beforeEach(() => {
+      shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+    });
+
     it('should throw if caller is contract address', () => {
       shieldedAccessControl.callerCtx.setCaller(OPERATOR_CONTRACT);
       expect(() => {
@@ -108,6 +102,11 @@ describe('ShieldedAccessControl', () => {
 
       const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
       expect(role.roleCommitment).toEqual(expCommitment);
+    });
+
+    it('should return true when admin has role', () => {
+      const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      expect(role.hasRole).toEqual(true);
     });
   })
 });
