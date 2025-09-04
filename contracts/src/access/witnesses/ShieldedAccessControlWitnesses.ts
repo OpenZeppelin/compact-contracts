@@ -6,6 +6,15 @@ import { eitherToBytes } from '../test/utils/address';
 const MERKLE_TREE_DEPTH = 2 ** 10;
 const DOMAIN = new TextEncoder().encode("ShieldedAccessControl:shield:");
 
+function fmtHexString(bytes: String | Uint8Array): string {
+  if (bytes instanceof String) {
+    return `${bytes.slice(0, 4)}...${bytes.slice(-4)}`
+  } else {
+    const buffStr = Buffer.from(bytes).toString('hex');
+    return `${buffStr.slice(0, 4)}...${buffStr.slice(-4)}`;
+  }
+}
+
 /**
  * @description Interface defining the witness methods for ShieldedAccessControl operations.
  * @template P - The private state type.
@@ -103,7 +112,7 @@ export const ShieldedAccessControlPrivateState = {
         if (e instanceof Error) {
           const [msg, index] = e.message.split(":");
           if (msg === "invalid index into sparse merkle tree") {
-            // console.log(`${roleIdString} not found at index ${index}`);
+            // console.log(`role ${fmtHexString(roleIdString)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
           } else {
             throw e;
           }
