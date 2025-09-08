@@ -2,6 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   emptyZswapLocalState,
+  WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -93,6 +94,14 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
 
   getPublicState(): Ledger {
     return ledger(this.circuitContext.transactionContext.state);
+  }
+
+  getWitnessContext(): WitnessContext<Ledger, ShieldedAccessControlPrivateState> {
+    return {
+      ledger: this.getPublicState(),
+      privateState: this.getPrivateState(),
+      contractAddress: this.contractAddress
+    }
   }
 
   /**
