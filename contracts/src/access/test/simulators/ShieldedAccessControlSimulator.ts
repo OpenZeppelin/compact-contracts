@@ -24,7 +24,7 @@ import type {
   SimulatorOptions,
 } from '../types/test.js';
 import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js';
-import { SimulatorStateManager } from '../utils/SimualatorStateManager.js';
+import { SimulatorStateManager } from '../utils/SimulatorStateManager.js';
 
 type ShieldedAccessControlSimOptions = SimulatorOptions<
   ShieldedAccessControlPrivateState,
@@ -64,7 +64,7 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
 
     // Setup initial state
     const {
-      privateState = ShieldedAccessControlPrivateState.generate(initUser),
+      privateState = options.privateState ? options.privateState : ShieldedAccessControlPrivateState.generate(initUser),
       witnesses = ShieldedAccessControlWitnesses(),
       coinPK = '0'.repeat(64),
       address = sampleContractAddress(),
@@ -185,6 +185,7 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
   }
 
   public set witnesses(newWitnesses: ReturnType<typeof ShieldedAccessControlWitnesses>) {
+    this.resetCircuitProxies();
     this._witnesses = newWitnesses;
     this.contract = new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(this._witnesses);
   }
