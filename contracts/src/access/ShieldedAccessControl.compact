@@ -119,7 +119,7 @@ module ShieldedAccessControl {
   witness wit_getRoleIndex(roleId: Bytes<32>): Uint<64>;
 
   export struct Role {
-    hasRole: Boolean;
+    isApproved: Boolean;
     roleCommitment: Bytes<32>;
   }
 
@@ -156,12 +156,12 @@ module ShieldedAccessControl {
     const nonce = wit_secretNonce(roleId);
     const index = wit_getRoleIndex(roleId);
     const roleCommitment = persistentHash<Vector<5, Bytes<32>>>([roleId, account.left.bytes, nonce, index as Field as Bytes<32>, pad(32, "ShieldedAccessControl:shield:")]);
-    assert(!_roleCommitmentNullifiers.member(disclose(roleCommitment)), "ShieldedAccessControl: role commitment access revoked");
+    assert(!_roleCommitmentNullifiers.member(disclose(roleCommitment)), "ShieldedAccessControl: role access has been revoked");
 
     const authPath = wit_getRoleCommitmentPath(roleCommitment);
-    const hasRole = _operatorRoles
+    const isApproved = _operatorRoles
       .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
-    return Role {hasRole, disclose(roleCommitment)};
+    return Role {isApproved, disclose(roleCommitment)};
   }
 
   /**
@@ -226,7 +226,7 @@ module ShieldedAccessControl {
    */
   export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     const role = hasRole(roleId, account);
-    assert(role.hasRole, "ShieldedAccessControl: unauthorized account");
+    assert(role.isApproved, "ShieldedAccessControl: unauthorized account");
   }
 
   /**
@@ -431,7 +431,7 @@ module ShieldedAccessControl {
    */
   export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     const role = hasRole(roleId, account);
-    if (role.hasRole) {
+    if (role.isApproved) {
       return false;
     }
 
@@ -471,7 +471,7 @@ module ShieldedAccessControl {
    */
   export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     const role = hasRole(roleId, account);
-    if (!role.hasRole) {
+    if (!role.isApproved) {
       return false;
     }
 
