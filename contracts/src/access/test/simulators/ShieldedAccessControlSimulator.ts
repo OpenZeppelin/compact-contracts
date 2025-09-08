@@ -290,15 +290,6 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _unsafeGrantRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    return this.circuits.impure._unsafeGrantRole(roleId, account);
-  }
-
-  /**
-   * @description Transfers ownership to owner id `newOwnerId` without
-   * enforcing permission checks on the caller.
-   * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
-   */
   public _revokeRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return this.circuits.impure._revokeRole(roleId, account);
   }

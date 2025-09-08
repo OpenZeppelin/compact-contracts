@@ -395,41 +395,6 @@ module ShieldedAccessControl {
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
   export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    return _unsafeGrantRole(roleId, account);
-  }
-
-  /**
-   * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
-   * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
-   *
-   * @circuitInfo k=17, rows=109162
-   *
-   * @notice External smart contracts cannot call the token contract at this time, so granting a role to an ContractAddress may
-   * render a circuit permanently inaccessible.
-   *
-   * Requirements:
-   *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
-   * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
-   * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
-   * exist at `index` in the `_operatorRoles` Merkle tree.
-   *
-   * Disclosures:
-   *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256(roleId | account | nonce).
-   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
-   * Merkle tree.
-   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
-   *
-   * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
-   * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
-   * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
-   */
-  export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     const role = hasRole(roleId, account);
     if (role.isApproved) {
       return false;

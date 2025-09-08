@@ -54,10 +54,6 @@ export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey,
   return ShieldedAccessControl__grantRole(roleId, account);
 }
 
-export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-  return ShieldedAccessControl__unsafeGrantRole(roleId, account);
-}
-
 export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
   return ShieldedAccessControl__revokeRole(roleId, account);
 }
