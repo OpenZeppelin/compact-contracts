@@ -15,14 +15,13 @@
 
 Make sure you have [nvm](https://github.com/nvm-sh/nvm), [yarn](https://yarnpkg.com/getting-started/install), and [turbo](https://turborepo.com/docs/getting-started/installation) installed on your machine.
 
-Follow Midnight's [compact installation guide](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler) and confirm that `compactc` is in the `PATH` env variable.
+Follow Midnight's [Compact Developer Tools installation guide](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler) and confirm that `compact` is in the `PATH` env variable.
 
 ```bash
-$ compactc
+$ compact compile --version
 
 Compactc version: 0.24.0
-Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
-       --help displays detailed usage information
+0.24.0
 ```
 
 ## Set up the project
@@ -32,7 +31,7 @@ Usage: compactc.bin <flag> ... <source-pathname> <target-directory-pathname>
 > - [node](https://nodejs.org/)
 > - [yarn](https://yarnpkg.com/getting-started/install)
 > - [turbo](https://turborepo.com/docs/getting-started/installation)
-> - [compact](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler)
+> - [compact](https://docs.midnight.network/blog/compact-developer-tools)
 
 Clone the repository:
 
