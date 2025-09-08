@@ -3,11 +3,10 @@ import {
   CompactTypeVector,
   convert_bigint_to_Uint8Array,
   persistentHash,
-  transientHash,
-  upgradeFromTransient,
+  WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ZswapCoinPublicKey, Either, ContractAddress } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
+import type { ZswapCoinPublicKey, Either, ContractAddress, Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import { ShieldedAccessControlPrivateState } from '../witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import * as utils from './utils/address.js';
@@ -20,7 +19,7 @@ const [OPERATOR_CONTRACT, Z_OPERATOR_CONTRACT] = utils.generateEitherPubKeyPair(
 
 // Constants
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
-const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
+const BAD_NONCE = Buffer.alloc(32, 'BAD_NONCE');
 const DOMAIN = 'ShieldedAccessControl:shield:';
 const INIT_COUNTER = 0n;
 const EMPTY_ROOT = { field: 0n };
@@ -41,7 +40,7 @@ const operatorTypes = [
 // Role to string
 const DEFAULT_ADMIN_ROLE_TO_STRING = Buffer.from(DEFAULT_ADMIN_ROLE).toString('hex');
 
-let secretNonce: Uint8Array;
+const secretNonce = Buffer.alloc(32, "secretNonce");
 let shieldedAccessControl: ShieldedAccessControlSimulator;
 
 // Helpers
@@ -67,16 +66,47 @@ const buildCommitment = (
   return commitment;
 };
 
+function RETURN_BAD_INDEX(context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleId: Uint8Array): [ShieldedAccessControlPrivateState, bigint] {
+  console.log("WIT RETURN BAD INDEX");
+  return [context.privateState, 1023n]
+}
+
 describe('ShieldedAccessControl', () => {
   beforeEach(() => {
     // Create private state object and generate nonce
-    const PS = ShieldedAccessControlPrivateState.generate(Z_ADMIN);
-    // Bind nonce for convenience
-    secretNonce = PS.roles[DEFAULT_ADMIN_ROLE_TO_STRING];
-    // Prepare owner ID with gen nonce
-    // Deploy contract with derived owner commitment and PS
+    const PS = ShieldedAccessControlPrivateState.withRoleAndNonce(Z_ADMIN, Buffer.from(DEFAULT_ADMIN_ROLE), secretNonce);
+    // Init contract for user with PS
     shieldedAccessControl = new ShieldedAccessControlSimulator(Z_ADMIN, {
       privateState: PS,
+    });
+  });
+
+  describe.only('should fail when incorrect witness values provided', () => {
+    beforeEach(() => {
+      shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+    });
+
+    type FailingCircuits = [method: keyof ShieldedAccessControlSimulator, args: unknown[]];
+    const protectedCircuits: FailingCircuits[] = [
+      ['assertOnlyRole', [DEFAULT_ADMIN_ROLE]],
+      ['_checkRole', [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
+      ['grantRole', [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
+      ['revokeRole', [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
+    ];
+
+    it.each(protectedCircuits)('%s should fail with bad nonce', (circuitName, args) => {
+      shieldedAccessControl.privateState.injectSecretNonce(Buffer.from(DEFAULT_ADMIN_ROLE), BAD_NONCE);
+
+      expect(() => {
+        (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
+      }).toThrow('ShieldedAccessControl: unauthorized account');
+    });
+
+    it.each(protectedCircuits)('%s should fail with bad index', (circuitName, args) => {
+      shieldedAccessControl.overrideWitness("wit_getRoleIndex", RETURN_BAD_INDEX);
+      expect(() => {
+        (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
+      }).toThrow('ShieldedAccessControl: unauthorized account');
     });
   });
 
@@ -108,5 +138,7 @@ describe('ShieldedAccessControl', () => {
       const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
       expect(role.hasRole).toEqual(true);
     });
+
+
   })
 });
