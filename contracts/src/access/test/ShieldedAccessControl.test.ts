@@ -94,6 +94,7 @@ describe('ShieldedAccessControl', () => {
   describe('should fail with bad witness values', () => {
     beforeEach(() => {
       shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      shieldedAccessControl.callerCtx.setCaller(ADMIN);
     });
 
     type FailingCircuits = [method: keyof ShieldedAccessControlSimulator, args: unknown[]];
@@ -107,20 +108,44 @@ describe('ShieldedAccessControl', () => {
     it.each(protectedCircuits)('%s should fail with bad nonce', (circuitName, args) => {
       shieldedAccessControl.privateState.injectSecretNonce(Buffer.from(DEFAULT_ADMIN_ROLE), BAD_NONCE);
 
+      // Check nonce does not match
+      expect(shieldedAccessControl.privateState.getCurrentSecretNonce(Buffer.from(DEFAULT_ADMIN_ROLE))).not.toEqual(
+        secretNonce,
+      );
       expect(() => {
         (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
       }).toThrow('ShieldedAccessControl: unauthorized account');
     });
 
     it.each(protectedCircuits)('%s should fail with bad index', (circuitName, args) => {
+      const [, trueIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
       shieldedAccessControl.overrideWitness("wit_getRoleIndex", RETURN_BAD_INDEX);
+      const [, badIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
+
+      // Check index does not match
+      expect(trueIndex).not.toBe(
+        badIndex
+      );
       expect(() => {
         (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
       }).toThrow('ShieldedAccessControl: unauthorized account');
     });
 
     it.each(protectedCircuits)('%s should fail with bad role path', (circuitName, args) => {
+      const expCommitment = buildCommitment(
+        DEFAULT_ADMIN_ROLE,
+        Z_ADMIN,
+        secretNonce,
+        INIT_COUNTER,
+      );
+      const [, truePath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), expCommitment);
       shieldedAccessControl.overrideWitness("wit_getRoleCommitmentPath", RETURN_BAD_PATH);
+      const [, badPath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), expCommitment);
+
+      // Check path does not match
+      expect(truePath).not.toEqual(
+        badPath
+      );
       expect(() => {
         (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
       }).toThrow('ShieldedAccessControl: unauthorized account');
@@ -173,5 +198,25 @@ describe('ShieldedAccessControl', () => {
         shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
       }).toThrow("ShieldedAccessControl: role access has been revoked");
     });
-  })
+  });
+
+  describe('assertOnlyRole', () => {
+    beforeEach(() => {
+      shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      shieldedAccessControl.callerCtx.setCaller(ADMIN);
+    });
+
+    it('should allow authorized caller with correct nonce to call', () => {
+      expect(() =>
+        shieldedAccessControl.assertOnlyRole(DEFAULT_ADMIN_ROLE),
+      ).not.toThrow();
+    });
+
+    it('should throw if caller is unauthorized', () => {
+      shieldedAccessControl.callerCtx.setCaller(UNAUTHORIZED);
+      expect(() =>
+        shieldedAccessControl.assertOnlyRole(DEFAULT_ADMIN_ROLE),
+      ).toThrow('ShieldedAccessControl: unauthorized account');
+    });
+  });
 });
