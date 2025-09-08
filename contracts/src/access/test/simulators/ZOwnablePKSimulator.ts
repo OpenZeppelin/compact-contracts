@@ -23,7 +23,7 @@ import type {
   SimulatorOptions,
 } from '../types/test.js';
 import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js';
-import { SimulatorStateManager } from '../utils/SimualatorStateManager.js';
+import { SimulatorStateManager } from '../utils/SimulatorStateManager.js';
 
 type OwnableSimOptions = SimulatorOptions<
   ZOwnablePKPrivateState,
