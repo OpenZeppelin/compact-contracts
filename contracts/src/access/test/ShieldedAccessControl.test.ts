@@ -6,19 +6,19 @@ import {
   WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ZswapCoinPublicKey, Either, ContractAddress, Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
+import type { ZswapCoinPublicKey, Either, ContractAddress, Ledger, MerkleTreePath } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import { ShieldedAccessControlPrivateState } from '../witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import * as utils from './utils/address.js';
 
 // PKs
 const [ADMIN, Z_ADMIN] = utils.generateEitherPubKeyPair('ADMIN');
+const [UNAUTHORIZED, Z_UNAUTHORIZED] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
 const [CUSTOM_ADMIN, Z_CUSTOM_ADMIN] = utils.generateEitherPubKeyPair('CUSTOM_ADMIN');
 const [OPERATOR_1, Z_OPERATOR_1] = utils.generateEitherPubKeyPair('OPERATOR_1');
 const [OPERATOR_CONTRACT, Z_OPERATOR_CONTRACT] = utils.generateEitherPubKeyPair('OPERATOR_CONTRACT', false);
 
 // Constants
-const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 const BAD_NONCE = Buffer.alloc(32, 'BAD_NONCE');
 const DOMAIN = 'ShieldedAccessControl:shield:';
 const INIT_COUNTER = 0n;
@@ -67,8 +67,18 @@ const buildCommitment = (
 };
 
 function RETURN_BAD_INDEX(context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleId: Uint8Array): [ShieldedAccessControlPrivateState, bigint] {
-  console.log("WIT RETURN BAD INDEX");
   return [context.privateState, 1023n]
+}
+
+function RETURN_BAD_PATH(context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleCommitment: Uint8Array): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] {
+  const defaultPath: MerkleTreePath<Uint8Array> = {
+    leaf: new Uint8Array(32),
+    path: Array.from({ length: 10 }, () => ({
+      sibling: { field: 0n },
+      goes_left: false,
+    }))
+  };
+  return [context.privateState, defaultPath];
 }
 
 describe('ShieldedAccessControl', () => {
@@ -81,7 +91,7 @@ describe('ShieldedAccessControl', () => {
     });
   });
 
-  describe.only('should fail when incorrect witness values provided', () => {
+  describe('should fail with bad witness values', () => {
     beforeEach(() => {
       shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
     });
@@ -104,6 +114,13 @@ describe('ShieldedAccessControl', () => {
 
     it.each(protectedCircuits)('%s should fail with bad index', (circuitName, args) => {
       shieldedAccessControl.overrideWitness("wit_getRoleIndex", RETURN_BAD_INDEX);
+      expect(() => {
+        (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
+      }).toThrow('ShieldedAccessControl: unauthorized account');
+    });
+
+    it.each(protectedCircuits)('%s should fail with bad role path', (circuitName, args) => {
+      shieldedAccessControl.overrideWitness("wit_getRoleCommitmentPath", RETURN_BAD_PATH);
       expect(() => {
         (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
       }).toThrow('ShieldedAccessControl: unauthorized account');
@@ -136,9 +153,25 @@ describe('ShieldedAccessControl', () => {
 
     it('should return true when admin has role', () => {
       const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
-      expect(role.hasRole).toEqual(true);
+      expect(role.isApproved).toEqual(true);
     });
 
+    it('should return false when unauthorized', () => {
+      const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_UNAUTHORIZED);
+      expect(role.isApproved).toEqual(false);
+    })
 
+    it('should return false when role does not exist', () => {
+      shieldedAccessControl.privateState.injectSecretNonce(Buffer.from(UNINITIALIZED_ROLE), Buffer.alloc(32));
+      const role = shieldedAccessControl.hasRole(UNINITIALIZED_ROLE, Z_UNAUTHORIZED);
+      expect(role.isApproved).toBe(false);
+    });
+
+    it('should fail when role access has been revoked', () => {
+      shieldedAccessControl._revokeRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      expect(() => {
+        shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      }).toThrow("ShieldedAccessControl: role access has been revoked");
+    });
   })
 });
