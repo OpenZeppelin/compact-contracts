@@ -6,7 +6,7 @@ import { eitherToBytes } from '../test/utils/address';
 const MERKLE_TREE_DEPTH = 2 ** 10;
 const DOMAIN = new TextEncoder().encode("ShieldedAccessControl:shield:");
 
-function fmtHexString(bytes: String | Uint8Array): string {
+export function fmtHexString(bytes: String | Uint8Array): string {
   if (bytes instanceof String) {
     return `${bytes.slice(0, 4)}...${bytes.slice(-4)}`
   } else {
@@ -39,7 +39,7 @@ type SecretNonce = Uint8Array;
 export type ShieldedAccessControlPrivateState = {
   /** @description A 32-byte secret nonce used as a privacy additive. */
   roles: Record<RoleId, SecretNonce>,
-  account: Uint8Array
+  account: Either<ZswapCoinPublicKey, ContractAddress>
 };
 
 /**
@@ -52,8 +52,7 @@ export const ShieldedAccessControlPrivateState = {
    */
   generate: (account: Either<ZswapCoinPublicKey, ContractAddress>): ShieldedAccessControlPrivateState => {
     const defaultRoleId: string = Buffer.alloc(32).toString('hex');
-    const bAccount = eitherToBytes(account);
-    const privateState: ShieldedAccessControlPrivateState = { roles: {}, account: bAccount };
+    const privateState: ShieldedAccessControlPrivateState = { roles: {}, account };
     privateState.roles[defaultRoleId] = getRandomValues(Buffer.alloc(32));
     return privateState;
   },
@@ -72,7 +71,7 @@ export const ShieldedAccessControlPrivateState = {
    * const privateState = ShieldedAccessControlPrivateState.withNonce(deterministicNonce);
    * ```
    */
-  withRoleAndNonce: (account: Uint8Array, roleId: Buffer, nonce: Buffer): ShieldedAccessControlPrivateState => {
+  withRoleAndNonce: (account: Either<ZswapCoinPublicKey, ContractAddress>, roleId: Buffer, nonce: Buffer): ShieldedAccessControlPrivateState => {
     const roleString = roleId.toString('hex');
     const privateState: ShieldedAccessControlPrivateState = { roles: {}, account };
     privateState.roles[roleString] = nonce;
@@ -104,7 +103,9 @@ export const ShieldedAccessControlPrivateState = {
     for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
       const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
-      const commitment = persistentHash(rt_type, [roleId, privateState.account, privateState.roles[roleIdString], bIndex, DOMAIN]);
+      const bAccount = eitherToBytes(privateState.account);
+      const bNonce = privateState.roles[roleIdString];
+      const commitment = persistentHash(rt_type, [roleId, bAccount, bNonce, bIndex, DOMAIN]);
       try {
         ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(BigInt(i), commitment);
         return BigInt(i);
