@@ -310,12 +310,12 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
      * @returns The ZOwnablePK private state after setting the new nonce.
      */
     injectSecretNonce: (
-      roleId: Buffer<ArrayBufferLike>,
+      roleId: Uint8Array,
       newNonce: Buffer<ArrayBufferLike>,
     ): ShieldedAccessControlPrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
       const updatedState = { ...currentState, roles: { ...currentState.roles } }
-      const roleString = roleId.toString('hex');
+      const roleString = Buffer.from(roleId).toString('hex');
       updatedState.roles[roleString] = newNonce;
       this.stateManager.updatePrivateState(updatedState);
       return updatedState;
@@ -325,8 +325,8 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
      * @description Returns the secret nonce given the context.
      * @returns The secret nonce.
      */
-    getCurrentSecretNonce: (roleId: Buffer<ArrayBufferLike>): Uint8Array => {
-      const roleString = roleId.toString('hex');
+    getCurrentSecretNonce: (roleId: Uint8Array): Uint8Array => {
+      const roleString = Buffer.from(roleId).toString('hex');
       return this.stateManager.getContext().currentPrivateState.roles[roleString];
     },
   };
