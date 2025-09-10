@@ -30,7 +30,7 @@
     "@types/node": "^22",
     "fast-check": "^3.15.0",
     "ts-node": "^10.9.2",
-    "turbo": "^2.5.1",
+    "turbo": "^2.5.6",
     "typescript": "^5.2.2",
     "vitest": "^3.1.3"
   }
