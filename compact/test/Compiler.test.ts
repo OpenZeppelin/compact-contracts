@@ -201,7 +201,7 @@ describe('FileDiscovery', () => {
     it('should handle directory read errors gracefully', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       mockReaddir.mockRejectedValueOnce(new Error('Permission denied'));
 
@@ -315,13 +315,25 @@ describe('CompilerService', () => {
         expect((error as CompilationError).file).toBe('MyToken.compact');
       }
     });
+
+    it('should include cause in CompilationError', async () => {
+      const mockError = new Error('Syntax error');
+      mockExec.mockRejectedValue(mockError);
+
+      try {
+        await service.compileFile('MyToken.compact', '--skip-zk');
+      } catch (error) {
+        expect(error).toBeInstanceOf(CompilationError);
+        expect((error as CompilationError).cause).toEqual(mockError);
+      }
+    });
   });
 });
 
 describe('UIService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => { });
   });
 
   describe('printOutput', () => {
@@ -570,7 +582,7 @@ describe('CompactCompiler', () => {
       );
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await expect(compiler.validateEnvironment()).resolves.not.toThrow();
 
@@ -649,7 +661,7 @@ describe('CompactCompiler', () => {
       compiler = new CompactCompiler('', undefined, '0.25.0', mockExec);
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await compiler.validateEnvironment();
 
@@ -680,7 +692,7 @@ describe('CompactCompiler', () => {
       compiler = new CompactCompiler('', undefined, undefined, mockExec);
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await compiler.validateEnvironment();
 
