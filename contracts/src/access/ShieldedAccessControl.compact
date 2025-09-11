@@ -155,16 +155,16 @@ module ShieldedAccessControl {
 
     const nonce = wit_secretNonce(roleId);
     const index = wit_getRoleIndex(roleId);
-    const roleCommitment = persistentHash<Vector<5, Bytes<32>>>([roleId, account.left.bytes, nonce, index as Field as Bytes<32>, pad(32, "ShieldedAccessControl:shield:")]);
+    const computedCommitment = persistentHash<Vector<5, Bytes<32>>>([roleId, account.left.bytes, nonce, index as Field as Bytes<32>, pad(32, "ShieldedAccessControl:shield:")]);
 
-    const authPath = wit_getRoleCommitmentPath(roleCommitment);
+    const authPath = wit_getRoleCommitmentPath(computedCommitment);
     const rootMatches = _operatorRoles
       .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
 
-    if(!_roleCommitmentNullifiers.member(roleCommitment) && rootMatches) {
-      return Role {isApproved: true, disclose(roleCommitment)};
+    if(!_roleCommitmentNullifiers.member(disclose(computedCommitment)) && rootMatches) {
+      return Role {isApproved: true, roleCommitment: disclose(computedCommitment)};
     } else {
-      return Role {isApproved: false, disclose(roleCommitment)}
+      return Role {isApproved: false, roleCommitment: disclose(computedCommitment)};
     }
   }
 
