@@ -2,7 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   emptyZswapLocalState,
-  WitnessContext,
+  type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -11,8 +11,8 @@ import {
   type Ledger,
   ledger,
   Contract as MockShieldedAccessControl,
+  type ShieldedAccessControl_Role as Role,
   type ZswapCoinPublicKey,
-  type ShieldedAccessControl_Role as Role
 } from '../../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import {
   ShieldedAccessControlPrivateState,
@@ -48,12 +48,16 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
   private _witnesses: ReturnType<typeof ShieldedAccessControlWitnesses>;
 
   private _pureCircuitProxy?: ContextlessCircuits<
-    ExtractPureCircuits<MockShieldedAccessControl<ShieldedAccessControlPrivateState>>,
+    ExtractPureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
     ShieldedAccessControlPrivateState
   >;
 
   private _impureCircuitProxy?: ContextlessCircuits<
-    ExtractImpureCircuits<MockShieldedAccessControl<ShieldedAccessControlPrivateState>>,
+    ExtractImpureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
     ShieldedAccessControlPrivateState
   >;
 
@@ -65,13 +69,18 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
 
     // Setup initial state
     const {
-      privateState = options.privateState ? options.privateState : ShieldedAccessControlPrivateState.generate(initUser),
+      privateState = options.privateState
+        ? options.privateState
+        : ShieldedAccessControlPrivateState.generate(initUser),
       witnesses = ShieldedAccessControlWitnesses(),
       coinPK = '0'.repeat(64),
       address = sampleContractAddress(),
     } = options;
 
-    this.contract = new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(witnesses);
+    this.contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        witnesses,
+      );
 
     this.stateManager = new SimulatorStateManager(
       this.contract,
@@ -81,7 +90,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
     );
     this.contractAddress = this.circuitContext.transactionContext.address;
     this._witnesses = witnesses;
-    this.contract = new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(this._witnesses);
+    this.contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        this._witnesses,
+      );
   }
 
   get circuitContext() {
@@ -96,12 +108,15 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
     return ledger(this.circuitContext.transactionContext.state);
   }
 
-  getWitnessContext(): WitnessContext<Ledger, ShieldedAccessControlPrivateState> {
+  getWitnessContext(): WitnessContext<
+    Ledger,
+    ShieldedAccessControlPrivateState
+  > {
     return {
       ledger: this.getPublicState(),
       privateState: this.getPrivateState(),
-      contractAddress: this.contractAddress
-    }
+      contractAddress: this.contractAddress,
+    };
   }
 
   /**
@@ -129,7 +144,9 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * @returns A proxy object exposing pure circuit functions without requiring explicit context.
    */
   protected get pureCircuit(): ContextlessCircuits<
-    ExtractPureCircuits<MockShieldedAccessControl<ShieldedAccessControlPrivateState>>,
+    ExtractPureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
     ShieldedAccessControlPrivateState
   > {
     if (!this._pureCircuitProxy) {
@@ -150,7 +167,9 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * @returns A proxy object exposing impure circuit functions without requiring explicit context management.
    */
   protected get impureCircuit(): ContextlessCircuits<
-    ExtractImpureCircuits<MockShieldedAccessControl<ShieldedAccessControlPrivateState>>,
+    ExtractImpureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
     ShieldedAccessControlPrivateState
   > {
     if (!this._impureCircuitProxy) {
@@ -193,10 +212,15 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
     return this._witnesses;
   }
 
-  public set witnesses(newWitnesses: ReturnType<typeof ShieldedAccessControlWitnesses>) {
+  public set witnesses(newWitnesses: ReturnType<
+    typeof ShieldedAccessControlWitnesses
+  >) {
     this.resetCircuitProxies();
     this._witnesses = newWitnesses;
-    this.contract = new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(this._witnesses);
+    this.contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        this._witnesses,
+      );
   }
 
   public overrideWitness<K extends keyof typeof this._witnesses>(
@@ -214,7 +238,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
    * @returns The current owner's commitment.
    */
-  public hasRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>): Role {
+  public hasRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Role {
     return this.circuits.impure.hasRole(roleId, account);
   }
 
@@ -232,7 +259,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    */
-  public _checkRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public _checkRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
     this.circuits.impure._checkRole(roleId, account);
   }
 
@@ -254,7 +284,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * @param nonce - A private nonce to scope the commitment.
    * @returns The computed owner ID.
    */
-  public grantRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public grantRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
     this.circuits.impure.grantRole(roleId, account);
   }
 
@@ -263,7 +296,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public revokeRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public revokeRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
     this.circuits.impure.revokeRole(roleId, account);
   }
 
@@ -272,7 +308,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public renounceRole(roleId: Uint8Array, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public renounceRole(
+    roleId: Uint8Array,
+    callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
     this.circuits.impure.renounceRole(roleId, callerConfirmation);
   }
 
@@ -290,7 +329,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _grantRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  public _grantRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
     return this.circuits.impure._grantRole(roleId, account);
   }
 
@@ -299,7 +341,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _revokeRole(roleId: Uint8Array, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  public _revokeRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
     return this.circuits.impure._revokeRole(roleId, account);
   }
 
@@ -314,7 +359,10 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
       newNonce: Buffer<ArrayBufferLike>,
     ): ShieldedAccessControlPrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
-      const updatedState = { ...currentState, roles: { ...currentState.roles } }
+      const updatedState = {
+        ...currentState,
+        roles: { ...currentState.roles },
+      };
       const roleString = Buffer.from(roleId).toString('hex');
       updatedState.roles[roleString] = newNonce;
       this.stateManager.updatePrivateState(updatedState);
@@ -327,7 +375,9 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
      */
     getCurrentSecretNonce: (roleId: Uint8Array): Uint8Array => {
       const roleString = Buffer.from(roleId).toString('hex');
-      return this.stateManager.getContext().currentPrivateState.roles[roleString];
+      return this.stateManager.getContext().currentPrivateState.roles[
+        roleString
+      ];
     },
   };
 

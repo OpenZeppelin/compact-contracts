@@ -3,22 +3,34 @@ import {
   CompactTypeVector,
   convert_bigint_to_Uint8Array,
   persistentHash,
-  WitnessContext,
+  type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ZswapCoinPublicKey, Either, ContractAddress, Ledger, MerkleTreePath, ShieldedAccessControl_Role as Role } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
+import type {
+  ContractAddress,
+  Either,
+  Ledger,
+  MerkleTreePath,
+  ShieldedAccessControl_Role as Role,
+  ZswapCoinPublicKey,
+} from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import { ShieldedAccessControlPrivateState } from '../witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import * as utils from './utils/address.js';
 
 // PKs
 const [ADMIN, Z_ADMIN] = utils.generateEitherPubKeyPair('ADMIN');
-const [UNAUTHORIZED, Z_UNAUTHORIZED] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
-const [CUSTOM_ADMIN, Z_CUSTOM_ADMIN] = utils.generateEitherPubKeyPair('CUSTOM_ADMIN');
+const [UNAUTHORIZED, Z_UNAUTHORIZED] =
+  utils.generateEitherPubKeyPair('UNAUTHORIZED');
+const [CUSTOM_ADMIN, Z_CUSTOM_ADMIN] =
+  utils.generateEitherPubKeyPair('CUSTOM_ADMIN');
 const [OPERATOR_1, Z_OPERATOR_1] = utils.generateEitherPubKeyPair('OPERATOR_1');
 const [OPERATOR_2, Z_OPERATOR_2] = utils.generateEitherPubKeyPair('OPERATOR_2');
 const [OPERATOR_3, Z_OPERATOR_3] = utils.generateEitherPubKeyPair('OPERATOR_3');
-const [OPERATOR_CONTRACT, Z_OPERATOR_CONTRACT] = utils.generateEitherPubKeyPair('OPERATOR_CONTRACT', false);
+const [OPERATOR_CONTRACT, Z_OPERATOR_CONTRACT] = utils.generateEitherPubKeyPair(
+  'OPERATOR_CONTRACT',
+  false,
+);
 const Z_OPERATOR_LIST = [Z_OPERATOR_1, Z_OPERATOR_2, Z_OPERATOR_3];
 
 // Constants
@@ -43,13 +55,27 @@ const operatorTypes = [
 ] as const;
 
 // Role to string
-const DEFAULT_ADMIN_ROLE_TO_STRING = Buffer.from(DEFAULT_ADMIN_ROLE).toString('hex');
+const DEFAULT_ADMIN_ROLE_TO_STRING =
+  Buffer.from(DEFAULT_ADMIN_ROLE).toString('hex');
 
-const ADMIN_SECRET_NONCE = Buffer.alloc(32, "ADMIN_SECRET_NONCE");
-const OPERATOR_ROLE_1_SECRET_NONCE = Buffer.alloc(32, "OPERATOR_ROLE_1_SECRET_NONCE");
-const OPERATOR_ROLE_2_SECRET_NONCE = Buffer.alloc(32, "OPERATOR_ROLE_2_SECRET_NONCE");
-const OPERATOR_ROLE_3_SECRET_NONCE = Buffer.alloc(32, "OPERATOR_ROLE_3_SECRET_NONCE");
-const OPERATOR_ROLE_SECRET_NONCES = [OPERATOR_ROLE_1_SECRET_NONCE, OPERATOR_ROLE_2_SECRET_NONCE, OPERATOR_ROLE_3_SECRET_NONCE];
+const ADMIN_SECRET_NONCE = Buffer.alloc(32, 'ADMIN_SECRET_NONCE');
+const OPERATOR_ROLE_1_SECRET_NONCE = Buffer.alloc(
+  32,
+  'OPERATOR_ROLE_1_SECRET_NONCE',
+);
+const OPERATOR_ROLE_2_SECRET_NONCE = Buffer.alloc(
+  32,
+  'OPERATOR_ROLE_2_SECRET_NONCE',
+);
+const OPERATOR_ROLE_3_SECRET_NONCE = Buffer.alloc(
+  32,
+  'OPERATOR_ROLE_3_SECRET_NONCE',
+);
+const OPERATOR_ROLE_SECRET_NONCES = [
+  OPERATOR_ROLE_1_SECRET_NONCE,
+  OPERATOR_ROLE_2_SECRET_NONCE,
+  OPERATOR_ROLE_3_SECRET_NONCE,
+];
 let shieldedAccessControl: ShieldedAccessControlSimulator;
 
 // Helpers
@@ -82,17 +108,23 @@ const EXP_DEFAULT_ADMIN_COMMITMENT = buildCommitment(
   INIT_COUNTER,
 );
 
-function RETURN_BAD_INDEX(context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleId: Uint8Array): [ShieldedAccessControlPrivateState, bigint] {
-  return [context.privateState, 1023n]
+function RETURN_BAD_INDEX(
+  context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+  roleId: Uint8Array,
+): [ShieldedAccessControlPrivateState, bigint] {
+  return [context.privateState, 1023n];
 }
 
-function RETURN_BAD_PATH(context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>, roleCommitment: Uint8Array): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] {
+function RETURN_BAD_PATH(
+  context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
+  roleCommitment: Uint8Array,
+): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] {
   const defaultPath: MerkleTreePath<Uint8Array> = {
     leaf: new Uint8Array(32),
     path: Array.from({ length: 10 }, () => ({
       sibling: { field: 0n },
       goes_left: false,
-    }))
+    })),
   };
   return [context.privateState, defaultPath];
 }
@@ -100,12 +132,16 @@ function RETURN_BAD_PATH(context: WitnessContext<Ledger, ShieldedAccessControlPr
 type RoleAndNonce = {
   roleId: string;
   nonce: Buffer;
-}
+};
 
 describe('ShieldedAccessControl', () => {
   beforeEach(() => {
     // Create private state object and generate nonce
-    const PS = ShieldedAccessControlPrivateState.withRoleAndNonce(Z_ADMIN, Buffer.from(DEFAULT_ADMIN_ROLE), ADMIN_SECRET_NONCE);
+    const PS = ShieldedAccessControlPrivateState.withRoleAndNonce(
+      Z_ADMIN,
+      Buffer.from(DEFAULT_ADMIN_ROLE),
+      ADMIN_SECRET_NONCE,
+    );
     // Init contract for user with PS
     shieldedAccessControl = new ShieldedAccessControlSimulator(Z_ADMIN, {
       privateState: PS,
@@ -118,7 +154,13 @@ describe('ShieldedAccessControl', () => {
       shieldedAccessControl.callerCtx.setCaller(ADMIN);
     });
 
-    type FailingCircuits = [method: keyof ShieldedAccessControlSimulator, isValidNonce: boolean, isValidIndex: boolean, isValidPath: boolean, args: unknown[]];
+    type FailingCircuits = [
+      method: keyof ShieldedAccessControlSimulator,
+      isValidNonce: boolean,
+      isValidIndex: boolean,
+      isValidPath: boolean,
+      args: unknown[],
+    ];
     const checkedCircuits: FailingCircuits[] = [
       ['assertOnlyRole', false, true, true, [DEFAULT_ADMIN_ROLE]],
       ['assertOnlyRole', true, false, true, [DEFAULT_ADMIN_ROLE]],
@@ -143,49 +185,93 @@ describe('ShieldedAccessControl', () => {
       ['revokeRole', false, false, false, [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
     ];
 
-    it.each(checkedCircuits)('%s should fail with isValidNonce(%s), isValidIndex(%s), isValidPath(%s)', (circuitName, isValidNonce, isValidIndex, isValidPath, args) => {
-      if (isValidNonce) {
-        // Check nonce matches
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      } else {
-        // Check nonce does not match
-        shieldedAccessControl.privateState.injectSecretNonce(DEFAULT_ADMIN_ROLE, BAD_NONCE);
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).not.toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      }
+    it.each(checkedCircuits)(
+      '%s should fail with isValidNonce(%s), isValidIndex(%s), isValidPath(%s)',
+      (circuitName, isValidNonce, isValidIndex, isValidPath, args) => {
+        if (isValidNonce) {
+          // Check nonce matches
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).toEqual(ADMIN_SECRET_NONCE);
+        } else {
+          // Check nonce does not match
+          shieldedAccessControl.privateState.injectSecretNonce(
+            DEFAULT_ADMIN_ROLE,
+            BAD_NONCE,
+          );
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).not.toEqual(ADMIN_SECRET_NONCE);
+        }
 
-      if (isValidIndex) {
-        // Check index matches
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
-      } else {
-        // Check index does not match
-        shieldedAccessControl.overrideWitness('wit_getRoleIndex', RETURN_BAD_INDEX);
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
-      }
+        if (isValidIndex) {
+          // Check index matches
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
+        } else {
+          // Check index does not match
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleIndex',
+            RETURN_BAD_INDEX,
+          );
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
+        }
 
-      if (isValidPath) {
-        // Check path matches
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), EXP_DEFAULT_ADMIN_COMMITMENT);
-        expect(witnessCalculatedPath).toEqual(truePath);
-      } else {
-        // Check path does not match
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        shieldedAccessControl.overrideWitness('wit_getRoleCommitmentPath', RETURN_BAD_PATH);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedPath).not.toEqual(truePath);
-      }
+        if (isValidPath) {
+          // Check path matches
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(
+              shieldedAccessControl.getWitnessContext(),
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          expect(witnessCalculatedPath).toEqual(truePath);
+        } else {
+          // Check path does not match
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleCommitmentPath',
+            RETURN_BAD_PATH,
+          );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedPath).not.toEqual(truePath);
+        }
 
-      // Test protected circuit
-      expect(() => {
-        (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('ShieldedAccessControl: unauthorized account');
-    });
+        // Test protected circuit
+        expect(() => {
+          (
+            shieldedAccessControl[circuitName] as (
+              ...args: unknown[]
+            ) => unknown
+          )(...args);
+        }).toThrow('ShieldedAccessControl: unauthorized account');
+      },
+    );
   });
 
   describe('checked circuits should fail for unauthorized caller with any witness value', () => {
@@ -194,7 +280,13 @@ describe('ShieldedAccessControl', () => {
       shieldedAccessControl.callerCtx.setCaller(UNAUTHORIZED);
     });
 
-    type FailingCircuits = [method: keyof ShieldedAccessControlSimulator, isValidNonce: boolean, isValidIndex: boolean, isValidPath: boolean, args: unknown[]];
+    type FailingCircuits = [
+      method: keyof ShieldedAccessControlSimulator,
+      isValidNonce: boolean,
+      isValidIndex: boolean,
+      isValidPath: boolean,
+      args: unknown[],
+    ];
     const checkedCircuits: FailingCircuits[] = [
       ['assertOnlyRole', false, true, true, [DEFAULT_ADMIN_ROLE]],
       ['assertOnlyRole', true, false, true, [DEFAULT_ADMIN_ROLE]],
@@ -222,49 +314,93 @@ describe('ShieldedAccessControl', () => {
       ['revokeRole', true, true, true, [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
     ];
 
-    it.each(checkedCircuits)('%s should fail with isValidNonce(%s), isValidIndex(%s), isValidPath(%s)', (circuitName, isValidNonce, isValidIndex, isValidPath, args) => {
-      if (isValidNonce) {
-        // Check nonce matches
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      } else {
-        // Check nonce does not match
-        shieldedAccessControl.privateState.injectSecretNonce(DEFAULT_ADMIN_ROLE, BAD_NONCE);
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).not.toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      }
+    it.each(checkedCircuits)(
+      '%s should fail with isValidNonce(%s), isValidIndex(%s), isValidPath(%s)',
+      (circuitName, isValidNonce, isValidIndex, isValidPath, args) => {
+        if (isValidNonce) {
+          // Check nonce matches
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).toEqual(ADMIN_SECRET_NONCE);
+        } else {
+          // Check nonce does not match
+          shieldedAccessControl.privateState.injectSecretNonce(
+            DEFAULT_ADMIN_ROLE,
+            BAD_NONCE,
+          );
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).not.toEqual(ADMIN_SECRET_NONCE);
+        }
 
-      if (isValidIndex) {
-        // Check index matches
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
-      } else {
-        // Check index does not match
-        shieldedAccessControl.overrideWitness('wit_getRoleIndex', RETURN_BAD_INDEX);
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
-      }
+        if (isValidIndex) {
+          // Check index matches
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
+        } else {
+          // Check index does not match
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleIndex',
+            RETURN_BAD_INDEX,
+          );
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
+        }
 
-      if (isValidPath) {
-        // Check path matches
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), EXP_DEFAULT_ADMIN_COMMITMENT);
-        expect(witnessCalculatedPath).toEqual(truePath);
-      } else {
-        // Check path does not match
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        shieldedAccessControl.overrideWitness('wit_getRoleCommitmentPath', RETURN_BAD_PATH);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedPath).not.toEqual(truePath);
-      }
+        if (isValidPath) {
+          // Check path matches
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(
+              shieldedAccessControl.getWitnessContext(),
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          expect(witnessCalculatedPath).toEqual(truePath);
+        } else {
+          // Check path does not match
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleCommitmentPath',
+            RETURN_BAD_PATH,
+          );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedPath).not.toEqual(truePath);
+        }
 
-      // Test protected circuit
-      expect(() => {
-        (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('ShieldedAccessControl: unauthorized account');
-    });
+        // Test protected circuit
+        expect(() => {
+          (
+            shieldedAccessControl[circuitName] as (
+              ...args: unknown[]
+            ) => unknown
+          )(...args);
+        }).toThrow('ShieldedAccessControl: unauthorized account');
+      },
+    );
   });
 
   describe('unsupported contract address failure cases', () => {
@@ -273,7 +409,10 @@ describe('ShieldedAccessControl', () => {
       shieldedAccessControl.callerCtx.setCaller(ADMIN);
     });
 
-    type FailingCircuits = [method: keyof ShieldedAccessControlSimulator, args: unknown[]];
+    type FailingCircuits = [
+      method: keyof ShieldedAccessControlSimulator,
+      args: unknown[],
+    ];
     const circuitsWithContractAddressCheck: FailingCircuits[] = [
       ['hasRole', [DEFAULT_ADMIN_ROLE, Z_OPERATOR_CONTRACT]],
       ['_checkRole', [DEFAULT_ADMIN_ROLE, Z_OPERATOR_CONTRACT]],
@@ -283,12 +422,21 @@ describe('ShieldedAccessControl', () => {
       ['_revokeRole', [DEFAULT_ADMIN_ROLE, Z_OPERATOR_CONTRACT]],
     ];
 
-    it.each(circuitsWithContractAddressCheck)('%s fails if contract address is queried', (circuitName, args) => {
-      // Test protected circuit
-      expect(() => {
-        (shieldedAccessControl[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('ShieldedAccessControl: contract address roles are not yet supported');
-    });
+    it.each(circuitsWithContractAddressCheck)(
+      '%s fails if contract address is queried',
+      (circuitName, args) => {
+        // Test protected circuit
+        expect(() => {
+          (
+            shieldedAccessControl[circuitName] as (
+              ...args: unknown[]
+            ) => unknown
+          )(...args);
+        }).toThrow(
+          'ShieldedAccessControl: contract address roles are not yet supported',
+        );
+      },
+    );
   });
 
   describe('hasRole', () => {
@@ -296,7 +444,12 @@ describe('ShieldedAccessControl', () => {
       shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
     });
 
-    type HasRoleTest = [isValidNonce: boolean, isValidIndex: boolean, isValidPath: boolean, args: unknown[]];
+    type HasRoleTest = [
+      isValidNonce: boolean,
+      isValidIndex: boolean,
+      isValidPath: boolean,
+      args: unknown[],
+    ];
     const falseCases: HasRoleTest[] = [
       [false, true, true, [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
       [true, false, true, [DEFAULT_ADMIN_ROLE, Z_ADMIN]],
@@ -319,15 +472,17 @@ describe('ShieldedAccessControl', () => {
     it('should throw if caller is contract address', () => {
       shieldedAccessControl.callerCtx.setCaller(OPERATOR_CONTRACT);
       expect(() => {
-        shieldedAccessControl.hasRole(UNINITIALIZED_ROLE, Z_OPERATOR_CONTRACT)
-      }).toThrow('ShieldedAccessControl: contract address roles are not yet supported');
+        shieldedAccessControl.hasRole(UNINITIALIZED_ROLE, Z_OPERATOR_CONTRACT);
+      }).toThrow(
+        'ShieldedAccessControl: contract address roles are not yet supported',
+      );
     });
 
     it('should throw if role has been revoked', () => {
       shieldedAccessControl._revokeRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
       expect(() => {
         shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
-      }).toThrow("ShieldedAccessControl: role access has been revoked");
+      }).toThrow('ShieldedAccessControl: role access has been revoked');
     });
 
     it('should return correct role commitment', () => {
@@ -348,101 +503,194 @@ describe('ShieldedAccessControl', () => {
     });
 
     it('should return false when unauthorized does not have role', () => {
-      const role = shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_UNAUTHORIZED);
+      const role = shieldedAccessControl.hasRole(
+        DEFAULT_ADMIN_ROLE,
+        Z_UNAUTHORIZED,
+      );
       expect(role.isApproved).toEqual(false);
     });
 
     it('should return false when role does not exist', () => {
-      shieldedAccessControl.privateState.injectSecretNonce(UNINITIALIZED_ROLE, Buffer.alloc(32));
-      const role = shieldedAccessControl.hasRole(UNINITIALIZED_ROLE, Z_UNAUTHORIZED);
+      shieldedAccessControl.privateState.injectSecretNonce(
+        UNINITIALIZED_ROLE,
+        Buffer.alloc(32),
+      );
+      const role = shieldedAccessControl.hasRole(
+        UNINITIALIZED_ROLE,
+        Z_UNAUTHORIZED,
+      );
       expect(role.isApproved).toBe(false);
     });
 
-    it.each(falseCases)('should return false with any invalid witness value - isValidNonce(%s), isValidIndex(%s), isValidPath(%s)', (isValidNonce, isValidIndex, isValidPath, args) => {
-      if (isValidNonce) {
-        // Check nonce matches
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      } else {
-        // Check nonce does not match
-        shieldedAccessControl.privateState.injectSecretNonce(DEFAULT_ADMIN_ROLE, BAD_NONCE);
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).not.toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      }
+    it.each(falseCases)(
+      'should return false with any invalid witness value - isValidNonce(%s), isValidIndex(%s), isValidPath(%s)',
+      (isValidNonce, isValidIndex, isValidPath, args) => {
+        if (isValidNonce) {
+          // Check nonce matches
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).toEqual(ADMIN_SECRET_NONCE);
+        } else {
+          // Check nonce does not match
+          shieldedAccessControl.privateState.injectSecretNonce(
+            DEFAULT_ADMIN_ROLE,
+            BAD_NONCE,
+          );
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).not.toEqual(ADMIN_SECRET_NONCE);
+        }
 
-      if (isValidIndex) {
-        // Check index matches
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
-      } else {
-        // Check index does not match
-        shieldedAccessControl.overrideWitness('wit_getRoleIndex', RETURN_BAD_INDEX);
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
-      }
+        if (isValidIndex) {
+          // Check index matches
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
+        } else {
+          // Check index does not match
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleIndex',
+            RETURN_BAD_INDEX,
+          );
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
+        }
 
-      if (isValidPath) {
-        // Check path matches
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), EXP_DEFAULT_ADMIN_COMMITMENT);
-        expect(witnessCalculatedPath).toEqual(truePath);
-      } else {
-        // Check path does not match
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        shieldedAccessControl.overrideWitness('wit_getRoleCommitmentPath', RETURN_BAD_PATH);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedPath).not.toEqual(truePath);
-      }
+        if (isValidPath) {
+          // Check path matches
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(
+              shieldedAccessControl.getWitnessContext(),
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          expect(witnessCalculatedPath).toEqual(truePath);
+        } else {
+          // Check path does not match
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleCommitmentPath',
+            RETURN_BAD_PATH,
+          );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedPath).not.toEqual(truePath);
+        }
 
-      // Test false case circuit
-      const role = (shieldedAccessControl['hasRole'] as (...args: unknown[]) => Role)(...args);
-      expect(role.isApproved).toBe(false);
-    });
+        // Test false case circuit
+        const role = (
+          shieldedAccessControl['hasRole'] as (...args: unknown[]) => Role
+        )(...args);
+        expect(role.isApproved).toBe(false);
+      },
+    );
 
-    it.each(commitmentDoesNotMatchCases)('commitment should not match with invalid nonce or index - isValidNonce(%s), isValidIndex(%s), isValidPath(%s)', (isValidNonce, isValidIndex, isValidPath, args) => {
-      if (isValidNonce) {
-        // Check nonce matches
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      } else {
-        // Check nonce does not match
-        shieldedAccessControl.privateState.injectSecretNonce(DEFAULT_ADMIN_ROLE, BAD_NONCE);
-        expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).not.toEqual(
-          ADMIN_SECRET_NONCE,
-        );
-      }
+    it.each(commitmentDoesNotMatchCases)(
+      'commitment should not match with invalid nonce or index - isValidNonce(%s), isValidIndex(%s), isValidPath(%s)',
+      (isValidNonce, isValidIndex, isValidPath, args) => {
+        if (isValidNonce) {
+          // Check nonce matches
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).toEqual(ADMIN_SECRET_NONCE);
+        } else {
+          // Check nonce does not match
+          shieldedAccessControl.privateState.injectSecretNonce(
+            DEFAULT_ADMIN_ROLE,
+            BAD_NONCE,
+          );
+          expect(
+            shieldedAccessControl.privateState.getCurrentSecretNonce(
+              DEFAULT_ADMIN_ROLE,
+            ),
+          ).not.toEqual(ADMIN_SECRET_NONCE);
+        }
 
-      if (isValidIndex) {
-        // Check index matches
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
-      } else {
-        // Check index does not match
-        shieldedAccessControl.overrideWitness('wit_getRoleIndex', RETURN_BAD_INDEX);
-        const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
-      }
+        if (isValidIndex) {
+          // Check index matches
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
+        } else {
+          // Check index does not match
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleIndex',
+            RETURN_BAD_INDEX,
+          );
+          const [, witnessCalculatedIndex] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
+        }
 
-      if (isValidPath) {
-        // Check path matches
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), EXP_DEFAULT_ADMIN_COMMITMENT);
-        expect(witnessCalculatedPath).toEqual(truePath);
-      } else {
-        // Check path does not match
-        const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-        shieldedAccessControl.overrideWitness('wit_getRoleCommitmentPath', RETURN_BAD_PATH);
-        const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
-        expect(witnessCalculatedPath).not.toEqual(truePath);
-      }
+        if (isValidPath) {
+          // Check path matches
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(
+              shieldedAccessControl.getWitnessContext(),
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          expect(witnessCalculatedPath).toEqual(truePath);
+        } else {
+          // Check path does not match
+          const truePath = shieldedAccessControl
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              EXP_DEFAULT_ADMIN_COMMITMENT,
+            );
+          shieldedAccessControl.overrideWitness(
+            'wit_getRoleCommitmentPath',
+            RETURN_BAD_PATH,
+          );
+          const [, witnessCalculatedPath] =
+            shieldedAccessControl.witnesses.wit_getRoleIndex(
+              shieldedAccessControl.getWitnessContext(),
+              DEFAULT_ADMIN_ROLE,
+            );
+          expect(witnessCalculatedPath).not.toEqual(truePath);
+        }
 
-      // Test false case circuit
-      const role = (shieldedAccessControl['hasRole'] as (...args: unknown[]) => Role)(...args);
-      expect(role.roleCommitment).not.toEqual(EXP_DEFAULT_ADMIN_COMMITMENT);
-    });
+        // Test false case circuit
+        const role = (
+          shieldedAccessControl['hasRole'] as (...args: unknown[]) => Role
+        )(...args);
+        expect(role.roleCommitment).not.toEqual(EXP_DEFAULT_ADMIN_COMMITMENT);
+      },
+    );
   });
 
   describe('assertOnlyRole', () => {
@@ -453,15 +701,31 @@ describe('ShieldedAccessControl', () => {
 
     it('should not fail when authorized caller has correct nonce, index, and path', () => {
       // Check nonce is correct
-      expect(shieldedAccessControl.privateState.getCurrentSecretNonce(DEFAULT_ADMIN_ROLE)).toBe(ADMIN_SECRET_NONCE);
+      expect(
+        shieldedAccessControl.privateState.getCurrentSecretNonce(
+          DEFAULT_ADMIN_ROLE,
+        ),
+      ).toBe(ADMIN_SECRET_NONCE);
 
       // Check index matches
-      const [, witnessCalculatedIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE);
+      const [, witnessCalculatedIndex] =
+        shieldedAccessControl.witnesses.wit_getRoleIndex(
+          shieldedAccessControl.getWitnessContext(),
+          DEFAULT_ADMIN_ROLE,
+        );
       expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
 
       // Check path matches
-      const truePath = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
-      const [, witnessCalculatedPath] = shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(shieldedAccessControl.getWitnessContext(), EXP_DEFAULT_ADMIN_COMMITMENT);
+      const truePath = shieldedAccessControl
+        .getPublicState()
+        .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+          EXP_DEFAULT_ADMIN_COMMITMENT,
+        );
+      const [, witnessCalculatedPath] =
+        shieldedAccessControl.witnesses.wit_getRoleCommitmentPath(
+          shieldedAccessControl.getWitnessContext(),
+          EXP_DEFAULT_ADMIN_COMMITMENT,
+        );
       expect(witnessCalculatedPath).toEqual(truePath);
 
       expect(() =>
@@ -470,9 +734,18 @@ describe('ShieldedAccessControl', () => {
     });
 
     it('should not fail for admin with multiple roles', () => {
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_2, OPERATOR_ROLE_2_SECRET_NONCE);
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_3, OPERATOR_ROLE_3_SECRET_NONCE);
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_1,
+        OPERATOR_ROLE_1_SECRET_NONCE,
+      );
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_2,
+        OPERATOR_ROLE_2_SECRET_NONCE,
+      );
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_3,
+        OPERATOR_ROLE_3_SECRET_NONCE,
+      );
       shieldedAccessControl._grantRole(OPERATOR_ROLE_1, Z_ADMIN);
       shieldedAccessControl._grantRole(OPERATOR_ROLE_2, Z_ADMIN);
       shieldedAccessControl._grantRole(OPERATOR_ROLE_3, Z_ADMIN);
@@ -526,57 +799,100 @@ describe('ShieldedAccessControl', () => {
     });
 
     it('admin should grant role', () => {
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
-      shieldedAccessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
-      const role: Role = shieldedAccessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
-      expect(role.isApproved).toBe(
-        true,
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_1,
+        OPERATOR_ROLE_1_SECRET_NONCE,
       );
+      shieldedAccessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      const role: Role = shieldedAccessControl.hasRole(
+        OPERATOR_ROLE_1,
+        Z_OPERATOR_1,
+      );
+      expect(role.isApproved).toBe(true);
     });
 
     it('path for role should exist in Merkle tree', () => {
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT)).toBeDefined();
+      expect(
+        shieldedAccessControl
+          .getPublicState()
+          .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+            EXP_DEFAULT_ADMIN_COMMITMENT,
+          ),
+      ).toBeDefined();
     });
 
     it('should update Merkle tree root', () => {
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.root().field).toBeGreaterThan(0n);
+      expect(
+        shieldedAccessControl
+          .getPublicState()
+          .ShieldedAccessControl__operatorRoles.root().field,
+      ).toBeGreaterThan(0n);
     });
 
     it('_currentMerkleTreeIndex should increment', () => {
       // Starts at 1 because we grant role to self in beforeEach
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(1n);
+      expect(
+        shieldedAccessControl.getPublicState()
+          .ShieldedAccessControl__currentMerkleTreeIndex,
+      ).toBe(1n);
 
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_2, OPERATOR_ROLE_2_SECRET_NONCE);
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_3, OPERATOR_ROLE_3_SECRET_NONCE);
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_1,
+        OPERATOR_ROLE_1_SECRET_NONCE,
+      );
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_2,
+        OPERATOR_ROLE_2_SECRET_NONCE,
+      );
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_3,
+        OPERATOR_ROLE_3_SECRET_NONCE,
+      );
 
       shieldedAccessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(2n);
+      expect(
+        shieldedAccessControl.getPublicState()
+          .ShieldedAccessControl__currentMerkleTreeIndex,
+      ).toBe(2n);
 
       shieldedAccessControl.grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2);
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(3n);
+      expect(
+        shieldedAccessControl.getPublicState()
+          .ShieldedAccessControl__currentMerkleTreeIndex,
+      ).toBe(3n);
 
       shieldedAccessControl.grantRole(OPERATOR_ROLE_3, Z_OPERATOR_3);
-      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(4n);
+      expect(
+        shieldedAccessControl.getPublicState()
+          .ShieldedAccessControl__currentMerkleTreeIndex,
+      ).toBe(4n);
     });
-
-
 
     it('admin should grant multiple roles', () => {
       for (let i = 0; i < OPERATOR_ROLE_LIST.length; i++) {
-        shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_LIST[i], OPERATOR_ROLE_SECRET_NONCES[i]);
+        shieldedAccessControl.privateState.injectSecretNonce(
+          OPERATOR_ROLE_LIST[i],
+          OPERATOR_ROLE_SECRET_NONCES[i],
+        );
         for (let j = 0; j < Z_OPERATOR_LIST.length; j++) {
-          shieldedAccessControl.grantRole(OPERATOR_ROLE_LIST[i], Z_OPERATOR_LIST[j]);
-          const role: Role = shieldedAccessControl.hasRole(OPERATOR_ROLE_LIST[i], Z_OPERATOR_LIST[j])
-          expect(role.isApproved).toBe(
-            true,
+          shieldedAccessControl.grantRole(
+            OPERATOR_ROLE_LIST[i],
+            Z_OPERATOR_LIST[j],
           );
+          const role: Role = shieldedAccessControl.hasRole(
+            OPERATOR_ROLE_LIST[i],
+            Z_OPERATOR_LIST[j],
+          );
+          expect(role.isApproved).toBe(true);
         }
       }
     });
 
     it('should throw if non-admin operator grants role', () => {
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_1,
+        OPERATOR_ROLE_1_SECRET_NONCE,
+      );
       shieldedAccessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
 
       shieldedAccessControl.callerCtx.setCaller(OPERATOR_1);
@@ -589,12 +905,13 @@ describe('ShieldedAccessControl', () => {
   describe('revokeRole', () => {
     beforeEach(() => {
       shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
-      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_1,
+        OPERATOR_ROLE_1_SECRET_NONCE,
+      );
       shieldedAccessControl.callerCtx.setCaller(ADMIN);
     });
 
-    it.todo('admin should revoke role', () => {
-
-    });
+    it.todo('admin should revoke role', () => {});
   });
 });
