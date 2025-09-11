@@ -66,7 +66,7 @@ export class CompilationError extends Error {
    */
   constructor(message: string, file?: string, cause?: unknown) {
     if (cause instanceof Error) {
-      super(message, { cause: cause as Error });
+      super(message, { cause });
     } else {
       super(message);
     }
