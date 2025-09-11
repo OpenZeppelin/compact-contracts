@@ -666,7 +666,12 @@ export class CompactCompiler {
       );
 
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
-      UIService.printOutput(result.stdout, chalk.cyan);
+      // Filter out compactc version output from compact compile
+      const filteredOutput = result.stdout.split("\n").slice(1).join("\n");
+
+      if (filteredOutput) {
+        UIService.printOutput(filteredOutput, chalk.cyan);
+      }
       UIService.printOutput(result.stderr, chalk.yellow);
     } catch (error) {
       spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
@@ -676,7 +681,12 @@ export class CompactCompiler {
         isPromisifiedChildProcessError(error.cause)
       ) {
         const execError = error.cause;
-        UIService.printOutput(execError.stdout, chalk.cyan);
+        // Filter out compactc version output from compact compile
+        const filteredOutput = execError.stdout.split("\n").slice(1).join("\n");
+
+        if (filteredOutput) {
+          UIService.printOutput(filteredOutput, chalk.cyan);
+        }
         UIService.printOutput(execError.stderr, chalk.red);
       }
 
