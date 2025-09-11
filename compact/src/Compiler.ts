@@ -678,9 +678,9 @@ export class CompactCompiler {
 
       if (
         error instanceof CompilationError &&
-        isPromisifiedChildProcessError(error.cause)
+        isPromisifiedChildProcessError(error)
       ) {
-        const execError = error.cause;
+        const execError = error;
         // Filter out compactc version output from compact compile
         const filteredOutput = execError.stdout.split("\n").slice(1).join("\n");
 
