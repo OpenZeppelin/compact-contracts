@@ -5,6 +5,7 @@ import {
   CompilationError,
   DirectoryNotFoundError,
   isPromisifiedChildProcessError,
+  PromisifiedChildProcessError,
 } from '../src/types/errors.js';
 
 // Mock CompactCompiler
@@ -49,7 +50,7 @@ const mockExit = vi
   .mockImplementation(() => undefined as never);
 
 // Mock console methods
-const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => { });
 
 describe('runCompiler CLI', () => {
   let mockCompile: ReturnType<typeof vi.fn>;
@@ -165,10 +166,26 @@ describe('runCompiler CLI', () => {
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
-    it('should handle CompilationError with file context', async () => {
+    it('should handle CompilationError with file context and cause', async () => {
+      const mockIsPromisifiedChildProcessError = vi.mocked(
+        isPromisifiedChildProcessError,
+      );
+
+      const childProcessError = {
+        message: 'Syntax error',
+        stdout: 'some output',
+        stderr: 'error details',
+      };
+
+      // Return true for this specific error
+      mockIsPromisifiedChildProcessError.mockImplementation(
+        (err) => err === childProcessError,
+      );
+
       const error = new CompilationError(
         'Compilation failed',
         'MyToken.compact',
+        childProcessError
       );
       mockCompile.mockRejectedValue(error);
 
@@ -177,6 +194,7 @@ describe('runCompiler CLI', () => {
       expect(mockSpinner.fail).toHaveBeenCalledWith(
         '[COMPILE] Compilation failed for file: MyToken.compact',
       );
+      expect(mockConsoleLog).toHaveBeenCalledWith(`    Additional error details: ${(error.cause as PromisifiedChildProcessError).stderr}`)
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
