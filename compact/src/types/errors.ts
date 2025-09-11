@@ -65,11 +65,7 @@ export class CompilationError extends Error {
    * @param file - Optional relative path to the file that failed to compile
    */
   constructor(message: string, file?: string, cause?: unknown) {
-    if (cause instanceof Error) {
-      super(message, { cause });
-    } else {
-      super(message);
-    }
+    super(message, { cause });
 
     this.file = file;
     this.name = 'CompilationError';
