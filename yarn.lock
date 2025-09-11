@@ -400,7 +400,7 @@ __metadata:
   resolution: "@openzeppelin-compact/compact@workspace:compact"
   dependencies:
     "@types/node": "npm:22.14.0"
-    chalk: "npm:^5.4.1"
+    chalk: "npm:^5.6.2"
     fast-check: "npm:^3.15.0"
     log-symbols: "npm:^7.0.0"
     ora: "npm:^8.2.0"
@@ -926,10 +926,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:^5.3.0, chalk@npm:^5.4.1":
+"chalk@npm:^5.3.0":
   version: 5.5.0
   resolution: "chalk@npm:5.5.0"
   checksum: 10/19f6905b47b628541976a534e2f39c3779f7f9276ff9693cb8f7cdb3e3e09ee5dee16e0c3768632fbb41c2a1f1653ee0041ea7730428b804068945eb0bab09c4
+  languageName: node
+  linkType: hard
+
+"chalk@npm:^5.6.2":
+  version: 5.6.2
+  resolution: "chalk@npm:5.6.2"
+  checksum: 10/1b2f48f6fba1370670d5610f9cd54c391d6ede28f4b7062dd38244ea5768777af72e5be6b74fb6c6d54cb84c4a2dff3f3afa9b7cb5948f7f022cfd3d087989e0
   languageName: node
   linkType: hard
 
