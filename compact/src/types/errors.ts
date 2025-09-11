@@ -10,6 +10,7 @@
  * @prop {string} stderr stderr of a child process
  */
 export interface PromisifiedChildProcessError extends Error {
+  code?: number;
   stdout: string;
   stderr: string;
 }
@@ -24,7 +25,11 @@ export interface PromisifiedChildProcessError extends Error {
 export function isPromisifiedChildProcessError(
   error: unknown,
 ): error is PromisifiedChildProcessError {
-  return error instanceof Error && 'stdout' in error && 'stderr' in error;
+  return (
+    error instanceof Error &&
+    typeof (error as any).stdout === 'string' &&
+    typeof (error as any).stderr === 'string'
+  );
 }
 
 /**
@@ -57,17 +62,18 @@ export class CompactCliNotFoundError extends Error {
  */
 export class CompilationError extends Error {
   public readonly file?: string;
-
+  public readonly cause?: unknown;
   /**
    * Creates a new CompilationError instance.
    *
    * @param message - Error message describing the compilation failure
    * @param file - Optional relative path to the file that failed to compile
    */
-  constructor(message: string, file?: string) {
+  constructor(message: string, file: string, cause?: unknown) {
     super(message);
-    this.file = file;
     this.name = 'CompilationError';
+    this.file = file;
+    this.cause = cause;
   }
 }
 
@@ -92,5 +98,34 @@ export class DirectoryNotFoundError extends Error {
     super(message);
     this.directory = directory;
     this.name = 'DirectoryNotFoundError';
+  }
+}
+
+/**
+ * Error thrown when the formatter is not available.
+ * This typically occurs when the Compact compiler version is too old (< 0.25.0).
+ */
+export class FormatterNotAvailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FormatterNotAvailableError';
+  }
+}
+
+/**
+ * Error thrown when formatting operations fail.
+ * Includes the specific target (file or directory) that failed for context.
+ */
+export class FormatterError extends Error {
+  /** The target file or directory that failed to format */
+  public readonly target?: string;
+  /** The underlying cause of the formatting failure */
+  public readonly cause?: unknown;
+
+  constructor(message: string, target?: string, cause?: unknown) {
+    super(message);
+    this.name = 'FormatterError';
+    this.target = target;
+    this.cause = cause;
   }
 }
