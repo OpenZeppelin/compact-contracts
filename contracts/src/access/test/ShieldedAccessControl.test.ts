@@ -16,7 +16,10 @@ const [ADMIN, Z_ADMIN] = utils.generateEitherPubKeyPair('ADMIN');
 const [UNAUTHORIZED, Z_UNAUTHORIZED] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
 const [CUSTOM_ADMIN, Z_CUSTOM_ADMIN] = utils.generateEitherPubKeyPair('CUSTOM_ADMIN');
 const [OPERATOR_1, Z_OPERATOR_1] = utils.generateEitherPubKeyPair('OPERATOR_1');
+const [OPERATOR_2, Z_OPERATOR_2] = utils.generateEitherPubKeyPair('OPERATOR_2');
+const [OPERATOR_3, Z_OPERATOR_3] = utils.generateEitherPubKeyPair('OPERATOR_3');
 const [OPERATOR_CONTRACT, Z_OPERATOR_CONTRACT] = utils.generateEitherPubKeyPair('OPERATOR_CONTRACT', false);
+const Z_OPERATOR_LIST = [Z_OPERATOR_1, Z_OPERATOR_2, Z_OPERATOR_3];
 
 // Constants
 const BAD_NONCE = Buffer.alloc(32, 'BAD_NONCE');
@@ -32,6 +35,7 @@ const OPERATOR_ROLE_2 = convert_bigint_to_Uint8Array(32, 2n);
 const OPERATOR_ROLE_3 = convert_bigint_to_Uint8Array(32, 3n);
 const CUSTOM_ADMIN_ROLE = convert_bigint_to_Uint8Array(32, 4n);
 const UNINITIALIZED_ROLE = convert_bigint_to_Uint8Array(32, 5n);
+const OPERATOR_ROLE_LIST = [OPERATOR_ROLE_1, OPERATOR_ROLE_2, OPERATOR_ROLE_3];
 
 const operatorTypes = [
   ['contract', Z_OPERATOR_CONTRACT],
@@ -45,6 +49,7 @@ const ADMIN_SECRET_NONCE = Buffer.alloc(32, "ADMIN_SECRET_NONCE");
 const OPERATOR_ROLE_1_SECRET_NONCE = Buffer.alloc(32, "OPERATOR_ROLE_1_SECRET_NONCE");
 const OPERATOR_ROLE_2_SECRET_NONCE = Buffer.alloc(32, "OPERATOR_ROLE_2_SECRET_NONCE");
 const OPERATOR_ROLE_3_SECRET_NONCE = Buffer.alloc(32, "OPERATOR_ROLE_3_SECRET_NONCE");
+const OPERATOR_ROLE_SECRET_NONCES = [OPERATOR_ROLE_1_SECRET_NONCE, OPERATOR_ROLE_2_SECRET_NONCE, OPERATOR_ROLE_3_SECRET_NONCE];
 let shieldedAccessControl: ShieldedAccessControlSimulator;
 
 // Helpers
@@ -477,6 +482,119 @@ describe('ShieldedAccessControl', () => {
         shieldedAccessControl.assertOnlyRole(OPERATOR_ROLE_2);
         shieldedAccessControl.assertOnlyRole(OPERATOR_ROLE_3);
       }).not.toThrow();
+    });
+  });
+
+  describe('_checkRole', () => {
+    beforeEach(() => {
+      shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      shieldedAccessControl.callerCtx.setCaller(ADMIN);
+    });
+
+    it('should not throw if admin has role', () => {
+      expect(() =>
+        shieldedAccessControl._checkRole(DEFAULT_ADMIN_ROLE, Z_ADMIN),
+      ).not.toThrow();
+    });
+
+    it('should throw if unauthorized does not have role', () => {
+      expect(() =>
+        shieldedAccessControl._checkRole(DEFAULT_ADMIN_ROLE, Z_UNAUTHORIZED),
+      ).toThrow('ShieldedAccessControl: unauthorized account');
+    });
+  });
+
+  describe('getRoleAdmin', () => {
+    it('should return default admin role if admin role not set', () => {
+      expect(shieldedAccessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        DEFAULT_ADMIN_ROLE,
+      );
+    });
+
+    it('should return custom admin role if set', () => {
+      shieldedAccessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+      expect(shieldedAccessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
+    });
+  });
+
+  describe('grantRole', () => {
+    beforeEach(() => {
+      shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      shieldedAccessControl.callerCtx.setCaller(ADMIN);
+    });
+
+    it('admin should grant role', () => {
+      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
+      shieldedAccessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      const role: Role = shieldedAccessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      expect(role.isApproved).toBe(
+        true,
+      );
+    });
+
+    it('path for role should exist in Merkle tree', () => {
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT)).toBeDefined();
+    });
+
+    it('should update Merkle tree root', () => {
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.root().field).toBeGreaterThan(0n);
+    });
+
+    it('_currentMerkleTreeIndex should increment', () => {
+      // Starts at 1 because we grant role to self in beforeEach
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(1n);
+
+      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
+      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_2, OPERATOR_ROLE_2_SECRET_NONCE);
+      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_3, OPERATOR_ROLE_3_SECRET_NONCE);
+
+      shieldedAccessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(2n);
+
+      shieldedAccessControl.grantRole(OPERATOR_ROLE_2, Z_OPERATOR_2);
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(3n);
+
+      shieldedAccessControl.grantRole(OPERATOR_ROLE_3, Z_OPERATOR_3);
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex).toBe(4n);
+    });
+
+
+
+    it('admin should grant multiple roles', () => {
+      for (let i = 0; i < OPERATOR_ROLE_LIST.length; i++) {
+        shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_LIST[i], OPERATOR_ROLE_SECRET_NONCES[i]);
+        for (let j = 0; j < Z_OPERATOR_LIST.length; j++) {
+          shieldedAccessControl.grantRole(OPERATOR_ROLE_LIST[i], Z_OPERATOR_LIST[j]);
+          const role: Role = shieldedAccessControl.hasRole(OPERATOR_ROLE_LIST[i], Z_OPERATOR_LIST[j])
+          expect(role.isApproved).toBe(
+            true,
+          );
+        }
+      }
+    });
+
+    it('should throw if non-admin operator grants role', () => {
+      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
+      shieldedAccessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+
+      shieldedAccessControl.callerCtx.setCaller(OPERATOR_1);
+      expect(() => {
+        shieldedAccessControl.grantRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED);
+      }).toThrow('ShieldedAccessControl: unauthorized account');
+    });
+  });
+
+  describe('revokeRole', () => {
+    beforeEach(() => {
+      shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      shieldedAccessControl.privateState.injectSecretNonce(OPERATOR_ROLE_1, OPERATOR_ROLE_1_SECRET_NONCE);
+      shieldedAccessControl.callerCtx.setCaller(ADMIN);
+    });
+
+    it.todo('admin should revoke role', () => {
+
     });
   });
 });
