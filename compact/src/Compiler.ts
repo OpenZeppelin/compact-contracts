@@ -280,7 +280,11 @@ export class CompilerService {
         message = String(error); // fallback for strings, objects, numbers, etc.
       }
 
-      throw new CompilationError(`Failed to compile ${file}: ${message}`, file, error);
+      throw new CompilationError(
+        `Failed to compile ${file}: ${message}`,
+        file,
+        error,
+      );
     }
   }
 }
@@ -667,7 +671,7 @@ export class CompactCompiler {
 
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       // Filter out compactc version output from compact compile
-      const filteredOutput = result.stdout.split("\n").slice(1).join("\n");
+      const filteredOutput = result.stdout.split('\n').slice(1).join('\n');
 
       if (filteredOutput) {
         UIService.printOutput(filteredOutput, chalk.cyan);
@@ -682,7 +686,7 @@ export class CompactCompiler {
       ) {
         const execError = error;
         // Filter out compactc version output from compact compile
-        const filteredOutput = execError.stdout.split("\n").slice(1).join("\n");
+        const filteredOutput = execError.stdout.split('\n').slice(1).join('\n');
 
         if (filteredOutput) {
           UIService.printOutput(filteredOutput, chalk.cyan);
