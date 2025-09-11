@@ -280,7 +280,7 @@ export class CompilerService {
         message = String(error); // fallback for strings, objects, numbers, etc.
       }
 
-      throw new CompilationError(`Failed to compile ${file}: ${message}`, file);
+      throw new CompilationError(`Failed to compile ${file}: ${message}`, file, error);
     }
   }
 }
