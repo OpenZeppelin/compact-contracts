@@ -315,6 +315,18 @@ describe('CompilerService', () => {
         expect((error as CompilationError).file).toBe('MyToken.compact');
       }
     });
+
+    it('should include cause in CompilationError', async () => {
+      const mockError = new Error('Syntax error');
+      mockExec.mockRejectedValue(mockError);
+
+      try {
+        await service.compileFile('MyToken.compact', '--skip-zk');
+      } catch (error) {
+        expect(error).toBeInstanceOf(CompilationError);
+        expect((error as CompilationError).cause).toEqual(mockError);
+      }
+    });
   });
 });
 

@@ -1,5 +1,4 @@
 {
-  "packageManager": "yarn@4.1.0",
   "name": "@openzeppelin-compact/compact",
   "private": true,
   "version": "0.0.1",
