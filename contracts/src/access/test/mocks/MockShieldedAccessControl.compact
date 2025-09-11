@@ -15,6 +15,7 @@ export {
   ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
   ShieldedAccessControl__operatorRoles,
   ShieldedAccessControl__currentMerkleTreeIndex,
+  ShieldedAccessControl__roleCommitmentNullifiers,
   ShieldedAccessControl_Role
 };
 
