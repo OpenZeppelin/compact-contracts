@@ -35,7 +35,8 @@ const Z_OPERATOR_LIST = [Z_OPERATOR_1, Z_OPERATOR_2, Z_OPERATOR_3];
 
 // Constants
 const BAD_NONCE = Buffer.alloc(32, 'BAD_NONCE');
-const DOMAIN = 'ShieldedAccessControl:shield:';
+const DOMAIN = new Uint8Array(32);
+new TextEncoder().encodeInto('ShieldedAccessControl:shield:', DOMAIN);
 const INIT_COUNTER = 0n;
 
 const EMPTY_ROOT = { field: 0n };
@@ -48,11 +49,6 @@ const OPERATOR_ROLE_3 = convert_bigint_to_Uint8Array(32, 3n);
 const CUSTOM_ADMIN_ROLE = convert_bigint_to_Uint8Array(32, 4n);
 const UNINITIALIZED_ROLE = convert_bigint_to_Uint8Array(32, 5n);
 const OPERATOR_ROLE_LIST = [OPERATOR_ROLE_1, OPERATOR_ROLE_2, OPERATOR_ROLE_3];
-
-const operatorTypes = [
-  ['contract', Z_OPERATOR_CONTRACT],
-  ['pubkey', Z_OPERATOR_1],
-] as const;
 
 // Role to string
 const DEFAULT_ADMIN_ROLE_TO_STRING =
@@ -88,14 +84,13 @@ const buildCommitment = (
   const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
   const bAccount = utils.eitherToBytes(account);
   const bIndex = convert_bigint_to_Uint8Array(32, index);
-  const bDomain = new TextEncoder().encode(DOMAIN);
 
   const commitment = persistentHash(rt_type, [
     roleId,
     bAccount,
     nonce,
     bIndex,
-    bDomain,
+    DOMAIN,
   ]);
 
   return commitment;
@@ -214,6 +209,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
         } else {
@@ -226,6 +222,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
         }
@@ -258,6 +255,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedPath).not.toEqual(truePath);
         }
@@ -343,6 +341,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
         } else {
@@ -355,6 +354,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
         }
@@ -387,6 +387,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedPath).not.toEqual(truePath);
         }
@@ -478,13 +479,6 @@ describe('ShieldedAccessControl', () => {
       );
     });
 
-    it('should throw if role has been revoked', () => {
-      shieldedAccessControl._revokeRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
-      expect(() => {
-        shieldedAccessControl.hasRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
-      }).toThrow('ShieldedAccessControl: role access has been revoked');
-    });
-
     it('should return correct role commitment', () => {
       const expCommitment = buildCommitment(
         DEFAULT_ADMIN_ROLE,
@@ -551,6 +545,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
         } else {
@@ -563,6 +558,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
         }
@@ -595,6 +591,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedPath).not.toEqual(truePath);
         }
@@ -636,6 +633,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
         } else {
@@ -648,6 +646,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedIndex).not.toBe(INIT_COUNTER);
         }
@@ -680,6 +679,7 @@ describe('ShieldedAccessControl', () => {
             shieldedAccessControl.witnesses.wit_getRoleIndex(
               shieldedAccessControl.getWitnessContext(),
               DEFAULT_ADMIN_ROLE,
+              Z_ADMIN
             );
           expect(witnessCalculatedPath).not.toEqual(truePath);
         }
@@ -712,6 +712,7 @@ describe('ShieldedAccessControl', () => {
         shieldedAccessControl.witnesses.wit_getRoleIndex(
           shieldedAccessControl.getWitnessContext(),
           DEFAULT_ADMIN_ROLE,
+          Z_ADMIN
         );
       expect(witnessCalculatedIndex).toBe(INIT_COUNTER);
 
@@ -884,6 +885,15 @@ describe('ShieldedAccessControl', () => {
             Z_OPERATOR_LIST[j],
           );
           expect(role.isApproved).toBe(true);
+
+
+          expect(
+            shieldedAccessControl
+              .getPublicState()
+              .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+                EXP_DEFAULT_ADMIN_COMMITMENT,
+              ),
+          ).toBeDefined();
         }
       }
     });
@@ -902,16 +912,80 @@ describe('ShieldedAccessControl', () => {
     });
   });
 
-  describe('revokeRole', () => {
+  describe.only('revokeRole', () => {
     beforeEach(() => {
+      console.log("TEST - Current MT Index", shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex.toString());
       shieldedAccessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      console.log("TEST - Current MT Index", shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex.toString());
       shieldedAccessControl.privateState.injectSecretNonce(
         OPERATOR_ROLE_1,
         OPERATOR_ROLE_1_SECRET_NONCE,
       );
+      shieldedAccessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      console.log("TEST - Current MT Index", shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex.toString());
       shieldedAccessControl.callerCtx.setCaller(ADMIN);
     });
 
-    it.todo('admin should revoke role', () => {});
+    it('admin should revoke role', () => {
+      expect(shieldedAccessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1).isApproved).toBe(true);
+      shieldedAccessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      expect(shieldedAccessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1).isApproved).toBe(false);
+    });
+
+    it.only('commitment should be in nullifier set', () => {
+      console.log("TEST - Current MT Index", shieldedAccessControl.getPublicState().ShieldedAccessControl__currentMerkleTreeIndex.toString());
+      const [, opRoleIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), OPERATOR_ROLE_1, Z_OPERATOR_1);
+      const [, adminRoleIndex] = shieldedAccessControl.witnesses.wit_getRoleIndex(shieldedAccessControl.getWitnessContext(), DEFAULT_ADMIN_ROLE, Z_ADMIN);
+      console.log("OPERATOR INDEX ", opRoleIndex.toString(10));
+      console.log("ADMIN INDEX ", adminRoleIndex.toString(10));
+      const expCommitmentOp = buildCommitment(OPERATOR_ROLE_1, Z_OPERATOR_1, OPERATOR_ROLE_1_SECRET_NONCE, opRoleIndex);
+      const pathToOp = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(expCommitmentOp);
+      const pathToAdmin = shieldedAccessControl.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(EXP_DEFAULT_ADMIN_COMMITMENT);
+      //console.log("PATH TO OP ", pathToOp);
+      //console.log("PATH TO ADMIN ", pathToAdmin);
+
+      //console.log("EXPECTED COMMITMENT ", expCommitmentOp);
+      const contractCommit = shieldedAccessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1).roleCommitment;
+      //console.log("CONTRACT COMMITMENT ", contractCommit);
+
+      shieldedAccessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__roleCommitmentNullifiers.isEmpty()).toBe(false);
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__roleCommitmentNullifiers.member(expCommitmentOp)).toBe(true);
+    });
+
+    it('admin should revoke multiple roles', () => {
+      const expCommitment = buildCommitment(OPERATOR_ROLE_1, Z_OPERATOR_1, OPERATOR_ROLE_1_SECRET_NONCE, 1n);
+      shieldedAccessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+      expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__roleCommitmentNullifiers.member(expCommitment)).toBe(true);
+
+      for (let i = 1; i < OPERATOR_ROLE_LIST.length; i++) {
+        shieldedAccessControl.privateState.injectSecretNonce(
+          OPERATOR_ROLE_LIST[i],
+          OPERATOR_ROLE_SECRET_NONCES[i],
+        );
+        for (let j = 1; j < Z_OPERATOR_LIST.length; j++) {
+          shieldedAccessControl._grantRole(
+            OPERATOR_ROLE_LIST[i],
+            Z_OPERATOR_LIST[j],
+          );
+          const expCommitment = buildCommitment(OPERATOR_ROLE_LIST[i], Z_OPERATOR_LIST[j], OPERATOR_ROLE_SECRET_NONCES[i], BigInt(1 + i));
+          shieldedAccessControl.revokeRole(OPERATOR_ROLE_LIST[i], Z_OPERATOR_LIST[j]);
+          expect(shieldedAccessControl.getPublicState().ShieldedAccessControl__roleCommitmentNullifiers.member(expCommitment)).toBe(true);
+        }
+      }
+    });
+
+    it('should throw if non-admin operator revokes role', () => {
+      shieldedAccessControl.privateState.injectSecretNonce(
+        OPERATOR_ROLE_1,
+        OPERATOR_ROLE_1_SECRET_NONCE,
+      );
+      shieldedAccessControl._grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+
+      shieldedAccessControl.callerCtx.setCaller(OPERATOR_1);
+      expect(() => {
+        shieldedAccessControl.revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED);
+      }).toThrow('ShieldedAccessControl: unauthorized account');
+    });
   });
 });

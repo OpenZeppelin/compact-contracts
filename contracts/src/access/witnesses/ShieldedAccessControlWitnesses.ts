@@ -16,14 +16,16 @@ import type {
 import { eitherToBytes } from '../test/utils/address';
 
 const MERKLE_TREE_DEPTH = 2 ** 10;
-const DOMAIN = new TextEncoder().encode('ShieldedAccessControl:shield:');
+const DOMAIN = new Uint8Array(32);
+new TextEncoder().encodeInto('ShieldedAccessControl:shield:', DOMAIN);
 
 export function fmtHexString(bytes: string | Uint8Array): string {
   if (bytes instanceof String) {
     return `${bytes.slice(0, 4)}...${bytes.slice(-4)}`;
+  } else {
+    const buffStr = Buffer.from(bytes as Uint8Array).toString('hex');
+    return `${buffStr.slice(0, 4)}...${buffStr.slice(-4)}`;
   }
-  const buffStr = Buffer.from(bytes).toString('hex');
-  return `${buffStr.slice(0, 4)}...${buffStr.slice(-4)}`;
 }
 
 /**
@@ -47,6 +49,7 @@ export interface IShieldedAccessControlWitnesses<P> {
   wit_getRoleIndex(
     context: WitnessContext<Ledger, P>,
     roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>
   ): [P, bigint];
 }
 
@@ -145,13 +148,14 @@ export const ShieldedAccessControlPrivateState = {
       privateState,
     }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
     roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>
   ): bigint => {
     const roleIdString = Buffer.from(roleId).toString('hex');
-    // Iterate over each MT to determine if commitment exists
+    // Iterate over each MT index to determine if commitment exists
     for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
       const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
-      const bAccount = eitherToBytes(privateState.account);
+      const bAccount = eitherToBytes(account);
       const bNonce = privateState.roles[roleIdString];
       const commitment = persistentHash(rt_type, [
         roleId,
@@ -170,13 +174,15 @@ export const ShieldedAccessControlPrivateState = {
         if (e instanceof Error) {
           const [msg, index] = e.message.split(':');
           if (msg === 'invalid index into sparse merkle tree') {
-            // console.log(`role ${fmtHexString(roleIdString)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
+            //console.log(`role ${fmtHexString(roleIdString)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
           } else {
             throw e;
           }
         }
       }
     }
+
+    console.log("WIT - Commitment DNE, returing MT index ", ledger.ShieldedAccessControl__currentMerkleTreeIndex.toString());
 
     // If commitment doesn't exist return currentMTIndex
     // Used for adding roles
@@ -212,10 +218,11 @@ export const ShieldedAccessControlWitnesses =
     wit_getRoleIndex(
       context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
       roleId: Uint8Array,
+      account: Either<ZswapCoinPublicKey, ContractAddress>
     ): [ShieldedAccessControlPrivateState, bigint] {
       return [
         context.privateState,
-        ShieldedAccessControlPrivateState.getRoleIndex(context, roleId),
+        ShieldedAccessControlPrivateState.getRoleIndex(context, roleId, account),
       ];
     },
   });

@@ -116,7 +116,7 @@ module ShieldedAccessControl {
 
   witness wit_secretNonce(roleId: Bytes<32>): Bytes<32>;
 
-  witness wit_getRoleIndex(roleId: Bytes<32>): Uint<64>;
+  witness wit_getRoleIndex(roleId: Bytes<32> , account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<64>;
 
   export struct Role {
     isApproved: Boolean;
@@ -154,7 +154,7 @@ module ShieldedAccessControl {
     assert(!Utils_isContractAddress(account), "ShieldedAccessControl: contract address roles are not yet supported");
 
     const nonce = wit_secretNonce(roleId);
-    const index = wit_getRoleIndex(roleId);
+    const index = wit_getRoleIndex(roleId, account);
     const computedCommitment = persistentHash<Vector<5, Bytes<32>>>([roleId, account.left.bytes, nonce, index as Field as Bytes<32>, pad(32, "ShieldedAccessControl:shield:")]);
 
     const authPath = wit_getRoleCommitmentPath(computedCommitment);
