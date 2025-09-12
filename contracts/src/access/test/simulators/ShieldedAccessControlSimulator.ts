@@ -2,6 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   emptyZswapLocalState,
+  type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
 import {
@@ -9,13 +10,14 @@ import {
   type Either,
   type Ledger,
   ledger,
-  Contract as MockOwnable,
+  Contract as MockShieldedAccessControl,
+  type ShieldedAccessControl_Role as Role,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockZOwnablePK/contract/index.cjs';
+} from '../../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import {
-  ZOwnablePKPrivateState,
-  ZOwnablePKWitnesses,
-} from '../../witnesses/ZOwnablePKWitnesses.js';
+  ShieldedAccessControlPrivateState,
+  ShieldedAccessControlWitnesses,
+} from '../../witnesses/ShieldedAccessControlWitnesses.js';
 import type {
   ContextlessCircuits,
   ExtractImpureCircuits,
@@ -25,65 +27,73 @@ import type {
 import { AbstractContractSimulator } from '../utils/AbstractContractSimulator.js';
 import { SimulatorStateManager } from '../utils/SimulatorStateManager.js';
 
-type OwnableSimOptions = SimulatorOptions<
-  ZOwnablePKPrivateState,
-  typeof ZOwnablePKWitnesses
+type ShieldedAccessControlSimOptions = SimulatorOptions<
+  ShieldedAccessControlPrivateState,
+  typeof ShieldedAccessControlWitnesses
 >;
 
 /**
  * @description A simulator implementation of a contract for testing purposes.
- * @template P - The private state type, fixed to ZOwnablePKPrivateState.
+ * @template P - The private state type, fixed to ShieldedAccessControlPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
-export class ZOwnablePKSimulator extends AbstractContractSimulator<
-  ZOwnablePKPrivateState,
+export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
+  ShieldedAccessControlPrivateState,
   Ledger
 > {
-  contract: MockOwnable<ZOwnablePKPrivateState>;
+  contract: MockShieldedAccessControl<ShieldedAccessControlPrivateState>;
   readonly contractAddress: string;
-  private stateManager: SimulatorStateManager<ZOwnablePKPrivateState>;
+  private stateManager: SimulatorStateManager<ShieldedAccessControlPrivateState>;
   private callerOverride: CoinPublicKey | null = null;
-  private _witnesses: ReturnType<typeof ZOwnablePKWitnesses>;
+  private _witnesses: ReturnType<typeof ShieldedAccessControlWitnesses>;
 
   private _pureCircuitProxy?: ContextlessCircuits<
-    ExtractPureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
-    ZOwnablePKPrivateState
+    ExtractPureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
+    ShieldedAccessControlPrivateState
   >;
 
   private _impureCircuitProxy?: ContextlessCircuits<
-    ExtractImpureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
-    ZOwnablePKPrivateState
+    ExtractImpureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
+    ShieldedAccessControlPrivateState
   >;
 
   constructor(
-    initOwner: Uint8Array,
-    instanceSalt: Uint8Array,
-    isInit: boolean,
-    options: OwnableSimOptions = {},
+    initUser: Either<ZswapCoinPublicKey, ContractAddress>,
+    options: ShieldedAccessControlSimOptions = {},
   ) {
     super();
 
     // Setup initial state
     const {
-      privateState = ZOwnablePKPrivateState.generate(),
-      witnesses = ZOwnablePKWitnesses(),
+      privateState = options.privateState
+        ? options.privateState
+        : ShieldedAccessControlPrivateState.generate(initUser),
+      witnesses = ShieldedAccessControlWitnesses(),
       coinPK = '0'.repeat(64),
       address = sampleContractAddress(),
     } = options;
-    const constructorArgs = [initOwner, instanceSalt, isInit];
 
-    this.contract = new MockOwnable<ZOwnablePKPrivateState>(witnesses);
+    this.contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        witnesses,
+      );
 
     this.stateManager = new SimulatorStateManager(
       this.contract,
       privateState,
       coinPK,
       address,
-      ...constructorArgs,
     );
     this.contractAddress = this.circuitContext.transactionContext.address;
     this._witnesses = witnesses;
-    this.contract = new MockOwnable<ZOwnablePKPrivateState>(this._witnesses);
+    this.contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        this._witnesses,
+      );
   }
 
   get circuitContext() {
@@ -98,13 +108,24 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
     return ledger(this.circuitContext.transactionContext.state);
   }
 
+  getWitnessContext(): WitnessContext<
+    Ledger,
+    ShieldedAccessControlPrivateState
+  > {
+    return {
+      ledger: this.getPublicState(),
+      privateState: this.getPrivateState(),
+      contractAddress: this.contractAddress,
+    };
+  }
+
   /**
    * @description Constructs a caller-specific circuit context.
    * If a caller override is present, it replaces the current Zswap local state with an empty one
    * scoped to the overridden caller. Otherwise, the existing context is reused as-is.
    * @returns A circuit context adjusted for the current simulated caller.
    */
-  protected getCallerContext(): CircuitContext<ZOwnablePKPrivateState> {
+  protected getCallerContext(): CircuitContext<ShieldedAccessControlPrivateState> {
     return {
       ...this.circuitContext,
       currentZswapLocalState: this.callerOverride
@@ -123,12 +144,14 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * @returns A proxy object exposing pure circuit functions without requiring explicit context.
    */
   protected get pureCircuit(): ContextlessCircuits<
-    ExtractPureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
-    ZOwnablePKPrivateState
+    ExtractPureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
+    ShieldedAccessControlPrivateState
   > {
     if (!this._pureCircuitProxy) {
       this._pureCircuitProxy = this.createPureCircuitProxy<
-        MockOwnable<ZOwnablePKPrivateState>['circuits']
+        MockShieldedAccessControl<ShieldedAccessControlPrivateState>['circuits']
       >(this.contract.circuits, () => this.circuitContext);
     }
     return this._pureCircuitProxy;
@@ -144,12 +167,14 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * @returns A proxy object exposing impure circuit functions without requiring explicit context management.
    */
   protected get impureCircuit(): ContextlessCircuits<
-    ExtractImpureCircuits<MockOwnable<ZOwnablePKPrivateState>>,
-    ZOwnablePKPrivateState
+    ExtractImpureCircuits<
+      MockShieldedAccessControl<ShieldedAccessControlPrivateState>
+    >,
+    ShieldedAccessControlPrivateState
   > {
     if (!this._impureCircuitProxy) {
       this._impureCircuitProxy = this.createImpureCircuitProxy<
-        MockOwnable<ZOwnablePKPrivateState>['impureCircuits']
+        MockShieldedAccessControl<ShieldedAccessControlPrivateState>['impureCircuits']
       >(
         this.contract.impureCircuits,
         () => this.getCallerContext(),
@@ -183,13 +208,19 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
     };
   }
 
-  public get witnesses(): ReturnType<typeof ZOwnablePKWitnesses> {
+  public get witnesses(): ReturnType<typeof ShieldedAccessControlWitnesses> {
     return this._witnesses;
   }
 
-  public set witnesses(newWitnesses: ReturnType<typeof ZOwnablePKWitnesses>) {
+  public set witnesses(newWitnesses: ReturnType<
+    typeof ShieldedAccessControlWitnesses
+  >) {
+    this.resetCircuitProxies();
     this._witnesses = newWitnesses;
-    this.contract = new MockOwnable<ZOwnablePKPrivateState>(this._witnesses);
+    this.contract =
+      new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
+        this._witnesses,
+      );
   }
 
   public overrideWitness<K extends keyof typeof this._witnesses>(
@@ -207,8 +238,11 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
    * @returns The current owner's commitment.
    */
-  public owner(): Uint8Array {
-    return this.circuits.impure.owner();
+  public hasRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Role {
+    return this.circuits.impure.hasRole(roleId, account);
   }
 
   /**
@@ -216,8 +250,8 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * `newOwnerId` must be precalculated and given to the current owner off chain.
    * @param newOwnerId The new owner's unique identifier (`SHA256(pk, nonce)`).
    */
-  public transferOwnership(newOwnerId: Uint8Array) {
-    this.circuits.impure.transferOwnership(newOwnerId);
+  public assertOnlyRole(roleId: Uint8Array) {
+    this.circuits.impure.assertOnlyRole(roleId);
   }
 
   /**
@@ -225,16 +259,11 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    */
-  public renounceOwnership() {
-    this.circuits.impure.renounceOwnership();
-  }
-
-  /**
-   * @description Throws if called by any account whose id hash `SHA256(pk, nonce)` does not match
-   * the stored owner commitment. Use this to only allow the owner to call specific circuits.
-   */
-  public assertOnlyOwner() {
-    this.circuits.impure.assertOnlyOwner();
+  public _checkRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
+    this.circuits.impure._checkRole(roleId, account);
   }
 
   /**
@@ -244,8 +273,8 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * after every transfer to prevent duplicate commitments given the same `id`.
    * @returns The commitment derived from `id` and `counter`.
    */
-  public _computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
-    return this.circuits.impure._computeOwnerCommitment(id, counter);
+  public getRoleAdmin(roleId: Uint8Array): Uint8Array {
+    return this.circuits.impure.getRoleAdmin(roleId);
   }
 
   /**
@@ -255,11 +284,11 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * @param nonce - A private nonce to scope the commitment.
    * @returns The computed owner ID.
    */
-  public _computeOwnerId(
-    pk: Either<ZswapCoinPublicKey, ContractAddress>,
-    nonce: Uint8Array,
-  ): Uint8Array {
-    return this.circuits.pure._computeOwnerId(pk, nonce);
+  public grantRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
+    this.circuits.impure.grantRole(roleId, account);
   }
 
   /**
@@ -267,8 +296,56 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _transferOwnership(newOwnerId: Uint8Array) {
-    this.circuits.impure._transferOwnership(newOwnerId);
+  public revokeRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
+    this.circuits.impure.revokeRole(roleId, account);
+  }
+
+  /**
+   * @description Transfers ownership to owner id `newOwnerId` without
+   * enforcing permission checks on the caller.
+   * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
+   */
+  public renounceRole(
+    roleId: Uint8Array,
+    callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
+    this.circuits.impure.renounceRole(roleId, callerConfirmation);
+  }
+
+  /**
+   * @description Transfers ownership to owner id `newOwnerId` without
+   * enforcing permission checks on the caller.
+   * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
+   */
+  public _setRoleAdmin(roleId: Uint8Array, adminRole: Uint8Array) {
+    this.circuits.impure._setRoleAdmin(roleId, adminRole);
+  }
+
+  /**
+   * @description Transfers ownership to owner id `newOwnerId` without
+   * enforcing permission checks on the caller.
+   * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
+   */
+  public _grantRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.circuits.impure._grantRole(roleId, account);
+  }
+
+  /**
+   * @description Transfers ownership to owner id `newOwnerId` without
+   * enforcing permission checks on the caller.
+   * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
+   */
+  public _revokeRole(
+    roleId: Uint8Array,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
+    return this.circuits.impure._revokeRole(roleId, account);
   }
 
   public readonly privateState = {
@@ -278,10 +355,16 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
      * @returns The ZOwnablePK private state after setting the new nonce.
      */
     injectSecretNonce: (
+      roleId: Uint8Array,
       newNonce: Buffer<ArrayBufferLike>,
-    ): ZOwnablePKPrivateState => {
+    ): ShieldedAccessControlPrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
-      const updatedState = { ...currentState, secretNonce: newNonce };
+      const updatedState = {
+        ...currentState,
+        roles: { ...currentState.roles },
+      };
+      const roleString = Buffer.from(roleId).toString('hex');
+      updatedState.roles[roleString] = newNonce;
       this.stateManager.updatePrivateState(updatedState);
       return updatedState;
     },
@@ -290,8 +373,11 @@ export class ZOwnablePKSimulator extends AbstractContractSimulator<
      * @description Returns the secret nonce given the context.
      * @returns The secret nonce.
      */
-    getCurrentSecretNonce: (): Uint8Array => {
-      return this.stateManager.getContext().currentPrivateState.secretNonce;
+    getCurrentSecretNonce: (roleId: Uint8Array): Uint8Array => {
+      const roleString = Buffer.from(roleId).toString('hex');
+      return this.stateManager.getContext().currentPrivateState.roles[
+        roleString
+      ];
     },
   };
 
