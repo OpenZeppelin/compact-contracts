@@ -51,7 +51,7 @@ SKIP_ZK=true yarn compact
 
 In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
 Import the modules through `compact-contracts/node_modules/@openzeppelin-compact/contracts/...`.
-Imports should be imported through `node_modules` because module interdependencies won't clash.
+Import modules through `node_modules` rather than directly to avoid state conflicts between shared dependencies.
 
 > NOTE: Installing the library will be easier once it's available as an NPM package.
 
@@ -81,19 +81,22 @@ constructor(
   FungibleToken__mint(_recipient, _amount);
 }
 
-export circuit transfer(to: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
   Pausable_assertNotPaused();
   return FungibleToken_transfer(to, value);
 }
 
 export circuit pause(): [] {
   Ownable_assertOnlyOwner();
-  return Pausable__pause();
+  Pausable__pause();
 }
 
 export circuit unpause(): [] {
   Ownable_assertOnlyOwner();
-  return Pausable__unpause();
+  Pausable__unpause();
 }
 
 (...)
