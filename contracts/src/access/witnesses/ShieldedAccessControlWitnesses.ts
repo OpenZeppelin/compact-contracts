@@ -15,7 +15,7 @@ import type {
 } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import { eitherToBytes } from '../test/utils/address';
 
-const MERKLE_TREE_DEPTH = 2 ** 10;
+const MERKLE_TREE_DEPTH = 2 ** 11 - 1;
 const DOMAIN = new Uint8Array(32);
 new TextEncoder().encodeInto('ShieldedAccessControl:shield:', DOMAIN);
 
@@ -151,12 +151,12 @@ export const ShieldedAccessControlPrivateState = {
     account: Either<ZswapCoinPublicKey, ContractAddress>
   ): bigint => {
     const roleIdString = Buffer.from(roleId).toString('hex');
+    const bNonce = privateState.roles[roleIdString];
+    const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
+    const bAccount = eitherToBytes(account);
     // Iterate over each MT index to determine if commitment exists
     for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
-      const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
-      const bAccount = eitherToBytes(account);
-      const bNonce = privateState.roles[roleIdString];
       const commitment = persistentHash(rt_type, [
         roleId,
         bAccount,
@@ -174,7 +174,7 @@ export const ShieldedAccessControlPrivateState = {
         if (e instanceof Error) {
           const [msg, index] = e.message.split(':');
           if (msg === 'invalid index into sparse merkle tree') {
-            //console.log(`role ${fmtHexString(roleIdString)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
+            // console.log(`role ${fmtHexString(roleIdString)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
           } else {
             throw e;
           }
