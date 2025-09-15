@@ -29,6 +29,7 @@
     "@openzeppelin-compact/compact": "workspace:^"
   },
   "devDependencies": {
+    "@openzeppelin-compact/simulator": "workspace:^",
     "@types/node": "22.14.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2",

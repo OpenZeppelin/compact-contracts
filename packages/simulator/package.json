@@ -1,0 +1,42 @@
+{
+  "name": "@openzeppelin-compact/simulator",
+  "private": true,
+  "version": "0.0.1",
+  "keywords": [
+    "compact",
+    "compiler"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "types": "tsc -p tsconfig.json --noEmit",
+    "test": "yarn vitest run",
+    "clean": "git clean -fXd"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/ledger": "^4.0.0",
+    "@midnight-ntwrk/zswap": "^4.0.0",
+    "@types/node": "22.14.0",
+    "fast-check": "^3.15.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.3"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.8.1"
+  }
+}

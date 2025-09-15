@@ -1,61 +1,56 @@
-import {
-  type BaseSimulatorOptions,
-  createSimulator,
-} from '@openzeppelin-compact/simulator';
+import { type BaseSimulatorOptions, createSimulator } from '../../src/index';
 import {
   type ContractAddress,
   type Either,
   ledger,
-  Contract as MockOwnable,
+  Contract as SampleZOwnable,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockZOwnablePK/contract/index.cjs';
+} from '../fixtures/artifacts/SampleZOwnable/contract/index.cjs';
 import {
-  ZOwnablePKPrivateState,
-  ZOwnablePKWitnesses,
-} from '../../witnesses/ZOwnablePKWitnesses.js';
+  SampleZOwnablePrivateState,
+  SampleZOwnableWitnesses,
+} from '../fixtures/sampleContracts/witnesses/SampleZOwnableWitnesses';
 
 /**
  * Type constructor args
  */
-type ZOwnablePKArgs = readonly [
+type SampleZOwnableArgs = readonly [
   owner: Uint8Array,
   instanceSalt: Uint8Array,
-  isInit: boolean,
 ];
 
 /**
  * Base simulator
  */
-const ZOwnablePKSimulatorBase = createSimulator<
-  ZOwnablePKPrivateState,
+const SampleZOwnableSimulatorBase = createSimulator<
+  SampleZOwnablePrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ZOwnablePKWitnesses>,
-  ZOwnablePKArgs
+  ReturnType<typeof SampleZOwnableWitnesses>,
+  SampleZOwnableArgs
 >({
   contractFactory: (witnesses) =>
-    new MockOwnable<ZOwnablePKPrivateState>(witnesses),
-  defaultPrivateState: () => ZOwnablePKPrivateState.generate(),
-  contractArgs: (owner, instanceSalt, isInit) => {
-    return [owner, instanceSalt, isInit];
+    new SampleZOwnable<SampleZOwnablePrivateState>(witnesses),
+  defaultPrivateState: () => SampleZOwnablePrivateState.generate(),
+  contractArgs: (owner, instanceSalt) => {
+    return [owner, instanceSalt];
   },
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ZOwnablePKWitnesses(),
+  witnessesFactory: () => SampleZOwnableWitnesses(),
 });
 
 /**
- * ZOwnablePKSimulator
+ * SampleZOwnable Simulator
  */
-export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
+export class SampleZOwnableSimulator extends SampleZOwnableSimulatorBase {
   constructor(
     ownerId: Uint8Array,
     instanceSalt: Uint8Array,
-    isInit: boolean,
     options: BaseSimulatorOptions<
-      ZOwnablePKPrivateState,
-      ReturnType<typeof ZOwnablePKWitnesses>
+      SampleZOwnablePrivateState,
+      ReturnType<typeof SampleZOwnableWitnesses>
     > = {},
   ) {
-    super([ownerId, instanceSalt, isInit], options);
+    super([ownerId, instanceSalt], options);
   }
 
   /**
@@ -131,11 +126,11 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
     /**
      * @description Contextually sets a new nonce into the private state.
      * @param newNonce The secret nonce.
-     * @returns The ZOwnablePK private state after setting the new nonce.
+     * @returns The SampleZOwnable private state after setting the new nonce.
      */
     injectSecretNonce: (
       newNonce: Buffer<ArrayBufferLike>,
-    ): ZOwnablePKPrivateState => {
+    ): SampleZOwnablePrivateState => {
       const currentState = this.stateManager.getContext().currentPrivateState;
       const updatedState = { ...currentState, secretNonce: newNonce };
       this.stateManager.updatePrivateState(updatedState);
