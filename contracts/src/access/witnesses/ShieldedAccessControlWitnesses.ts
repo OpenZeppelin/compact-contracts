@@ -155,7 +155,8 @@ export const ShieldedAccessControlPrivateState = {
     const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
     const bAccount = eitherToBytes(account);
     // Iterate over each MT index to determine if commitment exists
-    for (let i = 0; i < MERKLE_TREE_DEPTH; i++) {
+    for (let i = 0; i <= ledger.ShieldedAccessControl__currentMerkleTreeIndex; i++) {
+      const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
       const commitment = persistentHash(rt_type, [
         roleId,
