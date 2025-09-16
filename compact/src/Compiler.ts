@@ -280,7 +280,11 @@ export class CompilerService {
         message = String(error); // fallback for strings, objects, numbers, etc.
       }
 
-      throw new CompilationError(`Failed to compile ${file}: ${message}`, file);
+      throw new CompilationError(
+        `Failed to compile ${file}: ${message}`,
+        file,
+        error,
+      );
     }
   }
 }
@@ -666,17 +670,27 @@ export class CompactCompiler {
       );
 
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
-      UIService.printOutput(result.stdout, chalk.cyan);
+      // Filter out compactc version output from compact compile
+      const filteredOutput = result.stdout.split('\n').slice(1).join('\n');
+
+      if (filteredOutput) {
+        UIService.printOutput(filteredOutput, chalk.cyan);
+      }
       UIService.printOutput(result.stderr, chalk.yellow);
     } catch (error) {
       spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
 
       if (
         error instanceof CompilationError &&
-        isPromisifiedChildProcessError(error.cause)
+        isPromisifiedChildProcessError(error)
       ) {
-        const execError = error.cause;
-        UIService.printOutput(execError.stdout, chalk.cyan);
+        const execError = error;
+        // Filter out compactc version output from compact compile
+        const filteredOutput = execError.stdout.split('\n').slice(1).join('\n');
+
+        if (filteredOutput) {
+          UIService.printOutput(filteredOutput, chalk.cyan);
+        }
         UIService.printOutput(execError.stderr, chalk.red);
       }
 
