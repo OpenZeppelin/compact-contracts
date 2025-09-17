@@ -33,6 +33,6 @@
   "dependencies": {
     "chalk": "^5.6.2",
     "log-symbols": "^7.0.0",
-    "ora": "^8.2.0"
+    "ora": "^9.0.0"
   }
 }
