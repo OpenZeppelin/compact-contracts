@@ -116,11 +116,99 @@ module ShieldedAccessControl {
 
   witness wit_secretNonce(roleId: Bytes<32>): Bytes<32>;
 
-  witness wit_getRoleIndex(roleId: Bytes<32> , account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<64>;
+  witness wit_getRoleIndex(roleId: Bytes<32> , accountId: Bytes<32>): Uint<64>;
 
   export struct Role {
     isApproved: Boolean;
     roleCommitment: Bytes<32>;
+  }
+
+  /**
+   * @description Computes the owner commitment from the given `id` and `counter`.
+   *
+   * ## Owner ID (`id`)
+   * The `id` is expected to be computed off-chain as:
+   * `id = SHA256(pk, nonce)`
+   *
+   * - `pk`: The owner's public key.
+   * - `nonce`: A secret nonce scoped to the instance, ideally rotated with each transfer.
+   *
+   * ## Commitment Derivation
+   * `commitment = SHA256(id, instanceSalt, counter, domain)`
+   *
+   * - `id`: See above.
+   * - `instanceSalt`: A unique per-deployment salt, stored during initialization.
+   * This prevents commitment collisions across deployments.
+   * - `counter`: Incremented with each ownership transfer, ensuring uniqueness
+   * even with repeated `id` values. Cast to `Field` then `Bytes<32>` for hashing.
+   * - `domain`: Domain separator `"ZOwnablePK:shield:"` (padded to 32 bytes) to prevent
+   * hash collisions when extending the module or using similar commitment schemes.
+   *
+   * @circuitInfo k=14, rows=14853
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} id - The unique identifier of the owner calculated by `SHA256(pk, nonce)`.
+   * @param {Uint<64>} counter - The current counter or round. This increments by `1`
+   * after every transfer to prevent duplicate commitments given the same `id`.
+   * @returns {Bytes<32>} The commitment derived from `id` and `counter`.
+   */
+  export circuit _computeRoleCommitment(
+    accountId: Bytes<32>,
+    roleId: Bytes<32>,
+    index: Uint<64>,
+  ): Bytes<32> {
+    return persistentHash<Vector<4, Bytes<32>>>(
+      [
+        accountId,
+        roleId,
+        index as Field as Bytes<32>,
+        pad(32, "ShieldedAccessControl:shield:")
+      ]
+    );
+  }
+
+  /**
+   * @description Computes the unique identifier (`id`) of the owner from their
+   * public key and a secret nonce.
+   *
+   * ## ID Derivation
+   * `id = SHA256(pk, nonce)`
+   *
+   * - `pk`: The public key of the caller. This is passed explicitly to allow
+   * for off-chain derivation, testing, or scenarios where the caller is
+   * different from the subject of the computation.
+   * We recommend using an Air-Gapped Public Key.
+   * - `nonce`: A secret nonce tied to the identity. The generation strategy is
+   * left to the user, offering different security/convenience trade-offs.
+   *
+   * The result is a 32-byte commitment that uniquely identifies the owner.
+   * This value is later used in owner commitment hashing,
+   * and acts as a privacy-preserving alternative to a raw public key.
+   *
+   * @notice This module allows ownership to be tied to an identity commitment derived
+   * from a public key and secret nonce.
+   * While typically used with user public keys, this mechanism may also
+   * support contract addresses as identifiers in future contract-to-contract
+   * interactions. Both are treated as 32-byte values (`Bytes<32>`).
+   *
+   * Requirements:
+   *
+   * - `pk` is not a ContractAddress.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} pk - The public key of the identity being committed.
+   * @param {Bytes<32>} nonce - A private nonce to scope the commitment.
+   * @returns {Bytes<32>} The computed owner ID.
+   */
+  export pure circuit _computeRoleId(
+    pk: Either<ZswapCoinPublicKey, ContractAddress>,
+    nonce: Bytes<32>
+  ): Bytes<32> {
+    assert(pk.is_left, "ShieldedAccessControl: contract address owners are not yet supported");
+
+    return persistentHash<Vector<2, Bytes<32>>>([pk.left.bytes, nonce]);
   }
 
   /**
@@ -150,22 +238,17 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK).
    * @return {Boolean} - A boolean determining if the account has the specified role.
    */
-  export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Role {
-    assert(!Utils_isContractAddress(account), "ShieldedAccessControl: contract address roles are not yet supported");
+  export circuit callerHasRole(roleId: Bytes<32>): Role {
+    const account = ownPublicKey();
 
     const nonce = wit_secretNonce(roleId);
-    const index = wit_getRoleIndex(roleId, account);
-    const computedCommitment = persistentHash<Vector<5, Bytes<32>>>([roleId, account.left.bytes, nonce, index as Field as Bytes<32>, pad(32, "ShieldedAccessControl:shield:")]);
+    const accountId = _computeRoleId(account, nonce);
+    return getRole(roleId, accountId);
+  }
 
-    const authPath = wit_getRoleCommitmentPath(computedCommitment);
-    const rootMatches = _operatorRoles
-      .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
-
-    if(!_roleCommitmentNullifiers.member(disclose(computedCommitment)) && rootMatches) {
-      return Role {isApproved: true, roleCommitment: disclose(computedCommitment)};
-    } else {
-      return Role {isApproved: false, roleCommitment: disclose(computedCommitment)};
-    }
+  export hasRole(roleId: Bytes<32>, accountId: Bytes<32>): Boolean {
+    const roleInfo = getRoleInfo();
+    return roleInfo.isApproved;
   }
 
   /**
@@ -196,41 +279,22 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-    _checkRole(
-      roleId,
-      left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey())
-    );
+    const role = callerHasRole(roleId);
+    assert(role.isApproved, "ShieldedAccessControl: unauthorized account");
   }
 
-  /**
-   * @description Reverts if `account` is missing `roleId`.
-   *
-   * @circuitInfo k=16, rows=60129
-   *
-   * Requirements:
-   *
-   * - An index for the intermediate role commitment produced by SHA256(roleId | account | nonce)
-   * must exist in the `_roleCommitmentIndex` map.
-   * - A nullifier for the role commitment produced by SHA256(roleId | account | nonce)
-   * must not exist in the `_roleCommitmentNullifiers` set.
-   * - A path for the role commitment produced by SHA256(roleId | account | nonce) must
-   * exist at `index` in the `_operatorRoles` Merkle tree.
-   *
-   * Disclosures:
-   *
-   * - The intermediate role commitment produced by SHA256(roleId | account | nonce).
-   * - The role commitment produced by SHA256(roleId | account | nonce).
-   * - The Merkle tree path for the role commitment stored at `index` in the `_operatorRoles`
-   * Merkle tree.
-   * - The type data of `account` - a ZswapCoinPublicKey or ContractAddress.
-   *
-   * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to check.
-   * @return {[]} - Empty tuple.
-   */
-  export circuit _checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    const role = hasRole(roleId, account);
-    assert(role.isApproved, "ShieldedAccessControl: unauthorized account");
+  export circuit getRole(roleId: Bytes<32>, accountId: Bytes<32>): Role {
+    const index = wit_getRoleIndex(roleId, accountId);
+    const commitment = _computeRoleCommitment(accountId, roleId, index);
+    const authPath = wit_getRoleCommitmentPath(commitment);
+    const rootMatches = _operatorRoles
+      .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
+
+    if(!_roleCommitmentNullifiers.member(disclose(commitment)) && rootMatches) {
+      return Role {isApproved: true, roleCommitment: disclose(commitment)};
+    } else {
+      return Role {isApproved: false, roleCommitment: disclose(commitment)};
+    }
   }
 
   /**
@@ -279,9 +343,9 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {[]} - Empty tuple.
    */
-  export circuit grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  export circuit grantRole(roleId: Bytes<32>, accountId: Bytes<32>): [] {
     assertOnlyRole(getRoleAdmin(roleId));
-    _grantRole(roleId, account);
+    _grantRole(roleId, accountId);
   }
 
   /**
@@ -312,9 +376,9 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {[]} - Empty tuple.
    */
-  export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  export circuit revokeRole(roleId: Bytes<32>, accountId: Bytes<32>): [] {
     assertOnlyRole(getRoleAdmin(roleId));
-    _revokeRole(roleId, account);
+    _revokeRole(roleId, accountId);
   }
 
  /**
@@ -350,10 +414,11 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
   * @return {[]} - Empty tuple.
   */
-  export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert(callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()), "ShieldedAccessControl: bad confirmation");
+  export circuit renounceRole(roleId: Bytes<32>, accountId: Bytes<32>): [] {
+    const nonce = wit_secretNonce(roleId);
+    assert(accountId, _computeRoleId(ownPublicKey(), nonce), "ShieldedAccessControl: bad confirmation");
 
-    _revokeRole(roleId, callerConfirmation);
+    _revokeRole(roleId, accountId);
   }
 
   /**
@@ -398,8 +463,8 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
-  export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    const role = hasRole(roleId, account);
+  export circuit _grantRole(roleId: Bytes<32>, accountId: Bytes<32>): Boolean {
+    const role = getRole(roleId, accountId);
     if (role.isApproved) {
       return false;
     }
@@ -438,8 +503,8 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} nonce - A nonce created using SHA256(SK | "role-nonce" | role | PK)
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
-  export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    const role = hasRole(roleId, account);
+  export circuit _revokeRole(roleId: Bytes<32>, accountId: Bytes<32>): Boolean {
+    const role = getRole(roleId, account);
     if (!role.isApproved) {
       return false;
     }
