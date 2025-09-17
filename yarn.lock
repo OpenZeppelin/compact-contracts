@@ -399,7 +399,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/compact@workspace:compact"
   dependencies:
-    "@types/node": "npm:22.14.0"
+    "@types/node": "npm:24.5.1"
     chalk: "npm:^5.6.2"
     log-symbols: "npm:^7.0.0"
     ora: "npm:^8.2.0"
@@ -416,7 +416,7 @@ __metadata:
   resolution: "@openzeppelin-compact/contracts@workspace:contracts"
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
-    "@types/node": "npm:22.14.0"
+    "@types/node": "npm:24.5.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.2.2"
     vitest: "npm:^3.1.3"
@@ -647,21 +647,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:22.14.0":
-  version: 22.14.0
-  resolution: "@types/node@npm:22.14.0"
+"@types/node@npm:24.5.1, @types/node@npm:^24":
+  version: 24.5.1
+  resolution: "@types/node@npm:24.5.1"
   dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10/d0669a8a37a18532c886ccfa51eb3fe1e46088deb4d3d27ebcd5d7d68bd6343ad1c7a3fcb85164780a57629359c33a6c917ecff748ea232bceac7692acc96537
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^22":
-  version: 22.18.4
-  resolution: "@types/node@npm:22.18.4"
-  dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10/3ac7ed6a90877a0d12b36aa5566fe86d7ac1ef70d525dcda10b23e4b8ec40158a19bdd26ea7077fc12c863cc36b8af33c87d8e74a43d288cfab38edb84513734
+    undici-types: "npm:~7.12.0"
+  checksum: 10/1dd21dffe0c522f67f2e3ae75234f7f98990f183c918091c4d186dfefa4f915607a3adbcf4b144c241ead0ed5cf3b743cf2d32ea2f0810489de68837e4b960ae
   languageName: node
   linkType: hard
 
@@ -1792,7 +1783,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@types/node": "npm:^22"
+    "@types/node": "npm:^24"
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.5.6"
     typescript: "npm:^5.2.2"
@@ -2431,10 +2422,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~6.21.0":
-  version: 6.21.0
-  resolution: "undici-types@npm:6.21.0"
-  checksum: 10/ec8f41aa4359d50f9b59fa61fe3efce3477cc681908c8f84354d8567bb3701fafdddf36ef6bff307024d3feb42c837cf6f670314ba37fc8145e219560e473d14
+"undici-types@npm:~7.12.0":
+  version: 7.12.0
+  resolution: "undici-types@npm:7.12.0"
+  checksum: 10/4a0f927c98828f76fb0d64f356e36e5ac6e074ae4c7bec08d6de8bc36b7cf08ae27a3518fa8eb703f51c1a675241e2d07359bbce63f5575299148a270cea7e43
   languageName: node
   linkType: hard
 
