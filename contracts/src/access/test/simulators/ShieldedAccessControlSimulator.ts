@@ -215,12 +215,12 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
   public set witnesses(newWitnesses: ReturnType<
     typeof ShieldedAccessControlWitnesses
   >) {
-    this.resetCircuitProxies();
     this._witnesses = newWitnesses;
     this.contract =
       new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(
         this._witnesses,
       );
+    this.resetCircuitProxies();
   }
 
   public overrideWitness<K extends keyof typeof this._witnesses>(
@@ -388,6 +388,6 @@ export class ShieldedAccessControlSimulator extends AbstractContractSimulator<
      */
     setCaller: (caller: CoinPublicKey) => {
       this.callerOverride = caller;
-    },
+    }
   };
 }
