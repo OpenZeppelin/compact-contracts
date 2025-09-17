@@ -27,6 +27,12 @@ export function fmtHexString(bytes: string | Uint8Array): string {
   }
 }
 
+export function createAccountId(account: Either<ZswapCoinPublicKey, ContractAddress>, secretNonce: Uint8Array): Uint8Array {
+  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
+  const bAccount = eitherToBytes(account);
+  return persistentHash(rt_type, [secretNonce, bAccount]);
+}
+
 /**
  * @description Interface defining the witness methods for ShieldedAccessControl operations.
  * @template P - The private state type.
@@ -48,7 +54,7 @@ export interface IShieldedAccessControlWitnesses<P> {
   wit_getRoleIndex(
     context: WitnessContext<Ledger, P>,
     roleId: Uint8Array,
-    account: Either<ZswapCoinPublicKey, ContractAddress>
+    accountId: Uint8Array
   ): [P, bigint];
 }
 
@@ -61,7 +67,6 @@ type SecretNonce = Uint8Array;
 export type ShieldedAccessControlPrivateState = {
   /** @description A 32-byte secret nonce used as a privacy additive. */
   roles: Record<RoleId, SecretNonce>;
-  account: Either<ZswapCoinPublicKey, ContractAddress>;
 };
 
 /**
@@ -73,14 +78,14 @@ export const ShieldedAccessControlPrivateState = {
    * @returns A fresh ShieldedAccessControlPrivateState instance.
    */
   generate: (
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
   ): ShieldedAccessControlPrivateState => {
     const defaultRoleId: string = Buffer.alloc(32).toString('hex');
+    const secretNonce = new Uint8Array(getRandomValues(Buffer.alloc(32)));
+
     const privateState: ShieldedAccessControlPrivateState = {
       roles: {},
-      account,
     };
-    privateState.roles[defaultRoleId] = getRandomValues(Buffer.alloc(32));
+    privateState.roles[defaultRoleId] = secretNonce;
     return privateState;
   },
 
@@ -99,14 +104,12 @@ export const ShieldedAccessControlPrivateState = {
    * ```
    */
   withRoleAndNonce: (
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
     roleId: Buffer,
     nonce: Buffer,
   ): ShieldedAccessControlPrivateState => {
     const roleString = roleId.toString('hex');
     const privateState: ShieldedAccessControlPrivateState = {
       roles: {},
-      account,
     };
     privateState.roles[roleString] = nonce;
     return privateState;
@@ -147,19 +150,15 @@ export const ShieldedAccessControlPrivateState = {
       privateState,
     }: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
     roleId: Uint8Array,
-    account: Either<ZswapCoinPublicKey, ContractAddress>
+    accountId: Uint8Array
   ): bigint => {
-    const roleIdString = Buffer.from(roleId).toString('hex');
-    const bNonce = privateState.roles[roleIdString];
-    const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
-    const bAccount = eitherToBytes(account);
+    const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
     // Iterate over each MT index to determine if commitment exists
     for (let i = 0; i <= ledger.ShieldedAccessControl__currentMerkleTreeIndex; i++) {
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
       const commitment = persistentHash(rt_type, [
+        accountId,
         roleId,
-        bAccount,
-        bNonce,
         bIndex,
         DOMAIN,
       ]);
@@ -220,11 +219,11 @@ export const ShieldedAccessControlWitnesses =
     wit_getRoleIndex(
       context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
       roleId: Uint8Array,
-      account: Either<ZswapCoinPublicKey, ContractAddress>
+      accountId: Uint8Array
     ): [ShieldedAccessControlPrivateState, bigint] {
       return [
         context.privateState,
-        ShieldedAccessControlPrivateState.getRoleIndex(context, roleId, account),
+        ShieldedAccessControlPrivateState.getRoleIndex(context, roleId, accountId),
       ];
     },
   });
