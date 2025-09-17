@@ -27,7 +27,7 @@
     "@biomejs/biome": "2.1.2",
     "@midnight-ntwrk/ledger": "^4.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
-    "@types/node": "22.19.0",
+    "@types/node": "22.18.0",
     "fast-check": "^3.15.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.5.6",
