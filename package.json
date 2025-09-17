@@ -24,11 +24,10 @@
     "@midnight-ntwrk/compact-runtime": "^0.8.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.1.2",
+    "@biomejs/biome": "2.2.4",
     "@midnight-ntwrk/ledger": "^4.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@types/node": "^22",
-    "fast-check": "^3.15.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.5.6",
     "typescript": "^5.2.2",
