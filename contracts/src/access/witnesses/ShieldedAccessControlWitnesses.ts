@@ -15,7 +15,6 @@ import type {
 } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import { eitherToBytes } from '../test/utils/address';
 
-const MERKLE_TREE_DEPTH = 2 ** 11 - 1;
 const DOMAIN = new Uint8Array(32);
 new TextEncoder().encodeInto('ShieldedAccessControl:shield:', DOMAIN);
 
@@ -156,7 +155,6 @@ export const ShieldedAccessControlPrivateState = {
     const bAccount = eitherToBytes(account);
     // Iterate over each MT index to determine if commitment exists
     for (let i = 0; i <= ledger.ShieldedAccessControl__currentMerkleTreeIndex; i++) {
-      const rt_type = new CompactTypeVector(5, new CompactTypeBytes(32));
       const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
       const commitment = persistentHash(rt_type, [
         roleId,
@@ -166,11 +164,14 @@ export const ShieldedAccessControlPrivateState = {
         DOMAIN,
       ]);
       try {
-        ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(
-          BigInt(i),
+        const index = BigInt(i);
+        const pathForLeaf = ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(
+          index,
           commitment,
         );
-        return BigInt(i);
+        if (pathForLeaf.leaf === commitment) {
+          return index;
+        }
       } catch (e: unknown) {
         if (e instanceof Error) {
           const [msg, index] = e.message.split(':');
