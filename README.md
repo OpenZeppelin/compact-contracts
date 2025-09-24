@@ -33,10 +33,11 @@ mkdir my-project
 cd my-project
 ```
 
-Clone the OpenZeppelin Contracts for Compact library.
+Initialize git and add OpenZeppelin Contracts for Compact as a submodule.
 
 ```bash
-git clone git@github.com:OpenZeppelin/compact-contracts.git
+git init && \
+git submodule add https://github.com/OpenZeppelin/compact-contracts.git
 ```
 
 `cd` into it and then install dependencies and prepare the environment.
