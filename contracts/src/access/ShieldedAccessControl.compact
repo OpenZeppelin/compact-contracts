@@ -297,7 +297,7 @@ module ShieldedAccessControl {
     const commitmentNullifier = _computeNullifier(commitment);
     const authPath = wit_getRoleCommitmentPath(commitment);
     const rootMatches = _operatorRoles
-      .checkRoot(merkleTreePathRoot<10, Bytes<32>>(disclose(authPath)));
+      .checkRoot(merkleTreePathRootNoLeafHash<10>(disclose(authPath)));
 
     if(!_roleCommitmentNullifiers.member(disclose(commitmentNullifier)) && rootMatches) {
       return Role {
@@ -492,7 +492,7 @@ module ShieldedAccessControl {
     }
 
     // Use ledger index as source of truth
-    _operatorRoles.insertIndex(disclose(role.roleCommitment), _currentMerkleTreeIndex);
+    _operatorRoles.insertHashIndex(role.roleCommitment, _currentMerkleTreeIndex);
     _currentMerkleTreeIndex.increment(1);
     return true;
   }

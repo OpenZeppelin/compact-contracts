@@ -15,8 +15,8 @@ import type {
 } from '../../../artifacts/MockShieldedAccessControl/contract/index.cjs';
 import { eitherToBytes } from '../test/utils/address';
 
-const DOMAIN = new Uint8Array(32);
-new TextEncoder().encodeInto('ShieldedAccessControl:shield:', DOMAIN);
+const COMMITMENT_DOMAIN = new Uint8Array(32);
+new TextEncoder().encodeInto('ShieldedAccessControl:commitment', COMMITMENT_DOMAIN);
 
 export function fmtHexString(bytes: string | Uint8Array): string {
   if (bytes instanceof String) {
@@ -154,28 +154,29 @@ export const ShieldedAccessControlPrivateState = {
   ): bigint => {
     const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
     // Iterate over each MT index to determine if commitment exists
+    console.log("current MT index ", ledger.ShieldedAccessControl__currentMerkleTreeIndex);
     for (let i = 0; i <= ledger.ShieldedAccessControl__currentMerkleTreeIndex; i++) {
-      const bIndex = convert_bigint_to_Uint8Array(32, BigInt(i));
+      const index = BigInt(i);
+      const bIndex = convert_bigint_to_Uint8Array(32, index);
       const commitment = persistentHash(rt_type, [
         accountId,
         roleId,
         bIndex,
-        DOMAIN,
+        COMMITMENT_DOMAIN,
       ]);
       try {
-        const index = BigInt(i);
         const pathForLeaf = ledger.ShieldedAccessControl__operatorRoles.pathForLeaf(
           index,
           commitment,
         );
-        if (pathForLeaf.leaf === commitment) {
+        if (Buffer.from(pathForLeaf.leaf).compare(Buffer.from(commitment)) === 0) {
           return index;
         }
       } catch (e: unknown) {
         if (e instanceof Error) {
           const [msg, index] = e.message.split(':');
           if (msg === 'invalid index into sparse merkle tree') {
-            // console.log(`role ${fmtHexString(roleIdString)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
+            // console.log(`accountId ${fmtHexString(accountId)} with commitment ${fmtHexString(commitment)} not found at index ${index}`);
           } else {
             throw e;
           }
@@ -183,7 +184,7 @@ export const ShieldedAccessControlPrivateState = {
       }
     }
 
-    console.log("WIT - Commitment DNE, returing MT index ", ledger.ShieldedAccessControl__currentMerkleTreeIndex.toString());
+    console.log("WIT - Commitment DNE, returning MT index ", ledger.ShieldedAccessControl__currentMerkleTreeIndex.toString());
 
     // If commitment doesn't exist return currentMTIndex
     // Used for adding roles
