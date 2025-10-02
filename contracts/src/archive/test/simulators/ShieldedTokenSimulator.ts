@@ -22,8 +22,8 @@ import {
 import {
   type ShieldedTokenPrivateState,
   ShieldedTokenWitnesses,
-} from '../../witnesses/ShieldedTokenWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/ShieldedTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a shielded token contract for testing purposes.
@@ -31,8 +31,7 @@ import type { IContractSimulator } from '../types/test';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class ShieldedTokenSimulator
-  implements IContractSimulator<ShieldedTokenPrivateState, Ledger>
-{
+  implements IContractSimulator<ShieldedTokenPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockShielded<ShieldedTokenPrivateState>;
 
