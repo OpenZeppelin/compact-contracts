@@ -11,9 +11,9 @@ This library consists of modules to build custom smart contracts.
 
 WARNING: This repo contains highly experimental code. Expect rapid iteration. *Use at your own risk.*
 
-== Installation
+== Usage
 
-Make sure you have {nvm}, {yarn}, and {turbo} installed on your machine.
+Make sure you have {nvm} and {yarn} installed on your machine.
 
 Follow Midnight's {compact-dev-tools} installation guide and confirm that `compact` is in the `PATH` env variable.
 
@@ -24,67 +24,94 @@ Compactc version: 0.25.0
 0.25.0
 ```
 
-=== Set up the project
+=== Installation
 
-Clone the repository:
+Create a directory for your project.
 
 ```bash
-git clone git@github.com:OpenZeppelin/midnight-contracts.git
+mkdir my-project
+cd my-project
 ```
 
-`cd` into it and then install dependencies and prepare the environment:
+Initialize git and add OpenZeppelin Contracts for Compact as a submodule.
+
+```bash
+git init && \
+git submodule add https://github.com/OpenZeppelin/compact-contracts.git
+```
+
+`cd` into it and then install dependencies and prepare the environment.
 
 ```bash
 nvm install && \
 yarn && \
-turbo compact
+SKIP_ZK=true yarn compact
 ```
 
-== Usage
+=== Write a custom contract using library modules
 
-Compile the contracts:
+In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
+Import the modules through `compact-contracts/node_modules/@openzeppelin-compact/contracts/...`.
+Import modules through `node_modules` rather than directly to avoid state conflicts between shared dependencies.
 
-```bash
-$ turbo compact
+NOTE: Installing the library will be easier once it's available as an NPM package.
+
+```typescript
+// MyContract.compact
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
+  prefix Ownable_;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable"
+  prefix Pausable_;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+  prefix FungibleToken_;
+
+constructor(
+  _name: Opaque<"string">,
+  _symbol: Opaque<"string">,
+  _decimals: Uint<8>,
+  _recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  _amount: Uint<128>,
+  _initOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+) {
+  Ownable_initialize(_initOwner);
+  FungibleToken_initialize(_name, _symbol, _decimals);
+  FungibleToken__mint(_recipient, _amount);
+}
+
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_transfer(to, value);
+}
+
+export circuit pause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__unpause();
+}
 
 (...)
-✔ [COMPILE] [1/2] Compiled FungibleToken.compact
-@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/fungible-token:compact:
-✔ [COMPILE] [1/6] Compiled Initializable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-✔ [COMPILE] [2/6] Compiled Pausable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-✔ [COMPILE] [3/6] Compiled Utils.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-✔ [COMPILE] [4/6] Compiled test/mocks/MockInitializable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:     Compiling 3 circuits:
-✔ [COMPILE] [5/6] Compiled test/mocks/MockPausable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:     Compiling 5 circuits:
-✔ [COMPILE] [6/6] Compiled test/mocks/MockUtils.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-
-✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
-@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/fungible-token:compact:     Compiling 15 circuits:
-
-
- Tasks:    2 successful, 2 total
-Cached:    0 cached, 2 total
-  Time:    7.178s
 ```
 
-NOTE: Speed up the development process by skipping the prover and verifier key file generation: +
-`SKIP_ZK=true turbo compact`
+=== Compile the contract
 
-Run tests:
+In the project root, compile the contract using Compact's dev tools.
 
 ```bash
-turbo test
+% compact compile MyContract.compact artifacts/MyContract
+Compiling 3 circuits:
+  circuit "pause" (k=10, rows=125)
+  circuit "transfer" (k=11, rows=1180)
+  circuit "unpause" (k=10, rows=121)
+Overall progress [====================] 3/3
 ```

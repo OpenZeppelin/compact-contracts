@@ -11,9 +11,9 @@
 > Expect rapid iteration.
 > **Use at your own risk.**
 
-## Installation
+## Usage
 
-Make sure you have [nvm](https://github.com/nvm-sh/nvm), [yarn](https://yarnpkg.com/getting-started/install), and [turbo](https://turborepo.com/docs/getting-started/installation) installed on your machine.
+Make sure you have [nvm](https://github.com/nvm-sh/nvm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your machine.
 
 Follow Midnight's [Compact Developer Tools installation guide](https://docs.midnight.network/develop/tutorial/building/#midnight-compact-compiler) and confirm that `compact` is in the `PATH` env variable.
 
@@ -24,22 +24,120 @@ Compactc version: 0.25.0
 0.25.0
 ```
 
-## Set up the project
+### Installation
+
+Create a directory for your project.
+
+```bash
+mkdir my-project
+cd my-project
+```
+
+Initialize git and add OpenZeppelin Contracts for Compact as a submodule.
+
+```bash
+git init && \
+git submodule add https://github.com/OpenZeppelin/compact-contracts.git
+```
+
+`cd` into it and then install dependencies and prepare the environment.
+
+```bash
+nvm install && \
+yarn && \
+SKIP_ZK=true yarn compact
+```
+
+### Write a custom contract using library modules
+
+In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
+Import the modules through `compact-contracts/node_modules/@openzeppelin-compact/contracts/...`.
+Import modules through `node_modules` rather than directly to avoid state conflicts between shared dependencies.
+
+> NOTE: Installing the library will be easier once it's available as an NPM package.
+
+```typescript
+// MyContract.compact
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
+  prefix Ownable_;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable"
+  prefix Pausable_;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+  prefix FungibleToken_;
+
+constructor(
+  _name: Opaque<"string">,
+  _symbol: Opaque<"string">,
+  _decimals: Uint<8>,
+  _recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  _amount: Uint<128>,
+  _initOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+) {
+  Ownable_initialize(_initOwner);
+  FungibleToken_initialize(_name, _symbol, _decimals);
+  FungibleToken__mint(_recipient, _amount);
+}
+
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_transfer(to, value);
+}
+
+export circuit pause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__unpause();
+}
+
+(...)
+```
+
+### Compile the contract
+
+In the project root, compile the contract using Compact's dev tools.
+
+```bash
+% compact compile MyContract.compact artifacts/MyContract
+Compiling 3 circuits:
+  circuit "pause" (k=10, rows=125)
+  circuit "transfer" (k=11, rows=1180)
+  circuit "unpause" (k=10, rows=121)
+Overall progress [====================] 3/3
+```
+
+## Development
+
+OpenZeppelin Contracts for Compact exists thanks to its contributors.
+There are many ways you can participate and help build high quality software,
+make sure to check out the [contribution guide](CONTRIBUTING.md) in advance.
 
 > ### Requirements
 >
-> - [node](https://nodejs.org/)
-> - [yarn](https://yarnpkg.com/getting-started/install)
-> - [turbo](https://turborepo.com/docs/getting-started/installation)
-> - [compact](https://docs.midnight.network/blog/compact-developer-tools)
+> - [Node.js](https://nodejs.org/)
+> - [Yarn](https://yarnpkg.com/getting-started/install)
+> - [Turbo](https://turborepo.com/docs/getting-started/installation)
+> - [Compact](https://docs.midnight.network/blog/compact-developer-tools)
 
-Clone the repository:
+### Set up the project
+
+Clone the OpenZeppelin Contracts for Compact library.
 
 ```bash
 git clone git@github.com:OpenZeppelin/compact-contracts.git
 ```
 
-`cd` into it and then install dependencies and prepare the environment:
+`cd` into it and then install dependencies and prepare the environment.
 
 ```bash
 nvm install && \
@@ -47,48 +145,32 @@ yarn && \
 turbo compact
 ```
 
-## Usage
-
-### Compile the contracts
+### Run tests
 
 ```bash
-$ turbo compact
-
-(...)
-✔ [COMPILE] [1/2] Compiled FungibleToken.compact
-@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/fungible-token:compact:
-✔ [COMPILE] [1/6] Compiled Initializable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-✔ [COMPILE] [2/6] Compiled Pausable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-✔ [COMPILE] [3/6] Compiled Utils.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-✔ [COMPILE] [4/6] Compiled test/mocks/MockInitializable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:     Compiling 3 circuits:
-✔ [COMPILE] [5/6] Compiled test/mocks/MockPausable.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:     Compiling 5 circuits:
-✔ [COMPILE] [6/6] Compiled test/mocks/MockUtils.compact
-@openzeppelin-compact/utils:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/utils:compact:
-
-✔ [COMPILE] [2/2] Compiled test/mocks/MockFungibleToken.compact
-@openzeppelin-compact/fungible-token:compact:     Compactc version: 0.25.0
-@openzeppelin-compact/fungible-token:compact:     Compiling 15 circuits:
-
-
- Tasks:    2 successful, 2 total
-Cached:    0 cached, 2 total
-  Time:    7.178s
+turbo test
 ```
 
-Speed up the development process by targeting a single directory
-and skipping the prover and verifier key file generation:
+### Check/apply Biome formatter
+
+```bash
+turbo fmt-and-lint
+turbo fmt-and-lint:fix
+```
+
+### Advanced
+
+#### Targeted compilation
+
+```bash
+turbo compact:access
+turbo compact:archive
+...
+```
+
+#### Skip ZK prover/verifier keys
+
+ZK key generation is slow and usually unnecessary during development.
 
 ```bash
 # Individual module compilation (recommended for development)
@@ -98,22 +180,19 @@ turbo compact:token  --filter=@openzeppelin-compact/contracts -- --skip-zk
 SKIP_ZK=true turbo compact
 ```
 
-### Run tests
+#### Clean environment
 
 ```bash
-turbo test
+# WARNING!
+# These are destructive commands
+turbo clean
+rm -rf .turbo/
 ```
 
-### Format and lint files
+### Troubleshooting
 
-```bash
-turbo fmt-and-lint:fix
-```
-
-### All together now!
-```bash
-turbo compact test fmt-and-lint:fix
-```
+- **Issues with turbo's cache?** Try cleaning: `turbo clean && rm -rf .turbo/`
+- **Node version issues?** Use `nvm use` to switch to the correct version
 
 ## Security
 
