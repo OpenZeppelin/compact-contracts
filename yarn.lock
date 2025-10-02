@@ -417,6 +417,7 @@ __metadata:
   resolution: "@openzeppelin-compact/contracts@workspace:contracts"
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
+    "@tsconfig/node22": "npm:^22.0.2"
     "@types/node": "npm:22.18.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
