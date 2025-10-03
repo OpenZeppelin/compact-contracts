@@ -423,11 +423,11 @@ describe('runCompiler CLI', () => {
     });
 
     it('should handle version specification', async () => {
-      process.argv = ['node', 'runCompiler.js', '+0.24.0', '--skip-zk'];
+      process.argv = ['node', 'runCompiler.js', '+0.25.0', '--skip-zk'];
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith(['+0.24.0', '--skip-zk']);
+      expect(mockFromArgs).toHaveBeenCalledWith(['+0.25.0', '--skip-zk']);
     });
 
     it('should handle complex command', async () => {
@@ -438,7 +438,7 @@ describe('runCompiler CLI', () => {
         'security',
         '--skip-zk',
         '--verbose',
-        '+0.24.0',
+        '+0.25.0',
       ];
 
       await import('../src/runCompiler.js');
@@ -448,14 +448,14 @@ describe('runCompiler CLI', () => {
         'security',
         '--skip-zk',
         '--verbose',
-        '+0.24.0',
+        '+0.25.0',
       ]);
     });
   });
 
   describe('integration with CompactCompiler', () => {
     it('should pass arguments correctly to CompactCompiler.fromArgs', async () => {
-      const args = ['--dir', 'token', '--skip-zk', '+0.24.0'];
+      const args = ['--dir', 'token', '--skip-zk', '+0.25.0'];
       process.argv = ['node', 'runCompiler.js', ...args];
       mockCompile.mockResolvedValue(undefined);
 
