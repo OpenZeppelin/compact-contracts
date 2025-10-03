@@ -19,8 +19,8 @@ import {
 import {
   type MultiTokenPrivateState,
   MultiTokenWitnesses,
-} from '../../witnesses/MultiTokenWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/MultiTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a MultiToken contract for testing purposes.
@@ -28,8 +28,7 @@ import type { IContractSimulator } from '../types/test';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class MultiTokenSimulator
-  implements IContractSimulator<MultiTokenPrivateState, Ledger>
-{
+  implements IContractSimulator<MultiTokenPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockMultiToken<MultiTokenPrivateState>;
 

@@ -1,17 +1,10 @@
 {
+  "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
-    "lib": [
-      "es2022"
-    ],
-    "module": "nodenext",
-    "target": "es2022",
-    "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "nodenext",
     "sourceMap": true,
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,

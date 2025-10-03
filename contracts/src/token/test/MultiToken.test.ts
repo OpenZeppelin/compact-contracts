@@ -1,8 +1,8 @@
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Maybe } from '../../../artifacts/MockMultiToken/contract/index.cjs'; // Combined imports
-import { MultiTokenSimulator } from './simulators/MultiTokenSimulator';
-import * as utils from './utils/address';
+import { MultiTokenSimulator } from './simulators/MultiTokenSimulator.js';
+import * as utils from './utils/address.js';
 
 // URIs
 const NO_STRING = '';
