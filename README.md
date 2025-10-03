@@ -1,4 +1,4 @@
-[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.24.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact)
+[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.25.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 # OpenZeppelin Contracts for Compact
@@ -20,8 +20,8 @@ Follow Midnight's [Compact Developer Tools installation guide](https://docs.midn
 ```bash
 $ compact compile --version
 
-Compactc version: 0.24.0
-0.24.0
+Compactc version: 0.25.0
+0.25.0
 ```
 
 ### Installation
@@ -59,7 +59,7 @@ Import modules through `node_modules` rather than directly to avoid state confli
 ```typescript
 // MyContract.compact
 
-pragma language_version >= 0.16.0;
+pragma language_version >= 0.17.0;
 
 import CompactStandardLibrary;
 import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
