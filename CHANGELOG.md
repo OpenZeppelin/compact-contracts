@@ -9,4 +9,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bump compact compiler to v0.25.0 (#)
+- Bump compact compiler to v0.25.0 (#233)
