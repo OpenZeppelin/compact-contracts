@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MIT
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+
+export {
+  ZswapCoinPublicKey,
+  ContractAddress,
+  Either,
+  Maybe,
+  MerkleTreePath,
+  ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
+  ShieldedAccessControl__operatorRoles,
+  ShieldedAccessControl__currentMerkleTreeIndex,
+  ShieldedAccessControl__roleCommitmentNullifiers,
+  ShieldedAccessControl_Role
+};
+
+export pure circuit _computeRoleCommitment(
+  accountId: Bytes<32>,
+  roleId: Bytes<32>,
+  index: Uint<64>,
+): Bytes<32> {
+  return ShieldedAccessControl__computeRoleCommitment(accountId, roleId, index);
+}
+
+export pure circuit _computeRoleId(
+  pk: Either<ZswapCoinPublicKey, ContractAddress>,
+  nonce: Bytes<32>
+): Bytes<32> {
+  return ShieldedAccessControl__computeRoleId(pk, nonce);
+}
+
+export pure circuit _computeNullifier(commitment: Bytes<32>): Bytes<32> {
+  return ShieldedAccessControl__computeNullifier(commitment);
+}
+
+export circuit callerHasRole(roleId: Bytes<32>): ShieldedAccessControl_Role {
+  return ShieldedAccessControl_callerHasRole(roleId);
+}
+
+export circuit hasRole(roleId: Bytes<32>, accountId: Bytes<32>): Boolean {
+  return ShieldedAccessControl_hasRole(roleId, accountId);
+}
+
+export circuit assertOnlyRole(roleId: Bytes<32>): [] {
+  ShieldedAccessControl_assertOnlyRole(roleId);
+}
+
+export circuit getRole(roleId: Bytes<32>, accountId: Bytes<32>): ShieldedAccessControl_Role {
+  return ShieldedAccessControl_getRole(roleId, accountId);
+}
+
+export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
+  return ShieldedAccessControl_getRoleAdmin(roleId);
+}
+
+export circuit grantRole(roleId: Bytes<32>, accountId: Bytes<32>): [] {
+  ShieldedAccessControl_grantRole(roleId, accountId);
+}
+
+export circuit revokeRole(roleId: Bytes<32>, accountId: Bytes<32>): [] {
+  ShieldedAccessControl_revokeRole(roleId, accountId);
+}
+
+export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Bytes<32>): [] {
+  ShieldedAccessControl_renounceRole(roleId, callerConfirmation);
+}
+
+export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
+  ShieldedAccessControl__setRoleAdmin(roleId, adminRole);
+}
+
+export circuit _grantRole(roleId: Bytes<32>, accountId: Bytes<32>): Boolean {
+  return ShieldedAccessControl__grantRole(roleId, accountId);
+}
+
+export circuit _revokeRole(roleId: Bytes<32>, accountId: Bytes<32>): Boolean {
+  return ShieldedAccessControl__revokeRole(roleId, accountId);
+}

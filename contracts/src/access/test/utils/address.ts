@@ -64,6 +64,7 @@ export const createEitherTestContractAddress = (str: string) => ({
 const baseGeneratePubKeyPair = (
   str: string,
   asEither: boolean,
+  asPK: boolean,
 ): [
   string,
   (
@@ -72,15 +73,25 @@ const baseGeneratePubKeyPair = (
   ),
 ] => {
   const pk = toHexPadded(str);
-  const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
-  return [pk, zpk];
+
+  if (asEither && asPK) {
+    return [pk, createEitherTestUser(str)];
+  }
+  if (asEither && !asPK) {
+    return [pk, createEitherTestContractAddress(str)];
+  }
+
+  return [pk, encodeToPK(str)];
 };
 
 export const generatePubKeyPair = (str: string) =>
-  baseGeneratePubKeyPair(str, false) as [string, Compact.ZswapCoinPublicKey];
+  baseGeneratePubKeyPair(str, false, false) as [
+    string,
+    Compact.ZswapCoinPublicKey,
+  ];
 
-export const generateEitherPubKeyPair = (str: string) =>
-  baseGeneratePubKeyPair(str, true) as [
+export const generateEitherPubKeyPair = (str: string, asPK = true) =>
+  baseGeneratePubKeyPair(str, true, asPK) as [
     string,
     Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>,
   ];
@@ -98,4 +109,14 @@ export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
   right: { bytes: zeroUint8Array() },
+};
+
+export const eitherToBytes = (
+  account: Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>,
+) => {
+  if (account.is_left) {
+    return account.left.bytes;
+  }
+
+  return account.right.bytes;
 };
