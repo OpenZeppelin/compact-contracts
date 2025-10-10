@@ -3,29 +3,17 @@
 pragma language_version >= 0.17.0;
 
 import CompactStandardLibrary;
+
 import "../../ShieldedToken" prefix ShieldedToken_;
 
-export {
-  ZswapCoinPublicKey,
-  ContractAddress,
-  Either,
-  Maybe,
-  CoinInfo,
-  SendResult
-};
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, CoinInfo, SendResult };
 
-export {
-  ShieldedToken__counter,
-  ShieldedToken__nonce,
-  ShieldedToken__domain
-};
+export { ShieldedToken__counter, ShieldedToken__nonce, ShieldedToken__domain };
 
-constructor(
-  _nonce: Bytes<32>,
-  _name: Maybe<Opaque<"string">>,
-  _symbol: Maybe<Opaque<"string">>,
-  _decimals:Uint<8>
-) {
+constructor(_nonce: Bytes<32>,
+            _name: Maybe<Opaque<"string">>,
+            _symbol: Maybe<Opaque<"string">>,
+            _decimals: Uint<8>) {
   ShieldedToken_initializer(_nonce, _name, _symbol, _decimals);
 }
 

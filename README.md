@@ -154,8 +154,8 @@ turbo test
 ### Check/apply Biome formatter
 
 ```bash
-turbo fmt-and-lint
-turbo fmt-and-lint:fix
+turbo check
+turbo check:fix
 ```
 
 ### Advanced

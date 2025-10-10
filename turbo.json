@@ -73,6 +73,13 @@
       ],
       "outputs": ["dist/**"]
     },
+    "format": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "format:fix": {
+      "dependsOn": ["^build"]
+    },
     "types": {
       "dependsOn": [
         "@openzeppelin-compact/compact#build",
@@ -81,9 +88,9 @@
       "outputs": [],
       "cache": false
     },
-    "//#fmt-and-lint": {},
-    "//#fmt-and-lint:ci": {},
-    "//#fmt-and-lint:fix": {
+    "//#check": {},
+    "//#check:ci": {},
+    "//#check:fix": {
       "cache": false
     },
     "clean": {

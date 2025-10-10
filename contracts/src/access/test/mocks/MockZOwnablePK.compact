@@ -3,9 +3,11 @@
 pragma language_version >= 0.17.0;
 
 import CompactStandardLibrary;
+
 import "../../ZOwnablePK" prefix ZOwnablePK_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
 export { ZOwnablePK__ownerCommitment, ZOwnablePK__counter };
 
 /**
@@ -41,7 +43,8 @@ export circuit _computeOwnerCommitment(id: Bytes<32>, counter: Uint<64>): Bytes<
   return ZOwnablePK__computeOwnerCommitment(id, counter);
 }
 
-export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+export pure circuit _computeOwnerId(
+                      pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
   return ZOwnablePK__computeOwnerId(pk, nonce);
 }
 

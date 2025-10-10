@@ -1,21 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { BaseErrorHandler } from '../src/BaseServices.js';
 import { CompactCompiler } from '../src/Compiler.js';
 import {
   CompactCliNotFoundError,
   CompilationError,
-  DirectoryNotFoundError,
   isPromisifiedChildProcessError,
-  type PromisifiedChildProcessError,
 } from '../src/types/errors.js';
 
-// Mock CompactCompiler
+// Mock dependencies
 vi.mock('../src/Compiler.js', () => ({
   CompactCompiler: {
     fromArgs: vi.fn(),
   },
 }));
 
-// Mock error utilities
+vi.mock('../src/BaseServices.js', () => ({
+  BaseErrorHandler: {
+    handleCommonErrors: vi.fn(),
+    handleUnexpectedError: vi.fn(),
+  },
+}));
+
 vi.mock('../src/types/errors.js', async () => {
   const actual = await vi.importActual('../src/types/errors.js');
   return {
@@ -55,6 +60,8 @@ const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 describe('runCompiler CLI', () => {
   let mockCompile: ReturnType<typeof vi.fn>;
   let mockFromArgs: ReturnType<typeof vi.fn>;
+  let mockHandleCommonErrors: ReturnType<typeof vi.fn>;
+  let mockHandleUnexpectedError: ReturnType<typeof vi.fn>;
   let originalArgv: string[];
 
   beforeEach(() => {
@@ -66,6 +73,10 @@ describe('runCompiler CLI', () => {
 
     mockCompile = vi.fn();
     mockFromArgs = vi.mocked(CompactCompiler.fromArgs);
+    mockHandleCommonErrors = vi.mocked(BaseErrorHandler.handleCommonErrors);
+    mockHandleUnexpectedError = vi.mocked(
+      BaseErrorHandler.handleUnexpectedError,
+    );
 
     // Mock CompactCompiler instance
     mockFromArgs.mockReturnValue({
@@ -86,306 +97,211 @@ describe('runCompiler CLI', () => {
   });
 
   describe('successful compilation', () => {
-    it('should compile successfully with no arguments', async () => {
+    it('compiles successfully with no arguments', async () => {
+      const testData = {
+        expectedArgs: [],
+      };
+
       mockCompile.mockResolvedValue(undefined);
 
       // Import and run the CLI
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith([]);
+      expect(mockFromArgs).toHaveBeenCalledWith(testData.expectedArgs);
       expect(mockCompile).toHaveBeenCalled();
       expect(mockExit).not.toHaveBeenCalled();
     });
 
-    it('should compile successfully with arguments', async () => {
-      process.argv = [
-        'node',
-        'runCompiler.js',
-        '--dir',
-        'security',
-        '--skip-zk',
-      ];
+    it('compiles successfully with arguments', async () => {
+      const testData = {
+        args: ['--dir', 'security', '--skip-zk'],
+        processArgv: [
+          'node',
+          'runCompiler.js',
+          '--dir',
+          'security',
+          '--skip-zk',
+        ],
+      };
+
+      process.argv = testData.processArgv;
       mockCompile.mockResolvedValue(undefined);
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith([
-        '--dir',
-        'security',
-        '--skip-zk',
-      ]);
+      expect(mockFromArgs).toHaveBeenCalledWith(testData.args);
       expect(mockCompile).toHaveBeenCalled();
       expect(mockExit).not.toHaveBeenCalled();
     });
   });
 
-  describe('error handling', () => {
-    it('should handle CompactCliNotFoundError with installation instructions', async () => {
-      const error = new CompactCliNotFoundError('CLI not found');
-      mockCompile.mockRejectedValue(error);
-
-      await import('../src/runCompiler.js');
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        '[COMPILE] Error: CLI not found',
-      );
-      expect(mockSpinner.info).toHaveBeenCalledWith(
-        "[COMPILE] Install with: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh",
-      );
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-
-    it('should handle DirectoryNotFoundError with helpful message', async () => {
-      const error = new DirectoryNotFoundError(
-        'Directory not found',
-        'src/nonexistent',
-      );
-      mockCompile.mockRejectedValue(error);
-
-      await import('../src/runCompiler.js');
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        '[COMPILE] Error: Directory not found',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith('\nAvailable directories:');
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir access    # Compile access control contracts',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir archive   # Compile archive contracts',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir security  # Compile security contracts',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir token     # Compile token contracts',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir utils     # Compile utility contracts',
-      );
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-
-    it('should handle CompilationError with file context and cause', async () => {
-      const mockIsPromisifiedChildProcessError = vi.mocked(
-        isPromisifiedChildProcessError,
-      );
-
-      const childProcessError = {
-        message: 'Syntax error',
-        stdout: 'some output',
-        stderr: 'error details',
+  describe('error handling delegation', () => {
+    it('delegates to BaseErrorHandler.handleCommonErrors first', async () => {
+      const testData = {
+        error: new CompactCliNotFoundError('CLI not found'),
+        operation: 'COMPILE',
       };
 
-      // Return true for this specific error
-      mockIsPromisifiedChildProcessError.mockImplementation(
-        (err) => err === childProcessError,
-      );
-
-      const error = new CompilationError(
-        'Compilation failed',
-        'MyToken.compact',
-        childProcessError,
-      );
-      mockCompile.mockRejectedValue(error);
+      mockHandleCommonErrors.mockReturnValue(true); // Indicates error was handled
+      mockCompile.mockRejectedValue(testData.error);
 
       await import('../src/runCompiler.js');
 
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        '[COMPILE] Compilation failed for file: MyToken.compact',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        `    Additional error details: ${(error.cause as PromisifiedChildProcessError).stderr}`,
+      expect(mockHandleCommonErrors).toHaveBeenCalledWith(
+        testData.error,
+        expect.any(Object), // spinner
+        testData.operation,
       );
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
-    it('should handle CompilationError with unknown file', async () => {
-      const error = new CompilationError('Compilation failed');
-      mockCompile.mockRejectedValue(error);
-
-      await import('../src/runCompiler.js');
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        '[COMPILE] Compilation failed for file: unknown',
-      );
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-
-    it('should handle argument parsing errors', async () => {
-      const error = new Error('--dir flag requires a directory name');
-      mockFromArgs.mockImplementation(() => {
-        throw error;
-      });
-
-      await import('../src/runCompiler.js');
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        '[COMPILE] Error: --dir flag requires a directory name',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '\nUsage: compact-compiler [options]',
-      );
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-
-    it('should handle unexpected errors', async () => {
-      const msg = 'Something unexpected happened';
-      const error = new Error(msg);
-      mockCompile.mockRejectedValue(error);
-
-      await import('../src/runCompiler.js');
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        `[COMPILE] Unexpected error: ${msg}`,
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '\nIf this error persists, please check:',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • Compact CLI is installed and in PATH',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • Source files exist and are readable',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • Specified Compact version exists',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • File system permissions are correct',
-      );
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-
-    it('should handle non-Error exceptions', async () => {
-      const msg = 'String error';
-      mockCompile.mockRejectedValue(msg);
-
-      await import('../src/runCompiler.js');
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        `[COMPILE] Unexpected error: ${msg}`,
-      );
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-  });
-
-  describe('environment validation errors', () => {
-    it('should handle promisified child process errors', async () => {
-      const mockIsPromisifiedChildProcessError = vi.mocked(
-        isPromisifiedChildProcessError,
-      );
-
-      const error = {
-        message: 'Command failed',
-        stdout: 'some output',
-        stderr: 'error details',
+    it('handles compiler-specific errors when BaseErrorHandler returns false', async () => {
+      const testData = {
+        error: new CompilationError('Compilation failed', 'MyToken.compact'),
+        expectedMessage:
+          '[COMPILE] Compilation failed for file: MyToken.compact',
       };
 
-      // Return true for this specific error
-      mockIsPromisifiedChildProcessError.mockImplementation(
-        (err) => err === error,
-      );
-      mockCompile.mockRejectedValue(error);
+      mockHandleCommonErrors.mockReturnValue(false); // Not handled by base
+      mockCompile.mockRejectedValue(testData.error);
 
       await import('../src/runCompiler.js');
 
-      expect(mockIsPromisifiedChildProcessError).toHaveBeenCalledWith(error);
-      expect(mockSpinner.fail).toHaveBeenCalledWith(
-        '[COMPILE] Environment validation failed: Command failed',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith('\nTroubleshooting:');
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • Check that Compact CLI is installed and in PATH',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • Verify the specified Compact version exists',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  • Ensure you have proper permissions',
-      );
+      expect(mockHandleCommonErrors).toHaveBeenCalled();
+      expect(mockSpinner.fail).toHaveBeenCalledWith(testData.expectedMessage);
       expect(mockExit).toHaveBeenCalledWith(1);
     });
-  });
 
-  describe('usage help', () => {
-    it('should show complete usage help for argument parsing errors', async () => {
-      const error = new Error('--dir flag requires a directory name');
-      mockFromArgs.mockImplementation(() => {
-        throw error;
-      });
+    it('handles CompilationError with unknown file', async () => {
+      const testData = {
+        error: new CompilationError('Compilation failed', ''),
+        expectedMessage: '[COMPILE] Compilation failed for file: unknown',
+      };
+
+      mockHandleCommonErrors.mockReturnValue(false);
+      mockCompile.mockRejectedValue(testData.error);
 
       await import('../src/runCompiler.js');
 
-      // Verify all sections of help are shown
+      expect(mockSpinner.fail).toHaveBeenCalledWith(testData.expectedMessage);
+    });
+
+    it('shows usage help for argument parsing errors', async () => {
+      const testData = {
+        error: new Error('--dir flag requires a directory name'),
+      };
+
+      mockHandleCommonErrors.mockReturnValue(false);
+      mockCompile.mockRejectedValue(testData.error);
+
+      await import('../src/runCompiler.js');
+
       expect(mockConsoleLog).toHaveBeenCalledWith(
         '\nUsage: compact-compiler [options]',
       );
       expect(mockConsoleLog).toHaveBeenCalledWith('\nOptions:');
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir <directory> Compile specific directory (access, archive, security, token, utils)',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --skip-zk         Skip zero-knowledge proof generation',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  +<version>        Use specific toolchain version (e.g., +0.25.0)',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith('\nExamples:');
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  compact-compiler                           # Compile all files',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  compact-compiler --dir security             # Compile security directory',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  compact-compiler --dir access --skip-zk     # Compile access with flags',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  SKIP_ZK=true compact-compiler --dir token   # Use environment variable',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  compact-compiler --skip-zk +0.25.0          # Use specific version',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith('\nTurbo integration:');
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  turbo compact                               # Full build',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  turbo compact:security -- --skip-zk         # Directory with flags',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  SKIP_ZK=true turbo compact                  # Environment variables',
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
+    it('delegates unexpected errors to BaseErrorHandler', async () => {
+      const testData = {
+        error: new Error('Unexpected error'),
+        operation: 'COMPILE',
+      };
+
+      mockHandleCommonErrors.mockReturnValue(false);
+      mockCompile.mockRejectedValue(testData.error);
+
+      await import('../src/runCompiler.js');
+
+      expect(mockHandleUnexpectedError).toHaveBeenCalledWith(
+        testData.error,
+        expect.any(Object), // spinner
+        testData.operation,
       );
     });
   });
 
-  describe('directory error help', () => {
-    it('should show all available directories', async () => {
-      const error = new DirectoryNotFoundError(
-        'Directory not found',
-        'src/invalid',
+  describe('CompilationError handling', () => {
+    it('displays stderr output when available', async () => {
+      const testData = {
+        execError: {
+          stderr: 'Detailed error output',
+          stdout: 'some output',
+        },
+      };
+
+      const compilationError = new CompilationError(
+        'Compilation failed',
+        'MyToken.compact',
+        testData.execError,
       );
-      mockCompile.mockRejectedValue(error);
+
+      mockHandleCommonErrors.mockReturnValue(false);
+      vi.mocked(isPromisifiedChildProcessError).mockReturnValue(true);
+      mockCompile.mockRejectedValue(compilationError);
 
       await import('../src/runCompiler.js');
 
-      expect(mockConsoleLog).toHaveBeenCalledWith('\nAvailable directories:');
       expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir access    # Compile access control contracts',
+        expect.stringContaining(
+          'Additional error details: Detailed error output',
+        ),
       );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir archive   # Compile archive contracts',
+    });
+
+    it('skips stderr output when it contains stdout/stderr keywords', async () => {
+      const testData = {
+        execError: {
+          stderr: 'Error: stdout and stderr already displayed',
+          stdout: 'some output',
+        },
+      };
+
+      const compilationError = new CompilationError(
+        'Compilation failed',
+        'MyToken.compact',
+        testData.execError,
       );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir security  # Compile security contracts',
+
+      mockHandleCommonErrors.mockReturnValue(false);
+      vi.mocked(isPromisifiedChildProcessError).mockReturnValue(true);
+      mockCompile.mockRejectedValue(compilationError);
+
+      await import('../src/runCompiler.js');
+
+      expect(mockConsoleLog).not.toHaveBeenCalledWith(
+        expect.stringContaining('Additional error details'),
       );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir token     # Compile token contracts',
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir utils     # Compile utility contracts',
-      );
+    });
+  });
+
+  describe('argument parsing error handling', () => {
+    it('shows complete usage help', async () => {
+      const testData = {
+        error: new Error('--dir flag requires a directory name'),
+        expectedSections: [
+          '\nUsage: compact-compiler [options]',
+          '\nOptions:',
+          '  --dir <directory> Compile specific directory (access, archive, security, token, utils)',
+          '  --skip-zk         Skip zero-knowledge proof generation',
+          '  +<version>        Use specific toolchain version (e.g., +0.25.0)',
+          '\nExamples:',
+          '  compact-compiler                            # Compile all files',
+          '  SKIP_ZK=true compact-compiler --dir token   # Use environment variable',
+          '\nTurbo integration:',
+          '  turbo compact                               # Full build',
+        ],
+      };
+
+      mockHandleCommonErrors.mockReturnValue(false);
+      mockCompile.mockRejectedValue(testData.error);
+
+      await import('../src/runCompiler.js');
+
+      testData.expectedSections.forEach((section) => {
+        expect(mockConsoleLog).toHaveBeenCalledWith(section);
+      });
     });
   });
 
@@ -394,85 +310,101 @@ describe('runCompiler CLI', () => {
       mockCompile.mockResolvedValue(undefined);
     });
 
-    it('should handle turbo compact', async () => {
-      process.argv = ['node', 'runCompiler.js'];
+    it('handles turbo compact', async () => {
+      const testData = {
+        processArgv: ['node', 'runCompiler.js'],
+        expectedArgs: [],
+      };
+
+      process.argv = testData.processArgv;
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith([]);
+      expect(mockFromArgs).toHaveBeenCalledWith(testData.expectedArgs);
     });
 
-    it('should handle turbo compact:security', async () => {
-      process.argv = ['node', 'runCompiler.js', '--dir', 'security'];
+    it('handles turbo compact:security', async () => {
+      const testData = {
+        processArgv: ['node', 'runCompiler.js', '--dir', 'security'],
+        expectedArgs: ['--dir', 'security'],
+      };
+
+      process.argv = testData.processArgv;
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith(['--dir', 'security']);
+      expect(mockFromArgs).toHaveBeenCalledWith(testData.expectedArgs);
     });
 
-    it('should handle turbo compact:access -- --skip-zk', async () => {
-      process.argv = ['node', 'runCompiler.js', '--dir', 'access', '--skip-zk'];
+    it('handles complex command with multiple flags', async () => {
+      const testData = {
+        processArgv: [
+          'node',
+          'runCompiler.js',
+          '--dir',
+          'security',
+          '--skip-zk',
+          '--verbose',
+          '+0.25.0',
+        ],
+        expectedArgs: [
+          '--dir',
+          'security',
+          '--skip-zk',
+          '--verbose',
+          '+0.25.0',
+        ],
+      };
+
+      process.argv = testData.processArgv;
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith([
-        '--dir',
-        'access',
-        '--skip-zk',
-      ]);
-    });
-
-    it('should handle version specification', async () => {
-      process.argv = ['node', 'runCompiler.js', '+0.25.0', '--skip-zk'];
-
-      await import('../src/runCompiler.js');
-
-      expect(mockFromArgs).toHaveBeenCalledWith(['+0.25.0', '--skip-zk']);
-    });
-
-    it('should handle complex command', async () => {
-      process.argv = [
-        'node',
-        'runCompiler.js',
-        '--dir',
-        'security',
-        '--skip-zk',
-        '--verbose',
-        '+0.25.0',
-      ];
-
-      await import('../src/runCompiler.js');
-
-      expect(mockFromArgs).toHaveBeenCalledWith([
-        '--dir',
-        'security',
-        '--skip-zk',
-        '--verbose',
-        '+0.25.0',
-      ]);
+      expect(mockFromArgs).toHaveBeenCalledWith(testData.expectedArgs);
     });
   });
 
   describe('integration with CompactCompiler', () => {
-    it('should pass arguments correctly to CompactCompiler.fromArgs', async () => {
-      const args = ['--dir', 'token', '--skip-zk', '+0.25.0'];
-      process.argv = ['node', 'runCompiler.js', ...args];
+    it('passes arguments correctly to CompactCompiler.fromArgs', async () => {
+      const testData = {
+        args: ['--dir', 'token', '--skip-zk', '+0.25.0'],
+        processArgv: [
+          'node',
+          'runCompiler.js',
+          '--dir',
+          'token',
+          '--skip-zk',
+          '+0.25.0',
+        ],
+      };
+
+      process.argv = testData.processArgv;
       mockCompile.mockResolvedValue(undefined);
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith(args);
+      expect(mockFromArgs).toHaveBeenCalledWith(testData.args);
       expect(mockFromArgs).toHaveBeenCalledTimes(1);
       expect(mockCompile).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle empty arguments', async () => {
-      process.argv = ['node', 'runCompiler.js'];
-      mockCompile.mockResolvedValue(undefined);
+    it('handles fromArgs throwing errors', async () => {
+      const testData = {
+        error: new Error('Invalid arguments'),
+      };
+
+      mockFromArgs.mockImplementation(() => {
+        throw testData.error;
+      });
 
       await import('../src/runCompiler.js');
 
-      expect(mockFromArgs).toHaveBeenCalledWith([]);
+      expect(mockHandleCommonErrors).toHaveBeenCalledWith(
+        testData.error,
+        expect.any(Object),
+        'COMPILE',
+      );
+      expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
 });

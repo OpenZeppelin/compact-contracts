@@ -11,9 +11,9 @@ export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, 
 }
 
 export pure circuit isKeyOrAddressEqual(
-    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    other: Either<ZswapCoinPublicKey, ContractAddress>
-): Boolean {
+                      keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+                      other: Either<ZswapCoinPublicKey, ContractAddress>
+                      ): Boolean {
   return Utils_isKeyOrAddressEqual(keyOrAddress, other);
 }
 

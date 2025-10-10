@@ -409,6 +409,7 @@ __metadata:
   bin:
     compact-builder: dist/runBuilder.js
     compact-compiler: dist/runCompiler.js
+    compact-formatter: dist/runFormatter.js
   languageName: unknown
   linkType: soft
 

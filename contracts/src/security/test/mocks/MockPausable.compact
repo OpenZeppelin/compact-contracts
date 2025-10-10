@@ -1,6 +1,7 @@
 pragma language_version >= 0.17.0;
 
 import CompactStandardLibrary;
+
 import "../../Pausable" prefix Pausable_;
 
 export { Pausable__isPaused };

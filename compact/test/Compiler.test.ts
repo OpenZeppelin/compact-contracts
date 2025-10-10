@@ -1,318 +1,217 @@
-import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type MockedFunction,
-  vi,
-} from 'vitest';
+import { join } from 'node:path';
+import ora from 'ora';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { ARTIFACTS_DIR, SRC_DIR } from '../src/BaseServices.js';
 import {
   CompactCompiler,
+  CompilerEnvironmentValidator,
   CompilerService,
-  EnvironmentValidator,
-  type ExecFunction,
-  FileDiscovery,
-  UIService,
+  CompilerUIService,
 } from '../src/Compiler.js';
-import {
-  CompactCliNotFoundError,
-  CompilationError,
-  DirectoryNotFoundError,
-} from '../src/types/errors.js';
+import { CompilationError } from '../src/types/errors.js';
 
-// Mock Node.js modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+// Mock dependencies
 vi.mock('chalk', () => ({
   default: {
-    blue: (text: string) => text,
-    green: (text: string) => text,
-    red: (text: string) => text,
-    yellow: (text: string) => text,
-    cyan: (text: string) => text,
-    gray: (text: string) => text,
+    blue: vi.fn((text) => text),
+    green: vi.fn((text) => text),
+    red: vi.fn((text) => text),
+    yellow: vi.fn((text) => text),
+    cyan: vi.fn((text) => text),
   },
 }));
 
-// Mock spinner
-const mockSpinner = {
-  start: () => ({ succeed: vi.fn(), fail: vi.fn(), text: '' }),
-  info: vi.fn(),
-  warn: vi.fn(),
-  fail: vi.fn(),
-  succeed: vi.fn(),
-};
-
 vi.mock('ora', () => ({
-  default: () => mockSpinner,
+  default: vi.fn(() => ({
+    start: vi.fn().mockReturnThis(),
+    succeed: vi.fn(),
+    fail: vi.fn(),
+    info: vi.fn(),
+  })),
 }));
 
-const mockExistsSync = vi.mocked(existsSync);
-const mockReaddir = vi.mocked(readdir);
-
-describe('EnvironmentValidator', () => {
-  let mockExec: MockedFunction<ExecFunction>;
-  let validator: EnvironmentValidator;
+describe('CompilerEnvironmentValidator', () => {
+  let validator: CompilerEnvironmentValidator;
+  let mockExec: Mock;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockExec = vi.fn();
-    validator = new EnvironmentValidator(mockExec);
-  });
-
-  describe('checkCompactAvailable', () => {
-    it('should return true when compact CLI is available', async () => {
-      mockExec.mockResolvedValue({ stdout: 'compact 0.1.0', stderr: '' });
-
-      const result = await validator.checkCompactAvailable();
-
-      expect(result).toBe(true);
-      expect(mockExec).toHaveBeenCalledWith('compact --version');
-    });
-
-    it('should return false when compact CLI is not available', async () => {
-      mockExec.mockRejectedValue(new Error('Command not found'));
-
-      const result = await validator.checkCompactAvailable();
-
-      expect(result).toBe(false);
-      expect(mockExec).toHaveBeenCalledWith('compact --version');
-    });
-  });
-
-  describe('getDevToolsVersion', () => {
-    it('should return trimmed version string', async () => {
-      mockExec.mockResolvedValue({ stdout: '  compact 0.1.0  \n', stderr: '' });
-
-      const version = await validator.getDevToolsVersion();
-
-      expect(version).toBe('compact 0.1.0');
-      expect(mockExec).toHaveBeenCalledWith('compact --version');
-    });
-
-    it('should throw error when command fails', async () => {
-      mockExec.mockRejectedValue(new Error('Command failed'));
-
-      await expect(validator.getDevToolsVersion()).rejects.toThrow(
-        'Command failed',
-      );
-    });
+    validator = new CompilerEnvironmentValidator(mockExec);
   });
 
   describe('getToolchainVersion', () => {
-    it('should get version without specific version flag', async () => {
+    it('returns default toolchain version', async () => {
+      const testData = {
+        expectedOutput: 'Compactc version: 0.25.0',
+        expectedCommand: 'compact compile  --version',
+      };
+
       mockExec.mockResolvedValue({
-        stdout: 'Compactc version: 0.25.0',
+        stdout: `  ${testData.expectedOutput}  \n`,
         stderr: '',
       });
 
       const version = await validator.getToolchainVersion();
 
-      expect(version).toBe('Compactc version: 0.25.0');
-      expect(mockExec).toHaveBeenCalledWith('compact compile  --version');
+      expect(version).toBe(testData.expectedOutput);
+      expect(mockExec).toHaveBeenCalledWith(testData.expectedCommand);
     });
 
-    it('should get version with specific version flag', async () => {
+    it('returns toolchain version with specific version', async () => {
+      const testData = {
+        version: '0.25.0',
+        expectedOutput: 'Compactc version: 0.25.0',
+        expectedCommand: 'compact compile +0.25.0 --version',
+      };
+
       mockExec.mockResolvedValue({
-        stdout: 'Compactc version: 0.25.0',
+        stdout: testData.expectedOutput,
         stderr: '',
       });
 
-      const version = await validator.getToolchainVersion('0.25.0');
+      const version = await validator.getToolchainVersion(testData.version);
 
-      expect(version).toBe('Compactc version: 0.25.0');
+      expect(version).toBe(testData.expectedOutput);
+      expect(mockExec).toHaveBeenCalledWith(testData.expectedCommand);
+    });
+  });
+
+  describe('validate', () => {
+    it('returns both dev tools and toolchain versions', async () => {
+      const testData = {
+        devToolsVersion: 'compact 0.2.0',
+        toolchainVersion: 'Compactc version: 0.25.0',
+      };
+
+      mockExec
+        .mockResolvedValueOnce({ stdout: testData.devToolsVersion, stderr: '' })
+        .mockResolvedValueOnce({ stdout: testData.devToolsVersion, stderr: '' })
+        .mockResolvedValueOnce({
+          stdout: testData.toolchainVersion,
+          stderr: '',
+        });
+
+      const result = await validator.validate();
+
+      expect(result).toEqual({
+        devToolsVersion: testData.devToolsVersion,
+        toolchainVersion: testData.toolchainVersion,
+      });
+    });
+
+    it('passes version parameter to getToolchainVersion', async () => {
+      const testData = {
+        version: '0.25.0',
+        devToolsVersion: 'compact 0.2.0',
+        toolchainVersion: 'Compactc version: 0.25.0',
+      };
+
+      mockExec
+        .mockResolvedValueOnce({ stdout: testData.devToolsVersion, stderr: '' })
+        .mockResolvedValueOnce({ stdout: testData.devToolsVersion, stderr: '' })
+        .mockResolvedValueOnce({
+          stdout: testData.toolchainVersion,
+          stderr: '',
+        });
+
+      await validator.validate(testData.version);
+
       expect(mockExec).toHaveBeenCalledWith(
         'compact compile +0.25.0 --version',
       );
     });
   });
-
-  describe('validate', () => {
-    it('should validate successfully when CLI is available', async () => {
-      mockExec.mockResolvedValue({ stdout: 'compact 0.1.0', stderr: '' });
-
-      await expect(validator.validate()).resolves.not.toThrow();
-    });
-
-    it('should throw CompactCliNotFoundError when CLI is not available', async () => {
-      mockExec.mockRejectedValue(new Error('Command not found'));
-
-      await expect(validator.validate()).rejects.toThrow(
-        CompactCliNotFoundError,
-      );
-    });
-  });
-});
-
-describe('FileDiscovery', () => {
-  let discovery: FileDiscovery;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    discovery = new FileDiscovery();
-  });
-
-  describe('getCompactFiles', () => {
-    it('should find .compact files in directory', async () => {
-      const mockDirents = [
-        {
-          name: 'MyToken.compact',
-          isFile: () => true,
-          isDirectory: () => false,
-        },
-        {
-          name: 'Ownable.compact',
-          isFile: () => true,
-          isDirectory: () => false,
-        },
-        { name: 'README.md', isFile: () => true, isDirectory: () => false },
-        { name: 'utils', isFile: () => false, isDirectory: () => true },
-      ];
-
-      mockReaddir
-        .mockResolvedValueOnce(mockDirents as any)
-        .mockResolvedValueOnce([
-          {
-            name: 'Utils.compact',
-            isFile: () => true,
-            isDirectory: () => false,
-          },
-        ] as any);
-
-      const files = await discovery.getCompactFiles('src');
-
-      expect(files).toEqual([
-        'MyToken.compact',
-        'Ownable.compact',
-        'utils/Utils.compact',
-      ]);
-    });
-
-    it('should handle empty directories', async () => {
-      mockReaddir.mockResolvedValue([]);
-
-      const files = await discovery.getCompactFiles('src');
-
-      expect(files).toEqual([]);
-    });
-
-    it('should handle directory read errors gracefully', async () => {
-      const consoleSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      mockReaddir.mockRejectedValueOnce(new Error('Permission denied'));
-
-      const files = await discovery.getCompactFiles('src');
-
-      expect(files).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to read dir: src',
-        expect.any(Error),
-      );
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle file access errors gracefully', async () => {
-      const mockDirents = [
-        {
-          name: 'MyToken.compact',
-          isFile: () => {
-            throw new Error('Access denied');
-          },
-          isDirectory: () => false,
-        },
-        {
-          name: 'Ownable.compact',
-          isFile: () => true,
-          isDirectory: () => false,
-        },
-      ];
-
-      mockReaddir.mockResolvedValue(mockDirents as any);
-
-      const files = await discovery.getCompactFiles('src');
-
-      expect(files).toEqual(['Ownable.compact']);
-    });
-  });
 });
 
 describe('CompilerService', () => {
-  let mockExec: MockedFunction<ExecFunction>;
   let service: CompilerService;
+  let mockExec: Mock;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockExec = vi.fn();
     service = new CompilerService(mockExec);
   });
 
   describe('compileFile', () => {
-    it('should compile file successfully with basic flags', async () => {
-      mockExec.mockResolvedValue({
-        stdout: 'Compilation successful',
-        stderr: '',
-      });
+    it('constructs correct command with all parameters', async () => {
+      const testData = {
+        file: 'contracts/MyToken.compact',
+        flags: '--skip-zk --verbose',
+        version: '0.25.0',
+        expectedInputPath: join(SRC_DIR, 'contracts/MyToken.compact'),
+        expectedOutputDir: join(ARTIFACTS_DIR, 'MyToken'),
+        expectedCommand:
+          'compact compile +0.25.0 --skip-zk --verbose "src/contracts/MyToken.compact" "artifacts/MyToken"',
+      };
 
-      const result = await service.compileFile('MyToken.compact', '--skip-zk');
+      mockExec.mockResolvedValue({ stdout: 'Success', stderr: '' });
 
-      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
-      expect(mockExec).toHaveBeenCalledWith(
-        'compact compile --skip-zk "src/MyToken.compact" "artifacts/MyToken"',
+      await service.compileFile(
+        testData.file,
+        testData.flags,
+        testData.version,
       );
+
+      expect(mockExec).toHaveBeenCalledWith(testData.expectedCommand);
     });
 
-    it('should compile file with version flag', async () => {
-      mockExec.mockResolvedValue({
-        stdout: 'Compilation successful',
-        stderr: '',
-      });
+    it('constructs command without version flag', async () => {
+      const testData = {
+        file: 'MyToken.compact',
+        flags: '--skip-zk',
+        expectedCommand:
+          'compact compile --skip-zk "src/MyToken.compact" "artifacts/MyToken"',
+      };
 
-      const result = await service.compileFile(
-        'MyToken.compact',
-        '--skip-zk',
-        '0.25.0',
-      );
+      mockExec.mockResolvedValue({ stdout: 'Success', stderr: '' });
 
-      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
-      expect(mockExec).toHaveBeenCalledWith(
-        'compact compile +0.25.0 --skip-zk "src/MyToken.compact" "artifacts/MyToken"',
-      );
+      await service.compileFile(testData.file, testData.flags);
+
+      expect(mockExec).toHaveBeenCalledWith(testData.expectedCommand);
     });
 
-    it('should handle empty flags', async () => {
-      mockExec.mockResolvedValue({
-        stdout: 'Compilation successful',
-        stderr: '',
-      });
+    it('constructs command without flags', async () => {
+      const testData = {
+        file: 'MyToken.compact',
+        flags: '',
+        expectedCommand:
+          'compact compile "src/MyToken.compact" "artifacts/MyToken"',
+      };
 
-      const result = await service.compileFile('MyToken.compact', '');
+      mockExec.mockResolvedValue({ stdout: 'Success', stderr: '' });
 
-      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
-      expect(mockExec).toHaveBeenCalledWith(
-        'compact compile "src/MyToken.compact" "artifacts/MyToken"',
-      );
+      await service.compileFile(testData.file, testData.flags);
+
+      expect(mockExec).toHaveBeenCalledWith(testData.expectedCommand);
     });
 
-    it('should throw CompilationError when compilation fails', async () => {
-      mockExec.mockRejectedValue(new Error('Syntax error on line 10'));
+    it('throws CompilationError on failure', async () => {
+      const testData = {
+        file: 'MyToken.compact',
+        flags: '--skip-zk',
+        errorMessage: 'Syntax error on line 10',
+      };
+
+      mockExec.mockRejectedValue(new Error(testData.errorMessage));
 
       await expect(
-        service.compileFile('MyToken.compact', '--skip-zk'),
+        service.compileFile(testData.file, testData.flags),
       ).rejects.toThrow(CompilationError);
     });
 
-    it('should include file path in CompilationError', async () => {
-      mockExec.mockRejectedValue(new Error('Syntax error'));
+    it('CompilationError includes file name', async () => {
+      const testData = {
+        file: 'contracts/MyToken.compact',
+        flags: '--skip-zk',
+      };
+
+      mockExec.mockRejectedValue(new Error('Compilation failed'));
 
       try {
-        await service.compileFile('MyToken.compact', '--skip-zk');
+        await service.compileFile(testData.file, testData.flags);
       } catch (error) {
         expect(error).toBeInstanceOf(CompilationError);
-        expect((error as CompilationError).file).toBe('MyToken.compact');
+        expect((error as CompilationError).file).toBe(testData.file);
       }
     });
 
@@ -328,69 +227,90 @@ describe('CompilerService', () => {
       }
     });
   });
+
+  describe('createError', () => {
+    it('extracts file name from error message', () => {
+      const testData = {
+        message: 'Failed to compile contracts/MyToken.compact: Syntax error',
+        expectedFile: 'contracts/MyToken.compact',
+      };
+
+      const error = service['createError'](testData.message);
+
+      expect(error).toBeInstanceOf(CompilationError);
+      expect((error as CompilationError).file).toBe(testData.expectedFile);
+    });
+
+    it('uses "unknown" when file name cannot be extracted', () => {
+      const testData = {
+        message: 'Some generic error message',
+        expectedFile: 'unknown',
+      };
+
+      const error = service['createError'](testData.message);
+
+      expect(error).toBeInstanceOf(CompilationError);
+      expect((error as CompilationError).file).toBe(testData.expectedFile);
+    });
+  });
 });
 
-describe('UIService', () => {
+describe('CompilerUIService', () => {
+  let mockSpinner: any;
+
   beforeEach(() => {
-    vi.clearAllMocks();
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-  });
-
-  describe('printOutput', () => {
-    it('should format output with indentation', () => {
-      const mockColorFn = vi.fn((text: string) => `colored(${text})`);
-
-      UIService.printOutput('line 1\nline 2\n\nline 3', mockColorFn);
-
-      expect(mockColorFn).toHaveBeenCalledWith(
-        '    line 1\n    line 2\n    line 3',
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        'colored(    line 1\n    line 2\n    line 3)',
-      );
-    });
-
-    it('should handle empty output', () => {
-      const mockColorFn = vi.fn((text: string) => `colored(${text})`);
-
-      UIService.printOutput('', mockColorFn);
-
-      expect(mockColorFn).toHaveBeenCalledWith('');
-      expect(console.log).toHaveBeenCalledWith('colored()');
-    });
+    mockSpinner = {
+      info: vi.fn(),
+    };
+    vi.mocked(ora).mockReturnValue(mockSpinner);
   });
 
   describe('displayEnvInfo', () => {
-    it('should display environment information with all parameters', () => {
-      UIService.displayEnvInfo(
-        'compact 0.1.0',
-        'Compactc 0.25.0',
-        'security',
-        '0.25.0',
+    it('displays all environment information', () => {
+      const testData = {
+        devToolsVersion: 'compact 0.2.0',
+        toolchainVersion: 'Compactc version: 0.25.0',
+        targetDir: 'security',
+        version: '0.25.0',
+      };
+
+      CompilerUIService.displayEnvInfo(
+        testData.devToolsVersion,
+        testData.toolchainVersion,
+        testData.targetDir,
+        testData.version,
       );
 
       expect(mockSpinner.info).toHaveBeenCalledWith(
         '[COMPILE] TARGET_DIR: security',
       );
       expect(mockSpinner.info).toHaveBeenCalledWith(
-        '[COMPILE] Compact developer tools: compact 0.1.0',
+        '[COMPILE] Compact developer tools: compact 0.2.0',
       );
       expect(mockSpinner.info).toHaveBeenCalledWith(
-        '[COMPILE] Compact toolchain: Compactc 0.25.0',
+        '[COMPILE] Compact toolchain: Compactc version: 0.25.0',
       );
       expect(mockSpinner.info).toHaveBeenCalledWith(
         '[COMPILE] Using toolchain version: 0.25.0',
       );
     });
 
-    it('should display environment information without optional parameters', () => {
-      UIService.displayEnvInfo('compact 0.1.0', 'Compactc 0.25.0');
+    it('displays minimal environment information', () => {
+      const testData = {
+        devToolsVersion: 'compact 0.2.0',
+        toolchainVersion: 'Compactc version: 0.25.0',
+      };
+
+      CompilerUIService.displayEnvInfo(
+        testData.devToolsVersion,
+        testData.toolchainVersion,
+      );
 
       expect(mockSpinner.info).toHaveBeenCalledWith(
-        '[COMPILE] Compact developer tools: compact 0.1.0',
+        '[COMPILE] Compact developer tools: compact 0.2.0',
       );
       expect(mockSpinner.info).toHaveBeenCalledWith(
-        '[COMPILE] Compact toolchain: Compactc 0.25.0',
+        '[COMPILE] Compact toolchain: Compactc version: 0.25.0',
       );
       expect(mockSpinner.info).not.toHaveBeenCalledWith(
         expect.stringContaining('TARGET_DIR'),
@@ -400,81 +320,59 @@ describe('UIService', () => {
       );
     });
   });
-
-  describe('showCompilationStart', () => {
-    it('should show file count without target directory', () => {
-      UIService.showCompilationStart(5);
-
-      expect(mockSpinner.info).toHaveBeenCalledWith(
-        '[COMPILE] Found 5 .compact file(s) to compile',
-      );
-    });
-
-    it('should show file count with target directory', () => {
-      UIService.showCompilationStart(3, 'security');
-
-      expect(mockSpinner.info).toHaveBeenCalledWith(
-        '[COMPILE] Found 3 .compact file(s) to compile in security/',
-      );
-    });
-  });
-
-  describe('showNoFiles', () => {
-    it('should show no files message with target directory', () => {
-      UIService.showNoFiles('security');
-
-      expect(mockSpinner.warn).toHaveBeenCalledWith(
-        '[COMPILE] No .compact files found in security/.',
-      );
-    });
-
-    it('should show no files message without target directory', () => {
-      UIService.showNoFiles();
-
-      expect(mockSpinner.warn).toHaveBeenCalledWith(
-        '[COMPILE] No .compact files found in .',
-      );
-    });
-  });
 });
 
 describe('CompactCompiler', () => {
-  let mockExec: MockedFunction<ExecFunction>;
   let compiler: CompactCompiler;
+  let mockExec: Mock;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockExec = vi.fn().mockResolvedValue({ stdout: 'success', stderr: '' });
-    mockExistsSync.mockReturnValue(true);
-    mockReaddir.mockResolvedValue([]);
+    mockExec = vi.fn();
   });
 
   describe('constructor', () => {
-    it('should create instance with default parameters', () => {
+    it('creates instance with default parameters', () => {
       compiler = new CompactCompiler();
 
       expect(compiler).toBeInstanceOf(CompactCompiler);
+      expect(compiler.testFlags).toBe('');
+      expect(compiler.testTargetDir).toBeUndefined();
+      expect(compiler.testVersion).toBeUndefined();
     });
 
-    it('should create instance with all parameters', () => {
+    it('creates instance with all parameters', () => {
+      const testData = {
+        flags: '--skip-zk --verbose',
+        targetDir: 'security',
+        version: '0.25.0',
+      };
+
       compiler = new CompactCompiler(
-        '--skip-zk',
-        'security',
-        '0.25.0',
+        testData.flags,
+        testData.targetDir,
+        testData.version,
         mockExec,
       );
 
-      expect(compiler).toBeInstanceOf(CompactCompiler);
+      expect(compiler.testFlags).toBe(testData.flags);
+      expect(compiler.testTargetDir).toBe(testData.targetDir);
+      expect(compiler.testVersion).toBe(testData.version);
     });
 
-    it('should trim flags', () => {
-      compiler = new CompactCompiler('  --skip-zk --verbose  ');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+    it('trims flags parameter', () => {
+      const testData = {
+        inputFlags: '  --skip-zk --verbose  ',
+        expectedFlags: '--skip-zk --verbose',
+      };
+
+      compiler = new CompactCompiler(testData.inputFlags);
+
+      expect(compiler.testFlags).toBe(testData.expectedFlags);
     });
   });
 
   describe('fromArgs', () => {
-    it('should parse empty arguments', () => {
+    it('parses empty arguments', () => {
       compiler = CompactCompiler.fromArgs([]);
 
       expect(compiler.testFlags).toBe('');
@@ -482,82 +380,75 @@ describe('CompactCompiler', () => {
       expect(compiler.testVersion).toBeUndefined();
     });
 
-    it('should handle SKIP_ZK environment variable', () => {
-      compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
+    it('parses SKIP_ZK environment variable', () => {
+      const testData = {
+        env: { SKIP_ZK: 'true' },
+        expectedFlags: '--skip-zk',
+      };
 
-      expect(compiler.testFlags).toBe('--skip-zk');
+      compiler = CompactCompiler.fromArgs([], testData.env);
+
+      expect(compiler.testFlags).toBe(testData.expectedFlags);
     });
 
-    it('should ignore SKIP_ZK when not "true"', () => {
-      compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'false' });
+    it('ignores SKIP_ZK when not "true"', () => {
+      const testData = {
+        env: { SKIP_ZK: 'false' },
+        expectedFlags: '',
+      };
 
-      expect(compiler.testFlags).toBe('');
+      compiler = CompactCompiler.fromArgs([], testData.env);
+
+      expect(compiler.testFlags).toBe(testData.expectedFlags);
     });
 
-    it('should parse --dir flag', () => {
-      compiler = CompactCompiler.fromArgs(['--dir', 'security']);
+    it('parses complex arguments with all options', () => {
+      const testData = {
+        args: ['--dir', 'security', '--skip-zk', '--verbose', '+0.25.0'],
+        env: {},
+        expectedTargetDir: 'security',
+        expectedFlags: '--skip-zk --verbose',
+        expectedVersion: '0.25.0',
+      };
 
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testFlags).toBe('');
+      compiler = CompactCompiler.fromArgs(testData.args, testData.env);
+
+      expect(compiler.testTargetDir).toBe(testData.expectedTargetDir);
+      expect(compiler.testFlags).toBe(testData.expectedFlags);
+      expect(compiler.testVersion).toBe(testData.expectedVersion);
     });
 
-    it('should parse --dir flag with additional flags', () => {
-      compiler = CompactCompiler.fromArgs([
-        '--dir',
-        'security',
-        '--skip-zk',
-        '--verbose',
-      ]);
+    it('combines environment variables with CLI flags', () => {
+      const testData = {
+        args: ['--dir', 'access', '--verbose'],
+        env: { SKIP_ZK: 'true' },
+        expectedFlags: '--skip-zk --verbose',
+      };
 
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+      compiler = CompactCompiler.fromArgs(testData.args, testData.env);
+
+      expect(compiler.testFlags).toBe(testData.expectedFlags);
     });
 
-    it('should parse version flag', () => {
-      compiler = CompactCompiler.fromArgs(['+0.25.0']);
+    it('deduplicates flags from environment and CLI', () => {
+      const testData = {
+        args: ['--skip-zk', '--verbose'],
+        env: { SKIP_ZK: 'true' },
+        expectedFlags: '--skip-zk --verbose',
+      };
 
-      expect(compiler.testVersion).toBe('0.25.0');
-      expect(compiler.testFlags).toBe('');
+      compiler = CompactCompiler.fromArgs(testData.args, testData.env);
+
+      expect(compiler.testFlags).toBe(testData.expectedFlags);
     });
 
-    it('should parse complex arguments', () => {
-      compiler = CompactCompiler.fromArgs([
-        '--dir',
-        'security',
-        '--skip-zk',
-        '--verbose',
-        '+0.25.0',
-      ]);
-
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
-      expect(compiler.testVersion).toBe('0.25.0');
-    });
-
-    it('should combine environment variables with CLI flags', () => {
-      compiler = CompactCompiler.fromArgs(['--dir', 'access', '--verbose'], {
-        SKIP_ZK: 'true',
-      });
-
-      expect(compiler.testTargetDir).toBe('access');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
-    });
-
-    it('should deduplicate flags when both env var and CLI flag are present', () => {
-      compiler = CompactCompiler.fromArgs(['--skip-zk', '--verbose'], {
-        SKIP_ZK: 'true',
-      });
-
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
-    });
-
-    it('should throw error for --dir without argument', () => {
+    it('throws error for --dir without argument', () => {
       expect(() => CompactCompiler.fromArgs(['--dir'])).toThrow(
         '--dir flag requires a directory name',
       );
     });
 
-    it('should throw error for --dir followed by another flag', () => {
+    it('throws error for --dir followed by another flag', () => {
       expect(() => CompactCompiler.fromArgs(['--dir', '--skip-zk'])).toThrow(
         '--dir flag requires a directory name',
       );
@@ -565,316 +456,43 @@ describe('CompactCompiler', () => {
   });
 
   describe('validateEnvironment', () => {
-    it('should validate successfully and display environment info', async () => {
-      mockExec
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // checkCompactAvailable
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // getDevToolsVersion
-        .mockResolvedValueOnce({
-          stdout: 'Compactc version: 0.25.0',
-          stderr: '',
-        }); // getToolchainVersion
-
-      compiler = new CompactCompiler(
-        '--skip-zk',
-        'security',
-        '0.25.0',
-        mockExec,
-      );
-      const displaySpy = vi
-        .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
-
-      await expect(compiler.validateEnvironment()).resolves.not.toThrow();
-
-      // Check steps
-      expect(mockExec).toHaveBeenCalledTimes(3);
-      expect(mockExec).toHaveBeenNthCalledWith(1, 'compact --version'); // validate() calls
-      expect(mockExec).toHaveBeenNthCalledWith(2, 'compact --version'); // getDevToolsVersion()
-      expect(mockExec).toHaveBeenNthCalledWith(
-        3,
-        'compact compile +0.25.0 --version',
-      ); // getToolchainVersion()
-
-      // Verify passed args
-      expect(displaySpy).toHaveBeenCalledWith(
-        'compact 0.1.0',
-        'Compactc version: 0.25.0',
-        'security',
-        '0.25.0',
-      );
-
-      displaySpy.mockRestore();
-    });
-
-    it('should handle CompactCliNotFoundError with installation instructions', async () => {
-      mockExec.mockRejectedValue(new Error('Command not found'));
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
-
-      await expect(compiler.validateEnvironment()).rejects.toThrow(
-        CompactCliNotFoundError,
-      );
-    });
-
-    it('should handle version retrieval failures after successful CLI check', async () => {
-      mockExec
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // validate() succeeds
-        .mockRejectedValueOnce(new Error('Version command failed')); // getDevToolsVersion() fails
-
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
-
-      await expect(compiler.validateEnvironment()).rejects.toThrow(
-        'Version command failed',
-      );
-    });
-
-    it('should handle PromisifiedChildProcessError specifically', async () => {
-      const childProcessError = new Error('Command execution failed') as any;
-      childProcessError.stdout = 'some output';
-      childProcessError.stderr = 'some error';
-
-      mockExec.mockRejectedValue(childProcessError);
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
-
-      await expect(compiler.validateEnvironment()).rejects.toThrow(
-        "'compact' CLI not found in PATH. Please install the Compact developer tools.",
-      );
-    });
-
-    it('should handle non-Error exceptions gracefully', async () => {
-      mockExec.mockRejectedValue('String error message');
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
-
-      await expect(compiler.validateEnvironment()).rejects.toThrow(
-        CompactCliNotFoundError,
-      );
-    });
-
-    it('should validate with specific version flag', async () => {
-      mockExec
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
-        .mockResolvedValueOnce({
-          stdout: 'Compactc version: 0.25.0',
-          stderr: '',
-        });
-
-      compiler = new CompactCompiler('', undefined, '0.25.0', mockExec);
-      const displaySpy = vi
-        .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
-
-      await compiler.validateEnvironment();
-
-      // Verify version-specific toolchain call
-      expect(mockExec).toHaveBeenNthCalledWith(
-        3,
-        'compact compile +0.25.0 --version',
-      );
-      expect(displaySpy).toHaveBeenCalledWith(
-        'compact 0.1.0',
-        'Compactc version: 0.25.0',
-        undefined, // no targetDir
-        '0.25.0',
-      );
-
-      displaySpy.mockRestore();
-    });
-
-    it('should validate without target directory or version', async () => {
-      mockExec
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' })
-        .mockResolvedValueOnce({
-          stdout: 'Compactc version: 0.25.0',
-          stderr: '',
-        });
-
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
-      const displaySpy = vi
-        .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
-
-      await compiler.validateEnvironment();
-
-      // Verify default toolchain call (no version flag)
-      expect(mockExec).toHaveBeenNthCalledWith(3, 'compact compile  --version');
-      expect(displaySpy).toHaveBeenCalledWith(
-        'compact 0.1.0',
-        'Compactc version: 0.25.0',
-        undefined,
-        undefined,
-      );
-
-      displaySpy.mockRestore();
-    });
-  });
-
-  describe('compile', () => {
-    it('should handle empty source directory', async () => {
-      mockReaddir.mockResolvedValue([]);
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
-
-      await expect(compiler.compile()).resolves.not.toThrow();
-    });
-
-    it('should throw error if target directory does not exist', async () => {
-      mockExistsSync.mockReturnValue(false);
-      compiler = new CompactCompiler('', 'nonexistent', undefined, mockExec);
-
-      await expect(compiler.compile()).rejects.toThrow(DirectoryNotFoundError);
-    });
-
-    it('should compile files successfully', async () => {
-      const mockDirents = [
-        {
-          name: 'MyToken.compact',
-          isFile: () => true,
-          isDirectory: () => false,
-        },
-        {
-          name: 'Ownable.compact',
-          isFile: () => true,
-          isDirectory: () => false,
-        },
-      ];
-      mockReaddir.mockResolvedValue(mockDirents as any);
-      compiler = new CompactCompiler(
-        '--skip-zk',
-        undefined,
-        undefined,
-        mockExec,
-      );
-
-      await compiler.compile();
-
-      expect(mockExec).toHaveBeenCalledWith(
-        expect.stringContaining('compact compile --skip-zk'),
-      );
-    });
-
-    it('should handle compilation errors gracefully', async () => {
-      const brokenDirent = {
-        name: 'Broken.compact',
-        isFile: () => true,
-        isDirectory: () => false,
+    it('calls validator and displays environment info', async () => {
+      const testData = {
+        devToolsVersion: 'compact 0.2.0',
+        toolchainVersion: 'Compactc version: 0.25.0',
+        targetDir: 'security',
+        version: '0.25.0',
       };
 
-      const mockDirents = [brokenDirent];
-      mockReaddir.mockResolvedValue(mockDirents as any);
-      mockExistsSync.mockReturnValue(true);
+      mockExec
+        .mockResolvedValueOnce({ stdout: testData.devToolsVersion, stderr: '' })
+        .mockResolvedValueOnce({ stdout: testData.devToolsVersion, stderr: '' })
+        .mockResolvedValueOnce({
+          stdout: testData.toolchainVersion,
+          stderr: '',
+        });
 
-      const testMockExec = vi
-        .fn()
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // checkCompactAvailable
-        .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // getDevToolsVersion
-        .mockResolvedValueOnce({ stdout: 'Compactc 0.25.0', stderr: '' }) // getToolchainVersion
-        .mockRejectedValueOnce(new Error('Compilation failed')); // compileFile execution
+      const displaySpy = vi
+        .spyOn(CompilerUIService, 'displayEnvInfo')
+        .mockImplementation(() => {});
 
-      compiler = new CompactCompiler('', undefined, undefined, testMockExec);
-
-      // Test that compilation errors are properly propagated
-      let thrownError: unknown;
-      try {
-        await compiler.compile();
-        expect.fail('Expected compilation to throw an error');
-      } catch (error) {
-        thrownError = error;
-      }
-
-      expect(thrownError).toBeInstanceOf(Error);
-      expect((thrownError as Error).message).toBe(
-        `Failed to compile ${brokenDirent.name}: Compilation failed`,
+      compiler = new CompactCompiler(
+        '--skip-zk',
+        testData.targetDir,
+        testData.version,
+        mockExec,
       );
-      expect(testMockExec).toHaveBeenCalledTimes(4);
-    });
-  });
 
-  describe('Real-world scenarios', () => {
-    beforeEach(() => {
-      const mockDirents = [
-        {
-          name: 'AccessControl.compact',
-          isFile: () => true,
-          isDirectory: () => false,
-        },
-      ];
-      mockReaddir.mockResolvedValue(mockDirents as any);
-    });
+      await compiler.validateEnvironment();
 
-    it('should handle turbo compact command', () => {
-      compiler = CompactCompiler.fromArgs([]);
-
-      expect(compiler.testFlags).toBe('');
-      expect(compiler.testTargetDir).toBeUndefined();
-    });
-
-    it('should handle SKIP_ZK=true turbo compact command', () => {
-      compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
-
-      expect(compiler.testFlags).toBe('--skip-zk');
-    });
-
-    it('should handle turbo compact:access command', () => {
-      compiler = CompactCompiler.fromArgs(['--dir', 'access']);
-
-      expect(compiler.testFlags).toBe('');
-      expect(compiler.testTargetDir).toBe('access');
-    });
-
-    it('should handle turbo compact:security -- --skip-zk command', () => {
-      compiler = CompactCompiler.fromArgs(['--dir', 'security', '--skip-zk']);
-
-      expect(compiler.testFlags).toBe('--skip-zk');
-      expect(compiler.testTargetDir).toBe('security');
-    });
-
-    it('should handle version specification', () => {
-      compiler = CompactCompiler.fromArgs(['+0.25.0']);
-
-      expect(compiler.testVersion).toBe('0.25.0');
-    });
-
-    it.each([
-      {
-        name: 'with skip zk env var only',
-        args: [
-          '--dir',
-          'security',
-          '--no-communications-commitment',
-          '+0.25.0',
-        ],
-        env: { SKIP_ZK: 'true' },
-      },
-      {
-        name: 'with skip-zk flag only',
-        args: [
-          '--dir',
-          'security',
-          '--skip-zk',
-          '--no-communications-commitment',
-          '+0.25.0',
-        ],
-        env: { SKIP_ZK: 'false' },
-      },
-      {
-        name: 'with both skip-zk flag and env var',
-        args: [
-          '--dir',
-          'security',
-          '--skip-zk',
-          '--no-communications-commitment',
-          '+0.25.0',
-        ],
-        env: { SKIP_ZK: 'true' },
-      },
-    ])('should handle complex command $name', ({ args, env }) => {
-      compiler = CompactCompiler.fromArgs(args, env);
-
-      expect(compiler.testFlags).toBe(
-        '--skip-zk --no-communications-commitment',
+      expect(displaySpy).toHaveBeenCalledWith(
+        testData.devToolsVersion,
+        testData.toolchainVersion,
+        testData.targetDir,
+        testData.version,
       );
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testVersion).toBe('0.25.0');
+
+      displaySpy.mockRestore();
     });
   });
 });

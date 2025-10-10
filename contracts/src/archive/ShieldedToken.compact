@@ -51,11 +51,11 @@ module ShieldedToken { // DO NOT USE IN PRODUCTION!
    * @return {[]} - Empty tuple.
    */
   export circuit initializer(
-    initNonce: Bytes<32>,
-    name_: Maybe<Opaque<"string">>,
-    symbol_: Maybe<Opaque<"string">>,
-    decimals_ :Uint<8>
-  ): [] {
+                   initNonce: Bytes<32>,
+                   name_: Maybe<Opaque<"string">>,
+                   symbol_: Maybe<Opaque<"string">>,
+                   decimals_: Uint<8>
+                   ): [] {
     _nonce = disclose(initNonce);
     _domain = pad(32, "ShieldedToken");
     _name = disclose(name_);

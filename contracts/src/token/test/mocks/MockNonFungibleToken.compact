@@ -12,11 +12,7 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
  * Otherwise, the contract will not initialize and we can test the
  * contract when it is not initialized properly.
 */
-constructor(
-  _name: Opaque<"string">,
-  _symbol: Opaque<"string">,
-  init: Boolean
-) {
+constructor(_name: Opaque<"string">, _symbol: Opaque<"string">, init: Boolean) {
   if (disclose(init)) {
     NonFungibleToken_initialize(_name, _symbol);
   }
@@ -42,10 +38,7 @@ export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
   return NonFungibleToken_tokenURI(tokenId);
 }
 
-export circuit approve(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+export circuit approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
   return NonFungibleToken_approve(to, tokenId);
 }
 
@@ -54,24 +47,22 @@ export circuit getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, Contr
 }
 
 export circuit setApprovalForAll(
-  operator: Either<ZswapCoinPublicKey, ContractAddress>,
-  approved: Boolean
-): [] {
+                 operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
   return NonFungibleToken_setApprovalForAll(operator, approved);
 }
 
 export circuit isApprovedForAll(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  operator: Either<ZswapCoinPublicKey, ContractAddress>
-): Boolean {
+                 owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                 operator: Either<ZswapCoinPublicKey, ContractAddress>
+                 ): Boolean {
   return NonFungibleToken_isApprovedForAll(owner, operator);
 }
 
 export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 tokenId: Uint<128>
+                 ): [] {
   return NonFungibleToken_transferFrom(from, to, tokenId);
 }
 
@@ -83,27 +74,26 @@ export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, Contract
   return NonFungibleToken__ownerOf(tokenId);
 }
 
-export circuit _approve(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>,
-  auth: Either<ZswapCoinPublicKey, ContractAddress>
-): [] {
+export circuit _approve(to: Either<ZswapCoinPublicKey, ContractAddress>,
+                        tokenId: Uint<128>,
+                        auth: Either<ZswapCoinPublicKey, ContractAddress>
+                        ): [] {
   return NonFungibleToken__approve(to, tokenId, auth);
 }
 
 export circuit _checkAuthorized(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+                 owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                 spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                 tokenId: Uint<128>
+                 ): [] {
   return NonFungibleToken__checkAuthorized(owner, spender, tokenId);
 }
 
 export circuit _isAuthorized(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): Boolean {
+                 owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                 spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                 tokenId: Uint<128>
+                 ): Boolean {
   return NonFungibleToken__isAuthorized(owner, spender, tokenId);
 }
 
@@ -112,17 +102,14 @@ export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, Cont
 }
 
 export circuit _setApprovalForAll(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  operator: Either<ZswapCoinPublicKey, ContractAddress>,
-  approved: Boolean
-): [] {
+                 owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                 operator: Either<ZswapCoinPublicKey, ContractAddress>,
+                 approved: Boolean
+                 ): [] {
   return NonFungibleToken__setApprovalForAll(owner, operator, approved);
 }
 
-export circuit _mint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
   return NonFungibleToken__mint(to, tokenId);
 }
 
@@ -131,10 +118,10 @@ export circuit _burn(tokenId: Uint<128>): [] {
 }
 
 export circuit _transfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 tokenId: Uint<128>
+                 ): [] {
   return NonFungibleToken__transfer(from, to, tokenId);
 }
 
@@ -143,24 +130,21 @@ export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] 
 }
 
 export circuit _unsafeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 tokenId: Uint<128>
+                 ): [] {
   return NonFungibleToken__unsafeTransferFrom(from, to, tokenId);
 }
 
 export circuit _unsafeTransfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 tokenId: Uint<128>
+                 ): [] {
   return NonFungibleToken__unsafeTransfer(from, to, tokenId);
 }
 
-export circuit _unsafeMint(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  tokenId: Uint<128>
-): [] {
+export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
   return NonFungibleToken__unsafeMint(to, tokenId);
 }

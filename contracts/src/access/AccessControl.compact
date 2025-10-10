@@ -81,7 +81,8 @@ module AccessControl {
    * @type {Map<roleId, hasRole>}
    * @type {Map<Bytes<32>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>} _operatorRoles
    */
-  export ledger _operatorRoles: Map<Bytes<32>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+  export ledger _operatorRoles: Map<Bytes<32>,
+                                    Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -94,27 +95,22 @@ module AccessControl {
 
   export ledger DEFAULT_ADMIN_ROLE: Bytes<32>;
 
-   /**
-    * @description Returns `true` if `account` has been granted `roleId`.
-    *
-    * @circuitInfo k=10, rows=487
-    *
-    * @param {Bytes<32>} roleId - The role identifier.
-    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
-    * @return {Boolean} - Whether the account has the specified role.
+  /**
+   * @description Returns `true` if `account` has been granted `roleId`.
+   *
+   * @circuitInfo k=10, rows=487
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
+   * @return {Boolean} - Whether the account has the specified role.
     */
   export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-    if (
-      _operatorRoles.member(disclose(roleId)) &&
-      _operatorRoles
-        .lookup(roleId)
-        .member(disclose(account))
-      ) {
-      return _operatorRoles
-        .lookup(roleId)
-        .lookup(disclose(account));
-    } else {
-      return false;
+    if (_operatorRoles.member(disclose(roleId)) &&
+        _operatorRoles.lookup(roleId).member(disclose(account))) {
+       return _operatorRoles.lookup(roleId).lookup(disclose(account));
+    }
+    else {
+       return false;
     }
   }
 
@@ -132,7 +128,7 @@ module AccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-    _checkRole(roleId, left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()));
+    _checkRole(roleId, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
   }
 
   /**
@@ -207,26 +203,29 @@ module AccessControl {
     _revokeRole(roleId, account);
   }
 
- /**
-  * @description Revokes `roleId` from the calling account.
-  *
-  * @notice Roles are often managed via {grantRole} and {revokeRole}: this circuit's
-  * purpose is to provide a mechanism for accounts to lose their privileges
-  * if they are compromised (such as when a trusted device is misplaced).
-  *
-  * @circuitInfo k=10, rows=640
-  *
-  * Requirements:
-  *
-  * - The caller must be `callerConfirmation`.
-  * - The caller must not be a `ContractAddress`.
-  *
-  * @param {Bytes<32>} roleId - The role identifier.
-  * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
-  * @return {[]} - Empty tuple.
-  */
-  export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert(callerConfirmation == left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey()), "AccessControl: bad confirmation");
+  /**
+   * @description Revokes `roleId` from the calling account.
+   *
+   * @notice Roles are often managed via {grantRole} and {revokeRole}: this circuit's
+   * purpose is to provide a mechanism for accounts to lose their privileges
+   * if they are compromised (such as when a trusted device is misplaced).
+   *
+   * @circuitInfo k=10, rows=640
+   *
+   * Requirements:
+   *
+   * - The caller must be `callerConfirmation`.
+   * - The caller must not be a `ContractAddress`.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit renounceRole(
+                   roleId: Bytes<32>,
+                   callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): [] {
+    assert(callerConfirmation == left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()), "AccessControl: bad confirmation");
 
     _revokeRole(roleId, callerConfirmation);
   }
@@ -276,22 +275,16 @@ module AccessControl {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
    * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
    */
-  export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  export circuit _unsafeGrantRole(
+                   roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     if (hasRole(roleId, account)) {
       return false;
     }
 
     if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
-        disclose(roleId),
-        default<Map<
-          Either<ZswapCoinPublicKey, ContractAddress>,
-          Boolean
-        >>
-      );
-      _operatorRoles
-        .lookup(roleId)
-        .insert(disclose(account), true);
+        disclose(roleId), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+      _operatorRoles.lookup(roleId).insert(disclose(account), true);
       return true;
     }
 
@@ -309,14 +302,13 @@ module AccessControl {
    * @param {Bytes<32>} adminRole - The admin role identifier.
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
-  export circuit _revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  export circuit _revokeRole(
+                   roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     if (!hasRole(roleId, account)) {
       return false;
     }
 
-    _operatorRoles
-      .lookup(roleId)
-      .insert(disclose(account), false);
+    _operatorRoles.lookup(roleId).insert(disclose(account), false);
     return true;
   }
 }

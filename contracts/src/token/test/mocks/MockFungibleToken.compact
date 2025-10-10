@@ -15,12 +15,7 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
  * Otherwise, the contract will not initialize and we can test
  * the contract when it is not initialized properly.
 */
-constructor(
-  _name: Opaque<"string">,
-  _symbol: Opaque<"string">,
-  _decimals:Uint<8>,
-  init: Boolean
-) {
+constructor(_name: Opaque<"string">, _symbol: Opaque<"string">, _decimals: Uint<8>, init: Boolean) {
   if (disclose(init)) {
     FungibleToken_initialize(_name, _symbol, _decimals);
   }
@@ -47,9 +42,9 @@ export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): 
 }
 
 export circuit allowance(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>
-): Uint<128> {
+                 owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                 spender: Either<ZswapCoinPublicKey, ContractAddress>
+                 ): Uint<128> {
   return FungibleToken_allowance(owner, spender);
 }
 
@@ -62,18 +57,18 @@ export circuit _unsafeTransfer(to: Either<ZswapCoinPublicKey, ContractAddress>, 
 }
 
 export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): Boolean {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 value: Uint<128>
+                 ): Boolean {
   return FungibleToken_transferFrom(from, to, value);
 }
 
 export circuit _unsafeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): Boolean {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 value: Uint<128>
+                 ): Boolean {
   return FungibleToken__unsafeTransferFrom(from, to, value);
 }
 
@@ -81,55 +76,45 @@ export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, val
   return FungibleToken_approve(spender, value);
 }
 
-export circuit _approve(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+export circuit _approve(owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                        spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                        value: Uint<128>
+                        ): [] {
   return FungibleToken__approve(owner, spender, value);
 }
 
 export circuit _transfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 value: Uint<128>
+                 ): [] {
   return FungibleToken__transfer(from, to, value);
 }
 
 export circuit _unsafeUncheckedTransfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+                 from: Either<ZswapCoinPublicKey, ContractAddress>,
+                 to: Either<ZswapCoinPublicKey, ContractAddress>,
+                 value: Uint<128>
+                 ): [] {
   return FungibleToken__unsafeUncheckedTransfer(from, to, value);
 }
 
-export circuit _mint(
-  account: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+export circuit _mint(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   return FungibleToken__mint(account, value);
 }
 
-export circuit _unsafeMint(
-  account: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+export circuit _unsafeMint(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   return FungibleToken__unsafeMint(account, value);
 }
 
-export circuit _burn(
-  account: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+export circuit _burn(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
   return FungibleToken__burn(account, value);
 }
 
 export circuit _spendAllowance(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  value: Uint<128>
-): [] {
+                 owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                 spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                 value: Uint<128>
+                 ): [] {
   return FungibleToken__spendAllowance(owner, spender, value);
 }

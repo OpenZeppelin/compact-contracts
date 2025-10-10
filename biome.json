@@ -52,6 +52,9 @@
         "useExhaustiveDependencies": "off",
         "useJsxKeyInIterable": "off"
       },
+      "complexity": {
+        "useLiteralKeys": "off"
+      },
       "performance": {
         "noBarrelFile": "error",
         "noReExportAll": "error",

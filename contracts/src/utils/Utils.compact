@@ -21,8 +21,8 @@ module Utils {
    */
   export pure circuit isKeyOrAddressZero(keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return isContractAddress(keyOrAddress)
-    ? default<ContractAddress> == keyOrAddress.right
-    : default<ZswapCoinPublicKey> == keyOrAddress.left;
+             ? default<ContractAddress> == keyOrAddress.right
+             : default<ZswapCoinPublicKey> == keyOrAddress.left;
   }
 
   /**
@@ -45,16 +45,17 @@ module Utils {
    * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
    */
   export pure circuit isKeyOrAddressEqual(
-    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    other: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Boolean {
+                        keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+                        other: Either<ZswapCoinPublicKey, ContractAddress>
+                        ): Boolean {
     if (keyOrAddress.is_left && other.is_left) {
-      return keyOrAddress.left == other.left;
-    } else if (!keyOrAddress.is_left && !other.is_left) {
-      return keyOrAddress.right == other.right;
-    } else {
-      return false;
-    }
+       return keyOrAddress.left == other.left;
+    } else
+       if (!keyOrAddress.is_left && !other.is_left) {
+          return keyOrAddress.right == other.right;
+       } else {
+          return false;
+       }
   }
 
   /**

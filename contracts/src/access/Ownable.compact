@@ -206,7 +206,8 @@ module Ownable {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  export circuit _unsafeUncheckedTransferOwnership(
+                   newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
     _owner = disclose(newOwner);
   }

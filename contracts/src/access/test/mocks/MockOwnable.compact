@@ -45,6 +45,7 @@ export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractA
   return Ownable__transferOwnership(newOwner);
 }
 
-export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit _unsafeUncheckedTransferOwnership(
+                 newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   return Ownable__unsafeUncheckedTransferOwnership(newOwner);
 }

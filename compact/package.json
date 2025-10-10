@@ -16,7 +16,8 @@
   },
   "bin": {
     "compact-builder": "dist/runBuilder.js",
-    "compact-compiler": "dist/runCompiler.js"
+    "compact-compiler": "dist/runCompiler.js",
+    "compact-formatter": "dist/runFormatter.js"
   },
   "scripts": {
     "build": "tsc -p .",

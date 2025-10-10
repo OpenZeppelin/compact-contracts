@@ -32,7 +32,8 @@ export circuit revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey,
   AccessControl_revokeRole(roleId, account);
 }
 
-export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit renounceRole(
+                 roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   AccessControl_renounceRole(roleId, callerConfirmation);
 }
 
@@ -44,7 +45,8 @@ export circuit _grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey,
   return AccessControl__grantRole(roleId, account);
 }
 
-export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+export circuit _unsafeGrantRole(
+                 roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
   return AccessControl__unsafeGrantRole(roleId, account);
 }
 

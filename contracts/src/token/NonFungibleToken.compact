@@ -83,7 +83,8 @@ module NonFungibleToken {
    * @type {Map<owner, Map<operator, approved>>}
    * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>} _operatorApprovals
    */
-  export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+  export ledger _operatorApprovals: Map<Either<ZswapCoinPublicKey, ContractAddress>,
+                                        Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
 
   /**
    * @description Mapping from token IDs to their metadata URIs.
@@ -258,17 +259,10 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token `to` may be permitted to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit approve(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+  export circuit approve(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
     Initializable_assertInitialized();
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
-    _approve(
-      to,
-      tokenId,
-      auth
-    );
+    const auth = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    _approve(to, tokenId, auth);
   }
 
   /**
@@ -307,16 +301,10 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
-    approved: Boolean
-  ): [] {
+                   operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
     Initializable_assertInitialized();
-    const owner = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
-    _setApprovalForAll(
-      owner,
-      operator,
-      approved
-    );
+    const owner = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    _setApprovalForAll(owner, operator, approved);
   }
 
   /**
@@ -333,14 +321,16 @@ module NonFungibleToken {
    * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner` 
    */
   export circuit isApprovedForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Boolean {
+                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                   operator: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): Boolean {
     Initializable_assertInitialized();
-    if (_operatorApprovals.member(disclose(owner)) && _operatorApprovals.lookup(owner).member(disclose(operator))) {
-      return _operatorApprovals.lookup(owner).lookup(disclose(operator));
-    } else {
-      return false;
+    if (_operatorApprovals.member(disclose(owner)) &&
+        _operatorApprovals.lookup(owner).member(disclose(operator))) {
+       return _operatorApprovals.lookup(owner).lookup(disclose(operator));
+    }
+    else {
+       return false;
     }
   }
 
@@ -368,10 +358,10 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit transferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   tokenId: Uint<128>
+                   ): [] {
     Initializable_assertInitialized();
     assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
@@ -401,20 +391,16 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   tokenId: Uint<128>
+                   ): [] {
     Initializable_assertInitialized();
     assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
     // Setting an "auth" arguments enables the `_isAuthorized` check which verifies that the token exists
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
-    const auth = left<ZswapCoinPublicKey,ContractAddress>(ownPublicKey());
-    const previousOwner = _update(
-      to,
-      tokenId,
-      auth
-    );
+    const auth = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    const previousOwner = _update(to, tokenId, auth);
     assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
   }
 
@@ -478,15 +464,15 @@ module NonFungibleToken {
    * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
   export circuit _isAuthorized(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): Boolean {
+                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                   spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                   tokenId: Uint<128>
+                   ): Boolean {
     Initializable_assertInitialized();
-    return (
-      !Utils_isKeyOrAddressZero(disclose(spender)) &&
-      (disclose(owner) == disclose(spender) || isApprovedForAll(owner, spender) || _getApproved(tokenId) == disclose(spender))
-    );
+    return (!Utils_isKeyOrAddressZero(disclose(spender)) &&
+            (disclose(owner) == disclose(spender) ||
+             isApprovedForAll(owner, spender) ||
+             _getApproved(tokenId) == disclose(spender)));
   }
 
   /**
@@ -508,10 +494,10 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _checkAuthorized(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                   spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                   tokenId: Uint<128>
+                   ): [] {
     Initializable_assertInitialized();
     if (!_isAuthorized(owner, spender, tokenId)) {
       assert(!Utils_isKeyOrAddressZero(owner), "NonFungibleToken: Nonexistent Token");
@@ -536,17 +522,16 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to transfer the token
    * @return {Either<ZswapCoinPublicKey, ContractAddress>} - Owner of the token before it was transfered
    */
-  circuit _update(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  circuit _update(to: Either<ZswapCoinPublicKey, ContractAddress>,
+                  tokenId: Uint<128>,
+                  auth: Either<ZswapCoinPublicKey, ContractAddress>
+                  ): Either<ZswapCoinPublicKey, ContractAddress> {
     Initializable_assertInitialized();
     const from = _ownerOf(tokenId);
 
     // Perform (optional) operator check
     if (!Utils_isKeyOrAddressZero(disclose(auth))) {
-        _checkAuthorized(from, auth, tokenId);
+      _checkAuthorized(from, auth, tokenId);
     }
 
     // Execute the update
@@ -586,10 +571,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit _mint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+  export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
     Initializable_assertInitialized();
     assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
@@ -615,10 +597,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit _unsafeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+  export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, tokenId: Uint<128>): [] {
     Initializable_assertInitialized();
     assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
@@ -671,10 +650,10 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   tokenId: Uint<128>
+                   ): [] {
     Initializable_assertInitialized();
     assert(!Utils_isContractAddress(to), "NonFungibleToken: Unsafe Transfer");
 
@@ -704,10 +683,10 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>
-  ): [] {
+                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   tokenId: Uint<128>
+                   ): [] {
     Initializable_assertInitialized();
     assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
@@ -733,11 +712,10 @@ module NonFungibleToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner the token
    * @return {[]} - Empty tuple.
    */
-  export circuit _approve(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
-    tokenId: Uint<128>,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>
-  ): [] {
+  export circuit _approve(to: Either<ZswapCoinPublicKey, ContractAddress>,
+                          tokenId: Uint<128>,
+                          auth: Either<ZswapCoinPublicKey, ContractAddress>
+                          ): [] {
     Initializable_assertInitialized();
     if (!Utils_isKeyOrAddressZero(disclose(auth))) {
       const owner = _requireOwned(tokenId);
@@ -765,18 +743,16 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
-    approved: Boolean
-  ): [] {
+                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
+                   operator: Either<ZswapCoinPublicKey, ContractAddress>,
+                   approved: Boolean
+                   ): [] {
     Initializable_assertInitialized();
     assert(!Utils_isKeyOrAddressZero(operator), "NonFungibleToken: Invalid Operator");
 
     if (!_operatorApprovals.member(disclose(owner))) {
       _operatorApprovals.insert(
-        disclose(owner),
-        default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
-      );
+        disclose(owner), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
     }
 
     _operatorApprovals.lookup(owner).insert(disclose(operator), disclose(approved));
