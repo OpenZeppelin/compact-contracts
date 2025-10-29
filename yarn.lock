@@ -399,8 +399,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/compact@workspace:packages/compact"
   dependencies:
-    "@tsconfig/node22": "npm:^22.0.2"
-    "@types/node": "npm:22.18.0"
+    "@tsconfig/node24": "npm:^24.0.1"
+    "@types/node": "npm:24.9.0"
     chalk: "npm:^5.6.2"
     log-symbols: "npm:^7.0.0"
     ora: "npm:^9.0.0"
@@ -419,8 +419,8 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@tsconfig/node22": "npm:^22.0.2"
-    "@types/node": "npm:22.18.0"
+    "@tsconfig/node24": "npm:^24.0.1"
+    "@types/node": "npm:24.9.0"
     fast-check: "npm:^3.15.0"
     typescript: "npm:^5.8.2"
     vitest: "npm:^4.0.4"
@@ -433,8 +433,8 @@ __metadata:
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
     "@openzeppelin-compact/contracts-simulator": "workspace:^"
-    "@tsconfig/node22": "npm:^22.0.2"
-    "@types/node": "npm:22.18.0"
+    "@tsconfig/node24": "npm:^24.0.1"
+    "@types/node": "npm:24.9.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.4"
@@ -656,10 +656,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node22@npm:^22.0.2":
-  version: 22.0.2
-  resolution: "@tsconfig/node22@npm:22.0.2"
-  checksum: 10/b9fb6543856cbac8b9b79c234bbefa3415f083e0a46e6f0fbe418fe21c5d086440222e1383258d75ebac951cbe17564a6d146fafc59c889d6302decd1a7880dd
+"@tsconfig/node24@npm:^24.0.1":
+  version: 24.0.1
+  resolution: "@tsconfig/node24@npm:24.0.1"
+  checksum: 10/0ea96dea3aae641da61e0c376306f2314a6c63b200359925f8ad949705246d5dfab01cc25aaf8d8d04a81919390aa2bfddf172a947f85583e1db977a4dd3fb4f
   languageName: node
   linkType: hard
 
@@ -686,12 +686,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:22.18.0":
-  version: 22.18.0
-  resolution: "@types/node@npm:22.18.0"
+"@types/node@npm:24.9.0":
+  version: 24.9.0
+  resolution: "@types/node@npm:24.9.0"
   dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10/c4e4cdac52aae71e120fb4a02a08f774366e8bd6654de9376fb1113fb66cfa2706176b72f188069cdecdb40e5cdde2befa031dc720a0cc0b1e349af9e38492ad
+    undici-types: "npm:~7.16.0"
+  checksum: 10/485bb1c2bb713e34935b47d41ecbdb02af8454ad72b013275992d09be885729a65c78733f054534ef9104df24c4cca2eb3a6c3082eae3c6c7ae078a643cacf9d
   languageName: node
   linkType: hard
 
@@ -1747,7 +1747,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@types/node": "npm:22.18.0"
+    "@types/node": "npm:24.9.0"
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.5.8"
     typescript: "npm:^5.9.3"
@@ -2364,10 +2364,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~6.21.0":
-  version: 6.21.0
-  resolution: "undici-types@npm:6.21.0"
-  checksum: 10/ec8f41aa4359d50f9b59fa61fe3efce3477cc681908c8f84354d8567bb3701fafdddf36ef6bff307024d3feb42c837cf6f670314ba37fc8145e219560e473d14
+"undici-types@npm:~7.16.0":
+  version: 7.16.0
+  resolution: "undici-types@npm:7.16.0"
+  checksum: 10/db43439f69c2d94cc29f75cbfe9de86df87061d6b0c577ebe9bb3255f49b22c50162a7d7eb413b0458b6510b8ca299ac7cff38c3a29fbd31af9f504bcf7fbc0d
   languageName: node
   linkType: hard
 
