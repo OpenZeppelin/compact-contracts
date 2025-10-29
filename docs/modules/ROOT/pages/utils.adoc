@@ -11,7 +11,7 @@ The Utils module provides miscellaneous circuits and common utilities for Compac
 ```typescript
 // UtilsExample.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import './node_modules/@openzeppelin-compact/contracts/src/utils/Utils';
