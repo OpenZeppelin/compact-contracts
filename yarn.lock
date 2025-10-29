@@ -341,14 +341,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:^0.8.1":
-  version: 0.8.1
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.8.1"
+"@midnight-ntwrk/compact-runtime@npm:^0.9.0":
+  version: 0.9.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.9.0"
   dependencies:
     "@midnight-ntwrk/onchain-runtime": "npm:^0.3.0"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/caec8b65018e38e1fac35d6d5538d5203152948411b72121185ea7bea601f616fd32dd65851acceff3435c472b22ec7d6919916f64d03de6096ae952967f55e1
+  checksum: 10/51b6769cdfac42e9f640d8ad052a6ddc8be3438b43d4c49b5e4bbf660658f3a1ae1be2f026da672af26baaed89fbd54809d5476a4c3ba2a9c97a3fcbc9754777
   languageName: node
   linkType: hard
 
@@ -416,7 +416,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/contracts-simulator@workspace:packages/simulator"
   dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@tsconfig/node22": "npm:^22.0.2"
@@ -1744,7 +1744,7 @@ __metadata:
   resolution: "openzeppelin-compact@workspace:."
   dependencies:
     "@biomejs/biome": "npm:2.2.4"
-    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:22.18.0"
