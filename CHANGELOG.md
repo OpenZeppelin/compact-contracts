@@ -16,8 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump compact compiler to v0.25.0 (#233)
 - Bump .nvmrc to v24.9.0 (#)
 - Upgrade @types/node 22.18.0 -> 24.9.0 in openzeppelin-compact, @openzeppelin-compact/contracts, @openzeppelin-compact/compact, @openzeppelin-compact/contracts-simulator (#)
-- Bump node version requirement to >=22 in @openzeppelin-compact/contracts (#)
-- Bump node version requirement to >=22 in @openzeppelin-compact/contracts-simulator (#)
+- Bump node version requirement to >=22 in @openzeppelin-compact/contracts and @openzeppelin-compact/contracts-simulator (#)
 
 ### Removed
 
