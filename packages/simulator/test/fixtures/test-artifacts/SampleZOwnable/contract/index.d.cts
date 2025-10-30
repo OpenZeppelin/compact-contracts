@@ -16,12 +16,10 @@ export type ImpureCircuits<T> = {
                     newOwnerId_0: Uint8Array): __compactRuntime.CircuitResults<T, []>;
   renounceOwnership(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
   assertOnlyOwner(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
-  _computeOwnerCommitment(context: __compactRuntime.CircuitContext<T>,
-                          id_0: Uint8Array,
-                          counter_0: bigint): __compactRuntime.CircuitResults<T, Uint8Array>;
 }
 
 export type PureCircuits = {
+  _computeOwnerCommitment(id_0: Uint8Array, counter_0: bigint): Uint8Array;
   _computeOwnerId(pk_0: Either<ZswapCoinPublicKey, ContractAddress>,
                   nonce_0: Uint8Array): Uint8Array;
 }
