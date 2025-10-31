@@ -48,6 +48,8 @@ export circuit _computeOwnerCommitment(
   id: Bytes<32>,
   counter: Uint<64>,
 ): Bytes<32> {
+  // the value variable is necessary to force the circuit to be impure
+  // this avoids a compiler bug in compactc v0.26.0
   const value = _instanceSalt;
   return persistentHash<Vector<4, Bytes<32>>>(
     [
