@@ -48,10 +48,11 @@ export circuit _computeOwnerCommitment(
   id: Bytes<32>,
   counter: Uint<64>,
 ): Bytes<32> {
+  const value = _instanceSalt;
   return persistentHash<Vector<4, Bytes<32>>>(
     [
       id,
-      _instanceSalt,
+      value,
       counter as Field as Bytes<32>,
       pad(32, "SampleZOwnable:shield:")
     ]

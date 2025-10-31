@@ -52,7 +52,7 @@
     },
     {
       "name": "_computeOwnerCommitment",
-      "pure": true,
+      "pure": false,
       "arguments": [
         {
           "name": "id",

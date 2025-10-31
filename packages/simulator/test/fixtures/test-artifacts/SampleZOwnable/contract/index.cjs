@@ -199,8 +199,50 @@ class Contract {
         partialProofData.output = { value: [], alignment: [] };
         return { result: result_0, context: context, proofData: partialProofData };
       },
-      _computeOwnerCommitment(context, ...args_1) {
-        return { result: pureCircuits._computeOwnerCommitment(...args_1), context };
+      _computeOwnerCommitment: (...args_1) => {
+        if (args_1.length !== 3) {
+          throw new __compactRuntime.CompactError(`_computeOwnerCommitment: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
+        }
+        const contextOrig_0 = args_1[0];
+        const id_0 = args_1[1];
+        const counter_0 = args_1[2];
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.originalState != undefined && contextOrig_0.transactionContext != undefined)) {
+          __compactRuntime.type_error('_computeOwnerCommitment',
+                                      'argument 1 (as invoked from Typescript)',
+                                      'SampleZOwnable.compact line 47 char 1',
+                                      'CircuitContext',
+                                      contextOrig_0)
+        }
+        if (!(id_0.buffer instanceof ArrayBuffer && id_0.BYTES_PER_ELEMENT === 1 && id_0.length === 32)) {
+          __compactRuntime.type_error('_computeOwnerCommitment',
+                                      'argument 1 (argument 2 as invoked from Typescript)',
+                                      'SampleZOwnable.compact line 47 char 1',
+                                      'Bytes<32>',
+                                      id_0)
+        }
+        if (!(typeof(counter_0) === 'bigint' && counter_0 >= 0n && counter_0 <= 18446744073709551615n)) {
+          __compactRuntime.type_error('_computeOwnerCommitment',
+                                      'argument 2 (argument 3 as invoked from Typescript)',
+                                      'SampleZOwnable.compact line 47 char 1',
+                                      'Uint<0..18446744073709551615>',
+                                      counter_0)
+        }
+        const context = { ...contextOrig_0 };
+        const partialProofData = {
+          input: {
+            value: _descriptor_1.toValue(id_0).concat(_descriptor_6.toValue(counter_0)),
+            alignment: _descriptor_1.alignment().concat(_descriptor_6.alignment())
+          },
+          output: undefined,
+          publicTranscript: [],
+          privateTranscriptOutputs: []
+        };
+        const result_0 = this.__computeOwnerCommitment_0(context,
+                                                         partialProofData,
+                                                         id_0,
+                                                         counter_0);
+        partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
+        return { result: result_0, context: context, proofData: partialProofData };
       },
       _computeOwnerId(context, ...args_1) {
         return { result: pureCircuits._computeOwnerId(...args_1), context };
@@ -210,7 +252,8 @@ class Contract {
       owner: this.circuits.owner,
       transferOwnership: this.circuits.transferOwnership,
       renounceOwnership: this.circuits.renounceOwnership,
-      assertOnlyOwner: this.circuits.assertOnlyOwner
+      assertOnlyOwner: this.circuits.assertOnlyOwner,
+      _computeOwnerCommitment: this.circuits._computeOwnerCommitment
     };
   }
   initialState(...args_0) {
@@ -256,6 +299,7 @@ class Contract {
     state_0.setOperation('transferOwnership', new __compactRuntime.ContractOperation());
     state_0.setOperation('renounceOwnership', new __compactRuntime.ContractOperation());
     state_0.setOperation('assertOnlyOwner', new __compactRuntime.ContractOperation());
+    state_0.setOperation('_computeOwnerCommitment', new __compactRuntime.ContractOperation());
     const context = {
       originalState: state_0,
       currentPrivateState: constructorContext_0.initialPrivateState,
@@ -407,7 +451,9 @@ class Contract {
                                                                                                               alignment: _descriptor_9.alignment() } }] } },
                                                                                    { popeq: { cached: false,
                                                                                               result: undefined } }]).value),
-                                          this.__computeOwnerCommitment_0(id_0,
+                                          this.__computeOwnerCommitment_0(context,
+                                                                          partialProofData,
+                                                                          id_0,
                                                                           _descriptor_6.fromValue(Contract._query(context,
                                                                                                                   partialProofData,
                                                                                                                   [
@@ -423,23 +469,24 @@ class Contract {
                             'SampleZOwnable: caller is not the owner');
     return [];
   }
-  __computeOwnerCommitment_0(id_0, counter_0) {
+  __computeOwnerCommitment_0(context, partialProofData, id_0, counter_0) {
+    const value_0 = _descriptor_1.fromValue(Contract._query(context,
+                                                            partialProofData,
+                                                            [
+                                                             { dup: { n: 0 } },
+                                                             { idx: { cached: false,
+                                                                      pushPath: false,
+                                                                      path: [
+                                                                             { tag: 'value',
+                                                                               value: { value: _descriptor_9.toValue(2n),
+                                                                                        alignment: _descriptor_9.alignment() } }] } },
+                                                             { popeq: { cached: false,
+                                                                        result: undefined } }]).value);
     return this._persistentHash_0([id_0,
-                                   _descriptor_1.fromValue(Contract._query(context,
-                                                                           partialProofData,
-                                                                           [
-                                                                            { dup: { n: 0 } },
-                                                                            { idx: { cached: false,
-                                                                                     pushPath: false,
-                                                                                     path: [
-                                                                                            { tag: 'value',
-                                                                                              value: { value: _descriptor_9.toValue(2n),
-                                                                                                       alignment: _descriptor_9.alignment() } }] } },
-                                                                            { popeq: { cached: false,
-                                                                                       result: undefined } }]).value),
+                                   value_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         counter_0,
-                                                                        'SampleZOwnable.compact line 55 char 7'),
+                                                                        'SampleZOwnable.compact line 56 char 7'),
                                    new Uint8Array([83, 97, 109, 112, 108, 101, 90, 79, 119, 110, 97, 98, 108, 101, 58, 115, 104, 105, 101, 108, 100, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])]);
   }
   __computeOwnerId_0(pk_0, nonce_0) {
@@ -464,7 +511,9 @@ class Contract {
                                               .value
                                           )) } },
                      { ins: { cached: true, n: 1 } }]);
-    const tmp_1 = this.__computeOwnerCommitment_0(newOwnerId_0,
+    const tmp_1 = this.__computeOwnerCommitment_0(context,
+                                                  partialProofData,
+                                                  newOwnerId_0,
                                                   _descriptor_6.fromValue(Contract._query(context,
                                                                                           partialProofData,
                                                                                           [
@@ -590,28 +639,6 @@ const _emptyContext = {
 };
 const _dummyContract = new Contract({ secretNonce: (...args) => undefined });
 const pureCircuits = {
-  _computeOwnerCommitment: (...args_0) => {
-    if (args_0.length !== 2) {
-      throw new __compactRuntime.CompactError(`_computeOwnerCommitment: expected 2 arguments (as invoked from Typescript), received ${args_0.length}`);
-    }
-    const id_0 = args_0[0];
-    const counter_0 = args_0[1];
-    if (!(id_0.buffer instanceof ArrayBuffer && id_0.BYTES_PER_ELEMENT === 1 && id_0.length === 32)) {
-      __compactRuntime.type_error('_computeOwnerCommitment',
-                                  'argument 1',
-                                  'SampleZOwnable.compact line 47 char 1',
-                                  'Bytes<32>',
-                                  id_0)
-    }
-    if (!(typeof(counter_0) === 'bigint' && counter_0 >= 0n && counter_0 <= 18446744073709551615n)) {
-      __compactRuntime.type_error('_computeOwnerCommitment',
-                                  'argument 2',
-                                  'SampleZOwnable.compact line 47 char 1',
-                                  'Uint<0..18446744073709551615>',
-                                  counter_0)
-    }
-    return _dummyContract.__computeOwnerCommitment_0(id_0, counter_0);
-  },
   _computeOwnerId: (...args_0) => {
     if (args_0.length !== 2) {
       throw new __compactRuntime.CompactError(`_computeOwnerId: expected 2 arguments (as invoked from Typescript), received ${args_0.length}`);
@@ -621,14 +648,14 @@ const pureCircuits = {
     if (!(typeof(pk_0) === 'object' && typeof(pk_0.is_left) === 'boolean' && typeof(pk_0.left) === 'object' && pk_0.left.bytes.buffer instanceof ArrayBuffer && pk_0.left.bytes.BYTES_PER_ELEMENT === 1 && pk_0.left.bytes.length === 32 && typeof(pk_0.right) === 'object' && pk_0.right.bytes.buffer instanceof ArrayBuffer && pk_0.right.bytes.BYTES_PER_ELEMENT === 1 && pk_0.right.bytes.length === 32)) {
       __compactRuntime.type_error('_computeOwnerId',
                                   'argument 1',
-                                  'SampleZOwnable.compact line 61 char 1',
+                                  'SampleZOwnable.compact line 62 char 1',
                                   'struct Either<is_left: Boolean, left: struct ZswapCoinPublicKey<bytes: Bytes<32>>, right: struct ContractAddress<bytes: Bytes<32>>>',
                                   pk_0)
     }
     if (!(nonce_0.buffer instanceof ArrayBuffer && nonce_0.BYTES_PER_ELEMENT === 1 && nonce_0.length === 32)) {
       __compactRuntime.type_error('_computeOwnerId',
                                   'argument 2',
-                                  'SampleZOwnable.compact line 61 char 1',
+                                  'SampleZOwnable.compact line 62 char 1',
                                   'Bytes<32>',
                                   nonce_0)
     }
