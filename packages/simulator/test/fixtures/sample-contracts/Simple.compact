@@ -1,0 +1,14 @@
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export ledger _val: Field;
+
+export circuit setVal(n: Field): [] {
+  _val = disclose(n);
+}
+
+export circuit getVal(): Field {
+  return _val;
+}

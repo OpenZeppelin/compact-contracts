@@ -3,9 +3,5 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "customizations": {
-    "vscode": {
-      "extensions": ["/tmp/compact.vsix"]
-    }
-  }
+  "postCreateCommand": "code --install-extension /tmp/compact.vsix && compact update 0.25.0"
 }

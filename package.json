@@ -2,18 +2,18 @@
   "name": "openzeppelin-compact",
   "description": "Secure Smart Contract library written in Compact for Midnight",
   "private": true,
-  "packageManager": "yarn@4.1.0",
+  "packageManager": "yarn@4.10.3",
   "workspaces": [
-    "compact/",
     "contracts/",
-    "docs/"
+    "docs/",
+    "packages/*"
   ],
   "scripts": {
     "docs": "turbo run docs --filter=docs",
     "docs:watch": "turbo run docs:watch --filter=docs",
-    "compact": "turbo run compact --filter=@openzeppelin-compact/contracts",
-    "build": "turbo run build --filter=!'docs'",
-    "test": "turbo run test --filter=@openzeppelin-compact/contracts",
+    "compact": "turbo run compact --filter=@openzeppelin-compact/contracts --log-prefix=none",
+    "build": "turbo run build --filter=!'docs' --log-prefix=none",
+    "test": "turbo run test --filter=@openzeppelin-compact/contracts --log-prefix=none",
     "fmt-and-lint": "biome check . --changed",
     "fmt-and-lint:fix": "biome check . --changed --write",
     "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
@@ -24,14 +24,13 @@
     "@midnight-ntwrk/compact-runtime": "^0.8.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.1.2",
+    "@biomejs/biome": "2.2.4",
     "@midnight-ntwrk/ledger": "^4.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
-    "@types/node": "^22",
-    "fast-check": "^3.15.0",
+    "@types/node": "22.18.0",
     "ts-node": "^10.9.2",
-    "turbo": "^2.5.1",
-    "typescript": "^5.2.2",
-    "vitest": "^3.1.3"
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.4"
   }
 }

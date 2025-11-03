@@ -3,16 +3,23 @@ FROM mcr.microsoft.com/devcontainers/javascript-node
 
 # Midnight binaries and tools download URLs
 # Source: https://docs.midnight.network/relnotes/overview
-ARG COMPACTC_URL="https://d3fazakqrumx6p.cloudfront.net/artifacts/compiler/compactc_0.24.0/compactc_v0.24.0_x86_64-unknown-linux-musl.zip"
-ARG COMPACT_VSCODE_URL="https://raw.githubusercontent.com/midnight-ntwrk/releases/gh-pages/artifacts/vscode-extension/compact-0.2.13/compact-0.2.13.vsix"
+ARG COMPACT_TOOLCHAIN_VERSION=0.25.0
+ARG COMPACT_VSCODE_VERSION=0.2.13
+ARG COMPACT_VSCODE_URL="https://raw.githubusercontent.com/midnight-ntwrk/releases/gh-pages/artifacts/vscode-extension/compact-${COMPACT_VSCODE_VERSION}/compact-${COMPACT_VSCODE_VERSION}.vsix"
 
-# Download the compact VS Code extension (later installed via devcontainer.json)
-RUN wget -O /tmp/compact.vsix $COMPACT_VSCODE_URL
+# Install required dependencies and clean up
+RUN apt-get update \
+    && apt-get install -y curl unzip wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install the Compact compiler (compactc)
-RUN wget -O /tmp/compactc.zip $COMPACTC_URL \
-    && unzip /tmp/compactc.zip -d /tmp/compactc \
-    && sudo mv /tmp/compactc/* /usr/local/bin/
+# Download the Compact VS Code extension (used by devcontainer.json)
+RUN wget -O /tmp/compact.vsix "${COMPACT_VSCODE_URL}"
+
+# Install Compact developer tools CLI
+RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/download/compact-v0.2.0/compact-installer.sh | sh
+
+# Add Compact CLI to the PATH
+ENV PATH="/root/.compact/bin:$PATH"
 
 # Install turbo for monorepo management
-RUN npm install turbo --global
+RUN npm install --location=global turbo

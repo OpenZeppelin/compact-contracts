@@ -1,0 +1,72 @@
+// Sample contract for testing
+// DO NOT USE IN PRODUCTION!!!
+
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+
+export { ZswapCoinPublicKey, ContractAddress, Either };
+export ledger _ownerCommitment: Bytes<32>;
+export ledger _counter: Counter;
+export sealed ledger _instanceSalt: Bytes<32>;
+
+witness secretNonce(): Bytes<32>;
+
+constructor(ownerId: Bytes<32>, instanceSalt: Bytes<32>) {
+  assert(ownerId != default<Bytes<32>>, "SampleZOwnable: invalid id");
+  _instanceSalt = disclose(instanceSalt);
+  _transferOwnership(ownerId);
+}
+
+export circuit owner(): Bytes<32> {
+  return _ownerCommitment;
+}
+
+export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
+  assertOnlyOwner();
+  assert(newOwnerId != default<Bytes<32>>, "SampleZOwnable: invalid id");
+  _transferOwnership(newOwnerId);
+}
+
+export circuit renounceOwnership(): [] {
+  assertOnlyOwner();
+  _ownerCommitment.resetToDefault();
+}
+
+export circuit assertOnlyOwner(): [] {
+  const nonce = secretNonce();
+  const callerAsEither = Either<ZswapCoinPublicKey, ContractAddress> {
+    is_left: true,
+    left: ownPublicKey(),
+    right: ContractAddress { bytes: pad(32, "") }
+  };
+  const id = _computeOwnerId(callerAsEither, nonce);
+  assert(_ownerCommitment == _computeOwnerCommitment(id, _counter), "SampleZOwnable: caller is not the owner");
+}
+
+export circuit _computeOwnerCommitment(
+  id: Bytes<32>,
+  counter: Uint<64>,
+): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>(
+    [
+      id,
+      _instanceSalt,
+      counter as Field as Bytes<32>,
+      pad(32, "SampleZOwnable:shield:")
+    ]
+  );
+}
+
+export pure circuit _computeOwnerId(
+  pk: Either<ZswapCoinPublicKey, ContractAddress>,
+  nonce: Bytes<32>
+): Bytes<32> {
+  assert(pk.is_left, "SampleZOwnable: contract address owners are not yet supported");
+  return persistentHash<Vector<2, Bytes<32>>>([pk.left.bytes, nonce]);
+}
+
+circuit _transferOwnership(newOwnerId: Bytes<32>): [] {
+  _counter.increment(1);
+  _ownerCommitment = _computeOwnerCommitment(disclose(newOwnerId), _counter);
+}

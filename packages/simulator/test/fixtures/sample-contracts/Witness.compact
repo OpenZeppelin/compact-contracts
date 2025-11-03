@@ -1,0 +1,27 @@
+pragma language_version >= 0.16.0;
+
+import CompactStandardLibrary;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export ledger _valBytes: Bytes<32>;
+export ledger _valField: Field;
+export ledger _valUint: Uint<128>;
+
+witness wit_secretBytes(): Bytes<32>;
+witness wit_secretFieldPlusArg(arg1: Field): Field;
+witness wit_secretUintPlusArgs(arg1: Uint<128>, arg2: Uint<128>): Uint<128>;
+
+export circuit setBytes(): [] {
+  const val = wit_secretBytes();
+  _valBytes = disclose(val);
+}
+
+export circuit setField(arg: Field): [] {
+  const val = wit_secretFieldPlusArg(arg);
+  _valField = disclose(val);
+}
+
+export circuit setUint(arg1: Uint<128>, arg2: Uint<128>): [] {
+  const val = wit_secretUintPlusArgs(arg1, arg2);
+  _valUint = disclose(val);
+}

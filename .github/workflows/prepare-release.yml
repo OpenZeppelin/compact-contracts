@@ -12,9 +12,6 @@ jobs:
     if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release-v')
     runs-on: ubuntu-latest
 
-    env:
-      COMPACT_INSTALLER_URL: ${{ vars.COMPACT_INSTALLER_URL }}
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5

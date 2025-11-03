@@ -22,8 +22,8 @@ import {
 import {
   type ShieldedTokenPrivateState,
   ShieldedTokenWitnesses,
-} from '../../witnesses/ShieldedTokenWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/ShieldedTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a shielded token contract for testing purposes.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1 (token/MultiToken.compact)
+// OpenZeppelin Compact Contracts v0.0.1-alpha.0 (token/MultiToken.compact)
 
-pragma language_version >= 0.16.0;
+pragma language_version >= 0.17.0;
 
 /**
  * @module MultiToken
@@ -318,9 +318,7 @@ module MultiToken {
         _balances.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>);
         _balances.lookup(id).insert(disclose(to), disclose(value as Uint<128>));
       } else {
-        const toBalance = balanceOf(to, id);
-       // TODO: Replace with Max_Uint128()
-        const MAX_UINT128 = 340282366920938463463374607431768211455;
+        const toBalance = balanceOf(to, id), MAX_UINT128 = 340282366920938463463374607431768211455;
         assert(MAX_UINT128 - toBalance >= value, "MultiToken: arithmetic overflow");
         _balances.lookup(id).insert(disclose(to), disclose(toBalance + value as Uint<128>));
       }

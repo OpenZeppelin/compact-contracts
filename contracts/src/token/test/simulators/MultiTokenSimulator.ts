@@ -19,8 +19,8 @@ import {
 import {
   type MultiTokenPrivateState,
   MultiTokenWitnesses,
-} from '../../witnesses/MultiTokenWitnesses';
-import type { IContractSimulator } from '../types/test';
+} from '../../witnesses/MultiTokenWitnesses.js';
+import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a MultiToken contract for testing purposes.
