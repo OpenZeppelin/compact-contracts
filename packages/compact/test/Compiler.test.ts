@@ -21,6 +21,7 @@ import {
   CompilationError,
   DirectoryNotFoundError,
 } from '../src/types/errors.js';
+import { COMPACT_VERSION } from '../src/versions.js';
 
 // Mock Node.js modules
 vi.mock('node:fs');
@@ -479,7 +480,7 @@ describe('CompactCompiler', () => {
 
       expect(compiler.testFlags).toBe('');
       expect(compiler.testTargetDir).toBeUndefined();
-      expect(compiler.testVersion).toBeUndefined();
+      expect(compiler.testVersion).toBe(COMPACT_VERSION);
     });
 
     it('should handle SKIP_ZK environment variable', () => {
