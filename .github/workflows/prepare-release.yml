@@ -19,6 +19,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v5
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: ".nvmrc"
+        cache: "yarn"
+
     - name: Extract current version
       run: |
         CURRENT_VERSION=$(node -p "require('./contracts/package.json').version")

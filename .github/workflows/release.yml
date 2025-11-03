@@ -80,13 +80,9 @@ jobs:
 
       - name: Publish to npm
         run: |
-          # Create .npmrc with auth token
-          echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > .npmrc
-
           # Publish the tarball with appropriate tag
-          npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public
+          npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public --provenance
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
       - name: Log success
