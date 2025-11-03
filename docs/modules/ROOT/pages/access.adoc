@@ -26,7 +26,7 @@ It's recommended to prefix the module with `Ownable_` to avoid circuit signature
 ```ts
 // MyOwnableContract.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
@@ -65,7 +65,7 @@ Here's a complete contract showcasing how to integrate the Ownable module and pr
 ```ts
 // SimpleOwnable.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
@@ -308,7 +308,7 @@ It’s recommended to prefix the module with `ZOwnablePK_` to avoid circuit sign
 ```typescript
 // MyZOwnablePKContract.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/access/ZOwnablePK"
@@ -405,7 +405,7 @@ Here’s a simple example of using `AccessControl` with xref:fungibleToken.adoc[
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
@@ -447,7 +447,7 @@ Let’s augment our FungibleToken example by also defining a 'burner' role, whic
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
@@ -513,7 +513,7 @@ Let’s take a look at the FungibleToken example, this time taking advantage of 
 ```ts
 // AccessControlMinter.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"

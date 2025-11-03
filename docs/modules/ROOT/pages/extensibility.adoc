@@ -42,7 +42,7 @@ This pattern balances modularity with local control, avoids tight coupling, and 
 ```ts
 /** FungibleTokenMintablePausableOwnableContract */
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
