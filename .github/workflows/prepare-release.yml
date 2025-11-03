@@ -30,7 +30,34 @@ jobs:
     - name: Extract new version number
       run: echo "NEW_VERSION=${GITHUB_REF#refs/heads/release-v}" >> "$GITHUB_ENV"
 
+    - name: Validate new version
+      run: |
+        BRANCH="${GITHUB_REF#refs/heads/}"
+        echo "Branch: $BRANCH"
+        echo "Current version: $CURRENT_VERSION"
+        echo "New version: $NEW_VERSION"
+
+        # 1) Branch must match release-v<semver>
+        if ! echo "$BRANCH" | grep -Eq '^release-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'; then
+          echo "Error: Branch '$BRANCH' must match 'release-v<semver>' (e.g., release-v1.2.3)." >&2
+          exit 1
+        fi
+
+        # 2) NEW_VERSION must be valid semver
+        node -e "const v=process.env.NEW_VERSION; const semver=/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$/; if(!semver.test(v)){ console.error('Error: NEW_VERSION is not valid semver:', v); process.exit(1); }"
+        if [ $? -ne 0 ]; then
+          exit 1
+        fi
+
+        # 3) NEW_VERSION must differ from CURRENT_VERSION
+        if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+          echo "Error: NEW_VERSION equals CURRENT_VERSION ($CURRENT_VERSION). Nothing to release." >&2
+          exit 1
+        fi
+
     - name: Replace version in files
+      env:
+        NEW_VERSION: ${{ env.NEW_VERSION }}
       run: |
         echo "Current version: $CURRENT_VERSION"
         echo "New version: $NEW_VERSION"
@@ -39,10 +66,11 @@ jobs:
         cd contracts
         node -e "
           const fs = require('fs');
+          const newVersion = process.env.NEW_VERSION;
           const pkg = require('./package.json');
-          pkg.version = '$NEW_VERSION';
+          pkg.version = newVersion;
           fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
-          console.log('Updated package.json to version $NEW_VERSION');
+          console.log('Updated package.json to version ' + newVersion);
         "
         # Update yarn.lock to reflect the new version
         yarn install

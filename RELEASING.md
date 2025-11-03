@@ -14,7 +14,7 @@ git checkout -b release-v0.2.0
 This will trigger a GitHub workflow that automatically bumps the version number throughout the project.
 
 ```sh
-git push release-v0.2.0
+git push origin release-v0.2.0
 ```
 
 (4) Once merged, pull the changes from the release branch.
@@ -38,5 +38,5 @@ create and push a doc branch to deploy the corresponding version to the doc-site
 
 ```sh
 git checkout -b docs-v0.2.0
-git push docs-v0.2.0
+git push origin docs-v0.2.0
 ```
