@@ -66,8 +66,14 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        COMPACT_HOME="$HOME/compactc"
+        COMPACT_HOME="$HOME/.local/bin"
         mkdir -p "$COMPACT_HOME"
+
+        # Require COMPACT_INSTALLER_URL to be provided by the caller
+        if [ -z "${COMPACT_INSTALLER_URL:-}" ]; then
+          echo "::error::COMPACT_INSTALLER_URL is required but not set. Provide it via env or secrets."
+          exit 1
+        fi
 
         echo "🔧 Installing Compact compiler from $COMPACT_INSTALLER_URL ..."
         curl --proto '=https' --tlsv1.2 -LsSf "$COMPACT_INSTALLER_URL" | sh
@@ -78,12 +84,12 @@ runs:
       if: inputs.skip-compact != 'true'
       shell: bash
       run: |
-        COMPACT_HOME="$HOME/compactc"
+        COMPACT_HOME="$HOME/.local/bin"
         echo "📁 Setting Compact environment variables..."
         echo "COMPACT_HOME=$COMPACT_HOME" >> "$GITHUB_ENV"
         echo "$COMPACT_HOME" >> "$GITHUB_PATH"
 
-        if [ -f "$COMPACT_HOME/compactc" ]; then
+        if [ -f "$COMPACT_HOME/compact" ]; then
           echo "✅ Compact compiler is installed at $COMPACT_HOME"
         else
           echo "::error::❌ Compact compiler not found in $COMPACT_HOME"
@@ -95,31 +101,5 @@ runs:
       id: compact-outputs
       shell: bash
       run: |
-        echo "compact-home=$HOME/compactc" >> $GITHUB_OUTPUT
+        echo "compact-home=$HOME/compact" >> $GITHUB_OUTPUT
         echo "version=$COMPILER_VERSION" >> $GITHUB_OUTPUT
-
-    - name: Check compiler and language version
-      if: inputs.skip-compact != 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        echo "🔍 Checking Compact compiler version..."
-        COMPILER_OUTPUT=$(compactc --version)
-        COMPUTED_COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
-
-        if [ "$COMPUTED_COMPILER_VERSION" != "$COMPILER_VERSION" ]; then
-          echo "::error::❌ Compiler version mismatch!%0AExpected: $COMPILER_VERSION%0AGot: $COMPUTED_COMPILER_VERSION"
-          exit 1
-        fi
-        echo "✅ Compiler version matches: $COMPUTED_COMPILER_VERSION"
-
-        echo "🔍 Checking Compact language version..."
-        LANGUAGE_OUTPUT=$(compactc --language-version)
-        COMPUTED_LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | tail -n 1)
-
-        if [ "$COMPUTED_LANGUAGE_VERSION" != "$LANGUAGE_VERSION" ]; then
-          echo "::error::❌ Language version mismatch!%0AExpected: $LANGUAGE_VERSION%0AGot: $COMPUTED_LANGUAGE_VERSION"
-          exit 1
-        fi
-        echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"

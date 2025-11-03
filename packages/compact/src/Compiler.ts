@@ -433,6 +433,8 @@ export const UIService = {
  * ```
  */
 export class CompactCompiler {
+  /** Default Compact version used when none is explicitly provided */
+  private static readonly DEFAULT_COMPACT_VERSION = '0.25.0';
   /** Environment validation service */
   private readonly environmentValidator: EnvironmentValidator;
   /** File discovery service */
@@ -547,6 +549,11 @@ export class CompactCompiler {
           flags.push(args[i]);
         }
       }
+    }
+
+    // Apply default toolchain version if none provided; allow env to override
+    if (!version) {
+      version = env.COMPACT_TOOLCHAIN_VERSION ?? CompactCompiler.DEFAULT_COMPACT_VERSION;
     }
 
     return new CompactCompiler(flags.join(' '), targetDir, version);
