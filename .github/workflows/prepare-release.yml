@@ -10,7 +10,7 @@ permissions:
 jobs:
   update_version:
     if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release-v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout repository
