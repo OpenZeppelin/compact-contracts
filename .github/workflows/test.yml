@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  COMPILER_VERSION: "0.26.0"
+  LANGUAGE_VERSION: "0.18.0"
+
 jobs:
   run-suite:
     name: Run Test Suite

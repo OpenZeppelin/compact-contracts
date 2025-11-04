@@ -10,3 +10,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bump compact compiler to v0.25.0 (#233)
+- Bump compact compiler to v0.26.0 (#279)
+- Upgrade @midnight-ntwrk/compact-runtime ^0.8.1 -> ^0.9.0 (#279)
