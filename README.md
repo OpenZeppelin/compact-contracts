@@ -1,4 +1,4 @@
-[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.25.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact)
+[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.26.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact/minokawa-0-18-26-0)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 # OpenZeppelin Contracts for Compact
@@ -20,8 +20,8 @@ Follow Midnight's [Compact Developer Tools installation guide](https://docs.midn
 ```bash
 $ compact compile --version
 
-Compactc version: 0.25.0
-0.25.0
+Compactc version: 0.26.0
+0.26.0
 ```
 
 ### Installation

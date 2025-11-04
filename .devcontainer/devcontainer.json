@@ -3,5 +3,5 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "postCreateCommand": "code --install-extension /tmp/compact.vsix && compact update 0.25.0"
+  "postCreateCommand": "code --install-extension /tmp/compact.vsix && compact update 0.26.0"
 }
