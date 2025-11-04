@@ -21,8 +21,8 @@ runs:
     - name: Set shared environment variables
       shell: bash
       run: |
-        echo "COMPILER_VERSION=0.25.0" >> $GITHUB_ENV
-        echo "LANGUAGE_VERSION=0.17.0" >> $GITHUB_ENV
+        echo "COMPILER_VERSION=0.26.0" >> $GITHUB_ENV
+        echo "LANGUAGE_VERSION=0.18.0" >> $GITHUB_ENV
 
     - name: Get yarn cache directory path
       shell: bash

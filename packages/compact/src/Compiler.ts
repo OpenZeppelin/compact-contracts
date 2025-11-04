@@ -40,7 +40,7 @@ export type ExecFunction = (
  * @example
  * ```typescript
  * const validator = new EnvironmentValidator();
- * await validator.validate('0.25.0');
+ * await validator.validate('0.26.0');
  * const version = await validator.getDevToolsVersion();
  * ```
  */
@@ -101,7 +101,7 @@ export class EnvironmentValidator {
    * @throws {Error} If the CLI is not available or command fails
    * @example
    * ```typescript
-   * const toolchainVersion = await validator.getToolchainVersion('0.25.0');
+   * const toolchainVersion = await validator.getToolchainVersion('0.26.0');
    * console.log(`Toolchain: ${toolchainVersion}`);
    * ```
    */
@@ -123,7 +123,7 @@ export class EnvironmentValidator {
    * @example
    * ```typescript
    * try {
-   *   await validator.validate('0.25.0');
+   *   await validator.validate('0.26.0');
    *   console.log('Environment validated successfully');
    * } catch (error) {
    *   if (error instanceof CompactCliNotFoundError) {
@@ -216,7 +216,7 @@ export class FileDiscovery {
  * const result = await compiler.compileFile(
  *   'contracts/Token.compact',
  *   '--skip-zk --verbose',
- *   '0.25.0'
+ *   '0.26.0'
  * );
  * console.log('Compilation output:', result.stdout);
  * ```
@@ -248,7 +248,7 @@ export class CompilerService {
    *   const result = await compiler.compileFile(
    *     'security/AccessControl.compact',
    *     '--skip-zk',
-   *     '0.25.0'
+   *     '0.26.0'
    *   );
    *   console.log('Success:', result.stdout);
    * } catch (error) {
@@ -297,7 +297,7 @@ export class CompilerService {
  * @class UIService
  * @example
  * ```typescript
- * UIService.displayEnvInfo('compact 0.1.0', 'Compactc 0.25.0', 'security');
+ * UIService.displayEnvInfo('compact 0.1.0', 'Compactc 0.26.0', 'security');
  * UIService.printOutput('Compilation successful', chalk.green);
  * ```
  */
@@ -334,9 +334,9 @@ export const UIService = {
    * ```typescript
    * UIService.displayEnvInfo(
    *   'compact 0.1.0',
-   *   'Compactc version: 0.25.0',
+   *   'Compactc version: 0.26.0',
    *   'security',
-   *   '0.25.0'
+   *   '0.26.0'
    * );
    * ```
    */
@@ -420,7 +420,7 @@ export const UIService = {
  * @example
  * ```typescript
  * // Basic usage
- * const compiler = new CompactCompiler('--skip-zk', 'security', '0.25.0');
+ * const compiler = new CompactCompiler('--skip-zk', 'security', '0.26.0');
  * await compiler.compile();
  *
  * // Factory method usage
@@ -453,7 +453,7 @@ export class CompactCompiler {
    *
    * @param flags - Space-separated compiler flags (e.g., '--skip-zk --verbose')
    * @param targetDir - Optional subdirectory within src/ to compile (e.g., 'security', 'token')
-   * @param version - Optional toolchain version to use (e.g., '0.25.0')
+   * @param version - Optional toolchain version to use (e.g., '0.26.0')
    * @param execFn - Optional custom exec function for dependency injection
    * @example
    * ```typescript
@@ -464,7 +464,7 @@ export class CompactCompiler {
    * const compiler = new CompactCompiler('', 'security');
    *
    * // Compile with specific version
-   * const compiler = new CompactCompiler('--skip-zk', undefined, '0.25.0');
+   * const compiler = new CompactCompiler('--skip-zk', undefined, '0.26.0');
    *
    * // For testing with custom exec function
    * const mockExec = vi.fn();
@@ -501,11 +501,11 @@ export class CompactCompiler {
    * @throws {Error} If --dir flag is provided without a directory name
    * @example
    * ```typescript
-   * // Parse command line: compact-compiler --dir security --skip-zk +0.25.0
+   * // Parse command line: compact-compiler --dir security --skip-zk +0.26.0
    * const compiler = CompactCompiler.fromArgs([
    *   '--dir', 'security',
    *   '--skip-zk',
-   *   '+0.25.0'
+   *   '+0.26.0'
    * ]);
    *
    * // With environment variable
