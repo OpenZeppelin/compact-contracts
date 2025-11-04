@@ -27,7 +27,9 @@ describe('Utils', () => {
     });
 
     it('should not return zero for a zero contract address', () => {
-      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(true);
+      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(
+        true,
+      );
     });
   });
 

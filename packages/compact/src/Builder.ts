@@ -75,6 +75,7 @@ export class CompactBuilder {
 
       // Step 3: Copy .compact files preserving structure (excludes Mock* files and archive/)
       {
+        // biome-ignore-start lint/suspicious/noUselessEscapeInString: Needed inside JS template literal
         cmd: `
         find src -type f -name "*.compact" ! -name "Mock*" ! -path "*/archive/*" | while read file; do
           # Remove src/ prefix from path
@@ -83,6 +84,7 @@ export class CompactBuilder {
           cp "\$file" "dist/\$rel_path"
         done
       `,
+        // biome-ignore-end lint/suspicious/noUselessEscapeInString: Needed inside JS template literal
         msg: 'Copying .compact files (excluding mocks and archive)',
         shell: '/bin/bash',
       },
