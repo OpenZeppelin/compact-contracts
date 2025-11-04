@@ -114,6 +114,9 @@ runs:
       run: |
         set -euo pipefail
 
+        echo "🔧 Updating Compact compiler to $COMPILER_VERSION..."
+        "$COMPACT_HOME/compact" update "$COMPILER_VERSION"
+
         echo "🔍 Checking Compact compiler version..."
         COMPILER_OUTPUT=$("$COMPACT_HOME/compact" compile --version)
         COMPUTED_COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
