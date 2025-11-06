@@ -59,7 +59,7 @@ Import the MultiToken module into the implementing contract.
 It's recommended to prefix the module with `MultiToken_` to avoid circuit signature clashes.
 
 ```typescript
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/token/MultiToken"
@@ -96,7 +96,7 @@ The following example is a simple multi-token contract that creates both a fixed
 ```typescript
 // MultiTokenTwoTokenTypes.compact
 
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin-compact/contracts/src/token/MultiToken"

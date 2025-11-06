@@ -29,9 +29,9 @@ const execAsync = promisify(exec);
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✔ [COMPILE] [1/2] Compiled AccessControl.compact
- *     Compactc version: 0.25.0
+ *     Compactc version: 0.26.0
  * ✔ [COMPILE] [2/2] Compiled MockAccessControl.compact
- *     Compactc version: 0.25.0
+ *     Compactc version: 0.26.0
  * ✔ [BUILD] [1/3] Compiling TypeScript
  * ✔ [BUILD] [2/3] Copying artifacts
  * ✔ [BUILD] [3/3] Copying and cleaning .compact files
@@ -41,7 +41,7 @@ const execAsync = promisify(exec);
  * ```
  * ℹ [COMPILE] Found 2 .compact file(s) to compile
  * ✖ [COMPILE] [1/2] Failed AccessControl.compact
- *     Compactc version: 0.25.0
+ *     Compactc version: 0.26.0
  *     Error: Expected ';' at line 5 in AccessControl.compact
  * ```
  *

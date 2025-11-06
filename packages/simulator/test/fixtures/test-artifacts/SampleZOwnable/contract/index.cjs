@@ -1,6 +1,6 @@
 'use strict';
 const __compactRuntime = require('@midnight-ntwrk/compact-runtime');
-const expectedRuntimeVersionString = '0.8.1';
+const expectedRuntimeVersionString = '0.9.0';
 const expectedRuntimeVersion = expectedRuntimeVersionString.split('-')[0].split('.').map(Number);
 const actualRuntimeVersion = __compactRuntime.versionString.split('-')[0].split('.').map(Number);
 if (expectedRuntimeVersion[0] != actualRuntimeVersion[0]
@@ -470,21 +470,23 @@ class Contract {
     return [];
   }
   __computeOwnerCommitment_0(context, partialProofData, id_0, counter_0) {
+    const value_0 = _descriptor_1.fromValue(Contract._query(context,
+                                                            partialProofData,
+                                                            [
+                                                             { dup: { n: 0 } },
+                                                             { idx: { cached: false,
+                                                                      pushPath: false,
+                                                                      path: [
+                                                                             { tag: 'value',
+                                                                               value: { value: _descriptor_9.toValue(2n),
+                                                                                        alignment: _descriptor_9.alignment() } }] } },
+                                                             { popeq: { cached: false,
+                                                                        result: undefined } }]).value);
     return this._persistentHash_0([id_0,
-                                   _descriptor_1.fromValue(Contract._query(context,
-                                                                           partialProofData,
-                                                                           [
-                                                                            { dup: { n: 0 } },
-                                                                            { idx: { cached: false,
-                                                                                     pushPath: false,
-                                                                                     path: [
-                                                                                            { tag: 'value',
-                                                                                              value: { value: _descriptor_9.toValue(2n),
-                                                                                                       alignment: _descriptor_9.alignment() } }] } },
-                                                                            { popeq: { cached: false,
-                                                                                       result: undefined } }]).value),
-                                   __compactRuntime.convert_bigint_to_Uint8Array(32,
-                                                                                 counter_0),
+                                   value_0,
+                                   __compactRuntime.convertFieldToBytes(32,
+                                                                        counter_0,
+                                                                        'SampleZOwnable.compact line 56 char 7'),
                                    new Uint8Array([83, 97, 109, 112, 108, 101, 90, 79, 119, 110, 97, 98, 108, 101, 58, 115, 104, 105, 101, 108, 100, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])]);
   }
   __computeOwnerId_0(pk_0, nonce_0) {
@@ -646,14 +648,14 @@ const pureCircuits = {
     if (!(typeof(pk_0) === 'object' && typeof(pk_0.is_left) === 'boolean' && typeof(pk_0.left) === 'object' && pk_0.left.bytes.buffer instanceof ArrayBuffer && pk_0.left.bytes.BYTES_PER_ELEMENT === 1 && pk_0.left.bytes.length === 32 && typeof(pk_0.right) === 'object' && pk_0.right.bytes.buffer instanceof ArrayBuffer && pk_0.right.bytes.BYTES_PER_ELEMENT === 1 && pk_0.right.bytes.length === 32)) {
       __compactRuntime.type_error('_computeOwnerId',
                                   'argument 1',
-                                  'SampleZOwnable.compact line 61 char 1',
+                                  'SampleZOwnable.compact line 62 char 1',
                                   'struct Either<is_left: Boolean, left: struct ZswapCoinPublicKey<bytes: Bytes<32>>, right: struct ContractAddress<bytes: Bytes<32>>>',
                                   pk_0)
     }
     if (!(nonce_0.buffer instanceof ArrayBuffer && nonce_0.BYTES_PER_ELEMENT === 1 && nonce_0.length === 32)) {
       __compactRuntime.type_error('_computeOwnerId',
                                   'argument 2',
-                                  'SampleZOwnable.compact line 61 char 1',
+                                  'SampleZOwnable.compact line 62 char 1',
                                   'Bytes<32>',
                                   nonce_0)
     }

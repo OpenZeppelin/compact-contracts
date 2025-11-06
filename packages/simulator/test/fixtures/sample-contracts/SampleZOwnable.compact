@@ -1,7 +1,7 @@
 // Sample contract for testing
 // DO NOT USE IN PRODUCTION!!!
 
-pragma language_version >= 0.16.0;
+pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
 
@@ -48,10 +48,13 @@ export circuit _computeOwnerCommitment(
   id: Bytes<32>,
   counter: Uint<64>,
 ): Bytes<32> {
+  // the value variable is necessary to force the circuit to be impure
+  // this avoids a compiler bug in compactc v0.26.0
+  const value = _instanceSalt;
   return persistentHash<Vector<4, Bytes<32>>>(
     [
       id,
-      _instanceSalt,
+      value,
       counter as Field as Bytes<32>,
       pad(32, "SampleZOwnable:shield:")
     ]
