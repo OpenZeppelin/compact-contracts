@@ -63,15 +63,7 @@ jobs:
         echo "New version: $NEW_VERSION"
 
         # Update package.json version field manually
-        cd contracts
-        node -e "
-          const fs = require('fs');
-          const newVersion = process.env.NEW_VERSION;
-          const pkg = require('./package.json');
-          pkg.version = newVersion;
-          fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
-          console.log('Updated package.json to version ' + newVersion);
-        "
+        yarn workspace @openzeppelin-compact/contracts version "$NEW_VERSION"
         # Update yarn.lock to reflect the new version
         yarn install
         cd ..
