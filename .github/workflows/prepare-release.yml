@@ -64,9 +64,6 @@ jobs:
 
         # Update package.json version field manually
         yarn workspace @openzeppelin-compact/contracts version "$NEW_VERSION"
-        # Update yarn.lock to reflect the new version
-        yarn install
-        cd ..
 
         # Escape special characters for sed
         ESCAPED_CURRENT=$(printf '%s' "$CURRENT_VERSION" | sed -e 's/[\/&]/\\&/g')
