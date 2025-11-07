@@ -32,15 +32,18 @@
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@openzeppelin-compact/compact": "workspace:^"
   },
   "devDependencies": {
     "@openzeppelin-compact/contracts-simulator": "workspace:^",
-    "@tsconfig/node22": "^22.0.2",
-    "@types/node": "22.18.0",
+    "@tsconfig/node24": "^24.0.1",
+    "@types/node": "24.9.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.5"
+    "vitest": "^4.0.7"
   }
 }
