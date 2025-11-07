@@ -1,0 +1,30 @@
+{
+  "version": { "major": 2, "minor": 0 },
+  "do_communications_commitment": true,
+  "num_inputs": 2,
+  "instructions": [
+    { "op": "constrain_bits", "var": 0, "bits": 128 },
+    { "op": "constrain_bits", "var": 1, "bits": 128 },
+    { "op": "load_imm", "imm": "01" },
+    { "op": "private_input", "guard": null },
+    { "op": "constrain_bits", "var": 3, "bits": 128 },
+    { "op": "load_imm", "imm": "10" },
+    { "op": "load_imm", "imm": "02" },
+    { "op": "declare_pub_input", "var": 4 },
+    { "op": "declare_pub_input", "var": 2 },
+    { "op": "declare_pub_input", "var": 2 },
+    { "op": "declare_pub_input", "var": 2 },
+    { "op": "declare_pub_input", "var": 5 },
+    { "op": "pi_skip", "guard": 2, "count": 5 },
+    { "op": "load_imm", "imm": "11" },
+    { "op": "declare_pub_input", "var": 6 },
+    { "op": "declare_pub_input", "var": 2 },
+    { "op": "declare_pub_input", "var": 2 },
+    { "op": "declare_pub_input", "var": 4 },
+    { "op": "declare_pub_input", "var": 3 },
+    { "op": "pi_skip", "guard": 2, "count": 5 },
+    { "op": "load_imm", "imm": "91" },
+    { "op": "declare_pub_input", "var": 7 },
+    { "op": "pi_skip", "guard": 2, "count": 1 }
+  ]
+}

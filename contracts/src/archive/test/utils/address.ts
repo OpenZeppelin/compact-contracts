@@ -1,5 +1,5 @@
 import {
-  convert_bigint_to_Uint8Array,
+  convertFieldToBytes,
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
@@ -70,12 +70,12 @@ export const createEitherTestContractAddress = (str: string) => {
 
 export const ZERO_KEY = {
   is_left: true,
-  left: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+  left: { bytes: convertFieldToBytes(32, 0n, "") },
   right: encodeToAddress(''),
 };
 
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
-  right: { bytes: convert_bigint_to_Uint8Array(32, BigInt(0)) },
+  right: { bytes: convertFieldToBytes(32, 0n, "") },
 };
