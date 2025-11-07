@@ -31,7 +31,8 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class ShieldedTokenSimulator
-  implements IContractSimulator<ShieldedTokenPrivateState, Ledger> {
+  implements IContractSimulator<ShieldedTokenPrivateState, Ledger>
+{
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockShielded<ShieldedTokenPrivateState>;
 

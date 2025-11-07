@@ -28,7 +28,8 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class MultiTokenSimulator
-  implements IContractSimulator<MultiTokenPrivateState, Ledger> {
+  implements IContractSimulator<MultiTokenPrivateState, Ledger>
+{
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockMultiToken<MultiTokenPrivateState>;
 
