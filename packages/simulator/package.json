@@ -1,0 +1,43 @@
+{
+  "name": "@openzeppelin-compact/contracts-simulator",
+  "private": true,
+  "version": "0.0.1",
+  "keywords": [
+    "compact",
+    "compiler"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "types": "tsc -p tsconfig.json --noEmit",
+    "test": "yarn vitest run",
+    "clean": "git clean -fXd"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/ledger": "^4.0.0",
+    "@midnight-ntwrk/zswap": "^4.0.0",
+    "@tsconfig/node24": "^24.0.1",
+    "@types/node": "24.9.0",
+    "fast-check": "^4.3.0",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.7"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.9.0"
+  }
+}
