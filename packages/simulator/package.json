@@ -32,7 +32,7 @@
     "@midnight-ntwrk/ledger": "^4.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@tsconfig/node24": "^24.0.1",
-    "@types/node": "24.9.0",
+    "@types/node": "24.10.0",
     "fast-check": "^4.3.0",
     "typescript": "^5.8.2",
     "vitest": "^4.0.8"
