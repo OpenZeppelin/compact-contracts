@@ -37,6 +37,6 @@
     "@types/node": "24.9.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.7"
+    "vitest": "^4.0.8"
   }
 }
