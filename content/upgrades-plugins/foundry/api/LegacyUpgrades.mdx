@@ -1,0 +1,471 @@
+---
+title: "LegacyUpgrades"
+description: "Smart contract LegacyUpgrades utilities and implementations"
+---
+
+<a id="Upgrades"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Upgrades` 
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades/blob/v0.4.0/src/LegacyUpgrades.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import { Upgrades } from "openzeppelin-foundry-upgrades/LegacyUpgrades.sol";
+```
+
+Library for managing upgradeable contracts from Forge scripts or tests.
+
+NOTE: Only for upgrading existing deployments using OpenZeppelin Contracts v4.
+For new deployments, use OpenZeppelin Contracts v5 and Upgrades.sol.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [upgradeProxy(proxy, contractName, data, opts)](#Upgrades-upgradeProxy-address-string-bytes-struct-Options-)
+- [upgradeProxy(proxy, contractName, data)](#Upgrades-upgradeProxy-address-string-bytes-)
+- [upgradeProxy(proxy, contractName, data, opts, tryCaller)](#Upgrades-upgradeProxy-address-string-bytes-struct-Options-address-)
+- [upgradeProxy(proxy, contractName, data, tryCaller)](#Upgrades-upgradeProxy-address-string-bytes-address-)
+- [upgradeBeacon(beacon, contractName, opts)](#Upgrades-upgradeBeacon-address-string-struct-Options-)
+- [upgradeBeacon(beacon, contractName)](#Upgrades-upgradeBeacon-address-string-)
+- [upgradeBeacon(beacon, contractName, opts, tryCaller)](#Upgrades-upgradeBeacon-address-string-struct-Options-address-)
+- [upgradeBeacon(beacon, contractName, tryCaller)](#Upgrades-upgradeBeacon-address-string-address-)
+- [validateUpgrade(contractName, opts)](#Upgrades-validateUpgrade-string-struct-Options-)
+- [prepareUpgrade(contractName, opts)](#Upgrades-prepareUpgrade-string-struct-Options-)
+- [getAdminAddress(proxy)](#Upgrades-getAdminAddress-address-)
+- [getImplementationAddress(proxy)](#Upgrades-getImplementationAddress-address-)
+- [getBeaconAddress(proxy)](#Upgrades-getBeaconAddress-address-)
+</div>
+</div>
+
+<a id="Upgrades-upgradeProxy-address-string-bytes-struct-Options-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeProxy(address proxy, string contractName, bytes data, struct Options opts)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeProxy-address-string-bytes-struct-Options-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a proxy to a new implementation contract. Only supported for UUPS or transparent proxies.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeProxy-address-string-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeProxy(address proxy, string contractName, bytes data)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeProxy-address-string-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a proxy to a new implementation contract. Only supported for UUPS or transparent proxies.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeProxy-address-string-bytes-struct-Options-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeProxy(address proxy, string contractName, bytes data, struct Options opts, address tryCaller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeProxy-address-string-bytes-struct-Options-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a proxy to a new implementation contract. Only supported for UUPS or transparent proxies.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+This function provides an additional `tryCaller` parameter to test an upgrade using a specific caller address.
+Use this if you encounter `OwnableUnauthorizedAccount` errors in your tests.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeProxy-address-string-bytes-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeProxy(address proxy, string contractName, bytes data, address tryCaller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeProxy-address-string-bytes-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a proxy to a new implementation contract. Only supported for UUPS or transparent proxies.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+This function provides an additional `tryCaller` parameter to test an upgrade using a specific caller address.
+Use this if you encounter `OwnableUnauthorizedAccount` errors in your tests.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeBeacon-address-string-struct-Options-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeBeacon(address beacon, string contractName, struct Options opts)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeBeacon-address-string-struct-Options-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a beacon to a new implementation contract.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeBeacon-address-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeBeacon(address beacon, string contractName)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeBeacon-address-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a beacon to a new implementation contract.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeBeacon-address-string-struct-Options-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeBeacon(address beacon, string contractName, struct Options opts, address tryCaller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeBeacon-address-string-struct-Options-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a beacon to a new implementation contract.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+This function provides an additional `tryCaller` parameter to test an upgrade using a specific caller address.
+Use this if you encounter `OwnableUnauthorizedAccount` errors in your tests.
+
+</div>
+</div>
+
+<a id="Upgrades-upgradeBeacon-address-string-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeBeacon(address beacon, string contractName, address tryCaller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-upgradeBeacon-address-string-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a beacon to a new implementation contract.
+
+Requires that either the `referenceContract` option is set, or the new implementation contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+This function provides an additional `tryCaller` parameter to test an upgrade using a specific caller address.
+Use this if you encounter `OwnableUnauthorizedAccount` errors in your tests.
+
+</div>
+</div>
+
+<a id="Upgrades-validateUpgrade-string-struct-Options-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">validateUpgrade(string contractName, struct Options opts)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-validateUpgrade-string-struct-Options-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates a new implementation contract in comparison with a reference contract, but does not deploy it.
+
+Requires that either the `referenceContract` option is set, or the contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+</div>
+</div>
+
+<a id="Upgrades-prepareUpgrade-string-struct-Options-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">prepareUpgrade(string contractName, struct Options opts) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-prepareUpgrade-string-struct-Options-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates a new implementation contract in comparison with a reference contract, deploys the new implementation contract,
+and returns its address.
+
+Requires that either the `referenceContract` option is set, or the contract has a `@custom:oz-upgrades-from <reference>` annotation.
+
+Use this method to prepare an upgrade to be run from an admin address you do not control directly or cannot use from your deployment environment.
+
+</div>
+</div>
+
+<a id="Upgrades-getAdminAddress-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getAdminAddress(address proxy) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-getAdminAddress-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the admin address of a transparent proxy from its ERC1967 admin storage slot.
+
+</div>
+</div>
+
+<a id="Upgrades-getImplementationAddress-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getImplementationAddress(address proxy) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-getImplementationAddress-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the implementation address of a transparent or UUPS proxy from its ERC1967 implementation storage slot.
+
+</div>
+</div>
+
+<a id="Upgrades-getBeaconAddress-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getBeaconAddress(address proxy) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Upgrades-getBeaconAddress-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the beacon address of a beacon proxy from its ERC1967 beacon storage slot.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `UnsafeUpgrades` 
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades/blob/v0.4.0/src/LegacyUpgrades.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import { UnsafeUpgrades } from "openzeppelin-foundry-upgrades/LegacyUpgrades.sol";
+```
+
+Library for managing upgradeable contracts from Forge tests, without validations.
+
+Can be used with `forge coverage`. Requires implementation contracts to be instantiated first.
+Does not require `--ffi` and does not require a clean compilation before each run.
+
+Not supported for OpenZeppelin Defender deployments.
+
+<Callout type="warn">
+Not recommended for use in Forge scripts.
+`UnsafeUpgrades` does not validate whether your contracts are upgrade safe or whether new implementations are compatible with previous ones.
+Use `Upgrades` if you want validations to be run.
+</Callout>
+
+NOTE: Only for upgrading existing deployments using OpenZeppelin Contracts v4.
+For new deployments, use OpenZeppelin Contracts v5 and Upgrades.sol.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [upgradeProxy(proxy, newImpl, data)](#UnsafeUpgrades-upgradeProxy-address-address-bytes-)
+- [upgradeProxy(proxy, newImpl, data, tryCaller)](#UnsafeUpgrades-upgradeProxy-address-address-bytes-address-)
+- [upgradeBeacon(beacon, newImpl)](#UnsafeUpgrades-upgradeBeacon-address-address-)
+- [upgradeBeacon(beacon, newImpl, tryCaller)](#UnsafeUpgrades-upgradeBeacon-address-address-address-)
+- [getAdminAddress(proxy)](#UnsafeUpgrades-getAdminAddress-address-)
+- [getImplementationAddress(proxy)](#UnsafeUpgrades-getImplementationAddress-address-)
+- [getBeaconAddress(proxy)](#UnsafeUpgrades-getBeaconAddress-address-)
+</div>
+</div>
+
+<a id="UnsafeUpgrades-upgradeProxy-address-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeProxy(address proxy, address newImpl, bytes data)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-upgradeProxy-address-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a proxy to a new implementation contract address. Only supported for UUPS or transparent proxies.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades-upgradeProxy-address-address-bytes-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeProxy(address proxy, address newImpl, bytes data, address tryCaller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-upgradeProxy-address-address-bytes-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a proxy to a new implementation contract address. Only supported for UUPS or transparent proxies.
+
+This function provides an additional `tryCaller` parameter to test an upgrade using a specific caller address.
+Use this if you encounter `OwnableUnauthorizedAccount` errors in your tests.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades-upgradeBeacon-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeBeacon(address beacon, address newImpl)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-upgradeBeacon-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a beacon to a new implementation contract address.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades-upgradeBeacon-address-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">upgradeBeacon(address beacon, address newImpl, address tryCaller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-upgradeBeacon-address-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Upgrades a beacon to a new implementation contract address.
+
+This function provides an additional `tryCaller` parameter to test an upgrade using a specific caller address.
+Use this if you encounter `OwnableUnauthorizedAccount` errors in your tests.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades-getAdminAddress-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getAdminAddress(address proxy) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-getAdminAddress-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the admin address of a transparent proxy from its ERC1967 admin storage slot.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades-getImplementationAddress-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getImplementationAddress(address proxy) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-getImplementationAddress-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the implementation address of a transparent or UUPS proxy from its ERC1967 implementation storage slot.
+
+</div>
+</div>
+
+<a id="UnsafeUpgrades-getBeaconAddress-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getBeaconAddress(address proxy) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="UnsafeUpgrades-getBeaconAddress-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the beacon address of a beacon proxy from its ERC1967 beacon storage slot.
+
+</div>
+</div>
+

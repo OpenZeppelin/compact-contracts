@@ -1,0 +1,3755 @@
+---
+title: "Cryptography"
+description: "Smart contract cryptography utilities and implementations"
+---
+
+A collection of contracts and libraries that implement various signature validation schemes and cryptographic primitives. These utilities enable secure authentication, multisignature operations, and advanced cryptographic operations in smart contracts.
+
+* [`ECDSA`](#ECDSA), [`MessageHashUtils`](#MessageHashUtils): Libraries for interacting with ECDSA signatures.
+* [`P256`](#P256): Library for verifying and recovering public keys from secp256r1 signatures.
+* [`RSA`](#RSA): Library with RSA PKCS#1 v1.5 signature verification utilities.
+* [`SignatureChecker`](#SignatureChecker): A library helper to support regular ECDSA from EOAs as well as ERC-1271 signatures for smart contracts.
+* [`Hashes`](#Hashes): Commonly used hash functions.
+* [`MerkleProof`](#MerkleProof): Functions for verifying [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) proofs.
+* [`EIP712`](#EIP712): Contract with functions to allow processing signed typed structure data according to [EIP-712](https://eips.ethereum.org/EIPS/eip-712).
+* [`ERC7739Utils`](#ERC7739Utils): Utilities library that implements a defensive rehashing mechanism to prevent replayability of smart contract signatures based on ERC-7739.
+* [`WebAuthn`](#WebAuthn): Library for verifying WebAuthn Authentication Assertions.
+* [`AbstractSigner`](#AbstractSigner): Abstract contract for internal signature validation in smart contracts.
+* [`ERC7739`](#ERC7739): An abstract contract to validate signatures following the rehashing scheme from [`ERC7739Utils`](#ERC7739Utils).
+* [`SignerECDSA`](#SignerECDSA), [`SignerP256`](#SignerP256), [`SignerRSA`](#SignerRSA): Implementations of an [`AbstractSigner`](#AbstractSigner) with specific signature validation algorithms.
+* [`SignerEIP7702`](#SignerEIP7702): Implementation of [`AbstractSigner`](#AbstractSigner) that validates signatures using the contract’s own address as the signer, useful for delegated accounts following EIP-7702.
+* [`SignerWebAuthn`](#SignerWebAuthn): Implementation of [`SignerP256`](#SignerP256) that supports WebAuthn
+* [`SignerERC7913`](#SignerERC7913), [`MultiSignerERC7913`](#MultiSignerERC7913), [`MultiSignerERC7913Weighted`](#MultiSignerERC7913Weighted): Implementations of [`AbstractSigner`](#AbstractSigner) that validate signatures based on ERC-7913. Including a simple and weighted multisignature scheme.
+* [`ERC7913P256Verifier`](#ERC7913P256Verifier), [`ERC7913RSAVerifier`](#ERC7913RSAVerifier), [`ERC7913WebAuthnVerifier`](#ERC7913WebAuthnVerifier): Ready to use ERC-7913 signature verifiers for P256, RSA keys and WebAuthn.
+
+## Utils
+
+[`ECDSA`](#ECDSA)
+
+[`MessageHashUtils`](#MessageHashUtils)
+
+[`P256`](#P256)
+
+[`RSA`](#RSA)
+
+[`SignatureChecker`](#SignatureChecker)
+
+[`Hashes`](#Hashes)
+
+[`MerkleProof`](#MerkleProof)
+
+[`EIP712`](#EIP712)
+
+[`ERC7739Utils`](#ERC7739Utils)
+
+[`WebAuthn`](#WebAuthn)
+
+## Abstract Signers
+
+[`AbstractSigner`](#AbstractSigner)
+
+[`ERC7739`](#ERC7739)
+
+[`SignerECDSA`](#SignerECDSA)
+
+[`SignerP256`](#SignerP256)
+
+[`SignerRSA`](#SignerRSA)
+
+[`SignerEIP7702`](#SignerEIP7702)
+
+[`SignerERC7913`](#SignerERC7913)
+
+[`MultiSignerERC7913`](#MultiSignerERC7913)
+
+[`MultiSignerERC7913Weighted`](#MultiSignerERC7913Weighted)
+
+## Verifiers
+
+[`ERC7913P256Verifier`](#ERC7913P256Verifier)
+
+[`ERC7913RSAVerifier`](#ERC7913RSAVerifier)
+
+[`ERC7913WebAuthnVerifier`](#ERC7913WebAuthnVerifier)
+
+<a id="ECDSA"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ECDSA`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/ECDSA.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+```
+
+Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
+
+These functions can be used to verify that a message was signed by the holder
+of the private keys of a given address.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [tryRecover(hash, signature)](#ECDSA-tryRecover-bytes32-bytes-)
+- [tryRecoverCalldata(hash, signature)](#ECDSA-tryRecoverCalldata-bytes32-bytes-)
+- [recover(hash, signature)](#ECDSA-recover-bytes32-bytes-)
+- [recoverCalldata(hash, signature)](#ECDSA-recoverCalldata-bytes32-bytes-)
+- [tryRecover(hash, r, vs)](#ECDSA-tryRecover-bytes32-bytes32-bytes32-)
+- [recover(hash, r, vs)](#ECDSA-recover-bytes32-bytes32-bytes32-)
+- [tryRecover(hash, v, r, s)](#ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-)
+- [recover(hash, v, r, s)](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-)
+- [parse(signature)](#ECDSA-parse-bytes-)
+- [parseCalldata(signature)](#ECDSA-parseCalldata-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ECDSAInvalidSignature()](#ECDSA-ECDSAInvalidSignature--)
+- [ECDSAInvalidSignatureLength(length)](#ECDSA-ECDSAInvalidSignatureLength-uint256-)
+- [ECDSAInvalidSignatureS(s)](#ECDSA-ECDSAInvalidSignatureS-bytes32-)
+</div>
+</div>
+
+<a id="ECDSA-tryRecover-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">tryRecover(bytes32 hash, bytes signature) → address recovered, enum ECDSA.RecoverError err, bytes32 errArg</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-tryRecover-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address that signed a hashed message (`hash`) with `signature` or an error. This will not
+return address(0) without also returning an error description. Errors are documented using an enum (error type)
+and a bytes32 providing additional information about the error.
+
+If no error is returned, then the address can be used for verification purposes.
+
+The `ecrecover` EVM precompile allows for malleable (non-unique) signatures:
+this function rejects them by requiring the `s` value to be in the lower
+half order, and the `v` value to be either 27 or 28.
+
+<Callout>
+This function only supports 65-byte signatures. ERC-2098 short signatures are rejected. This restriction
+is DEPRECATED and will be removed in v6.0. Developers SHOULD NOT use signatures as unique identifiers; use hash
+invalidation or nonces for replay protection.
+</Callout>
+
+<Callout type="warn">
+`hash` _must_ be the result of a hash operation for the
+verification to be secure: it is possible to craft signatures that
+recover to arbitrary addresses for non-hashed data. A safe way to ensure
+this is by receiving a hash of the original message (which may otherwise
+be too long), and then calling [`MessageHashUtils.toEthSignedMessageHash`](#MessageHashUtils-toEthSignedMessageHash-bytes-) on it.
+</Callout>
+
+Documentation for signature generation:
+
+- with [Web3.js](https://web3js.readthedocs.io/en/v1.3.4/web3-eth-accounts.html#sign)
+- with [ethers](https://docs.ethers.io/v5/api/signer/#Signer-signMessage)
+
+</div>
+</div>
+
+<a id="ECDSA-tryRecoverCalldata-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">tryRecoverCalldata(bytes32 hash, bytes signature) → address recovered, enum ECDSA.RecoverError err, bytes32 errArg</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-tryRecoverCalldata-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of [`ECDSA.tryRecover`](#ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-) that takes a signature in calldata
+
+</div>
+</div>
+
+<a id="ECDSA-recover-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">recover(bytes32 hash, bytes signature) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-recover-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address that signed a hashed message (`hash`) with
+`signature`. This address can then be used for verification purposes.
+
+The `ecrecover` EVM precompile allows for malleable (non-unique) signatures:
+this function rejects them by requiring the `s` value to be in the lower
+half order, and the `v` value to be either 27 or 28.
+
+<Callout>
+This function only supports 65-byte signatures. ERC-2098 short signatures are rejected. This restriction
+is DEPRECATED and will be removed in v6.0. Developers SHOULD NOT use signatures as unique identifiers; use hash
+invalidation or nonces for replay protection.
+</Callout>
+
+<Callout type="warn">
+`hash` _must_ be the result of a hash operation for the
+verification to be secure: it is possible to craft signatures that
+recover to arbitrary addresses for non-hashed data. A safe way to ensure
+this is by receiving a hash of the original message (which may otherwise
+be too long), and then calling [`MessageHashUtils.toEthSignedMessageHash`](#MessageHashUtils-toEthSignedMessageHash-bytes-) on it.
+</Callout>
+
+</div>
+</div>
+
+<a id="ECDSA-recoverCalldata-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">recoverCalldata(bytes32 hash, bytes signature) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-recoverCalldata-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-) that takes a signature in calldata
+
+</div>
+</div>
+
+<a id="ECDSA-tryRecover-bytes32-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">tryRecover(bytes32 hash, bytes32 r, bytes32 vs) → address recovered, enum ECDSA.RecoverError err, bytes32 errArg</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-tryRecover-bytes32-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overload of [`ECDSA.tryRecover`](#ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-) that receives the `r` and `vs` short-signature fields separately.
+
+See [ERC-2098 short signatures](https://eips.ethereum.org/EIPS/eip-2098)
+
+</div>
+</div>
+
+<a id="ECDSA-recover-bytes32-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">recover(bytes32 hash, bytes32 r, bytes32 vs) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-recover-bytes32-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overload of [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-) that receives the `r and `vs` short-signature fields separately.
+
+</div>
+</div>
+
+<a id="ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">tryRecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) → address recovered, enum ECDSA.RecoverError err, bytes32 errArg</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overload of [`ECDSA.tryRecover`](#ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-) that receives the `v`,
+`r` and `s` signature fields separately.
+
+</div>
+</div>
+
+<a id="ECDSA-recover-bytes32-uint8-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">recover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-recover-bytes32-uint8-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overload of [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-) that receives the `v`,
+`r` and `s` signature fields separately.
+
+</div>
+</div>
+
+<a id="ECDSA-parse-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">parse(bytes signature) → uint8 v, bytes32 r, bytes32 s</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-parse-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Parse a signature into its `v`, `r` and `s` components. Supports 65-byte and 64-byte (ERC-2098)
+formats. Returns (0,0,0) for invalid signatures.
+
+For 64-byte signatures, `v` is automatically normalized to 27 or 28.
+For 65-byte signatures, `v` is returned as-is and MUST already be 27 or 28 for use with ecrecover.
+
+Consider validating the result before use, or use [`ECDSA.tryRecover`](#ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-)/[`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-) which perform full validation.
+
+</div>
+</div>
+
+<a id="ECDSA-parseCalldata-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">parseCalldata(bytes signature) → uint8 v, bytes32 r, bytes32 s</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ECDSA-parseCalldata-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of [`CAIP10.parse`](#CAIP10-parse-string-) that takes a signature in calldata
+
+</div>
+</div>
+
+<a id="ECDSA-ECDSAInvalidSignature--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ECDSAInvalidSignature()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ECDSA-ECDSAInvalidSignature--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The signature derives the `address(0)`.
+
+</div>
+</div>
+
+<a id="ECDSA-ECDSAInvalidSignatureLength-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ECDSAInvalidSignatureLength(uint256 length)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ECDSA-ECDSAInvalidSignatureLength-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The signature has an invalid length.
+
+</div>
+</div>
+
+<a id="ECDSA-ECDSAInvalidSignatureS-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ECDSAInvalidSignatureS(bytes32 s)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ECDSA-ECDSAInvalidSignatureS-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The signature has an S value that is in the upper half order.
+
+</div>
+</div>
+
+<a id="EIP712"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `EIP712`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/EIP712.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+```
+
+[EIP-712](https://eips.ethereum.org/EIPS/eip-712) is a standard for hashing and signing of typed structured data.
+
+The encoding scheme specified in the EIP requires a domain separator and a hash of the typed structured data, whose
+encoding is very generic and therefore its implementation in Solidity is not feasible, thus this contract
+does not implement the encoding itself. Protocols need to implement the type-specific encoding they need in order to
+produce the hash of their typed data using a combination of `abi.encode` and `keccak256`.
+
+This contract implements the EIP-712 domain separator ([`EIP712._domainSeparatorV4`](#EIP712-_domainSeparatorV4--)) that is used as part of the encoding
+scheme, and the final step of the encoding to obtain the message digest that is then signed via ECDSA
+([`EIP712._hashTypedDataV4`](#EIP712-_hashTypedDataV4-bytes32-)).
+
+The implementation of the domain separator was designed to be as efficient as possible while still properly updating
+the chain id to protect against replay attacks on an eventual fork of the chain.
+
+<Callout>
+This contract implements the version of the encoding known as "v4", as implemented by the JSON RPC method
+[`eth_signTypedDataV4` in MetaMask](https://docs.metamask.io/guide/signing-data.html).
+</Callout>
+
+<Callout>
+In the upgradeable version of this contract, the cached values will correspond to the address, and the domain
+separator of the implementation contract. This will cause the [`EIP712._domainSeparatorV4`](#EIP712-_domainSeparatorV4--) function to always rebuild the
+separator from the immutable values, which is cheaper than accessing a cached version in cold storage.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(name, version)](#EIP712-constructor-string-string-)
+- [_domainSeparatorV4()](#EIP712-_domainSeparatorV4--)
+- [_hashTypedDataV4(structHash)](#EIP712-_hashTypedDataV4-bytes32-)
+- [eip712Domain()](#EIP712-eip712Domain--)
+- [_EIP712Name()](#EIP712-_EIP712Name--)
+- [_EIP712Version()](#EIP712-_EIP712Version--)
+#### IERC5267 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC5267 [!toc]
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+</div>
+</div>
+
+<a id="EIP712-constructor-string-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(string name, string version)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="EIP712-constructor-string-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initializes the domain separator and parameter caches.
+
+The meaning of `name` and `version` is specified in
+[EIP-712](https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator):
+
+- `name`: the user readable name of the signing domain, i.e. the name of the DApp or the protocol.
+- `version`: the current major version of the signing domain.
+
+<Callout>
+These parameters cannot be changed except through a [smart contract upgrade](/contracts/5.x/learn/upgrading-smart-contracts).
+</Callout>
+
+</div>
+</div>
+
+<a id="EIP712-_domainSeparatorV4--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_domainSeparatorV4() → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="EIP712-_domainSeparatorV4--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the domain separator for the current chain.
+
+</div>
+</div>
+
+<a id="EIP712-_hashTypedDataV4-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_hashTypedDataV4(bytes32 structHash) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="EIP712-_hashTypedDataV4-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Given an already [hashed struct](https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct), this
+function returns the hash of the fully encoded EIP712 message for this domain.
+
+This hash can be used together with [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-) to obtain the signer of a message. For example:
+
+```solidity
+bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+    keccak256("Mail(address to,string contents)"),
+    mailTo,
+    keccak256(bytes(mailContents))
+)));
+address signer = ECDSA.recover(digest, signature);
+```
+
+</div>
+</div>
+
+<a id="EIP712-eip712Domain--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">eip712Domain() → bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="EIP712-eip712Domain--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+returns the fields and values that describe the domain separator used by this contract for EIP-712
+signature.
+
+</div>
+</div>
+
+<a id="EIP712-_EIP712Name--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_EIP712Name() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="EIP712-_EIP712Name--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The name parameter for the EIP712 domain.
+
+<Callout>
+By default this function reads _name which is an immutable value.
+It only reads from storage if necessary (in case the value is too large to fit in a ShortString).
+</Callout>
+
+</div>
+</div>
+
+<a id="EIP712-_EIP712Version--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_EIP712Version() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="EIP712-_EIP712Version--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The version parameter for the EIP712 domain.
+
+<Callout>
+By default this function reads _version which is an immutable value.
+It only reads from storage if necessary (in case the value is too large to fit in a ShortString).
+</Callout>
+
+</div>
+</div>
+
+<a id="Hashes"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Hashes`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/Hashes.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
+```
+
+Library of standard hash functions.
+
+_Available since v5.1._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [commutativeKeccak256(a, b)](#Hashes-commutativeKeccak256-bytes32-bytes32-)
+- [efficientKeccak256(a, b)](#Hashes-efficientKeccak256-bytes32-bytes32-)
+</div>
+</div>
+
+<a id="Hashes-commutativeKeccak256-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">commutativeKeccak256(bytes32 a, bytes32 b) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Hashes-commutativeKeccak256-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Commutative Keccak256 hash of a sorted pair of bytes32. Frequently used when working with merkle proofs.
+
+<Callout>
+Equivalent to the `standardNodeHash` in our [JavaScript library](https://github.com/OpenZeppelin/merkle-tree).
+</Callout>
+
+</div>
+</div>
+
+<a id="Hashes-efficientKeccak256-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">efficientKeccak256(bytes32 a, bytes32 b) → bytes32 value</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Hashes-efficientKeccak256-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Implementation of keccak256(abi.encode(a, b)) that doesn't allocate or expand memory.
+
+</div>
+</div>
+
+<a id="MerkleProof"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `MerkleProof`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/MerkleProof.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+```
+
+These functions deal with verification of Merkle Tree proofs.
+
+The tree and the proofs can be generated using our
+[JavaScript library](https://github.com/OpenZeppelin/merkle-tree).
+You will find a quickstart guide in the readme.
+
+<Callout type="warn">
+You should avoid using leaf values that are 64 bytes long prior to
+hashing, or use a hash function other than keccak256 for hashing leaves.
+This is because the concatenation of a sorted pair of internal nodes in
+the Merkle tree could be reinterpreted as a leaf value.
+OpenZeppelin's JavaScript library generates Merkle trees that are safe
+against this attack out of the box.
+</Callout>
+
+<Callout type="warn">
+Consider memory side-effects when using custom hashing functions
+that access memory in an unsafe way.
+</Callout>
+
+<Callout>
+This library supports proof verification for merkle trees built using
+custom _commutative_ hashing functions (i.e. `H(a, b) == H(b, a)`). Proving
+leaf inclusion in trees built using non-commutative hashing functions requires
+additional logic that is not supported by this library.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [verify(proof, root, leaf)](#MerkleProof-verify-bytes32---bytes32-bytes32-)
+- [processProof(proof, leaf)](#MerkleProof-processProof-bytes32---bytes32-)
+- [verify(proof, root, leaf, hasher)](#MerkleProof-verify-bytes32---bytes32-bytes32-function--bytes32-bytes32--view-returns--bytes32--)
+- [processProof(proof, leaf, hasher)](#MerkleProof-processProof-bytes32---bytes32-function--bytes32-bytes32--view-returns--bytes32--)
+- [verifyCalldata(proof, root, leaf)](#MerkleProof-verifyCalldata-bytes32---bytes32-bytes32-)
+- [processProofCalldata(proof, leaf)](#MerkleProof-processProofCalldata-bytes32---bytes32-)
+- [verifyCalldata(proof, root, leaf, hasher)](#MerkleProof-verifyCalldata-bytes32---bytes32-bytes32-function--bytes32-bytes32--view-returns--bytes32--)
+- [processProofCalldata(proof, leaf, hasher)](#MerkleProof-processProofCalldata-bytes32---bytes32-function--bytes32-bytes32--view-returns--bytes32--)
+- [multiProofVerify(proof, proofFlags, root, leaves)](#MerkleProof-multiProofVerify-bytes32---bool---bytes32-bytes32---)
+- [processMultiProof(proof, proofFlags, leaves)](#MerkleProof-processMultiProof-bytes32---bool---bytes32---)
+- [multiProofVerify(proof, proofFlags, root, leaves, hasher)](#MerkleProof-multiProofVerify-bytes32---bool---bytes32-bytes32---function--bytes32-bytes32--view-returns--bytes32--)
+- [processMultiProof(proof, proofFlags, leaves, hasher)](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--)
+- [multiProofVerifyCalldata(proof, proofFlags, root, leaves)](#MerkleProof-multiProofVerifyCalldata-bytes32---bool---bytes32-bytes32---)
+- [processMultiProofCalldata(proof, proofFlags, leaves)](#MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---)
+- [multiProofVerifyCalldata(proof, proofFlags, root, leaves, hasher)](#MerkleProof-multiProofVerifyCalldata-bytes32---bool---bytes32-bytes32---function--bytes32-bytes32--view-returns--bytes32--)
+- [processMultiProofCalldata(proof, proofFlags, leaves, hasher)](#MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [MerkleProofInvalidMultiproof()](#MerkleProof-MerkleProofInvalidMultiproof--)
+</div>
+</div>
+
+<a id="MerkleProof-verify-bytes32---bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes32[] proof, bytes32 root, bytes32 leaf) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-verify-bytes32---bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if a `leaf` can be proved to be a part of a Merkle tree
+defined by `root`. For this, a `proof` must be provided, containing
+sibling hashes on the branch from the leaf to the root of the tree. Each
+pair of leaves and each pair of pre-images are assumed to be sorted.
+
+This version handles proofs in memory with the default hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-processProof-bytes32---bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processProof(bytes32[] proof, bytes32 leaf) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processProof-bytes32---bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the rebuilt hash obtained by traversing a Merkle tree up
+from `leaf` using `proof`. A `proof` is valid if and only if the rebuilt
+hash matches the root of the tree. When processing the proof, the pairs
+of leaves & pre-images are assumed to be sorted.
+
+This version handles proofs in memory with the default hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-verify-bytes32---bytes32-bytes32-function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes32[] proof, bytes32 root, bytes32 leaf, function (bytes32,bytes32) view returns (bytes32) hasher) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-verify-bytes32---bytes32-bytes32-function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if a `leaf` can be proved to be a part of a Merkle tree
+defined by `root`. For this, a `proof` must be provided, containing
+sibling hashes on the branch from the leaf to the root of the tree. Each
+pair of leaves and each pair of pre-images are assumed to be sorted.
+
+This version handles proofs in memory with a custom hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-processProof-bytes32---bytes32-function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processProof(bytes32[] proof, bytes32 leaf, function (bytes32,bytes32) view returns (bytes32) hasher) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processProof-bytes32---bytes32-function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the rebuilt hash obtained by traversing a Merkle tree up
+from `leaf` using `proof`. A `proof` is valid if and only if the rebuilt
+hash matches the root of the tree. When processing the proof, the pairs
+of leaves & pre-images are assumed to be sorted.
+
+This version handles proofs in memory with a custom hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-verifyCalldata-bytes32---bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verifyCalldata(bytes32[] proof, bytes32 root, bytes32 leaf) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-verifyCalldata-bytes32---bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if a `leaf` can be proved to be a part of a Merkle tree
+defined by `root`. For this, a `proof` must be provided, containing
+sibling hashes on the branch from the leaf to the root of the tree. Each
+pair of leaves and each pair of pre-images are assumed to be sorted.
+
+This version handles proofs in calldata with the default hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-processProofCalldata-bytes32---bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processProofCalldata(bytes32[] proof, bytes32 leaf) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processProofCalldata-bytes32---bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the rebuilt hash obtained by traversing a Merkle tree up
+from `leaf` using `proof`. A `proof` is valid if and only if the rebuilt
+hash matches the root of the tree. When processing the proof, the pairs
+of leaves & pre-images are assumed to be sorted.
+
+This version handles proofs in calldata with the default hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-verifyCalldata-bytes32---bytes32-bytes32-function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verifyCalldata(bytes32[] proof, bytes32 root, bytes32 leaf, function (bytes32,bytes32) view returns (bytes32) hasher) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-verifyCalldata-bytes32---bytes32-bytes32-function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if a `leaf` can be proved to be a part of a Merkle tree
+defined by `root`. For this, a `proof` must be provided, containing
+sibling hashes on the branch from the leaf to the root of the tree. Each
+pair of leaves and each pair of pre-images are assumed to be sorted.
+
+This version handles proofs in calldata with a custom hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-processProofCalldata-bytes32---bytes32-function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processProofCalldata(bytes32[] proof, bytes32 leaf, function (bytes32,bytes32) view returns (bytes32) hasher) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processProofCalldata-bytes32---bytes32-function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the rebuilt hash obtained by traversing a Merkle tree up
+from `leaf` using `proof`. A `proof` is valid if and only if the rebuilt
+hash matches the root of the tree. When processing the proof, the pairs
+of leaves & pre-images are assumed to be sorted.
+
+This version handles proofs in calldata with a custom hashing function.
+
+</div>
+</div>
+
+<a id="MerkleProof-multiProofVerify-bytes32---bool---bytes32-bytes32---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">multiProofVerify(bytes32[] proof, bool[] proofFlags, bytes32 root, bytes32[] leaves) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-multiProofVerify-bytes32---bool---bytes32-bytes32---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if the `leaves` can be simultaneously proven to be a part of a Merkle tree defined by
+`root`, according to `proof` and `proofFlags` as described in [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+
+This version handles multiproofs in memory with the default hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. See [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--) for details.
+
+<Callout>
+Consider the case where `root == proof[0] && leaves.length == 0` as it will return `true`.
+The `leaves` must be validated independently. See [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-processMultiProof-bytes32---bool---bytes32---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processMultiProof(bytes32[] proof, bool[] proofFlags, bytes32[] leaves) → bytes32 merkleRoot</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processMultiProof-bytes32---bool---bytes32---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the root of a tree reconstructed from `leaves` and sibling nodes in `proof`. The reconstruction
+proceeds by incrementally reconstructing all inner nodes by combining a leaf/inner node with either another
+leaf/inner node or a proof sibling node, depending on whether each `proofFlags` item is true or false
+respectively.
+
+This version handles multiproofs in memory with the default hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. To use multiproofs, it is sufficient to ensure that: 1) the tree
+is complete (but not necessarily perfect), 2) the leaves to be proven are in the opposite order they are in the
+tree (i.e., as seen from right to left starting at the deepest layer and continuing at the next layer).
+
+<Callout>
+The _empty set_ (i.e. the case where `proof.length == 1 && leaves.length == 0`) is considered a no-op,
+and therefore a valid multiproof (i.e. it returns `proof[0]`). Consider disallowing this case if you're not
+validating the leaves elsewhere.
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-multiProofVerify-bytes32---bool---bytes32-bytes32---function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">multiProofVerify(bytes32[] proof, bool[] proofFlags, bytes32 root, bytes32[] leaves, function (bytes32,bytes32) view returns (bytes32) hasher) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-multiProofVerify-bytes32---bool---bytes32-bytes32---function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if the `leaves` can be simultaneously proven to be a part of a Merkle tree defined by
+`root`, according to `proof` and `proofFlags` as described in [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+
+This version handles multiproofs in memory with a custom hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. See [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--) for details.
+
+<Callout>
+Consider the case where `root == proof[0] && leaves.length == 0` as it will return `true`.
+The `leaves` must be validated independently. See [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processMultiProof(bytes32[] proof, bool[] proofFlags, bytes32[] leaves, function (bytes32,bytes32) view returns (bytes32) hasher) → bytes32 merkleRoot</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the root of a tree reconstructed from `leaves` and sibling nodes in `proof`. The reconstruction
+proceeds by incrementally reconstructing all inner nodes by combining a leaf/inner node with either another
+leaf/inner node or a proof sibling node, depending on whether each `proofFlags` item is true or false
+respectively.
+
+This version handles multiproofs in memory with a custom hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. To use multiproofs, it is sufficient to ensure that: 1) the tree
+is complete (but not necessarily perfect), 2) the leaves to be proven are in the opposite order they are in the
+tree (i.e., as seen from right to left starting at the deepest layer and continuing at the next layer).
+
+<Callout>
+The _empty set_ (i.e. the case where `proof.length == 1 && leaves.length == 0`) is considered a no-op,
+and therefore a valid multiproof (i.e. it returns `proof[0]`). Consider disallowing this case if you're not
+validating the leaves elsewhere.
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-multiProofVerifyCalldata-bytes32---bool---bytes32-bytes32---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">multiProofVerifyCalldata(bytes32[] proof, bool[] proofFlags, bytes32 root, bytes32[] leaves) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-multiProofVerifyCalldata-bytes32---bool---bytes32-bytes32---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if the `leaves` can be simultaneously proven to be a part of a Merkle tree defined by
+`root`, according to `proof` and `proofFlags` as described in [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+
+This version handles multiproofs in calldata with the default hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. See [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--) for details.
+
+<Callout>
+Consider the case where `root == proof[0] && leaves.length == 0` as it will return `true`.
+The `leaves` must be validated independently. See [`MerkleProof.processMultiProofCalldata`](#MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processMultiProofCalldata(bytes32[] proof, bool[] proofFlags, bytes32[] leaves) → bytes32 merkleRoot</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the root of a tree reconstructed from `leaves` and sibling nodes in `proof`. The reconstruction
+proceeds by incrementally reconstructing all inner nodes by combining a leaf/inner node with either another
+leaf/inner node or a proof sibling node, depending on whether each `proofFlags` item is true or false
+respectively.
+
+This version handles multiproofs in calldata with the default hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. To use multiproofs, it is sufficient to ensure that: 1) the tree
+is complete (but not necessarily perfect), 2) the leaves to be proven are in the opposite order they are in the
+tree (i.e., as seen from right to left starting at the deepest layer and continuing at the next layer).
+
+<Callout>
+The _empty set_ (i.e. the case where `proof.length == 1 && leaves.length == 0`) is considered a no-op,
+and therefore a valid multiproof (i.e. it returns `proof[0]`). Consider disallowing this case if you're not
+validating the leaves elsewhere.
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-multiProofVerifyCalldata-bytes32---bool---bytes32-bytes32---function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">multiProofVerifyCalldata(bytes32[] proof, bool[] proofFlags, bytes32 root, bytes32[] leaves, function (bytes32,bytes32) view returns (bytes32) hasher) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-multiProofVerifyCalldata-bytes32---bool---bytes32-bytes32---function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if the `leaves` can be simultaneously proven to be a part of a Merkle tree defined by
+`root`, according to `proof` and `proofFlags` as described in [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+
+This version handles multiproofs in calldata with a custom hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. See [`MerkleProof.processMultiProof`](#MerkleProof-processMultiProof-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--) for details.
+
+<Callout>
+Consider the case where `root == proof[0] && leaves.length == 0` as it will return `true`.
+The `leaves` must be validated independently. See [`MerkleProof.processMultiProofCalldata`](#MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--).
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">processMultiProofCalldata(bytes32[] proof, bool[] proofFlags, bytes32[] leaves, function (bytes32,bytes32) view returns (bytes32) hasher) → bytes32 merkleRoot</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MerkleProof-processMultiProofCalldata-bytes32---bool---bytes32---function--bytes32-bytes32--view-returns--bytes32--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the root of a tree reconstructed from `leaves` and sibling nodes in `proof`. The reconstruction
+proceeds by incrementally reconstructing all inner nodes by combining a leaf/inner node with either another
+leaf/inner node or a proof sibling node, depending on whether each `proofFlags` item is true or false
+respectively.
+
+This version handles multiproofs in calldata with a custom hashing function.
+
+CAUTION: Not all Merkle trees admit multiproofs. To use multiproofs, it is sufficient to ensure that: 1) the tree
+is complete (but not necessarily perfect), 2) the leaves to be proven are in the opposite order they are in the
+tree (i.e., as seen from right to left starting at the deepest layer and continuing at the next layer).
+
+<Callout>
+The _empty set_ (i.e. the case where `proof.length == 1 && leaves.length == 0`) is considered a no-op,
+and therefore a valid multiproof (i.e. it returns `proof[0]`). Consider disallowing this case if you're not
+validating the leaves elsewhere.
+</Callout>
+
+</div>
+</div>
+
+<a id="MerkleProof-MerkleProofInvalidMultiproof--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MerkleProofInvalidMultiproof()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MerkleProof-MerkleProofInvalidMultiproof--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The multiproof provided is not valid.
+
+</div>
+</div>
+
+<a id="MessageHashUtils"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `MessageHashUtils`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/MessageHashUtils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+```
+
+Signature message hash utilities for producing digests to be consumed by [`ECDSA`](#ECDSA) recovery or signing.
+
+The library provides methods for generating a hash of a message that conforms to the
+[ERC-191](https://eips.ethereum.org/EIPS/eip-191) and [EIP 712](https://eips.ethereum.org/EIPS/eip-712)
+specifications.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [toEthSignedMessageHash(messageHash)](#MessageHashUtils-toEthSignedMessageHash-bytes32-)
+- [toEthSignedMessageHash(message)](#MessageHashUtils-toEthSignedMessageHash-bytes-)
+- [toDataWithIntendedValidatorHash(validator, data)](#MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes-)
+- [toDataWithIntendedValidatorHash(validator, messageHash)](#MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes32-)
+- [toTypedDataHash(domainSeparator, structHash)](#MessageHashUtils-toTypedDataHash-bytes32-bytes32-)
+</div>
+</div>
+
+<a id="MessageHashUtils-toEthSignedMessageHash-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">toEthSignedMessageHash(bytes32 messageHash) → bytes32 digest</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MessageHashUtils-toEthSignedMessageHash-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the keccak256 digest of an ERC-191 signed data with version
+`0x45` (`personal_sign` messages).
+
+The digest is calculated by prefixing a bytes32 `messageHash` with
+`"\x19Ethereum Signed Message:\n32"` and hashing the result. It corresponds with the
+hash signed when using the [`eth_sign`](https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sign) JSON-RPC method.
+
+<Callout>
+The `messageHash` parameter is intended to be the result of hashing a raw message with
+keccak256, although any bytes32 value can be safely used because the final digest will
+be re-hashed.
+</Callout>
+
+See [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-).
+
+</div>
+</div>
+
+<a id="MessageHashUtils-toEthSignedMessageHash-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">toEthSignedMessageHash(bytes message) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MessageHashUtils-toEthSignedMessageHash-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the keccak256 digest of an ERC-191 signed data with version
+`0x45` (`personal_sign` messages).
+
+The digest is calculated by prefixing an arbitrary `message` with
+`"\x19Ethereum Signed Message:\n" + len(message)` and hashing the result. It corresponds with the
+hash signed when using the [`eth_sign`](https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_sign) JSON-RPC method.
+
+See [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-).
+
+</div>
+</div>
+
+<a id="MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">toDataWithIntendedValidatorHash(address validator, bytes data) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the keccak256 digest of an ERC-191 signed data with version
+`0x00` (data with intended validator).
+
+The digest is calculated by prefixing an arbitrary `data` with `"\x19\x00"` and the intended
+`validator` address. Then hashing the result.
+
+See [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-).
+
+</div>
+</div>
+
+<a id="MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">toDataWithIntendedValidatorHash(address validator, bytes32 messageHash) → bytes32 digest</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of #MessageHashUtils-toDataWithIntendedValidatorHash-address-bytes- optimized for cases where `data` is a bytes32.
+
+</div>
+</div>
+
+<a id="MessageHashUtils-toTypedDataHash-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) → bytes32 digest</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MessageHashUtils-toTypedDataHash-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the keccak256 digest of an EIP-712 typed data (ERC-191 version `0x01`).
+
+The digest is calculated from a `domainSeparator` and a `structHash`, by prefixing them with
+`\x19\x01` and hashing the result. It corresponds to the hash signed by the
+[`eth_signTypedData`](https://eips.ethereum.org/EIPS/eip-712) JSON-RPC method as part of EIP-712.
+
+See [`ECDSA.recover`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-).
+
+</div>
+</div>
+
+<a id="P256"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `P256`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/P256.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/P256.sol";
+```
+
+Implementation of secp256r1 verification and recovery functions.
+
+The secp256r1 curve (also known as P256) is a NIST standard curve with wide support in modern devices
+and cryptographic standards. Some notable examples include Apple's Secure Enclave and Android's Keystore
+as well as authentication protocols like FIDO2.
+
+Based on the original [implementation of itsobvioustech](https://github.com/itsobvioustech/aa-passkeys-wallet/blob/d3d423f28a4d8dfcb203c7fa0c47f42592a7378e/src/Secp256r1.sol) (GNU General Public License v3.0).
+Heavily inspired in [maxrobot](https://github.com/maxrobot/elliptic-solidity/blob/c4bb1b6e8ae89534d8db3a6b3a6b52219100520f/contracts/Secp256r1.sol) and
+[tdrerup](https://github.com/tdrerup/elliptic-curve-solidity/blob/59a9c25957d4d190eff53b6610731d81a077a15e/contracts/curves/EllipticCurve.sol) implementations.
+
+_Available since v5.1._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [verify(h, r, s, qx, qy)](#P256-verify-bytes32-bytes32-bytes32-bytes32-bytes32-)
+- [verifyNative(h, r, s, qx, qy)](#P256-verifyNative-bytes32-bytes32-bytes32-bytes32-bytes32-)
+- [verifySolidity(h, r, s, qx, qy)](#P256-verifySolidity-bytes32-bytes32-bytes32-bytes32-bytes32-)
+- [recovery(h, v, r, s)](#P256-recovery-bytes32-uint8-bytes32-bytes32-)
+- [isValidPublicKey(x, y)](#P256-isValidPublicKey-bytes32-bytes32-)
+</div>
+</div>
+
+<a id="P256-verify-bytes32-bytes32-bytes32-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes32 h, bytes32 r, bytes32 s, bytes32 qx, bytes32 qy) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="P256-verify-bytes32-bytes32-bytes32-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies a secp256r1 signature using the RIP-7212 precompile and falls back to the Solidity implementation
+if the precompile is not available. This version should work on all chains, but requires the deployment of more
+bytecode.
+
+</div>
+</div>
+
+<a id="P256-verifyNative-bytes32-bytes32-bytes32-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verifyNative(bytes32 h, bytes32 r, bytes32 s, bytes32 qx, bytes32 qy) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="P256-verifyNative-bytes32-bytes32-bytes32-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Same as [`IERC7913SignatureVerifier.verify`](../interfaces#IERC7913SignatureVerifier-verify-bytes-bytes32-bytes-), but it will revert if the required precompile is not available.
+
+Make sure any logic (code or precompile) deployed at that address is the expected one,
+otherwise the returned value may be misinterpreted as a positive boolean.
+
+</div>
+</div>
+
+<a id="P256-verifySolidity-bytes32-bytes32-bytes32-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verifySolidity(bytes32 h, bytes32 r, bytes32 s, bytes32 qx, bytes32 qy) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="P256-verifySolidity-bytes32-bytes32-bytes32-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Same as [`IERC7913SignatureVerifier.verify`](../interfaces#IERC7913SignatureVerifier-verify-bytes-bytes32-bytes-), but only the Solidity implementation is used.
+
+</div>
+</div>
+
+<a id="P256-recovery-bytes32-uint8-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">recovery(bytes32 h, uint8 v, bytes32 r, bytes32 s) → bytes32 x, bytes32 y</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="P256-recovery-bytes32-uint8-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Public key recovery
+
+</div>
+</div>
+
+<a id="P256-isValidPublicKey-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidPublicKey(bytes32 x, bytes32 y) → bool result</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="P256-isValidPublicKey-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Checks if (x, y) are valid coordinates of a point on the curve.
+In particular this function checks that x < P and y < P.
+
+</div>
+</div>
+
+<a id="RSA"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `RSA`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/RSA.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/RSA.sol";
+```
+
+RSA PKCS#1 v1.5 signature verification implementation according to [RFC8017](https://datatracker.ietf.org/doc/html/rfc8017).
+
+This library supports PKCS#1 v1.5 padding to avoid malleability via chosen plaintext attacks in practical implementations.
+The padding follows the EMSA-PKCS1-v1_5-ENCODE encoding definition as per section 9.2 of the RFC. This padding makes
+RSA semantically secure for signing messages.
+
+Inspired by [Adrià Massanet's work](https://github.com/adria0/SolRsaVerify/blob/79c6182cabb9102ea69d4a2e996816091d5f1cd1) (GNU General Public License v3.0).
+
+_Available since v5.1._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [pkcs1Sha256(data, s, e, n)](#RSA-pkcs1Sha256-bytes-bytes-bytes-bytes-)
+- [pkcs1Sha256(digest, s, e, n)](#RSA-pkcs1Sha256-bytes32-bytes-bytes-bytes-)
+</div>
+</div>
+
+<a id="RSA-pkcs1Sha256-bytes-bytes-bytes-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pkcs1Sha256(bytes data, bytes s, bytes e, bytes n) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="RSA-pkcs1Sha256-bytes-bytes-bytes-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Same as [`RSA.pkcs1Sha256`](#RSA-pkcs1Sha256-bytes32-bytes-bytes-bytes-) but using SHA256 to calculate the digest of `data`.
+
+</div>
+</div>
+
+<a id="RSA-pkcs1Sha256-bytes32-bytes-bytes-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pkcs1Sha256(bytes32 digest, bytes s, bytes e, bytes n) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="RSA-pkcs1Sha256-bytes32-bytes-bytes-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies a PKCSv1.5 signature given a digest according to the verification
+method described in [section 8.2.2 of RFC8017](https://datatracker.ietf.org/doc/html/rfc8017#section-8.2.2) with
+support for explicit or implicit NULL parameters in the DigestInfo (no other optional parameters are supported).
+
+<Callout type="warn">
+For security reason, this function requires the signature and modulus to have a length of at least
+2048 bits. If you use a smaller key, consider replacing it with a larger, more secure, one.
+</Callout>
+
+<Callout type="warn">
+This verification algorithm doesn't prevent replayability. If called multiple times with the same
+digest, public key and (valid signature), it will return true every time. Consider including an onchain nonce
+or unique identifier in the message to prevent replay attacks.
+</Callout>
+
+<Callout type="warn">
+This verification algorithm supports any exponent. NIST recommends using `65537` (or higher).
+That is the default value many libraries use, such as OpenSSL. Developers may choose to reject public keys
+using a low exponent out of security concerns.
+</Callout>
+
+</div>
+</div>
+
+<a id="SignatureChecker"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignatureChecker`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/SignatureChecker.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+```
+
+Signature verification helper that can be used instead of `ECDSA.recover` to seamlessly support:
+
+* ECDSA signatures from externally owned accounts (EOAs)
+* ERC-1271 signatures from smart contract wallets like Argent and Safe Wallet (previously Gnosis Safe)
+* ERC-7913 signatures from keys that do not have an Ethereum address of their own
+
+See [ERC-1271](https://eips.ethereum.org/EIPS/eip-1271) and [ERC-7913](https://eips.ethereum.org/EIPS/eip-7913).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [isValidSignatureNow(signer, hash, signature)](#SignatureChecker-isValidSignatureNow-address-bytes32-bytes-)
+- [isValidSignatureNowCalldata(signer, hash, signature)](#SignatureChecker-isValidSignatureNowCalldata-address-bytes32-bytes-)
+- [isValidERC1271SignatureNow(signer, hash, signature)](#SignatureChecker-isValidERC1271SignatureNow-address-bytes32-bytes-)
+- [isValidSignatureNow(signer, hash, signature)](#SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-)
+- [areValidSignaturesNow(hash, signers, signatures)](#SignatureChecker-areValidSignaturesNow-bytes32-bytes---bytes---)
+</div>
+</div>
+
+<a id="SignatureChecker-isValidSignatureNow-address-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidSignatureNow(address signer, bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignatureChecker-isValidSignatureNow-address-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Checks if a signature is valid for a given signer and data hash. If the signer has code, the
+signature is validated against it using ERC-1271, otherwise it's validated using `ECDSA.recover`.
+
+<Callout>
+Unlike ECDSA signatures, contract signatures are revocable, and the outcome of this function can thus
+change through time. It could return true at block N and false at block N+1 (or the opposite).
+</Callout>
+
+<Callout>
+For an extended version of this function that supports ERC-7913 signatures, see #SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-.
+</Callout>
+
+</div>
+</div>
+
+<a id="SignatureChecker-isValidSignatureNowCalldata-address-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidSignatureNowCalldata(address signer, bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignatureChecker-isValidSignatureNowCalldata-address-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of [`SignatureChecker.isValidSignatureNow`](#SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-) that takes a signature in calldata
+
+</div>
+</div>
+
+<a id="SignatureChecker-isValidERC1271SignatureNow-address-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidERC1271SignatureNow(address signer, bytes32 hash, bytes signature) → bool result</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignatureChecker-isValidERC1271SignatureNow-address-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Checks if a signature is valid for a given signer and data hash. The signature is validated
+against the signer smart contract using ERC-1271.
+
+<Callout>
+Unlike ECDSA signatures, contract signatures are revocable, and the outcome of this function can thus
+change through time. It could return true at block N and false at block N+1 (or the opposite).
+</Callout>
+
+</div>
+</div>
+
+<a id="SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidSignatureNow(bytes signer, bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies a signature for a given ERC-7913 signer and hash.
+
+The signer is a `bytes` object that is the concatenation of an address and optionally a key:
+`verifier || key`. A signer must be at least 20 bytes long.
+
+Verification is done as follows:
+
+* If `signer.length < 20`: verification fails
+* If `signer.length == 20`: verification is done using [`SignatureChecker.isValidSignatureNow`](#SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-)
+* Otherwise: verification is done using [`IERC7913SignatureVerifier`](../interfaces#IERC7913SignatureVerifier)
+
+<Callout>
+Unlike ECDSA signatures, contract signatures are revocable, and the outcome of this function can thus
+change through time. It could return true at block N and false at block N+1 (or the opposite).
+</Callout>
+
+</div>
+</div>
+
+<a id="SignatureChecker-areValidSignaturesNow-bytes32-bytes---bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">areValidSignaturesNow(bytes32 hash, bytes[] signers, bytes[] signatures) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignatureChecker-areValidSignaturesNow-bytes32-bytes---bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies multiple ERC-7913 `signatures` for a given `hash` using a set of `signers`.
+Returns `false` if the number of signers and signatures is not the same.
+
+The signers should be ordered by their `keccak256` hash to ensure efficient duplication check. Unordered
+signers are supported, but the uniqueness check will be more expensive.
+
+<Callout>
+Unlike ECDSA signatures, contract signatures are revocable, and the outcome of this function can thus
+change through time. It could return true at block N and false at block N+1 (or the opposite).
+</Callout>
+
+</div>
+</div>
+
+<a id="WebAuthn"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `WebAuthn`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/WebAuthn.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
+```
+
+Library for verifying WebAuthn Authentication Assertions.
+
+WebAuthn enables strong authentication for smart contracts using
+[P256](https://docs.openzeppelin.com/contracts/5.x/api/utils#P256)
+as an alternative to traditional secp256k1 ECDSA signatures. This library verifies
+signatures generated during WebAuthn authentication ceremonies as specified in the
+[WebAuthn Level 2 standard](https://www.w3.org/TR/webauthn-2/).
+
+For blockchain use cases, the following WebAuthn validations are intentionally omitted:
+
+* Origin validation: Origin verification in `clientDataJSON` is omitted as blockchain
+  contexts rely on authenticator and dapp frontend enforcement. Standard authenticators
+  implement proper origin validation.
+* RP ID hash validation: Verification of `rpIdHash` in authenticatorData against expected
+  RP ID hash is omitted. This is typically handled by platform-level security measures.
+  Including an expiry timestamp in signed data is recommended for enhanced security.
+* Signature counter: Verification of signature counter increments is omitted. While
+  useful for detecting credential cloning, on-chain operations typically include nonce
+  protection, making this check redundant.
+* Extension outputs: Extension output value verification is omitted as these are not
+  essential for core authentication security in blockchain applications.
+* Attestation: Attestation object verification is omitted as this implementation
+  focuses on authentication (`webauthn.get`) rather than registration ceremonies.
+
+Inspired by:
+
+* [daimo-eth implementation](https://github.com/daimo-eth/p256-verifier/blob/master/src/WebAuthn.sol)
+* [base implementation](https://github.com/base/webauthn-sol/blob/main/src/WebAuthn.sol)
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [verify(challenge, auth, qx, qy)](#WebAuthn-verify-bytes-struct-WebAuthn-WebAuthnAuth-bytes32-bytes32-)
+- [verify(challenge, auth, qx, qy, requireUV)](#WebAuthn-verify-bytes-struct-WebAuthn-WebAuthnAuth-bytes32-bytes32-bool-)
+- [tryDecodeAuth(input)](#WebAuthn-tryDecodeAuth-bytes-)
+</div>
+</div>
+
+<a id="WebAuthn-verify-bytes-struct-WebAuthn-WebAuthnAuth-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes challenge, struct WebAuthn.WebAuthnAuth auth, bytes32 qx, bytes32 qy) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="WebAuthn-verify-bytes-struct-WebAuthn-WebAuthnAuth-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Performs standard verification of a WebAuthn Authentication Assertion.
+
+</div>
+</div>
+
+<a id="WebAuthn-verify-bytes-struct-WebAuthn-WebAuthnAuth-bytes32-bytes32-bool-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes challenge, struct WebAuthn.WebAuthnAuth auth, bytes32 qx, bytes32 qy, bool requireUV) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="WebAuthn-verify-bytes-struct-WebAuthn-WebAuthnAuth-bytes32-bytes32-bool-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Performs verification of a WebAuthn Authentication Assertion. This variants allow the caller to select
+whether of not to require the UV flag (step 17).
+
+Verifies:
+
+1. Type is "webauthn.get" (see [`WebAuthn._validateExpectedTypeHash`](#WebAuthn-_validateExpectedTypeHash-string-uint256-))
+2. Challenge matches the expected value (see [`WebAuthn._validateChallenge`](#WebAuthn-_validateChallenge-string-uint256-bytes-))
+3. Cryptographic signature is valid for the given public key
+4. confirming physical user presence during authentication
+5. (if `requireUV` is true) confirming stronger user authentication (biometrics/PIN)
+6. Backup Eligibility (`BE`) and Backup State (BS) bits relationship is valid
+
+</div>
+</div>
+
+<a id="WebAuthn-tryDecodeAuth-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">tryDecodeAuth(bytes input) → bool success, struct WebAuthn.WebAuthnAuth auth</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="WebAuthn-tryDecodeAuth-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies that calldata bytes (`input`) represents a valid `WebAuthnAuth` object. If encoding is valid,
+returns true and the calldata view at the object. Otherwise, returns false and an invalid calldata object.
+
+<Callout>
+The returned `auth` object should not be accessed if `success` is false. Trying to access the data may
+cause revert/panic.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC7739Utils"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7739Utils`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/draft-ERC7739Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/draft-ERC7739Utils.sol";
+```
+
+Utilities to process [ERC-7739](https://ercs.ethereum.org/ERCS/erc-7739) typed data signatures
+that are specific to an EIP-712 domain.
+
+This library provides methods to wrap, unwrap and operate over typed data signatures with a defensive rehashing mechanism that includes the app's [EIP-712](/contracts/5.x/api/utils/cryptography#EIP712-_domainSeparatorV4)
+and preserves readability of the signed content using an EIP-712 nested approach.
+
+A smart contract domain can validate a signature for a typed data structure in two ways:
+
+- As an application validating a typed data signature. See [`ERC7739Utils.typedDataSignStructHash`](#ERC7739Utils-typedDataSignStructHash-string-bytes32-bytes-).
+- As a smart contract validating a raw message signature. See [`ERC7739Utils.personalSignStructHash`](#ERC7739Utils-personalSignStructHash-bytes32-).
+
+<Callout>
+A provider for a smart contract wallet would need to return this signature as the
+result of a call to `personal_sign` or `eth_signTypedData`, and this may be unsupported by
+API clients that expect a return value of 129 bytes, or specifically the `r,s,v` parameters
+of an [ECDSA](/contracts/5.x/api/utils/cryptography#ECDSA) signature, as is for example specified for [EIP-712](/contracts/5.x/api/utils/cryptography#EIP712).
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [encodeTypedDataSig(signature, appSeparator, contentsHash, contentsDescr)](#ERC7739Utils-encodeTypedDataSig-bytes-bytes32-bytes32-string-)
+- [decodeTypedDataSig(encodedSignature)](#ERC7739Utils-decodeTypedDataSig-bytes-)
+- [personalSignStructHash(contents)](#ERC7739Utils-personalSignStructHash-bytes32-)
+- [typedDataSignStructHash(contentsName, contentsType, contentsHash, domainBytes)](#ERC7739Utils-typedDataSignStructHash-string-string-bytes32-bytes-)
+- [typedDataSignStructHash(contentsDescr, contentsHash, domainBytes)](#ERC7739Utils-typedDataSignStructHash-string-bytes32-bytes-)
+- [typedDataSignTypehash(contentsName, contentsType)](#ERC7739Utils-typedDataSignTypehash-string-string-)
+- [decodeContentsDescr(contentsDescr)](#ERC7739Utils-decodeContentsDescr-string-)
+</div>
+</div>
+
+<a id="ERC7739Utils-encodeTypedDataSig-bytes-bytes32-bytes32-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">encodeTypedDataSig(bytes signature, bytes32 appSeparator, bytes32 contentsHash, string contentsDescr) → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-encodeTypedDataSig-bytes-bytes32-bytes32-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Nest a signature for a given EIP-712 type into a nested signature for the domain of the app.
+
+Counterpart of [`ERC7739Utils.decodeTypedDataSig`](#ERC7739Utils-decodeTypedDataSig-bytes-) to extract the original signature and the nested components.
+
+</div>
+</div>
+
+<a id="ERC7739Utils-decodeTypedDataSig-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decodeTypedDataSig(bytes encodedSignature) → bytes signature, bytes32 appSeparator, bytes32 contentsHash, string contentsDescr</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-decodeTypedDataSig-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Parses a nested signature into its components.
+
+Constructed as follows:
+
+`signature ‖ APP_DOMAIN_SEPARATOR ‖ contentsHash ‖ contentsDescr ‖ uint16(contentsDescr.length)`
+
+- `signature` is the signature for the (ERC-7739) nested struct hash. This signature indirectly signs over the
+  original "contents" hash (from the app) and the account's domain separator.
+- `APP_DOMAIN_SEPARATOR` is the EIP-712 [`EIP712._domainSeparatorV4`](#EIP712-_domainSeparatorV4--) of the application smart contract that is
+  requesting the signature verification (through ERC-1271).
+- `contentsHash` is the hash of the underlying data structure or message.
+- `contentsDescr` is a descriptor of the "contents" part of the EIP-712 type of the nested signature.
+
+<Callout>
+This function returns empty if the input format is invalid instead of reverting.
+data instead.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC7739Utils-personalSignStructHash-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">personalSignStructHash(bytes32 contents) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-personalSignStructHash-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Nests an `ERC-191` digest into a `PersonalSign` EIP-712 struct, and returns the corresponding struct hash.
+This struct hash must be combined with a domain separator, using [`MessageHashUtils.toTypedDataHash`](#MessageHashUtils-toTypedDataHash-bytes32-bytes32-) before
+being verified/recovered.
+
+This is used to simulates the `personal_sign` RPC method in the context of smart contracts.
+
+</div>
+</div>
+
+<a id="ERC7739Utils-typedDataSignStructHash-string-string-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">typedDataSignStructHash(string contentsName, string contentsType, bytes32 contentsHash, bytes domainBytes) → bytes32 result</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-typedDataSignStructHash-string-string-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Nests an `EIP-712` hash (`contents`) into a `TypedDataSign` EIP-712 struct, and returns the corresponding
+struct hash. This struct hash must be combined with a domain separator, using [`MessageHashUtils.toTypedDataHash`](#MessageHashUtils-toTypedDataHash-bytes32-bytes32-)
+before being verified/recovered.
+
+</div>
+</div>
+
+<a id="ERC7739Utils-typedDataSignStructHash-string-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">typedDataSignStructHash(string contentsDescr, bytes32 contentsHash, bytes domainBytes) → bytes32 result</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-typedDataSignStructHash-string-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of #ERC7739Utils-typedDataSignStructHash-string-string-bytes32-bytes- that takes a content descriptor
+and decodes the `contentsName` and `contentsType` out of it.
+
+</div>
+</div>
+
+<a id="ERC7739Utils-typedDataSignTypehash-string-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">typedDataSignTypehash(string contentsName, string contentsType) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-typedDataSignTypehash-string-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Compute the EIP-712 typehash of the `TypedDataSign` structure for a given type (and typename).
+
+</div>
+</div>
+
+<a id="ERC7739Utils-decodeContentsDescr-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decodeContentsDescr(string contentsDescr) → string contentsName, string contentsType</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7739Utils-decodeContentsDescr-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Parse the type name out of the ERC-7739 contents type description. Supports both the implicit and explicit
+modes.
+
+Following ERC-7739 specifications, a `contentsName` is considered invalid if it's empty or it contains
+any of the following bytes , )\x00
+
+If the `contentsType` is invalid, this returns an empty string. Otherwise, the return string has non-zero
+length.
+
+</div>
+</div>
+
+<a id="AbstractSigner"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AbstractSigner`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/AbstractSigner.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/AbstractSigner.sol";
+```
+
+Abstract contract for signature validation.
+
+Developers must implement [`AccountERC7579._rawSignatureValidation`](../account#AccountERC7579-_rawSignatureValidation-bytes32-bytes-) and use it as the lowest-level signature validation mechanism.
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [_rawSignatureValidation(hash, signature)](#AbstractSigner-_rawSignatureValidation-bytes32-bytes-)
+</div>
+</div>
+
+<a id="AbstractSigner-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AbstractSigner-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Signature validation algorithm.
+
+<Callout type="warn">
+Implementing a signature validation algorithm is a security-sensitive operation as it involves
+cryptographic verification. It is important to review and test thoroughly before deployment. Consider using one of the signature verification libraries ([ECDSA](/contracts/5.x/api/utils/cryptography#ECDSA),
+[P256](/contracts/5.x/api/utils/cryptography#P256) or [RSA](/contracts/5.x/api/utils/cryptography#RSA)).
+</Callout>
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `MultiSignerERC7913`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/MultiSignerERC7913.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/MultiSignerERC7913.sol";
+```
+
+Implementation of [`AbstractSigner`](#AbstractSigner) using multiple ERC-7913 signers with a threshold-based
+signature verification system.
+
+This contract allows managing a set of authorized signers and requires a minimum number of
+signatures (threshold) to approve operations. It uses ERC-7913 formatted signers, which
+makes it natively compatible with ECDSA and ERC-1271 signers.
+
+Example of usage:
+
+```solidity
+contract MyMultiSignerAccount is Account, MultiSignerERC7913, Initializable {
+    function initialize(bytes[] memory signers, uint64 threshold) public initializer {
+        _addSigners(signers);
+        _setThreshold(threshold);
+    }
+
+    function addSigners(bytes[] memory signers) public onlyEntryPointOrSelf {
+        _addSigners(signers);
+    }
+
+    function removeSigners(bytes[] memory signers) public onlyEntryPointOrSelf {
+        _removeSigners(signers);
+    }
+
+    function setThreshold(uint64 threshold) public onlyEntryPointOrSelf {
+        _setThreshold(threshold);
+    }
+}
+```
+
+<Callout type="warn">
+Failing to properly initialize the signers and threshold either during construction
+(if used standalone) or during initialization (if used as a clone) may leave the contract
+either front-runnable or unusable.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(signers_, threshold_)](#MultiSignerERC7913-constructor-bytes---uint64-)
+- [getSigners(start, end)](#MultiSignerERC7913-getSigners-uint64-uint64-)
+- [getSignerCount()](#MultiSignerERC7913-getSignerCount--)
+- [isSigner(signer)](#MultiSignerERC7913-isSigner-bytes-)
+- [threshold()](#MultiSignerERC7913-threshold--)
+- [_addSigners(newSigners)](#MultiSignerERC7913-_addSigners-bytes---)
+- [_removeSigners(oldSigners)](#MultiSignerERC7913-_removeSigners-bytes---)
+- [_setThreshold(newThreshold)](#MultiSignerERC7913-_setThreshold-uint64-)
+- [_validateReachableThreshold()](#MultiSignerERC7913-_validateReachableThreshold--)
+- [_rawSignatureValidation(hash, signature)](#MultiSignerERC7913-_rawSignatureValidation-bytes32-bytes-)
+- [_validateSignatures(hash, signers, signatures)](#MultiSignerERC7913-_validateSignatures-bytes32-bytes---bytes---)
+- [_validateThreshold(validatingSigners)](#MultiSignerERC7913-_validateThreshold-bytes---)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [ERC7913SignerAdded(signers)](#MultiSignerERC7913-ERC7913SignerAdded-bytes-)
+- [ERC7913SignerRemoved(signers)](#MultiSignerERC7913-ERC7913SignerRemoved-bytes-)
+- [ERC7913ThresholdSet(threshold)](#MultiSignerERC7913-ERC7913ThresholdSet-uint64-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [MultiSignerERC7913AlreadyExists(signer)](#MultiSignerERC7913-MultiSignerERC7913AlreadyExists-bytes-)
+- [MultiSignerERC7913NonexistentSigner(signer)](#MultiSignerERC7913-MultiSignerERC7913NonexistentSigner-bytes-)
+- [MultiSignerERC7913InvalidSigner(signer)](#MultiSignerERC7913-MultiSignerERC7913InvalidSigner-bytes-)
+- [MultiSignerERC7913ZeroThreshold()](#MultiSignerERC7913-MultiSignerERC7913ZeroThreshold--)
+- [MultiSignerERC7913UnreachableThreshold(signers, threshold)](#MultiSignerERC7913-MultiSignerERC7913UnreachableThreshold-uint64-uint64-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="MultiSignerERC7913-constructor-bytes---uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(bytes[] signers_, uint64 threshold_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-constructor-bytes---uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-getSigners-uint64-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getSigners(uint64 start, uint64 end) → bytes[]</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MultiSignerERC7913-getSigners-uint64-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns a slice of the set of authorized signers.
+
+Using `start = 0` and `end = type(uint64).max` will return the entire set of signers.
+
+<Callout type="warn">
+Depending on the `start` and `end`, this operation can copy a large amount of data to memory, which
+can be expensive. This is designed for view accessors queried without gas fees. Using it in state-changing
+functions may become uncallable if the slice grows too large.
+</Callout>
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-getSignerCount--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getSignerCount() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MultiSignerERC7913-getSignerCount--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the number of authorized signers
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-isSigner-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isSigner(bytes signer) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MultiSignerERC7913-isSigner-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns whether the `signer` is an authorized signer.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-threshold--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">threshold() → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MultiSignerERC7913-threshold--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the minimum number of signers required to approve a multisignature operation.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_addSigners-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_addSigners(bytes[] newSigners)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_addSigners-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Adds the `newSigners` to those allowed to sign on behalf of this contract.
+Internal version without access control.
+
+Requirements:
+
+* Each of `newSigners` must be at least 20 bytes long. Reverts with [`MultiSignerERC7913.MultiSignerERC7913InvalidSigner`](#MultiSignerERC7913-MultiSignerERC7913InvalidSigner-bytes-) if not.
+* Each of `newSigners` must not be authorized. See [`MultiSignerERC7913.isSigner`](#MultiSignerERC7913-isSigner-bytes-). Reverts with [`MultiSignerERC7913.MultiSignerERC7913AlreadyExists`](#MultiSignerERC7913-MultiSignerERC7913AlreadyExists-bytes-) if so.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_removeSigners-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_removeSigners(bytes[] oldSigners)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_removeSigners-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Removes the `oldSigners` from the authorized signers. Internal version without access control.
+
+Requirements:
+
+* Each of `oldSigners` must be authorized. See [`MultiSignerERC7913.isSigner`](#MultiSignerERC7913-isSigner-bytes-). Otherwise [`MultiSignerERC7913.MultiSignerERC7913NonexistentSigner`](#MultiSignerERC7913-MultiSignerERC7913NonexistentSigner-bytes-) is thrown.
+* See [`MultiSignerERC7913._validateReachableThreshold`](#MultiSignerERC7913-_validateReachableThreshold--) for the threshold validation.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_setThreshold-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setThreshold(uint64 newThreshold)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_setThreshold-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the signatures `threshold` required to approve a multisignature operation.
+Internal version without access control.
+
+Requirements:
+
+* See [`MultiSignerERC7913._validateReachableThreshold`](#MultiSignerERC7913-_validateReachableThreshold--) for the threshold validation.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_validateReachableThreshold--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateReachableThreshold()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_validateReachableThreshold--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates the current threshold is reachable.
+
+Requirements:
+
+* The [`MultiSignerERC7913.getSignerCount`](#MultiSignerERC7913-getSignerCount--) must be greater or equal than to the [`MultiSignerERC7913.threshold`](#MultiSignerERC7913-threshold--). Throws
+[`MultiSignerERC7913.MultiSignerERC7913UnreachableThreshold`](#MultiSignerERC7913-MultiSignerERC7913UnreachableThreshold-uint64-uint64-) if not.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Decodes, validates the signature and checks the signers are authorized.
+See [`MultiSignerERC7913._validateSignatures`](#MultiSignerERC7913-_validateSignatures-bytes32-bytes---bytes---) and [`MultiSignerERC7913._validateThreshold`](#MultiSignerERC7913-_validateThreshold-bytes---) for more details.
+
+Example of signature encoding:
+
+```solidity
+// Encode signers (verifier || key)
+bytes memory signer1 = abi.encodePacked(verifier1, key1);
+bytes memory signer2 = abi.encodePacked(verifier2, key2);
+
+// Order signers by their id
+if (keccak256(signer1) > keccak256(signer2)) {
+    (signer1, signer2) = (signer2, signer1);
+    (signature1, signature2) = (signature2, signature1);
+}
+
+// Assign ordered signers and signatures
+bytes[] memory signers = new bytes[](2);
+bytes[] memory signatures = new bytes[](2);
+signers[0] = signer1;
+signatures[0] = signature1;
+signers[1] = signer2;
+signatures[1] = signature2;
+
+// Encode the multi signature
+bytes memory signature = abi.encode(signers, signatures);
+```
+
+Requirements:
+
+* The `signature` must be encoded as `abi.encode(signers, signatures)`.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_validateSignatures-bytes32-bytes---bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateSignatures(bytes32 hash, bytes[] signers, bytes[] signatures) → bool valid</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_validateSignatures-bytes32-bytes---bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates the signatures using the signers and their corresponding signatures.
+Returns whether the signers are authorized and the signatures are valid for the given hash.
+
+<Callout type="warn">
+Sorting the signers by their `keccak256` hash will improve the gas efficiency of this function.
+See [`SignatureChecker.areValidSignaturesNow`](#SignatureChecker-areValidSignaturesNow-bytes32-bytes---bytes---) for more details.
+</Callout>
+
+Requirements:
+
+* The `signatures` and `signers` arrays must be equal in length. Returns false otherwise.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-_validateThreshold-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateThreshold(bytes[] validatingSigners) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913-_validateThreshold-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates that the number of signers meets the [`MultiSignerERC7913.threshold`](#MultiSignerERC7913-threshold--) requirement.
+Assumes the signers were already validated. See [`MultiSignerERC7913._validateSignatures`](#MultiSignerERC7913-_validateSignatures-bytes32-bytes---bytes---) for more details.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-ERC7913SignerAdded-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7913SignerAdded(bytes indexed signers)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="MultiSignerERC7913-ERC7913SignerAdded-bytes-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a signer is added.
+
+</div>
+</div>
+<a id="MultiSignerERC7913-ERC7913SignerRemoved-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7913SignerRemoved(bytes indexed signers)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="MultiSignerERC7913-ERC7913SignerRemoved-bytes-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a signers is removed.
+
+</div>
+</div>
+<a id="MultiSignerERC7913-ERC7913ThresholdSet-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7913ThresholdSet(uint64 threshold)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="MultiSignerERC7913-ERC7913ThresholdSet-uint64-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the threshold is updated.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-MultiSignerERC7913AlreadyExists-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913AlreadyExists(bytes signer)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913-MultiSignerERC7913AlreadyExists-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The `signer` already exists.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-MultiSignerERC7913NonexistentSigner-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913NonexistentSigner(bytes signer)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913-MultiSignerERC7913NonexistentSigner-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The `signer` does not exist.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-MultiSignerERC7913InvalidSigner-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913InvalidSigner(bytes signer)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913-MultiSignerERC7913InvalidSigner-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The `signer` is less than 20 bytes long.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-MultiSignerERC7913ZeroThreshold--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913ZeroThreshold()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913-MultiSignerERC7913ZeroThreshold--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The `threshold` is zero.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913-MultiSignerERC7913UnreachableThreshold-uint64-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913UnreachableThreshold(uint64 signers, uint64 threshold)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913-MultiSignerERC7913UnreachableThreshold-uint64-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The `threshold` is unreachable given the number of `signers`.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `MultiSignerERC7913Weighted`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/MultiSignerERC7913Weighted.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/MultiSignerERC7913Weighted.sol";
+```
+
+Extension of [`MultiSignerERC7913`](#MultiSignerERC7913) that supports weighted signatures.
+
+This contract allows assigning different weights to each signer, enabling more
+flexible governance schemes. For example, some signers could have higher weight
+than others, allowing for weighted voting or prioritized authorization.
+
+Example of usage:
+
+```solidity
+contract MyWeightedMultiSignerAccount is Account, MultiSignerERC7913Weighted, Initializable {
+    function initialize(bytes[] memory signers, uint64[] memory weights, uint64 threshold) public initializer {
+        _addSigners(signers);
+        _setSignerWeights(signers, weights);
+        _setThreshold(threshold);
+    }
+
+    function addSigners(bytes[] memory signers) public onlyEntryPointOrSelf {
+        _addSigners(signers);
+    }
+
+    function removeSigners(bytes[] memory signers) public onlyEntryPointOrSelf {
+        _removeSigners(signers);
+    }
+
+    function setThreshold(uint64 threshold) public onlyEntryPointOrSelf {
+        _setThreshold(threshold);
+    }
+
+    function setSignerWeights(bytes[] memory signers, uint64[] memory weights) public onlyEntryPointOrSelf {
+        _setSignerWeights(signers, weights);
+    }
+}
+```
+
+<Callout type="warn">
+When setting a threshold value, ensure it matches the scale used for signer weights.
+For example, if signers have weights like 1, 2, or 3, then a threshold of 4 would require at
+least two signers (e.g., one with weight 1 and one with weight 3). See [`MultiSignerERC7913Weighted.signerWeight`](#MultiSignerERC7913Weighted-signerWeight-bytes-).
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(signers_, weights_, threshold_)](#MultiSignerERC7913Weighted-constructor-bytes---uint64---uint64-)
+- [signerWeight(signer)](#MultiSignerERC7913Weighted-signerWeight-bytes-)
+- [totalWeight()](#MultiSignerERC7913Weighted-totalWeight--)
+- [_setSignerWeights(signers, weights)](#MultiSignerERC7913Weighted-_setSignerWeights-bytes---uint64---)
+- [_addSigners(newSigners)](#MultiSignerERC7913Weighted-_addSigners-bytes---)
+- [_removeSigners(signers)](#MultiSignerERC7913Weighted-_removeSigners-bytes---)
+- [_validateReachableThreshold()](#MultiSignerERC7913Weighted-_validateReachableThreshold--)
+- [_validateThreshold(signers)](#MultiSignerERC7913Weighted-_validateThreshold-bytes---)
+#### MultiSignerERC7913 [!toc]
+- [getSigners(start, end)](#MultiSignerERC7913-getSigners-uint64-uint64-)
+- [getSignerCount()](#MultiSignerERC7913-getSignerCount--)
+- [isSigner(signer)](#MultiSignerERC7913-isSigner-bytes-)
+- [threshold()](#MultiSignerERC7913-threshold--)
+- [_setThreshold(newThreshold)](#MultiSignerERC7913-_setThreshold-uint64-)
+- [_rawSignatureValidation(hash, signature)](#MultiSignerERC7913-_rawSignatureValidation-bytes32-bytes-)
+- [_validateSignatures(hash, signers, signatures)](#MultiSignerERC7913-_validateSignatures-bytes32-bytes---bytes---)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [ERC7913SignerWeightChanged(signer, weight)](#MultiSignerERC7913Weighted-ERC7913SignerWeightChanged-bytes-uint64-)
+#### MultiSignerERC7913 [!toc]
+- [ERC7913SignerAdded(signers)](#MultiSignerERC7913-ERC7913SignerAdded-bytes-)
+- [ERC7913SignerRemoved(signers)](#MultiSignerERC7913-ERC7913SignerRemoved-bytes-)
+- [ERC7913ThresholdSet(threshold)](#MultiSignerERC7913-ERC7913ThresholdSet-uint64-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [MultiSignerERC7913WeightedInvalidWeight(signer, weight)](#MultiSignerERC7913Weighted-MultiSignerERC7913WeightedInvalidWeight-bytes-uint64-)
+- [MultiSignerERC7913WeightedMismatchedLength()](#MultiSignerERC7913Weighted-MultiSignerERC7913WeightedMismatchedLength--)
+#### MultiSignerERC7913 [!toc]
+- [MultiSignerERC7913AlreadyExists(signer)](#MultiSignerERC7913-MultiSignerERC7913AlreadyExists-bytes-)
+- [MultiSignerERC7913NonexistentSigner(signer)](#MultiSignerERC7913-MultiSignerERC7913NonexistentSigner-bytes-)
+- [MultiSignerERC7913InvalidSigner(signer)](#MultiSignerERC7913-MultiSignerERC7913InvalidSigner-bytes-)
+- [MultiSignerERC7913ZeroThreshold()](#MultiSignerERC7913-MultiSignerERC7913ZeroThreshold--)
+- [MultiSignerERC7913UnreachableThreshold(signers, threshold)](#MultiSignerERC7913-MultiSignerERC7913UnreachableThreshold-uint64-uint64-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-constructor-bytes---uint64---uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(bytes[] signers_, uint64[] weights_, uint64 threshold_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-constructor-bytes---uint64---uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-signerWeight-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">signerWeight(bytes signer) → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-signerWeight-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the weight of a signer. Returns 0 if the signer is not authorized.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-totalWeight--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">totalWeight() → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-totalWeight--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the total weight of all signers.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-_setSignerWeights-bytes---uint64---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setSignerWeights(bytes[] signers, uint64[] weights)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-_setSignerWeights-bytes---uint64---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets weights for multiple signers at once. Internal version without access control.
+
+Requirements:
+
+* `signers` and `weights` arrays must have the same length. Reverts with [`MultiSignerERC7913Weighted.MultiSignerERC7913WeightedMismatchedLength`](#MultiSignerERC7913Weighted-MultiSignerERC7913WeightedMismatchedLength--) on mismatch.
+* Each signer must exist in the set of authorized signers. Otherwise reverts with [`MultiSignerERC7913.MultiSignerERC7913NonexistentSigner`](#MultiSignerERC7913-MultiSignerERC7913NonexistentSigner-bytes-)
+* Each weight must be greater than 0. Otherwise reverts with [`MultiSignerERC7913Weighted.MultiSignerERC7913WeightedInvalidWeight`](#MultiSignerERC7913Weighted-MultiSignerERC7913WeightedInvalidWeight-bytes-uint64-)
+* See [`MultiSignerERC7913._validateReachableThreshold`](#MultiSignerERC7913-_validateReachableThreshold--) for the threshold validation.
+
+Emits [`MultiSignerERC7913Weighted.ERC7913SignerWeightChanged`](#MultiSignerERC7913Weighted-ERC7913SignerWeightChanged-bytes-uint64-) for each signer.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-_addSigners-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_addSigners(bytes[] newSigners)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-_addSigners-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`MultiSignerERC7913._addSigners`](#MultiSignerERC7913-_addSigners-bytes---).
+
+In cases where [`MultiSignerERC7913Weighted.totalWeight`](#MultiSignerERC7913Weighted-totalWeight--) is almost `type(uint64).max` (due to a large `_totalExtraWeight`), adding new
+signers could cause the [`MultiSignerERC7913Weighted.totalWeight`](#MultiSignerERC7913Weighted-totalWeight--) computation to overflow. Adding a [`MultiSignerERC7913Weighted.totalWeight`](#MultiSignerERC7913Weighted-totalWeight--) calls after the new
+signers are added ensures no such overflow happens.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-_removeSigners-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_removeSigners(bytes[] signers)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-_removeSigners-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`MultiSignerERC7913._removeSigners`](#MultiSignerERC7913-_removeSigners-bytes---).
+
+Just like [`MultiSignerERC7913._addSigners`](#MultiSignerERC7913-_addSigners-bytes---), this function does not emit [`MultiSignerERC7913Weighted.ERC7913SignerWeightChanged`](#MultiSignerERC7913Weighted-ERC7913SignerWeightChanged-bytes-uint64-) events. The
+[`MultiSignerERC7913.ERC7913SignerRemoved`](#MultiSignerERC7913-ERC7913SignerRemoved-bytes-) event emitted by [`MultiSignerERC7913._removeSigners`](#MultiSignerERC7913-_removeSigners-bytes---) is enough to track weights here.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-_validateReachableThreshold--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateReachableThreshold()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-_validateReachableThreshold--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the threshold for the multisignature operation. Internal version without access control.
+
+Requirements:
+
+* The [`MultiSignerERC7913Weighted.totalWeight`](#MultiSignerERC7913Weighted-totalWeight--) must be `>=` the [`MultiSignerERC7913.threshold`](#MultiSignerERC7913-threshold--). Otherwise reverts with [`MultiSignerERC7913.MultiSignerERC7913UnreachableThreshold`](#MultiSignerERC7913-MultiSignerERC7913UnreachableThreshold-uint64-uint64-)
+
+<Callout>
+This function intentionally does not call `super._validateReachableThreshold` because the base implementation
+assumes each signer has a weight of 1, which is a subset of this weighted implementation. Consider that multiple
+implementations of this function may exist in the contract, so important side effects may be missed
+depending on the linearization order.
+</Callout>
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-_validateThreshold-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateThreshold(bytes[] signers) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-_validateThreshold-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates that the total weight of signers meets the threshold requirement.
+
+<Callout>
+This function intentionally does not call `super._validateThreshold` because the base implementation
+assumes each signer has a weight of 1, which is a subset of this weighted implementation. Consider that multiple
+implementations of this function may exist in the contract, so important side effects may be missed
+depending on the linearization order.
+</Callout>
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-ERC7913SignerWeightChanged-bytes-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7913SignerWeightChanged(bytes indexed signer, uint64 weight)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-ERC7913SignerWeightChanged-bytes-uint64-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a signer's weight is changed.
+
+<Callout>
+Not emitted in [`MultiSignerERC7913._addSigners`](#MultiSignerERC7913-_addSigners-bytes---) or [`MultiSignerERC7913._removeSigners`](#MultiSignerERC7913-_removeSigners-bytes---). Indexers must rely on [`MultiSignerERC7913.ERC7913SignerAdded`](#MultiSignerERC7913-ERC7913SignerAdded-bytes-)
+and [`MultiSignerERC7913.ERC7913SignerRemoved`](#MultiSignerERC7913-ERC7913SignerRemoved-bytes-) to index a default weight of 1. See [`MultiSignerERC7913Weighted.signerWeight`](#MultiSignerERC7913Weighted-signerWeight-bytes-).
+</Callout>
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-MultiSignerERC7913WeightedInvalidWeight-bytes-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913WeightedInvalidWeight(bytes signer, uint64 weight)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-MultiSignerERC7913WeightedInvalidWeight-bytes-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Thrown when a signer's weight is invalid.
+
+</div>
+</div>
+
+<a id="MultiSignerERC7913Weighted-MultiSignerERC7913WeightedMismatchedLength--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MultiSignerERC7913WeightedMismatchedLength()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="MultiSignerERC7913Weighted-MultiSignerERC7913WeightedMismatchedLength--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Thrown when the arrays lengths don't match. See [`MultiSignerERC7913Weighted._setSignerWeights`](#MultiSignerERC7913Weighted-_setSignerWeights-bytes---uint64---).
+
+</div>
+</div>
+
+<a id="SignerECDSA"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignerECDSA`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/SignerECDSA.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/SignerECDSA.sol";
+```
+
+Implementation of [`AbstractSigner`](#AbstractSigner) using [ECDSA](/contracts/5.x/api/utils/cryptography#ECDSA) signatures.
+
+For [`Account`](../account#Account) usage, a [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) function is provided to set the [`SignerECDSA.signer`](#SignerECDSA-signer--) address.
+Doing so is easier for a factory, who is likely to use initializable clones of this contract.
+
+Example of usage:
+
+```solidity
+contract MyAccountECDSA is Account, SignerECDSA, Initializable {
+    function initialize(address signerAddr) public initializer {
+      _setSigner(signerAddr);
+    }
+}
+```
+
+<Callout type="warn">
+Failing to call [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) either during construction (if used standalone)
+or during initialization (if used as a clone) may leave the signer either front-runnable or unusable.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(signerAddr)](#SignerECDSA-constructor-address-)
+- [_setSigner(signerAddr)](#SignerECDSA-_setSigner-address-)
+- [signer()](#SignerECDSA-signer--)
+- [_rawSignatureValidation(hash, signature)](#SignerECDSA-_rawSignatureValidation-bytes32-bytes-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="SignerECDSA-constructor-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(address signerAddr)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerECDSA-constructor-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="SignerECDSA-_setSigner-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setSigner(address signerAddr)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerECDSA-_setSigner-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the signer with the address of the native signer. This function should be called during construction
+or through an initializer.
+
+</div>
+</div>
+
+<a id="SignerECDSA-signer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">signer() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="SignerECDSA-signer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Return the signer's address.
+
+</div>
+</div>
+
+<a id="SignerECDSA-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerECDSA-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Signature validation algorithm.
+
+<Callout type="warn">
+Implementing a signature validation algorithm is a security-sensitive operation as it involves
+cryptographic verification. It is important to review and test thoroughly before deployment. Consider using one of the signature verification libraries ([ECDSA](/contracts/5.x/api/utils/cryptography#ECDSA), [P256](/contracts/5.x/api/utils/cryptography#P256) or [RSA](/contracts/5.x/api/utils/cryptography#RSA)).
+</Callout>
+
+</div>
+</div>
+
+<a id="SignerEIP7702"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignerEIP7702`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/SignerEIP7702.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/SignerEIP7702.sol";
+```
+
+Implementation of [`AbstractSigner`](#AbstractSigner) for implementation for an EOA. Useful for ERC-7702 accounts.
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [_rawSignatureValidation(hash, signature)](#SignerEIP7702-_rawSignatureValidation-bytes32-bytes-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="SignerEIP7702-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerEIP7702-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates the signature using the EOA's address (i.e. `address(this)`).
+
+</div>
+</div>
+
+<a id="SignerERC7913"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignerERC7913`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/SignerERC7913.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/SignerERC7913.sol";
+```
+
+Implementation of [`AbstractSigner`](#AbstractSigner) using
+[ERC-7913](https://eips.ethereum.org/EIPS/eip-7913) signature verification.
+
+For [`Account`](../account#Account) usage, a [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) function is provided to set the ERC-7913 formatted [`SignerECDSA.signer`](#SignerECDSA-signer--).
+Doing so is easier for a factory, who is likely to use initializable clones of this contract.
+
+The signer is a `bytes` object that concatenates a verifier address and a key: `verifier || key`.
+
+Example of usage:
+
+```solidity
+contract MyAccountERC7913 is Account, SignerERC7913, Initializable {
+    function initialize(bytes memory signer_) public initializer {
+      _setSigner(signer_);
+    }
+
+    function setSigner(bytes memory signer_) public onlyEntryPointOrSelf {
+      _setSigner(signer_);
+    }
+}
+```
+
+<Callout type="warn">
+Failing to call [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) either during construction (if used standalone)
+or during initialization (if used as a clone) may leave the signer either front-runnable or unusable.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(signer_)](#SignerERC7913-constructor-bytes-)
+- [signer()](#SignerERC7913-signer--)
+- [_setSigner(signer_)](#SignerERC7913-_setSigner-bytes-)
+- [_rawSignatureValidation(hash, signature)](#SignerERC7913-_rawSignatureValidation-bytes32-bytes-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="SignerERC7913-constructor-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(bytes signer_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerERC7913-constructor-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="SignerERC7913-signer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">signer() → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="SignerERC7913-signer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Return the ERC-7913 signer (i.e. `verifier || key`).
+
+</div>
+</div>
+
+<a id="SignerERC7913-_setSigner-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setSigner(bytes signer_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerERC7913-_setSigner-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the signer (i.e. `verifier || key`) with an ERC-7913 formatted signer.
+
+</div>
+</div>
+
+<a id="SignerERC7913-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerERC7913-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies a signature using #SignatureChecker-isValidSignatureNow-bytes-bytes32-bytes-
+with [`SignerECDSA.signer`](#SignerECDSA-signer--), `hash` and `signature`.
+
+</div>
+</div>
+
+<a id="SignerP256"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignerP256`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/SignerP256.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/SignerP256.sol";
+```
+
+Implementation of [`AbstractSigner`](#AbstractSigner) using [P256](/contracts/5.x/api/utils/cryptography#P256) signatures.
+
+For [`Account`](../account#Account) usage, a [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) function is provided to set the [`SignerECDSA.signer`](#SignerECDSA-signer--) public key.
+Doing so is easier for a factory, who is likely to use initializable clones of this contract.
+
+Example of usage:
+
+```solidity
+contract MyAccountP256 is Account, SignerP256, Initializable {
+    function initialize(bytes32 qx, bytes32 qy) public initializer {
+      _setSigner(qx, qy);
+    }
+}
+```
+
+<Callout type="warn">
+Failing to call [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) either during construction (if used standalone)
+or during initialization (if used as a clone) may leave the signer either front-runnable or unusable.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(qx, qy)](#SignerP256-constructor-bytes32-bytes32-)
+- [_setSigner(qx, qy)](#SignerP256-_setSigner-bytes32-bytes32-)
+- [signer()](#SignerP256-signer--)
+- [_rawSignatureValidation(hash, signature)](#SignerP256-_rawSignatureValidation-bytes32-bytes-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [SignerP256InvalidPublicKey(qx, qy)](#SignerP256-SignerP256InvalidPublicKey-bytes32-bytes32-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="SignerP256-constructor-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(bytes32 qx, bytes32 qy)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerP256-constructor-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="SignerP256-_setSigner-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setSigner(bytes32 qx, bytes32 qy)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerP256-_setSigner-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the signer with a P256 public key. This function should be called during construction
+or through an initializer.
+
+</div>
+</div>
+
+<a id="SignerP256-signer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">signer() → bytes32 qx, bytes32 qy</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="SignerP256-signer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Return the signer's P256 public key.
+
+</div>
+</div>
+
+<a id="SignerP256-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerP256-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Signature validation algorithm.
+
+<Callout type="warn">
+Implementing a signature validation algorithm is a security-sensitive operation as it involves
+cryptographic verification. It is important to review and test thoroughly before deployment. Consider using one of the signature verification libraries ([ECDSA](/contracts/5.x/api/utils/cryptography#ECDSA), [P256](/contracts/5.x/api/utils/cryptography#P256) or [RSA](/contracts/5.x/api/utils/cryptography#RSA)).
+</Callout>
+
+</div>
+</div>
+
+<a id="SignerP256-SignerP256InvalidPublicKey-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">SignerP256InvalidPublicKey(bytes32 qx, bytes32 qy)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="SignerP256-SignerP256InvalidPublicKey-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="SignerRSA"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignerRSA`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/SignerRSA.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/SignerRSA.sol";
+```
+
+Implementation of [`AbstractSigner`](#AbstractSigner) using [RSA](/contracts/5.x/api/utils/cryptography#RSA) signatures.
+
+For [`Account`](../account#Account) usage, a [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) function is provided to set the [`SignerECDSA.signer`](#SignerECDSA-signer--) public key.
+Doing so is easier for a factory, who is likely to use initializable clones of this contract.
+
+Example of usage:
+
+```solidity
+contract MyAccountRSA is Account, SignerRSA, Initializable {
+    function initialize(bytes memory e, bytes memory n) public initializer {
+      _setSigner(e, n);
+    }
+}
+```
+
+<Callout type="warn">
+Failing to call [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) either during construction (if used standalone)
+or during initialization (if used as a clone) may leave the signer either front-runnable or unusable.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(e, n)](#SignerRSA-constructor-bytes-bytes-)
+- [_setSigner(e, n)](#SignerRSA-_setSigner-bytes-bytes-)
+- [signer()](#SignerRSA-signer--)
+- [_rawSignatureValidation(hash, signature)](#SignerRSA-_rawSignatureValidation-bytes32-bytes-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="SignerRSA-constructor-bytes-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(bytes e, bytes n)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerRSA-constructor-bytes-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="SignerRSA-_setSigner-bytes-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setSigner(bytes e, bytes n)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerRSA-_setSigner-bytes-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the signer with a RSA public key. This function should be called during construction
+or through an initializer.
+
+</div>
+</div>
+
+<a id="SignerRSA-signer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">signer() → bytes e, bytes n</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="SignerRSA-signer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Return the signer's RSA public key.
+
+</div>
+</div>
+
+<a id="SignerRSA-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerRSA-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AbstractSigner._rawSignatureValidation`](#AbstractSigner-_rawSignatureValidation-bytes32-bytes-). Verifies a PKCSv1.5 signature by calling
+[RSA.pkcs1Sha256](/contracts/5.x/api/utils/cryptography#RSA-pkcs1Sha256-bytes-bytes-bytes-bytes-).
+
+<Callout type="warn">
+Following the RSASSA-PKCS1-V1_5-VERIFY procedure outlined in RFC8017 (section 8.2.2), the
+provided `hash` is used as the `M` (message) and rehashed using SHA256 according to EMSA-PKCS1-v1_5
+encoding as per section 9.2 (step 1) of the RFC.
+</Callout>
+
+</div>
+</div>
+
+<a id="SignerWebAuthn"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `SignerWebAuthn`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/SignerWebAuthn.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/SignerWebAuthn.sol";
+```
+
+Implementation of [`SignerP256`](#SignerP256) that supports WebAuthn authentication assertions.
+
+This contract enables signature validation using WebAuthn authentication assertions,
+leveraging the P256 public key stored in the contract. It allows for both WebAuthn
+and raw P256 signature validation, providing compatibility with both signature types.
+
+The signature is expected to be an abi-encoded [`WebAuthn.WebAuthnAuth`](#WebAuthn-WebAuthnAuth) struct.
+
+Example usage:
+
+```solidity
+contract MyAccountWebAuthn is Account, SignerWebAuthn, Initializable {
+    function initialize(bytes32 qx, bytes32 qy) public initializer {
+        _setSigner(qx, qy);
+    }
+}
+```
+
+<Callout type="warn">
+Failing to call [`SignerECDSA._setSigner`](#SignerECDSA-_setSigner-address-) either during construction (if used standalone)
+or during initialization (if used as a clone) may leave the signer either front-runnable or unusable.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [_rawSignatureValidation(hash, signature)](#SignerWebAuthn-_rawSignatureValidation-bytes32-bytes-)
+#### SignerP256 [!toc]
+- [_setSigner(qx, qy)](#SignerP256-_setSigner-bytes32-bytes32-)
+- [signer()](#SignerP256-signer--)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### SignerP256 [!toc]
+- [SignerP256InvalidPublicKey(qx, qy)](#SignerP256-SignerP256InvalidPublicKey-bytes32-bytes32-)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="SignerWebAuthn-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32 hash, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="SignerWebAuthn-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates a raw signature using the WebAuthn authentication assertion.
+
+In case the signature can't be validated, it falls back to the
+[`SignerP256._rawSignatureValidation`](#SignerP256-_rawSignatureValidation-bytes32-bytes-) method for raw P256 signature validation by passing
+the raw `r` and `s` values from the signature.
+
+</div>
+</div>
+
+<a id="ERC7739"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7739`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/signers/draft-ERC7739.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/signers/draft-ERC7739.sol";
+```
+
+Validates signatures wrapping the message hash in a nested EIP712 type. See [`ERC7739Utils`](#ERC7739Utils).
+
+Linking the signature to the EIP-712 domain separator is a security measure to prevent signature replay across different
+EIP-712 domains (e.g. a single offchain owner of multiple contracts).
+
+This contract requires implementing the [`AccountERC7579._rawSignatureValidation`](../account#AccountERC7579-_rawSignatureValidation-bytes32-bytes-) function, which passes the wrapped message hash,
+which may be either an typed data or a personal sign nested type.
+
+<Callout>
+[EIP-712](/contracts/5.x/api/utils/cryptography#EIP712) uses [ShortStrings](/contracts/5.x/api/utils/cryptography#ShortStrings) to optimize gas costs for short strings (up to 31 characters). Consider that strings longer than that will use storage, which may limit the ability of the signer to be used within the ERC-4337 validation phase (due to
+[ERC-7562 storage access rules](https://eips.ethereum.org/EIPS/eip-7562#storage-rules)).
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [isValidSignature(hash, signature)](#ERC7739-isValidSignature-bytes32-bytes-)
+#### IERC1271 [!toc]
+#### EIP712 [!toc]
+- [_domainSeparatorV4()](#EIP712-_domainSeparatorV4--)
+- [_hashTypedDataV4(structHash)](#EIP712-_hashTypedDataV4-bytes32-)
+- [eip712Domain()](#EIP712-eip712Domain--)
+- [_EIP712Name()](#EIP712-_EIP712Name--)
+- [_EIP712Version()](#EIP712-_EIP712Version--)
+#### IERC5267 [!toc]
+#### AbstractSigner [!toc]
+- [_rawSignatureValidation(hash, signature)](#AbstractSigner-_rawSignatureValidation-bytes32-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC1271 [!toc]
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="ERC7739-isValidSignature-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidSignature(bytes32 hash, bytes signature) → bytes4 result</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7739-isValidSignature-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Attempts validating the signature in a nested EIP-712 type.
+
+A nested EIP-712 type might be presented in 2 different ways:
+
+- As a nested EIP-712 typed data
+- As a _personal_ signature (an EIP-712 mimic of the `eth_personalSign` for a smart contract)
+
+</div>
+</div>
+
+<a id="ERC7913P256Verifier"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7913P256Verifier`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/verifiers/ERC7913P256Verifier.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/verifiers/ERC7913P256Verifier.sol";
+```
+
+ERC-7913 signature verifier that support P256 (secp256r1) keys.
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [verify(key, hash, signature)](#ERC7913P256Verifier-verify-bytes-bytes32-bytes-)
+#### IERC7913SignatureVerifier [!toc]
+</div>
+</div>
+
+<a id="ERC7913P256Verifier-verify-bytes-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes key, bytes32 hash, bytes signature) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7913P256Verifier-verify-bytes-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies `signature` as a valid signature of `hash` by `key`.
+
+MUST return the bytes4 magic value IERC7913SignatureVerifier.verify.selector if the signature is valid.
+SHOULD return 0xffffffff or revert if the signature is not valid.
+SHOULD return 0xffffffff or revert if the key is empty
+
+</div>
+</div>
+
+<a id="ERC7913RSAVerifier"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7913RSAVerifier`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/verifiers/ERC7913RSAVerifier.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/verifiers/ERC7913RSAVerifier.sol";
+```
+
+ERC-7913 signature verifier that support RSA keys.
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [verify(key, hash, signature)](#ERC7913RSAVerifier-verify-bytes-bytes32-bytes-)
+#### IERC7913SignatureVerifier [!toc]
+</div>
+</div>
+
+<a id="ERC7913RSAVerifier-verify-bytes-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes key, bytes32 hash, bytes signature) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7913RSAVerifier-verify-bytes-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies `signature` as a valid signature of `hash` by `key`.
+
+MUST return the bytes4 magic value IERC7913SignatureVerifier.verify.selector if the signature is valid.
+SHOULD return 0xffffffff or revert if the signature is not valid.
+SHOULD return 0xffffffff or revert if the key is empty
+
+</div>
+</div>
+
+<a id="ERC7913WebAuthnVerifier"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7913WebAuthnVerifier`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/cryptography/verifiers/ERC7913WebAuthnVerifier.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/utils/cryptography/verifiers/ERC7913WebAuthnVerifier.sol";
+```
+
+ERC-7913 signature verifier that supports WebAuthn authentication assertions.
+
+This verifier enables the validation of WebAuthn signatures using P256 public keys.
+The key is expected to be a 64-byte concatenation of the P256 public key coordinates (qx || qy).
+The signature is expected to be an abi-encoded [`WebAuthn.WebAuthnAuth`](#WebAuthn-WebAuthnAuth) struct.
+
+Uses `WebAuthn-verifyMinimal` for signature verification, which performs the essential
+WebAuthn checks: type validation, challenge matching, and cryptographic signature verification.
+
+<Callout>
+Wallets that may require default P256 validation may install a P256 verifier separately.
+</Callout>
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [verify(key, hash, signature)](#ERC7913WebAuthnVerifier-verify-bytes-bytes32-bytes-)
+#### IERC7913SignatureVerifier [!toc]
+</div>
+</div>
+
+<a id="ERC7913WebAuthnVerifier-verify-bytes-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(bytes key, bytes32 hash, bytes signature) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7913WebAuthnVerifier-verify-bytes-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Verifies `signature` as a valid signature of `hash` by `key`.
+
+MUST return the bytes4 magic value IERC7913SignatureVerifier.verify.selector if the signature is valid.
+SHOULD return 0xffffffff or revert if the signature is not valid.
+SHOULD return 0xffffffff or revert if the key is empty
+
+</div>
+</div>

@@ -1,0 +1,83 @@
+---
+title: ERC-721 Uri Storage
+---
+
+The OpenZeppelin [ERC-721](/contracts-stylus/0.1.0/erc721) URI Storage extension is needed to manage and store URIs for individual tokens. This extension allows each token to have its own unique URI,
+which can point to metadata about the token, such as images, descriptions, and other attributes.
+This is particularly useful for non-fungible tokens (NFTs) where each token is unique and may have different metadata.
+
+## Usage
+
+In order to make an [ERC-721](/contracts-stylus/0.1.0/erc721) token with [URI Storage](https://docs.rs/openzeppelin-stylus/0.1.0/openzeppelin_stylus/token/erc721/extensions/uri_storage/index.html) flavour,
+your token should also use [`ERC-721 Metadata`](https://docs.rs/openzeppelin-stylus/0.1.0/openzeppelin_stylus/token/erc721/extensions/metadata/index.html) extension to provide additional metadata for each token.
+You need to create a specified contract as follows:
+
+```rust
+use openzeppelin_stylus::token::erc721::{
+    extensions::{
+        Erc721Metadata, Erc721UriStorage,
+        IErc721Burnable, IErc721Metadata,
+    },
+    Erc721, IErc721,
+};
+
+sol_storage! {
+    #[entrypoint]
+    struct Erc721MetadataExample {
+        #[borrow]
+        Erc721 erc721;
+        #[borrow]
+        Erc721Metadata metadata;
+        Erc721UriStorage uri_storage;
+    }
+}
+
+#[public]
+#[inherit(Erc721, Erc721Metadata, Erc721UriStorage)]
+impl Erc721MetadataExample {
+    pub fn mint(&mut self, to: Address, token_id: U256) -> Result<(), Vec<u8>> {
+        Ok(self.erc721._mint(to, token_id)?)
+    }
+
+    pub fn burn(&mut self, token_id: U256) -> Result<(), Vec<u8>> {
+        Ok(self.erc721.burn(token_id)?)
+    }
+
+    #[selector(name = "tokenURI")]
+    pub fn token_uri(&self, token_id: U256) -> Result<String, Vec<u8>> {
+        Ok(self.uri_storage.token_uri(
+            token_id,
+            &self.erc721,
+            &self.metadata,
+        )?)
+    }
+
+    #[selector(name = "setTokenURI")]
+    pub fn set_token_uri(&mut self, token_id: U256, token_uri: String) {
+        self.uri_storage._set_token_uri(token_id, token_uri)
+    }
+}
+```
+
+Additionally, you need to ensure proper initialization during [contract deployment](/contracts-stylus/0.1.0/deploy).
+Make sure to include the following code in your Solidity Constructor:
+
+```solidity
+contract Erc721Example {
+    // ...
+
+    string private _name;
+    string private _symbol;
+    string private _baseUri;
+
+    mapping(uint256 => string) _tokenUris;
+
+    constructor(string memory name_, string memory symbol_, string memory baseUri_) {
+        // ...
+        _name = name_;
+        _symbol = symbol_;
+        _baseUri = baseUri_;
+        // ...
+    }
+}
+```

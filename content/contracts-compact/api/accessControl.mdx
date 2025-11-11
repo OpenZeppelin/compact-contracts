@@ -1,0 +1,284 @@
+---
+title: AccessControl API
+---
+
+This page provides the full AccessControl module API.
+
+Roles are referred to by their `Bytes<32>` identifier.
+These should be exposed in the top-level contract and be unique.
+The best way to achieve this is by using `export sealed ledger` hash digests that are initialized in the top-level contract:
+
+```typescript
+import CompactStandardLibrary;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/AccessControl"
+  prefix AccessControl_;
+
+export sealed ledger MY_ROLE: Bytes<32>;
+
+constructor() {
+  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
+}
+```
+
+To restrict access to a circuit, use [assertOnlyRole](#AccessControl-assertOnlyRole):
+
+
+```typescript
+circuit foo(): [] {
+  assertOnlyRole(MY_ROLE);
+}
+```
+
+Roles can be granted and revoked dynamically via the [grantRole](#AccessControl-grantRole) and [revokeRole](#AccessControl-revokeRole) circuits.
+Each role has an associated admin role,
+and only accounts that have a role’s admin role can call [grantRole](#AccessControl-grantRole) and [revokeRole](#AccessControl-revokeRole).
+
+By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`,
+which means that only accounts with this role will be able to grant or revoke other roles.
+More complex role relationships can be created by using [_setRoleAdmin](#AccessControl-_setRoleAdmin).
+To set a custom `DEFAULT_ADMIN_ROLE`,
+implement the `Initializable` module and set `DEFAULT_ADMIN_ROLE` in the `initialize()` circuit.
+
+<Callout type='warn'>
+  The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to grant and revoke this role.
+  Extra precautions should be taken to secure accounts that have been granted it.
+</Callout>
+
+<Callout type='info'>
+  For an overview of the module, read the [AccessControl guide](../accessControl).
+</Callout>
+
+## AccessControl [toc] [#AccessControl]
+<APIGithubLinkHeader
+    moduleName="AccessControl"
+    link={`https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/src/access/AccessControl.compact`}
+/>
+
+```ts
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/AccessControl";
+```
+
+---
+
+### Ledger [toc] [#AccessControl-Ledger]
+### Ledger [!toc] [#AccessControl-Ledger]
+
+#### _operatorRoles [toc] [#AccessControl-_operatorRoles]
+#### [!toc] [#AccessControl-_operatorRoles]
+<APIItemCompact
+  circuitSig="_operatorRoles: Map<Bytes<32>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>"
+  kind="ledger"
+  id="AccessControl-_operatorRoles"
+>
+  Mapping from a role identifier -> account -> its permissions.
+</APIItemCompact>
+
+#### _adminRoles [toc] [#AccessControl-_adminRoles]
+#### [!toc] [#AccessControl-_adminRoles]
+<APIItemCompact
+  circuitSig="_adminRoles: Map<Bytes<32>, Bytes<32>>"
+  kind="ledger"
+  id="AccessControl-_adminRoles"
+>
+  Mapping from a role identifier to an admin role identifier.
+</APIItemCompact>
+
+#### DEFAULT_ADMIN_ROLE [toc] [#AccessControl-DEFAULT_ADMIN_ROLE]
+#### [!toc] [#AccessControl-DEFAULT_ADMIN_ROLE]
+<APIItemCompact
+  circuitSig="DEFAULT_ADMIN_ROLE: Bytes<32>"
+  kind="ledger"
+  id="AccessControl-DEFAULT_ADMIN_ROLE"
+>
+  The default `Bytes<32>` value mimicking a constant.
+</APIItemCompact>
+
+### Witnesses [toc] [#AccessControl-Witnesses]
+### Witnesses [!toc] [#AccessControl-Witnesses]
+
+None.
+
+### Circuits [toc] [#AccessControl-Circuits]
+### Circuits [!toc] [#AccessControl-Circuits]
+
+#### hasRole [toc] [#AccessControl-hasRole]
+#### [!toc] [#AccessControl-hasRole]
+<APIItemCompact
+  circuitSig="hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean"
+  kind="circuit"
+  complexity="k=10, rows=487"
+  modulePrefix="AccessControl"
+>
+  Returns `true` if `account` has been granted `roleId`.
+</APIItemCompact>
+
+#### assertOnlyRole [toc] [#AccessControl-assertOnlyRole]
+#### [!toc] [#AccessControl-assertOnlyRole]
+<APIItemCompact
+  circuitSig="assertOnlyRole(roleId: Bytes<32>) → []"
+  kind="circuit"
+  complexity="k=10, rows=345"
+  modulePrefix="AccessControl"
+>
+  Reverts if caller is missing `roleId`.
+
+  Requirements:
+
+  * The caller must have `roleId`.
+  * The caller must not be a `ContractAddress`.
+</APIItemCompact>
+
+#### _checkRole [toc] [#AccessControl-_checkRole]
+#### [!toc] [#AccessControl-_checkRole]
+<APIItemCompact
+  circuitSig="_checkRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []"
+  kind="circuit"
+  complexity="k=10, rows=467"
+  modulePrefix="AccessControl"
+>
+  Reverts if `account` is missing `roleId`.
+
+  Requirements:
+
+  * `account` must have `roleId`.
+</APIItemCompact>
+
+#### getRoleAdmin [toc] [#AccessControl-getRoleAdmin]
+#### [!toc] [#AccessControl-getRoleAdmin]
+<APIItemCompact
+  circuitSig="getRoleAdmin(roleId: Bytes<32>) → Bytes<32>"
+  kind="circuit"
+  complexity="k=10, rows=207"
+  modulePrefix="AccessControl"
+>
+  Returns the admin role that controls `roleId` or a byte array with all zero bytes if `roleId` doesn’t exist.
+  See [grantRole](#AccessControl-grantRole) and [revokeRole](#AccessControl-revokeRole).
+
+  To change a role's admin use [_setRoleAdmin](#AccessControl-_setRoleAdmin).
+</APIItemCompact>
+
+#### grantRole [toc] [#AccessControl-grantRole]
+#### [!toc] [#AccessControl-grantRole]
+<APIItemCompact
+  circuitSig="grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []"
+  kind="circuit"
+  complexity="k=10, rows=994"
+  modulePrefix="AccessControl"
+>
+  Grants `roleId` to `account`.
+
+  <Callout type='info'>
+    Granting roles to contract addresses is currently disallowed until contract-to-contract interactions are supported in Compact.
+    This restriction prevents permanently disabling access to a circuit.
+  </Callout>
+
+  Requirements:
+
+  * `account` must not be a ContractAddress.
+  * The caller must have `roleId`’s admin role.
+</APIItemCompact>
+
+#### revokeRole [toc] [#AccessControl-revokeRole]
+#### [!toc] [#AccessControl-revokeRole]
+<APIItemCompact
+  circuitSig="revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → []"
+  kind="circuit"
+  complexity="k=10, rows=827"
+  modulePrefix="AccessControl"
+>
+  Revokes `roleId` from `account`.
+
+  Requirements:
+
+  * The caller must have `roleId`’s admin role.
+</APIItemCompact>
+
+#### renounceRole [toc] [#AccessControl-renounceRole]
+#### [!toc] [#AccessControl-renounceRole]
+<APIItemCompact
+  circuitSig="renounceRole(roleId: Bytes<32>, callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>) → []"
+  stackParams="true"
+  kind="circuit"
+  complexity="k=10, rows=640"
+  modulePrefix="AccessControl"
+>
+  Revokes `roleId` from the calling account.
+
+  Roles are often managed via [grantRole](#AccessControl-grantRole) and [revokeRole](#AccessControl-revokeRole):
+  this circuit’s purpose is to provide a mechanism for accounts to lose their privileges
+  if they are compromised (such as when a trusted device is misplaced).
+
+  <Callout type='info'>
+    We do not provide functionality for smart contracts to renounce roles because self-executing transactions are not supported on Midnight at this time.
+    We may revisit this in future if this feature is made available in Compact.
+  </Callout>
+
+  Requirements:
+
+  * The caller must be `callerConfirmation`.
+  * The caller must not be a `ContractAddress`.
+</APIItemCompact>
+
+#### _setRoleAdmin [toc] [#AccessControl-_setRoleAdmin]
+#### [!toc] [#AccessControl-_setRoleAdmin]
+<APIItemCompact
+  circuitSig="_setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>) → []"
+  kind="circuit"
+  complexity="k=10, rows=209"
+  modulePrefix="AccessControl"
+>
+  Sets `adminRole` as `roleId`’s admin role.
+</APIItemCompact>
+
+#### _grantRole [toc] [#AccessControl-_grantRole]
+#### [!toc] [#AccessControl-_grantRole]
+<APIItemCompact
+  circuitSig="_grantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean"
+  kind="circuit"
+  complexity="k=10, rows=734"
+  modulePrefix="AccessControl"
+>
+  Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
+
+  Internal circuit without access restriction.
+
+  <Callout type='info'>
+    Granting roles to contract addresses is currently disallowed in this circuit until contract-to-contract interactions are supported in Compact.
+    This restriction prevents permanently disabling access to a circuit.
+  </Callout>
+
+  Requirements:
+
+  * `account` must not be a ContractAddress.
+</APIItemCompact>
+
+#### _unsafeGrantRole [toc] [#AccessControl-_unsafeGrantRole]
+#### [!toc] [#AccessControl-_unsafeGrantRole]
+<APIItemCompact
+  circuitSig="_unsafeGrantRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean"
+  kind="circuit"
+  complexity="k=10, rows=733"
+  stackParams="true"
+  modulePrefix="AccessControl"
+>
+  Unsafe variant of [_grantRole](#AccessControl-_grantRole).
+
+  <Callout type='warn'>
+    Granting roles to contract addresses is considered unsafe because contract-to-contract calls are not currently supported.
+    Granting a role to a smart contract may render a circuit permanently inaccessible.
+    Once contract-to-contract calls are supported, this circuit may be deprecated.
+  </Callout>
+</APIItemCompact>
+
+#### _revokeRole [toc] [#AccessControl-_revokeRole]
+#### [!toc] [#AccessControl-_revokeRole]
+<APIItemCompact
+  circuitSig="_revokeRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>) → Boolean"
+  kind="circuit"
+  complexity="k=10, rows=563"
+  modulePrefix="AccessControl"
+>
+  Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
+
+  Internal circuit without access restriction.
+</APIItemCompact>

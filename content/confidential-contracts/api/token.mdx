@@ -1,0 +1,1200 @@
+---
+title: "Token"
+description: "Smart contract token utilities and implementations"
+---
+
+This set of interfaces, contracts, and utilities are all related to the evolving Confidential Token Standard. The standard utilizes the Zama fhEVM co-processor for manipulating FHE values. All amounts are stored on-chain as ciphertext handles (or pointers) to values stored on the co-processor.
+
+* [`ConfidentialFungibleToken`](#ConfidentialFungibleToken): Implementation of [`IConfidentialFungibleToken`](./interfaces#IConfidentialFungibleToken).
+* [`ConfidentialFungibleTokenERC20Wrapper`](#ConfidentialFungibleTokenERC20Wrapper): Extension of [`ConfidentialFungibleToken`](#ConfidentialFungibleToken) which wraps an `ERC20` into a confidential token. The wrapper allows for free conversion in both directions at a fixed rate.
+* [`ConfidentialFungibleTokenUtils`](#ConfidentialFungibleTokenUtils): A library that provides the on-transfer callback check used by [`ConfidentialFungibleToken`](#ConfidentialFungibleToken).
+
+## Core
+[`ConfidentialFungibleToken`](#ConfidentialFungibleToken)
+
+## Extensions
+[`ConfidentialFungibleTokenERC20Wrapper`](#ConfidentialFungibleTokenERC20Wrapper)
+
+## Utilities
+[`ConfidentialFungibleTokenUtils`](#ConfidentialFungibleTokenUtils)
+
+<a id="ConfidentialFungibleToken"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ConfidentialFungibleToken`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/token/ConfidentialFungibleToken.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/token/ConfidentialFungibleToken.sol";
+```
+
+Reference implementation for [`IConfidentialFungibleToken`](./interfaces#IConfidentialFungibleToken).
+
+This contract implements a fungible token where balances and transfers are encrypted using the Zama fhEVM,
+providing confidentiality to users. Token amounts are stored as encrypted, unsigned integers (`euint64`)
+that can only be decrypted by authorized parties.
+
+Key features:
+
+- All balances are encrypted
+- Transfers happen without revealing amounts
+- Support for operators (delegated transfer capabilities with time bounds)
+- Transfer and call pattern
+- Safe overflow/underflow handling for FHE operations
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(name_, symbol_, tokenURI_)](#ConfidentialFungibleToken-constructor-string-string-string-)
+- [name()](#ConfidentialFungibleToken-name--)
+- [symbol()](#ConfidentialFungibleToken-symbol--)
+- [decimals()](#ConfidentialFungibleToken-decimals--)
+- [tokenURI()](#ConfidentialFungibleToken-tokenURI--)
+- [confidentialTotalSupply()](#ConfidentialFungibleToken-confidentialTotalSupply--)
+- [confidentialBalanceOf(account)](#ConfidentialFungibleToken-confidentialBalanceOf-address-)
+- [isOperator(holder, spender)](#ConfidentialFungibleToken-isOperator-address-address-)
+- [setOperator(operator, until)](#ConfidentialFungibleToken-setOperator-address-uint48-)
+- [confidentialTransfer(to, encryptedAmount, inputProof)](#ConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes-)
+- [confidentialTransfer(to, amount)](#ConfidentialFungibleToken-confidentialTransfer-address-euint64-)
+- [confidentialTransferFrom(from, to, encryptedAmount, inputProof)](#ConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes-)
+- [confidentialTransferFrom(from, to, amount)](#ConfidentialFungibleToken-confidentialTransferFrom-address-address-euint64-)
+- [confidentialTransferAndCall(to, encryptedAmount, inputProof, data)](#ConfidentialFungibleToken-confidentialTransferAndCall-address-externalEuint64-bytes-bytes-)
+- [confidentialTransferAndCall(to, amount, data)](#ConfidentialFungibleToken-confidentialTransferAndCall-address-euint64-bytes-)
+- [confidentialTransferFromAndCall(from, to, encryptedAmount, inputProof, data)](#ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-externalEuint64-bytes-bytes-)
+- [confidentialTransferFromAndCall(from, to, amount, data)](#ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-euint64-bytes-)
+- [discloseEncryptedAmount(encryptedAmount)](#ConfidentialFungibleToken-discloseEncryptedAmount-euint64-)
+- [finalizeDiscloseEncryptedAmount(requestId, amount, signatures)](#ConfidentialFungibleToken-finalizeDiscloseEncryptedAmount-uint256-uint64-bytes---)
+- [_setOperator(holder, operator, until)](#ConfidentialFungibleToken-_setOperator-address-address-uint48-)
+- [_mint(to, amount)](#ConfidentialFungibleToken-_mint-address-euint64-)
+- [_burn(from, amount)](#ConfidentialFungibleToken-_burn-address-euint64-)
+- [_transfer(from, to, amount)](#ConfidentialFungibleToken-_transfer-address-address-euint64-)
+- [_transferAndCall(from, to, amount, data)](#ConfidentialFungibleToken-_transferAndCall-address-address-euint64-bytes-)
+- [_update(from, to, amount)](#ConfidentialFungibleToken-_update-address-address-euint64-)
+#### IConfidentialFungibleToken [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IConfidentialFungibleToken [!toc]
+- [OperatorSet(holder, operator, until)](#IConfidentialFungibleToken-OperatorSet-address-address-uint48-)
+- [ConfidentialTransfer(from, to, amount)](#IConfidentialFungibleToken-ConfidentialTransfer-address-address-euint64-)
+- [AmountDisclosed(encryptedAmount, amount)](#IConfidentialFungibleToken-AmountDisclosed-euint64-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ConfidentialFungibleTokenInvalidReceiver(receiver)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidReceiver-address-)
+- [ConfidentialFungibleTokenInvalidSender(sender)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidSender-address-)
+- [ConfidentialFungibleTokenUnauthorizedSpender(holder, spender)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedSpender-address-address-)
+- [ConfidentialFungibleTokenZeroBalance(holder)](#ConfidentialFungibleToken-ConfidentialFungibleTokenZeroBalance-address-)
+- [ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount(amount, user)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount-euint64-address-)
+- [ConfidentialFungibleTokenUnauthorizedCaller(caller)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedCaller-address-)
+- [ConfidentialFungibleTokenInvalidGatewayRequest(requestId)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidGatewayRequest-uint256-)
+#### IConfidentialFungibleToken [!toc]
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-constructor-string-string-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(string name_, string symbol_, string tokenURI_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-constructor-string-string-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-name--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">name() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-name--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the name of the token.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-symbol--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">symbol() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-symbol--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the symbol of the token.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-decimals--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decimals() → uint8</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-decimals--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the number of decimals of the token. Recommended to be 6.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-tokenURI--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">tokenURI() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-tokenURI--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the token URI.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTotalSupply--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTotalSupply() → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTotalSupply--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the confidential total supply of the token.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialBalanceOf-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialBalanceOf(address account) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialBalanceOf-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the confidential balance of the account `account`.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-isOperator-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isOperator(address holder, address spender) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-isOperator-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if `spender` is currently an operator for `holder`.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-setOperator-address-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">setOperator(address operator, uint48 until)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-setOperator-address-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets `operator` as an operator for `holder` until the timestamp `until`.
+
+<Callout>
+An operator may transfer any amount of tokens on behalf of a holder while approved.
+</Callout>
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransfer(address to, externalEuint64 encryptedAmount, bytes inputProof) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers the encrypted amount `encryptedAmount` to `to` with the given input proof `inputProof`.
+
+Returns the encrypted amount that was actually transferred.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransfer-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransfer(address to, euint64 amount) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransfer-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Similar to interfaces#IConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes- but without an input proof. The caller
+*must* already be allowed by ACL for the given `amount`.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransferFrom(address from, address to, externalEuint64 encryptedAmount, bytes inputProof) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers the encrypted amount `encryptedAmount` from `from` to `to` with the given input proof
+`inputProof`. `msg.sender` must be either `from` or an operator for `from`.
+
+Returns the encrypted amount that was actually transferred.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransferFrom-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransferFrom(address from, address to, euint64 amount) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransferFrom-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Similar to interfaces#IConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes- but without an input proof.
+The caller *must* be already allowed by ACL for the given `amount`.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransferAndCall-address-externalEuint64-bytes-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransferAndCall(address to, externalEuint64 encryptedAmount, bytes inputProof, bytes data) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransferAndCall-address-externalEuint64-bytes-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Similar to interfaces#IConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes- but with a callback to `to` after
+the transfer.
+
+The callback is made to the [`IConfidentialFungibleTokenReceiver.onConfidentialTransferReceived`](./interfaces#IConfidentialFungibleTokenReceiver-onConfidentialTransferReceived-address-address-euint64-bytes-) function on the
+to address with the actual transferred amount (may differ from the given `encryptedAmount`) and the given
+data `data`.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransferAndCall-address-euint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransferAndCall(address to, euint64 amount, bytes data) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransferAndCall-address-euint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Similar to interfaces#IConfidentialFungibleToken-confidentialTransfer-address-euint64- but with a callback to `to` after the transfer.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-externalEuint64-bytes-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransferFromAndCall(address from, address to, externalEuint64 encryptedAmount, bytes inputProof, bytes data) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-externalEuint64-bytes-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Similar to interfaces#IConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes- but with a callback to `to`
+after the transfer.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-euint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTransferFromAndCall(address from, address to, euint64 amount, bytes data) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-euint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Similar to interfaces#IConfidentialFungibleToken-confidentialTransferFrom-address-address-euint64- but with a callback to `to`
+after the transfer.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-discloseEncryptedAmount-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">discloseEncryptedAmount(euint64 encryptedAmount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-discloseEncryptedAmount-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Discloses an encrypted amount `encryptedAmount` publicly via an [`IConfidentialFungibleToken.AmountDisclosed`](./interfaces#IConfidentialFungibleToken-AmountDisclosed-euint64-uint64-)
+event. The caller and this contract must be authorized to use the encrypted amount on the ACL.
+
+<Callout>
+This is an asynchronous operation where the actual decryption happens off-chain and
+[`ConfidentialFungibleToken.finalizeDiscloseEncryptedAmount`](#ConfidentialFungibleToken-finalizeDiscloseEncryptedAmount-uint256-uint64-bytes---) is called with the result.
+</Callout>
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-finalizeDiscloseEncryptedAmount-uint256-uint64-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">finalizeDiscloseEncryptedAmount(uint256 requestId, uint64 amount, bytes[] signatures)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-finalizeDiscloseEncryptedAmount-uint256-uint64-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Finalizes a disclose encrypted amount request.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-_setOperator-address-address-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setOperator(address holder, address operator, uint48 until)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-_setOperator-address-address-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-_mint-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_mint(address to, euint64 amount) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-_mint-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-_burn-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_burn(address from, euint64 amount) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-_burn-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-_transfer-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_transfer(address from, address to, euint64 amount) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-_transfer-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-_transferAndCall-address-address-euint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_transferAndCall(address from, address to, euint64 amount, bytes data) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-_transferAndCall-address-address-euint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-_update-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, euint64 amount) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-_update-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidReceiver-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenInvalidReceiver(address receiver)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidReceiver-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The given receiver `receiver` is invalid for transfers.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidSender-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenInvalidSender(address sender)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidSender-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The given sender `sender` is invalid for transfers.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedSpender-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenUnauthorizedSpender(address holder, address spender)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedSpender-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The given holder `holder` is not authorized to spend on behalf of `spender`.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenZeroBalance-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenZeroBalance(address holder)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenZeroBalance-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The holder `holder` is trying to send tokens but has a balance of 0.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount-euint64-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount(euint64 amount, address user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount-euint64-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The caller `user` does not have access to the encrypted amount `amount`.
+
+<Callout>
+Try using the equivalent transfer function with an input proof.
+</Callout>
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedCaller-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenUnauthorizedCaller(address caller)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedCaller-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The given caller `caller` is not authorized for the current operation.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidGatewayRequest-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConfidentialFungibleTokenInvalidGatewayRequest(uint256 requestId)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidGatewayRequest-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The given gateway request ID `requestId` is invalid.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ConfidentialFungibleTokenERC20Wrapper`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/token/extensions/ConfidentialFungibleTokenERC20Wrapper.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/token/extensions/ConfidentialFungibleTokenERC20Wrapper.sol";
+```
+
+A wrapper contract built on top of [`ConfidentialFungibleToken`](#ConfidentialFungibleToken) that allows wrapping an `ERC20` token
+into a confidential fungible token. The wrapper contract implements the `IERC1363Receiver` interface
+which allows users to transfer `ERC1363` tokens directly to the wrapper with a callback to wrap the tokens.
+
+<Callout type="warn">
+Minting assumes the full amount of the underlying token transfer has been received, hence some non-standard
+tokens such as fee-on-transfer or other deflationary-type tokens are not supported by this wrapper.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(underlying_)](#ConfidentialFungibleTokenERC20Wrapper-constructor-contract-IERC20-)
+- [decimals()](#ConfidentialFungibleTokenERC20Wrapper-decimals--)
+- [rate()](#ConfidentialFungibleTokenERC20Wrapper-rate--)
+- [underlying()](#ConfidentialFungibleTokenERC20Wrapper-underlying--)
+- [onTransferReceived(, from, amount, data)](#ConfidentialFungibleTokenERC20Wrapper-onTransferReceived-address-address-uint256-bytes-)
+- [wrap(to, amount)](#ConfidentialFungibleTokenERC20Wrapper-wrap-address-uint256-)
+- [unwrap(from, to, amount)](#ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-euint64-)
+- [unwrap(from, to, encryptedAmount, inputProof)](#ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-externalEuint64-bytes-)
+- [finalizeUnwrap(requestID, amount, signatures)](#ConfidentialFungibleTokenERC20Wrapper-finalizeUnwrap-uint256-uint64-bytes---)
+- [_unwrap(from, to, amount)](#ConfidentialFungibleTokenERC20Wrapper-_unwrap-address-address-euint64-)
+- [_fallbackUnderlyingDecimals()](#ConfidentialFungibleTokenERC20Wrapper-_fallbackUnderlyingDecimals--)
+- [_maxDecimals()](#ConfidentialFungibleTokenERC20Wrapper-_maxDecimals--)
+#### IERC1363Receiver [!toc]
+#### ConfidentialFungibleToken [!toc]
+- [name()](#ConfidentialFungibleToken-name--)
+- [symbol()](#ConfidentialFungibleToken-symbol--)
+- [tokenURI()](#ConfidentialFungibleToken-tokenURI--)
+- [confidentialTotalSupply()](#ConfidentialFungibleToken-confidentialTotalSupply--)
+- [confidentialBalanceOf(account)](#ConfidentialFungibleToken-confidentialBalanceOf-address-)
+- [isOperator(holder, spender)](#ConfidentialFungibleToken-isOperator-address-address-)
+- [setOperator(operator, until)](#ConfidentialFungibleToken-setOperator-address-uint48-)
+- [confidentialTransfer(to, encryptedAmount, inputProof)](#ConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes-)
+- [confidentialTransfer(to, amount)](#ConfidentialFungibleToken-confidentialTransfer-address-euint64-)
+- [confidentialTransferFrom(from, to, encryptedAmount, inputProof)](#ConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes-)
+- [confidentialTransferFrom(from, to, amount)](#ConfidentialFungibleToken-confidentialTransferFrom-address-address-euint64-)
+- [confidentialTransferAndCall(to, encryptedAmount, inputProof, data)](#ConfidentialFungibleToken-confidentialTransferAndCall-address-externalEuint64-bytes-bytes-)
+- [confidentialTransferAndCall(to, amount, data)](#ConfidentialFungibleToken-confidentialTransferAndCall-address-euint64-bytes-)
+- [confidentialTransferFromAndCall(from, to, encryptedAmount, inputProof, data)](#ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-externalEuint64-bytes-bytes-)
+- [confidentialTransferFromAndCall(from, to, amount, data)](#ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-euint64-bytes-)
+- [discloseEncryptedAmount(encryptedAmount)](#ConfidentialFungibleToken-discloseEncryptedAmount-euint64-)
+- [finalizeDiscloseEncryptedAmount(requestId, amount, signatures)](#ConfidentialFungibleToken-finalizeDiscloseEncryptedAmount-uint256-uint64-bytes---)
+- [_setOperator(holder, operator, until)](#ConfidentialFungibleToken-_setOperator-address-address-uint48-)
+- [_mint(to, amount)](#ConfidentialFungibleToken-_mint-address-euint64-)
+- [_burn(from, amount)](#ConfidentialFungibleToken-_burn-address-euint64-)
+- [_transfer(from, to, amount)](#ConfidentialFungibleToken-_transfer-address-address-euint64-)
+- [_transferAndCall(from, to, amount, data)](#ConfidentialFungibleToken-_transferAndCall-address-address-euint64-bytes-)
+- [_update(from, to, amount)](#ConfidentialFungibleToken-_update-address-address-euint64-)
+#### IConfidentialFungibleToken [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC1363Receiver [!toc]
+#### ConfidentialFungibleToken [!toc]
+#### IConfidentialFungibleToken [!toc]
+- [OperatorSet(holder, operator, until)](#IConfidentialFungibleToken-OperatorSet-address-address-uint48-)
+- [ConfidentialTransfer(from, to, amount)](#IConfidentialFungibleToken-ConfidentialTransfer-address-address-euint64-)
+- [AmountDisclosed(encryptedAmount, amount)](#IConfidentialFungibleToken-AmountDisclosed-euint64-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### IERC1363Receiver [!toc]
+#### ConfidentialFungibleToken [!toc]
+- [ConfidentialFungibleTokenInvalidReceiver(receiver)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidReceiver-address-)
+- [ConfidentialFungibleTokenInvalidSender(sender)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidSender-address-)
+- [ConfidentialFungibleTokenUnauthorizedSpender(holder, spender)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedSpender-address-address-)
+- [ConfidentialFungibleTokenZeroBalance(holder)](#ConfidentialFungibleToken-ConfidentialFungibleTokenZeroBalance-address-)
+- [ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount(amount, user)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount-euint64-address-)
+- [ConfidentialFungibleTokenUnauthorizedCaller(caller)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedCaller-address-)
+- [ConfidentialFungibleTokenInvalidGatewayRequest(requestId)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidGatewayRequest-uint256-)
+#### IConfidentialFungibleToken [!toc]
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-constructor-contract-IERC20-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(contract IERC20 underlying_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-constructor-contract-IERC20-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-decimals--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decimals() → uint8</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-decimals--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the number of decimals of the token. Recommended to be 6.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-rate--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">rate() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-rate--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the rate at which the underlying token is converted to the wrapped token.
+For example, if the `rate` is 1000, then 1000 units of the underlying token equal 1 unit of the wrapped token.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-underlying--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">underlying() → contract IERC20</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-underlying--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the underlying ERC-20 token that is being wrapped.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-onTransferReceived-address-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onTransferReceived(address, address from, uint256 amount, bytes data) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-onTransferReceived-address-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+`ERC1363` callback function which wraps tokens to the address specified in `data` or
+the address `from` (if no address is specified in `data`). This function refunds any excess tokens
+sent beyond the nearest multiple of [`ConfidentialFungibleTokenERC20Wrapper.rate`](#ConfidentialFungibleTokenERC20Wrapper-rate--). See [`ConfidentialFungibleTokenERC20Wrapper.wrap`](#ConfidentialFungibleTokenERC20Wrapper-wrap-address-uint256-) from more details on wrapping tokens.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-wrap-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">wrap(address to, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-wrap-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Wraps amount `amount` of the underlying token into a confidential token and sends it to
+`to`. Tokens are exchanged at a fixed rate specified by [`ConfidentialFungibleTokenERC20Wrapper.rate`](#ConfidentialFungibleTokenERC20Wrapper-rate--) such that `amount / rate()` confidential
+tokens are sent. Amount transferred in is rounded down to the nearest multiple of [`ConfidentialFungibleTokenERC20Wrapper.rate`](#ConfidentialFungibleTokenERC20Wrapper-rate--).
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">unwrap(address from, address to, euint64 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Unwraps tokens from `from` and sends the underlying tokens to `to`. The caller must be `from`
+or be an approved operator for `from`. `amount * rate()` underlying tokens are sent to `to`.
+
+<Callout>
+This is an asynchronous function and waits for decryption to be completed off-chain before disbursing
+tokens.
+</Callout>
+<Callout>
+The caller *must* already be approved by ACL for the given `amount`.
+</Callout>
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-externalEuint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">unwrap(address from, address to, externalEuint64 encryptedAmount, bytes inputProof)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-externalEuint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Variant of [`ConfidentialFungibleTokenERC20Wrapper.unwrap`](#ConfidentialFungibleTokenERC20Wrapper-unwrap-address-address-externalEuint64-bytes-) that passes an `inputProof` which approves the caller for the `encryptedAmount`
+in the ACL.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-finalizeUnwrap-uint256-uint64-bytes---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">finalizeUnwrap(uint256 requestID, uint64 amount, bytes[] signatures)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-finalizeUnwrap-uint256-uint64-bytes---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Fills an unwrap request for a given request id related to a decrypted unwrap amount.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-_unwrap-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_unwrap(address from, address to, euint64 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-_unwrap-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-_fallbackUnderlyingDecimals--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_fallbackUnderlyingDecimals() → uint8</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-_fallbackUnderlyingDecimals--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the default number of decimals of the underlying ERC-20 token that is being wrapped.
+Used as a default fallback when [`ConfidentialFungibleTokenERC20Wrapper._tryGetAssetDecimals`](#ConfidentialFungibleTokenERC20Wrapper-_tryGetAssetDecimals-contract-IERC20-) fails to fetch decimals of the underlying
+ERC-20 token.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenERC20Wrapper-_maxDecimals--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_maxDecimals() → uint8</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenERC20Wrapper-_maxDecimals--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the maximum number that will be used for [`IConfidentialFungibleToken.decimals`](./interfaces#IConfidentialFungibleToken-decimals--) by the wrapper.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenVotes"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ConfidentialFungibleTokenVotes`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/token/extensions/ConfidentialFungibleTokenVotes.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/token/extensions/ConfidentialFungibleTokenVotes.sol";
+```
+
+Extension of [`ConfidentialFungibleToken`](#ConfidentialFungibleToken) supporting confidential votes tracking and delegation.
+
+The amount of confidential voting units an account has is equal to the confidential token balance of
+that account. Voing power is taken into account when an account delegates votes to itself or to another
+account.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [confidentialTotalSupply()](#ConfidentialFungibleTokenVotes-confidentialTotalSupply--)
+- [_update(from, to, amount)](#ConfidentialFungibleTokenVotes-_update-address-address-euint64-)
+- [_getVotingUnits(account)](#ConfidentialFungibleTokenVotes-_getVotingUnits-address-)
+#### VotesConfidential [!toc]
+- [clock()](#VotesConfidential-clock--)
+- [CLOCK_MODE()](#VotesConfidential-CLOCK_MODE--)
+- [getVotes(account)](#VotesConfidential-getVotes-address-)
+- [getPastVotes(account, timepoint)](#VotesConfidential-getPastVotes-address-uint256-)
+- [getPastTotalSupply(timepoint)](#VotesConfidential-getPastTotalSupply-uint256-)
+- [delegates(account)](#VotesConfidential-delegates-address-)
+- [delegate(delegatee)](#VotesConfidential-delegate-address-)
+- [delegateBySig(delegatee, nonce, expiry, v, r, s)](#VotesConfidential-delegateBySig-address-uint256-uint256-uint8-bytes32-bytes32-)
+- [_delegate(account, delegatee)](#VotesConfidential-_delegate-address-address-)
+- [_transferVotingUnits(from, to, amount)](#VotesConfidential-_transferVotingUnits-address-address-euint64-)
+- [_moveDelegateVotes(from, to, amount)](#VotesConfidential-_moveDelegateVotes-address-address-euint64-)
+- [_validateTimepoint(timepoint)](#VotesConfidential-_validateTimepoint-uint256-)
+#### HandleAccessManager [!toc]
+- [getHandleAllowance(handle, account, persistent)](#HandleAccessManager-getHandleAllowance-bytes32-address-bool-)
+- [_validateHandleAllowance(handle)](#HandleAccessManager-_validateHandleAllowance-bytes32-)
+#### IERC6372 [!toc]
+#### EIP712 [!toc]
+- [_domainSeparatorV4()](#EIP712-_domainSeparatorV4--)
+- [_hashTypedDataV4(structHash)](#EIP712-_hashTypedDataV4-bytes32-)
+- [eip712Domain()](#EIP712-eip712Domain--)
+- [_EIP712Name()](#EIP712-_EIP712Name--)
+- [_EIP712Version()](#EIP712-_EIP712Version--)
+#### IERC5267 [!toc]
+#### Nonces [!toc]
+- [nonces(owner)](#Nonces-nonces-address-)
+- [_useNonce(owner)](#Nonces-_useNonce-address-)
+- [_useCheckedNonce(owner, nonce)](#Nonces-_useCheckedNonce-address-uint256-)
+#### ConfidentialFungibleToken [!toc]
+- [name()](#ConfidentialFungibleToken-name--)
+- [symbol()](#ConfidentialFungibleToken-symbol--)
+- [decimals()](#ConfidentialFungibleToken-decimals--)
+- [tokenURI()](#ConfidentialFungibleToken-tokenURI--)
+- [confidentialBalanceOf(account)](#ConfidentialFungibleToken-confidentialBalanceOf-address-)
+- [isOperator(holder, spender)](#ConfidentialFungibleToken-isOperator-address-address-)
+- [setOperator(operator, until)](#ConfidentialFungibleToken-setOperator-address-uint48-)
+- [confidentialTransfer(to, encryptedAmount, inputProof)](#ConfidentialFungibleToken-confidentialTransfer-address-externalEuint64-bytes-)
+- [confidentialTransfer(to, amount)](#ConfidentialFungibleToken-confidentialTransfer-address-euint64-)
+- [confidentialTransferFrom(from, to, encryptedAmount, inputProof)](#ConfidentialFungibleToken-confidentialTransferFrom-address-address-externalEuint64-bytes-)
+- [confidentialTransferFrom(from, to, amount)](#ConfidentialFungibleToken-confidentialTransferFrom-address-address-euint64-)
+- [confidentialTransferAndCall(to, encryptedAmount, inputProof, data)](#ConfidentialFungibleToken-confidentialTransferAndCall-address-externalEuint64-bytes-bytes-)
+- [confidentialTransferAndCall(to, amount, data)](#ConfidentialFungibleToken-confidentialTransferAndCall-address-euint64-bytes-)
+- [confidentialTransferFromAndCall(from, to, encryptedAmount, inputProof, data)](#ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-externalEuint64-bytes-bytes-)
+- [confidentialTransferFromAndCall(from, to, amount, data)](#ConfidentialFungibleToken-confidentialTransferFromAndCall-address-address-euint64-bytes-)
+- [discloseEncryptedAmount(encryptedAmount)](#ConfidentialFungibleToken-discloseEncryptedAmount-euint64-)
+- [finalizeDiscloseEncryptedAmount(requestId, amount, signatures)](#ConfidentialFungibleToken-finalizeDiscloseEncryptedAmount-uint256-uint64-bytes---)
+- [_setOperator(holder, operator, until)](#ConfidentialFungibleToken-_setOperator-address-address-uint48-)
+- [_mint(to, amount)](#ConfidentialFungibleToken-_mint-address-euint64-)
+- [_burn(from, amount)](#ConfidentialFungibleToken-_burn-address-euint64-)
+- [_transfer(from, to, amount)](#ConfidentialFungibleToken-_transfer-address-address-euint64-)
+- [_transferAndCall(from, to, amount, data)](#ConfidentialFungibleToken-_transferAndCall-address-address-euint64-bytes-)
+#### IConfidentialFungibleToken [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### VotesConfidential [!toc]
+- [DelegateVotesChanged(delegate, previousVotes, newVotes)](#VotesConfidential-DelegateVotesChanged-address-euint64-euint64-)
+- [DelegateChanged(delegator, fromDelegate, toDelegate)](#VotesConfidential-DelegateChanged-address-address-address-)
+#### HandleAccessManager [!toc]
+#### IERC6372 [!toc]
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+#### Nonces [!toc]
+#### ConfidentialFungibleToken [!toc]
+#### IConfidentialFungibleToken [!toc]
+- [OperatorSet(holder, operator, until)](#IConfidentialFungibleToken-OperatorSet-address-address-uint48-)
+- [ConfidentialTransfer(from, to, amount)](#IConfidentialFungibleToken-ConfidentialTransfer-address-address-euint64-)
+- [AmountDisclosed(encryptedAmount, amount)](#IConfidentialFungibleToken-AmountDisclosed-euint64-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### VotesConfidential [!toc]
+- [VotesExpiredSignature(expiry)](#VotesConfidential-VotesExpiredSignature-uint256-)
+- [ERC6372InconsistentClock()](#VotesConfidential-ERC6372InconsistentClock--)
+- [ERC5805FutureLookup(timepoint, clock)](#VotesConfidential-ERC5805FutureLookup-uint256-uint48-)
+#### HandleAccessManager [!toc]
+#### IERC6372 [!toc]
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+#### Nonces [!toc]
+- [InvalidAccountNonce(account, currentNonce)](#Nonces-InvalidAccountNonce-address-uint256-)
+#### ConfidentialFungibleToken [!toc]
+- [ConfidentialFungibleTokenInvalidReceiver(receiver)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidReceiver-address-)
+- [ConfidentialFungibleTokenInvalidSender(sender)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidSender-address-)
+- [ConfidentialFungibleTokenUnauthorizedSpender(holder, spender)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedSpender-address-address-)
+- [ConfidentialFungibleTokenZeroBalance(holder)](#ConfidentialFungibleToken-ConfidentialFungibleTokenZeroBalance-address-)
+- [ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount(amount, user)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount-euint64-address-)
+- [ConfidentialFungibleTokenUnauthorizedCaller(caller)](#ConfidentialFungibleToken-ConfidentialFungibleTokenUnauthorizedCaller-address-)
+- [ConfidentialFungibleTokenInvalidGatewayRequest(requestId)](#ConfidentialFungibleToken-ConfidentialFungibleTokenInvalidGatewayRequest-uint256-)
+#### IConfidentialFungibleToken [!toc]
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenVotes-confidentialTotalSupply--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTotalSupply() → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenVotes-confidentialTotalSupply--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the confidential total supply of the token.
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenVotes-_update-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, euint64 amount) → euint64 transferred</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenVotes-_update-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenVotes-_getVotingUnits-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getVotingUnits(address account) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenVotes-_getVotingUnits-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenUtils"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ConfidentialFungibleTokenUtils`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/token/utils/ConfidentialFungibleTokenUtils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/token/utils/ConfidentialFungibleTokenUtils.sol";
+```
+
+Library that provides common [`ConfidentialFungibleToken`](#ConfidentialFungibleToken) utility functions.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [checkOnTransferReceived(operator, from, to, amount, data)](#ConfidentialFungibleTokenUtils-checkOnTransferReceived-address-address-address-euint64-bytes-)
+</div>
+</div>
+
+<a id="ConfidentialFungibleTokenUtils-checkOnTransferReceived-address-address-address-euint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">checkOnTransferReceived(address operator, address from, address to, euint64 amount, bytes data) → ebool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ConfidentialFungibleTokenUtils-checkOnTransferReceived-address-address-address-euint64-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Performs a transfer callback to the recipient of the transfer `to`. Should be invoked
+after all transfers "withCallback" on a [`ConfidentialFungibleToken`](#ConfidentialFungibleToken).
+
+The transfer callback is not invoked on the recipient if the recipient has no code (i.e. is an EOA). If the
+recipient has non-zero code, it must implement
+[`IConfidentialFungibleTokenReceiver.onConfidentialTransferReceived`](./interfaces#IConfidentialFungibleTokenReceiver-onConfidentialTransferReceived-address-address-euint64-bytes-) and return an `ebool` indicating
+whether the transfer was accepted or not. If the `ebool` is `false`, the transfer will be reversed.
+
+</div>
+</div>

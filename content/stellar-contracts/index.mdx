@@ -1,0 +1,69 @@
+---
+title: Stellar Smart Contracts Suite
+---
+
+Explore our comprehensive suite of secure and scalable smart contract utilities for Stellar Soroban.
+Our libraries provide robust implementations for fungible and non-fungible tokens, along with powerful tools
+for access control and contract management.
+
+## Accounts
+
+*   **[Smart Account](/stellar-contracts/accounts/smart-account)**: Context-centric framework for Soroban smart accounts composing authorization intents through signers and policies.
+
+## Tokens
+
+*   **[Fungible Tokens](/stellar-contracts/tokens/fungible/fungible)**: Digital assets representing a fixed or dynamic supply of identical units.
+*   **[Non-Fungible Tokens (NFTs)](/stellar-contracts/tokens/non-fungible/non-fungible)**: Unique digital assets with verifiable ownership.
+*   **[Real World Assets (RWAs)](/stellar-contracts/tokens/rwa/rwa)**: Digital assets representing real-world assets.
+*   **[Vault](/stellar-contracts/tokens/vault/vault)**: Digital assets representing a fixed or dynamic supply of identical units.
+
+## Access Control
+
+*   **[Ownable](/stellar-contracts/access/ownable)**: A simple mechanism with a single account authorized for all privileged actions.
+*   **[Role-Based Access Control](/stellar-contracts/access/access-control)**: A flexible mechanism with distinct roles for each privileged action.
+
+## Utilities
+
+*   **[Pausable](/stellar-contracts/utils/pausable)**: Pause and unpause contract functions, useful for emergency response.
+*   **[Upgradeable](/stellar-contracts/utils/upgradeable)**: Manage contract upgrades and data migrations seamlessly.
+*   **[Cryptography](/stellar-contracts/utils/crypto/crypto)**: A set of cryptographic primitives and utilities for Soroban contracts.
+
+## Security and Audits
+
+Our contracts are built with security as a top priority. You can find our audit reports [here](https://github.com/OpenZeppelin/stellar-contracts/tree/main/audits).
+
+## Error Codes
+In Stellar Soroban, each error variant is assigned an integer. To prevent duplication of error codes,
+we use the following convention:
+
+* Fungible: `1XX`
+* Non-Fungible: `2XX`
+* RWA: `3XX`
+* Vault: `4XX`
+
+Any future tokens will continue from `5XX`, `6XX`, and so on.
+
+Similarly, utilities and other modules have their own error codes:
+
+* Utilities: `1XXX`
+  * Pausable: `10XX`
+  * Upgradeable: `11XX`
+  * Merkle Distributor: `13XX`
+  * Crypto: `14XX`
+  * Math: `15XX`
+* Access: `2XXX`
+  * Access Control: `20XX`
+  * Ownable: `21XX`
+  * Role Transfer (internal common module for 2-step role transfer): `22XX`
+* Accounts: `3XXX`
+
+## Important Notes
+As a deliberate design choice, this library manages the TTL for temporary and persistent storage items.
+To provide flexibility to the owner of the contract, this library deliberately does not manage the TTL for instance storage items.
+It is the responsibility of the developer to manage the TTL for instance storage items.
+
+## Audits
+You can find our audit reports [here](https://github.com/OpenZeppelin/stellar-contracts/tree/main/audits).
+
+## Get Started
+Get started [here](/stellar-contracts/get-started).

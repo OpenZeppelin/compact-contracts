@@ -1,0 +1,469 @@
+---
+title: Common (Token)
+---
+
+import { UMBRELLA_VERSION } from "../utils/constants.js";
+
+This module provides extensions and utilities that are common to multiple token standards.
+
+## Interfaces
+
+### [](#IERC2981)`IERC2981` [toc] [#IERC2981]
+
+<APIGithubLinkHeader moduleName="IERC2981" link={`https://github.com/OpenZeppelin/cairo-contracts/blob/${UMBRELLA_VERSION}/packages/token/src/common/erc2981/interface.cairo`} />
+
+```rust
+use openzeppelin_token::common::erc2981::interface::IERC2981;
+```
+
+[SRC5 ID](./introspection#ISRC5)
+
+```text
+0x2d3414e45a8700c29f119a54b9f11dca0e29e06ddcb214018fc37340e165ed6
+```
+
+Interface of the ERC2981 standard as defined in [EIP-2981](https://eips.ethereum.org/EIPS/eip-2981).
+
+Functions
+
+- [`royalty_info(token_id, sale_price)`](#IERC2981-royalty_info)
+
+#### [](#IERC2981-Functions)Functions [!toc]
+
+<APIItem
+  functionSignature="royalty_info(token_id: u256, sale_price: u256) → (ContractAddress, u256)"
+  id="IERC2981-royalty_info"
+  kind="external"
+>
+Returns how much royalty is owed and to whom, based on a sale price that may be denominated in any unit of exchange. The royalty amount is denominated and must be paid in that same unit of exchange.
+</APIItem>
+
+### [](#IERC2981Info)`IERC2981Info` [toc] [#IERC2981Info]
+
+<APIGithubLinkHeader moduleName="IERC2981Info" link={`https://github.com/OpenZeppelin/cairo-contracts/blob/${UMBRELLA_VERSION}/packages/token/src/common/erc2981/interface.cairo`} />
+
+```rust
+use openzeppelin_token::common::erc2981::interface::IERC2981Info;
+```
+
+Interface providing external read functions for discovering the state of ERC2981 component.
+
+Functions
+
+- [`default_royalty()`](#IERC2981Info-default_royalty)
+- [`token_royalty(token_id)`](#IERC2981Info-token_royalty)
+
+#### [](#IERC2981Info-Functions)Functions [!toc]
+
+<APIItem
+  functionSignature="default_royalty() → (ContractAddress, u128, u128)"
+  id="IERC2981Info-default_royalty"
+  kind="external"
+>
+Returns the royalty information that all ids in this contract will default to.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The numerator of the royalty fraction.
+- `t.2`: The denominator of the royalty fraction.
+</APIItem>
+
+<APIItem
+  functionSignature="token_royalty(token_id: u256) → (ContractAddress, u128, u128)"
+  id="IERC2981Info-token_royalty"
+  kind="external"
+>
+Returns the royalty information specific to a token.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The numerator of the royalty fraction.
+- `t.2`: The denominator of the royalty fraction.
+</APIItem>
+
+### [](#IERC2981Admin)`IERC2981Admin` [toc] [#IERC2981Admin]
+
+<APIGithubLinkHeader moduleName="IERC2981Admin" link={`https://github.com/OpenZeppelin/cairo-contracts/blob/${UMBRELLA_VERSION}/packages/token/src/common/erc2981/interface.cairo`} />
+
+```rust
+use openzeppelin_token::common::erc2981::interface::IERC2981Admin;
+```
+
+Interface providing external admin functions for managing the settings of ERC2981 component.
+
+Functions
+
+- [`set_default_royalty(receiver, fee_numerator)`](#IERC2981Admin-set_default_royalty)
+- [`delete_default_royalty()`](#IERC2981Admin-delete_default_royalty)
+- [`set_token_royalty(token_id, receiver, fee_numerator)`](#IERC2981Admin-set_token_royalty)
+- [`reset_token_royalty(token_id)`](#IERC2981Admin-reset_token_royalty)
+
+#### [](#IERC2981Admin-Functions)Functions [!toc]
+
+<APIItem
+  functionSignature="set_default_royalty(receiver: ContractAddress, fee_numerator: u128)"
+  id="IERC2981Admin-set_default_royalty"
+  kind="external"
+>
+Sets the royalty information that all ids in this contract will default to.
+</APIItem>
+
+<APIItem
+  functionSignature="delete_default_royalty()"
+  id="IERC2981Admin-delete_default_royalty"
+  kind="external"
+>
+Sets the default royalty percentage and receiver to zero.
+</APIItem>
+
+<APIItem
+  functionSignature="set_token_royalty(token_id: u256, receiver: ContractAddress, fee_numerator: u128)"
+  id="IERC2981Admin-set_token_royalty"
+  kind="external"
+>
+Sets the royalty information for a specific token id that takes precedence over the global default.
+</APIItem>
+
+<APIItem
+  functionSignature="reset_token_royalty(token_id: u256)"
+  id="IERC2981Admin-reset_token_royalty"
+  kind="external"
+>
+Resets royalty information for the token id back to unset.
+</APIItem>
+
+## [](#erc2981)ERC2981
+
+### [](#ERC2981Component)`ERC2981Component` [toc] [#ERC2981Component]
+
+<APIGithubLinkHeader moduleName="ERC2981Component" link={`https://github.com/OpenZeppelin/cairo-contracts/blob/${UMBRELLA_VERSION}/packages/token/src/common/erc2981/erc2981.cairo`} />
+
+```rust
+use openzeppelin_token::common::erc2981::ERC2981Component;
+```
+
+ERC2981 component extending [IERC2981](#IERC2981).
+
+[Immutable Component Config](../components#immutable-config)
+
+constants
+
+- [`FEE_DENOMINATOR`](#ERC2981Component-IC-FEE_DENOMINATOR)
+
+functions
+
+- [`validate()`](#ERC2981Component-IC-validate)
+
+Embeddable Implementations
+
+ERC2981Impl
+
+- [`royalty_info(self, token_id, sale_price)`](#ERC2981Component-royalty_info)
+
+ERC2981InfoImpl
+
+- [`default_royalty(self)`](#ERC2981InfoImpl-default_royalty)
+- [`token_royalty(self, token_id)`](#ERC2981InfoImpl-token_royalty)
+
+ERC2981AdminOwnableImpl
+
+- [`set_default_royalty(self, receiver, fee_numerator)`](#ERC2981AdminOwnableImpl-set_default_royalty)
+- [`delete_default_royalty(self)`](#ERC2981AdminOwnableImpl-delete_default_royalty)
+- [`set_token_royalty(self, token_id, receiver, fee_numerator)`](#ERC2981AdminOwnableImpl-set_token_royalty)
+- [`reset_token_royalty(self, token_id)`](#ERC2981AdminOwnableImpl-reset_token_royalty)
+
+ERC2981AdminAccessControlImpl
+
+- [`set_default_royalty(self, receiver, fee_numerator)`](#ERC2981AdminAccessControlImpl-set_default_royalty)
+- [`delete_default_royalty(self)`](#ERC2981AdminAccessControlImpl-delete_default_royalty)
+- [`set_token_royalty(self, token_id, receiver, fee_numerator)`](#ERC2981AdminAccessControlImpl-set_token_royalty)
+- [`reset_token_royalty(self, token_id)`](#ERC2981AdminAccessControlImpl-reset_token_royalty)
+
+Internal implementations
+
+InternalImpl
+
+- [`initializer(self, default_receiver, default_royalty_fraction)`](#ERC2981Component-initializer)
+- [`_default_royalty(self)`](#ERC2981Component-_default_royalty)
+- [`_set_default_royalty(self, receiver, fee_numerator)`](#ERC2981Component-_set_default_royalty)
+- [`_delete_default_royalty(self)`](#ERC2981Component-_delete_default_royalty)
+- [`_token_royalty(self, token_id)`](#ERC2981Component-_token_royalty)
+- [`_set_token_royalty(self, token_id, receiver, fee_numerator)`](#ERC2981Component-_set_token_royalty)
+- [`_reset_token_royalty(self, token_id)`](#ERC2981Component-_reset_token_royalty)
+
+#### [](#ERC2981Component-Immutable-Config)Immutable Config constants [!toc]
+
+<APIItem
+  functionSignature="FEE_DENOMINATOR: u128"
+  id="ERC2981Component-IC-FEE_DENOMINATOR"
+  kind="constant"
+>
+The denominator with which to interpret the fee set in `_set_token_royalty` and `_set_default_royalty` as a fraction of the sale price.
+</APIItem>
+
+<APIItem
+  functionSignature="validate()"
+  id="ERC2981Component-IC-validate"
+  kind="internal"
+>
+Validates the given implementation of the contract's configuration.
+
+Requirements:
+
+- `FEE_DENOMINATOR` must be greater than 0.
+
+This function is called by the contract's initializer.
+</APIItem>
+
+#### [](#ERC2981Component-Embeddable-functions)Embeddable functions [!toc]
+
+<APIItem
+  functionSignature="royalty_info(@self: ContractState, token_id: u256, sale_price: u256) → (ContractAddress, u256)"
+  id="ERC2981Component-royalty_info"
+  kind="external"
+>
+Returns how much royalty is owed and to whom, based on a sale price that may be denominated in any unit of exchange. The royalty amount is denominated and should be paid in that same unit of exchange.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The amount of royalty payment.
+</APIItem>
+
+<APIItem
+  functionSignature="default_royalty(@self: ContractState) → (ContractAddress, u128, u128)"
+  id="ERC2981InfoImpl-default_royalty"
+  kind="external"
+>
+Returns the royalty information that all ids in this contract will default to.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The numerator of the royalty fraction.
+- `t.2`: The denominator of the royalty fraction.
+</APIItem>
+
+<APIItem
+  functionSignature="token_royalty(self: @ContractState, token_id: u256) → (ContractAddress, u128, u128)"
+  id="ERC2981InfoImpl-token_royalty"
+  kind="external"
+>
+Returns the royalty information specific to a token. If no specific royalty information is set for the token, the default is returned.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The numerator of the royalty fraction.
+- `t.2`: The denominator of the royalty fraction.
+</APIItem>
+
+#### [](#ERC2981Component-ERC2981AdminOwnableImpl)ERC2981AdminOwnableImpl [!toc]
+
+Provides admin functions for managing royalty settings that are restricted to be called only by the contract's owner. Requires the contract to implement [OwnableComponent](./access#OwnableComponent).
+
+<APIItem
+  functionSignature="set_default_royalty(ref self: ContractState, receiver: ContractAddress, fee_numerator: u128)"
+  id="ERC2981AdminOwnableImpl-set_default_royalty"
+  kind="external"
+>
+Sets the royalty information that all ids in this contract will default to.
+
+Requirements:
+
+- The caller is the contract owner.
+- `receiver` cannot be the zero address.
+- `fee_numerator` cannot be greater than the fee denominator.
+</APIItem>
+
+<APIItem
+  functionSignature="delete_default_royalty(ref self: ContractState)"
+  id="ERC2981AdminOwnableImpl-delete_default_royalty"
+  kind="external"
+>
+Sets the default royalty percentage and receiver to zero.
+
+Requirements:
+
+- The caller is the contract owner.
+</APIItem>
+
+<APIItem
+  functionSignature="set_token_royalty(ref self: ContractState, token_id: u256, receiver: ContractAddress, fee_numerator: u128)"
+  id="ERC2981AdminOwnableImpl-set_token_royalty"
+  kind="external"
+>
+Sets the royalty information for a specific token id that takes precedence over the global default.
+
+Requirements:
+
+- The caller is the contract owner.
+- `receiver` cannot be the zero address.
+- `fee_numerator` cannot be greater than the fee denominator.
+</APIItem>
+
+<APIItem
+  functionSignature="reset_token_royalty(ref self: ContractState, token_id: u256)"
+  id="ERC2981AdminOwnableImpl-reset_token_royalty"
+  kind="external"
+>
+Resets royalty information for the token id back to unset.
+
+Requirements:
+
+- The caller is the contract owner.
+</APIItem>
+
+#### [](#ERC2981Component-ERC2981AdminAccessControlImpl)ERC2981AdminAccessControlImpl [!toc]
+
+Provides admin functions for managing royalty settings that require `ROYALTY_ADMIN_ROLE` to be granted to the caller. Requires the contract to implement [AccessControlComponent](./access#AccessControlComponent).
+
+<APIItem
+  functionSignature="ROYALTY_ADMIN_ROLE: felt252"
+  id="ERC2981AdminAccessControlImpl-ROYALTY_ADMIN_ROLE"
+  kind="constant"
+>
+Role for the admin responsible for managing royalty settings.
+</APIItem>
+
+<APIItem
+  functionSignature="set_default_royalty(ref self: ContractState, receiver: ContractAddress, fee_numerator: u128)"
+  id="ERC2981AdminAccessControlImpl-set_default_royalty"
+  kind="external"
+>
+Sets the royalty information that all ids in this contract will default to.
+
+Requirements:
+
+- The caller must have `ROYALTY_ADMIN_ROLE` role.
+- `receiver` cannot be the zero address.
+- `fee_numerator` cannot be greater than the fee denominator.
+</APIItem>
+
+<APIItem
+  functionSignature="delete_default_royalty(ref self: ContractState)"
+  id="ERC2981AdminAccessControlImpl-delete_default_royalty"
+  kind="external"
+>
+Sets the default royalty percentage and receiver to zero.
+
+Requirements:
+
+- The caller must have `ROYALTY_ADMIN_ROLE` role.
+</APIItem>
+
+<APIItem
+  functionSignature="set_token_royalty(ref self: ContractState, token_id: u256, receiver: ContractAddress, fee_numerator: u128)"
+  id="ERC2981AdminAccessControlImpl-set_token_royalty"
+  kind="external"
+>
+Sets the royalty information for a specific token id that takes precedence over the global default.
+
+Requirements:
+
+- The caller must have `ROYALTY_ADMIN_ROLE` role.
+- `receiver` cannot be the zero address.
+- `fee_numerator` cannot be greater than the fee denominator.
+</APIItem>
+
+<APIItem
+  functionSignature="reset_token_royalty(ref self: ContractState, token_id: u256)"
+  id="ERC2981AdminAccessControlImpl-reset_token_royalty"
+  kind="external"
+>
+Resets royalty information for the token id back to unset.
+
+Requirements:
+
+- The caller must have `ROYALTY_ADMIN_ROLE` role.
+</APIItem>
+
+#### [](#ERC2981Component-Internal-functions)Internal functions [!toc]
+
+<APIItem
+  functionSignature="initializer(ref self: ContractState, default_receiver: ContractAddress, default_royalty_fraction: u128)"
+  id="ERC2981Component-initializer"
+  kind="internal"
+>
+Initializes the contract by setting the default royalty and registering the supported interface.
+
+Requirements:
+
+- `default_receiver` cannot be the zero address.
+- `default_royalty_fraction` cannot be greater than the fee denominator.
+- The fee denominator must be greater than 0.
+
+The fee denominator is set by the contract using the [Immutable Component Config](../components#immutable-config).
+</APIItem>
+
+<APIItem
+  functionSignature="_default_royalty(self: @ContractState) → (ContractAddress, u128, u128)"
+  id="ERC2981Component-_default_royalty"
+  kind="internal"
+>
+Returns the royalty information that all ids in this contract will default to.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The numerator of the royalty fraction.
+- `t.2`: The denominator of the royalty fraction.
+</APIItem>
+
+<APIItem
+  functionSignature="_set_default_royalty(ref self: ContractState, receiver: ContractAddress, fee_numerator: u128)"
+  id="ERC2981Component-_set_default_royalty"
+  kind="internal"
+>
+Sets the royalty information that all ids in this contract will default to.
+
+Requirements:
+
+- `receiver` cannot be the zero address.
+- `fee_numerator` cannot be greater than the fee denominator.
+</APIItem>
+
+<APIItem
+  functionSignature="_delete_default_royalty(ref self: ContractState)"
+  id="ERC2981Component-_delete_default_royalty"
+  kind="internal"
+>
+Sets the default royalty percentage and receiver to zero.
+</APIItem>
+
+<APIItem
+  functionSignature="_token_royalty(self: @ContractState, token_id: u256) → (ContractAddress, u256, u256)"
+  id="ERC2981Component-_token_royalty"
+  kind="internal"
+>
+Returns the royalty information that all ids in this contract will default to.
+
+The returned tuple contains:
+
+- `t.0`: The receiver of the royalty payment.
+- `t.1`: The numerator of the royalty fraction.
+- `t.2`: The denominator of the royalty fraction.
+</APIItem>
+
+<APIItem
+  functionSignature="_set_token_royalty(ref self: ContractState, token_id: u256, receiver: ContractAddress, fee_numerator: u128)"
+  id="ERC2981Component-_set_token_royalty"
+  kind="internal"
+>
+Sets the royalty information for a specific token id that takes precedence over the global default.
+
+Requirements:
+
+- `receiver` cannot be the zero address.
+- `fee_numerator` cannot be greater than the fee denominator.
+</APIItem>
+
+<APIItem
+  functionSignature="_reset_token_royalty(ref self: ContractState, token_id: u256)"
+  id="ERC2981Component-_reset_token_royalty"
+  kind="internal"
+>
+Resets royalty information for the token id back to unset.
+</APIItem>

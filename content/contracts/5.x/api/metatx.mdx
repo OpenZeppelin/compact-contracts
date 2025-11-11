@@ -1,0 +1,563 @@
+---
+title: "Metatx"
+description: "Smart contract metatx utilities and implementations"
+---
+
+This directory includes contracts for adding meta-transaction capabilities (i.e. abstracting the execution context from the transaction origin) following the [ERC-2771 specification](https://eips.ethereum.org/EIPS/eip-2771).
+
+* [`ERC2771Context`](#ERC2771Context): Provides a mechanism to override the sender and calldata of the execution context (`msg.sender` and `msg.data`) with a custom value specified by a trusted forwarder.
+* [`ERC2771Forwarder`](#ERC2771Forwarder): A production-ready forwarder that relays operation requests signed off-chain by an EOA.
+
+## Core
+
+[`ERC2771Context`](#ERC2771Context)
+
+## Utils
+
+[`ERC2771Forwarder`](#ERC2771Forwarder)
+
+<a id="ERC2771Context"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC2771Context`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/metatx/ERC2771Context.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+```
+
+Context variant with ERC-2771 support.
+
+<Callout type="warn">
+Avoid using this pattern in contracts that rely on a specific calldata length as they'll
+be affected by any forwarder whose `msg.data` is suffixed with the `from` address according to the ERC-2771
+specification adding the address size in bytes (20) to the calldata size. An example of an unexpected
+behavior could be an unintended fallback (or another function) invocation while trying to invoke the `receive`
+function only accessible if `msg.data.length == 0`.
+</Callout>
+
+<Callout type="warn">
+The usage of `delegatecall` in this contract is dangerous and may result in context corruption.
+Any forwarded request to this contract triggering a `delegatecall` to itself will result in an invalid [`ERC2771Context._msgSender`](#ERC2771Context-_msgSender--)
+recovery.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(trustedForwarder_)](#ERC2771Context-constructor-address-)
+- [trustedForwarder()](#ERC2771Context-trustedForwarder--)
+- [isTrustedForwarder(forwarder)](#ERC2771Context-isTrustedForwarder-address-)
+- [_msgSender()](#ERC2771Context-_msgSender--)
+- [_msgData()](#ERC2771Context-_msgData--)
+- [_contextSuffixLength()](#ERC2771Context-_contextSuffixLength--)
+</div>
+</div>
+
+<a id="ERC2771Context-constructor-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(address trustedForwarder_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-constructor-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC2771Context-trustedForwarder--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">trustedForwarder() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Context-trustedForwarder--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the trusted forwarder.
+
+</div>
+</div>
+
+<a id="ERC2771Context-isTrustedForwarder-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isTrustedForwarder(address forwarder) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Context-isTrustedForwarder-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Indicates whether any particular address is the trusted forwarder.
+
+</div>
+</div>
+
+<a id="ERC2771Context-_msgSender--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_msgSender() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-_msgSender--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Override for `msg.sender`. Defaults to the original `msg.sender` whenever
+a call is not performed by the trusted forwarder or the calldata length is less than
+20 bytes (an address length).
+
+</div>
+</div>
+
+<a id="ERC2771Context-_msgData--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_msgData() → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-_msgData--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Override for `msg.data`. Defaults to the original `msg.data` whenever
+a call is not performed by the trusted forwarder or the calldata length is less than
+20 bytes (an address length).
+
+</div>
+</div>
+
+<a id="ERC2771Context-_contextSuffixLength--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_contextSuffixLength() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-_contextSuffixLength--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+ERC-2771 specifies the context as being a single address (20 bytes).
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC2771Forwarder`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/metatx/ERC2771Forwarder.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
+```
+
+A forwarder compatible with ERC-2771 contracts. See [`ERC2771Context`](#ERC2771Context).
+
+This forwarder operates on forward requests that include:
+
+* `from`: An address to operate on behalf of. It is required to be equal to the request signer.
+* `to`: The address that should be called.
+* `value`: The amount of native token to attach with the requested call.
+* `gas`: The amount of gas limit that will be forwarded with the requested call.
+* `nonce`: A unique transaction ordering identifier to avoid replayability and request invalidation.
+* `deadline`: A timestamp after which the request is not executable anymore.
+* `data`: Encoded `msg.data` to send with the requested call.
+
+Relayers are able to submit batches if they are processing a high volume of requests. With high
+throughput, relayers may run into limitations of the chain such as limits on the number of
+transactions in the mempool. In these cases the recommendation is to distribute the load among
+multiple accounts.
+
+<Callout>
+Batching requests includes an optional refund for unused `msg.value` that is achieved by
+performing a call with empty calldata. While this is within the bounds of ERC-2771 compliance,
+if the refund receiver happens to consider the forwarder a trusted forwarder, it MUST properly
+handle `msg.data.length == 0`. `ERC2771Context` in OpenZeppelin Contracts versions prior to 4.9.3
+do not handle this properly.
+</Callout>
+
+==== Security Considerations
+
+If a relayer submits a forward request, it should be willing to pay up to 100% of the gas amount
+specified in the request. This contract does not implement any kind of retribution for this gas,
+and it is assumed that there is an out of band incentive for relayers to pay for execution on
+behalf of signers. Often, the relayer is operated by a project that will consider it a user
+acquisition cost.
+
+By offering to pay for gas, relayers are at risk of having that gas used by an attacker toward
+some other purpose that is not aligned with the expected out of band incentives. If you operate a
+relayer, consider whitelisting target contracts and function selectors. When relaying ERC-721 or
+ERC-1155 transfers specifically, consider rejecting the use of the `data` field, since it can be
+used to execute arbitrary code.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(name)](#ERC2771Forwarder-constructor-string-)
+- [verify(request)](#ERC2771Forwarder-verify-struct-ERC2771Forwarder-ForwardRequestData-)
+- [execute(request)](#ERC2771Forwarder-execute-struct-ERC2771Forwarder-ForwardRequestData-)
+- [executeBatch(requests, refundReceiver)](#ERC2771Forwarder-executeBatch-struct-ERC2771Forwarder-ForwardRequestData---address-payable-)
+- [_validate(request)](#ERC2771Forwarder-_validate-struct-ERC2771Forwarder-ForwardRequestData-)
+- [_recoverForwardRequestSigner(request)](#ERC2771Forwarder-_recoverForwardRequestSigner-struct-ERC2771Forwarder-ForwardRequestData-)
+- [_execute(request, requireValidRequest)](#ERC2771Forwarder-_execute-struct-ERC2771Forwarder-ForwardRequestData-bool-)
+- [_isTrustedByTarget(target)](#ERC2771Forwarder-_isTrustedByTarget-address-)
+#### Nonces [!toc]
+- [nonces(owner)](#Nonces-nonces-address-)
+- [_useNonce(owner)](#Nonces-_useNonce-address-)
+- [_useCheckedNonce(owner, nonce)](#Nonces-_useCheckedNonce-address-uint256-)
+#### EIP712 [!toc]
+- [_domainSeparatorV4()](#EIP712-_domainSeparatorV4--)
+- [_hashTypedDataV4(structHash)](#EIP712-_hashTypedDataV4-bytes32-)
+- [eip712Domain()](#EIP712-eip712Domain--)
+- [_EIP712Name()](#EIP712-_EIP712Name--)
+- [_EIP712Version()](#EIP712-_EIP712Version--)
+#### IERC5267 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [ExecutedForwardRequest(signer, nonce, success)](#ERC2771Forwarder-ExecutedForwardRequest-address-uint256-bool-)
+#### Nonces [!toc]
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC2771ForwarderInvalidSigner(signer, from)](#ERC2771Forwarder-ERC2771ForwarderInvalidSigner-address-address-)
+- [ERC2771ForwarderMismatchedValue(requestedValue, msgValue)](#ERC2771Forwarder-ERC2771ForwarderMismatchedValue-uint256-uint256-)
+- [ERC2771ForwarderExpiredRequest(deadline)](#ERC2771Forwarder-ERC2771ForwarderExpiredRequest-uint48-)
+- [ERC2771UntrustfulTarget(target, forwarder)](#ERC2771Forwarder-ERC2771UntrustfulTarget-address-address-)
+#### Nonces [!toc]
+- [InvalidAccountNonce(account, currentNonce)](#Nonces-InvalidAccountNonce-address-uint256-)
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+</div>
+</div>
+
+<a id="ERC2771Forwarder-constructor-string-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(string name)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Forwarder-constructor-string-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`EIP712.constructor`](/contracts/5.x/api/utils/cryptography#EIP712-constructor-string-string-).
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-verify-struct-ERC2771Forwarder-ForwardRequestData-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(struct ERC2771Forwarder.ForwardRequestData request) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Forwarder-verify-struct-ERC2771Forwarder-ForwardRequestData-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `true` if a request is valid for a provided `signature` at the current block timestamp.
+
+A transaction is considered valid when the target trusts this forwarder, the request hasn't expired
+(deadline is not met), and the signer matches the `from` parameter of the signed request.
+
+<Callout>
+A request may return false here but it won't cause [`TimelockController.executeBatch`](/contracts/5.x/api/governance#TimelockController-executeBatch-address---uint256---bytes---bytes32-bytes32-) to revert if a refund
+receiver is provided.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-execute-struct-ERC2771Forwarder-ForwardRequestData-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execute(struct ERC2771Forwarder.ForwardRequestData request)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Forwarder-execute-struct-ERC2771Forwarder-ForwardRequestData-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes a `request` on behalf of `signature`'s signer using the ERC-2771 protocol. The gas
+provided to the requested call may not be exactly the amount requested, but the call will not run
+out of gas. Will revert if the request is invalid or the call reverts, in this case the nonce is not consumed.
+
+Requirements:
+
+- The request value should be equal to the provided `msg.value`.
+- The request should be valid according to [`IERC7913SignatureVerifier.verify`](/contracts/5.x/api/interfaces#IERC7913SignatureVerifier-verify-bytes-bytes32-bytes-).
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-executeBatch-struct-ERC2771Forwarder-ForwardRequestData---address-payable-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">executeBatch(struct ERC2771Forwarder.ForwardRequestData[] requests, address payable refundReceiver)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Forwarder-executeBatch-struct-ERC2771Forwarder-ForwardRequestData---address-payable-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Batch version of [`AccessManager.execute`](/contracts/5.x/api/access#AccessManager-execute-address-bytes-) with optional refunding and atomic execution.
+
+In case a batch contains at least one invalid request (see [`IERC7913SignatureVerifier.verify`](/contracts/5.x/api/interfaces#IERC7913SignatureVerifier-verify-bytes-bytes32-bytes-)), the
+request will be skipped and the `refundReceiver` parameter will receive back the
+unused requested value at the end of the execution. This is done to prevent reverting
+the entire batch when a request is invalid or has already been submitted.
+
+If the `refundReceiver` is the `address(0)`, this function will revert when at least
+one of the requests was not valid instead of skipping it. This could be useful if
+a batch is required to get executed atomically (at least at the top-level). For example,
+refunding (and thus atomicity) can be opt-out if the relayer is using a service that avoids
+including reverted transactions.
+
+Requirements:
+
+- The sum of the requests' values should be equal to the provided `msg.value`.
+- All of the requests should be valid (see [`IERC7913SignatureVerifier.verify`](/contracts/5.x/api/interfaces#IERC7913SignatureVerifier-verify-bytes-bytes32-bytes-)) when `refundReceiver` is the zero address.
+
+<Callout>
+Setting a zero `refundReceiver` guarantees an all-or-nothing requests execution only for
+the first-level forwarded calls. In case a forwarded request calls to a contract with another
+subcall, the second-level call may revert without the top-level call reverting.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-_validate-struct-ERC2771Forwarder-ForwardRequestData-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validate(struct ERC2771Forwarder.ForwardRequestData request) → bool isTrustedForwarder, bool active, bool signerMatch, address signer</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Forwarder-_validate-struct-ERC2771Forwarder-ForwardRequestData-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates if the provided request can be executed at current block timestamp with
+the given `request.signature` on behalf of `request.signer`.
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-_recoverForwardRequestSigner-struct-ERC2771Forwarder-ForwardRequestData-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_recoverForwardRequestSigner(struct ERC2771Forwarder.ForwardRequestData request) → bool isValid, address signer</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Forwarder-_recoverForwardRequestSigner-struct-ERC2771Forwarder-ForwardRequestData-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns a tuple with the recovered the signer of an EIP712 forward request message hash
+and a boolean indicating if the signature is valid.
+
+<Callout>
+The signature is considered valid if [`ECDSA.tryRecover`](/contracts/5.x/api/utils/cryptography#ECDSA-tryRecover-bytes32-uint8-bytes32-bytes32-) indicates no recover error for it.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-_execute-struct-ERC2771Forwarder-ForwardRequestData-bool-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_execute(struct ERC2771Forwarder.ForwardRequestData request, bool requireValidRequest) → bool success</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Forwarder-_execute-struct-ERC2771Forwarder-ForwardRequestData-bool-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates and executes a signed request returning the request call `success` value.
+
+Internal function without msg.value validation.
+
+Requirements:
+
+- The caller must have provided enough gas to forward with the call.
+- The request must be valid (see [`IERC7913SignatureVerifier.verify`](/contracts/5.x/api/interfaces#IERC7913SignatureVerifier-verify-bytes-bytes32-bytes-)) if the `requireValidRequest` is true.
+
+Emits an [`ERC2771Forwarder.ExecutedForwardRequest`](#ERC2771Forwarder-ExecutedForwardRequest-address-uint256-bool-) event.
+
+<Callout type="warn">
+Using this function doesn't check that all the `msg.value` was sent, potentially
+leaving value stuck in the contract.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-_isTrustedByTarget-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_isTrustedByTarget(address target) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Forwarder-_isTrustedByTarget-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns whether the target trusts this forwarder.
+
+This function performs a static call to the target contract calling the
+[`ERC2771Context.isTrustedForwarder`](#ERC2771Context-isTrustedForwarder-address-) function.
+
+<Callout>
+Consider the execution of this forwarder is permissionless. Without this check, anyone may transfer assets
+that are owned by, or are approved to this forwarder.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-ExecutedForwardRequest-address-uint256-bool-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ExecutedForwardRequest(address indexed signer, uint256 nonce, bool success)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC2771Forwarder-ExecutedForwardRequest-address-uint256-bool-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a `ForwardRequest` is executed.
+
+<Callout>
+An unsuccessful forward request could be due to an invalid signature, an expired deadline,
+or simply a revert in the requested call. The contract guarantees that the relayer is not able to force
+the requested call to run out of gas.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-ERC2771ForwarderInvalidSigner-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC2771ForwarderInvalidSigner(address signer, address from)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC2771Forwarder-ERC2771ForwarderInvalidSigner-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The request `from` doesn't match with the recovered `signer`.
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-ERC2771ForwarderMismatchedValue-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC2771ForwarderMismatchedValue(uint256 requestedValue, uint256 msgValue)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC2771Forwarder-ERC2771ForwarderMismatchedValue-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The `requestedValue` doesn't match with the available `msgValue`.
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-ERC2771ForwarderExpiredRequest-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC2771ForwarderExpiredRequest(uint48 deadline)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC2771Forwarder-ERC2771ForwarderExpiredRequest-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The request `deadline` has expired.
+
+</div>
+</div>
+
+<a id="ERC2771Forwarder-ERC2771UntrustfulTarget-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC2771UntrustfulTarget(address target, address forwarder)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC2771Forwarder-ERC2771UntrustfulTarget-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The request target doesn't trust the `forwarder`.
+
+</div>
+</div>

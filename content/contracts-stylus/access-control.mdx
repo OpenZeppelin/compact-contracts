@@ -1,0 +1,331 @@
+---
+title: Access Control
+---
+
+Access control—that is, "who is allowed to do this thing"—is incredibly important in the world of smart contracts. The access control of your contract may govern who can mint tokens, vote on proposals, freeze transfers, and many other things. It is therefore **critical** to understand how you implement it, lest someone else [steals your whole system](https://blog.openzeppelin.com/on-the-parity-wallet-multisig-hack-405a8c12e8f7).
+
+## Ownership and `Ownable`
+
+The most common and basic form of access control is the concept of _ownership_: there’s an account that is the `owner` of a contract and can do administrative tasks on it. This approach is perfectly reasonable for contracts that have a single administrative user.
+
+OpenZeppelin Contracts for Stylus provides [`Ownable`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/access/ownable/struct.Ownable.html) for implementing ownership in your contracts.
+
+```rust
+use openzeppelin_stylus::access::ownable::{self, Ownable};
+
+#[derive(SolidityError, Debug)]
+enum Error {
+    UnauthorizedAccount(ownable::OwnableUnauthorizedAccount),
+    InvalidOwner(ownable::OwnableInvalidOwner),
+    // other custom errors...
+}
+
+impl From<ownable::Error> for Error {
+    fn from(value: ownable::Error) -> Self {
+        match value {
+            ownable::Error::UnauthorizedAccount(e) => {
+                Error::UnauthorizedAccount(e)
+            }
+            ownable::Error::InvalidOwner(e) => Error::InvalidOwner(e),
+        }
+    }
+}
+
+#[entrypoint]
+#[storage]
+struct OwnableExample {
+    ownable: Ownable,
+}
+
+#[public]
+#[implements(IOwnable<Error = Error>)]
+impl MyContract {
+    fn normal_thing(&self) {
+        // anyone can call this normal_thing()
+    }
+
+    fn special_thing(&mut self) -> Result<(), Error> {
+        self.ownable.only_owner()?;
+
+        // only the owner can call special_thing()!
+
+        Ok(())
+    }
+}
+
+#[public]
+impl IOwnable for MyContract {
+    type Error = Error;
+
+    fn owner(&self) -> Address {
+        self.ownable.owner()
+    }
+
+    fn transfer_ownership(
+        &mut self,
+        new_owner: Address,
+    ) -> Result<(), Self::Error> {
+        Ok(self.ownable.transfer_ownership(new_owner)?)
+    }
+
+    fn renounce_ownership(&mut self) -> Result<(), Self::Error> {
+        Ok(self.ownable.renounce_ownership()?)
+    }
+}
+```
+
+At deployment, the [`owner`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/access/ownable/struct.Ownable.html#method.owner) of an `Ownable` contract is set to the provided `initial_owner` parameter.
+
+Ownable also lets you:
+
+* [`transfer_ownership`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/access/ownable/struct.Ownable.html#method.transfer_ownership) from the owner account to a new one, and
+* [`renounce_ownership`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/access/ownable/struct.Ownable.html#method.renounce_ownership) for the owner to relinquish this administrative privilege, a common pattern after an initial stage with centralized administration is over.
+
+<Callout type='warn'>
+Removing the owner altogether will mean that administrative tasks that are protected by `only_owner` will no longer be callable!
+</Callout>
+
+Note that **a contract can also be the owner of another one**! This opens the door to using, for example, a [Gnosis Safe](https://gnosis-safe.io), an [Aragon DAO](https://aragon.org), or a totally custom contract that _you_ create.
+
+In this way, you can use _composability_ to add additional layers of access control complexity to your contracts. Instead of having a single regular Ethereum account (Externally Owned Account, or EOA) as the owner, you could use a 2-of-3 multisig run by your project leads, for example. Prominent projects in the space, such as [MakerDAO](https://makerdao.com), use systems similar to this one.
+
+## Role-Based Access Control
+
+While the simplicity of _ownership_ can be useful for simple systems or quick prototyping, different levels of authorization are often needed. You may want for an account to have permission to ban users from a system, but not create new tokens. [_Role-Based Access Control (RBAC)_](https://en.wikipedia.org/wiki/Role-based_access_control) offers flexibility in this regard.
+
+In essence, we will be defining multiple _roles_, each allowed to perform different sets of actions. An account may have, for example, 'moderator', 'minter' or 'admin' roles, which you will then check for instead of simply using `only_owner`. This check can be enforced through the `only_role` modifier. Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
+
+Most software uses access control systems that are role-based: some users are regular users, some may be supervisors or managers, and a few will often have administrative privileges.
+
+### Using `AccessControl`
+
+OpenZeppelin Contracts provides [`AccessControl`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/access/control/struct.AccessControl.html) for implementing role-based access control. Its usage is straightforward: for each role that you want to define,
+you will create a new _role identifier_ that is used to grant, revoke, and check if an account has that role.
+
+Here’s a simple example of using `AccessControl` in an [ERC-20 token](/contracts-stylus/erc20) to define a 'minter' role, which allows accounts that have it create new tokens. Note that the example is unassuming of the way you construct your contract.
+
+```rust
+use openzeppelin_stylus::{
+    access::control::{self, AccessControl, IAccessControl},
+    token::erc20::{self, Erc20, IErc20},
+};
+
+#[derive(SolidityError, Debug)]
+enum Error {
+    UnauthorizedAccount(control::AccessControlUnauthorizedAccount),
+    BadConfirmation(control::AccessControlBadConfirmation),
+    InsufficientBalance(erc20::ERC20InsufficientBalance),
+    InvalidSender(erc20::ERC20InvalidSender),
+    InvalidReceiver(erc20::ERC20InvalidReceiver),
+    InsufficientAllowance(erc20::ERC20InsufficientAllowance),
+    InvalidSpender(erc20::ERC20InvalidSpender),
+    InvalidApprover(erc20::ERC20InvalidApprover),
+}
+
+impl From<control::Error> for Error {
+    fn from(value: control::Error) -> Self {
+        match value {
+            control::Error::UnauthorizedAccount(e) => {
+                Error::UnauthorizedAccount(e)
+            }
+            control::Error::BadConfirmation(e) => Error::BadConfirmation(e),
+        }
+    }
+}
+
+impl From<erc20::Error> for Error {
+    fn from(value: erc20::Error) -> Self {
+        match value {
+            erc20::Error::InsufficientBalance(e) => {
+                Error::InsufficientBalance(e)
+            }
+            erc20::Error::InvalidSender(e) => Error::InvalidSender(e),
+            erc20::Error::InvalidReceiver(e) => Error::InvalidReceiver(e),
+            erc20::Error::InsufficientAllowance(e) => {
+                Error::InsufficientAllowance(e)
+            }
+            erc20::Error::InvalidSpender(e) => Error::InvalidSpender(e),
+            erc20::Error::InvalidApprover(e) => Error::InvalidApprover(e),
+        }
+    }
+}
+
+#[entrypoint]
+#[storage]
+struct Example {
+    erc20: Erc20,
+    access: AccessControl,
+}
+
+const MINTER_ROLE: [u8; 32] =
+    keccak_const::Keccak256::new().update(b"MINTER_ROLE").finalize();
+
+#[public]
+#[implements(IErc20<Error = Error>, IAccessControl<Error = Error>)]
+impl Example {
+    fn mint(&mut self, to: Address, amount: U256) -> Result<(), Error> {
+        self.access.only_role(MINTER_ROLE.into())?;
+        self.erc20._mint(to, amount)?;
+        Ok(())
+    }
+}
+
+#[public]
+impl IErc20 for Example {
+    type Error = Error;
+
+    fn total_supply(&self) -> U256 {
+        self.erc20.total_supply()
+    }
+
+    fn balance_of(&self, account: Address) -> U256 {
+        self.erc20.balance_of(account)
+    }
+
+    fn transfer(
+        &mut self,
+        to: Address,
+        value: U256,
+    ) -> Result<bool, Self::Error> {
+        Ok(self.erc20.transfer(to, value)?)
+    }
+
+    fn allowance(&self, owner: Address, spender: Address) -> U256 {
+        self.erc20.allowance(owner, spender)
+    }
+
+    fn approve(
+        &mut self,
+        spender: Address,
+        value: U256,
+    ) -> Result<bool, Self::Error> {
+        Ok(self.erc20.approve(spender, value)?)
+    }
+
+    fn transfer_from(
+        &mut self,
+        from: Address,
+        to: Address,
+        value: U256,
+    ) -> Result<bool, Self::Error> {
+        Ok(self.erc20.transfer_from(from, to, value)?)
+    }
+}
+
+#[public]
+impl IAccessControl for Example {
+    type Error = Error;
+
+    fn has_role(&self, role: B256, account: Address) -> bool {
+        self.access.has_role(role, account)
+    }
+
+    fn only_role(&self, role: B256) -> Result<(), Self::Error> {
+        Ok(self.access.only_role(role)?)
+    }
+
+    fn get_role_admin(&self, role: B256) -> B256 {
+        self.access.get_role_admin(role)
+    }
+
+    fn grant_role(
+        &mut self,
+        role: B256,
+        account: Address,
+    ) -> Result<(), Self::Error> {
+        Ok(self.access.grant_role(role, account)?)
+    }
+
+    fn revoke_role(
+        &mut self,
+        role: B256,
+        account: Address,
+    ) -> Result<(), Self::Error> {
+        Ok(self.access.revoke_role(role, account)?)
+    }
+
+    fn renounce_role(
+        &mut self,
+        role: B256,
+        confirmation: Address,
+    ) -> Result<(), Self::Error> {
+        Ok(self.access.renounce_role(role, confirmation)?)
+    }
+}
+```
+
+<Callout>
+Make sure you fully understand how [`AccessControl`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/access/control/struct.AccessControl.html) works before using it on your system, or copy-pasting the examples from this guide.
+</Callout>
+
+While clear and explicit, this isn’t anything we wouldn’t have been able to achieve with `Ownable`. Indeed, where `AccessControl` shines is in scenarios where granular permissions are required, which can be implemented by defining _multiple_ roles.
+
+Let’s augment our ERC-20 token example by also defining a 'burner' role, which lets accounts destroy tokens, and by using the `only_role` modifier:
+
+```rust
+use openzeppelin_stylus::{
+    access::control::{self, AccessControl, IAccessControl},
+    token::erc20::{self, Erc20, IErc20},
+};
+
+#[derive(SolidityError, Debug)]
+enum Error {
+    AccessControl(control::Error),
+    Erc20(erc20::Error),
+}
+
+#[entrypoint]
+#[storage]
+struct Example {
+    erc20: Erc20,
+    access: AccessControl,
+}
+
+const MINTER_ROLE: [u8; 32] =
+    keccak_const::Keccak256::new().update(b"MINTER_ROLE").finalize();
+
+const BURNER_ROLE: [u8; 32] =
+    keccak_const::Keccak256::new().update(b"BURNER_ROLE").finalize();
+
+#[public]
+#[implements(IErc20<Error = Error>, IAccessControl<Error = Error>)]
+impl Example {
+    fn mint(&mut self, to: Address, amount: U256) -> Result<(), Error> {
+        self.access.only_role(MINTER_ROLE.into())?;
+        self.erc20._mint(to, amount)?;
+        Ok(())
+    }
+
+    fn burn(&mut self, from: Address, amount: U256) -> Result<(), Error> {
+        self.access.only_role(BURNER_ROLE.into())?;
+        self.erc20._burn(from, amount)?;
+        Ok(())
+    }
+}
+
+#[public]
+impl IErc20 for Example {
+    // ...
+}
+
+#[public]
+impl IAccessControl for Example {
+    // ...
+}
+```
+
+So clean! By splitting concerns this way, more granular levels of permission may be implemented than were possible with the simpler _ownership_ approach to access control. Limiting what each component of a system is able to do is known as the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege), and is a good security practice. Note that each account may still have more than one role, if so desired.
+
+### Granting and Revoking Roles
+
+The ERC-20 token example above uses `_grant_role`, an `internal` function that is useful when programmatically assigning roles (such as during construction). But what if we later want to grant the 'minter' role to additional accounts?
+
+By default, ***accounts with a role cannot grant it or revoke it from other accounts***: all having a role does is making the `has_role` check pass. To grant and revoke roles dynamically, you will need help from the _role’s admin_.
+
+Every role has an associated admin role, which grants permission to call the `grant_role` and `revoke_role` functions. A role can be granted or revoked by using these if the calling account has the corresponding admin role. Multiple roles may have the same admin role to make management easier. A role’s admin can even be the same role itself, which would cause accounts with that role to be able to also grant and revoke it.
+
+This mechanism can be used to create complex permissioning structures resembling organizational charts, but it also provides an easy way to manage simpler applications. `AccessControl` includes a special role, called `DEFAULT_ADMIN_ROLE`, which acts as the ***default admin role for all roles***. An account with this role will be able to manage any other role, unless `_set_role_admin` is used to select a new admin role.
+
+Note that, by default, no accounts are granted the 'minter' or 'burner' roles. We assume you use a constructor to set the default admin role as the role of the deployer, or have a different mechanism where you make sure that you are able to grant roles. However, because those roles' admin role is the default admin role, and _that_ role was granted to `msg::sender()`, that same account can call `grant_role` to give minting or burning permission, and `revoke_role` to remove it.
+
+Dynamic role allocation is often a desirable property, for example in systems where trust in a participant may vary over time. It can also be used to support use cases such as [KYC](https://en.wikipedia.org/wiki/Know_your_customer), where the list of role-bearers may not be known up-front, or may be prohibitively expensive to include in a single transaction.

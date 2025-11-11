@@ -1,0 +1,158 @@
+---
+title: ERC-20
+---
+
+An ERC-20 token contract keeps track of [_fungible_ tokens](/contracts-stylus/tokens#different-kinds-of-tokens): any token is exactly equal to any other token; no token has a special right or behavior associated with them.
+This makes ERC-20 tokens useful for things like a **medium of exchange currency**, **voting rights**, **staking**, and more.
+
+OpenZeppelin Contracts provide many ERC20-related contracts for Arbitrum Stylus.
+On the [`API reference`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/token/erc20/struct.Erc20.html) you'll find detailed information on their properties and usage.
+
+## Constructing an ERC-20 Token Contract
+
+Using Contracts, we can easily create our own ERC-20 token contract, which will be used to track _Gold_ (GLD), an internal currency in a hypothetical game.
+
+Here’s what our GLD token might look like.
+
+```rust
+use openzeppelin_stylus::{
+    token::erc20::{
+        self,
+        extensions::{Erc20Metadata, IErc20Metadata},
+        Erc20, IErc20,
+    },
+};
+
+#[entrypoint]
+#[storage]
+struct GLDToken {
+    erc20: Erc20,
+    metadata: Erc20Metadata,
+}
+
+#[public]
+#[implements(IErc20<Error = erc20::Error>, IErc20Metadata, IErc165)]
+impl GLDToken {
+    #[constructor]
+    fn constructor(&mut self, name: String, symbol: String) {
+        self.metadata.constructor(name, symbol);
+    }
+
+    // ...
+}
+
+#[public]
+impl IErc20 for GLDToken {
+    type Error = erc20::Error;
+
+    fn total_supply(&self) -> U256 {
+        self.erc20.total_supply()
+    }
+
+    fn balance_of(&self, account: Address) -> U256 {
+        self.erc20.balance_of(account)
+    }
+
+    fn transfer(
+        &mut self,
+        to: Address,
+        value: U256,
+    ) -> Result<bool, Self::Error> {
+        self.erc20.transfer(to, value)
+    }
+
+    fn allowance(&self, owner: Address, spender: Address) -> U256 {
+        self.erc20.allowance(owner, spender)
+    }
+
+    fn approve(
+        &mut self,
+        spender: Address,
+        value: U256,
+    ) -> Result<bool, Self::Error> {
+        self.erc20.approve(spender, value)
+    }
+
+    fn transfer_from(
+        &mut self,
+        from: Address,
+        to: Address,
+        value: U256,
+    ) -> Result<bool, Self::Error> {
+        self.erc20.transfer_from(from, to, value)
+    }
+}
+
+#[public]
+impl IErc20Metadata for GLDToken {
+    fn name(&self) -> String {
+        self.metadata.name()
+    }
+
+    fn symbol(&self) -> String {
+        self.metadata.symbol()
+    }
+
+    fn decimals(&self) -> U8 {
+        self.metadata.decimals()
+    }
+}
+
+#[public]
+impl IErc165 for GLDToken {
+    fn supports_interface(&self, interface_id: B32) -> bool {
+        self.erc20.supports_interface(interface_id)
+            || self.metadata.supports_interface(interface_id)
+    }
+}
+```
+
+Our contracts are often used via stylus-sdk [inheritance](https://docs.arbitrum.io/stylus/reference/rust-sdk-guide#inheritance-inherit-and-borrow), and here we're reusing [`ERC20`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/token/erc20/struct.Erc20.html) for both the basic standard implementation and with optional extensions.
+
+## A Note on `decimals`
+
+Often, you’ll want to be able to divide your tokens into arbitrary amounts: say, if you own `5 GLD`, you may want to send `1.5 GLD` to a friend, and keep `3.5 GLD` to yourself.
+Unfortunately, Solidity and the EVM do not support this behavior: only integer (whole) numbers can be used, which poses an issue.
+You may send `1` or `2` tokens, but not `1.5`.
+
+To work around this, ERC20 provides a [`decimals`](https://docs.rs/openzeppelin-stylus/0.3.0/openzeppelin_stylus/token/erc20/extensions/metadata/trait.IErc20Metadata.html#tymethod.decimals) field, which is used to specify how many decimal places a token has.
+To be able to transfer `1.5 GLD`, `decimals` must be at least `1`, since that number has a single decimal place.
+How can this be achieved?
+It’s actually very simple: a token contract can use larger integer values, so that a balance of `50` will represent `5 GLD`, a transfer of `15` will correspond to `1.5 GLD` being sent, and so on.
+
+It is important to understand that `decimals` is _only used for display purposes_.
+All arithmetic inside the contract is still performed on integers, and it is the different user interfaces (wallets, exchanges, etc.) that must adjust the displayed values according to `decimals`.
+The total token supply and balance of each account are not specified in `GLD`: you need to divide by `10 ** decimals` to get the actual `GLD` amount.
+
+You’ll probably want to use a `decimals` value of `18`, just like Ether and most ERC-20 token contracts in use, unless you have an exceptional reason not to.
+When minting tokens or transferring them around, you will be actually sending the number `GLD * (10 ** decimals)`.
+
+<Callout>
+By default, `ERC20` uses a value of `18` for `decimals`.
+</Callout>
+
+To use a different value, you will need to override the `decimals()` function in your contract. For example, to use `16` decimals, you would do:
+
+```rust
+fn decimals(&self) -> U8 {
+    U8::from(16)
+}
+```
+
+So if you want to send `5` tokens using a token contract with `18` decimals, the method to call will actually be:
+
+```rust
+token.transfer(recipient, 5 * uint!(10_U256).pow(uint!(18_U256)));
+```
+
+## Extensions
+Additionally, there are multiple custom extensions, including:
+
+* [ERC-20 Burnable](/contracts-stylus/erc20-burnable): destruction of own tokens.
+* [ERC-20 Capped](/contracts-stylus/erc20-capped): enforcement of a cap to the total supply when minting tokens.
+* [ERC-20 Metadata](/contracts-stylus/erc20-metadata): the extended ERC20 interface including the name, symbol, and decimals functions.
+* [ERC-20 Pausable](/contracts-stylus/erc20-pausable): ability to pause token transfers.
+* [ERC-20 Permit](/contracts-stylus/erc20-permit): gasless approval of tokens (standardized as [`EIP-2612`](https://eips.ethereum.org/EIPS/eip-2612)).
+* [ERC-4626](/contracts-stylus/erc4626): tokenized vault that manages shares (represented as ERC-20) that are backed by assets (another ERC-20).
+* [ERC-20 Flash-Mint](/contracts-stylus/erc20-flash-mint): token level support for flash loans through the minting and burning of ephemeral tokens (standardized as [`EIP-3156`](https://eips.ethereum.org/EIPS/eip-3156)).
+* [ERC-20 Wrapper](/contracts-stylus/erc20-wrapper): wrapper to create an ERC-20 backed by another ERC-20, with deposit and withdraw methods.

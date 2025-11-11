@@ -1,0 +1,75 @@
+---
+title: Uniswap Hooks
+---
+
+A [Solidity library](https://github.com/OpenZeppelin/uniswap-hooks) for secure and modular hooks for [Uniswap v4](https://docs.uniswap.org/contracts/v4/overview). This library includes:
+
+* Base implementations for custom accounting, asynchronous swaps, and custom curves
+* Fee-related implementations for management and enforcement
+* Ready-to-use hooks for general use cases, like sandwich protection
+* Utilities and libraries for hook development
+
+## Overview
+
+### Installation
+
+The library can only be installed with Foundry using gitmodules for now. Support for Hardhat is coming soon.
+
+#### Foundry (git)
+
+```console
+$ forge install OpenZeppelin/uniswap-hooks
+```
+
+<Callout>
+Make sure to add `@openzeppelin/uniswap-hooks/=lib/uniswap-hooks/src/` in `remappings.txt`.
+</Callout>
+
+### Usage
+
+Once installed, you can use the contracts in the library by importing them:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+import {BaseDynamicFee, IPoolManager, PoolKey} from "src/fee/BaseDynamicFee.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @dev A hook that allows the owner to dynamically update the LP fee.
+ */
+contract DynamicLPFeeHook is BaseDynamicFee, Ownable {
+    uint24 public fee;
+
+    constructor(IPoolManager _poolManager) BaseDynamicFee(_poolManager) Ownable(msg.sender) {
+    }
+
+    /**
+     * @inheritdoc BaseDynamicFee
+     */
+    function _getFee(PoolKey calldata) internal view override returns (uint24) {
+        return fee;
+    }
+
+    /**
+     * @notice Sets the LP fee, denominated in hundredths of a bip.
+     */
+    function setFee(uint24 _fee) external onlyOwner {
+        fee = _fee;
+    }
+}
+```
+
+To keep your system secure, you should ***always*** use the installed code as-is, and neither copy-paste it from online sources, nor modify it yourself. The library is designed so that only the contracts and functions you use are deployed, so you don’t need to worry about it needlessly increasing gas costs.
+
+### Videos
+In order to facilitate understanding of Uniswap Hooks and help start building with them, we’ve released this playlist of guidelines on our YouTube channel.
+
+<iframe width="100%" height="350" src="https://www.youtube.com/embed/videoseries?list=PLdJRkA9gCKOOx-hRyS1tsprm2R4EG2dcZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+## Security
+
+Contracts in the hooks library are provided as is, with no particular guarantees, including backward compatibility.
+
+We kindly ask to report any issue directly to our security [contact](mailto:security@openzeppelin.org). The team will do its best to assist and mitigate any potential misuses of the library.

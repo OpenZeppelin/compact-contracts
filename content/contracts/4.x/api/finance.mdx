@@ -1,0 +1,706 @@
+---
+title: "Finance"
+description: "Smart contract finance utilities and implementations"
+---
+
+This directory includes primitives for financial systems:
+
+* [`PaymentSplitter`](#PaymentSplitter) allows to split Ether and ERC20 payments among a group of accounts. The sender does not need to be
+  aware that the assets will be split in this way, since it is handled transparently by the contract. The split can be
+  in equal parts or in any other arbitrary proportion.
+* [`VestingWallet`](#VestingWallet) handles the vesting of Ether and ERC20 tokens for a given beneficiary. Custody of multiple tokens can
+  be given to this contract, which will release the token to the beneficiary following a given, customizable, vesting
+  schedule.
+
+## Contracts
+
+[`PaymentSplitter`](#PaymentSplitter)
+
+[`VestingWallet`](#VestingWallet)
+
+<a id="PaymentSplitter"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `PaymentSplitter` 
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/finance/PaymentSplitter.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
+```
+
+This contract allows to split Ether payments among a group of accounts. The sender does not need to be aware
+that the Ether will be split in this way, since it is handled transparently by the contract.
+
+The split can be in equal parts or in any other arbitrary proportion. The way this is specified is by assigning each
+account to a number of shares. Of all the Ether that this contract receives, each account will then be able to claim
+an amount proportional to the percentage of total shares they were assigned. The distribution of shares is set at the
+time of contract deployment and can't be updated thereafter.
+
+`PaymentSplitter` follows a _pull payment_ model. This means that payments are not automatically forwarded to the
+accounts but kept in this contract, and the actual transfer is triggered as a separate step by calling the [`PaymentSplitter.release`](#PaymentSplitter-release-contract-IERC20-address-)
+function.
+
+NOTE: This contract assumes that ERC20 tokens will behave similarly to native tokens (Ether). Rebasing tokens, and
+tokens that apply fees during transfers, are likely to not be supported as expected. If in doubt, we encourage you
+to run tests before sending real value to this contract.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(payees, shares_)](#PaymentSplitter-constructor-address---uint256---)
+- [receive()](#PaymentSplitter-receive--)
+- [totalShares()](#PaymentSplitter-totalShares--)
+- [totalReleased()](#PaymentSplitter-totalReleased--)
+- [totalReleased(token)](#PaymentSplitter-totalReleased-contract-IERC20-)
+- [shares(account)](#PaymentSplitter-shares-address-)
+- [released(account)](#PaymentSplitter-released-address-)
+- [released(token, account)](#PaymentSplitter-released-contract-IERC20-address-)
+- [payee(index)](#PaymentSplitter-payee-uint256-)
+- [releasable(account)](#PaymentSplitter-releasable-address-)
+- [releasable(token, account)](#PaymentSplitter-releasable-contract-IERC20-address-)
+- [release(account)](#PaymentSplitter-release-address-payable-)
+- [release(token, account)](#PaymentSplitter-release-contract-IERC20-address-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [PayeeAdded(account, shares)](#PaymentSplitter-PayeeAdded-address-uint256-)
+- [PaymentReleased(to, amount)](#PaymentSplitter-PaymentReleased-address-uint256-)
+- [ERC20PaymentReleased(token, to, amount)](#PaymentSplitter-ERC20PaymentReleased-contract-IERC20-address-uint256-)
+- [PaymentReceived(from, amount)](#PaymentSplitter-PaymentReceived-address-uint256-)
+</div>
+</div>
+
+<a id="PaymentSplitter-constructor-address---uint256---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(address[] payees, uint256[] shares_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-constructor-address---uint256---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Creates an instance of `PaymentSplitter` where each account in `payees` is assigned the number of shares at
+the matching position in the `shares` array.
+
+All addresses in `payees` must be non-zero. Both arrays must have the same non-zero length, and there must be no
+duplicates in `payees`.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-receive--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">receive()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="PaymentSplitter-receive--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The Ether received will be logged with [`PaymentSplitter.PaymentReceived`](#PaymentSplitter-PaymentReceived-address-uint256-) events. Note that these events are not fully
+reliable: it's possible for a contract to receive Ether without triggering this function. This only affects the
+reliability of the events, and not the actual splitting of Ether.
+
+To learn more about this see the Solidity documentation for
+[fallback
+functions](https://solidity.readthedocs.io/en/latest/contracts.html#fallback-function).
+
+</div>
+</div>
+
+<a id="PaymentSplitter-totalShares--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">totalShares() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-totalShares--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the total shares held by payees.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-totalReleased--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">totalReleased() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-totalReleased--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the total amount of Ether already released.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-totalReleased-contract-IERC20-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">totalReleased(contract IERC20 token) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-totalReleased-contract-IERC20-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the total amount of `token` already released. `token` should be the address of an IERC20
+contract.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-shares-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">shares(address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-shares-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of shares held by an account.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-released-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">released(address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-released-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of Ether already released to a payee.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-released-contract-IERC20-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">released(contract IERC20 token, address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-released-contract-IERC20-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of `token` tokens already released to a payee. `token` should be the address of an
+IERC20 contract.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-payee-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">payee(uint256 index) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-payee-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the address of the payee number `index`.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-releasable-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">releasable(address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-releasable-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of payee's releasable Ether.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-releasable-contract-IERC20-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">releasable(contract IERC20 token, address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-releasable-contract-IERC20-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of payee's releasable `token` tokens. `token` should be the address of an
+IERC20 contract.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-release-address-payable-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">release(address payable account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-release-address-payable-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Triggers a transfer to `account` of the amount of Ether they are owed, according to their percentage of the
+total shares and their previous withdrawals.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-release-contract-IERC20-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">release(contract IERC20 token, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PaymentSplitter-release-contract-IERC20-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Triggers a transfer to `account` of the amount of `token` tokens they are owed, according to their
+percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
+contract.
+
+</div>
+</div>
+
+<a id="PaymentSplitter-PayeeAdded-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">PayeeAdded(address account, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="PaymentSplitter-PayeeAdded-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+<a id="PaymentSplitter-PaymentReleased-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">PaymentReleased(address to, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="PaymentSplitter-PaymentReleased-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+<a id="PaymentSplitter-ERC20PaymentReleased-contract-IERC20-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20PaymentReleased(contract IERC20 indexed token, address to, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="PaymentSplitter-ERC20PaymentReleased-contract-IERC20-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+<a id="PaymentSplitter-PaymentReceived-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">PaymentReceived(address from, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="PaymentSplitter-PaymentReceived-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="VestingWallet"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `VestingWallet` 
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/finance/VestingWallet.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/finance/VestingWallet.sol";
+```
+
+This contract handles the vesting of Eth and ERC20 tokens for a given beneficiary. Custody of multiple tokens
+can be given to this contract, which will release the token to the beneficiary following a given vesting schedule.
+The vesting schedule is customizable through the [`VestingWallet.vestedAmount`](#VestingWallet-vestedAmount-address-uint64-) function.
+
+Any token transferred to this contract will follow the vesting schedule as if they were locked from the beginning.
+Consequently, if the vesting has already started, any amount of tokens sent to this contract will (at least partly)
+be immediately releasable.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(beneficiaryAddress, startTimestamp, durationSeconds)](#VestingWallet-constructor-address-uint64-uint64-)
+- [receive()](#VestingWallet-receive--)
+- [beneficiary()](#VestingWallet-beneficiary--)
+- [start()](#VestingWallet-start--)
+- [duration()](#VestingWallet-duration--)
+- [released()](#VestingWallet-released--)
+- [released(token)](#VestingWallet-released-address-)
+- [releasable()](#VestingWallet-releasable--)
+- [releasable(token)](#VestingWallet-releasable-address-)
+- [release()](#VestingWallet-release--)
+- [release(token)](#VestingWallet-release-address-)
+- [vestedAmount(timestamp)](#VestingWallet-vestedAmount-uint64-)
+- [vestedAmount(token, timestamp)](#VestingWallet-vestedAmount-address-uint64-)
+- [_vestingSchedule(totalAllocation, timestamp)](#VestingWallet-_vestingSchedule-uint256-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [EtherReleased(amount)](#VestingWallet-EtherReleased-uint256-)
+- [ERC20Released(token, amount)](#VestingWallet-ERC20Released-address-uint256-)
+</div>
+</div>
+
+<a id="VestingWallet-constructor-address-uint64-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(address beneficiaryAddress, uint64 startTimestamp, uint64 durationSeconds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-constructor-address-uint64-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the beneficiary, start timestamp and vesting duration of the vesting wallet.
+
+</div>
+</div>
+
+<a id="VestingWallet-receive--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">receive()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="VestingWallet-receive--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The contract should be able to receive Eth.
+
+</div>
+</div>
+
+<a id="VestingWallet-beneficiary--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beneficiary() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-beneficiary--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the beneficiary address.
+
+</div>
+</div>
+
+<a id="VestingWallet-start--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">start() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-start--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the start timestamp.
+
+</div>
+</div>
+
+<a id="VestingWallet-duration--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">duration() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-duration--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the vesting duration.
+
+</div>
+</div>
+
+<a id="VestingWallet-released--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">released() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-released--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Amount of eth already released
+
+</div>
+</div>
+
+<a id="VestingWallet-released-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">released(address token) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-released-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Amount of token already released
+
+</div>
+</div>
+
+<a id="VestingWallet-releasable--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">releasable() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-releasable--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of releasable eth.
+
+</div>
+</div>
+
+<a id="VestingWallet-releasable-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">releasable(address token) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-releasable-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of releasable `token` tokens. `token` should be the address of an
+IERC20 contract.
+
+</div>
+</div>
+
+<a id="VestingWallet-release--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">release()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-release--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Release the native token (ether) that have already vested.
+
+Emits a [`VestingWallet.EtherReleased`](#VestingWallet-EtherReleased-uint256-) event.
+
+</div>
+</div>
+
+<a id="VestingWallet-release-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">release(address token)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-release-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Release the tokens that have already vested.
+
+Emits a [`VestingWallet.ERC20Released`](#VestingWallet-ERC20Released-address-uint256-) event.
+
+</div>
+</div>
+
+<a id="VestingWallet-vestedAmount-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">vestedAmount(uint64 timestamp) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-vestedAmount-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculates the amount of ether that has already vested. Default implementation is a linear vesting curve.
+
+</div>
+</div>
+
+<a id="VestingWallet-vestedAmount-address-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">vestedAmount(address token, uint64 timestamp) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWallet-vestedAmount-address-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculates the amount of tokens that has already vested. Default implementation is a linear vesting curve.
+
+</div>
+</div>
+
+<a id="VestingWallet-_vestingSchedule-uint256-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_vestingSchedule(uint256 totalAllocation, uint64 timestamp) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWallet-_vestingSchedule-uint256-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Virtual implementation of the vesting formula. This returns the amount vested, as a function of time, for
+an asset given its total historical allocation.
+
+</div>
+</div>
+
+<a id="VestingWallet-EtherReleased-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">EtherReleased(uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VestingWallet-EtherReleased-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+<a id="VestingWallet-ERC20Released-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20Released(address indexed token, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VestingWallet-ERC20Released-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+
