@@ -13,6 +13,7 @@ import {
   DirectoryNotFoundError,
   isPromisifiedChildProcessError,
 } from './types/errors.ts';
+import { COMPACT_VERSION } from './versions.ts';
 
 /** Source directory containing .compact files */
 const SRC_DIR: string = 'src';
@@ -547,6 +548,11 @@ export class CompactCompiler {
           flags.push(args[i]);
         }
       }
+    }
+
+    // Apply default toolchain version if none provided; allow env to override
+    if (!version) {
+      version = env.COMPACT_TOOLCHAIN_VERSION ?? COMPACT_VERSION;
     }
 
     return new CompactCompiler(flags.join(' '), targetDir, version);

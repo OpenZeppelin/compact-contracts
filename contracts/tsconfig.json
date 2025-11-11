@@ -1,8 +1,9 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "src/**/*.ts"
+    "src/**/witnesses/**/*.ts"
   ],
+  "exclude": ["src/archive/"],
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
@@ -11,7 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
     "isolatedModules": true,
-    "sourceMap": true,
     "resolveJsonModule": true,
   }
 }

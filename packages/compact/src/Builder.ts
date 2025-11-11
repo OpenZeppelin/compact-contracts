@@ -13,8 +13,9 @@ const execAsync = promisify(exec);
 /**
  * A class to handle the build process for a project.
  * Runs CompactCompiler as a prerequisite, then executes build steps (TypeScript compilation,
- * artifact copying, etc.)
- * with progress feedback and colored output for success and error states.
+ * artifact copying, etc.) with progress feedback and colored output for success and error states.
+ *
+ * Creates a clean distribution structure without src/ paths for professional import experience.
  *
  * @notice `cmd` scripts discard `stderr` output and fail silently because this is
  * handled in `executeStep`.
@@ -59,18 +60,43 @@ export class CompactBuilder {
   private readonly compilerFlags: string;
   private readonly steps: Array<{ cmd: string; msg: string; shell?: string }> =
     [
+      // Step 1: Clean dist directory
+      {
+        cmd: 'rm -rf dist && mkdir -p dist',
+        msg: 'Cleaning dist directory',
+        shell: '/bin/bash',
+      },
+
+      // Step 2: TypeScript compilation (witnesses/ -> dist/witnesses/)
       {
         cmd: 'tsc --project tsconfig.build.json',
         msg: 'Compiling TypeScript',
       },
+
+      // Step 3: Copy .compact files preserving structure (excludes Mock* files and archive/)
       {
-        cmd: 'mkdir -p dist/artifacts && cp -Rf src/artifacts/* dist/artifacts/ 2>/dev/null || true',
-        msg: 'Copying artifacts',
+        // biome-ignore-start lint/suspicious/noUselessEscapeInString: Needed inside JS template literal
+        cmd: `
+        find src -type f -name "*.compact" ! -name "Mock*" ! -path "*/archive/*" | while read file; do
+          # Remove src/ prefix from path
+          rel_path="\${file#src/}"
+          mkdir -p "dist/\$(dirname "\$rel_path")"
+          cp "\$file" "dist/\$rel_path"
+        done
+      `,
+        // biome-ignore-end lint/suspicious/noUselessEscapeInString: Needed inside JS template literal
+        msg: 'Copying .compact files (excluding mocks and archive)',
         shell: '/bin/bash',
       },
+
+      // Step 4: Copy essential files for distribution
       {
-        cmd: 'mkdir -p dist && find src -type f -name "*.compact" -exec cp {} dist/ \\; 2>/dev/null && rm dist/Mock*.compact 2>/dev/null || true',
-        msg: 'Copying and cleaning .compact files',
+        cmd: `
+        # Copy package.json and README
+        cp package.json dist/ 2>/dev/null || true
+        cp ../README.md dist/  # Go up one level to monorepo root
+      `,
+        msg: 'Copying package metadata',
         shell: '/bin/bash',
       },
     ];
@@ -99,6 +125,8 @@ export class CompactBuilder {
     for (const [index, step] of this.steps.entries()) {
       await this.executeStep(step, index, this.steps.length);
     }
+
+    console.log(chalk.green('\n✅ Build complete!'));
   }
 
   /**
@@ -155,6 +183,8 @@ export class CompactBuilder {
       .split('\n')
       .filter((line: string): boolean => line.trim() !== '')
       .map((line: string): string => `    ${line}`);
-    console.log(colorFn(lines.join('\n')));
+    if (lines.length > 0) {
+      console.log(colorFn(lines.join('\n')));
+    }
   }
 }

@@ -9,5 +9,6 @@ export type {
   ExtractImpureCircuits,
   ExtractPureCircuits,
   IContractSimulator,
+  IMinimalContract
 } from './types/index.js';
 export type { BaseSimulatorOptions } from './types/Options.js';

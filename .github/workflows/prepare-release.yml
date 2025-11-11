@@ -1,0 +1,83 @@
+name: Update version on new release branch
+
+on:
+  create:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update_version:
+    if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release-v')
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version-file: ".nvmrc"
+        cache: "yarn"
+
+    - name: Extract current version
+      run: |
+        CURRENT_VERSION=$(node -p "require('./contracts/package.json').version")
+        echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
+
+    - name: Extract new version number
+      run: echo "NEW_VERSION=${GITHUB_REF#refs/heads/release-v}" >> "$GITHUB_ENV"
+
+    - name: Validate new version
+      run: |
+        BRANCH="${GITHUB_REF#refs/heads/}"
+        echo "Branch: $BRANCH"
+        echo "Current version: $CURRENT_VERSION"
+        echo "New version: $NEW_VERSION"
+
+        # 1) Branch must match release-v<semver>
+        if ! echo "$BRANCH" | grep -Eq '^release-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'; then
+          echo "Error: Branch '$BRANCH' must match 'release-v<semver>' (e.g., release-v1.2.3)." >&2
+          exit 1
+        fi
+
+        # 2) NEW_VERSION must be valid semver
+        node -e "const v=process.env.NEW_VERSION; const semver=/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$/; if(!semver.test(v)){ console.error('Error: NEW_VERSION is not valid semver:', v); process.exit(1); }"
+        if [ $? -ne 0 ]; then
+          exit 1
+        fi
+
+        # 3) NEW_VERSION must differ from CURRENT_VERSION
+        if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+          echo "Error: NEW_VERSION equals CURRENT_VERSION ($CURRENT_VERSION). Nothing to release." >&2
+          exit 1
+        fi
+
+    - name: Replace version in files
+      env:
+        NEW_VERSION: ${{ env.NEW_VERSION }}
+      run: |
+        echo "Current version: $CURRENT_VERSION"
+        echo "New version: $NEW_VERSION"
+
+        # Update package.json version field manually
+        yarn workspace @openzeppelin-compact/contracts version "$NEW_VERSION"
+
+        # Escape special characters for sed
+        ESCAPED_CURRENT=$(printf '%s' "$CURRENT_VERSION" | sed -e 's/[\/&]/\\&/g')
+        ESCAPED_NEW=$(printf '%s' "$NEW_VERSION" | sed -e 's/[\/&]/\\&/g')
+
+        # Replace version in contracts/src/
+        find ./contracts/src/ -type d -name '.*' -prune -o \
+          -type f -exec sed -i "s#$ESCAPED_CURRENT#$ESCAPED_NEW#g" {} +
+
+        # Replace version in docs/, excluding package-lock.json
+        find ./docs/ -type d -name '.*' -prune -o \
+          -type f ! -name 'package-lock.json' -exec sed -i "s#$ESCAPED_CURRENT#$ESCAPED_NEW#g" {} +
+
+    - name: Auto-commit changes
+      uses: stefanzweifel/git-auto-commit-action@778341af668090896ca464160c2def5d1d1a3eb0 #v6.0.1
+      with:
+        commit_message: Bump version to ${{ env.NEW_VERSION }}

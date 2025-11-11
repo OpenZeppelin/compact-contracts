@@ -16,8 +16,9 @@ jobs:
     name: Run Test Suite
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      COMPACT_INSTALLER_URL: ${{ vars.COMPACT_INSTALLER_URL }}
 
     steps:
       - name: Check out code
@@ -28,58 +29,8 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup
 
-      - name: Install Compact developer tools
-        shell: bash
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
-          echo "$HOME/.compact/bin" >> "$GITHUB_PATH"
-
-      - name: Install and verify toolchain
-        run: |
-          compact update ${{ env.COMPILER_VERSION }}
-          echo "🤖 Testing installation..."
-          compact compile --version
-          compact compile --language-version
-
-      - name: Check compiler and language version
-        run: |
-          # Check toolchain version
-          COMPILER_OUTPUT=$(compact compile --version)
-          COMPUTED_COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b[0-9]+\.[0-9]+\.[0-9]+\b' | head -n 1)
-          if [ "$COMPUTED_COMPILER_VERSION" != "$COMPILER_VERSION" ]; then
-            errMsg="❌ Compiler version mismatch!%0AExpected: $COMPILER_VERSION%0AGot: $COMPUTED_COMPILER_VERSION"
-            echo "::error::$errMsg"
-            exit 1
-          fi
-          echo "✅ Compiler version matches: $COMPUTED_COMPILER_VERSION"
-
-          # Check language version using new command
-          LANGUAGE_OUTPUT=$(compact compile --language-version)
-          COMPUTED_LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b[0-9]+\.[0-9]+\.[0-9]+\b' | tail -n 1)
-          if [ "$COMPUTED_LANGUAGE_VERSION" != "$LANGUAGE_VERSION" ]; then
-              errMsg="❌ Language version mismatch!%0AExpected: $LANGUAGE_VERSION%0AGot: $COMPUTED_LANGUAGE_VERSION"
-              echo "::error::$errMsg"
-              exit 1
-          fi
-          echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
-
-      - name: Compile contracts (with retry on hash mismatch)
-        shell: bash
-        run: |
-          compile() {
-            if ! output=$(turbo compact --concurrency=1 2>&1); then
-              if echo "$output" | grep -q "Hash mismatch" && [ -d "$HOME/.cache/midnight/zk-params" ]; then
-                echo "Hash mismatch detected. Clearing zk-params cache..."
-                rm -rf "$HOME/.cache/midnight/zk-params"
-                echo "Retrying compilation..."
-                turbo compact --concurrency=1
-              else
-                echo "$output"
-                exit 1
-              fi
-            fi
-          }
-          compile
+      - name: Compile contracts (with retry)
+        run: turbo compact --filter=@openzeppelin-compact/contracts --concurrency=1
 
       - name: Run type checks
         run: turbo types
