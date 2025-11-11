@@ -45,11 +45,11 @@ This pattern balances modularity with local control, avoids tight coupling, and 
 pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
-import "./node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+import "./node_modules/@openzeppelin/compact-contracts/src/token/FungibleToken"
   prefix FungibleToken_;
-import "./node_modules/@openzeppelin-compact/contracts/src/security/Pausable"
+import "./node_modules/@openzeppelin/compact-contracts/src/security/Pausable"
   prefix Pausable_;
-import "./node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
+import "./node_modules/@openzeppelin/compact-contracts/src/access/Ownable"
   prefix Ownable_;
 
 constructor(

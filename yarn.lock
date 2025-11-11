@@ -395,44 +395,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-compact/compact@workspace:^, @openzeppelin-compact/compact@workspace:packages/compact":
+"@openzeppelin/compact-contracts@workspace:contracts":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-compact/compact@workspace:packages/compact"
+  resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
-    "@tsconfig/node24": "npm:^24.0.1"
-    "@types/node": "npm:24.9.0"
-    chalk: "npm:^5.6.2"
-    log-symbols: "npm:^7.0.0"
-    ora: "npm:^9.0.0"
-    typescript: "npm:^5.9.3"
-    vitest: "npm:^4.0.8"
-  bin:
-    compact-builder: dist/runBuilder.js
-    compact-compiler: dist/runCompiler.js
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-compact/contracts-simulator@workspace:^, @openzeppelin-compact/contracts-simulator@workspace:packages/simulator":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-compact/contracts-simulator@workspace:packages/simulator"
-  dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
-    "@midnight-ntwrk/ledger": "npm:^4.0.0"
-    "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@tsconfig/node24": "npm:^24.0.1"
-    "@types/node": "npm:24.9.0"
-    fast-check: "npm:^4.3.0"
-    typescript: "npm:^5.8.2"
-    vitest: "npm:^4.0.8"
-  languageName: unknown
-  linkType: soft
-
-"@openzeppelin-compact/contracts@workspace:contracts":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin-compact/contracts@workspace:contracts"
-  dependencies:
-    "@openzeppelin-compact/compact": "workspace:^"
-    "@openzeppelin-compact/contracts-simulator": "workspace:^"
+    "@openzeppelin/compact-tools-cli": "file:../compact-tools/packages/cli"
+    "@openzeppelin/compact-tools-simulator": "file:../compact-tools/packages/simulator"
     "@tsconfig/node24": "npm:^24.0.1"
     "@types/node": "npm:24.9.0"
     ts-node: "npm:^10.9.2"
@@ -440,6 +408,29 @@ __metadata:
     vitest: "npm:^4.0.8"
   languageName: unknown
   linkType: soft
+
+"@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
+  version: 0.0.1
+  resolution: "@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli#../compact-tools/packages/cli::hash=9376b6&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  dependencies:
+    chalk: "npm:^5.6.2"
+    log-symbols: "npm:^7.0.0"
+    ora: "npm:^9.0.0"
+  bin:
+    compact-builder: dist/runBuilder.js
+    compact-compiler: dist/runCompiler.js
+  checksum: 10/03120854093f43558b269e33858dfde6b2c5041d2321b43e47ea2637210b4cdf835d2d61698ccf9a4922541530984e0cc783bc9df415af4162a6f6ac95daaba0
+  languageName: node
+  linkType: hard
+
+"@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
+  version: 0.0.1
+  resolution: "@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator#../compact-tools/packages/simulator::hash=6723e8&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  dependencies:
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
+  checksum: 10/1c5677972dc1173befe0f993b080d0329acf06b0bbca8d086e754d34f618f003b8f4c95b7757e03859be84c6863a39f61ea6c020c9c1eb8517818f10969eb433
+  languageName: node
+  linkType: hard
 
 "@openzeppelin/docs-utils@npm:^0.1.5":
   version: 0.1.6
@@ -1215,15 +1206,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-check@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "fast-check@npm:4.3.0"
-  dependencies:
-    pure-rand: "npm:^7.0.0"
-  checksum: 10/5f51abb65f4752b61e85e445fb061fe3b2571984c4f2ee77dccf1d95d023380db9405245d49103548c738f1e979a62bd8c9a5a96b675f1d259f3ec4b19076505
-  languageName: node
-  linkType: hard
-
 "fdir@npm:^6.5.0":
   version: 6.5.0
   resolution: "fdir@npm:6.5.0"
@@ -1893,13 +1875,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pure-rand@npm:^7.0.0":
-  version: 7.0.1
-  resolution: "pure-rand@npm:7.0.1"
-  checksum: 10/c61a576fda5032ec9763ecb000da4a8f19263b9e2f9ae9aa2759c8fbd9dc6b192b2ce78391ebd41abb394a5fedb7bcc4b03c9e6141ac8ab20882dd5717698b80
-  languageName: node
-  linkType: hard
-
 "readdirp@npm:~3.6.0":
   version: 3.6.0
   resolution: "readdirp@npm:3.6.0"
@@ -2344,7 +2319,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.8.2, typescript@npm:^5.9.3":
+"typescript@npm:^5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -2354,7 +2329,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.8.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:
