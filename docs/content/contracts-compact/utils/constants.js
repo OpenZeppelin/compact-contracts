@@ -1,0 +1,2 @@
+export const COMPACT_COMPILER_VERSION = "0.24.0";
+export const COMPACT_LANGUAGE_VERSION = "0.16.0";

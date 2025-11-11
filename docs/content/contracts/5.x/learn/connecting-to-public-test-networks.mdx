@@ -1,0 +1,165 @@
+---
+title: Connecting to public test networks
+---
+
+After you have [written your contracts](./developing-smart-contracts), and [tried them out locally](./deploying-and-interacting) and [tested them thoroughly](./writing-automated-tests), it’s time to move to a persistent public testing environment, where you and your beta users can start interacting with your application.
+
+We will use **public testing networks** (aka _testnets_) for this, which are networks that operate similar to the main Ethereum network, but where Ether has no value and is free to acquire - making them ideal for testing your contracts at no cost.
+
+In this guide, we will use our beloved [`Box` contract](./developing-smart-contracts#first-contract), and deploy it to a testnet, while learning:
+
+* [What test networks are available](#available-testnets)
+* [How to set up your project for working on a testnet](#connecting-a-project-to-a-public-network)
+* [How to deploy and interact with your testnet contract instances](#working-on-a-testnet)
+
+Remember that deploying to a public test network is a necessary step when developing an Ethereum project. They provide a safe environment for testing that closely mimics the main network - you don’t want to take out your project for a test drive in a network where mistakes will cost you and your users money!
+
+## Available testnets
+
+There are a number of test networks available for you to choose, each with their own characteristics. The recommended network for testing decentralized applications and smart contracts is Sepolia. (id=11155111)
+
+<Callout>
+Each network is identified by a numeric ID. Local networks usually have a large random value, while id=1 is reserved for the main Ethereum network.
+</Callout>
+
+## Connecting a project to a public network
+
+To connect our project to a public testnet, we will need to:
+
+1. [Get hold of a testnet node](#accessing-a-testnet-node)
+2. [Create a new account](#creating-a-new-account)
+3. [Update our configuration file](#configuring-the-network)
+4. [Fund our testing account](#funding-the-testnet-account)
+
+### Accessing a testnet node
+
+While you can spin up your own [Ethereum nodes](https://ethereum.org/en/developers/docs/nodes-and-clients/run-a-node/) connected to a testnet, the easiest way to access a testnet is via a public node service such as [Alchemy](https://alchemy.com/) or [Infura](https://infura.io). Alchemy and Infura provide access to public nodes for all testnets and the main network, via both free and paid plans.
+
+<Callout>
+We say a node is _public_ when it can be accessed by the general public, and manages no accounts. This means that it can reply to queries and relay signed transactions, but cannot sign transactions on its own.
+</Callout>
+
+In this guide we will use Alchemy, though you can use [Infura](https://infura.io/), or another public node provider of your choice.
+
+Head over to [Alchemy](https://dashboard.alchemyapi.io/signup?referral=53fcee38-b894-4d5f-bd65-885d241f8d29) (includes referral code), sign up, and jot down your assigned API key - we will use it later to connect to the network.
+
+### Creating a new account
+
+To send transactions in a testnet, you will need a new Ethereum account. There are many ways to do this: here we will use the `mnemonics` package, which will output a fresh mnemonic (a set of 12 words) we will use to derive our accounts:
+
+```console
+$ npx mnemonics
+drama film snack motion ...
+```
+
+<Callout type='warn'>
+Make sure to keep your mnemonic secure. Do not commit secrets to version control. Even if it is just for testing purposes, there are still malicious users out there who will wreak havoc on your testnet deployment for fun!
+</Callout>
+
+### Configuring the network
+
+Since we are using public nodes, we will need to sign all our transactions locally. We will configure the network with our mnemonic and an Alchemy endpoint.
+
+<Callout>
+This part assumes you have already set up a project. If you haven’t, head over to the guide on [Setting up a Solidity project](./developing-smart-contracts#setting-up-a-project).
+</Callout>
+
+We need to update our configuration file with a new network connection to the testnet. Here we will use Sepolia, but you can use whichever you want:
+```diff
+// hardhat.config.js
++ const { alchemyApiKey, mnemonic } = require('./secrets.json');
+...
+  module.exports = {
++    networks: {
++     sepolia: {
++       url: `https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`,
++       accounts: { mnemonic: mnemonic },
++     },
++   },
+...
+};
+```
+
+<Callout>
+See the Hardhat [networks configuration](https://hardhat.org/config/#json-rpc-based-networks) documentation for information on configuration options.
+Note in the first line that we are loading the project id and mnemonic from a `secrets.json` file, which should look like the following, but using your own values. Make sure to `.gitignore` it to ensure you don’t commit secrets to version control!
+</Callout>
+
+```json
+
+  "mnemonic": "drama film snack motion ...",
+  "alchemyApiKey": "JPV2..."
+
+```
+
+<Callout>
+Instead of a `secrets.json` file, you can use whatever secret-management solution you like for your project. A popular and simple option is to use [`dotenv`](https://github.com/motdotla/dotenv) for injecting secrets as environment variables.
+</Callout>
+
+We can now test out that this configuration is working by listing the accounts we have available for the Sepolia network. Remember that yours will be different, as they depend on the mnemonic you used.
+
+```console
+$ npx hardhat console --network sepolia
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> accounts = (await ethers.getSigners()).map(signer => signer.address)
+[
+  '0x6B1c3A2f2160a7Cb2ebc7Fc861b8dB71476C30E7',
+  '0xC1310ade58A75E6d4fCb8238f9559188Ea3808f9',
+...
+]
+```
+We can also test the connection to the node, by querying our account balance.
+```console
+> (await ethers.provider.getBalance(accounts[0])).toString()
+'0'
+```
+
+Empty! This points to our next task: getting testnet funds so that we can send transactions.
+
+### Funding the testnet account
+
+Most public testnets have a faucet: a site that will provide you with a small amount of test Ether for free. If you are on Sepolia, head to [Alchemy’s free Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia), [Infura’s free Sepolia faucet](https://www.infura.io/faucet), or [Google’s free Sepolia faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) to get free testETH.
+
+Armed with a funded account, let’s deploy our contracts to the testnet!
+
+## Working on a testnet
+
+With a project configured to work on a public testnet, we can now finally [deploy our `Box` contract](./deploying-and-interacting#deploying-a-smart-contract). The command here is exactly the same as if you were on your [local development network](./deploying-and-interacting#setting-up-a-local-blockchain), though it will take a few seconds to run as new blocks are mined.
+
+```console
+$ npx hardhat run --network sepolia scripts/deploy.js
+Deploying Box...
+Box deployed to: 0x1b99CCaCea0e4046db618770dEF72180F8138641
+```
+
+That’s it! Your `Box` contract instance will be forever stored in the testnet, and publicly accessible to anyone.
+
+You can see your contract on a block explorer such as [Etherscan](https://etherscan.io/). Remember to access the explorer on the testnet where you deployed your contract, such as [sepolia.etherscan.io](https://sepolia.etherscan.io) for Sepolia.
+
+<Callout>
+You can check out the contract we deployed in the example above, along with all transactions sent to it, [here](https://sepolia.etherscan.io/address/0x1b99CCaCea0e4046db618770dEF72180F8138641).
+</Callout>
+
+You can also interact with your instance as you regularly would, either using the [console](./deploying-and-interacting#interacting-from-the-console), or [programmatically](./deploying-and-interacting#interacting-programmatically).
+
+```console
+$ npx hardhat console --network sepolia
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> const Box = await ethers.getContractFactory('Box');
+undefined
+> const box = await Box.attach('0x1b99CCaCea0e4046db618770dEF72180F8138641');
+undefined
+> await box.store(42);
+{
+  hash: '0x330e331d30ee83f96552d82b7fdfa6156f9f97d549a612eeef7283d18b31d107',
+...
+> (await box.retrieve()).toString()
+'42'
+```
+Keep in mind that every transaction will cost some gas, so you will eventually need to top up your account with more funds.
+
+## Next steps
+
+After thoroughly testing your application on a public testnet, you are ready for the last step on the development journey: [deploying your application in production](./preparing-for-mainnet).

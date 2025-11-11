@@ -1,0 +1,87 @@
+---
+title: Privacy at OpenZeppelin
+---
+
+Our work focuses on enabling confidentiality, selective disclosure, and private coordination across on-chain applications.
+
+## Ecosystem Contributions
+
+We have partnered with ecosystems and projects to deliver confidential and privacy-preserving contracts libraries, tooling, and starter applications.
+
+<Cards>
+    <Card title="Miden">
+        Token standards (ERC-20 equivalent) in Rust, shared state model, and private multisig 
+    </Card>
+
+    <Card title="Midnight" href="https://github.com/OpenZeppelin/compact-contracts">
+        Privacy preserving contracts libraries in Compact, developer tooling, and starter decentralized applications
+    </Card>
+
+    <Card title="Zama" href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/tree/master">
+        Confidential contracts libraries in Solidity and privacy relayer
+    </Card>
+
+    <Card title="Zama, 3643 Association, and Tokeny" href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/tree/master/contracts/token/ERC7984/extensions">
+        Confidential real world asset extensions contracts libraries in Solidity
+    </Card>
+
+    <Card title="zkEmail" href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/tree/master/contracts/utils/cryptography">
+        Cryptography contracts libraries in Solidity
+    </Card>
+</Cards>
+
+## Confidential Tokens
+
+Extends standards such as ERC-20 to support encrypted balances and confidential transfers, allowing assets to move privately while remaining verifiable on-chain.
+
+### Use Cases
+
+- **Confidential Payments**: Settle supplier/vendor payments without leaking volume or terms.
+
+- **Confidential Fund Allocations**: Generate yield without exposing portfolio weights and without signaling size or intent.
+
+- **Confidential Governance**: Prevent manipulation, bribery, and collusion by concealing voting weights, thresholds, and execution time delays.
+
+### Standards
+
+- **ERC-7984: Confidential Fungible Token** (draft): A [standard](https://github.com/ethereum/ERCs/pull/1113/files#diff-4c22c7cb34e9622c46198c95e8810399c8bf545126ef800b3a464083629aa6e5) that enables confidential value transfer using a pointer based system. OpenZeppelin team members co-authored the standard with Zama and is building contracts libraries in the [OpenZeppelin Solidity Confidential Contracts Repo](https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/tree/master/contracts/token/ERC7984).
+
+- **ERC-3643: T-REX - Token for Regulated Exchanges** (final): A [standard](https://eips.ethereum.org/EIPS/eip-3643) that enables the management and compliant transfer of institutional grade security tokens using on chain compliance and verification systems. OpenZeppelin is building contracts libraries for confidential real world asset extensions in the [OpenZeppelin Solidity Confidential Contracts Repo](https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/tree/master/contracts/token/ERC7984/extensions).
+
+### Associations
+
+- **Confidential Token Association**: The goal of the [association](https://www.confidentialtoken.org/) is to push forward onchain confidentiality by leveraging recent advances in encryption to build a common token standard. OpenZeppelin is a [founding member](https://www.confidentialtoken.org/#members) with Zama and Inco.
+
+## Private Email Verification
+
+On-chain email based identity using zero knowledge proofs.
+
+### Use Cases
+
+- **Send Crypto Using Only Email Address**: Users can authorize transactions (e.g. send money, DAO voting, any blockchain transaction) by proving control of their email address with no private key management required. Email never revealed!
+
+- **Recover Account Using Email Gaurdians**: Lost keys can be restored by proving control of an email account, enabling user-friendly recovery.
+
+### Standards
+
+- **ERC-7969: DomainKeys Identified Mail (DKIM) Registry** (draft): A [standard](https://eips.ethereum.org/EIPS/eip-7969) that enables trustless email ownership verification using a DKIM restistry. OpenZeppelin team members co-authored with OKX and is building contracts libraries in the [OpenZeppelin Solidity Community Contracts Repo](https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/utils/cryptography/DKIMRegistry.sol).
+
+## Private Shared State
+
+Private coordination of state between parties using off-chain state storage and synchronization to prevent users from losing their state.
+
+### Use Cases
+
+- **Private Coordination**: Allows parties to coordinate information that must remain private, such as borrowing/lending, OTC trading, and transfer of funds between privileged entities.
+
+- **Confidential Multisigs**: Multisignature accounts with features such as encrypted balances and confidential transfers.
+
+## Confidential Multisig
+
+Extends multsignature accounts to support encrypted balances, confidential transfers, and shared private state.
+
+### Use Cases
+
+- **Enhanced Security**: Users and organizations can keep the exact threshold a secret to prevents attackers from knowing the signatures scheme and/or how many signatures they need to compromise.
+
+- **Private Governance Structures**: Sensitive organizations can enable on chain regulatory compliance.

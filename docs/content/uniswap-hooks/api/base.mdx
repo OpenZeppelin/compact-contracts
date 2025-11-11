@@ -1,0 +1,1605 @@
+---
+title: "Base"
+description: "Smart contract base utilities and implementations"
+---
+
+<a id="BaseAsyncSwap"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `BaseAsyncSwap`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/uniswap-hooks/blob/v1.1.0/src/base/BaseAsyncSwap.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "uniswap-hooks/src/base/BaseAsyncSwap.sol";
+```
+
+Base implementation for async swaps, which skip the v3-like swap implementation of the `PoolManager`
+by taking the full swap input amount and returning a delta that nets out the specified amount to 0.
+
+This base hook allows developers to implement arbitrary logic to handle swaps, including use-cases like
+asynchronous swaps and custom swap-ordering. However, given this flexibility, developers should ensure
+that any logic implemented interacts safely with the `PoolManager` and works correctly.
+
+In order to handle async swaps, the hook mints ERC-6909 claim tokens for the specified currency and amount.
+Inheriting contracts are free to handle these claim tokens as necessary, which can be redeemed for the
+underlying currency by using the `settle` function from the `CurrencySettler` library.
+
+<Callout type="warn">
+If the hook is used for multiple pools, the ERC-6909 tokens must be separated and managed
+independently for each pool in order to prevent draining of ERC-6909 tokens from one pool to another.
+</Callout>
+
+<Callout>
+The hook only supports async exact-input swaps. Exact-output swaps will be processed normally
+by the `PoolManager`.
+</Callout>
+
+<Callout type="warn">
+This is experimental software and is provided on an "as is" and "as available" basis. We do
+not give any warranties and will not be liable for any losses incurred through any use of this code
+base.
+</Callout>
+
+_Available since v0.1.0_
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(_poolManager)](#BaseAsyncSwap-constructor-contract-IPoolManager-)
+- [_beforeSwap(sender, key, params, )](#BaseAsyncSwap-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [_calculateSwapFee(key, specifiedAmount)](#BaseAsyncSwap-_calculateSwapFee-struct-PoolKey-uint256-)
+- [getHookPermissions()](#BaseAsyncSwap-getHookPermissions--)
+#### IHookEvents [!toc]
+#### BaseHook [!toc]
+- [_validateHookAddress(hook)](#BaseHook-_validateHookAddress-contract-BaseHook-)
+- [beforeInitialize(sender, key, sqrtPriceX96)](#BaseHook-beforeInitialize-address-struct-PoolKey-uint160-)
+- [_beforeInitialize(, , )](#BaseHook-_beforeInitialize-address-struct-PoolKey-uint160-)
+- [afterInitialize(sender, key, sqrtPriceX96, tick)](#BaseHook-afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [_afterInitialize(, , , )](#BaseHook-_afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [beforeAddLiquidity(sender, key, params, hookData)](#BaseHook-beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_beforeAddLiquidity(, , , )](#BaseHook-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [beforeRemoveLiquidity(sender, key, params, hookData)](#BaseHook-beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_beforeRemoveLiquidity(, , , )](#BaseHook-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [afterAddLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterAddLiquidity(, , , , , )](#BaseHook-_afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [afterRemoveLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterRemoveLiquidity(, , , , , )](#BaseHook-_afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [beforeSwap(sender, key, params, hookData)](#BaseHook-beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [afterSwap(sender, key, params, delta, hookData)](#BaseHook-afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [_afterSwap(, , , , )](#BaseHook-_afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [beforeDonate(sender, key, amount0, amount1, hookData)](#BaseHook-beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_beforeDonate(, , , , )](#BaseHook-_beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [afterDonate(sender, key, amount0, amount1, hookData)](#BaseHook-afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_afterDonate(, , , , )](#BaseHook-_afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [poolManager()](#BaseHook-poolManager-contract-IPoolManager)
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IHookEvents [!toc]
+- [HookSwap(poolId, sender, amount0, amount1, hookLPfeeAmount0, hookLPfeeAmount1)](#IHookEvents-HookSwap-bytes32-address-int128-int128-uint128-uint128-)
+- [HookFee(poolId, sender, feeAmount0, feeAmount1)](#IHookEvents-HookFee-bytes32-address-uint128-uint128-)
+- [HookModifyLiquidity(poolId, sender, amount0, amount1)](#IHookEvents-HookModifyLiquidity-bytes32-address-int128-int128-)
+- [HookBonus(poolId, amount0, amount1)](#IHookEvents-HookBonus-bytes32-uint128-uint128-)
+#### BaseHook [!toc]
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### IHookEvents [!toc]
+#### BaseHook [!toc]
+- [NotSelf()](#BaseHook-NotSelf--)
+- [InvalidPool()](#BaseHook-InvalidPool--)
+- [HookNotImplemented()](#BaseHook-HookNotImplemented--)
+- [NotPoolManager()](#BaseHook-NotPoolManager--)
+#### IHooks [!toc]
+</div>
+</div>
+
+<a id="BaseAsyncSwap-constructor-contract-IPoolManager-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(contract IPoolManager _poolManager)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseAsyncSwap-constructor-contract-IPoolManager-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the `PoolManager` address.
+
+</div>
+</div>
+
+<a id="BaseAsyncSwap-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeSwap(address sender, struct PoolKey key, struct SwapParams params, bytes) → bytes4, BeforeSwapDelta, uint24</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseAsyncSwap-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Skip the v3-like swap implementation of the `PoolManager` by returning a delta that nets out the
+specified amount to 0 to enable asynchronous swaps.
+
+</div>
+</div>
+
+<a id="BaseAsyncSwap-_calculateSwapFee-struct-PoolKey-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_calculateSwapFee(struct PoolKey key, uint256 specifiedAmount) → uint256 feeAmount</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseAsyncSwap-_calculateSwapFee-struct-PoolKey-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculate the fee amount for the swap.
+
+</div>
+</div>
+
+<a id="BaseAsyncSwap-getHookPermissions--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getHookPermissions() → struct Hooks.Permissions permissions</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseAsyncSwap-getHookPermissions--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the hook permissions, specifically `beforeSwap` and `beforeSwapReturnDelta`.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `BaseCustomAccounting`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/uniswap-hooks/blob/v1.1.0/src/base/BaseCustomAccounting.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "uniswap-hooks/src/base/BaseCustomAccounting.sol";
+```
+
+Base implementation for custom accounting and hook-owned liquidity.
+
+To enable hook-owned liquidity, tokens must be deposited via the hook to allow control and flexibility
+over the liquidity. The implementation inheriting this hook must implement the respective functions
+to calculate the liquidity modification parameters and the amount of liquidity shares to mint or burn.
+
+Additionally, the implementer must consider that the hook is the sole owner of the liquidity and
+manage fees over liquidity shares accordingly.
+
+<Callout>
+This base hook is designed to work with a single pool key. If you want to use the same custom
+accounting hook for multiple pools, you must have multiple storage instances of this contract and
+initialize them via the `PoolManager` with their respective pool keys.
+</Callout>
+
+<Callout type="warn">
+This is experimental software and is provided on an "as is" and "as available" basis. We do
+not give any warranties and will not be liable for any losses incurred through any use of this code
+base.
+</Callout>
+
+_Available since v0.1.0_
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [ensure(deadline)](#BaseCustomAccounting-ensure-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(_poolManager)](#BaseCustomAccounting-constructor-contract-IPoolManager-)
+- [poolKey()](#BaseCustomAccounting-poolKey--)
+- [addLiquidity(params)](#BaseCustomAccounting-addLiquidity-struct-BaseCustomAccounting-AddLiquidityParams-)
+- [removeLiquidity(params)](#BaseCustomAccounting-removeLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-)
+- [_modifyLiquidity(params)](#BaseCustomAccounting-_modifyLiquidity-bytes-)
+- [unlockCallback(rawData)](#BaseCustomAccounting-unlockCallback-bytes-)
+- [_handleAccruedFees(data, callerDelta, feesAccrued)](#BaseCustomAccounting-_handleAccruedFees-struct-BaseCustomAccounting-CallbackData-BalanceDelta-BalanceDelta-)
+- [_beforeInitialize(, key, )](#BaseCustomAccounting-_beforeInitialize-address-struct-PoolKey-uint160-)
+- [_beforeAddLiquidity(, , , )](#BaseCustomAccounting-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_beforeRemoveLiquidity(, , , )](#BaseCustomAccounting-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_getAddLiquidity(sqrtPriceX96, params)](#BaseCustomAccounting-_getAddLiquidity-uint160-struct-BaseCustomAccounting-AddLiquidityParams-)
+- [_getRemoveLiquidity(params)](#BaseCustomAccounting-_getRemoveLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-)
+- [_mint(params, callerDelta, feesAccrued, shares)](#BaseCustomAccounting-_mint-struct-BaseCustomAccounting-AddLiquidityParams-BalanceDelta-BalanceDelta-uint256-)
+- [_burn(params, callerDelta, feesAccrued, shares)](#BaseCustomAccounting-_burn-struct-BaseCustomAccounting-RemoveLiquidityParams-BalanceDelta-BalanceDelta-uint256-)
+- [getHookPermissions()](#BaseCustomAccounting-getHookPermissions--)
+#### IUnlockCallback [!toc]
+#### IHookEvents [!toc]
+#### BaseHook [!toc]
+- [_validateHookAddress(hook)](#BaseHook-_validateHookAddress-contract-BaseHook-)
+- [beforeInitialize(sender, key, sqrtPriceX96)](#BaseHook-beforeInitialize-address-struct-PoolKey-uint160-)
+- [afterInitialize(sender, key, sqrtPriceX96, tick)](#BaseHook-afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [_afterInitialize(, , , )](#BaseHook-_afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [beforeAddLiquidity(sender, key, params, hookData)](#BaseHook-beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [beforeRemoveLiquidity(sender, key, params, hookData)](#BaseHook-beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [afterAddLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterAddLiquidity(, , , , , )](#BaseHook-_afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [afterRemoveLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterRemoveLiquidity(, , , , , )](#BaseHook-_afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [beforeSwap(sender, key, params, hookData)](#BaseHook-beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [_beforeSwap(, , , )](#BaseHook-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [afterSwap(sender, key, params, delta, hookData)](#BaseHook-afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [_afterSwap(, , , , )](#BaseHook-_afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [beforeDonate(sender, key, amount0, amount1, hookData)](#BaseHook-beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_beforeDonate(, , , , )](#BaseHook-_beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [afterDonate(sender, key, amount0, amount1, hookData)](#BaseHook-afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_afterDonate(, , , , )](#BaseHook-_afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [poolManager()](#BaseHook-poolManager-contract-IPoolManager)
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IUnlockCallback [!toc]
+#### IHookEvents [!toc]
+- [HookSwap(poolId, sender, amount0, amount1, hookLPfeeAmount0, hookLPfeeAmount1)](#IHookEvents-HookSwap-bytes32-address-int128-int128-uint128-uint128-)
+- [HookFee(poolId, sender, feeAmount0, feeAmount1)](#IHookEvents-HookFee-bytes32-address-uint128-uint128-)
+- [HookModifyLiquidity(poolId, sender, amount0, amount1)](#IHookEvents-HookModifyLiquidity-bytes32-address-int128-int128-)
+- [HookBonus(poolId, amount0, amount1)](#IHookEvents-HookBonus-bytes32-uint128-uint128-)
+#### BaseHook [!toc]
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ExpiredPastDeadline()](#BaseCustomAccounting-ExpiredPastDeadline--)
+- [PoolNotInitialized()](#BaseCustomAccounting-PoolNotInitialized--)
+- [TooMuchSlippage()](#BaseCustomAccounting-TooMuchSlippage--)
+- [LiquidityOnlyViaHook()](#BaseCustomAccounting-LiquidityOnlyViaHook--)
+- [InvalidNativeValue()](#BaseCustomAccounting-InvalidNativeValue--)
+- [AlreadyInitialized()](#BaseCustomAccounting-AlreadyInitialized--)
+#### IUnlockCallback [!toc]
+#### IHookEvents [!toc]
+#### BaseHook [!toc]
+- [NotSelf()](#BaseHook-NotSelf--)
+- [InvalidPool()](#BaseHook-InvalidPool--)
+- [HookNotImplemented()](#BaseHook-HookNotImplemented--)
+- [NotPoolManager()](#BaseHook-NotPoolManager--)
+#### IHooks [!toc]
+</div>
+</div>
+
+<a id="BaseCustomAccounting-ensure-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ensure(uint256 deadline)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-ensure-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Ensure the deadline of a liquidity modification request is not expired.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-constructor-contract-IPoolManager-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(contract IPoolManager _poolManager)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-constructor-contract-IPoolManager-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the pool `PoolManager` address.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-poolKey--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">poolKey() → struct PoolKey</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomAccounting-poolKey--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-addLiquidity-struct-BaseCustomAccounting-AddLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">addLiquidity(struct BaseCustomAccounting.AddLiquidityParams params) → BalanceDelta delta</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomAccounting-addLiquidity-struct-BaseCustomAccounting-AddLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+To cover all possible scenarios, `msg.sender` should have already given the hook an allowance
+of at least amount0Desired/amount1Desired on token0/token1. Always adds assets at the ideal ratio,
+according to the price when the transaction is executed.
+
+<Callout>
+The `amount0Min` and `amount1Min` parameters are relative to the principal delta, which excludes
+fees accrued from the liquidity modification delta.
+</Callout>
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-removeLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">removeLiquidity(struct BaseCustomAccounting.RemoveLiquidityParams params) → BalanceDelta delta</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomAccounting-removeLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_modifyLiquidity-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_modifyLiquidity(bytes params) → BalanceDelta callerDelta, BalanceDelta feesAccrued</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_modifyLiquidity-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calls the `PoolManager` to unlock and call back the hook's `unlockCallback` function.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-unlockCallback-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">unlockCallback(bytes rawData) → bytes returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomAccounting-unlockCallback-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Callback from the `PoolManager` when liquidity is modified, either adding or removing.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_handleAccruedFees-struct-BaseCustomAccounting-CallbackData-BalanceDelta-BalanceDelta-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_handleAccruedFees(struct BaseCustomAccounting.CallbackData data, BalanceDelta callerDelta, BalanceDelta feesAccrued)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_handleAccruedFees-struct-BaseCustomAccounting-CallbackData-BalanceDelta-BalanceDelta-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Handle any fees accrued in a liquidity position. By default, this function transfers the tokens to the
+owner of the liquidity position. However, this function can be overridden to take fees accrued in the position,
+or any other desired logic.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_beforeInitialize-address-struct-PoolKey-uint160-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeInitialize(address, struct PoolKey key, uint160) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_beforeInitialize-address-struct-PoolKey-uint160-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initialize the hook's pool key. The stored key should act immutably so that
+it can safely be used across the hook's functions.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeAddLiquidity(address, struct PoolKey, struct ModifyLiquidityParams, bytes) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revert when liquidity is attempted to be added via the `PoolManager`.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeRemoveLiquidity(address, struct PoolKey, struct ModifyLiquidityParams, bytes) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revert when liquidity is attempted to be removed via the `PoolManager`.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_getAddLiquidity-uint160-struct-BaseCustomAccounting-AddLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getAddLiquidity(uint160 sqrtPriceX96, struct BaseCustomAccounting.AddLiquidityParams params) → bytes modify, uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_getAddLiquidity-uint160-struct-BaseCustomAccounting-AddLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Get the liquidity modification to apply for a given liquidity addition,
+and the amount of liquidity shares would be minted to the sender.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_getRemoveLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getRemoveLiquidity(struct BaseCustomAccounting.RemoveLiquidityParams params) → bytes modify, uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_getRemoveLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Get the liquidity modification to apply for a given liquidity removal,
+and the amount of liquidity shares would be burned from the sender.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_mint-struct-BaseCustomAccounting-AddLiquidityParams-BalanceDelta-BalanceDelta-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_mint(struct BaseCustomAccounting.AddLiquidityParams params, BalanceDelta callerDelta, BalanceDelta feesAccrued, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_mint-struct-BaseCustomAccounting-AddLiquidityParams-BalanceDelta-BalanceDelta-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Mint liquidity shares to the sender.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-_burn-struct-BaseCustomAccounting-RemoveLiquidityParams-BalanceDelta-BalanceDelta-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_burn(struct BaseCustomAccounting.RemoveLiquidityParams params, BalanceDelta callerDelta, BalanceDelta feesAccrued, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomAccounting-_burn-struct-BaseCustomAccounting-RemoveLiquidityParams-BalanceDelta-BalanceDelta-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Burn liquidity shares from the sender.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-getHookPermissions--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getHookPermissions() → struct Hooks.Permissions permissions</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomAccounting-getHookPermissions--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the hook permissions, specifically `beforeInitialize`, `beforeAddLiquidity` and `beforeRemoveLiquidity`.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-ExpiredPastDeadline--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ExpiredPastDeadline()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseCustomAccounting-ExpiredPastDeadline--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+A liquidity modification order was attempted to be executed after the deadline.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-PoolNotInitialized--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">PoolNotInitialized()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseCustomAccounting-PoolNotInitialized--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Pool was not initialized.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-TooMuchSlippage--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">TooMuchSlippage()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseCustomAccounting-TooMuchSlippage--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Principal delta of liquidity modification resulted in too much slippage.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-LiquidityOnlyViaHook--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">LiquidityOnlyViaHook()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseCustomAccounting-LiquidityOnlyViaHook--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Liquidity was attempted to be added or removed via the `PoolManager` instead of the hook.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-InvalidNativeValue--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">InvalidNativeValue()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseCustomAccounting-InvalidNativeValue--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Native currency was not sent with the correct amount.
+
+</div>
+</div>
+
+<a id="BaseCustomAccounting-AlreadyInitialized--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">AlreadyInitialized()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseCustomAccounting-AlreadyInitialized--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook was already initialized.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `BaseCustomCurve`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/uniswap-hooks/blob/v1.1.0/src/base/BaseCustomCurve.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "uniswap-hooks/src/base/BaseCustomCurve.sol";
+```
+
+Base implementation for custom curves, inheriting from [`BaseCustomAccounting`](#BaseCustomAccounting).
+
+This hook allows to implement a custom curve (or any logic) for swaps, which overrides the default v3-like
+concentrated liquidity implementation of the `PoolManager`. During a swap, the hook calls the
+[`BaseCustomCurve._getUnspecifiedAmount`](#BaseCustomCurve-_getUnspecifiedAmount-struct-SwapParams-) function to get the amount of tokens to be sent to the receiver. The return delta
+created from this calculation is then consumed and applied by the `PoolManager`.
+
+<Callout>
+This hook by default does not include fee or salt mechanisms, which can be implemented by inheriting
+contracts if needed.
+</Callout>
+
+<Callout type="warn">
+This is experimental software and is provided on an "as is" and "as available" basis. We do
+not give any warranties and will not be liable for any losses incurred through any use of this code
+base.
+</Callout>
+
+_Available since v0.1.0_
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(_poolManager)](#BaseCustomCurve-constructor-contract-IPoolManager-)
+- [_getAddLiquidity(, params)](#BaseCustomCurve-_getAddLiquidity-uint160-struct-BaseCustomAccounting-AddLiquidityParams-)
+- [_getRemoveLiquidity(params)](#BaseCustomCurve-_getRemoveLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-)
+- [_beforeSwap(sender, key, params, )](#BaseCustomCurve-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [_modifyLiquidity(params)](#BaseCustomCurve-_modifyLiquidity-bytes-)
+- [unlockCallback(rawData)](#BaseCustomCurve-unlockCallback-bytes-)
+- [_getUnspecifiedAmount(params)](#BaseCustomCurve-_getUnspecifiedAmount-struct-SwapParams-)
+- [_getSwapFeeAmount(params, unspecifiedAmount)](#BaseCustomCurve-_getSwapFeeAmount-struct-SwapParams-uint256-)
+- [_getAmountOut(params)](#BaseCustomCurve-_getAmountOut-struct-BaseCustomAccounting-RemoveLiquidityParams-)
+- [_getAmountIn(params)](#BaseCustomCurve-_getAmountIn-struct-BaseCustomAccounting-AddLiquidityParams-)
+- [getHookPermissions()](#BaseCustomCurve-getHookPermissions--)
+#### BaseCustomAccounting [!toc]
+- [poolKey()](#BaseCustomAccounting-poolKey--)
+- [addLiquidity(params)](#BaseCustomAccounting-addLiquidity-struct-BaseCustomAccounting-AddLiquidityParams-)
+- [removeLiquidity(params)](#BaseCustomAccounting-removeLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-)
+- [_handleAccruedFees(data, callerDelta, feesAccrued)](#BaseCustomAccounting-_handleAccruedFees-struct-BaseCustomAccounting-CallbackData-BalanceDelta-BalanceDelta-)
+- [_beforeInitialize(, key, )](#BaseCustomAccounting-_beforeInitialize-address-struct-PoolKey-uint160-)
+- [_beforeAddLiquidity(, , , )](#BaseCustomAccounting-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_beforeRemoveLiquidity(, , , )](#BaseCustomAccounting-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_mint(params, callerDelta, feesAccrued, shares)](#BaseCustomAccounting-_mint-struct-BaseCustomAccounting-AddLiquidityParams-BalanceDelta-BalanceDelta-uint256-)
+- [_burn(params, callerDelta, feesAccrued, shares)](#BaseCustomAccounting-_burn-struct-BaseCustomAccounting-RemoveLiquidityParams-BalanceDelta-BalanceDelta-uint256-)
+#### IUnlockCallback [!toc]
+#### IHookEvents [!toc]
+#### BaseHook [!toc]
+- [_validateHookAddress(hook)](#BaseHook-_validateHookAddress-contract-BaseHook-)
+- [beforeInitialize(sender, key, sqrtPriceX96)](#BaseHook-beforeInitialize-address-struct-PoolKey-uint160-)
+- [afterInitialize(sender, key, sqrtPriceX96, tick)](#BaseHook-afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [_afterInitialize(, , , )](#BaseHook-_afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [beforeAddLiquidity(sender, key, params, hookData)](#BaseHook-beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [beforeRemoveLiquidity(sender, key, params, hookData)](#BaseHook-beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [afterAddLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterAddLiquidity(, , , , , )](#BaseHook-_afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [afterRemoveLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterRemoveLiquidity(, , , , , )](#BaseHook-_afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [beforeSwap(sender, key, params, hookData)](#BaseHook-beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [afterSwap(sender, key, params, delta, hookData)](#BaseHook-afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [_afterSwap(, , , , )](#BaseHook-_afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [beforeDonate(sender, key, amount0, amount1, hookData)](#BaseHook-beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_beforeDonate(, , , , )](#BaseHook-_beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [afterDonate(sender, key, amount0, amount1, hookData)](#BaseHook-afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_afterDonate(, , , , )](#BaseHook-_afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [poolManager()](#BaseHook-poolManager-contract-IPoolManager)
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### BaseCustomAccounting [!toc]
+#### IUnlockCallback [!toc]
+#### IHookEvents [!toc]
+- [HookSwap(poolId, sender, amount0, amount1, hookLPfeeAmount0, hookLPfeeAmount1)](#IHookEvents-HookSwap-bytes32-address-int128-int128-uint128-uint128-)
+- [HookFee(poolId, sender, feeAmount0, feeAmount1)](#IHookEvents-HookFee-bytes32-address-uint128-uint128-)
+- [HookModifyLiquidity(poolId, sender, amount0, amount1)](#IHookEvents-HookModifyLiquidity-bytes32-address-int128-int128-)
+- [HookBonus(poolId, amount0, amount1)](#IHookEvents-HookBonus-bytes32-uint128-uint128-)
+#### BaseHook [!toc]
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### BaseCustomAccounting [!toc]
+- [ExpiredPastDeadline()](#BaseCustomAccounting-ExpiredPastDeadline--)
+- [PoolNotInitialized()](#BaseCustomAccounting-PoolNotInitialized--)
+- [TooMuchSlippage()](#BaseCustomAccounting-TooMuchSlippage--)
+- [LiquidityOnlyViaHook()](#BaseCustomAccounting-LiquidityOnlyViaHook--)
+- [InvalidNativeValue()](#BaseCustomAccounting-InvalidNativeValue--)
+- [AlreadyInitialized()](#BaseCustomAccounting-AlreadyInitialized--)
+#### IUnlockCallback [!toc]
+#### IHookEvents [!toc]
+#### BaseHook [!toc]
+- [NotSelf()](#BaseHook-NotSelf--)
+- [InvalidPool()](#BaseHook-InvalidPool--)
+- [HookNotImplemented()](#BaseHook-HookNotImplemented--)
+- [NotPoolManager()](#BaseHook-NotPoolManager--)
+#### IHooks [!toc]
+</div>
+</div>
+
+<a id="BaseCustomCurve-constructor-contract-IPoolManager-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(contract IPoolManager _poolManager)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-constructor-contract-IPoolManager-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the pool `PoolManager` address.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_getAddLiquidity-uint160-struct-BaseCustomAccounting-AddLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getAddLiquidity(uint160, struct BaseCustomAccounting.AddLiquidityParams params) → bytes, uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_getAddLiquidity-uint160-struct-BaseCustomAccounting-AddLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Defines how the liquidity modification data is encoded and returned
+for an add liquidity request.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_getRemoveLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getRemoveLiquidity(struct BaseCustomAccounting.RemoveLiquidityParams params) → bytes, uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_getRemoveLiquidity-struct-BaseCustomAccounting-RemoveLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Defines how the liquidity modification data is encoded and returned
+for a remove liquidity request.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeSwap(address sender, struct PoolKey key, struct SwapParams params, bytes) → bytes4, BeforeSwapDelta, uint24</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overrides the default swap logic of the `PoolManager` and calls the [`BaseCustomCurve._getUnspecifiedAmount`](#BaseCustomCurve-_getUnspecifiedAmount-struct-SwapParams-)
+to get the amount of tokens to be sent to the receiver.
+
+<Callout>
+In order to take and settle tokens from the pool, the hook must hold the liquidity added
+via the [`BaseCustomAccounting.addLiquidity`](#BaseCustomAccounting-addLiquidity-struct-BaseCustomAccounting-AddLiquidityParams-) function.
+</Callout>
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_modifyLiquidity-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_modifyLiquidity(bytes params) → BalanceDelta callerDelta, BalanceDelta feesAccrued</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_modifyLiquidity-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overrides the custom accounting logic to support the custom curve integer amounts.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-unlockCallback-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">unlockCallback(bytes rawData) → bytes returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomCurve-unlockCallback-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Decodes the callback data and applies the liquidity modifications, overriding the custom
+accounting logic to mint and burn ERC-6909 claim tokens which are used in swaps.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_getUnspecifiedAmount-struct-SwapParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getUnspecifiedAmount(struct SwapParams params) → uint256 unspecifiedAmount</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_getUnspecifiedAmount-struct-SwapParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculate the amount of the unspecified currency to be taken or settled from the swapper, depending on the swap
+direction and the fee amount to be paid to LPs.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_getSwapFeeAmount-struct-SwapParams-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getSwapFeeAmount(struct SwapParams params, uint256 unspecifiedAmount) → uint256 swapFeeAmount</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_getSwapFeeAmount-struct-SwapParams-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculate the amount of fees to be paid to LPs in a swap.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_getAmountOut-struct-BaseCustomAccounting-RemoveLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getAmountOut(struct BaseCustomAccounting.RemoveLiquidityParams params) → uint256 amount0, uint256 amount1, uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_getAmountOut-struct-BaseCustomAccounting-RemoveLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculate the amount of tokens to use and liquidity shares to burn for a remove liquidity request.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-_getAmountIn-struct-BaseCustomAccounting-AddLiquidityParams-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getAmountIn(struct BaseCustomAccounting.AddLiquidityParams params) → uint256 amount0, uint256 amount1, uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseCustomCurve-_getAmountIn-struct-BaseCustomAccounting-AddLiquidityParams-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculate the amount of tokens to use and liquidity shares to mint for an add liquidity request.
+
+</div>
+</div>
+
+<a id="BaseCustomCurve-getHookPermissions--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getHookPermissions() → struct Hooks.Permissions permissions</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseCustomCurve-getHookPermissions--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the hook permissions, specifically `beforeInitialize`, `beforeAddLiquidity`, `beforeRemoveLiquidity`,
+`beforeSwap`, and `beforeSwapReturnDelta`
+
+</div>
+</div>
+
+<a id="BaseHook"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `BaseHook`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/uniswap-hooks/blob/v1.1.0/src/base/BaseHook.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "uniswap-hooks/src/base/BaseHook.sol";
+```
+
+Base hook implementation.
+
+This contract defines all hook entry points, as well as security and permission helpers.
+Based on the [Uniswap v4 periphery implementation](https://github.com/Uniswap/v4-periphery/blob/main/src/base/hooks/BaseHook.sol).
+
+<Callout>
+Hook entry points must be overridden and implemented by the inheriting hook to be used. Their respective
+flags must be set to true in the `getHookPermissions` function as well.
+</Callout>
+
+<Callout type="warn">
+This is experimental software and is provided on an "as is" and "as available" basis. We do
+not give any warranties and will not be liable for any losses incurred through any use of this code
+base.
+</Callout>
+
+_Available since v0.1.0_
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [onlyPoolManager()](#BaseHook-onlyPoolManager--)
+- [onlySelf()](#BaseHook-onlySelf--)
+- [onlyValidPools(hooks)](#BaseHook-onlyValidPools-contract-IHooks-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(_poolManager)](#BaseHook-constructor-contract-IPoolManager-)
+- [getHookPermissions()](#BaseHook-getHookPermissions--)
+- [_validateHookAddress(hook)](#BaseHook-_validateHookAddress-contract-BaseHook-)
+- [beforeInitialize(sender, key, sqrtPriceX96)](#BaseHook-beforeInitialize-address-struct-PoolKey-uint160-)
+- [_beforeInitialize(, , )](#BaseHook-_beforeInitialize-address-struct-PoolKey-uint160-)
+- [afterInitialize(sender, key, sqrtPriceX96, tick)](#BaseHook-afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [_afterInitialize(, , , )](#BaseHook-_afterInitialize-address-struct-PoolKey-uint160-int24-)
+- [beforeAddLiquidity(sender, key, params, hookData)](#BaseHook-beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_beforeAddLiquidity(, , , )](#BaseHook-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [beforeRemoveLiquidity(sender, key, params, hookData)](#BaseHook-beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [_beforeRemoveLiquidity(, , , )](#BaseHook-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-)
+- [afterAddLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterAddLiquidity(, , , , , )](#BaseHook-_afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [afterRemoveLiquidity(sender, key, params, delta0, delta1, hookData)](#BaseHook-afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [_afterRemoveLiquidity(, , , , , )](#BaseHook-_afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-)
+- [beforeSwap(sender, key, params, hookData)](#BaseHook-beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [_beforeSwap(, , , )](#BaseHook-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-)
+- [afterSwap(sender, key, params, delta, hookData)](#BaseHook-afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [_afterSwap(, , , , )](#BaseHook-_afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-)
+- [beforeDonate(sender, key, amount0, amount1, hookData)](#BaseHook-beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_beforeDonate(, , , , )](#BaseHook-_beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [afterDonate(sender, key, amount0, amount1, hookData)](#BaseHook-afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [_afterDonate(, , , , )](#BaseHook-_afterDonate-address-struct-PoolKey-uint256-uint256-bytes-)
+- [poolManager()](#BaseHook-poolManager-contract-IPoolManager)
+#### IHooks [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [NotSelf()](#BaseHook-NotSelf--)
+- [InvalidPool()](#BaseHook-InvalidPool--)
+- [HookNotImplemented()](#BaseHook-HookNotImplemented--)
+- [NotPoolManager()](#BaseHook-NotPoolManager--)
+#### IHooks [!toc]
+</div>
+</div>
+
+<a id="BaseHook-onlyPoolManager--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyPoolManager()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-onlyPoolManager--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-onlySelf--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlySelf()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-onlySelf--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Restrict the function to only be callable by the hook itself.
+
+</div>
+</div>
+
+<a id="BaseHook-onlyValidPools-contract-IHooks-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyValidPools(contract IHooks hooks)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-onlyValidPools-contract-IHooks-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Restrict the function to only be called for a valid pool.
+
+</div>
+</div>
+
+<a id="BaseHook-constructor-contract-IPoolManager-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(contract IPoolManager _poolManager)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-constructor-contract-IPoolManager-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the pool manager and check that the hook address matches the expected permissions and flags.
+
+</div>
+</div>
+
+<a id="BaseHook-getHookPermissions--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getHookPermissions() → struct Hooks.Permissions permissions</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseHook-getHookPermissions--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Get the hook permissions to signal which hook functions are to be implemented.
+
+Used at deployment to validate the address correctly represents the expected permissions.
+
+</div>
+</div>
+
+<a id="BaseHook-_validateHookAddress-contract-BaseHook-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateHookAddress(contract BaseHook hook)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_validateHookAddress-contract-BaseHook-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validate the hook address against the expected permissions.
+
+</div>
+</div>
+
+<a id="BaseHook-beforeInitialize-address-struct-PoolKey-uint160-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beforeInitialize(address sender, struct PoolKey key, uint160 sqrtPriceX96) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-beforeInitialize-address-struct-PoolKey-uint160-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_beforeInitialize-address-struct-PoolKey-uint160-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeInitialize(address, struct PoolKey, uint160) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_beforeInitialize-address-struct-PoolKey-uint160-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `beforeInitialize`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-afterInitialize-address-struct-PoolKey-uint160-int24-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">afterInitialize(address sender, struct PoolKey key, uint160 sqrtPriceX96, int24 tick) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-afterInitialize-address-struct-PoolKey-uint160-int24-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_afterInitialize-address-struct-PoolKey-uint160-int24-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_afterInitialize(address, struct PoolKey, uint160, int24) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_afterInitialize-address-struct-PoolKey-uint160-int24-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `afterInitialize`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beforeAddLiquidity(address sender, struct PoolKey key, struct ModifyLiquidityParams params, bytes hookData) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeAddLiquidity(address, struct PoolKey, struct ModifyLiquidityParams, bytes) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_beforeAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `beforeAddLiquidity`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beforeRemoveLiquidity(address sender, struct PoolKey key, struct ModifyLiquidityParams params, bytes hookData) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeRemoveLiquidity(address, struct PoolKey, struct ModifyLiquidityParams, bytes) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_beforeRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `beforeRemoveLiquidity`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">afterAddLiquidity(address sender, struct PoolKey key, struct ModifyLiquidityParams params, BalanceDelta delta0, BalanceDelta delta1, bytes hookData) → bytes4, BalanceDelta</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_afterAddLiquidity(address, struct PoolKey, struct ModifyLiquidityParams, BalanceDelta, BalanceDelta, bytes) → bytes4, BalanceDelta</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_afterAddLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `afterAddLiquidity`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">afterRemoveLiquidity(address sender, struct PoolKey key, struct ModifyLiquidityParams params, BalanceDelta delta0, BalanceDelta delta1, bytes hookData) → bytes4, BalanceDelta</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_afterRemoveLiquidity(address, struct PoolKey, struct ModifyLiquidityParams, BalanceDelta, BalanceDelta, bytes) → bytes4, BalanceDelta</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_afterRemoveLiquidity-address-struct-PoolKey-struct-ModifyLiquidityParams-BalanceDelta-BalanceDelta-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `afterRemoveLiquidity`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beforeSwap(address sender, struct PoolKey key, struct SwapParams params, bytes hookData) → bytes4, BeforeSwapDelta, uint24</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeSwap(address, struct PoolKey, struct SwapParams, bytes) → bytes4, BeforeSwapDelta, uint24</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_beforeSwap-address-struct-PoolKey-struct-SwapParams-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `beforeSwap`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">afterSwap(address sender, struct PoolKey key, struct SwapParams params, BalanceDelta delta, bytes hookData) → bytes4, int128</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_afterSwap(address, struct PoolKey, struct SwapParams, BalanceDelta, bytes) → bytes4, int128</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_afterSwap-address-struct-PoolKey-struct-SwapParams-BalanceDelta-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `afterSwap`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beforeDonate(address sender, struct PoolKey key, uint256 amount0, uint256 amount1, bytes hookData) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beforeDonate(address, struct PoolKey, uint256, uint256, bytes) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_beforeDonate-address-struct-PoolKey-uint256-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `beforeDonate`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-afterDonate-address-struct-PoolKey-uint256-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">afterDonate(address sender, struct PoolKey key, uint256 amount0, uint256 amount1, bytes hookData) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="BaseHook-afterDonate-address-struct-PoolKey-uint256-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-_afterDonate-address-struct-PoolKey-uint256-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_afterDonate(address, struct PoolKey, uint256, uint256, bytes) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="BaseHook-_afterDonate-address-struct-PoolKey-uint256-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hook implementation for `afterDonate`, to be overridden by the inheriting hook. The
+flag must be set to true in the `getHookPermissions` function.
+
+</div>
+</div>
+
+<a id="BaseHook-poolManager-contract-IPoolManager"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">poolManager() → contract IPoolManager</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="BaseHook-poolManager-contract-IPoolManager">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="BaseHook-NotSelf--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">NotSelf()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseHook-NotSelf--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The hook is not the caller.
+
+</div>
+</div>
+
+<a id="BaseHook-InvalidPool--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">InvalidPool()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseHook-InvalidPool--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The pool is not authorized to use this hook.
+
+</div>
+</div>
+
+<a id="BaseHook-HookNotImplemented--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">HookNotImplemented()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseHook-HookNotImplemented--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The hook function is not implemented.
+
+</div>
+</div>
+
+<a id="BaseHook-NotPoolManager--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">NotPoolManager()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="BaseHook-NotPoolManager--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>

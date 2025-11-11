@@ -1,0 +1,1942 @@
+---
+title: WebAuthn Smart Accounts
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+Account abstraction is becoming a vital tool to advance onchain technology for everyday users, making it easier to create and use a wallet without needing to handle a private key. One of the most popular forms of this is through [Passkeys](https://www.webauthn.me/passkeys), which use the WebAuthn standard to create cryptographic [Authentication Assertions](https://www.w3.org/TR/webauthn-2/#sctn-verifying-assertion) across multiple devices and ecosystems.
+
+OpenZeppelin's `WebAuthn.sol` contract enables smart accounts to verify these WebAuthn assertions onchain. This creates a powerful and secure user experience that leverages biometrics and industry-standard cryptography for wallet interactions.
+
+In this tutorial we'll show you how you can build fullstack application that allows users to create smart accounts with WebAuthn passkeys and conduct an example user operation like minting an NFT.
+
+## Prerequisites
+
+Before we get started make sure you have the following installed
+
+- [`Node.js`](https://nodejs.org/en/download)
+- [`pnpm`](https://pnpm.io/installation)
+- [`Foundry`](https://getfoundry.sh/introduction/installation)
+
+Once you have confirmed those are all installed, let's make sure we have a wallet setup with Foundry. If you already have one setup and funded with testnet eth, you can skip this part.
+
+### Wallet Setup
+
+To make a new wallet run the following command:
+
+```bash title="Shell"
+cast wallet new -p ~/.foundry/keystores sepolia
+```
+
+This will prompt you for a password and then create a new keypair and encrypt the private key locally, which is much safer than working with plain text private keys. The public address should be printed when you create the wallet but you can retrieve it at any time with the following command:
+
+```bash title="Shell"
+cast wallet address --account sepolia
+```
+
+<Callout type="warn">
+  Make sure to only use this wallet for testnet funds!
+</Callout>
+
+
+### Project Structure
+
+For context our final project will look something like this
+
+```
+.
+└── contracts // Smart contracts
+└── server // Secure server environment
+└── shared // Shared addresses and ABIs
+└── client // Web UI
+```
+
+Let's make an empty directory that will store all of this and then `cd` into it.
+
+```bash title="Shell"
+mkdir webauthn-tutorial
+cd webauthn-tutorial
+```
+
+With the initial structure setup we can move on to initializing the different projects.
+
+## Contracts
+
+While inside `webauthn-tutorial` run the command below to setup a new foundry project for our contracts, then move into it.
+
+```bash title="Shell"
+forge init contracts
+cd contracts
+```
+
+Inside the `contracts` project go ahead and delete the default `Counter` files like so:
+
+```bash title="Shell"
+rm src/* test/* script/*
+```
+
+### Setup
+
+Next we'll install the OpenZeppelin contracts library which will include everything else we need to setup a WebAuthn account and factory.
+
+```bash title="Shell"
+foundry install OpenZeppelin/openzeppelin-contracts@v5.5.0-rc.0
+```
+
+For our contracts we need to make three files inside of `src`:
+- `AccountWebAuthn.sol` - Account implementation using WebAuthn signatures
+- `AccountFactory.sol` - Account factory
+- `MyNFT.sol` - Example NFT contract for testing User Operations
+
+Inside `AccountWebAuthn.sol` paste in the following code:
+
+```solidity title="AccountWebAuthn.sol"
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.27;
+
+import {Account} from "@openzeppelin/contracts/account/Account.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {ERC7739} from "@openzeppelin/contracts/utils/cryptography/signers/draft-ERC7739.sol";
+import {ERC7821} from "@openzeppelin/contracts/account/extensions/draft-ERC7821.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {SignerWebAuthn} from "@openzeppelin/contracts/utils/cryptography/signers/SignerWebAuthn.sol";
+import {SignerP256} from "@openzeppelin/contracts/utils/cryptography/signers/SignerP256.sol";
+
+
+contract AccountWebAuthn is
+    Initializable,
+    Account,
+    EIP712,
+    ERC7739,
+    ERC7821,
+    SignerWebAuthn,
+    ERC721Holder,
+    ERC1155Holder
+{
+    constructor()
+        EIP712("AccountWebAuthn", "1")
+        SignerP256(
+            0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296,
+            0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5
+        )
+    {}
+
+    function initializeWebAuthn(bytes32 qx, bytes32 qy) public initializer {
+        _setSigner(qx, qy);  // Set the P256 public key
+    }
+
+    /**
+     * @dev Override to allow EntryPoint to execute transactions
+     */
+     function _erc7821AuthorizedExecutor(
+         address caller,
+         bytes32 mode,
+         bytes calldata executionData
+     ) internal view override returns (bool) {
+         return
+             caller == address(entryPoint()) ||
+             super._erc7821AuthorizedExecutor(caller, mode, executionData);
+     }
+}
+```
+
+Let's break down the key components of our WebAuthn account implementation:
+
+Our contract inherits from `Account.sol`, which provides the core ERC-4337 functionality, along with `EIP712.sol` for typed data signatures. We also include `ERC721Holder.sol` and `ERC1155Holder.sol` to enable the account to receive NFTs and multi-tokens. The `ERC7739.sol` extension enables readable typed signatures that prevent replay attacks, while `ERC7821.sol` provides the minimal batch executor interface for transaction batching.
+
+The account uses a factory pattern with minimal proxies (like `Clones.sol`) for gas-efficient deployment. Since each account is deployed as a proxy, we use an initializer function instead of a constructor to set up the account's state after deployment.
+
+WebAuthn verification relies on `P256.sol` elliptic curve operations, which require a valid public key during contract construction. To work around this factory pattern constraint, we provide a dummy public key in the constructor and set the real WebAuthn public key through the `initializeWebAuthn` function. Once initialized, the signer cannot be changed.
+
+Now paste the following code into `AccountFactory.sol`:
+
+```solidity title="AccountFactory.sol"
+// contracts/AccountFactory.sol
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.27;
+
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+
+/**
+ * @dev A factory contract to create accounts on demand.
+ */
+contract AccountFactory {
+    using Clones for address;
+    using Address for address;
+
+    address private immutable _impl;
+
+    constructor(address impl_) {
+        require(impl_.code.length > 0);
+        _impl = impl_;
+    }
+
+    /// @dev Predict the address of the account
+    function predictAddress(bytes calldata callData) public view returns (address) {
+        return _impl.predictDeterministicAddress(keccak256(callData), address(this));
+    }
+
+    /// @dev Create clone accounts on demand
+    function cloneAndInitialize(bytes calldata callData) public returns (address) {
+        address predicted = predictAddress(callData);
+        if (predicted.code.length == 0) {
+            _impl.cloneDeterministic(keccak256(callData));
+            predicted.functionCall(callData);
+        }
+        return predicted;
+    }
+}
+```
+
+The factory will take an implementation address which it will use for creating new accounts. There are two public functions; one is to `predictAddress` so we could fund the account before creating if we wanted to, and the second is `cloneAndInitialize` which will create the new account from our implementation address.
+
+Finally we'll add the code for `MyNFT.sol`:
+
+```solidity title="MyNFT.sol"
+// SPDX-License-Identifier: MIT
+// Compatible with OpenZeppelin Contracts ^5.4.0
+pragma solidity ^0.8.27;
+
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+contract MyNFT is ERC721, Ownable {
+    uint256 private _nextTokenId;
+
+    constructor(address initialOwner)
+        ERC721("MyNFT", "MYNFT")
+        Ownable(initialOwner)
+    {}
+
+    function safeMint(address to) public returns (uint256) {
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+        return tokenId;
+    }
+}
+```
+
+This is a really simple NFT contract that has minting enabled, with the small exception that we've removed the `onlyOwner` modifier from the `safeMint` function to make it simpler for our smart account to interact with it.
+
+### Deployment
+
+With all of our contracts put together we can make a new file under the `script` directory called `Deploy.s.sol` and put the following code inside:
+
+```solidity title="Deploy.s.sol"
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.27;
+
+import "forge-std/Script.sol";
+import "../src/AccountWebAuthn.sol";
+import "../src/AccountFactory.sol";
+import "../src/MyNFT.sol";
+
+contract Deploy is Script {
+    function run() external {
+        uint256 deployerPrivateKey;
+
+        // Use Anvil's first default account if no private key is provided
+        // Anvil account #0: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+        if (vm.envOr("PRIVATE_KEY", uint256(0)) == 0) {
+            deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+            console.log("Using Anvil default account");
+        } else {
+            deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+            console.log("Using provided private key");
+        }
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Deploy AccountWebAuthn implementation
+        AccountWebAuthn accountImpl = new AccountWebAuthn();
+        console.log("AccountWebAuthn implementation deployed at:", address(accountImpl));
+
+        // Deploy AccountFactory with the implementation address
+        AccountFactory accountFactory = new AccountFactory(address(accountImpl));
+        console.log("AccountFactory deployed at:", address(accountFactory));
+
+        // Deploy test NFT
+        MyNFT nftContract = new MyNFT(vm.addr(deployerPrivateKey));
+        console.log("AccountWebAuthn implementation deployed at:", address(nftContract));
+
+        console.log("Deployed by:", vm.addr(deployerPrivateKey));
+
+        vm.stopBroadcast();
+    }
+}
+```
+
+This deployment script will do the following:
+- Setup the broadcast with our `PRIVATE_KEY`
+- Deploy the `AccountWebAuthn` implementation contract
+- Deploy the `AccountFactory` and pass in the recently deployed `AccountWebAuthn` implementation address
+- Deploy the `MyNFT` contract with our deployer address as the owner
+
+Before we can run this script we need to create a `.env` file with the following content:
+
+```bash
+export RPC_URL=https://sepolia.drpc.org
+export PRIVATE_KEY=$(cast wallet private-key --account sepolia)
+```
+
+Thanks to `cast` we can use our wallet private key without keeping it in plain text and instead make it a shell environment variable that can be accessed by Foundry. We're using a public RPC url here but you may want to use one from Alchemy or your DRPC account that won't have rate limits. With that we can go ahead and run the deployment:
+
+```bash title="Shell"
+source .env
+forge script script/Deploy.s.sol:Deploy --rpc-url $RPC_URL --broadcast --verify
+```
+
+This should deploy all three contracts and print the addresses for each in the terminal, as well as save them to `broadcast`.
+
+### Setup Shared Directory
+
+By compiling and deploying these contracts we've created the ABI's and Addresses we need across the other pieces of our app. To make it easier to access these constants, let's make make a new directory called `shared`.
+
+```bash title="Shell"
+cd .. # Move out of contracts
+mkdir shared
+cd shared
+```
+
+Inside the folder create two files and put in the following content:
+
+```bash title="Shell"
+touch index.ts
+```
+
+```typescript title="index.ts"
+export * from "./EntrypointV08";
+export const FACTORY_ADDRESS = "0xf403e5e9230a233dde99d1c6adffa9d1e81dbd98";
+export const NFT_ADDRESS = "0x1936494b8444aF8585873F478dc826C6Ab76582e";
+export const ENTRYPOINT_ADDRESS = "0x4337084d9e255ff0702461cf8895ce9e3b5ff108";
+export { abi as accountWebAuthnAbi } from "../contracts/out/AccountWebAuthn.sol/AccountWebAuthn.json";
+export { abi as accountFactoryAbi } from "../contracts/out/AccountFactory.sol/AccountFactory.json";
+export { abi as myNftAbi } from "../contracts/out/MyNFT.sol/MyNFT.json";
+```
+
+One of the pieces we need to use Account Abstraction is the Entrypoint contract. This is a contract that has the same address across every chain and allows us to submit user operations and have them conducted to our smart accounts. You can create a new file inside `shared` called `EntrypointV08.ts` and paste in the contents below:
+
+```typescript title="EntrypointV08.ts"
+export const entryPointAbi = [
+	{ inputs: [], stateMutability: "nonpayable", type: "constructor" },
+	{
+		inputs: [
+			{ internalType: "bool", name: "success", type: "bool" },
+			{ internalType: "bytes", name: "ret", type: "bytes" },
+		],
+		name: "DelegateAndRevert",
+		type: "error",
+	},
+	{
+		inputs: [
+			{ internalType: "uint256", name: "opIndex", type: "uint256" },
+			{ internalType: "string", name: "reason", type: "string" },
+		],
+		name: "FailedOp",
+		type: "error",
+	},
+	{
+		inputs: [
+			{ internalType: "uint256", name: "opIndex", type: "uint256" },
+			{ internalType: "string", name: "reason", type: "string" },
+			{ internalType: "bytes", name: "inner", type: "bytes" },
+		],
+		name: "FailedOpWithRevert",
+		type: "error",
+	},
+	{ inputs: [], name: "InvalidShortString", type: "error" },
+	{
+		inputs: [{ internalType: "bytes", name: "returnData", type: "bytes" }],
+		name: "PostOpReverted",
+		type: "error",
+	},
+	{ inputs: [], name: "ReentrancyGuardReentrantCall", type: "error" },
+	{
+		inputs: [{ internalType: "address", name: "sender", type: "address" }],
+		name: "SenderAddressResult",
+		type: "error",
+	},
+	{
+		inputs: [{ internalType: "address", name: "aggregator", type: "address" }],
+		name: "SignatureValidationFailed",
+		type: "error",
+	},
+	{
+		inputs: [{ internalType: "string", name: "str", type: "string" }],
+		name: "StringTooLong",
+		type: "error",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "bytes32",
+				name: "userOpHash",
+				type: "bytes32",
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "sender",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "address",
+				name: "factory",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "address",
+				name: "paymaster",
+				type: "address",
+			},
+		],
+		name: "AccountDeployed",
+		type: "event",
+	},
+	{ anonymous: false, inputs: [], name: "BeforeExecution", type: "event" },
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "account",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "totalDeposit",
+				type: "uint256",
+			},
+		],
+		name: "Deposited",
+		type: "event",
+	},
+	{ anonymous: false, inputs: [], name: "EIP712DomainChanged", type: "event" },
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "bytes32",
+				name: "userOpHash",
+				type: "bytes32",
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "sender",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "nonce",
+				type: "uint256",
+			},
+			{
+				indexed: false,
+				internalType: "bytes",
+				name: "revertReason",
+				type: "bytes",
+			},
+		],
+		name: "PostOpRevertReason",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "aggregator",
+				type: "address",
+			},
+		],
+		name: "SignatureAggregatorChanged",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "account",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "totalStaked",
+				type: "uint256",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "unstakeDelaySec",
+				type: "uint256",
+			},
+		],
+		name: "StakeLocked",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "account",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "withdrawTime",
+				type: "uint256",
+			},
+		],
+		name: "StakeUnlocked",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "account",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "address",
+				name: "withdrawAddress",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "amount",
+				type: "uint256",
+			},
+		],
+		name: "StakeWithdrawn",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "bytes32",
+				name: "userOpHash",
+				type: "bytes32",
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "sender",
+				type: "address",
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "paymaster",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "nonce",
+				type: "uint256",
+			},
+			{ indexed: false, internalType: "bool", name: "success", type: "bool" },
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "actualGasCost",
+				type: "uint256",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "actualGasUsed",
+				type: "uint256",
+			},
+		],
+		name: "UserOperationEvent",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "bytes32",
+				name: "userOpHash",
+				type: "bytes32",
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "sender",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "nonce",
+				type: "uint256",
+			},
+		],
+		name: "UserOperationPrefundTooLow",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "bytes32",
+				name: "userOpHash",
+				type: "bytes32",
+			},
+			{
+				indexed: true,
+				internalType: "address",
+				name: "sender",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "nonce",
+				type: "uint256",
+			},
+			{
+				indexed: false,
+				internalType: "bytes",
+				name: "revertReason",
+				type: "bytes",
+			},
+		],
+		name: "UserOperationRevertReason",
+		type: "event",
+	},
+	{
+		anonymous: false,
+		inputs: [
+			{
+				indexed: true,
+				internalType: "address",
+				name: "account",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "address",
+				name: "withdrawAddress",
+				type: "address",
+			},
+			{
+				indexed: false,
+				internalType: "uint256",
+				name: "amount",
+				type: "uint256",
+			},
+		],
+		name: "Withdrawn",
+		type: "event",
+	},
+	{
+		inputs: [
+			{ internalType: "uint32", name: "unstakeDelaySec", type: "uint32" },
+		],
+		name: "addStake",
+		outputs: [],
+		stateMutability: "payable",
+		type: "function",
+	},
+	{
+		inputs: [{ internalType: "address", name: "account", type: "address" }],
+		name: "balanceOf",
+		outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [
+			{ internalType: "address", name: "target", type: "address" },
+			{ internalType: "bytes", name: "data", type: "bytes" },
+		],
+		name: "delegateAndRevert",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [{ internalType: "address", name: "account", type: "address" }],
+		name: "depositTo",
+		outputs: [],
+		stateMutability: "payable",
+		type: "function",
+	},
+	{
+		inputs: [],
+		name: "eip712Domain",
+		outputs: [
+			{ internalType: "bytes1", name: "fields", type: "bytes1" },
+			{ internalType: "string", name: "name", type: "string" },
+			{ internalType: "string", name: "version", type: "string" },
+			{ internalType: "uint256", name: "chainId", type: "uint256" },
+			{ internalType: "address", name: "verifyingContract", type: "address" },
+			{ internalType: "bytes32", name: "salt", type: "bytes32" },
+			{ internalType: "uint256[]", name: "extensions", type: "uint256[]" },
+		],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [{ internalType: "address", name: "account", type: "address" }],
+		name: "getDepositInfo",
+		outputs: [
+			{
+				components: [
+					{ internalType: "uint256", name: "deposit", type: "uint256" },
+					{ internalType: "bool", name: "staked", type: "bool" },
+					{ internalType: "uint112", name: "stake", type: "uint112" },
+					{ internalType: "uint32", name: "unstakeDelaySec", type: "uint32" },
+					{ internalType: "uint48", name: "withdrawTime", type: "uint48" },
+				],
+				internalType: "struct IStakeManager.DepositInfo",
+				name: "info",
+				type: "tuple",
+			},
+		],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [],
+		name: "getDomainSeparatorV4",
+		outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [
+			{ internalType: "address", name: "sender", type: "address" },
+			{ internalType: "uint192", name: "key", type: "uint192" },
+		],
+		name: "getNonce",
+		outputs: [{ internalType: "uint256", name: "nonce", type: "uint256" }],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [],
+		name: "getPackedUserOpTypeHash",
+		outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+		stateMutability: "pure",
+		type: "function",
+	},
+	{
+		inputs: [{ internalType: "bytes", name: "initCode", type: "bytes" }],
+		name: "getSenderAddress",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{ internalType: "address", name: "sender", type: "address" },
+					{ internalType: "uint256", name: "nonce", type: "uint256" },
+					{ internalType: "bytes", name: "initCode", type: "bytes" },
+					{ internalType: "bytes", name: "callData", type: "bytes" },
+					{
+						internalType: "bytes32",
+						name: "accountGasLimits",
+						type: "bytes32",
+					},
+					{
+						internalType: "uint256",
+						name: "preVerificationGas",
+						type: "uint256",
+					},
+					{ internalType: "bytes32", name: "gasFees", type: "bytes32" },
+					{ internalType: "bytes", name: "paymasterAndData", type: "bytes" },
+					{ internalType: "bytes", name: "signature", type: "bytes" },
+				],
+				internalType: "struct PackedUserOperation",
+				name: "userOp",
+				type: "tuple",
+			},
+		],
+		name: "getUserOpHash",
+		outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{
+						components: [
+							{ internalType: "address", name: "sender", type: "address" },
+							{ internalType: "uint256", name: "nonce", type: "uint256" },
+							{ internalType: "bytes", name: "initCode", type: "bytes" },
+							{ internalType: "bytes", name: "callData", type: "bytes" },
+							{
+								internalType: "bytes32",
+								name: "accountGasLimits",
+								type: "bytes32",
+							},
+							{
+								internalType: "uint256",
+								name: "preVerificationGas",
+								type: "uint256",
+							},
+							{ internalType: "bytes32", name: "gasFees", type: "bytes32" },
+							{
+								internalType: "bytes",
+								name: "paymasterAndData",
+								type: "bytes",
+							},
+							{ internalType: "bytes", name: "signature", type: "bytes" },
+						],
+						internalType: "struct PackedUserOperation[]",
+						name: "userOps",
+						type: "tuple[]",
+					},
+					{
+						internalType: "contract IAggregator",
+						name: "aggregator",
+						type: "address",
+					},
+					{ internalType: "bytes", name: "signature", type: "bytes" },
+				],
+				internalType: "struct IEntryPoint.UserOpsPerAggregator[]",
+				name: "opsPerAggregator",
+				type: "tuple[]",
+			},
+			{ internalType: "address payable", name: "beneficiary", type: "address" },
+		],
+		name: "handleAggregatedOps",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [
+			{
+				components: [
+					{ internalType: "address", name: "sender", type: "address" },
+					{ internalType: "uint256", name: "nonce", type: "uint256" },
+					{ internalType: "bytes", name: "initCode", type: "bytes" },
+					{ internalType: "bytes", name: "callData", type: "bytes" },
+					{
+						internalType: "bytes32",
+						name: "accountGasLimits",
+						type: "bytes32",
+					},
+					{
+						internalType: "uint256",
+						name: "preVerificationGas",
+						type: "uint256",
+					},
+					{ internalType: "bytes32", name: "gasFees", type: "bytes32" },
+					{ internalType: "bytes", name: "paymasterAndData", type: "bytes" },
+					{ internalType: "bytes", name: "signature", type: "bytes" },
+				],
+				internalType: "struct PackedUserOperation[]",
+				name: "ops",
+				type: "tuple[]",
+			},
+			{ internalType: "address payable", name: "beneficiary", type: "address" },
+		],
+		name: "handleOps",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [{ internalType: "uint192", name: "key", type: "uint192" }],
+		name: "incrementNonce",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [
+			{ internalType: "bytes", name: "callData", type: "bytes" },
+			{
+				components: [
+					{
+						components: [
+							{ internalType: "address", name: "sender", type: "address" },
+							{ internalType: "uint256", name: "nonce", type: "uint256" },
+							{
+								internalType: "uint256",
+								name: "verificationGasLimit",
+								type: "uint256",
+							},
+							{
+								internalType: "uint256",
+								name: "callGasLimit",
+								type: "uint256",
+							},
+							{
+								internalType: "uint256",
+								name: "paymasterVerificationGasLimit",
+								type: "uint256",
+							},
+							{
+								internalType: "uint256",
+								name: "paymasterPostOpGasLimit",
+								type: "uint256",
+							},
+							{
+								internalType: "uint256",
+								name: "preVerificationGas",
+								type: "uint256",
+							},
+							{ internalType: "address", name: "paymaster", type: "address" },
+							{
+								internalType: "uint256",
+								name: "maxFeePerGas",
+								type: "uint256",
+							},
+							{
+								internalType: "uint256",
+								name: "maxPriorityFeePerGas",
+								type: "uint256",
+							},
+						],
+						internalType: "struct EntryPoint.MemoryUserOp",
+						name: "mUserOp",
+						type: "tuple",
+					},
+					{ internalType: "bytes32", name: "userOpHash", type: "bytes32" },
+					{ internalType: "uint256", name: "prefund", type: "uint256" },
+					{ internalType: "uint256", name: "contextOffset", type: "uint256" },
+					{ internalType: "uint256", name: "preOpGas", type: "uint256" },
+				],
+				internalType: "struct EntryPoint.UserOpInfo",
+				name: "opInfo",
+				type: "tuple",
+			},
+			{ internalType: "bytes", name: "context", type: "bytes" },
+		],
+		name: "innerHandleOp",
+		outputs: [
+			{ internalType: "uint256", name: "actualGasCost", type: "uint256" },
+		],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [
+			{ internalType: "address", name: "", type: "address" },
+			{ internalType: "uint192", name: "", type: "uint192" },
+		],
+		name: "nonceSequenceNumber",
+		outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [],
+		name: "senderCreator",
+		outputs: [
+			{ internalType: "contract ISenderCreator", name: "", type: "address" },
+		],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [{ internalType: "bytes4", name: "interfaceId", type: "bytes4" }],
+		name: "supportsInterface",
+		outputs: [{ internalType: "bool", name: "", type: "bool" }],
+		stateMutability: "view",
+		type: "function",
+	},
+	{
+		inputs: [],
+		name: "unlockStake",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [
+			{
+				internalType: "address payable",
+				name: "withdrawAddress",
+				type: "address",
+			},
+		],
+		name: "withdrawStake",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{
+		inputs: [
+			{
+				internalType: "address payable",
+				name: "withdrawAddress",
+				type: "address",
+			},
+			{ internalType: "uint256", name: "withdrawAmount", type: "uint256" },
+		],
+		name: "withdrawTo",
+		outputs: [],
+		stateMutability: "nonpayable",
+		type: "function",
+	},
+	{ stateMutability: "payable", type: "receive" },
+] as const;
+```
+
+With that our contracts are all set to go!
+
+## Client and Server
+
+In our smart account app we want to have the following flow:
+- User clicks on UI button to create an account
+- User is prompted to create a passkey
+- Passkey is used to create and fund smart account on on our server by our server wallet interacting with the account factory
+- Client prepares operation to mint an NFT from the NFT contract, then prompts the user to sign the transaction with their passkey
+- Signature and operation info is sent to the server to be processed through the Entrypoint contract by our server wallet
+- Server sends a response back to the client with the transaction info
+
+In a real world application you might use a bundler instead of a server like we are to process the transactions, but it's helpful to see how it all works end-to-end. With that said we need to setup the client and server repos inside our main project directory.
+
+### Setup Client
+
+Make sure you are in the root directory and run the following command
+
+```
+pnpm create vite@latest client
+```
+
+Go ahead and select the `React` and `Typescript` options, and the defaults that follow. Then move into that client directory and install our other dependencies.
+
+```bash title="Shell"
+cd client
+pnpm install viem ox
+```
+
+While we are here go ahead and create a new file called `utils.ts` inside the `src` directory and put in the following code:
+
+```typescript title="utils.ts"
+export function serializeBigInts(obj: any): any {
+	if (typeof obj === "bigint") {
+		return obj.toString();
+	}
+	if (Array.isArray(obj)) {
+		return obj.map(serializeBigInts);
+	}
+	if (obj !== null && typeof obj === "object") {
+		return Object.fromEntries(
+			Object.entries(obj).map(([key, value]) => [key, serializeBigInts(value)]),
+		);
+	}
+	return obj;
+}
+```
+
+This will be a helper function to help process `BigInt` types that can't be serialized by JSON when we send data to our server.
+
+### Setup Server
+
+Move back out into the main root directory of the tutorial and then run the following command to create a [Hono]() app:
+
+```
+pnpm create hono@latest server
+```
+
+Select the `cloudflare-worker` option from the templates, then move into the project and install the other dependencies.
+
+```bash title="Shell"
+pnpm install viem
+pnpm install -D @types/node
+```
+
+This server is going to use our same foundry wallet from before to handle transactions that need to be processed on the backend. Let's make another `.env` file with the following contents:
+
+```bash
+export CLOUDFLARE_INCLUDE_PROCESS_ENV=true
+export RPC_URL=https://sepolia.drpc.org
+export PRIVATE_KEY=$(cast wallet private-key --account sepolia)
+```
+
+<Callout>
+  It is highly recommended to use an RPC URL that will be performant and not rate limited. Make a free one at DRPC.org or Alchemy!
+</Callout>
+
+One last thing we need to do is edit the `server/wrangler.jsonc` file by uncommenting the `	"compatibility_flags"` field like so:
+
+```jsonc
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "server",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-10-10",
+	"compatibility_flags": ["nodejs_compat"]
+}
+```
+
+### Client & Server Code
+
+Now it's time to start putting code into our client app and server to start the flow we want to achieve. Go ahead and open the `client/src/App.tsx` file and put in the following code:
+
+```tsx title="App.tsx"
+import { useState } from "react";
+import "./App.css";
+import { WebAuthnP256 } from "ox";
+import {
+	encodeAbiParameters,
+	createPublicClient,
+	http,
+	encodeFunctionData,
+	encodePacked,
+	type Hex,
+} from "viem";
+import { sepolia } from "viem/chains";
+import {
+	ENTRYPOINT_ADDRESS,
+	NFT_ADDRESS,
+	entryPointAbi,
+	myNftAbi,
+	accountWebAuthnAbi,
+} from "../../shared";
+import type { PackedUserOperation } from "viem/account-abstraction";
+import { serializeBigInts } from "./utils";
+
+const SERVER_URL = "http://localhost:8787";
+
+const publicClient = createPublicClient({
+	transport: http(),
+	chain: sepolia,
+});
+
+function App() {
+	const [isLoading, setIsLoading] = useState(false);
+	const [statusMessage, setStatusMessage] = useState("");
+	const [accountAddress, setAccountAddress] = useState<string | null>(null);
+	const [mintTxHash, setMintTxHash] = useState<string | null>(null);
+
+	async function createAccount() {
+		try {
+			setIsLoading(true);
+			setStatusMessage("Creating WebAuthn credential...");
+
+			// Create WebAuthn credential
+			const credential = await WebAuthnP256.createCredential({
+				name: "wallet-user",
+			});
+
+			// Convert BigInt values to hex strings for serialization (with proper padding)
+			const publicKey = {
+				prefix: credential.publicKey.prefix,
+				x: `0x${credential.publicKey.x.toString(16).padStart(64, "0")}`,
+				y: `0x${credential.publicKey.y.toString(16).padStart(64, "0")}`,
+			};
+
+			setStatusMessage("Deploying WebAuthn account...");
+
+			// Send credential to server for account deployment
+			const response = await fetch(`${SERVER_URL}/account/create`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					credentialId: credential.id,
+					publicKey,
+				}),
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || "Failed to create account");
+			}
+
+			const result = await response.json();
+
+			const deployedAddress = result.accountAddress;
+			setAccountAddress(deployedAddress);
+
+			setStatusMessage("Account deployed! Preparing NFT mint transaction...");
+
+			const nonce = await publicClient.readContract({
+				address: ENTRYPOINT_ADDRESS,
+				abi: entryPointAbi,
+				functionName: "getNonce",
+				args: [deployedAddress, 0n],
+			});
+
+			const incrementCallData = encodeFunctionData({
+				abi: myNftAbi,
+				functionName: "safeMint",
+				args: [deployedAddress],
+			});
+
+			const mode = encodePacked(
+				["bytes1", "bytes1", "bytes4", "bytes4", "bytes22"],
+				[
+					"0x01",
+					"0x00",
+					"0x00000000",
+					"0x00000000",
+					"0x00000000000000000000000000000000000000000000",
+				],
+			);
+
+			// Encode execution data as array of (address, uint256, bytes)[]
+			const executionData = encodeAbiParameters(
+				[
+					{
+						type: "tuple[]",
+						components: [
+							{ type: "address" },
+							{ type: "uint256" },
+							{ type: "bytes" },
+						],
+					},
+				],
+				[[[NFT_ADDRESS, 0n, incrementCallData]]],
+			);
+
+			// Encode the execute call on the account using ERC7821 format
+			const callData = encodeFunctionData({
+				abi: accountWebAuthnAbi,
+				functionName: "execute",
+				args: [mode, executionData],
+			});
+
+			const feeData = await publicClient.estimateFeesPerGas();
+
+			const userOp: PackedUserOperation = {
+				sender: deployedAddress,
+				nonce, // Already a BigInt from readContract
+				initCode: "0x",
+				callData,
+				accountGasLimits: encodePacked(
+					["uint128", "uint128"],
+					[
+						1_000_000n, // verificationGasLimit (high for P256 verification)
+						300_000n, // callGasLimit
+					],
+				),
+				preVerificationGas: 100_000n,
+				gasFees: encodePacked(
+					["uint128", "uint128"],
+					[
+						feeData.maxPriorityFeePerGas, // maxPriorityFeePerGas (1 gwei)
+						feeData.maxFeePerGas, // maxFeePerGas (2 gwei)
+					],
+				),
+				paymasterAndData: "0x",
+				signature: "0x" as Hex, // Placeholder, will be replaced
+			};
+
+			const userOpHash = await publicClient.readContract({
+				address: ENTRYPOINT_ADDRESS,
+				abi: entryPointAbi,
+				functionName: "getUserOpHash",
+				args: [userOp],
+			});
+
+			setStatusMessage("Signing transaction with WebAuthn...");
+
+			const { signature, metadata } = await WebAuthnP256.sign({
+				challenge: userOpHash,
+				credentialId: credential.id,
+			});
+
+			// Encode the signature in the format expected by OpenZeppelin SignerWebAuthn
+			// The contract expects an ABI-encoded WebAuthnAuth struct:
+			// struct WebAuthnAuth {
+			//   bytes32 r;
+			//   bytes32 s;
+			//   uint256 challengeIndex;
+			//   uint256 typeIndex;
+			//   bytes authenticatorData;
+			//   string clientDataJSON;
+			// }
+
+			// Prepare signature components
+			const rHex = `0x${signature.r.toString(16).padStart(64, "0")}` as Hex;
+			const sHex = `0x${signature.s.toString(16).padStart(64, "0")}` as Hex;
+
+			setStatusMessage("Submitting UserOperation to mint NFT...");
+
+			const mintRequest = await fetch(`${SERVER_URL}/account/mint`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					rHex,
+					sHex,
+					metadata,
+					userOp: serializeBigInts(userOp),
+					nonce: nonce.toString(),
+				}),
+			});
+
+			const mintResponse = await mintRequest.json();
+			console.log(mintResponse);
+
+			if (mintResponse.hash) {
+				setMintTxHash(mintResponse.hash);
+			}
+
+			setStatusMessage("Success! NFT minted to your account.");
+			setIsLoading(false);
+		} catch (err) {
+			console.error("Error creating account:", err);
+			setStatusMessage(
+				`Error: ${err instanceof Error ? err.message : "Unknown error occurred"}`,
+			);
+			setIsLoading(false);
+		}
+	}
+
+	return (
+		<>
+			<h1>WebAuthn Account Abstraction</h1>
+			<div className="card">
+				<button type="button" onClick={createAccount} disabled={isLoading}>
+					{isLoading ? "Processing..." : "Create Account"}
+				</button>
+				{statusMessage && (
+					<div
+						className={`status-message ${statusMessage.startsWith("Error") ? "error" : statusMessage.startsWith("Success") ? "success" : ""}`}
+					>
+						{isLoading && <div className="spinner" />}
+						<p>{statusMessage}</p>
+					</div>
+				)}
+				{accountAddress && (
+					<div className="account-details">
+						<h3>Account Details</h3>
+						<div className="detail-row">
+							<span className="label">Address:</span>
+							<code className="value">{accountAddress}</code>
+						</div>
+						{mintTxHash && (
+							<div className="detail-row">
+								<span className="label">NFT Mint Transaction:</span>
+								<a
+									href={`https://sepolia.etherscan.io/tx/${mintTxHash}`}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="tx-link"
+								>
+									View on Etherscan ↗
+								</a>
+							</div>
+						)}
+					</div>
+				)}
+			</div>
+		</>
+	);
+}
+export default App;
+```
+
+Now inside `server/src/index.ts` paste in the code below:
+
+```ts title="index.ts"
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import {
+	type Hex,
+	encodeFunctionData,
+	createPublicClient,
+	createWalletClient,
+	http,
+	encodeAbiParameters,
+} from "viem";
+import {
+	accountWebAuthnAbi,
+	FACTORY_ADDRESS,
+	accountFactoryAbi,
+	ENTRYPOINT_ADDRESS,
+	entryPointAbi,
+} from "../../shared";
+import { privateKeyToAccount } from "viem/accounts";
+import { sepolia } from "viem/chains";
+
+type Bindings = {
+	RPC_URL: string;
+	PRIVATE_KEY: string;
+};
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.use(cors());
+app.use(logger());
+
+app.get("/", (c) => {
+	return c.text("Hello Hono!");
+});
+
+app.post("/account/create", async (c) => {
+	try {
+		const publicClient = createPublicClient({
+			chain: sepolia,
+			transport: http(c.env.RPC_URL),
+		});
+
+		const account = privateKeyToAccount(c.env.PRIVATE_KEY as `0x${string}`);
+
+		const walletClient = createWalletClient({
+			chain: sepolia,
+			transport: http(c.env.RPC_URL),
+			account,
+		});
+
+		const {
+			credentialId, // Can be used to store accounts for future logins
+			publicKey,
+		} = await c.req.json();
+
+		// Extract qx and qy from the public key (ensure proper padding)
+		const qx = publicKey.x as Hex;
+		const qy = publicKey.y as Hex;
+
+		// Encode the initialization call
+		const initCallData = encodeFunctionData({
+			abi: accountWebAuthnAbi,
+			functionName: "initializeWebAuthn",
+			args: [qx, qy],
+		});
+
+		// Predict account address
+		const [predictedAddress] = await publicClient.readContract({
+			address: FACTORY_ADDRESS,
+			abi: accountFactoryAbi,
+			functionName: "predictAddress",
+			args: [initCallData],
+		});
+
+		// Deploy the account
+		const hash = await walletClient.writeContract({
+			address: FACTORY_ADDRESS,
+			abi: accountFactoryAbi,
+			functionName: "cloneAndInitialize",
+			args: [initCallData],
+		});
+
+		// Wait for transaction
+		await publicClient.waitForTransactionReceipt({ hash });
+
+		// Fund the account with 0.005 ETH from deployer wallet
+		const fundHash = await walletClient.sendTransaction({
+			to: predictedAddress,
+			value: 5000000000000000n, // 0.005 ETH in wei
+		});
+
+		// Wait for funding transaction
+		await publicClient.waitForTransactionReceipt({ hash: fundHash });
+
+		return c.json({
+			success: true,
+			accountAddress: predictedAddress,
+			transactionHash: hash,
+			fundingTransactionHash: fundHash,
+			publicKey: { qx, qy },
+		});
+	} catch (error) {
+		return c.json({ error: ` Failed to create account: ${error} ` }, 500);
+	}
+});
+
+app.post("/account/mint", async (c) => {
+	const publicClient = createPublicClient({
+		chain: sepolia,
+		transport: http(c.env.RPC_URL),
+	});
+
+	const account = privateKeyToAccount(c.env.PRIVATE_KEY as `0x${string}`);
+
+	const walletClient = createWalletClient({
+		chain: sepolia,
+		transport: http(c.env.RPC_URL),
+		account,
+	});
+
+	try {
+		const {
+			metadata,
+			rHex,
+			sHex,
+			userOp,
+			nonce: serializedNonce,
+		} = await c.req.json();
+
+		const challengeIndex = BigInt(metadata.challengeIndex);
+		const typeIndex = BigInt(metadata.typeIndex);
+		const authenticatorDataHex = metadata.authenticatorData;
+		const clientDataJSON = metadata.clientDataJSON;
+		const nonce = BigInt(serializedNonce);
+
+		const encodedSignature = encodeAbiParameters(
+			[
+				{ name: "r", type: "bytes32" },
+				{ name: "s", type: "bytes32" },
+				{ name: "challengeIndex", type: "uint256" },
+				{ name: "typeIndex", type: "uint256" },
+				{ name: "authenticatorData", type: "bytes" },
+				{ name: "clientDataJSON", type: "string" },
+			],
+			[
+				rHex,
+				sHex,
+				challengeIndex,
+				typeIndex,
+				authenticatorDataHex,
+				clientDataJSON,
+			],
+		);
+
+		const fullUserOp = {
+			...userOp,
+			nonce,
+			preVerificationGas: BigInt(userOp.preVerificationGas),
+			signature: encodedSignature,
+		};
+
+		const { request } = await publicClient.simulateContract({
+			address: ENTRYPOINT_ADDRESS,
+			abi: entryPointAbi,
+			functionName: "handleOps",
+			args: [[fullUserOp], walletClient.account.address],
+			account: walletClient.account,
+		});
+
+		const hash = await walletClient.writeContract(request);
+
+		const receipt = await publicClient.waitForTransactionReceipt({
+			hash: hash,
+		});
+
+		if (receipt.status === "reverted") {
+			return c.json({ error: ` Failed to Mint: Reverted ` }, 500);
+		}
+
+		return c.json({
+			status: "success",
+			hash,
+		});
+	} catch (error) {
+		return c.json({ error: ` Failed to Mint: ${error} ` }, 500);
+	}
+});
+
+export default app;
+```
+
+Now that's a fair bit of code, so let's do a breakdown of each step and what's happening.
+
+### Breakdown
+
+<Steps>
+
+<Step>
+#### Create and Fund Account
+
+The flow starts in the client code where the user clicks on the button and it kicks off `createAccount()`.
+
+```tsx
+async function createAccount() {
+		try {
+			setIsLoading(true);
+			setStatusMessage("Creating WebAuthn credential...");
+
+			// Create WebAuthn credential
+			const credential = await WebAuthnP256.createCredential({
+				name: "wallet-user",
+			});
+
+			// Convert BigInt values to hex strings for serialization (with proper padding)
+			const publicKey = {
+				prefix: credential.publicKey.prefix,
+				x: `0x${credential.publicKey.x.toString(16).padStart(64, "0")}`,
+				y: `0x${credential.publicKey.y.toString(16).padStart(64, "0")}`,
+			};
+
+			setStatusMessage("Deploying WebAuthn account...");
+
+			// Send credential to server for account deployment
+			const response = await fetch(`${SERVER_URL}/account/create`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					credentialId: credential.id,
+					publicKey,
+				}),
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || "Failed to create account");
+			}
+
+			const result = await response.json();
+
+      // Rest of function
+```
+
+The first thing we need is a WebAuthn credential, and thankfully `ox` makes this really easy to do with `WebAuthnP256.createCredential()`. Once we have the credential we need to take the public key coordinates and serlialize the BigInt values into hex strings. Then we send a request to our server to `/account/create` with a JSON body of that `publicKey` as well as a `credentialId`.
+
+On the server the incoming requst is handled with this endpoint:
+
+```ts
+app.post("/account/create", async (c) => {
+	try {
+		const publicClient = createPublicClient({
+			chain: sepolia,
+			transport: http(c.env.RPC_URL),
+		});
+
+		const account = privateKeyToAccount(c.env.PRIVATE_KEY as `0x${string}`);
+
+		const walletClient = createWalletClient({
+			chain: sepolia,
+			transport: http(c.env.RPC_URL),
+			account,
+		});
+
+		const {
+			credentialId, // Can be used to store accounts for future logins
+			publicKey,
+		} = await c.req.json();
+
+		// Extract qx and qy from the public key (ensure proper padding)
+		const qx = publicKey.x as Hex;
+		const qy = publicKey.y as Hex;
+
+		// Encode the initialization call
+		const initCallData = encodeFunctionData({
+			abi: accountWebAuthnAbi,
+			functionName: "initializeWebAuthn",
+			args: [qx, qy],
+		});
+
+		// Predict account address
+		const [predictedAddress] = await publicClient.readContract({
+			address: FACTORY_ADDRESS,
+			abi: accountFactoryAbi,
+			functionName: "predictAddress",
+			args: [initCallData],
+		});
+
+		// Deploy the account
+		const hash = await walletClient.writeContract({
+			address: FACTORY_ADDRESS,
+			abi: accountFactoryAbi,
+			functionName: "cloneAndInitialize",
+			args: [initCallData],
+		});
+
+		// Wait for transaction
+		await publicClient.waitForTransactionReceipt({ hash });
+
+		// Fund the account with 0.005 ETH from deployer wallet
+		const fundHash = await walletClient.sendTransaction({
+			to: predictedAddress,
+			value: 5000000000000000n, // 0.005 ETH in wei
+		});
+
+		// Wait for funding transaction
+		await publicClient.waitForTransactionReceipt({ hash: fundHash });
+
+		return c.json({
+			success: true,
+			accountAddress: predictedAddress,
+			transactionHash: hash,
+			fundingTransactionHash: fundHash,
+			publicKey: { qx, qy },
+		});
+	} catch (error) {
+		return c.json({ error: ` Failed to create account: ${error} ` }, 500);
+	}
+});
+```
+
+In this endpoint the server parses the JSON body to grab the serialized coordinates of the public key, then we put together what we need to do in order to predict our address. We don't necessarily need this in our flow, but it's good to know how it works. The predicted address is calculated by creating `initCallData` from `initializeWebAuthn` function and the coordiantes we got from the client.
+
+To actually deploy our smart account we'll take the same `initCallData` as the argument, then call `cloneAndInitialize` from the factory. This will return the smart account address, which we can then fund with our server wallet. Finally we can return the result of our process to the client.
+
+</Step>
+
+<Step>
+#### Prepare and Sign User Operation
+
+Back in our client we now can start prepping a User Operation.
+
+```tsx
+  // createAccount() continuted
+
+      const nonce = await publicClient.readContract({
+				address: ENTRYPOINT_ADDRESS,
+				abi: entryPointAbi,
+				functionName: "getNonce",
+				args: [deployedAddress, 0n],
+			});
+
+			const mintCallData = encodeFunctionData({
+				abi: myNftAbi,
+				functionName: "safeMint",
+				args: [deployedAddress],
+			});
+
+			const mode = encodePacked(
+				["bytes1", "bytes1", "bytes4", "bytes4", "bytes22"],
+				[
+					"0x01",
+					"0x00",
+					"0x00000000",
+					"0x00000000",
+					"0x00000000000000000000000000000000000000000000",
+				],
+			);
+
+			// Encode execution data as array of (address, uint256, bytes)[]
+			const executionData = encodeAbiParameters(
+				[
+					{
+						type: "tuple[]",
+						components: [
+							{ type: "address" },
+							{ type: "uint256" },
+							{ type: "bytes" },
+						],
+					},
+				],
+				[[[NFT_ADDRESS, 0n, mintCallData]]],
+			);
+
+			// Encode the execute call on the account using ERC7821 format
+			const callData = encodeFunctionData({
+				abi: accountWebAuthnAbi,
+				functionName: "execute",
+				args: [mode, executionData],
+			});
+
+			const feeData = await publicClient.estimateFeesPerGas();
+
+			const userOp: PackedUserOperation = {
+				sender: deployedAddress,
+				nonce, // Already a BigInt from readContract
+				initCode: "0x",
+				callData,
+				accountGasLimits: encodePacked(
+					["uint128", "uint128"],
+					[
+						1_000_000n, // verificationGasLimit (high for P256 verification)
+						300_000n, // callGasLimit
+					],
+				),
+				preVerificationGas: 100_000n,
+				gasFees: encodePacked(
+					["uint128", "uint128"],
+					[
+						feeData.maxPriorityFeePerGas, // maxPriorityFeePerGas (1 gwei)
+						feeData.maxFeePerGas, // maxFeePerGas (2 gwei)
+					],
+				),
+				paymasterAndData: "0x",
+				signature: "0x" as Hex, // Placeholder, will be replaced
+			};
+
+			const userOpHash = await publicClient.readContract({
+				address: ENTRYPOINT_ADDRESS,
+				abi: entryPointAbi,
+				functionName: "getUserOpHash",
+				args: [userOp],
+			});
+
+			setStatusMessage("Signing transaction with WebAuthn...");
+
+			const { signature, metadata } = await WebAuthnP256.sign({
+				challenge: userOpHash,
+				credentialId: credential.id,
+			});
+
+			// Prepare signature components
+			const rHex = `0x${signature.r.toString(16).padStart(64, "0")}` as Hex;
+			const sHex = `0x${signature.s.toString(16).padStart(64, "0")}` as Hex;
+
+			setStatusMessage("Submitting UserOperation to mint NFT...");
+
+			const mintRequest = await fetch(`${SERVER_URL}/account/mint`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					rHex,
+					sHex,
+					metadata,
+					userOp: serializeBigInts(userOp),
+					nonce: nonce.toString(),
+				}),
+			});
+```
+
+Now this starts to get a little confusing as we have a lot of encoding and nesting happening, so let's break it down piece by piece. First we have the `nonce` which we fetch from the Entrypoint contract. Next we need to encode the function data that our smart account wants to perform, which in our case is minting the NFT.
+
+Then we have the `mode` and `executionData` which includes the address of our NFT contract and the `mintCallData` we just made. With that `executionData` we can do one final encoding of the `callData` that will be passed to the `execute` function of our smart account.
+
+In order to actually run this transaction through `execute` we need to create what's called an User Operation that has all of the details of how it should be performed. We build the `userOp` object to gather the data that will be passed, and then we send that object to the entrypoint contract to get a `userOpHash`. This is what the user's passkey will sign; it's the approval of everything that's been encoded earlier.
+
+Once it's signed by the passkey through `WebAuthnP256.sign()` we get the `r` and `s` values from the signature and serialize them as hex strings, and we finally send all of that data to our server to execute the transaction. It's at this point if you wanted to you could send it to a bundler instead which might include a paymaster to handle gas fees. In our case the server wallet will pay gas initially, but then it will be refunded by the entrypoint once the smart account pays the gas fees for the transaciton.
+
+</Step>
+
+<Step>
+#### Process User Operation on Server
+
+To handle processing the user operation we have an endpoint on the server called `/account/mint`:
+
+```ts
+app.post("/account/mint", async (c) => {
+	const publicClient = createPublicClient({
+		chain: sepolia,
+		transport: http(c.env.RPC_URL),
+	});
+
+	const account = privateKeyToAccount(c.env.PRIVATE_KEY as `0x${string}`);
+
+	const walletClient = createWalletClient({
+		chain: sepolia,
+		transport: http(c.env.RPC_URL),
+		account,
+	});
+
+	try {
+		const {
+			metadata,
+			rHex,
+			sHex,
+			userOp,
+			nonce: serializedNonce,
+		} = await c.req.json();
+
+		const challengeIndex = BigInt(metadata.challengeIndex);
+		const typeIndex = BigInt(metadata.typeIndex);
+		const authenticatorDataHex = metadata.authenticatorData;
+		const clientDataJSON = metadata.clientDataJSON;
+		const nonce = BigInt(serializedNonce);
+
+		const encodedSignature = encodeAbiParameters(
+			[
+				{ name: "r", type: "bytes32" },
+				{ name: "s", type: "bytes32" },
+				{ name: "challengeIndex", type: "uint256" },
+				{ name: "typeIndex", type: "uint256" },
+				{ name: "authenticatorData", type: "bytes" },
+				{ name: "clientDataJSON", type: "string" },
+			],
+			[
+				rHex,
+				sHex,
+				challengeIndex,
+				typeIndex,
+				authenticatorDataHex,
+				clientDataJSON,
+			],
+		);
+
+		const fullUserOp = {
+			...userOp,
+			nonce,
+			preVerificationGas: BigInt(userOp.preVerificationGas),
+			signature: encodedSignature,
+		};
+
+		const { request } = await publicClient.simulateContract({
+			address: ENTRYPOINT_ADDRESS,
+			abi: entryPointAbi,
+			functionName: "handleOps",
+			args: [[fullUserOp], walletClient.account.address],
+			account: walletClient.account,
+		});
+
+		const hash = await walletClient.writeContract(request);
+
+		const receipt = await publicClient.waitForTransactionReceipt({
+			hash: hash,
+		});
+
+		if (receipt.status === "reverted") {
+			return c.json({ error: ` Failed to Mint: Reverted ` }, 500);
+		}
+
+		return c.json({
+			status: "success",
+			hash,
+		});
+	} catch (error) {
+		return c.json({ error: ` Failed to Mint: ${error} ` }, 500);
+	}
+});
+```
+
+In order for the OpenZeppelin `WebAuthn.sol` to verify our signature and prove that the user authorized the operation, we have to prepare and encode the signature data correctly. Since we had to serialize some of the BigInt values on the client we need to reinstate them. Then we can put together the `encodedSignature` with all our values, many of them being the `metadata` that was produced in the signing process by `WebAuthnP256` from `ox`.
+
+Then we need to construct the `fullUserOp` which includes our updated `encodedSignature`, and we can finally submit it to the Entrypoint Contract. Once successful we can return the transaction hash to the user.
+
+</Step>
+
+</Steps>
+
+## Try it!
+
+With an overview of how it all works you can test it yourself! In a terminal window run the client dev server:
+
+```bash title="Shell"
+cd client
+pnpm dev
+```
+
+Then in a separate window run the server:
+
+```bash title="Shell"
+cd server
+source .env
+pnpm dev
+```
+
+You should be able to visit `http://localhost:5173` and click on the `Create Account` button to experience the full flow!
+
+<Callout>
+  Make sure you are on a browser and device that supports passkeys
+</Callout>
+
+![image of demo](/webauthn-demo.png)
+
+## Next Steps
+
+This tutorial is just scratching the surface of what is possible with OpenZeppelin account abstraction. With `AccountWebAuthn.sol` we could customize the logic and build custom use cases such as multifactor authentication, social recovery, time based controls, and more! We would highly encourage you to check out what other pieces you can add into Accounts with the [Wizard](https://wizard.openzeppelin.com) under the `Accounts` tab.

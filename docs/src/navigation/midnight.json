@@ -1,0 +1,122 @@
+[
+	{
+		"type": "separator",
+		"name": "Midnight Contracts"
+	},
+	{
+		"type": "page",
+		"name": "Overview",
+		"url": "/contracts-compact"
+	},
+	{
+		"type": "folder",
+		"name": "Learn",
+		"defaultOpen": true,
+		"children": [
+			{
+				"type": "page",
+				"name": "Extensibility",
+				"url": "/contracts-compact/extensibility"
+			},
+			{
+				"type": "page",
+				"name": "ZK Circuits 101",
+				"url": "/contracts-compact/zkCircuits101"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Modules",
+		"children": [
+			{
+				"type": "folder",
+				"name": "Access",
+				"children": [
+					{
+						"type": "page",
+						"name": "Ownable",
+						"url": "/contracts-compact/ownable"
+					},
+					{
+						"type": "page",
+						"name": "AccessControl",
+						"url": "/contracts-compact/accessControl"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Security",
+				"url": "/contracts-compact/security"
+			},
+			{
+				"type": "folder",
+				"name": "Tokens",
+				"children": [
+					{
+						"type": "page",
+						"name": "FungibleToken",
+						"url": "/contracts-compact/fungibleToken"
+					},
+					{
+						"type": "page",
+						"name": "NonFungibleToken",
+						"url": "/contracts-compact/nonFungibleToken"
+					},
+					{
+						"type": "page",
+						"name": "MultiToken",
+						"url": "/contracts-compact/multitoken"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Utils",
+				"url": "/contracts-compact/utils"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "API Reference",
+		"children": [
+			{
+				"type": "page",
+				"name": "AccessControl API",
+				"url": "/contracts-compact/api/accessControl"
+			},
+			{
+				"type": "page",
+				"name": "FungibleToken API",
+				"url": "/contracts-compact/api/fungibleToken"
+			},
+			{
+				"type": "page",
+				"name": "MultiToken API",
+				"url": "/contracts-compact/api/multitoken"
+			},
+			{
+				"type": "page",
+				"name": "NonFungibleToken API",
+				"url": "/contracts-compact/api/nonFungibleToken"
+			},
+			{
+				"type": "page",
+				"name": "Ownable API",
+				"url": "/contracts-compact/api/ownable"
+			},
+			{
+				"type": "page",
+				"name": "Security API",
+				"url": "/contracts-compact/api/security"
+			},
+			{
+				"type": "page",
+				"name": "Utils API",
+				"url": "/contracts-compact/api/utils"
+			}
+		]
+	}
+]

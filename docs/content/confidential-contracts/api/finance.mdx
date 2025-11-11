@@ -1,0 +1,838 @@
+---
+title: "Finance"
+description: "Smart contract finance utilities and implementations"
+---
+
+This directory includes primitives for on-chain confidential financial systems:
+
+* [`VestingWalletConfidential`](#VestingWalletConfidential): Handles the vesting of confidential tokens for a given beneficiary. Custody of multiple tokens can be given to this contract, which will release the token to the beneficiary following a given, customizable, vesting schedule.
+* [`VestingWalletCliffConfidential`](#VestingWalletCliffConfidential): Variant of [`VestingWalletConfidential`](#VestingWalletConfidential) which adds a cliff period to the vesting schedule.
+
+For convenience, this directory also includes:
+
+* [`VestingWalletConfidentialFactory`](#VestingWalletConfidentialFactory): A factory which enables batch funding of vesting wallets.
+
+## Contracts
+[`VestingWalletConfidential`](#VestingWalletConfidential)
+[`VestingWalletCliffConfidential`](#VestingWalletCliffConfidential)
+[`VestingWalletConfidentialFactory`](#VestingWalletConfidentialFactory)
+
+<a id="ERC7821WithExecutor"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7821WithExecutor`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/finance/ERC7821WithExecutor.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/finance/ERC7821WithExecutor.sol";
+```
+
+Extension of `ERC7821` that adds an [`ERC7821WithExecutor.executor`](#ERC7821WithExecutor-executor--) address that is able to execute arbitrary calls via `ERC7821.execute`.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [executor()](#ERC7821WithExecutor-executor--)
+- [__ERC7821WithExecutor_init(executor_)](#ERC7821WithExecutor-__ERC7821WithExecutor_init-address-)
+- [_erc7821AuthorizedExecutor(caller, mode, executionData)](#ERC7821WithExecutor-_erc7821AuthorizedExecutor-address-bytes32-bytes-)
+#### ERC7821 [!toc]
+- [execute(mode, executionData)](#ERC7821-execute-bytes32-bytes-)
+- [supportsExecutionMode(mode)](#ERC7821-supportsExecutionMode-bytes32-)
+#### IERC7821 [!toc]
+#### Initializable [!toc]
+- [_checkInitializing()](#Initializable-_checkInitializing--)
+- [_disableInitializers()](#Initializable-_disableInitializers--)
+- [_getInitializedVersion()](#Initializable-_getInitializedVersion--)
+- [_isInitializing()](#Initializable-_isInitializing--)
+- [_initializableStorageSlot()](#Initializable-_initializableStorageSlot--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### ERC7821 [!toc]
+#### IERC7821 [!toc]
+#### Initializable [!toc]
+- [Initialized(version)](#Initializable-Initialized-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### ERC7821 [!toc]
+- [UnsupportedExecutionMode()](#ERC7821-UnsupportedExecutionMode--)
+#### IERC7821 [!toc]
+#### Initializable [!toc]
+- [InvalidInitialization()](#Initializable-InvalidInitialization--)
+- [NotInitializing()](#Initializable-NotInitializing--)
+</div>
+</div>
+
+<a id="ERC7821WithExecutor-executor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">executor() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7821WithExecutor-executor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Trusted address that is able to execute arbitrary calls from the vesting wallet via `ERC7821.execute`.
+
+</div>
+</div>
+
+<a id="ERC7821WithExecutor-__ERC7821WithExecutor_init-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">__ERC7821WithExecutor_init(address executor_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7821WithExecutor-__ERC7821WithExecutor_init-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC7821WithExecutor-_erc7821AuthorizedExecutor-address-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_erc7821AuthorizedExecutor(address caller, bytes32 mode, bytes executionData) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7821WithExecutor-_erc7821AuthorizedExecutor-address-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Access control mechanism for the `execute` function.
+By default, only the contract itself is allowed to execute.
+
+Override this function to implement custom access control, for example to allow the
+ERC-4337 entrypoint to execute.
+
+```solidity
+function _erc7821AuthorizedExecutor(
+  address caller,
+  bytes32 mode,
+  bytes calldata executionData
+) internal view virtual override returns (bool) {
+  return caller == address(entryPoint()) || super._erc7821AuthorizedExecutor(caller, mode, executionData);
+}
+```
+
+</div>
+</div>
+
+<a id="VestingWalletCliffConfidential"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `VestingWalletCliffConfidential`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/finance/VestingWalletCliffConfidential.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/finance/VestingWalletCliffConfidential.sol";
+```
+
+An extension of [`VestingWalletConfidential`](#VestingWalletConfidential) that adds a cliff to the vesting schedule. The cliff is `cliffSeconds` long and
+starts at the vesting start timestamp (see [`VestingWalletConfidential`](#VestingWalletConfidential)).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [cliff()](#VestingWalletCliffConfidential-cliff--)
+- [__VestingWalletCliffConfidential_init(beneficiary, startTimestamp, durationSeconds, cliffSeconds)](#VestingWalletCliffConfidential-__VestingWalletCliffConfidential_init-address-uint48-uint48-uint48-)
+- [__VestingWalletCliffConfidential_init_unchained(cliffSeconds)](#VestingWalletCliffConfidential-__VestingWalletCliffConfidential_init_unchained-uint48-)
+- [_vestingSchedule(totalAllocation, timestamp)](#VestingWalletCliffConfidential-_vestingSchedule-euint128-uint48-)
+#### VestingWalletConfidential [!toc]
+- [start()](#VestingWalletConfidential-start--)
+- [duration()](#VestingWalletConfidential-duration--)
+- [end()](#VestingWalletConfidential-end--)
+- [released(token)](#VestingWalletConfidential-released-address-)
+- [releasable(token)](#VestingWalletConfidential-releasable-address-)
+- [release(token)](#VestingWalletConfidential-release-address-)
+- [vestedAmount(token, timestamp)](#VestingWalletConfidential-vestedAmount-address-uint48-)
+- [__VestingWalletConfidential_init(beneficiary, startTimestamp, durationSeconds)](#VestingWalletConfidential-__VestingWalletConfidential_init-address-uint48-uint48-)
+- [__VestingWalletConfidential_init_unchained(startTimestamp, durationSeconds)](#VestingWalletConfidential-__VestingWalletConfidential_init_unchained-uint48-uint48-)
+#### ReentrancyGuardTransient [!toc]
+- [_reentrancyGuardEntered()](#ReentrancyGuardTransient-_reentrancyGuardEntered--)
+#### OwnableUpgradeable [!toc]
+- [__Ownable_init(initialOwner)](#OwnableUpgradeable-__Ownable_init-address-)
+- [__Ownable_init_unchained(initialOwner)](#OwnableUpgradeable-__Ownable_init_unchained-address-)
+- [owner()](#OwnableUpgradeable-owner--)
+- [_checkOwner()](#OwnableUpgradeable-_checkOwner--)
+- [renounceOwnership()](#OwnableUpgradeable-renounceOwnership--)
+- [transferOwnership(newOwner)](#OwnableUpgradeable-transferOwnership-address-)
+- [_transferOwnership(newOwner)](#OwnableUpgradeable-_transferOwnership-address-)
+#### ContextUpgradeable [!toc]
+- [__Context_init()](#ContextUpgradeable-__Context_init--)
+- [__Context_init_unchained()](#ContextUpgradeable-__Context_init_unchained--)
+- [_msgSender()](#ContextUpgradeable-_msgSender--)
+- [_msgData()](#ContextUpgradeable-_msgData--)
+- [_contextSuffixLength()](#ContextUpgradeable-_contextSuffixLength--)
+#### Initializable [!toc]
+- [_checkInitializing()](#Initializable-_checkInitializing--)
+- [_disableInitializers()](#Initializable-_disableInitializers--)
+- [_getInitializedVersion()](#Initializable-_getInitializedVersion--)
+- [_isInitializing()](#Initializable-_isInitializing--)
+- [_initializableStorageSlot()](#Initializable-_initializableStorageSlot--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### VestingWalletConfidential [!toc]
+- [VestingWalletConfidentialTokenReleased(token, amount)](#VestingWalletConfidential-VestingWalletConfidentialTokenReleased-address-euint64-)
+#### ReentrancyGuardTransient [!toc]
+#### OwnableUpgradeable [!toc]
+- [OwnershipTransferred(previousOwner, newOwner)](#OwnableUpgradeable-OwnershipTransferred-address-address-)
+#### ContextUpgradeable [!toc]
+#### Initializable [!toc]
+- [Initialized(version)](#Initializable-Initialized-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [VestingWalletCliffConfidentialInvalidCliffDuration(cliffSeconds, durationSeconds)](#VestingWalletCliffConfidential-VestingWalletCliffConfidentialInvalidCliffDuration-uint64-uint64-)
+#### VestingWalletConfidential [!toc]
+#### ReentrancyGuardTransient [!toc]
+- [ReentrancyGuardReentrantCall()](#ReentrancyGuardTransient-ReentrancyGuardReentrantCall--)
+#### OwnableUpgradeable [!toc]
+- [OwnableUnauthorizedAccount(account)](#OwnableUpgradeable-OwnableUnauthorizedAccount-address-)
+- [OwnableInvalidOwner(owner)](#OwnableUpgradeable-OwnableInvalidOwner-address-)
+#### ContextUpgradeable [!toc]
+#### Initializable [!toc]
+- [InvalidInitialization()](#Initializable-InvalidInitialization--)
+- [NotInitializing()](#Initializable-NotInitializing--)
+</div>
+</div>
+
+<a id="VestingWalletCliffConfidential-cliff--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">cliff() → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletCliffConfidential-cliff--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The timestamp at which the cliff ends.
+
+</div>
+</div>
+
+<a id="VestingWalletCliffConfidential-__VestingWalletCliffConfidential_init-address-uint48-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">__VestingWalletCliffConfidential_init(address beneficiary, uint48 startTimestamp, uint48 durationSeconds, uint48 cliffSeconds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletCliffConfidential-__VestingWalletCliffConfidential_init-address-uint48-uint48-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Set the duration of the cliff, in seconds. The cliff starts at the vesting
+start timestamp (see [`VestingWalletConfidential.start`](#VestingWalletConfidential-start--)) and ends `cliffSeconds` later.
+
+</div>
+</div>
+
+<a id="VestingWalletCliffConfidential-__VestingWalletCliffConfidential_init_unchained-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">__VestingWalletCliffConfidential_init_unchained(uint48 cliffSeconds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletCliffConfidential-__VestingWalletCliffConfidential_init_unchained-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="VestingWalletCliffConfidential-_vestingSchedule-euint128-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_vestingSchedule(euint128 totalAllocation, uint48 timestamp) → euint128</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletCliffConfidential-_vestingSchedule-euint128-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+This function returns the amount vested, as a function of time, for
+an asset given its total historical allocation. Returns 0 if the [`VestingWalletCliffConfidential.cliff`](#VestingWalletCliffConfidential-cliff--) timestamp is not met.
+
+<Callout type="warn">
+The cliff not only makes the schedule return 0, but it also ignores every possible side
+effect from calling the inherited implementation (i.e. `super._vestingSchedule`). Carefully consider
+this caveat if the overridden implementation of this function has any (e.g. writing to memory or reverting).
+</Callout>
+
+</div>
+</div>
+
+<a id="VestingWalletCliffConfidential-VestingWalletCliffConfidentialInvalidCliffDuration-uint64-uint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">VestingWalletCliffConfidentialInvalidCliffDuration(uint64 cliffSeconds, uint64 durationSeconds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="VestingWalletCliffConfidential-VestingWalletCliffConfidentialInvalidCliffDuration-uint64-uint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The specified cliff duration is larger than the vesting duration.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `VestingWalletConfidential`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/finance/VestingWalletConfidential.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/finance/VestingWalletConfidential.sol";
+```
+
+A vesting wallet is an ownable contract that can receive ConfidentialFungibleTokens, and release these
+assets to the wallet owner, also referred to as "beneficiary", according to a vesting schedule.
+
+Any assets transferred to this contract will follow the vesting schedule as if they were locked from the beginning.
+Consequently, if the vesting has already started, any amount of tokens sent to this contract will (at least partly)
+be immediately releasable.
+
+By setting the duration to 0, one can configure this contract to behave like an asset timelock that holds tokens for
+a beneficiary until a specified time.
+
+<Callout>
+Since the wallet is `Ownable`, and ownership can be transferred, it is possible to sell unvested tokens.
+</Callout>
+
+<Callout>
+When using this contract with any token whose balance is adjusted automatically (i.e. a rebase token), make
+sure to account the supply/balance adjustment in the vesting schedule to ensure the vested amount is as intended.
+</Callout>
+
+Confidential vesting wallet contracts can be deployed (as clones) using the [`VestingWalletConfidentialFactory`](#VestingWalletConfidentialFactory).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [start()](#VestingWalletConfidential-start--)
+- [duration()](#VestingWalletConfidential-duration--)
+- [end()](#VestingWalletConfidential-end--)
+- [released(token)](#VestingWalletConfidential-released-address-)
+- [releasable(token)](#VestingWalletConfidential-releasable-address-)
+- [release(token)](#VestingWalletConfidential-release-address-)
+- [vestedAmount(token, timestamp)](#VestingWalletConfidential-vestedAmount-address-uint48-)
+- [__VestingWalletConfidential_init(beneficiary, startTimestamp, durationSeconds)](#VestingWalletConfidential-__VestingWalletConfidential_init-address-uint48-uint48-)
+- [__VestingWalletConfidential_init_unchained(startTimestamp, durationSeconds)](#VestingWalletConfidential-__VestingWalletConfidential_init_unchained-uint48-uint48-)
+- [_vestingSchedule(totalAllocation, timestamp)](#VestingWalletConfidential-_vestingSchedule-euint128-uint48-)
+#### ReentrancyGuardTransient [!toc]
+- [_reentrancyGuardEntered()](#ReentrancyGuardTransient-_reentrancyGuardEntered--)
+#### OwnableUpgradeable [!toc]
+- [__Ownable_init(initialOwner)](#OwnableUpgradeable-__Ownable_init-address-)
+- [__Ownable_init_unchained(initialOwner)](#OwnableUpgradeable-__Ownable_init_unchained-address-)
+- [owner()](#OwnableUpgradeable-owner--)
+- [_checkOwner()](#OwnableUpgradeable-_checkOwner--)
+- [renounceOwnership()](#OwnableUpgradeable-renounceOwnership--)
+- [transferOwnership(newOwner)](#OwnableUpgradeable-transferOwnership-address-)
+- [_transferOwnership(newOwner)](#OwnableUpgradeable-_transferOwnership-address-)
+#### ContextUpgradeable [!toc]
+- [__Context_init()](#ContextUpgradeable-__Context_init--)
+- [__Context_init_unchained()](#ContextUpgradeable-__Context_init_unchained--)
+- [_msgSender()](#ContextUpgradeable-_msgSender--)
+- [_msgData()](#ContextUpgradeable-_msgData--)
+- [_contextSuffixLength()](#ContextUpgradeable-_contextSuffixLength--)
+#### Initializable [!toc]
+- [_checkInitializing()](#Initializable-_checkInitializing--)
+- [_disableInitializers()](#Initializable-_disableInitializers--)
+- [_getInitializedVersion()](#Initializable-_getInitializedVersion--)
+- [_isInitializing()](#Initializable-_isInitializing--)
+- [_initializableStorageSlot()](#Initializable-_initializableStorageSlot--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [VestingWalletConfidentialTokenReleased(token, amount)](#VestingWalletConfidential-VestingWalletConfidentialTokenReleased-address-euint64-)
+#### ReentrancyGuardTransient [!toc]
+#### OwnableUpgradeable [!toc]
+- [OwnershipTransferred(previousOwner, newOwner)](#OwnableUpgradeable-OwnershipTransferred-address-address-)
+#### ContextUpgradeable [!toc]
+#### Initializable [!toc]
+- [Initialized(version)](#Initializable-Initialized-uint64-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### ReentrancyGuardTransient [!toc]
+- [ReentrancyGuardReentrantCall()](#ReentrancyGuardTransient-ReentrancyGuardReentrantCall--)
+#### OwnableUpgradeable [!toc]
+- [OwnableUnauthorizedAccount(account)](#OwnableUpgradeable-OwnableUnauthorizedAccount-address-)
+- [OwnableInvalidOwner(owner)](#OwnableUpgradeable-OwnableInvalidOwner-address-)
+#### ContextUpgradeable [!toc]
+#### Initializable [!toc]
+- [InvalidInitialization()](#Initializable-InvalidInitialization--)
+- [NotInitializing()](#Initializable-NotInitializing--)
+</div>
+</div>
+
+<a id="VestingWalletConfidential-start--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">start() → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-start--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Timestamp at which the vesting starts.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-duration--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">duration() → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-duration--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Duration of the vesting in seconds.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-end--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">end() → uint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-end--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Timestamp at which the vesting ends.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-released-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">released(address token) → euint128</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-released-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Amount of token already released
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-releasable-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">releasable(address token) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-releasable-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Getter for the amount of releasable `token` tokens. `token` should be the address of an
+[`IConfidentialFungibleToken`](./interfaces#IConfidentialFungibleToken) contract.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-release-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">release(address token)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-release-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Release the tokens that have already vested.
+
+Emits a [`VestingWalletConfidential.VestingWalletConfidentialTokenReleased`](#VestingWalletConfidential-VestingWalletConfidentialTokenReleased-address-euint64-) event.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-vestedAmount-address-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">vestedAmount(address token, uint48 timestamp) → euint128</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidential-vestedAmount-address-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Calculates the amount of tokens that have been vested at the given timestamp.
+Default implementation is a linear vesting curve.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-__VestingWalletConfidential_init-address-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">__VestingWalletConfidential_init(address beneficiary, uint48 startTimestamp, uint48 durationSeconds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidential-__VestingWalletConfidential_init-address-uint48-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initializes the vesting wallet for a given `beneficiary` with a start time of `startTimestamp`
+and an end time of `startTimestamp + durationSeconds`.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-__VestingWalletConfidential_init_unchained-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">__VestingWalletConfidential_init_unchained(uint48 startTimestamp, uint48 durationSeconds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidential-__VestingWalletConfidential_init_unchained-uint48-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-_vestingSchedule-euint128-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_vestingSchedule(euint128 totalAllocation, uint48 timestamp) → euint128</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidential-_vestingSchedule-euint128-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+This returns the amount vested, as a function of time, for an asset given its total historical allocation.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidential-VestingWalletConfidentialTokenReleased-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">VestingWalletConfidentialTokenReleased(address indexed token, euint64 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VestingWalletConfidential-VestingWalletConfidentialTokenReleased-address-euint64-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when releasable vested tokens are released.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `VestingWalletConfidentialFactory`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/finance/VestingWalletConfidentialFactory.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/finance/VestingWalletConfidentialFactory.sol";
+```
+
+A factory which enables batch funding of vesting wallets.
+
+The [`VestingWalletConfidentialFactory._deployVestingWalletImplementation`](#VestingWalletConfidentialFactory-_deployVestingWalletImplementation--), [`VestingWalletConfidentialFactory._initializeVestingWallet`](#VestingWalletConfidentialFactory-_initializeVestingWallet-address-bytes-), and [`VestingWalletConfidentialFactory._validateVestingWalletInitArgs`](#VestingWalletConfidentialFactory-_validateVestingWalletInitArgs-bytes-)
+functions remain unimplemented to allow for custom implementations of the vesting wallet to be used.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor()](#VestingWalletConfidentialFactory-constructor--)
+- [batchFundVestingWalletConfidential(confidentialFungibleToken, vestingPlans, inputProof)](#VestingWalletConfidentialFactory-batchFundVestingWalletConfidential-address-struct-VestingWalletConfidentialFactory-VestingPlan---bytes-)
+- [createVestingWalletConfidential(initArgs)](#VestingWalletConfidentialFactory-createVestingWalletConfidential-bytes-)
+- [predictVestingWalletConfidential(initArgs)](#VestingWalletConfidentialFactory-predictVestingWalletConfidential-bytes-)
+- [_validateVestingWalletInitArgs(initArgs)](#VestingWalletConfidentialFactory-_validateVestingWalletInitArgs-bytes-)
+- [_initializeVestingWallet(vestingWalletAddress, initArgs)](#VestingWalletConfidentialFactory-_initializeVestingWallet-address-bytes-)
+- [_deployVestingWalletImplementation()](#VestingWalletConfidentialFactory-_deployVestingWalletImplementation--)
+- [_getCreate2VestingWalletConfidentialSalt(initArgs)](#VestingWalletConfidentialFactory-_getCreate2VestingWalletConfidentialSalt-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [VestingWalletConfidentialFunded(vestingWalletConfidential, confidentialFungibleToken, transferredAmount, initArgs)](#VestingWalletConfidentialFactory-VestingWalletConfidentialFunded-address-address-euint64-bytes-)
+- [VestingWalletConfidentialCreated(vestingWalletConfidential, initArgs)](#VestingWalletConfidentialFactory-VestingWalletConfidentialCreated-address-bytes-)
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-constructor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-constructor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-batchFundVestingWalletConfidential-address-struct-VestingWalletConfidentialFactory-VestingPlan---bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">batchFundVestingWalletConfidential(address confidentialFungibleToken, struct VestingWalletConfidentialFactory.VestingPlan[] vestingPlans, bytes inputProof)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-batchFundVestingWalletConfidential-address-struct-VestingWalletConfidentialFactory-VestingPlan---bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Batches the funding of multiple confidential vesting wallets.
+
+Funds are sent to deterministic wallet addresses. Wallets can be created either
+before or after this operation.
+
+Emits a [`VestingWalletConfidentialFactory.VestingWalletConfidentialFunded`](#VestingWalletConfidentialFactory-VestingWalletConfidentialFunded-address-address-euint64-bytes-) event for each funded vesting plan.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-createVestingWalletConfidential-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">createVestingWalletConfidential(bytes initArgs) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-createVestingWalletConfidential-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Creates a confidential vesting wallet.
+
+Emits a [`VestingWalletConfidentialFactory.VestingWalletConfidentialCreated`](#VestingWalletConfidentialFactory-VestingWalletConfidentialCreated-address-bytes-).
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-predictVestingWalletConfidential-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">predictVestingWalletConfidential(bytes initArgs) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-predictVestingWalletConfidential-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Predicts the deterministic address for a confidential vesting wallet.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-_validateVestingWalletInitArgs-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateVestingWalletInitArgs(bytes initArgs)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-_validateVestingWalletInitArgs-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Virtual function that must be implemented to validate the initArgs bytes.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-_initializeVestingWallet-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_initializeVestingWallet(address vestingWalletAddress, bytes initArgs)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-_initializeVestingWallet-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Virtual function that must be implemented to initialize the vesting wallet at `vestingWalletAddress`.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-_deployVestingWalletImplementation--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_deployVestingWalletImplementation() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-_deployVestingWalletImplementation--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Internal function that is called once to deploy the vesting wallet implementation.
+
+Vesting wallet clones will be initialized by calls to the [`VestingWalletConfidentialFactory._initializeVestingWallet`](#VestingWalletConfidentialFactory-_initializeVestingWallet-address-bytes-) function.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-_getCreate2VestingWalletConfidentialSalt-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getCreate2VestingWalletConfidentialSalt(bytes initArgs) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-_getCreate2VestingWalletConfidentialSalt-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets create2 salt for a confidential vesting wallet.
+
+</div>
+</div>
+
+<a id="VestingWalletConfidentialFactory-VestingWalletConfidentialFunded-address-address-euint64-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">VestingWalletConfidentialFunded(address indexed vestingWalletConfidential, address indexed confidentialFungibleToken, euint64 transferredAmount, bytes initArgs)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-VestingWalletConfidentialFunded-address-address-euint64-bytes-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted for each vesting wallet funded within a batch.
+
+</div>
+</div>
+<a id="VestingWalletConfidentialFactory-VestingWalletConfidentialCreated-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">VestingWalletConfidentialCreated(address indexed vestingWalletConfidential, bytes initArgs)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VestingWalletConfidentialFactory-VestingWalletConfidentialCreated-address-bytes-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a vesting wallet is deployed.
+
+</div>
+</div>

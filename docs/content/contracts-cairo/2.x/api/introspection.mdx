@@ -1,0 +1,100 @@
+---
+title: Introspection
+---
+
+import { UMBRELLA_VERSION } from "../utils/constants.js";
+
+This crate handles [type introspection](https://en.wikipedia.org/wiki/Type_introspection) of contracts. In other words, it examines which functions can be called on a given contract. This is referred to as the contract's interface.
+
+## Interfaces
+
+### `ISRC5` [toc] [#ISRC5]
+
+<APIGithubLinkHeader
+  moduleName="ISRC5"
+  link={`https://github.com/OpenZeppelin/cairo-contracts/blob/${UMBRELLA_VERSION}/packages/introspection/src/interface.cairo`}
+/>
+
+```rust
+use openzeppelin_introspection::interface::ISRC5;
+```
+
+Interface of the SRC5 Introspection Standard as defined in [SNIP-5](https://github.com/starknet-io/SNIPs/blob/main/SNIPS/snip-5.md).
+
+[SRC5 ID](#ISRC5)
+
+```text
+0x3f918d17e5ee77373b56385708f855659a07f75997f365cf87748628532a055
+```
+
+Functions
+
+- [`supports_interface(interface_id)`](#ISRC5-supports_interface)
+
+#### Functions [!toc] [#ISRC5-Functions]
+
+<APIItem
+  functionSignature="supports_interface(interface_id: felt252) → bool"
+  id="ISRC5-supports_interface"
+  kind="external"
+>
+Checks whether the contract implements the given interface.
+
+Check [Computing the Interface ID](../introspection#computing-the-interface-id) for more information on how to compute this ID.
+</APIItem>
+
+## [](#core)Core
+
+### `SRC5Component` [toc] [#SRC5Component]
+
+<APIGithubLinkHeader
+  moduleName="SRC5Component"
+  link={`https://github.com/OpenZeppelin/cairo-contracts/blob/${UMBRELLA_VERSION}/packages/introspection/src/src5.cairo`}
+/>
+
+```rust
+use openzeppelin_introspection::src5::SRC5Component;
+```
+
+SRC5 component extending [`ISRC5`](#ISRC5).
+
+Embeddable Implementations
+
+#### SRC5Impl [!toc] [#SRC5Component-SRC5Impl]
+
+- [`supports_interface(self, interface_id)`](#SRC5Component-supports_interface)
+
+Internal Implementations
+
+#### InternalImpl [!toc] [#SRC5Component-InternalImpl]
+
+- [`register_interface(self, interface_id)`](#SRC5Component-register_interface)
+- [`deregister_interface(self, interface_id)`](#SRC5Component-deregister_interface)
+
+#### Embeddable functions [!toc] [#SRC5Component-EmbeddableFunctions]
+
+<APIItem
+  functionSignature="supports_interface(self: @ContractState, interface_id: felt252) → bool"
+  id="SRC5Component-supports_interface"
+  kind="external"
+>
+See [`ISRC5::supports_interface`](#ISRC5-supports_interface).
+</APIItem>
+
+#### Internal functions [!toc] [#SRC5Component-InternalFunctions]
+
+<APIItem
+  functionSignature="register_interface(ref self: ComponentState, interface_id: felt252)"
+  id="SRC5Component-register_interface"
+  kind="internal"
+>
+Registers support for the given `interface_id`.
+</APIItem>
+
+<APIItem
+  functionSignature="deregister_interface(ref self: ComponentState, interface_id: felt252)"
+  id="SRC5Component-deregister_interface"
+  kind="internal"
+>
+Deregisters support for the given `interface_id`.
+</APIItem>

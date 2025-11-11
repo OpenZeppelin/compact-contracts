@@ -1,0 +1,82 @@
+---
+title: Audit
+---
+
+Audit allows you to summon our team of security experts to verify your system works as intended with the highest level of scrutiny. You can track issues and resolutions, and interact directly with auditors for faster and more efficient communication.
+
+## Use cases
+
+* Maintain a searchable repository of all smart contract audits and issues.
+* Streamline the interactions between auditors and developers.
+* Automate the fix-review process for all identified issues.
+* Track all issues identified in an audit to completion.
+
+## Auditors and Reports
+
+Auditors have special roles in Defender. Audit Managers are able to sync audit reports to Defender from GitHub and add the Auditors, which are able to read and track issues and questions. Audit Manager can also identify which members of your team have permission to read or comment on audits.
+
+Once an Audit Manager syncs and delivers an audit report to Defender, it will be visible to any team members who have been assigned the Audit Read or Audit Comment role. All active and historic audit reports will be visible, and team members can click on any audit report to view the details.
+
+![Audit Status Header](/defender/audit-status.png)
+
+The Audit page initially includes the project’s name, status, and date of report. Below this, you can find the executive summary of the audit, which provides an overview of the audit’s findings and the overall security posture of the smart contract or project. It also includes links and information on the scope, timeline, and Auditors.
+
+Below the executive summary, you can find the differente sections of the audit.
+
+### Overview
+
+The "Overview" section provides context and background information about the project or smart contract being audited. This section typically starts with a brief introduction to the project, including the project’s name, purpose, and a general description of what it aims to achieve. It’s followed by an overview of the architecture and key components of the project, supported by a high-level description of how the smart contract or blockchain application is structured and how different modules or components interact with each other. Information about the technology stack used in the project may be included. This can encompass the programming languages, libraries, frameworks, and blockchain platforms employed in the development.
+
+Depending on the audit, this section may also contain additional information about the smart contract’s privileged roles to explain its purpose and responsibilities within the project. This helps auditors and readers understand who has control over critical functions and what actions they can perform. Similarly, trust assumptions are commonly mentioned to outline implicit or explicit assumptions made by the project’s developers about the security and reliability of external components, services, or entities that the project relies on. Lastly, the "Overview" section may include client-found vulnerabilities if provided by the client. These are vulnerabilities or issues that have been identified by the project’s users or clients before the audit, helping the auditors understand the context and history of security concerns related to the project.
+
+### Issues
+
+The "Issues" section provides an in-depth examination of security vulnerabilities, bugs, or concerns discovered during the audit process. Within this section, you can filter the issues by content, severity, or status. Filtering by content allows you to look for issues with specific titles or descriptions. Filtering by severity allows you to look for issues with a specific severity level, like Critical, High, Medium, Low, Note, or Client Reported. Filtering by status allows you to look for issues with a specific status, like Unresolved, No Response, Responded, Resolved, Partially Resolved, Acknowledged Not Resolved, or Acknowledged Will Resolve.
+
+![Audit Issue Filters](/defender/audit-filter.png)
+
+Each issue within this section contains a title, description, date, and status. You can click on one to expand the information and be able to respond to it.
+
+![Audit Side Page](/defender/audit-side.png)
+
+The description explains the nature of the issue, its potential impact, and any technical details necessary for understanding the problem. The issue is also tagged with a severity assessment, helping to describe the impact, likelihood, and difficulty of an issue for prioritization and transparency.
+
+### Recommendations
+
+The "Recommendations" section offers actionable guidance to improve the security posture of the project based on the audit results. This section is often composed of mitigation strategies, monitor recommendations, incident response plans, potential pitfalls, and other technical and non-technical advice.
+
+Monitoring and incident response recommendations included in this section are crucial for ensuring the ongoing security and resilience of your blockchain project or smart contract. These recommendations focus on proactive measures to detect and respond to security incidents, breaches, or anomalies effectively. The information given will provide details on how to apply these recommendations with Defender [Monitors](/defender/module/monitor), [Actions](/defender/module/actions), and [Workflows](/defender/module/actions#workflows). We recommend following the tutorials found in this documentation to learn how to use the Defender modules, like the [Monitor](/defender/tutorial/monitor), [Actions](/defender/tutorial/actions), and [Workflow](/defender/tutorial/workflows) tutorials.
+
+Recommendations often include:
+
+* **Event Monitoring**: event monitoring to track and analyze events emitted by your smart contracts. This is essential for identifying unusual or unexpected behavior that may indicate a security issue.
+* **Custom Alerts**: Custom alerts based on specific conditions or events. This aligns with the incident response recommendation to have alerting mechanisms in place.
+* **Automated Response**: Automated responses to specific events or conditions, enabling rapid incident mitigation. Combined with [Actions](/defender/module/actions) and [Workflows](/defender/module/actions#workflows).
+* **Threshold Monitoring**: Monitoring for unusual deviations from established thresholds is a common incident response practice. Defender can assist in setting up threshold-based monitoring with [Monitors](/defender/module/monitor) and to react with automatic [Workflows](/defender/module/actions#workflows).
+* **Deployment Considerations**: Minimize risk while avoiding unnecessary delays and post-deployment using Defender [Deploy](/defender/module/deploy). Employ automatic analysis to avoid storage collisions or other issues and benefit from features like cross-chain deterministic deployments, bytecode verification, and more.
+
+### Conclusion
+
+The "Conclusion" section summarizes the audit’s findings and provides an overall assessment of the project’s security posture. This section begins with a concise summary of the key findings from the audit, including a recap of critical security vulnerabilities, issues, or concerns discovered during the assessment with the security levels assigned to each identified issue, helping stakeholders understand which issues posed the highest risks. Depending on the issues found, the "Conclusion" section may also restate the high-priority recommendations for addressing issues, emphasizing the immediate actions needed to enhance security.
+
+This section will also communicate the risks associated with the project’s current security status to help project owners, investors, and users make informed decisions. Additional valuable insights may be provided to support certain decisions by stakeholders, such as deployment, further development, and improvements. If recommendations were provided, these will be restated in this section as a high-level overview.
+
+## Fix-Review process
+
+After an audit report is delivered, the individual issues within a report are open to response and comment until they are each finalized by an Audit Manager. Auditors and team members assigned the Audit Comment role are allowed to respond and comment. Team members may ask questions to Auditors or supply information.
+
+In order to initiate a response on an issue, click on the issue within the "Issues" section of the audit page and then click on "Reply to this issue".
+
+![Audit Issue Response](/defender/audit-new-issue.png)
+
+Team members may leave comments for auditors. Specifically, team members can supply links to pull requests (PRs) or commits in their GitHub repository, which represent fixes associated with a specific issue. Multiple links may be added.
+
+![Audit Issue Reply](/defender/audit-reply-issue.png)
+
+Defender will keep and display a trail of all communications between the auditors and team members on each issue.
+
+![Audit Trail](/defender/audit-trail.png)
+
+Depending on the outcome of fixes and reviews, auditors may update the status of issues to Partially Resolved or Resolved. Once the fix-review process is complete for all issues, the Audit Manager will finalize the audit, after which the full trail of activity is visible, but no more responses or comments are allowed. At the end of the audit, the Audit Manager can also provide a PDF report of the audit, including the fix-review process.
+
+For any questions regarding your audit process, please get in touch with your assigned Audit Manager. You can provide Defender feedback via [its feedback form](#feedback) — your comments and suggestions will be instrumental in helping us shape the future of the Audit module!

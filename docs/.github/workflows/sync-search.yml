@@ -1,0 +1,27 @@
+name: Sync Search Content
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync-search:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run sync search content
+        run: bun run scripts/sync-search-content.ts
+        env:
+          NEXT_PUBLIC_ALGOLIA_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_ID }}
+          ALGOLIA_PRIVATE_KEY: ${{ secrets.ALGOLIA_PRIVATE_KEY }}

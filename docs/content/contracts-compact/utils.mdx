@@ -1,0 +1,27 @@
+---
+title: Utils
+---
+
+The Utils module provides miscellaneous circuits and common utilities for Compact contract development.
+
+### Usage
+
+```typescript
+pragma language_version >= {{compact_language_version}};
+
+import CompactStandardLibrary;
+import './compact-contracts/node_modules/@openzeppelin-compact/contracts/src/utils/Utils'
+  prefix Utils_;
+
+export circuit performActionWhenEqual(
+  a: Either<ZswapCoinPublicKey, ContractAddress>,
+  b: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  const isEqual = Utils_isKeyOrAddressEqual(a, b);
+  if (isEqual) {
+    // Do something
+  } else {
+    // Do something else
+  }
+}
+```

@@ -1,0 +1,104 @@
+---
+title: Modify and assign roles in a role-based access control smart contract
+---
+
+Defender allows you to seamlessly oversee and command contract permissions on a grand scale, with the power to view and control access at a granular level. This tutorial shows how to add a smart contract to see and manage its roles, including assigning and removing roles.
+
+## Pre-requisites
+
+* OpenZeppelin Defender account.
+* Any external wallet (like Metamask) with an EOA that holds funds in Sepolia.
+
+## 1. Add contract
+
+<Callout>
+For this tutorial, you will create a contract that implements the role-based Access Control library using [this](https://sepolia.etherscan.io/address/0xF909B3dBB525fDe7C3e8cd59FbECF3D42c217454) factory deployed to Sepolia. Your created contract will automatically assign you the admin role to manage its roles.
+</Callout>
+
+1. Open the Defender [Address Book](https://defender.openzeppelin.com/v2/#/address-book/new) in a web browser.
+2. Fill the form with the following values and click `Create`:
+
+   * Name: `Access Control Factory`
+   * Network: `Sepolia`
+   * Address: `0xF909B3dBB525fDe7C3e8cd59FbECF3D42c217454`
+
++
+image::tutorial-access-control-factory.png[Address Book for factory]
+
+1. Navigate to [Transaction Proposals](https://defender.openzeppelin.com/v2/#/transaction-proposals/new?).
+2. Fill the ***General Information*** section with the following values:
+
+   * Name: `Create Access Control contract`
+   * Target contract: `Access Control Factory`
+
++
+image::tutorial-access-control-tx-general.png[Transaction Proposal general information]
+
+1. For the ***Function*** section, select the `create` function.
+2. Open the ***Approval Process*** section, click the input field and select `Create Approval Process`.
+3. Fill the approval process form with the following values and click `Save Changes`:
+
+   * Name: `Access Control Admin`
+   * Type: `EOA`
+   * Address: _Your wallet EOA address_
+4. Connect your wallet with the EOA address of the approval process created and click `Submit Transaction Proposal`.
+
+   ![Transaction Proposal submit proposal](/defender/tutorial-access-control-submit-proposal.gif)
+5. Click on the `Create Access Control contract` transaction proposal.
+6. Click the top-right button `Approve and Execute` and confirm the transaction on your wallet.
+
+   ![Transaction Proposal submit tx](/defender/tutorial-access-control-submit-tx.gif)
+7. Scroll down and under ***Execution Result***, hover over the first contract to copy its address.
+
+   ![Transaction Proposal copy address](/defender/tutorial-access-control-copy-address.png)
+8. Navigate to the Defender https://defender.openzeppelin.com/v2/#/address-book/new Address Book] to add your newly created contract.
+9. Fill the form with the following values and click `Create`:
+
+   * Name: `Access Control Contract`
+   * Network: `Sepolia`
+   * Address: _Contract address copied from the previous steps_
+   * ABI: _Copy and paste the following_
+
++
+```json
+["inputs": [],"stateMutability": "nonpayable","type": "constructor","inputs": [],"name": "AccessControlBadConfirmation","type": "error","inputs": [{"internalType": "address","name": "account","type": "address","internalType": "bytes32","name": "neededRole","type": "bytes32"],"name": "AccessControlUnauthorizedAccount","type": "error"},"anonymous": false,"inputs": [{"indexed": true,"internalType": "bytes32","name": "role","type": "bytes32","indexed": true,"internalType": "bytes32","name": "previousAdminRole","type": "bytes32","indexed": true,"internalType": "bytes32","name": "newAdminRole","type": "bytes32"],"name": "RoleAdminChanged","type": "event"},"anonymous": false,"inputs": [{"indexed": true,"internalType": "bytes32","name": "role","type": "bytes32","indexed": true,"internalType": "address","name": "account","type": "address","indexed": true,"internalType": "address","name": "sender","type": "address"],"name": "RoleGranted","type": "event"},"anonymous": false,"inputs": [{"indexed": true,"internalType": "bytes32","name": "role","type": "bytes32","indexed": true,"internalType": "address","name": "account","type": "address","indexed": true,"internalType": "address","name": "sender","type": "address"],"name": "RoleRevoked","type": "event"},"inputs": [],"name": "DEFAULT_ADMIN_ROLE","outputs": [{"internalType": "bytes32","name": "","type": "bytes32"],"stateMutability": "view","type": "function"},"inputs": [],"name": "RANDOM_ROLE","outputs": [{"internalType": "bytes32","name": "","type": "bytes32"],"stateMutability": "view","type": "function"},"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32"],"name": "getRoleAdmin","outputs": ["internalType": "bytes32","name": "","type": "bytes32"],"stateMutability": "view","type": "function"},"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32","internalType": "address","name": "account","type": "address"],"name": "grantRole","outputs": [],"stateMutability": "nonpayable","type": "function"},"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32","internalType": "address","name": "account","type": "address"],"name": "hasRole","outputs": ["internalType": "bool","name": "","type": "bool"],"stateMutability": "view","type": "function"},"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32","internalType": "address","name": "callerConfirmation","type": "address"],"name": "renounceRole","outputs": [],"stateMutability": "nonpayable","type": "function"},"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32","internalType": "address","name": "account","type": "address"],"name": "revokeRole","outputs": [],"stateMutability": "nonpayable","type": "function"},"inputs": [{"internalType": "bytes4","name": "interfaceId","type": "bytes4"],"name": "supportsInterface","outputs": ["internalType": "bool","name": "","type": "bool"],"stateMutability": "view","type": "function"}]
+```
+
+1. Navigate to the [Access Control page](https://defender.openzeppelin.com/v2/#/access-control/contracts).
+2. Observe your newly added contract with the number addresses that hold the admin role.
+
+   ![Access Control page with contract](/defender/tutorial-access-control-page.gif)
+3. Click on the contract card.
+
+## 2. View and modify roles
+
+In your contract-specific page, you can see the addresses that hold the `DEFAULT_ADMIN_ROLE` role, which is the EOA address from the approval process you used to deploy the contract. To make a change, click on the role and input the new address (or remove one address if you want to remove it from the role). Follow these steps to add a new address to the `DEFAULT_ADMIN_ROLE`:
+
+1. Click on the `DEFAULT_ADMIN_ROLE` role.
+2. Select any address from the dropdown menu or add a new one.
+3. Scroll down and click on `Select an Approval Process`.
+4. Select your `Access Control Admin` approval process.
+5. Check that your wallet is connected with the right EOA address. If not, click on the button below the field to connect your wallet.
+6. Click on `Save Changes` and confirm the transaction on your wallet.
+7. Wait for the transaction to get executed and check that the new address holds the `DEFAULT_ADMIN_ROLE` role.
+
++
+image::tutorial-access-control-add.gif[Access Control page of contract add role]
+
+For ownable contracts, you can only make changes to the `Owner` role using an approval process that matches the current owner’s address. When using a multisig as approval process, you will see the pending proposals on the right side of the page.
+
+The page sync every minute, and updates when modifying a role.
+
+## Next steps
+
+Congratulations! You can import other contracts and modify their roles.
+
+<Callout>
+After configuring Access Control, we recommend seting up Workflows. Learn how to use Workflows with its tutorial [here](/defender/tutorial/workflows).
+</Callout>
+
+## References
+
+* [Access Control Documentation](/defender/module/access-control)
+* [Access Control Factory](https://sepolia.etherscan.io/address/0xF909B3dBB525fDe7C3e8cd59FbECF3D42c217454)
+* [Access Control Contract](https://sepolia.etherscan.io/address/0x1b073085c60ace585c4179984b3be5bf9ef53176)

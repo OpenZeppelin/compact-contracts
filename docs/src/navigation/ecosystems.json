@@ -1,0 +1,418 @@
+[
+	{
+		"type": "separator",
+		"name": "Ecosystems"
+	},
+	{
+		"type": "folder",
+		"name": "Cairo Contracts",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/cairo-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Wizard",
+				"url": "/cairo-contracts/wizard"
+			},
+			{
+				"type": "folder",
+				"name": "Learn",
+				"children": [
+					{
+						"type": "page",
+						"name": "Components",
+						"url": "/cairo-contracts/components"
+					},
+					{
+						"type": "page",
+						"name": "Presets",
+						"url": "/cairo-contracts/presets"
+					},
+					{
+						"type": "page",
+						"name": "Interfaces and Dispatchers",
+						"url": "/cairo-contracts/guides/interfaces-and-dispatchers"
+					},
+					{
+						"type": "page",
+						"name": "Counterfactual Deployments",
+						"url": "/cairo-contracts/guides/deployment"
+					},
+					{
+						"type": "page",
+						"name": "SNIP12 and Typed Messages",
+						"url": "/cairo-contracts/guides/snip12"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Backwards Compatibility",
+				"url": "/cairo-contracts/backwards-compatibility"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Contracts Compact",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/contracts-compact"
+			},
+			{
+				"type": "folder",
+				"name": "Learn",
+				"children": [
+					{
+						"type": "page",
+						"name": "ZK Circuits 101",
+						"url": "/contracts-compact/zkCircuits101"
+					},
+					{
+						"type": "page",
+						"name": "Extensibility",
+						"url": "/contracts-compact/extensibility"
+					}
+				]
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Confidential Contracts",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/confidential-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Token",
+				"url": "/confidential-contracts/token"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/confidential-contracts/changelog"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Contracts Stylus",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/contracts-stylus"
+			},
+			{
+				"type": "page",
+				"name": "Access Control",
+				"url": "/contracts-stylus/access-control"
+			},
+			{
+				"type": "page",
+				"name": "Cryptography",
+				"url": "/contracts-stylus/crypto"
+			},
+			{
+				"type": "page",
+				"name": "Finance",
+				"url": "/contracts-stylus/finance"
+			},
+			{
+				"type": "page",
+				"name": "Utilities",
+				"url": "/contracts-stylus/utilities"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/contracts-stylus/changelog"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Stellar Contracts",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/stellar-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Get Started",
+				"url": "/stellar-contracts/get-started"
+			},
+			{
+				"type": "folder",
+				"name": "Accounts",
+				"index": {
+					"type": "page",
+					"name": "Smart Account",
+					"url": "/stellar-contracts/accounts/smart-account"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Context Rules",
+						"url": "/stellar-contracts/accounts/context-rules"
+					},
+					{
+						"type": "page",
+						"name": "Signers and Verifiers",
+						"url": "/stellar-contracts/accounts/signers-and-verifiers"
+					},
+					{
+						"type": "page",
+						"name": "Policies",
+						"url": "/stellar-contracts/accounts/policies"
+					},
+					{
+						"type": "page",
+						"name": "Authorization Flow",
+						"url": "/stellar-contracts/accounts/authorization-flow"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/stellar-contracts/changelog"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Substrate Runtimes",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/substrate-runtimes"
+			},
+			{
+				"type": "folder",
+				"name": "General Guides",
+				"children": [
+					{
+						"type": "page",
+						"name": "Quick Start",
+						"url": "/substrate-runtimes/guides/quick_start"
+					},
+					{
+						"type": "page",
+						"name": "Weights & Fees",
+						"url": "/substrate-runtimes/guides/weights_fees"
+					},
+					{
+						"type": "page",
+						"name": "Async Backing",
+						"url": "/substrate-runtimes/guides/async_backing"
+					},
+					{
+						"type": "page",
+						"name": "Sending XCM between Parachains",
+						"url": "/substrate-runtimes/guides/hrmp_channels"
+					},
+					{
+						"type": "page",
+						"name": "OpenZeppelin Pallet Abstractions",
+						"url": "/substrate-runtimes/guides/pallet_abstractions"
+					},
+					{
+						"type": "page",
+						"name": "Pay DOT as a Fee",
+						"url": "/substrate-runtimes/guides/pay_dot_as_a_fee"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "EVM Template Guides",
+				"children": [
+					{
+						"type": "page",
+						"name": "Contract Migration",
+						"url": "/substrate-runtimes/guides/contract_migration"
+					},
+					{
+						"type": "page",
+						"name": "Predeployed Contracts",
+						"url": "/substrate-runtimes/guides/predeployed_contracts"
+					},
+					{
+						"type": "page",
+						"name": "Testing with Zombienet",
+						"url": "/substrate-runtimes/guides/testing_with_zombienet"
+					},
+					{
+						"type": "page",
+						"name": "RPC Differences",
+						"url": "/substrate-runtimes/guides/rpc_differences"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Runtimes",
+				"children": [
+					{
+						"type": "page",
+						"name": "Generic Runtime",
+						"url": "/substrate-runtimes/runtimes/generic"
+					},
+					{
+						"type": "page",
+						"name": "EVM Runtime",
+						"url": "/substrate-runtimes/runtimes/evm"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Runtime Descriptions",
+				"children": [
+					{
+						"type": "page",
+						"name": "XCM Executor",
+						"url": "/substrate-runtimes/runtime/xcm_executor"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Pallet Specifications",
+				"children": [
+					{
+						"type": "page",
+						"name": "cumulus_pallet_aura_ext",
+						"url": "/substrate-runtimes/pallets/aura_ext"
+					},
+					{
+						"type": "page",
+						"name": "cumulus_pallet_parachain_system",
+						"url": "/substrate-runtimes/pallets/parachain-system"
+					},
+					{
+						"type": "page",
+						"name": "cumulus_pallet_xcmp_queue",
+						"url": "/substrate-runtimes/pallets/xcmp-queue"
+					},
+					{
+						"type": "page",
+						"name": "pallet_assets",
+						"url": "/substrate-runtimes/pallets/assets"
+					},
+					{
+						"type": "page",
+						"name": "pallet_balances",
+						"url": "/substrate-runtimes/pallets/balances"
+					},
+					{
+						"type": "page",
+						"name": "pallet_collator_selection",
+						"url": "/substrate-runtimes/pallets/collator-selection"
+					},
+					{
+						"type": "page",
+						"name": "pallet_message_queue",
+						"url": "/substrate-runtimes/pallets/message-queue"
+					},
+					{
+						"type": "page",
+						"name": "pallet_multisig",
+						"url": "/substrate-runtimes/pallets/multisig"
+					},
+					{
+						"type": "page",
+						"name": "pallet_proxy",
+						"url": "/substrate-runtimes/pallets/proxy"
+					},
+					{
+						"type": "page",
+						"name": "pallet_transaction_payment",
+						"url": "/substrate-runtimes/pallets/transaction_payment"
+					},
+					{
+						"type": "page",
+						"name": "pallet_treasury",
+						"url": "/substrate-runtimes/pallets/treasury"
+					},
+					{
+						"type": "page",
+						"name": "pallet_xcm",
+						"url": "/substrate-runtimes/pallets/xcm"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Misc",
+				"children": [
+					{
+						"type": "page",
+						"name": "Multisig Accounts",
+						"url": "/substrate-runtimes/misc/multisig-accounts"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Appendix",
+				"children": [
+					{
+						"type": "page",
+						"name": "Glossary",
+						"url": "/substrate-runtimes/glossary"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/substrate-runtimes/changelog"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Uniswap Hooks",
+		"index": {
+			"type": "page",
+			"name": "Overview",
+			"url": "/uniswap-hooks"
+		},
+		"children": [
+			{
+				"type": "page",
+				"name": "Base",
+				"url": "/uniswap-hooks/base"
+			},
+			{
+				"type": "page",
+				"name": "Fee",
+				"url": "/uniswap-hooks/fee"
+			},
+			{
+				"type": "page",
+				"name": "Utilities",
+				"url": "/uniswap-hooks/utilities"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/uniswap-hooks/changelog"
+			}
+		]
+	}
+]

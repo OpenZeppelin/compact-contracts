@@ -1,0 +1,81 @@
+---
+title: Monitor a smart contract for on-chain activity
+---
+
+Defender allows you to monitor smart contract transactions and events across chains. This tutorial shows how to build a customized Monitor template and use it in a real-world context to monitor a [Uniswap V2](https://uniswap.org/) pool.
+
+## Pre-requisites
+
+* OpenZeppelin Defender account.
+
+<Callout>
+Learn to deploy contracts to monitor using Defender [here](/defender/tutorial/deploy)!
+</Callout>
+
+## 1. Configure the monitor
+
+You will monitor the `0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc` contract in the Ethereum mainnet, which is the [Uniswap V2 USDC-ETH pool](https://etherscan.io/address/0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc). This contract has constant activity, making it a good candidate to see how quick monitors are. To configure a monitor, follow these steps:
+
+1. Open [Defender Monitor](https://defender.openzeppelin.com/v2/#/monitor) in a web browser.
+2. Click on **Create Monitor**.
+
+   ![Monitor landing page](/defender/tutorial-monitor-landing.png)
+3. Name this monitor as `Uniswap V2: USDC-ETH Monitor`.
+4. Select the `Financial` risk category.
+5. Click the **Contracts** field and select to add a new address.
+6. Fill the form with the following parameters and select it as contract to monitor:
+
++
+* Name: `Uniswap V2: USDC-ETH Pool`
+* Network: `Mainnet`
+* Address: `0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc`
+
+1. Select `1 confirmation block`. Defender will automatically pick up the ABI, so we can select the transaction filters next.
+
++
+image::tutorial-monitor-first.png[Monitor added contract]
+
+1. Add the `status == "success"` parameter to **Transaction Properties** to filter by transaction-level data and confirm transactions are successfully confirmed and not reverted.
+
++
+image::tutorial-monitor-transaction-filters.png[Monitor transaction filters]
+
+1. Select the `Swap` event from the dropdown menu. This event is emitted every time a swap is made in the pool.
+
++
+image::tutorial-monitor-event-filter.png[Monitor event filter]
+
+1. Skip function-level filters as you are already tracking all `Swap` events emitted from the contract.
+2. Select a notification channel of your choice (such as email).
+3. Click on **Save Monitor**.
+
++
+image::tutorial-monitor-alerts.png[Monitor alerts]
+
+Your monitor is now running!
+
+![Monitor card](/defender/tutorial-monitor-card.png)
+
+## 2. Receive alerts
+
+Alerts will start rolling in as long as the monitor is active. Your notifications should look like this if you selected email as the notification channel:
+
+![Monitor Telegram alert](/defender/tutorial-monitor-receive.png)
+
+You can pause or delete monitors on the [Defender Monitor](https://defender.openzeppelin.com/v2/#/monitor) page. This one will trigger frequently so you will likely want to pause it using the toggle on the right after you receive a couple of alerts. You can also save a monitor as a template by clicking on the dotted icon of its card and `Save as Template`.
+
+![Monitor save template](/defender/tutorial-monitor-save-template.png)
+
+## Next steps
+
+Congratulations! You can modify the monitor to filter for specific `Swap` data or target another pool. In case you are interested in advanced use cases, we are working on monitor-related guides.
+
+<Callout>
+After setting up a monitor, we recommend creating Actions on Defender. Learn how to use Actions with its tutorial [here](/defender/tutorial/actions).
+</Callout>
+
+## References
+
+* [Actions Documentation](/defender/module/actions)
+* [Manage Notificacion Channels Documentation](/defender/settings#notifications)
+* [Uniswap V2 USDC-ETH Pool](https://etherscan.io/address/0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc)

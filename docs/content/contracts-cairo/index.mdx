@@ -1,0 +1,89 @@
+---
+title: Contracts for Cairo
+---
+
+import { latestAlpha, latestStable } from "./latest-versions.js";
+
+**OpenZeppelin Contracts for Cairo** provides modular, reusable, and audited smart-contract building blocks for Starknet. The library ships with ready-to-use components, presets, utilities, and tooling that help you ship production-grade Cairo applications faster.
+
+## Getting Started
+
+<Cards>
+  <Card href={`/contracts-cairo/${latestStable}`} title={`Latest Stable (${latestStable})`}>
+    Explore the stable and audited documentation set, including installation, components, and production-ready guides.
+  </Card>
+  <Card href="/contracts-cairo/alpha" title={`Latest Alpha (${latestAlpha})`}>
+    Try the upcoming features, updated APIs, and experimental packages before they are audited, available in the alpha release track.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/wizard`} title="Contracts Wizard">
+    Bootstrap Cairo contracts with the interactive Wizard and learn how features compose across packages.
+  </Card>
+</Cards>
+
+## Core Features
+
+<Cards>
+  <Card href={`/contracts-cairo/${latestStable}/components`} title="Components">
+    Reusable building blocks for composing Cairo contracts with mixins and modular architecture.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/presets`} title="Presets">
+    Ready-to-deploy contract presets for common Starknet scenarios.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/access`} title="Access Control">
+    Manage permissions and roles for Cairo contracts with flexible access-control patterns.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/security`} title="Security">
+    Harden your contracts with patterns and modules designed to reduce common vulnerabilities.
+  </Card>
+</Cards>
+
+## Token Standards
+
+<Cards>
+  <Card href={`/contracts-cairo/${latestStable}/erc20`} title="ERC-20">
+    Implement fungible tokens with hooks, minting, and allowance helpers adapted for Starknet.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/erc721`} title="ERC-721">
+    Build non-fungible tokens with metadata, enumeration, and minting extensions.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/erc1155`} title="ERC-1155">
+    Support multi-token collections that mix fungible and non-fungible assets.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/erc4626`} title="ERC-4626">
+    Create tokenized vaults that integrate with Starknet DeFi protocols.
+  </Card>
+</Cards>
+
+## Advanced Features
+
+<Cards>
+  <Card href={`/contracts-cairo/${latestStable}/accounts`} title="Accounts">
+    Work with smart accounts, multicalls, and account-upgrade flows tailored for Starknet.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/upgrades`} title="Upgradeability">
+    Design upgradeable patterns and learn how to manage storage-safe contract evolution.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/udc`} title="Universal Deployer">
+    Deploy contracts deterministically using the Universal Deployer Contract.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/governance/governor`} title="Governance">
+    Build Starknet-native governance flows with governor, timelock, multisig, and voting modules.
+  </Card>
+</Cards>
+
+## API Reference
+
+<Cards>
+  <Card href={`/contracts-cairo/${latestStable}/api/access`} title="Access Control API">
+    Inspect the full access-control interface, events, and helper methods.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/api/erc20`} title="ERC-20 API">
+    Explore the ERC-20 token standard interface, events, and helper methods for fungible tokens.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/api/upgrades`} title="Upgrades API">
+    Learn the low-level traits and components that power upgradeable contracts in Cairo.
+  </Card>
+  <Card href={`/contracts-cairo/${latestStable}/api/utilities`} title="Utilities API">
+    Browse helper libraries, testing utilities, and dispatchers available to every package.
+  </Card>
+</Cards>

@@ -1,0 +1,72 @@
+---
+title: ERC777
+---
+
+Like [ERC20](/contracts/3.x/erc20), ERC777 is a standard for [_fungible_ tokens](/contracts/3.x/tokens#different-kinds-of-tokens), and is focused around allowing more complex interactions when trading tokens. More generally, it brings tokens and Ether closer together by providing the equivalent of a `msg.value` field, but for tokens.
+
+The standard also brings multiple quality-of-life improvements, such as getting rid of the confusion around `decimals`, minting and burning with proper events, among others, but its killer feature is **receive hooks**. A hook is simply a function in a contract that is called when tokens are sent to it, meaning **accounts and contracts can react to receiving tokens**.
+
+This enables a lot of interesting use cases, including atomic purchases using tokens (no need to do `approve` and `transferFrom` in two separate transactions), rejecting reception of tokens (by reverting on the hook call), redirecting the received tokens to other addresses (similarly to how [`PaymentSplitter`](/contracts/3.x/api/payment#PaymentSplitter) does it), among many others.
+
+Furthermore, since contracts are required to implement these hooks in order to receive tokens, _no tokens can get stuck in a contract that is unaware of the ERC777 protocol_, as has happened countless times when using ERC20s.
+
+## What If I Already Use ERC20?
+
+The standard has you covered! The ERC777 standard is **backwards compatible with ERC20**, meaning you can interact with these tokens as if they were ERC20, using the standard functions, while still getting all of the niceties, including send hooks. See the [EIP’s Backwards Compatibility section](https://eips.ethereum.org/EIPS/eip-777#backward-compatibility) to learn more.
+
+## Constructing an ERC777 Token Contract
+
+We will replicate the `GLD` example of the [ERC20 guide](/contracts/3.x/erc20#constructing-an-erc20-token-contract), this time using ERC777. As always, check out the [`API reference`](/contracts/3.x/api/token/ERC777) to learn more about the details of each function.
+
+```solidity
+// contracts/GLDToken.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+
+import "@openzeppelin/contracts/token/ERC777/ERC777.sol";
+
+contract GLDToken is ERC777
+    constructor(uint256 initialSupply, address[] memory defaultOperators)
+        public
+        ERC777("Gold", "GLD", defaultOperators)
+    {
+        _mint(msg.sender, initialSupply, "", "");
+
+}
+```
+
+In this case, we’ll be extending from the [`ERC777`](/contracts/3.x/api/token/ERC777#ERC777) contract, which provides an implementation with compatibility support for ERC20. The API is quite similar to that of [`ERC777`](/contracts/3.x/api/token/ERC777#ERC777), and we’ll once again make use of [`_mint`](/contracts/3.x/api/token/ERC777#ERC777-_mint-address-address-uint256-bytes-bytes-) to assign the `initialSupply` to the deployer account. Unlike [ERC20’s `_mint`](/contracts/3.x/api/token/ERC20#ERC20-_mint-address-uint256-), this one includes some extra parameters, but you can safely ignore those for now.
+
+You’ll notice both [`name`](/contracts/3.x/api/token/ERC777#IERC777-name--) and [`symbol`](/contracts/3.x/api/token/ERC777#IERC777-symbol--) are assigned, but not [`decimals`](/contracts/3.x/api/token/ERC777#ERC777-decimals--). The ERC777 specification makes it mandatory to include support for these functions (unlike ERC20, where it is optional and we had to include [`ERC20Detailed`](/contracts/3.x/api/token/ERC20#ERC20Detailed)), but also mandates that `decimals` always returns a fixed value of `18`, so there’s no need to set it ourselves. For a review of ``decimals`’s role and importance, refer back to our [ERC20 guide](/contracts/3.x/erc20#a-note-on-decimals).
+
+Finally, we’ll need to set the [`defaultOperators`](/contracts/3.x/api/token/ERC777#IERC777-defaultOperators--): special accounts (usually other smart contracts) that will be able to transfer tokens on behalf of their holders. If you’re not planning on using operators in your token, you can simply pass an empty array. _Stay tuned for an upcoming in-depth guide on ERC777 operators!_
+
+That’s it for a basic token contract! We can now deploy it, and use the same [`balanceOf`](/contracts/3.x/api/token/ERC777#IERC777-balanceOf-address-) method to query the deployer’s balance:
+
+```javascript
+> GLDToken.balanceOf(deployerAddress)
+1000
+```
+
+To move tokens from one account to another, we can use both [``ERC20`’s `transfer`](/contracts/3.x/api/token/ERC777#ERC777-transfer-address-uint256-) method, or the new [``ERC777`’s `send`](/contracts/3.x/api/token/ERC777#ERC777-send-address-uint256-bytes-), which fulfills a very similar role, but adds an optional `data` field:
+
+```javascript
+> GLDToken.transfer(otherAddress, 300)
+> GLDToken.send(otherAddress, 300, "")
+> GLDToken.balanceOf(otherAddress)
+600
+> GLDToken.balanceOf(deployerAddress)
+400
+```
+
+## Sending Tokens to Contracts
+
+A key difference when using [`send`](/contracts/3.x/api/token/ERC777#ERC777-send-address-uint256-bytes-) is that token transfers to other contracts may revert with the following message:
+
+```text
+ERC777: token recipient contract has no implementer for ERC777TokensRecipient
+```
+
+This is a good thing! It means that the recipient contract has not registered itself as aware of the ERC777 protocol, so transfers to it are disabled to **prevent tokens from being locked forever**. As an example, [the Golem contract currently holds over 350k `GNT` tokens](https://etherscan.io/token/0xa74476443119A942dE498590Fe1f2454d7D4aC0d?a=0xa74476443119A942dE498590Fe1f2454d7D4aC0d), worth multiple tens of thousands of dollars, and lacks methods to get them out of there. This has happened to virtually every ERC20-backed project, usually due to user error.
+
+_An upcoming guide will cover how a contract can register itself as a recipient, send and receive hooks, and other advanced features of ERC777!_

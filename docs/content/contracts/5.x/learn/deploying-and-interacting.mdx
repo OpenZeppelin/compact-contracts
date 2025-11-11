@@ -1,0 +1,299 @@
+---
+title: Deploying and interacting with smart contracts
+---
+
+Unlike most software, smart contracts don't run on your computer or somebody's server: they live on the Ethereum network itself. This means that interacting with them is a bit different from more traditional applications.
+
+This guide will cover all you need to know to get you started using your contracts, including:
+
+* [Setting up a Local Blockchain](#setting-up-a-local-blockchain)
+* [Deploying a Smart Contract](#deploying-a-smart-contract)
+* [Interacting from the Console](#interacting-from-the-console)
+* [Interacting Programmatically](#interacting-programmatically)
+
+## Setting up a Local Blockchain
+
+Before we begin, we first need an environment where we can deploy our contracts. The Ethereum blockchain (often called "mainnet", for "main network") requires spending real money to use it, in the form of Ether (its native currency). This makes it a poor choice when trying out new ideas or tools.
+
+To solve this, a number of "testnets" (for "test networks") exist: these include the Sepolia and Holesky blockchains. They work very similarly to mainnet, with one difference: you can get Ether for these networks for free, so that using them doesn't cost you a single cent. However, you will still need to deal with private key management, blocktimes of 12 seconds or more, and actually getting this free Ether.
+
+During development, it is a better idea to instead use a _local_ blockchain. It runs on your machine, requires no Internet access, provides you with all the Ether that you need, and mines blocks instantly. These reasons also make local blockchains a great fit for [automated tests](./writing-automated-tests#setting-up-a-testing-environment).
+
+<Callout>
+If you want to learn how to deploy and use contracts on a _public_ blockchain, like the Ethereum testnets, head to our [Connecting to Public Test Networks](./connecting-to-public-test-networks) guide.
+</Callout>
+
+Hardhat comes with a local blockchain built-in, the [Hardhat Network](https://hardhat.org/hardhat-network/).
+
+Upon startup, Hardhat Network will create a set of unlocked accounts and give them Ether.
+
+```bash
+npx hardhat node
+```
+
+Hardhat Network will print out its address, `http://127.0.0.1:8545`, along with a list of available accounts and their private keys.
+
+Keep in mind that every time you run Hardhat Network, it will create a brand new local blockchain - the state of previous runs is ***not*** preserved. This is fine for short-lived experiments, but it means that you will need to have a window open running Hardhat Network for the duration of these guides.
+
+<Callout>
+Hardhat will always spin up an instance of ***Hardhat Network*** when no network is specified and there is no default network configured or the default network is set to `hardhat`.
+</Callout>
+
+<Callout>
+You can also run an actual Ethereum node in _[development mode](https://geth.ethereum.org/getting-started/dev-mode)_. These are a bit more complex to set up, and not as flexible for testing and development, but are more representative of the real network.
+</Callout>
+
+## Deploying a Smart Contract
+
+In the [Developing Smart Contracts guide](./developing-smart-contracts) we set up our development environment.
+
+If you don't already have this setup, please [create](./setting-up-a-node-project#creating-a-project) and [setup](./developing-smart-contracts#setting-up-a-project) the project and then [create](./developing-smart-contracts#first-contract) and [compile](./developing-smart-contracts#compiling-solidity) our Box smart contract.
+
+With our project setup complete we're now ready to deploy a contract. We'll be deploying `Box`, from the [Developing Smart Contracts](./developing-smart-contracts#first-contract) guide. Make sure you have a copy of [Box](./developing-smart-contracts#first-contract) in `contracts/Box.sol`.
+
+Hardhat uses either [declarative deployments](https://hardhat.org/hardhat-runner/docs/guides/deploying) or [scripts](https://hardhat.org/hardhat-runner/docs/advanced/scripts#writing-scripts-with-hardhat) to deploy contracts.
+
+We will create a script to deploy our Box contract.  We will save this file as `scripts/deploy.js`.
+
+```js
+async function main() {
+  // We get the contract to deploy
+  const Box = await ethers.getContractFactory('Box');
+  console.log('Deploying Box...');
+  const box = await Box.deploy();
+  await box.waitForDeployment();
+  console.log('Box deployed to:', await box.getAddress());
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
+```
+
+We use [ethers](https://github.com/ethers-io/ethers.js) in our script, so we need to install it and the [@nomicfoundation/hardhat-ethers plugin](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-ethers).
+
+```bash
+npm install --save-dev @nomicfoundation/hardhat-ethers ethers
+```
+
+We need to add in our [configuration](https://hardhat.org/config/) that we are using the `@nomicfoundation/hardhat-ethers` plugin.
+
+```js
+require("@nomicfoundation/hardhat-ethers");
+
+...
+module.exports = {
+...
+};
+```
+
+Using the `run` command, we can deploy the `Box` contract to the local network ([Hardhat Network](#setting-up-a-local-blockchain)):
+
+```bash
+npx hardhat run --network localhost scripts/deploy.js
+# Deploying Box...
+# Box deployed to: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+```
+
+<Callout>
+Hardhat doesn't keep track of your deployed contracts.  We displayed the deployed address in our script (in our example, `0x5FbDB2315678afecb367f032d93F642f64180aa3`). This will be useful when interacting with them programmatically.
+</Callout>
+
+All done! On a real network this process would've taken a couple of seconds, but it is near instant on local blockchains.
+
+<Callout>
+If you got a connection error, make sure you are running a [local blockchain](#setting-up-a-local-blockchain) in another terminal.
+</Callout>
+
+<Callout>
+Remember that local blockchains ***do not*** persist their state throughout multiple runs! If you close your local blockchain process, you'll have to re-deploy your contracts.
+</Callout>
+
+## Interacting from the Console
+
+With our `Box` contract [deployed](#deploying-a-smart-contract), we can start using it right away.
+
+We will use the [Hardhat console](https://hardhat.org/guides/hardhat-console.html) to interact with our deployed `Box` contract on our localhost network.
+
+<Callout>
+We need to specify the address of our `Box` contract we displayed in our deploy script.
+</Callout>
+
+<Callout>
+It's important that we explicitly set the network for Hardhat to connect our console session to. If we don't, Hardhat will default to using a new ephemeral network, which our Box contract wouldn't be deployed to.
+</Callout>
+
+```bash
+npx hardhat console --network localhost
+# Welcome to Node.js v20.17.0.
+# Type ".help" for more information.
+> const Box = await ethers.getContractFactory('Box');
+# undefined
+> const box = Box.attach('0x5FbDB2315678afecb367f032d93F642f64180aa3')
+# undefined
+```
+
+### Sending transactions
+`Box`'s first function, `store`, receives an integer value and stores it in the contract storage. Because this function _modifies_ the blockchain state, we need to _send a transaction_ to the contract to execute it.
+
+We will send a transaction to call the `store` function with a numeric value:
+```bash
+> await box.store(42)
+
+# hash: '0x3d86c5c2c8a9f31bedb5859efa22d2d39a5ea049255628727207bc2856cce0d3',
+#...
+```
+
+### Querying state
+
+`Box`'s other function is called `retrieve`, and it returns the integer value stored in the contract. This is a _query_ of blockchain state, so we don't need to send a transaction:
+```bash
+> await box.retrieve()
+# 42n
+```
+
+Because queries only read state and don't send a transaction, there is no transaction hash to report. This also means that using queries doesn't cost any Ether, and can be used for free on any network.
+
+<Callout>
+Our `Box` contract returns `uint256` which is too large a number for JavaScript so instead we get returned a big number object.  We can display the big number as a string using `(await box.retrieve()).toString()`.
+</Callout>
+
+```bash
+> (await box.retrieve()).toString()
+# '42'
+```
+
+<Callout>
+To learn more about using the console, check out the [Hardhat documentation](https://hardhat.org/guides/hardhat-console.html).
+</Callout>
+
+## Interacting programmatically
+
+The console is useful for prototyping and running one-off queries or transactions. However, eventually you will want to interact with your contracts from your own code.
+
+In this section, we'll see how to interact with our contracts from JavaScript, and use [Hardhat to run our script](https://hardhat.org/guides/scripts.html) with our Hardhat configuration.
+
+<Callout>
+Keep in mind that there are many other JavaScript libraries available, and you can use whichever you like the most. Once a contract is deployed, you can interact with it through any library!
+</Callout>
+
+### Setup
+
+Let's start coding in a new `scripts/index.js` file, where we'll be writing our JavaScript code, beginning with some boilerplate, including for [writing async code](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function).
+
+```js
+// scripts/index.js
+async function main() {
+  // Our code will go here
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
+```
+
+We can test our setup by asking the local node something, such as the list of enabled accounts:
+
+```js
+// Retrieve accounts from the local node
+const accounts = (await ethers.getSigners()).map(signer => signer.address);
+console.log(accounts);
+```
+
+<Callout>
+We won't be repeating the boilerplate code on every snippet, but make sure to always code _inside_ the `main` function we defined above!
+</Callout>
+
+Run the code above using `hardhat run`, and check that you are getting a list of available accounts in response.
+
+```bash
+npx hardhat run --network localhost ./scripts/index.js
+# [
+#  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+#  '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+#...
+#]
+```
+
+These accounts should match the ones displayed when you started the [local blockchain](#setting-up-a-local-blockchain) earlier. Now that we have our first code snippet for getting data out of a blockchain, let's start working with our contract. Remember we are adding our code _inside_ the `main` function we defined above.
+
+### Getting a contract instance
+
+In order to interact with the [`Box`](#box-contract) contract we deployed, we'll use an [ethers contract instance](https://docs.ethers.org/v6/api/contract/).
+
+An ethers contract instance is a JavaScript object that represents our contract on the blockchain, which we can use to interact with our contract. To attach it to our deployed contract we need to provide the contract address.
+
+```js
+// Set up an ethers contract, representing our deployed Box instance
+const address = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+const Box = await ethers.getContractFactory('Box');
+const box = Box.attach(address);
+```
+
+<Callout>
+Make sure to replace the `address` with the one you got when deploying the contract, which may be different to the one shown here.
+</Callout>
+
+We can now use this JavaScript object to interact with our contract.
+
+### Calling the contract
+
+Let's start by displaying the current value of the `Box` contract.
+
+We'll need to call the read only `retrieve()` public method of the contract, and [await](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await) the response:
+
+```js
+// Call the retrieve() function of the deployed Box contract
+const value = await box.retrieve();
+console.log('Box value is', value.toString());
+```
+This snippet is equivalent to the [query](#querying-state) we ran earlier from the console. Now, make sure everything is running smoothly by running the script again and checking the printed value:
+
+```bash
+npx hardhat run --network localhost ./scripts/index.js
+# Box value is 42
+```
+
+If you restarted your local blockchain at any point, this script may fail. Restarting clears all local blockchain state, so the `Box` contract instance won't be at the expected address.
+
+If this happens, simply [start the local blockchain](#setting-up-a-local-blockchain) and [redeploy](#deploying-a-smart-contract) the `Box` contract.
+
+
+### Sending a transaction
+We'll now send a transaction to `store` a new value in our Box.
+
+Let's store a value of `23` in our `Box`, and then use the code we had written before to display the updated value:
+
+```js
+// Send a transaction to store() a new value in the Box
+await box.store(23);
+
+// Call the retrieve() function of the deployed Box contract
+const value = await box.retrieve();
+console.log('Box value is', value.toString());
+```
+
+<Callout>
+In a real-world application, you may want to [estimate the gas](https://docs.ethers.org/v6/api/contract/#BaseContractMethod-estimateGas) of your transactions, and check a [gas price oracle](https://etherscan.io/gastracker) to know the optimal values to use on every transaction.
+</Callout>
+
+We can now run the snippet, and check that the box's value is updated!
+
+```bash
+npx hardhat run --network localhost ./scripts/index.js
+# Box value is 23
+```
+
+## Next steps
+
+Now that you know how to set up a local blockchain, deploy contracts and interact with them both manually and programmatically, you will need to learn about testing environments, public test networks and going to production:
+
+* [Writing Automated Tests](./writing-automated-tests)
+* [Connecting to Public Test Networks](./connecting-to-public-test-networks)
+* [Preparing for Mainnet](./preparing-for-mainnet)

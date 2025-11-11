@@ -1,0 +1,57 @@
+[
+	{
+		"type": "separator",
+		"name": "Zama FHEVM Contracts"
+	},
+	{
+		"type": "page",
+		"name": "Overview",
+		"url": "/confidential-contracts"
+	},
+	{
+		"type": "page",
+		"name": "Token",
+		"url": "/confidential-contracts/token"
+	},
+	{
+		"type": "page",
+		"name": "Changelog",
+		"url": "/confidential-contracts/changelog"
+	},
+	{
+		"type": "folder",
+		"name": "API Reference",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/confidential-contracts/api"
+			},
+			{
+				"type": "page",
+				"name": "Finance",
+				"url": "/confidential-contracts/api/finance"
+			},
+			{
+				"type": "page",
+				"name": "Governance",
+				"url": "/confidential-contracts/api/governance"
+			},
+			{
+				"type": "page",
+				"name": "Interfaces",
+				"url": "/confidential-contracts/api/interfaces"
+			},
+			{
+				"type": "page",
+				"name": "Token",
+				"url": "/confidential-contracts/api/token"
+			},
+			{
+				"type": "page",
+				"name": "Utils",
+				"url": "/confidential-contracts/api/utils"
+			}
+		]
+	}
+]

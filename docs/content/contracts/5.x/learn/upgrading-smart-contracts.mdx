@@ -1,0 +1,337 @@
+---
+title: Upgrading smart contracts
+---
+
+Smart contracts deployed using [OpenZeppelin Upgrades Plugins](/upgrades-plugins) can be ***upgraded*** to modify their code, while preserving their address, state, and balance. This allows you to iteratively add new features to your project, or fix any bugs you may find [in production](./preparing-for-mainnet).
+
+Throughout this guide, we will learn:
+
+* [Why upgrades are important](#what's-in-an-upgrade)
+* [Upgrade our Box using the Upgrades Plugins](#upgrading-using-the-upgrades-plugins)
+* [Learn how upgrades work under the hood](#how-upgrades-work)
+* [Learn how to write upgradeable contracts](#limitations-of-contract-upgrades)
+
+## What's in an upgrade
+
+Smart contracts in Ethereum are immutable by default. Once you create them there is no way to alter them, effectively acting as an unbreakable contract among participants.
+
+However, for some scenarios, it is desirable to be able to modify them. Think of a traditional contract between two parties: if they both agreed to change it, they would be able to do so. On Ethereum, they may desire to alter a smart contract to fix a bug they found (which might even lead to a hacker stealing their funds!), to add additional features, or simply to change the rules enforced by it.
+
+Here’s what you’d need to do to fix a bug in a contract you cannot upgrade:
+
+1. Deploy a new version of the contract
+2. Manually migrate all state from the old one contract to the new one (which can be very expensive in terms of gas fees!)
+3. Update all contracts that interacted with the old contract to use the address of the new one
+4. Reach out to all your users and convince them to start using the new deployment (and handle both contracts being used simultaneously, as users are slow to migrate)
+
+To avoid going through this mess, we have built contract upgrades directly into our plugins. This allows us to **change the contract code, while preserving the state, balance, and address**. Let’s see it in action.
+
+## Upgrading using the Upgrades Plugins
+
+Whenever you deploy a new contract using `deployProxy` in the [OpenZeppelin Upgrades Plugins](/upgrades-plugins), that contract instance can be ***upgraded*** later. By default, only the address that originally deployed the contract has the rights to upgrade it.
+
+`deployProxy` will create the following transactions:
+
+1. Deploy the implementation contract (our `Box` contract)
+2. Deploy the proxy contract and run any initializer function.
+   * The proxy deployment automatically deploys a `ProxyAdmin` contract (the admin for our proxy) in the scenario below.
+
+Let’s see how it works, by deploying an upgradeable version of our `Box` contract, using the same setup as when [we deployed earlier](./deploying-and-interacting#deploying-a-smart-contract):
+
+```solidity
+pragma solidity ^0.8.0;
+
+contract Box {
+    uint256 private _value;
+
+    // Emitted when the stored value changes
+    event ValueChanged(uint256 value);
+
+    // Stores a new value in the contract
+    function store(uint256 value) public {
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    // Reads the last stored value
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+We first need to install the Upgrades Plugin.
+
+Install the [Hardhat Upgrades](/upgrades-plugins/hardhat-upgrades) plugin.
+```bash
+npm install --save-dev @openzeppelin/hardhat-upgrades
+```
+
+We then need to configure Hardhat to use our `@openzeppelin/hardhat-upgrades` plugin. To do this add the plugin in your `hardhat.config.js` file as follows.
+
+```js
+...
+require("@nomicfoundation/hardhat-ethers");
+require('@openzeppelin/hardhat-upgrades');
+...
+module.exports = {
+...
+};
+```
+
+In order to upgrade a contract like `Box` we need to first deploy it as an upgradeable contract, which is a different deployment procedure than we’ve seen so far. We will initialize our Box contract by calling `store` with the value 42.
+
+With Hardhat, we use [scripts](https://hardhat.org/hardhat-runner/docs/advanced/scripts#writing-scripts-with-hardhat) to deploy upgradeable contracts.
+
+We will create a script to deploy our upgradeable Box contract using [`deployProxy`](/upgrades-plugins/api-hardhat-upgrades#deployproxy).  We will save this file as `scripts/deploy_upgradeable_box.js`.
+
+```js
+const { ethers, upgrades } = require('hardhat');
+
+async function main() {
+  const Box = await ethers.getContractFactory('Box');
+  console.log('Deploying Box...');
+  const box = await upgrades.deployProxy(Box, [42], { initializer: 'store' });
+  await box.waitForDeployment();
+  console.log('Box deployed to:', await box.getAddress());
+}
+
+main();
+```
+
+We can then deploy our upgradeable contract.
+
+Using the `run` command, we can deploy the `Box` contract to the `development` network.
+
+```console
+$ npx hardhat run --network localhost scripts/deploy_upgradeable_box.js
+Deploying Box...
+Box deployed to: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+```
+
+We can then interact with our `Box` contract to `retrieve` the value that we stored during initialization.
+
+We will use the [Hardhat console](https://hardhat.org/guides/hardhat-console.html) to interact with our upgraded `Box` contract.
+
+We need to specify the address of our proxy contract from when we deployed our `Box` contract.
+
+```console
+$ npx hardhat console --network localhost
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> const Box = await ethers.getContractFactory('Box');
+undefined
+> const box = await Box.attach('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+undefined
+> (await box.retrieve()).toString();
+'42'
+```
+
+For the sake of the example, let’s say we want to add a new feature: a function that increments the `value` stored in a new version of `Box`.
+
+```solidity
+pragma solidity ^0.8.0;
+
+contract BoxV2 {
+    // ... code from Box.sol
+
+    // Increments the stored value by 1
+    function increment() public {
+        _value = _value + 1;
+        emit ValueChanged(_value);
+    }
+}
+```
+
+After creating the Solidity file, we can now upgrade the instance we had deployed earlier using the `upgradeProxy` function.
+
+`upgradeProxy` will create the following transactions:
+
+1. Deploy the implementation contract (our `BoxV2` contract)
+2. Call the `ProxyAdmin` to update the proxy contract to use the new implementation.
+
+We will create a script to upgrade our `Box` contract to use `BoxV2` using [`upgradeProxy`](/upgrades-plugins/api-hardhat-upgrades#upgradeproxy).  We will save this file as `scripts/upgrade_box.js`.
+We need to specify the address of our proxy contract from when we deployed our `Box` contract.
+
+```js
+const { ethers, upgrades } = require('hardhat');
+
+async function main() {
+  const BoxV2 = await ethers.getContractFactory('BoxV2');
+  console.log('Upgrading Box...');
+  await upgrades.upgradeProxy('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', BoxV2);
+  console.log('Box upgraded');
+}
+
+main();
+```
+
+We can then deploy our upgradeable contract.
+
+Using the `run` command, we can upgrade the `Box` contract on the `development` network.
+
+```console
+$ npx hardhat run --network localhost scripts/upgrade_box.js
+Compiled 1 Solidity file successfully (evm target: paris).
+Upgrading Box...
+Box upgraded
+```
+
+Done! Our `Box` instance has been upgraded to the latest version of the code, **while keeping its state and the same address as before**. We didn’t need to deploy a new one at a new address, nor manually copy the `value` from the old `Box` to the new one.
+
+Let’s try it out by invoking the new `increment` function, and checking the `value` afterwards:
+
+We need to specify the address of our proxy contract from when we deployed our `Box` contract.
+
+```console
+$ npx hardhat console --network localhost
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> const BoxV2 = await ethers.getContractFactory('BoxV2');
+undefined
+> const box = await BoxV2.attach('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+undefined
+> await box.increment();
+...
+> (await box.retrieve()).toString();
+'43'
+```
+
+That’s it! Notice how the `value` of the `Box` was preserved throughout the upgrade, as well as its address. And this process is the same regardless of whether you are working on a local blockchain, a testnet, or the main network.
+
+Let’s see how the [OpenZeppelin Upgrades Plugins](/upgrades-plugins) accomplish this.
+
+## How upgrades work
+
+_This section will be more theory-heavy than others: feel free to skip over it and return later if you are curious._
+
+When you create a new upgradeable contract instance, the [OpenZeppelin Upgrades Plugins](/upgrades-plugins) actually deploys three contracts:
+
+1. The contract you have written, which is known as the _implementation contract_ containing the _logic_.
+2. A _proxy_ to the _implementation contract_, which is the contract that you actually interact with.
+3. A _ProxyAdmin_ to be the admin of the _proxy_.
+
+Here, the _proxy_ is a simple contract that just _delegates_ all calls to an implementation contract. A _delegate call_ is similar to a regular call, except that all code is executed in the context of the caller, not of the callee. Because of this, a `transfer` in the implementation contract’s code will actually transfer the proxy’s balance, and any reads or writes to the contract storage will read or write from the proxy’s own storage.
+
+This allows us to ***decouple*** a contract’s state and code: the proxy holds the state, while the implementation contract provides the code. And it also allows us to ***change*** the code by just having the proxy delegate to a different implementation contract.
+
+An upgrade then involves the following steps:
+
+1. Deploy the new implementation contract.
+2. Send a transaction to the proxy that updates its implementation address to the new one.
+
+<Callout>
+You can have multiple proxies using the same implementation contract, so you can save gas using this pattern if you plan to deploy multiple copies of the same contract.
+</Callout>
+
+Any user of the smart contract always interacts with the proxy, **which never changes its address**. This allows you to roll out an upgrade or fix a bug without requesting your users to change anything on their end - they just keep interacting with the same address as always.
+
+<Callout>
+If you want to learn more about how OpenZeppelin proxies work, check out [Proxies](/upgrades-plugins/proxies).
+</Callout>
+
+## Limitations of contract upgrades
+
+While any smart contract can be made upgradeable, some restrictions of the Solidity language need to be worked around. These come up when writing both the initial version of contract and the version we’ll upgrade it to.
+
+### Initialization
+
+Upgradeable contracts cannot have a `constructor`. To help you run initialization code, [**OpenZeppelin Contracts**](/contracts) provides the [`Initializable`](/contracts/5.x/api/proxy#Initializable) base contract that allows you to tag a method as [`initializer`](/contracts/5.x/api/proxy#Initializable-initializer--), ensuring it can be run only once.
+
+As an example, let’s write a new version of the `Box` contract with an initializer, storing the address of an `admin` who will be the only one allowed to change its contents.
+
+```solidity
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+contract AdminBox is Initializable {
+    uint256 private _value;
+    address private _admin;
+
+    // Emitted when the stored value changes
+    event ValueChanged(uint256 value);
+
+    function initialize(address admin) public initializer {
+        _admin = admin;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() initializer {}
+
+    // Stores a new value in the contract
+    function store(uint256 value) public {
+        require(msg.sender == _admin, "AdminBox: not admin");
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    // Reads the last stored value
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+When deploying this contract, we will need to specify the `initializer` function name (only when the name is not the default of `initialize`) and provide the admin address that we want to use.
+
+```js
+const { ethers, upgrades } = require('hardhat');
+
+async function main() {
+  const AdminBox = await ethers.getContractFactory('AdminBox');
+  console.log('Deploying AdminBox...');
+  const adminBox = await upgrades.deployProxy(AdminBox, ['0xACa94ef8bD5ffEE41947b4585a84BdA5a3d3DA6E'], { initializer: 'initialize' });
+  await adminBox.waitForDeployment();
+  console.log('AdminBox deployed to:', await adminBox.getAddress());
+}
+
+main();
+```
+
+For all practical purposes, the initializer acts as a constructor. However, keep in mind that since it’s a regular function, you will need to manually call the initializers of all base contracts (if any).
+
+You may have noticed that we included a constructor as well as an initializer. This constructor serves the purpose of leaving the implementation contract in an initialized state, which is a mitigation against certain potential attacks.
+
+To learn more about this and other caveats when writing upgradeable contracts, check out our [Writing Upgradeable Contracts](/upgrades-plugins/writing-upgradeable) guide.
+
+### Upgrading
+
+Due to technical limitations, when you upgrade a contract to a new version you cannot change the ***storage layout*** of that contract.
+
+This means that, if you have already declared a state variable in your contract, you cannot remove it, change its type, or declare another variable before it. In our `Box` example, it means that we can only add new state variables _after_ `value`.
+
+```solidity
+contract Box {
+    uint256 private _value;
+
+    // We can safely add a new variable after the ones we had declared
+    address private _owner;
+
+    // ...
+}
+```
+
+Fortunately, this limitation only affects state variables. You can change the contract’s functions and events as you wish.
+
+<Callout>
+If you accidentally mess up with your contract’s storage layout, the Upgrades Plugins will warn you when you try to upgrade.
+</Callout>
+
+To learn more about this limitation, head over to the [Modifying Your Contracts](/upgrades-plugins/writing-upgradeable#modifying-your-contracts) guide.
+
+## Testing
+
+To test upgradeable contracts we should create unit tests for the implementation contract, along with creating higher level tests for testing interaction via the proxy.  We can use `deployProxy` in our tests just like we do when we deploy.
+
+When we want to upgrade, we should create unit tests for the new implementation contract, along with creating higher level tests for testing interaction via the proxy after we upgrade using `upgradeProxy`, checking that state is maintained across upgrades.
+
+## Possible issues
+
+While learning how to upgrade contract you might find yourself in a situation of conflicting contracts on the local environment.
+To solve this consider using the follow steps:
+Stop the node ctrl+C which was ran with `npx hardhat node`. Execute a clean: `npx hardhat clean`.
+
+## Next steps
+
+Now that you know how to upgrade your smart contracts, and can iteratively develop your project, it’s time to take your project to [testnet](./connecting-to-public-test-networks) and to [production](./preparing-for-mainnet)! You can rest with the confidence that, should a bug appear, you have the tools to modify your contract and change it.
