@@ -35,11 +35,9 @@
   "engines": {
     "node": ">=22"
   },
-  "dependencies": {
-    "@openzeppelin-compact/compact": "workspace:^"
-  },
   "devDependencies": {
-    "@openzeppelin-compact/contracts-simulator": "workspace:^",
+    "@openzeppelin/compact-tools-cli": "file:../compact-tools/packages/cli",
+    "@openzeppelin/compact-tools-simulator": "file:../compact-tools/packages/simulator",
     "@tsconfig/node24": "^24.0.3",
     "@types/node": "24.10.0",
     "ts-node": "^10.9.2",

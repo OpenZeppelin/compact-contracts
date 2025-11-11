@@ -388,7 +388,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin-compact/compact@workspace:^, @openzeppelin-compact/compact@workspace:packages/compact":
+"@openzeppelin-compact/compact@workspace:packages/compact":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/compact@workspace:packages/compact"
   dependencies:
@@ -405,7 +405,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-compact/contracts-simulator@workspace:^, @openzeppelin-compact/contracts-simulator@workspace:packages/simulator":
+"@openzeppelin-compact/contracts-simulator@workspace:packages/simulator":
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/contracts-simulator@workspace:packages/simulator"
   dependencies:
@@ -424,8 +424,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
-    "@openzeppelin-compact/compact": "workspace:^"
-    "@openzeppelin-compact/contracts-simulator": "workspace:^"
+    "@openzeppelin/compact-tools-cli": "file:../compact-tools/packages/cli"
+    "@openzeppelin/compact-tools-simulator": "file:../compact-tools/packages/simulator"
     "@tsconfig/node24": "npm:^24.0.3"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"
@@ -433,6 +433,29 @@ __metadata:
     vitest: "npm:^4.0.15"
   languageName: unknown
   linkType: soft
+
+"@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
+  version: 0.0.1
+  resolution: "@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli#../compact-tools/packages/cli::hash=9376b6&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  dependencies:
+    chalk: "npm:^5.6.2"
+    log-symbols: "npm:^7.0.0"
+    ora: "npm:^9.0.0"
+  bin:
+    compact-builder: dist/runBuilder.js
+    compact-compiler: dist/runCompiler.js
+  checksum: 10/03120854093f43558b269e33858dfde6b2c5041d2321b43e47ea2637210b4cdf835d2d61698ccf9a4922541530984e0cc783bc9df415af4162a6f6ac95daaba0
+  languageName: node
+  linkType: hard
+
+"@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
+  version: 0.0.1
+  resolution: "@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator#../compact-tools/packages/simulator::hash=e33b5e&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  dependencies:
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
+  checksum: 10/38bbdf72e80c5d3f85476bbfbc645a74659b6d675de256cc5418ee383f72ec34e4e153abedcb82eef86c5282995a886eee7d4e33d1a0115bae5be51dd8da5fa1
+  languageName: node
+  linkType: hard
 
 "@pkgjs/parseargs@npm:^0.11.0":
   version: 0.11.0

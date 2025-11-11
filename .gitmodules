@@ -1,0 +1,3 @@
+[submodule "compact-tools"]
+	path = compact-tools
+	url = https://github.com/OpenZeppelin/compact-tools
