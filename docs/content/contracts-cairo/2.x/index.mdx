@@ -1,0 +1,122 @@
+---
+title: Contracts for Cairo
+---
+
+[starknet]:https://starkware.co/product/starknet/
+[scarb]:https://docs.swmansion.com/scarb/
+[scarb-install]:https://docs.swmansion.com/scarb/download.html
+
+
+**A library for secure smart contract development** written in Cairo for [Starknet][starknet]. This library consists of a set of
+[reusable components](/contracts-cairo/2.x/components) to build custom smart contracts, as well as ready-to-deploy [presets](/contracts-cairo/2.x/presets). You can also
+find other [utilities](/contracts-cairo/2.x/api/utilities) including [interfaces and dispatchers](/contracts-cairo/alpha/interfaces) and [test utilities](/contracts-cairo/2.x/api/testing)
+that facilitate testing with Starknet Foundry.
+
+<Callout>
+You can track our roadmap and future milestones in our [Github Project](https://github.com/orgs/OpenZeppelin/projects/29/).
+</Callout>
+
+## Installation
+
+The library is available as a [Scarb][scarb] package. Follow [this guide][scarb-install] for installing Cairo and Scarb on your machine
+before proceeding, and run the following command to check that the installation was successful:
+
+```bash
+$ scarb --version
+
+scarb 2.12.0 (639d0a65e 2025-08-04)
+cairo: 2.12.0 (https://crates.io/crates/cairo-lang-compiler/2.12.0)
+sierra: 1.7.0
+```
+
+### Set up your project
+
+Create an empty directory, and `cd` into it:
+
+```bash
+mkdir my_project/ && cd my_project/
+```
+
+Initialize a new Scarb project:
+
+```bash
+scarb init
+```
+
+The contents of `my_project/` should now look like this:
+
+```bash
+$ ls
+
+Scarb.toml src
+```
+
+### Install the library
+
+Install the library by declaring it as a dependency in the project’s `Scarb.toml` file:
+
+```javascript
+[dependencies]
+openzeppelin = "{{umbrella_version}}"
+```
+
+The previous example would import the entire library. We can also add each package as a separate dependency to
+improve the building time by not including modules that won’t be used:
+
+```toml
+[dependencies]
+openzeppelin_access = "{{umbrella_version}}"
+```
+
+## Basic usage
+
+This is how it looks to build an ERC20 contract using the [ERC20 component](/contracts-cairo/2.x/erc20).
+Copy the code into `src/lib.cairo`.
+
+```rust
+#[starknet::contract]
+mod MyERC20Token {
+    // NOTE: If you added the entire library as a dependency,
+    // use `openzeppelin::token` instead.
+    use openzeppelin_token::erc20::{ERC20Component, ERC20HooksEmptyImpl, DefaultConfig};
+    use starknet::ContractAddress;
+
+    component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+
+    // ERC20 Mixin
+    #[abi(embed_v0)]
+    impl ERC20MixinImpl = ERC20Component::ERC20MixinImpl<ContractState>;
+    impl ERC20InternalImpl = ERC20Component::InternalImpl<ContractState>;
+
+    #[storage]
+    struct Storage {
+        #[substorage(v0)]
+        erc20: ERC20Component::Storage
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        ERC20Event: ERC20Component::Event
+    }
+
+    #[constructor]
+    fn constructor(
+        ref self: ContractState,
+        name: ByteArray,
+        symbol: ByteArray,
+        fixed_supply: u256,
+        recipient: ContractAddress
+    ) {
+        self.erc20.initializer(name, symbol);
+        self.erc20.mint(recipient, fixed_supply);
+    }
+}
+```
+
+You can now compile it:
+
+```bash
+scarb build
+```

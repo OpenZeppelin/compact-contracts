@@ -1,0 +1,1541 @@
+---
+title: "Interfaces"
+description: "Smart contract interfaces utilities and implementations"
+---
+
+## List of standardized interfaces
+These interfaces are available as `.sol` files, and also as compiler `.json` ABI files (through the npm package). These
+are useful to interact with third party contracts that implement them.
+
+* [`IERC20`](/contracts/4.x/api/token/ERC20#IERC20)
+* [`IERC20Metadata`](/contracts/4.x/api/token/ERC20#IERC20Metadata)
+* [`IERC165`](/contracts/4.x/api/utils#IERC165)
+* [`IERC721`](/contracts/4.x/api/token/ERC721#IERC721)
+* [`IERC721Receiver`](/contracts/4.x/api/token/ERC721#IERC721Receiver)
+* [`IERC721Enumerable`](/contracts/4.x/api/token/ERC721#IERC721Enumerable)
+* [`IERC721Metadata`](/contracts/4.x/api/token/ERC721#IERC721Metadata)
+* [`IERC777`](/contracts/4.x/api/token/ERC777#IERC777)
+* [`IERC777Recipient`](/contracts/4.x/api/token/ERC777#IERC777Recipient)
+* [`IERC777Sender`](/contracts/4.x/api/token/ERC777#IERC777Sender)
+* [`IERC1155`](/contracts/4.x/api/token/ERC1155#IERC1155)
+* [`IERC1155Receiver`](/contracts/4.x/api/token/ERC1155#IERC1155Receiver)
+* [`IERC1155MetadataURI`](/contracts/4.x/api/token/ERC1155#IERC1155MetadataURI)
+* [`IERC1271`](#IERC1271)
+* [`IERC1363`](#IERC1363)
+* [`IERC1363Receiver`](#IERC1363Receiver)
+* [`IERC1363Spender`](#IERC1363Spender)
+* [`IERC1820Implementer`](/contracts/4.x/api/utils#IERC1820Implementer)
+* [`IERC1820Registry`](/contracts/4.x/api/utils#IERC1820Registry)
+* [`IERC1822Proxiable`](#IERC1822Proxiable)
+* [`IERC2612`](#IERC2612)
+* [`IERC2981`](#IERC2981)
+* [`IERC3156FlashLender`](#IERC3156FlashLender)
+* [`IERC3156FlashBorrower`](#IERC3156FlashBorrower)
+* [`IERC4626`](#IERC4626)
+* [`IERC4906`](#IERC4906)
+* [`IERC5267`](#IERC5267)
+* [`IERC5313`](#IERC5313)
+* [`IERC5805`](#IERC5805)
+* [`IERC6372`](#IERC6372)
+
+## Detailed ABI
+
+[`IERC1271`](#IERC1271)
+
+[`IERC1363`](#IERC1363)
+
+[`IERC1363Receiver`](#IERC1363Receiver)
+
+[`IERC1363Spender`](#IERC1363Spender)
+
+[`IERC1820Implementer`](/contracts/4.x/api/utils#IERC1820Implementer)
+
+[`IERC1820Registry`](/contracts/4.x/api/utils#IERC1820Registry)
+
+[`IERC1822Proxiable`](#IERC1822Proxiable)
+
+[`IERC2612`](#IERC2612)
+
+[`IERC2981`](#IERC2981)
+
+[`IERC3156FlashLender`](#IERC3156FlashLender)
+
+[`IERC3156FlashBorrower`](#IERC3156FlashBorrower)
+
+[`IERC4626`](#IERC4626)
+
+[`IERC5313`](#IERC5313)
+
+[`IERC5267`](#IERC5267)
+
+[`IERC5805`](#IERC5805)
+
+[`IERC6372`](#IERC6372)
+
+<a id="IERC1271"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC1271`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC1271.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+```
+
+Interface of the ERC1271 standard signature validation method for
+contracts as defined in [ERC-1271](https://eips.ethereum.org/EIPS/eip-1271).
+
+_Available since v4.1._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [isValidSignature(hash, signature)](#IERC1271-isValidSignature-bytes32-bytes-)
+</div>
+</div>
+
+<a id="IERC1271-isValidSignature-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidSignature(bytes32 hash, bytes signature) → bytes4 magicValue</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1271-isValidSignature-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Should return whether the signature provided is valid for the provided data
+
+</div>
+</div>
+
+<a id="IERC1363"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC1363`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC1363.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC1363.sol";
+```
+
+Interface of an ERC1363 compliant contract, as defined in the
+[EIP](https://eips.ethereum.org/EIPS/eip-1363).
+
+Defines a interface for ERC20 tokens that supports executing recipient
+code after `transfer` or `transferFrom`, or spender code after `approve`.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [transferAndCall(to, amount)](#IERC1363-transferAndCall-address-uint256-)
+- [transferAndCall(to, amount, data)](#IERC1363-transferAndCall-address-uint256-bytes-)
+- [transferFromAndCall(from, to, amount)](#IERC1363-transferFromAndCall-address-address-uint256-)
+- [transferFromAndCall(from, to, amount, data)](#IERC1363-transferFromAndCall-address-address-uint256-bytes-)
+- [approveAndCall(spender, amount)](#IERC1363-approveAndCall-address-uint256-)
+- [approveAndCall(spender, amount, data)](#IERC1363-approveAndCall-address-uint256-bytes-)
+#### IERC20
+- [totalSupply()](#IERC20-totalSupply--)
+- [balanceOf(account)](#IERC20-balanceOf-address-)
+- [transfer(to, amount)](#IERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#IERC20-allowance-address-address-)
+- [approve(spender, amount)](#IERC20-approve-address-uint256-)
+- [transferFrom(from, to, amount)](#IERC20-transferFrom-address-address-uint256-)
+#### IERC165
+- [supportsInterface(interfaceId)](#IERC165-supportsInterface-bytes4-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC20
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+#### IERC165
+</div>
+</div>
+
+<a id="IERC1363-transferAndCall-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">transferAndCall(address to, uint256 amount) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363-transferAndCall-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfer tokens from `msg.sender` to another address and then call `onTransferReceived` on receiver
+
+</div>
+</div>
+
+<a id="IERC1363-transferAndCall-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">transferAndCall(address to, uint256 amount, bytes data) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363-transferAndCall-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfer tokens from `msg.sender` to another address and then call `onTransferReceived` on receiver
+
+</div>
+</div>
+
+<a id="IERC1363-transferFromAndCall-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">transferFromAndCall(address from, address to, uint256 amount) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363-transferFromAndCall-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfer tokens from one address to another and then call `onTransferReceived` on receiver
+
+</div>
+</div>
+
+<a id="IERC1363-transferFromAndCall-address-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">transferFromAndCall(address from, address to, uint256 amount, bytes data) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363-transferFromAndCall-address-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfer tokens from one address to another and then call `onTransferReceived` on receiver
+
+</div>
+</div>
+
+<a id="IERC1363-approveAndCall-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">approveAndCall(address spender, uint256 amount) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363-approveAndCall-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Approve the passed address to spend the specified amount of tokens on behalf of msg.sender
+and then call `onApprovalReceived` on spender.
+
+</div>
+</div>
+
+<a id="IERC1363-approveAndCall-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">approveAndCall(address spender, uint256 amount, bytes data) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363-approveAndCall-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Approve the passed address to spend the specified amount of tokens on behalf of msg.sender
+and then call `onApprovalReceived` on spender.
+
+</div>
+</div>
+
+<a id="IERC1363Receiver"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC1363Receiver`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC1363Receiver.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC1363Receiver.sol";
+```
+
+Interface for any contract that wants to support [`IERC1363.transferAndCall`](#IERC1363-transferAndCall-address-uint256-bytes-)
+or [`IERC1363.transferFromAndCall`](#IERC1363-transferFromAndCall-address-address-uint256-bytes-) from [`IERC1363`](#IERC1363) token contracts.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [onTransferReceived(operator, from, amount, data)](#IERC1363Receiver-onTransferReceived-address-address-uint256-bytes-)
+</div>
+</div>
+
+<a id="IERC1363Receiver-onTransferReceived-address-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onTransferReceived(address operator, address from, uint256 amount, bytes data) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363Receiver-onTransferReceived-address-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Any ERC1363 smart contract calls this function on the recipient
+after a `transfer` or a `transferFrom`. This function MAY throw to revert and reject the
+transfer. Return of other than the magic value MUST result in the
+transaction being reverted.
+Note: the token contract address is always the message sender.
+
+</div>
+</div>
+
+<a id="IERC1363Spender"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC1363Spender`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC1363Spender.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC1363Spender.sol";
+```
+
+Interface for any contract that wants to support [`IERC1363.approveAndCall`](#IERC1363-approveAndCall-address-uint256-bytes-)
+from [`IERC1363`](#IERC1363) token contracts.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [onApprovalReceived(owner, amount, data)](#IERC1363Spender-onApprovalReceived-address-uint256-bytes-)
+</div>
+</div>
+
+<a id="IERC1363Spender-onApprovalReceived-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onApprovalReceived(address owner, uint256 amount, bytes data) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1363Spender-onApprovalReceived-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Any ERC1363 smart contract calls this function on the recipient
+after an `approve`. This function MAY throw to revert and reject the
+approval. Return of other than the magic value MUST result in the
+transaction being reverted.
+Note: the token contract address is always the message sender.
+
+</div>
+</div>
+
+<a id="IERC1967"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC1967`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC1967.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC1967.sol";
+```
+
+ERC-1967: Proxy Storage Slots. This interface contains the events defined in the ERC.
+
+_Available since v4.8.3._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [Upgraded(implementation)](#IERC1967-Upgraded-address-)
+- [AdminChanged(previousAdmin, newAdmin)](#IERC1967-AdminChanged-address-address-)
+- [BeaconUpgraded(beacon)](#IERC1967-BeaconUpgraded-address-)
+</div>
+</div>
+
+<a id="IERC1967-Upgraded-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">Upgraded(address indexed implementation)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC1967-Upgraded-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the implementation is upgraded.
+
+</div>
+</div>
+<a id="IERC1967-AdminChanged-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">AdminChanged(address previousAdmin, address newAdmin)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC1967-AdminChanged-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the admin account has changed.
+
+</div>
+</div>
+<a id="IERC1967-BeaconUpgraded-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">BeaconUpgraded(address indexed beacon)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC1967-BeaconUpgraded-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the beacon is changed.
+
+</div>
+</div>
+
+<a id="IERC2309"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC2309`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC2309.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC2309.sol";
+```
+
+ERC-2309: ERC-721 Consecutive Transfer Extension.
+
+_Available since v4.8._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [ConsecutiveTransfer(fromTokenId, toTokenId, fromAddress, toAddress)](#IERC2309-ConsecutiveTransfer-uint256-uint256-address-address-)
+</div>
+</div>
+
+<a id="IERC2309-ConsecutiveTransfer-uint256-uint256-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ConsecutiveTransfer(uint256 indexed fromTokenId, uint256 toTokenId, address indexed fromAddress, address indexed toAddress)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC2309-ConsecutiveTransfer-uint256-uint256-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the tokens from `fromTokenId` to `toTokenId` are transferred from `fromAddress` to `toAddress`.
+
+</div>
+</div>
+
+<a id="IERC2612"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC2612`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC2612.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC2612.sol";
+```
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+#### IERC20Permit
+- [permit(owner, spender, value, deadline, v, r, s)](#IERC20Permit-permit-address-address-uint256-uint256-uint8-bytes32-bytes32-)
+- [nonces(owner)](#IERC20Permit-nonces-address-)
+- [DOMAIN_SEPARATOR()](#IERC20Permit-DOMAIN_SEPARATOR--)
+</div>
+</div>
+
+<a id="IERC2981"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC2981`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC2981.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+```
+
+Interface for the NFT Royalty Standard.
+
+A standardized way to retrieve royalty payment information for non-fungible tokens (NFTs) to enable universal
+support for royalty payments across all NFT marketplaces and ecosystem participants.
+
+_Available since v4.5._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [royaltyInfo(tokenId, salePrice)](#IERC2981-royaltyInfo-uint256-uint256-)
+#### IERC165
+- [supportsInterface(interfaceId)](#IERC165-supportsInterface-bytes4-)
+</div>
+</div>
+
+<a id="IERC2981-royaltyInfo-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">royaltyInfo(uint256 tokenId, uint256 salePrice) → address receiver, uint256 royaltyAmount</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC2981-royaltyInfo-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns how much royalty is owed and to whom, based on a sale price that may be denominated in any unit of
+exchange. The royalty amount is denominated and should be paid in that same unit of exchange.
+
+</div>
+</div>
+
+<a id="IERC3156FlashBorrower"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC3156FlashBorrower`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC3156FlashBorrower.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
+```
+
+Interface of the ERC3156 FlashBorrower, as defined in
+[ERC-3156](https://eips.ethereum.org/EIPS/eip-3156).
+
+_Available since v4.1._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [onFlashLoan(initiator, token, amount, fee, data)](#IERC3156FlashBorrower-onFlashLoan-address-address-uint256-uint256-bytes-)
+</div>
+</div>
+
+<a id="IERC3156FlashBorrower-onFlashLoan-address-address-uint256-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onFlashLoan(address initiator, address token, uint256 amount, uint256 fee, bytes data) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC3156FlashBorrower-onFlashLoan-address-address-uint256-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Receive a flash loan.
+
+</div>
+</div>
+
+<a id="IERC3156FlashLender"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC3156FlashLender`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC3156FlashLender.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC3156FlashLender.sol";
+```
+
+Interface of the ERC3156 FlashLender, as defined in
+[ERC-3156](https://eips.ethereum.org/EIPS/eip-3156).
+
+_Available since v4.1._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [maxFlashLoan(token)](#IERC3156FlashLender-maxFlashLoan-address-)
+- [flashFee(token, amount)](#IERC3156FlashLender-flashFee-address-uint256-)
+- [flashLoan(receiver, token, amount, data)](#IERC3156FlashLender-flashLoan-contract-IERC3156FlashBorrower-address-uint256-bytes-)
+</div>
+</div>
+
+<a id="IERC3156FlashLender-maxFlashLoan-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxFlashLoan(address token) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC3156FlashLender-maxFlashLoan-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The amount of currency available to be lended.
+
+</div>
+</div>
+
+<a id="IERC3156FlashLender-flashFee-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">flashFee(address token, uint256 amount) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC3156FlashLender-flashFee-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The fee to be charged for a given loan.
+
+</div>
+</div>
+
+<a id="IERC3156FlashLender-flashLoan-contract-IERC3156FlashBorrower-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">flashLoan(contract IERC3156FlashBorrower receiver, address token, uint256 amount, bytes data) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC3156FlashLender-flashLoan-contract-IERC3156FlashBorrower-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initiate a flash loan.
+
+</div>
+</div>
+
+<a id="IERC4626"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC4626`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC4626.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+```
+
+Interface of the ERC4626 "Tokenized Vault Standard", as defined in
+[ERC-4626](https://eips.ethereum.org/EIPS/eip-4626).
+
+_Available since v4.7._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [asset()](#IERC4626-asset--)
+- [totalAssets()](#IERC4626-totalAssets--)
+- [convertToShares(assets)](#IERC4626-convertToShares-uint256-)
+- [convertToAssets(shares)](#IERC4626-convertToAssets-uint256-)
+- [maxDeposit(receiver)](#IERC4626-maxDeposit-address-)
+- [previewDeposit(assets)](#IERC4626-previewDeposit-uint256-)
+- [deposit(assets, receiver)](#IERC4626-deposit-uint256-address-)
+- [maxMint(receiver)](#IERC4626-maxMint-address-)
+- [previewMint(shares)](#IERC4626-previewMint-uint256-)
+- [mint(shares, receiver)](#IERC4626-mint-uint256-address-)
+- [maxWithdraw(owner)](#IERC4626-maxWithdraw-address-)
+- [previewWithdraw(assets)](#IERC4626-previewWithdraw-uint256-)
+- [withdraw(assets, receiver, owner)](#IERC4626-withdraw-uint256-address-address-)
+- [maxRedeem(owner)](#IERC4626-maxRedeem-address-)
+- [previewRedeem(shares)](#IERC4626-previewRedeem-uint256-)
+- [redeem(shares, receiver, owner)](#IERC4626-redeem-uint256-address-address-)
+#### IERC20Metadata
+- [name()](#IERC20Metadata-name--)
+- [symbol()](#IERC20Metadata-symbol--)
+- [decimals()](#IERC20Metadata-decimals--)
+#### IERC20
+- [totalSupply()](#IERC20-totalSupply--)
+- [balanceOf(account)](#IERC20-balanceOf-address-)
+- [transfer(to, amount)](#IERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#IERC20-allowance-address-address-)
+- [approve(spender, amount)](#IERC20-approve-address-uint256-)
+- [transferFrom(from, to, amount)](#IERC20-transferFrom-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [Deposit(sender, owner, assets, shares)](#IERC4626-Deposit-address-address-uint256-uint256-)
+- [Withdraw(sender, receiver, owner, assets, shares)](#IERC4626-Withdraw-address-address-address-uint256-uint256-)
+#### IERC20Metadata
+#### IERC20
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<a id="IERC4626-asset--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">asset() → address assetTokenAddress</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-asset--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the underlying token used for the Vault for accounting, depositing, and withdrawing.
+
+- MUST be an ERC-20 token contract.
+- MUST NOT revert.
+
+</div>
+</div>
+
+<a id="IERC4626-totalAssets--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">totalAssets() → uint256 totalManagedAssets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-totalAssets--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the total amount of the underlying asset that is “managed” by Vault.
+
+- SHOULD include any compounding that occurs from yield.
+- MUST be inclusive of any fees that are charged against assets in the Vault.
+- MUST NOT revert.
+
+</div>
+</div>
+
+<a id="IERC4626-convertToShares-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">convertToShares(uint256 assets) → uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-convertToShares-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the amount of shares that the Vault would exchange for the amount of assets provided, in an ideal
+scenario where all the conditions are met.
+
+- MUST NOT be inclusive of any fees that are charged against assets in the Vault.
+- MUST NOT show any variations depending on the caller.
+- MUST NOT reflect slippage or other on-chain conditions, when performing the actual exchange.
+- MUST NOT revert.
+
+NOTE: This calculation MAY NOT reflect the “per-user” price-per-share, and instead should reflect the
+“average-user’s” price-per-share, meaning what the average user should expect to see when exchanging to and
+from.
+
+</div>
+</div>
+
+<a id="IERC4626-convertToAssets-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">convertToAssets(uint256 shares) → uint256 assets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-convertToAssets-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the amount of assets that the Vault would exchange for the amount of shares provided, in an ideal
+scenario where all the conditions are met.
+
+- MUST NOT be inclusive of any fees that are charged against assets in the Vault.
+- MUST NOT show any variations depending on the caller.
+- MUST NOT reflect slippage or other on-chain conditions, when performing the actual exchange.
+- MUST NOT revert.
+
+NOTE: This calculation MAY NOT reflect the “per-user” price-per-share, and instead should reflect the
+“average-user’s” price-per-share, meaning what the average user should expect to see when exchanging to and
+from.
+
+</div>
+</div>
+
+<a id="IERC4626-maxDeposit-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxDeposit(address receiver) → uint256 maxAssets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-maxDeposit-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the maximum amount of the underlying asset that can be deposited into the Vault for the receiver,
+through a deposit call.
+
+- MUST return a limited value if receiver is subject to some deposit limit.
+- MUST return 2 ** 256 - 1 if there is no limit on the maximum amount of assets that may be deposited.
+- MUST NOT revert.
+
+</div>
+</div>
+
+<a id="IERC4626-previewDeposit-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewDeposit(uint256 assets) → uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-previewDeposit-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given
+current on-chain conditions.
+
+- MUST return as close to and no more than the exact amount of Vault shares that would be minted in a deposit
+  call in the same transaction. I.e. deposit should return the same or more shares as previewDeposit if called
+  in the same transaction.
+- MUST NOT account for deposit limits like those returned from maxDeposit and should always act as though the
+  deposit would be accepted, regardless if the user has enough tokens approved, etc.
+- MUST be inclusive of deposit fees. Integrators should be aware of the existence of deposit fees.
+- MUST NOT revert.
+
+NOTE: any unfavorable discrepancy between convertToShares and previewDeposit SHOULD be considered slippage in
+share price or some other type of condition, meaning the depositor will lose assets by depositing.
+
+</div>
+</div>
+
+<a id="IERC4626-deposit-uint256-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">deposit(uint256 assets, address receiver) → uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-deposit-uint256-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Mints shares Vault shares to receiver by depositing exactly amount of underlying tokens.
+
+- MUST emit the Deposit event.
+- MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the
+  deposit execution, and are accounted for during deposit.
+- MUST revert if all of assets cannot be deposited (due to deposit limit being reached, slippage, the user not
+  approving enough underlying tokens to the Vault contract, etc).
+
+NOTE: most implementations will require pre-approval of the Vault with the Vault’s underlying asset token.
+
+</div>
+</div>
+
+<a id="IERC4626-maxMint-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxMint(address receiver) → uint256 maxShares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-maxMint-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the maximum amount of the Vault shares that can be minted for the receiver, through a mint call.
+- MUST return a limited value if receiver is subject to some mint limit.
+- MUST return 2 ** 256 - 1 if there is no limit on the maximum amount of shares that may be minted.
+- MUST NOT revert.
+
+</div>
+</div>
+
+<a id="IERC4626-previewMint-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewMint(uint256 shares) → uint256 assets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-previewMint-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given
+current on-chain conditions.
+
+- MUST return as close to and no fewer than the exact amount of assets that would be deposited in a mint call
+  in the same transaction. I.e. mint should return the same or fewer assets as previewMint if called in the
+  same transaction.
+- MUST NOT account for mint limits like those returned from maxMint and should always act as though the mint
+  would be accepted, regardless if the user has enough tokens approved, etc.
+- MUST be inclusive of deposit fees. Integrators should be aware of the existence of deposit fees.
+- MUST NOT revert.
+
+NOTE: any unfavorable discrepancy between convertToAssets and previewMint SHOULD be considered slippage in
+share price or some other type of condition, meaning the depositor will lose assets by minting.
+
+</div>
+</div>
+
+<a id="IERC4626-mint-uint256-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">mint(uint256 shares, address receiver) → uint256 assets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-mint-uint256-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Mints exactly shares Vault shares to receiver by depositing amount of underlying tokens.
+
+- MUST emit the Deposit event.
+- MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the mint
+  execution, and are accounted for during mint.
+- MUST revert if all of shares cannot be minted (due to deposit limit being reached, slippage, the user not
+  approving enough underlying tokens to the Vault contract, etc).
+
+NOTE: most implementations will require pre-approval of the Vault with the Vault’s underlying asset token.
+
+</div>
+</div>
+
+<a id="IERC4626-maxWithdraw-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxWithdraw(address owner) → uint256 maxAssets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-maxWithdraw-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the maximum amount of the underlying asset that can be withdrawn from the owner balance in the
+Vault, through a withdraw call.
+
+- MUST return a limited value if owner is subject to some withdrawal limit or timelock.
+- MUST NOT revert.
+
+</div>
+</div>
+
+<a id="IERC4626-previewWithdraw-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewWithdraw(uint256 assets) → uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-previewWithdraw-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Allows an on-chain or off-chain user to simulate the effects of their withdrawal at the current block,
+given current on-chain conditions.
+
+- MUST return as close to and no fewer than the exact amount of Vault shares that would be burned in a withdraw
+  call in the same transaction. I.e. withdraw should return the same or fewer shares as previewWithdraw if
+  called
+  in the same transaction.
+- MUST NOT account for withdrawal limits like those returned from maxWithdraw and should always act as though
+  the withdrawal would be accepted, regardless if the user has enough shares, etc.
+- MUST be inclusive of withdrawal fees. Integrators should be aware of the existence of withdrawal fees.
+- MUST NOT revert.
+
+NOTE: any unfavorable discrepancy between convertToShares and previewWithdraw SHOULD be considered slippage in
+share price or some other type of condition, meaning the depositor will lose assets by depositing.
+
+</div>
+</div>
+
+<a id="IERC4626-withdraw-uint256-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">withdraw(uint256 assets, address receiver, address owner) → uint256 shares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-withdraw-uint256-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Burns shares from owner and sends exactly assets of underlying tokens to receiver.
+
+- MUST emit the Withdraw event.
+- MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the
+  withdraw execution, and are accounted for during withdraw.
+- MUST revert if all of assets cannot be withdrawn (due to withdrawal limit being reached, slippage, the owner
+  not having enough shares, etc).
+
+Note that some implementations will require pre-requesting to the Vault before a withdrawal may be performed.
+Those methods should be performed separately.
+
+</div>
+</div>
+
+<a id="IERC4626-maxRedeem-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxRedeem(address owner) → uint256 maxShares</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-maxRedeem-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the maximum amount of Vault shares that can be redeemed from the owner balance in the Vault,
+through a redeem call.
+
+- MUST return a limited value if owner is subject to some withdrawal limit or timelock.
+- MUST return balanceOf(owner) if owner is not subject to any withdrawal limit or timelock.
+- MUST NOT revert.
+
+</div>
+</div>
+
+<a id="IERC4626-previewRedeem-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewRedeem(uint256 shares) → uint256 assets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-previewRedeem-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Allows an on-chain or off-chain user to simulate the effects of their redeemption at the current block,
+given current on-chain conditions.
+
+- MUST return as close to and no more than the exact amount of assets that would be withdrawn in a redeem call
+  in the same transaction. I.e. redeem should return the same or more assets as previewRedeem if called in the
+  same transaction.
+- MUST NOT account for redemption limits like those returned from maxRedeem and should always act as though the
+  redemption would be accepted, regardless if the user has enough shares, etc.
+- MUST be inclusive of withdrawal fees. Integrators should be aware of the existence of withdrawal fees.
+- MUST NOT revert.
+
+NOTE: any unfavorable discrepancy between convertToAssets and previewRedeem SHOULD be considered slippage in
+share price or some other type of condition, meaning the depositor will lose assets by redeeming.
+
+</div>
+</div>
+
+<a id="IERC4626-redeem-uint256-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">redeem(uint256 shares, address receiver, address owner) → uint256 assets</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC4626-redeem-uint256-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Burns exactly shares from owner and sends assets of underlying tokens to receiver.
+
+- MUST emit the Withdraw event.
+- MAY support an additional flow in which the underlying tokens are owned by the Vault contract before the
+  redeem execution, and are accounted for during redeem.
+- MUST revert if all of shares cannot be redeemed (due to withdrawal limit being reached, slippage, the owner
+  not having enough shares, etc).
+
+NOTE: some implementations will require pre-requesting to the Vault before a withdrawal may be performed.
+Those methods should be performed separately.
+
+</div>
+</div>
+
+<a id="IERC4626-Deposit-address-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC4626-Deposit-address-address-uint256-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+<a id="IERC4626-Withdraw-address-address-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC4626-Withdraw-address-address-address-uint256-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="IERC4906"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC4906`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC4906.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC4906.sol";
+```
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+#### IERC721
+- [balanceOf(owner)](#IERC721-balanceOf-address-)
+- [ownerOf(tokenId)](#IERC721-ownerOf-uint256-)
+- [safeTransferFrom(from, to, tokenId, data)](#IERC721-safeTransferFrom-address-address-uint256-bytes-)
+- [safeTransferFrom(from, to, tokenId)](#IERC721-safeTransferFrom-address-address-uint256-)
+- [transferFrom(from, to, tokenId)](#IERC721-transferFrom-address-address-uint256-)
+- [approve(to, tokenId)](#IERC721-approve-address-uint256-)
+- [setApprovalForAll(operator, approved)](#IERC721-setApprovalForAll-address-bool-)
+- [getApproved(tokenId)](#IERC721-getApproved-uint256-)
+- [isApprovedForAll(owner, operator)](#IERC721-isApprovedForAll-address-address-)
+#### IERC165
+- [supportsInterface(interfaceId)](#IERC165-supportsInterface-bytes4-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [MetadataUpdate(_tokenId)](#IERC4906-MetadataUpdate-uint256-)
+- [BatchMetadataUpdate(_fromTokenId, _toTokenId)](#IERC4906-BatchMetadataUpdate-uint256-uint256-)
+#### IERC721
+- [Transfer(from, to, tokenId)](#IERC721-Transfer-address-address-uint256-)
+- [Approval(owner, approved, tokenId)](#IERC721-Approval-address-address-uint256-)
+- [ApprovalForAll(owner, operator, approved)](#IERC721-ApprovalForAll-address-address-bool-)
+#### IERC165
+</div>
+</div>
+
+<a id="IERC4906-MetadataUpdate-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">MetadataUpdate(uint256 _tokenId)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC4906-MetadataUpdate-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+This event emits when the metadata of a token is changed.
+So that the third-party platforms such as NFT market could
+timely update the images and related attributes of the NFT.
+
+</div>
+</div>
+<a id="IERC4906-BatchMetadataUpdate-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC4906-BatchMetadataUpdate-uint256-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+This event emits when the metadata of a range of tokens is changed.
+So that the third-party platforms such as NFT market could
+timely update the images and related attributes of the NFTs.
+
+</div>
+</div>
+
+<a id="IERC5267"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC5267`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC5267.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC5267.sol";
+```
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [eip712Domain()](#IERC5267-eip712Domain--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+</div>
+</div>
+
+<a id="IERC5267-eip712Domain--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">eip712Domain() → bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC5267-eip712Domain--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+returns the fields and values that describe the domain separator used by this contract for EIP-712
+signature.
+
+</div>
+</div>
+
+<a id="IERC5267-EIP712DomainChanged--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">EIP712DomainChanged()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IERC5267-EIP712DomainChanged--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+MAY be emitted to signal that the domain could have changed.
+
+</div>
+</div>
+
+<a id="IERC5313"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC5313`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC5313.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC5313.sol";
+```
+
+Interface for the Light Contract Ownership Standard.
+
+A standardized minimal interface required to identify an account that controls a contract
+
+_Available since v4.9._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [owner()](#IERC5313-owner--)
+</div>
+</div>
+
+<a id="IERC5313-owner--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">owner() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC5313-owner--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Gets the address of the owner.
+
+</div>
+</div>
+
+<a id="IERC5805"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC5805`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC5805.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC5805.sol";
+```
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+#### IVotes
+- [getVotes(account)](#IVotes-getVotes-address-)
+- [getPastVotes(account, timepoint)](#IVotes-getPastVotes-address-uint256-)
+- [getPastTotalSupply(timepoint)](#IVotes-getPastTotalSupply-uint256-)
+- [delegates(account)](#IVotes-delegates-address-)
+- [delegate(delegatee)](#IVotes-delegate-address-)
+- [delegateBySig(delegatee, nonce, expiry, v, r, s)](#IVotes-delegateBySig-address-uint256-uint256-uint8-bytes32-bytes32-)
+#### IERC6372
+- [clock()](#IERC6372-clock--)
+- [CLOCK_MODE()](#IERC6372-CLOCK_MODE--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IVotes
+- [DelegateChanged(delegator, fromDelegate, toDelegate)](#IVotes-DelegateChanged-address-address-address-)
+- [DelegateVotesChanged(delegate, previousBalance, newBalance)](#IVotes-DelegateVotesChanged-address-uint256-uint256-)
+#### IERC6372
+</div>
+</div>
+
+<a id="IERC6372"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC6372`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/IERC6372.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/IERC6372.sol";
+```
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [clock()](#IERC6372-clock--)
+- [CLOCK_MODE()](#IERC6372-CLOCK_MODE--)
+</div>
+</div>
+
+<a id="IERC6372-clock--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">clock() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC6372-clock--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Clock used for flagging checkpoints. Can be overridden to implement timestamp based checkpoints (and voting).
+
+</div>
+</div>
+
+<a id="IERC6372-CLOCK_MODE--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">CLOCK_MODE() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC6372-CLOCK_MODE--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Description of the clock
+
+</div>
+</div>
+
+<a id="IERC1822Proxiable"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IERC1822Proxiable`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/interfaces/draft-IERC1822.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/interfaces/draft-IERC1822.sol";
+```
+
+ERC1822: Universal Upgradeable Proxy Standard (UUPS) documents a method for upgradeability through a simplified
+proxy whose upgrades are fully controlled by the current implementation.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [proxiableUUID()](#IERC1822Proxiable-proxiableUUID--)
+</div>
+</div>
+
+<a id="IERC1822Proxiable-proxiableUUID--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">proxiableUUID() → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IERC1822Proxiable-proxiableUUID--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the storage slot that the proxiable contract assumes is being used to store the implementation
+address.
+
+<Callout type="warn">
+A proxy pointing at a proxiable contract should not be considered proxiable itself, because this risks
+bricking a proxy that upgrades to it, by delegating to itself until out of gas. Thus it is critical that this
+function revert if invoked through a proxy.
+</Callout>
+
+</div>
+</div>

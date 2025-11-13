@@ -1,0 +1,2383 @@
+---
+title: "Access"
+description: "Smart contract access utilities and implementations"
+---
+
+This directory provides ways to restrict who can access the functions of a contract or when they can do it.
+
+* [`AccessControl`](#AccessControl) provides a general role based access control mechanism. Multiple hierarchical roles can be created and assigned each to multiple accounts.
+* [`Ownable`](#Ownable) is a simpler mechanism with a single owner "role" that can be assigned to a single account. This simpler mechanism can be useful for quick tests but projects with production concerns are likely to outgrow it.
+
+## Authorization
+
+[`Ownable`](#Ownable)
+
+[`Ownable2Step`](#Ownable2Step)
+
+[`IAccessControl`](#IAccessControl)
+
+[`AccessControl`](#AccessControl)
+
+[`AccessControlCrossChain`](#AccessControlCrossChain)
+
+[`IAccessControlEnumerable`](#IAccessControlEnumerable)
+
+[`AccessControlEnumerable`](#AccessControlEnumerable)
+
+[`AccessControlDefaultAdminRules`](#AccessControlDefaultAdminRules)
+
+<a id="AccessControl"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AccessControl`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/AccessControl.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/AccessControl.sol";
+```
+
+Contract module that allows children to implement role-based access
+control mechanisms. This is a lightweight version that doesn't allow enumerating role
+members except through off-chain means by accessing the contract event logs. Some
+applications may benefit from on-chain enumerability, for those cases see
+[`AccessControlEnumerable`](#AccessControlEnumerable).
+
+Roles are referred to by their `bytes32` identifier. These should be exposed
+in the external API and be unique. The best way to achieve this is by
+using `public constant` hash digests:
+
+```solidity
+bytes32 public constant MY_ROLE = keccak256("MY_ROLE");
+```
+
+Roles can be used to represent a set of permissions. To restrict access to a
+function call, use [`AccessControl.hasRole`](#AccessControl-hasRole-bytes32-address-):
+
+```solidity
+function foo() public {
+    require(hasRole(MY_ROLE, msg.sender));
+    ...
+}
+```
+
+Roles can be granted and revoked dynamically via the [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-) and
+[`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-) functions. Each role has an associated admin role, and only
+accounts that have a role's admin role can call [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-) and [`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-).
+
+By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means
+that only accounts with this role will be able to grant or revoke other
+roles. More complex role relationships can be created by using
+[`AccessControl._setRoleAdmin`](#AccessControl-_setRoleAdmin-bytes32-bytes32-).
+
+<Callout type="warn">
+The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to
+grant and revoke this role. Extra precautions should be taken to secure
+accounts that have been granted it. We recommend using [`AccessControlDefaultAdminRules`](#AccessControlDefaultAdminRules)
+to enforce additional security measures for this role.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [onlyRole(role)](#AccessControl-onlyRole-bytes32-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [supportsInterface(interfaceId)](#AccessControl-supportsInterface-bytes4-)
+- [hasRole(role, account)](#AccessControl-hasRole-bytes32-address-)
+- [_checkRole(role)](#AccessControl-_checkRole-bytes32-)
+- [_checkRole(role, account)](#AccessControl-_checkRole-bytes32-address-)
+- [getRoleAdmin(role)](#AccessControl-getRoleAdmin-bytes32-)
+- [grantRole(role, account)](#AccessControl-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#AccessControl-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#AccessControl-renounceRole-bytes32-address-)
+- [_setupRole(role, account)](#AccessControl-_setupRole-bytes32-address-)
+- [_setRoleAdmin(role, adminRole)](#AccessControl-_setRoleAdmin-bytes32-bytes32-)
+- [_grantRole(role, account)](#AccessControl-_grantRole-bytes32-address-)
+- [_revokeRole(role, account)](#AccessControl-_revokeRole-bytes32-address-)
+- [DEFAULT_ADMIN_ROLE()](#AccessControl-DEFAULT_ADMIN_ROLE-bytes32)
+#### ERC165
+#### IERC165
+#### IAccessControl
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### ERC165
+#### IERC165
+#### IAccessControl
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="AccessControl-onlyRole-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyRole(bytes32 role)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-onlyRole-bytes32-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Modifier that checks that an account has a specific role. Reverts
+with a standardized message including the required role.
+
+The format of the revert reason is given by the following regular expression:
+
+ /^AccessControl: account (0x[0-9a-f][`SafeCast.toUint240`](/contracts/4.x/api/utils#SafeCast-toUint240-uint256-)) is missing role (0x[0-9a-f][`Base64`](/contracts/4.x/api/utils#Base64))$/
+
+_Available since v4.1._
+
+</div>
+</div>
+
+<a id="AccessControl-supportsInterface-bytes4-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsInterface(bytes4 interfaceId) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-supportsInterface-bytes4-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC165.supportsInterface`](/contracts/4.x/api/utils#IERC165-supportsInterface-bytes4-).
+
+</div>
+</div>
+
+<a id="AccessControl-hasRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">hasRole(bytes32 role, address account) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-hasRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `true` if `account` has been granted `role`.
+
+</div>
+</div>
+
+<a id="AccessControl-_checkRole-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkRole(bytes32 role)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-_checkRole-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revert with a standard message if `_msgSender()` is missing `role`.
+Overriding this function changes the behavior of the [`AccessControl.onlyRole`](#AccessControl-onlyRole-bytes32-) modifier.
+
+Format of the revert message is described in [`AccessControl._checkRole`](#AccessControl-_checkRole-bytes32-address-).
+
+_Available since v4.6._
+
+</div>
+</div>
+
+<a id="AccessControl-_checkRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-_checkRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revert with a standard message if `account` is missing `role`.
+
+The format of the revert reason is given by the following regular expression:
+
+ /^AccessControl: account (0x[0-9a-f][`SafeCast.toUint240`](/contracts/4.x/api/utils#SafeCast-toUint240-uint256-)) is missing role (0x[0-9a-f][`Base64`](/contracts/4.x/api/utils#Base64))$/
+
+</div>
+</div>
+
+<a id="AccessControl-getRoleAdmin-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRoleAdmin(bytes32 role) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-getRoleAdmin-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the admin role that controls `role`. See [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-) and
+[`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-).
+
+To change a role's admin, use [`AccessControl._setRoleAdmin`](#AccessControl-_setRoleAdmin-bytes32-bytes32-).
+
+</div>
+</div>
+
+<a id="AccessControl-grantRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">grantRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-grantRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Grants `role` to `account`.
+
+If `account` had not been already granted `role`, emits a [`IAccessControl.RoleGranted`](#IAccessControl-RoleGranted-bytes32-address-address-)
+event.
+
+Requirements:
+
+- the caller must have ``role``'s admin role.
+
+May emit a [`IAccessControl.RoleGranted`](#IAccessControl-RoleGranted-bytes32-address-address-) event.
+
+</div>
+</div>
+
+<a id="AccessControl-revokeRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">revokeRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-revokeRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revokes `role` from `account`.
+
+If `account` had been granted `role`, emits a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-) event.
+
+Requirements:
+
+- the caller must have ``role``'s admin role.
+
+May emit a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-) event.
+
+</div>
+</div>
+
+<a id="AccessControl-renounceRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">renounceRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-renounceRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revokes `role` from the calling account.
+
+Roles are often managed via [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-) and [`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-): this function's
+purpose is to provide a mechanism for accounts to lose their privileges
+if they are compromised (such as when a trusted device is misplaced).
+
+If the calling account had been revoked `role`, emits a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-)
+event.
+
+Requirements:
+
+- the caller must be `account`.
+
+May emit a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-) event.
+
+</div>
+</div>
+
+<a id="AccessControl-_setupRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setupRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-_setupRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Grants `role` to `account`.
+
+If `account` had not been already granted `role`, emits a [`IAccessControl.RoleGranted`](#IAccessControl-RoleGranted-bytes32-address-address-)
+event. Note that unlike [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-), this function doesn't perform any
+checks on the calling account.
+
+May emit a [`IAccessControl.RoleGranted`](#IAccessControl-RoleGranted-bytes32-address-address-) event.
+
+[WARNING]
+====
+This function should only be called from the constructor when setting
+up the initial roles for the system.
+
+Using this function in any other way is effectively circumventing the admin
+system imposed by [`AccessControl`](#AccessControl).
+====
+
+NOTE: This function is deprecated in favor of [`AccessControl._grantRole`](#AccessControl-_grantRole-bytes32-address-).
+
+</div>
+</div>
+
+<a id="AccessControl-_setRoleAdmin-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setRoleAdmin(bytes32 role, bytes32 adminRole)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-_setRoleAdmin-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets `adminRole` as ``role``'s admin role.
+
+Emits a [`IAccessControl.RoleAdminChanged`](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-) event.
+
+</div>
+</div>
+
+<a id="AccessControl-_grantRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_grantRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-_grantRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Grants `role` to `account`.
+
+Internal function without access restriction.
+
+May emit a [`IAccessControl.RoleGranted`](#IAccessControl-RoleGranted-bytes32-address-address-) event.
+
+</div>
+</div>
+
+<a id="AccessControl-_revokeRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_revokeRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControl-_revokeRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revokes `role` from `account`.
+
+Internal function without access restriction.
+
+May emit a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-) event.
+
+</div>
+</div>
+
+<a id="AccessControl-DEFAULT_ADMIN_ROLE-bytes32"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DEFAULT_ADMIN_ROLE() → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControl-DEFAULT_ADMIN_ROLE-bytes32">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="AccessControlCrossChain"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AccessControlCrossChain`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/AccessControlCrossChain.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/AccessControlCrossChain.sol";
+```
+
+An extension to [`AccessControl`](#AccessControl) with support for cross-chain access management.
+For each role, is extension implements an equivalent "aliased" role that is used for
+restricting calls originating from other chains.
+
+For example, if a function `myFunction` is protected by `onlyRole(SOME_ROLE)`, and
+if an address `x` has role `SOME_ROLE`, it would be able to call `myFunction` directly.
+A wallet or contract at the same address on another chain would however not be able
+to call this function. In order to do so, it would require to have the role
+`_crossChainRoleAlias(SOME_ROLE)`.
+
+This aliasing is required to protect against multiple contracts living at the same
+address on different chains but controlled by conflicting entities.
+
+_Available since v4.6._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [_checkRole(role)](#AccessControlCrossChain-_checkRole-bytes32-)
+- [_crossChainRoleAlias(role)](#AccessControlCrossChain-_crossChainRoleAlias-bytes32-)
+- [CROSSCHAIN_ALIAS()](#AccessControlCrossChain-CROSSCHAIN_ALIAS-bytes32)
+#### CrossChainEnabled
+- [_isCrossChain()](#CrossChainEnabled-_isCrossChain--)
+- [_crossChainSender()](#CrossChainEnabled-_crossChainSender--)
+#### AccessControl
+- [supportsInterface(interfaceId)](#AccessControl-supportsInterface-bytes4-)
+- [hasRole(role, account)](#AccessControl-hasRole-bytes32-address-)
+- [_checkRole(role, account)](#AccessControl-_checkRole-bytes32-address-)
+- [getRoleAdmin(role)](#AccessControl-getRoleAdmin-bytes32-)
+- [grantRole(role, account)](#AccessControl-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#AccessControl-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#AccessControl-renounceRole-bytes32-address-)
+- [_setupRole(role, account)](#AccessControl-_setupRole-bytes32-address-)
+- [_setRoleAdmin(role, adminRole)](#AccessControl-_setRoleAdmin-bytes32-bytes32-)
+- [_grantRole(role, account)](#AccessControl-_grantRole-bytes32-address-)
+- [_revokeRole(role, account)](#AccessControl-_revokeRole-bytes32-address-)
+- [DEFAULT_ADMIN_ROLE()](#AccessControl-DEFAULT_ADMIN_ROLE-bytes32)
+#### ERC165
+#### IERC165
+#### IAccessControl
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### CrossChainEnabled
+#### AccessControl
+#### ERC165
+#### IERC165
+#### IAccessControl
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="AccessControlCrossChain-_checkRole-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkRole(bytes32 role)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlCrossChain-_checkRole-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl._checkRole`](#AccessControl-_checkRole-bytes32-address-).
+
+</div>
+</div>
+
+<a id="AccessControlCrossChain-_crossChainRoleAlias-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_crossChainRoleAlias(bytes32 role) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlCrossChain-_crossChainRoleAlias-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the aliased role corresponding to `role`.
+
+</div>
+</div>
+
+<a id="AccessControlCrossChain-CROSSCHAIN_ALIAS-bytes32"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">CROSSCHAIN_ALIAS() → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlCrossChain-CROSSCHAIN_ALIAS-bytes32">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AccessControlDefaultAdminRules`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/AccessControlDefaultAdminRules.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
+```
+
+Extension of [`AccessControl`](#AccessControl) that allows specifying special rules to manage
+the `DEFAULT_ADMIN_ROLE` holder, which is a sensitive role with special permissions
+over other roles that may potentially have privileged rights in the system.
+
+If a specific role doesn't have an admin role assigned, the holder of the
+`DEFAULT_ADMIN_ROLE` will have the ability to grant it and revoke it.
+
+This contract implements the following risk mitigations on top of [`AccessControl`](#AccessControl):
+
+* Only one account holds the `DEFAULT_ADMIN_ROLE` since deployment until it's potentially renounced.
+* Enforces a 2-step process to transfer the `DEFAULT_ADMIN_ROLE` to another account.
+* Enforces a configurable delay between the two steps, with the ability to cancel before the transfer is accepted.
+* The delay can be changed by scheduling, see [`AccessControlDefaultAdminRules.changeDefaultAdminDelay`](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-).
+* It is not possible to use another role to manage the `DEFAULT_ADMIN_ROLE`.
+
+Example usage:
+
+```solidity
+contract MyToken is AccessControlDefaultAdminRules {
+  constructor() AccessControlDefaultAdminRules(
+    3 days,
+    msg.sender // Explicit initial `DEFAULT_ADMIN_ROLE` holder
+   ) {}
+}
+```
+
+_Available since v4.9._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(initialDelay, initialDefaultAdmin)](#AccessControlDefaultAdminRules-constructor-uint48-address-)
+- [supportsInterface(interfaceId)](#AccessControlDefaultAdminRules-supportsInterface-bytes4-)
+- [owner()](#AccessControlDefaultAdminRules-owner--)
+- [grantRole(role, account)](#AccessControlDefaultAdminRules-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#AccessControlDefaultAdminRules-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#AccessControlDefaultAdminRules-renounceRole-bytes32-address-)
+- [_grantRole(role, account)](#AccessControlDefaultAdminRules-_grantRole-bytes32-address-)
+- [_revokeRole(role, account)](#AccessControlDefaultAdminRules-_revokeRole-bytes32-address-)
+- [_setRoleAdmin(role, adminRole)](#AccessControlDefaultAdminRules-_setRoleAdmin-bytes32-bytes32-)
+- [defaultAdmin()](#AccessControlDefaultAdminRules-defaultAdmin--)
+- [pendingDefaultAdmin()](#AccessControlDefaultAdminRules-pendingDefaultAdmin--)
+- [defaultAdminDelay()](#AccessControlDefaultAdminRules-defaultAdminDelay--)
+- [pendingDefaultAdminDelay()](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--)
+- [defaultAdminDelayIncreaseWait()](#AccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--)
+- [beginDefaultAdminTransfer(newAdmin)](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-)
+- [_beginDefaultAdminTransfer(newAdmin)](#AccessControlDefaultAdminRules-_beginDefaultAdminTransfer-address-)
+- [cancelDefaultAdminTransfer()](#AccessControlDefaultAdminRules-cancelDefaultAdminTransfer--)
+- [_cancelDefaultAdminTransfer()](#AccessControlDefaultAdminRules-_cancelDefaultAdminTransfer--)
+- [acceptDefaultAdminTransfer()](#AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--)
+- [_acceptDefaultAdminTransfer()](#AccessControlDefaultAdminRules-_acceptDefaultAdminTransfer--)
+- [changeDefaultAdminDelay(newDelay)](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-)
+- [_changeDefaultAdminDelay(newDelay)](#AccessControlDefaultAdminRules-_changeDefaultAdminDelay-uint48-)
+- [rollbackDefaultAdminDelay()](#AccessControlDefaultAdminRules-rollbackDefaultAdminDelay--)
+- [_rollbackDefaultAdminDelay()](#AccessControlDefaultAdminRules-_rollbackDefaultAdminDelay--)
+- [_delayChangeWait(newDelay)](#AccessControlDefaultAdminRules-_delayChangeWait-uint48-)
+#### AccessControl
+- [hasRole(role, account)](#AccessControl-hasRole-bytes32-address-)
+- [_checkRole(role)](#AccessControl-_checkRole-bytes32-)
+- [_checkRole(role, account)](#AccessControl-_checkRole-bytes32-address-)
+- [getRoleAdmin(role)](#AccessControl-getRoleAdmin-bytes32-)
+- [_setupRole(role, account)](#AccessControl-_setupRole-bytes32-address-)
+- [DEFAULT_ADMIN_ROLE()](#AccessControl-DEFAULT_ADMIN_ROLE-bytes32)
+#### ERC165
+#### IERC165
+#### IERC5313
+#### IAccessControlDefaultAdminRules
+#### IAccessControl
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### AccessControl
+#### ERC165
+#### IERC165
+#### IERC5313
+#### IAccessControlDefaultAdminRules
+- [DefaultAdminTransferScheduled(newAdmin, acceptSchedule)](#IAccessControlDefaultAdminRules-DefaultAdminTransferScheduled-address-uint48-)
+- [DefaultAdminTransferCanceled()](#IAccessControlDefaultAdminRules-DefaultAdminTransferCanceled--)
+- [DefaultAdminDelayChangeScheduled(newDelay, effectSchedule)](#IAccessControlDefaultAdminRules-DefaultAdminDelayChangeScheduled-uint48-uint48-)
+- [DefaultAdminDelayChangeCanceled()](#IAccessControlDefaultAdminRules-DefaultAdminDelayChangeCanceled--)
+#### IAccessControl
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-constructor-uint48-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(uint48 initialDelay, address initialDefaultAdmin)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-constructor-uint48-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the initial values for [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) and [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) address.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-supportsInterface-bytes4-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsInterface(bytes4 interfaceId) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-supportsInterface-bytes4-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC165.supportsInterface`](/contracts/4.x/api/utils#IERC165-supportsInterface-bytes4-).
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-owner--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">owner() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-owner--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC5313.owner`](/contracts/4.x/api/interfaces#IERC5313-owner--).
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-grantRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">grantRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-grantRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-). Reverts for `DEFAULT_ADMIN_ROLE`.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-revokeRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">revokeRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-revokeRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-). Reverts for `DEFAULT_ADMIN_ROLE`.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-renounceRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">renounceRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-renounceRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl.renounceRole`](#AccessControl-renounceRole-bytes32-address-).
+
+For the `DEFAULT_ADMIN_ROLE`, it only allows renouncing in two steps by first calling
+[`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) to the `address(0)`, so it's required that the [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) schedule
+has also passed when calling this function.
+
+After its execution, it will not be possible to call `onlyRole(DEFAULT_ADMIN_ROLE)` functions.
+
+NOTE: Renouncing `DEFAULT_ADMIN_ROLE` will leave the contract without a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--),
+thereby disabling any functionality that is only available for it, and the possibility of reassigning a
+non-administrated role.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_grantRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_grantRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_grantRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl._grantRole`](#AccessControl-_grantRole-bytes32-address-).
+
+For `DEFAULT_ADMIN_ROLE`, it only allows granting if there isn't already a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) or if the
+role has been previously renounced.
+
+NOTE: Exposing this function through another mechanism may make the `DEFAULT_ADMIN_ROLE`
+assignable again. Make sure to guarantee this is the expected behavior in your implementation.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_revokeRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_revokeRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_revokeRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl._revokeRole`](#AccessControl-_revokeRole-bytes32-address-).
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_setRoleAdmin-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setRoleAdmin(bytes32 role, bytes32 adminRole)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_setRoleAdmin-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControl._setRoleAdmin`](#AccessControl-_setRoleAdmin-bytes32-bytes32-). Reverts for `DEFAULT_ADMIN_ROLE`.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-defaultAdmin--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">defaultAdmin() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-defaultAdmin--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the current `DEFAULT_ADMIN_ROLE` holder.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-pendingDefaultAdmin--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pendingDefaultAdmin() → address newAdmin, uint48 schedule</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-pendingDefaultAdmin--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns a tuple of a `newAdmin` and an accept schedule.
+
+After the `schedule` passes, the `newAdmin` will be able to accept the [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) role
+by calling [`AccessControlDefaultAdminRules.acceptDefaultAdminTransfer`](#AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--), completing the role transfer.
+
+A zero value only in `acceptSchedule` indicates no pending admin transfer.
+
+NOTE: A zero address `newAdmin` means that [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) is being renounced.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-defaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">defaultAdminDelay() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-defaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the delay required to schedule the acceptance of a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer started.
+
+This delay will be added to the current timestamp when calling [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) to set
+the acceptance schedule.
+
+NOTE: If a delay change has been scheduled, it will take effect as soon as the schedule passes, making this
+function returns the new delay. See [`AccessControlDefaultAdminRules.changeDefaultAdminDelay`](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-).
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-pendingDefaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pendingDefaultAdminDelay() → uint48 newDelay, uint48 schedule</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-pendingDefaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns a tuple of `newDelay` and an effect schedule.
+
+After the `schedule` passes, the `newDelay` will get into effect immediately for every
+new [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer started with [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+A zero value only in `effectSchedule` indicates no pending delay change.
+
+NOTE: A zero value only for `newDelay` means that the next [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--)
+will be zero after the effect schedule.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">defaultAdminDelayIncreaseWait() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Maximum time in seconds for an increase to [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) (that is scheduled using [`AccessControlDefaultAdminRules.changeDefaultAdminDelay`](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-))
+to take effect. Default to 5 days.
+
+When the [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) is scheduled to be increased, it goes into effect after the new delay has passed with
+the purpose of giving enough time for reverting any accidental change (i.e. using milliseconds instead of seconds)
+that may lock the contract. However, to avoid excessive schedules, the wait is capped by this function and it can
+be overrode for a custom [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) increase scheduling.
+
+<Callout type="warn">
+Make sure to add a reasonable amount of time while overriding this value, otherwise,
+there's a risk of setting a high new delay that goes into effect almost immediately without the
+possibility of human intervention in the case of an input error (eg. set milliseconds instead of seconds).
+</Callout>
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beginDefaultAdminTransfer(address newAdmin)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Starts a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer by setting a [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) scheduled for acceptance
+after the current timestamp plus a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--).
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+Emits a DefaultAdminRoleChangeStarted event.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_beginDefaultAdminTransfer-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_beginDefaultAdminTransfer(address newAdmin)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_beginDefaultAdminTransfer-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-cancelDefaultAdminTransfer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">cancelDefaultAdminTransfer()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-cancelDefaultAdminTransfer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Cancels a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer previously started with [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+A [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) not yet accepted can also be cancelled with this function.
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+May emit a DefaultAdminTransferCanceled event.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_cancelDefaultAdminTransfer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_cancelDefaultAdminTransfer()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_cancelDefaultAdminTransfer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControlDefaultAdminRules.cancelDefaultAdminTransfer`](#AccessControlDefaultAdminRules-cancelDefaultAdminTransfer--).
+
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">acceptDefaultAdminTransfer()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Completes a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer previously started with [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+After calling the function:
+
+- `DEFAULT_ADMIN_ROLE` should be granted to the caller.
+- `DEFAULT_ADMIN_ROLE` should be revoked from the previous holder.
+- [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) should be reset to zero values.
+
+Requirements:
+
+- Only can be called by the [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--)'s `newAdmin`.
+- The [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--)'s `acceptSchedule` should've passed.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_acceptDefaultAdminTransfer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_acceptDefaultAdminTransfer()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_acceptDefaultAdminTransfer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControlDefaultAdminRules.acceptDefaultAdminTransfer`](#AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--).
+
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">changeDefaultAdminDelay(uint48 newDelay)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initiates a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) update by setting a [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) scheduled for getting
+into effect after the current timestamp plus a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--).
+
+This function guarantees that any call to [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) done between the timestamp this
+method is called and the [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) effect schedule will use the current [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--)
+set before calling.
+
+The [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--)'s effect schedule is defined in a way that waiting until the schedule and then
+calling [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) with the new delay will take at least the same as another [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--)
+complete transfer (including acceptance).
+
+The schedule is designed for two scenarios:
+
+- When the delay is changed for a larger one the schedule is `block.timestamp + newDelay` capped by
+[`AccessControlDefaultAdminRules.defaultAdminDelayIncreaseWait`](#AccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--).
+- When the delay is changed for a shorter one, the schedule is `block.timestamp + (current delay - new delay)`.
+
+A [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) that never got into effect will be canceled in favor of a new scheduled change.
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+Emits a DefaultAdminDelayChangeScheduled event and may emit a DefaultAdminDelayChangeCanceled event.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_changeDefaultAdminDelay-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_changeDefaultAdminDelay(uint48 newDelay)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_changeDefaultAdminDelay-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControlDefaultAdminRules.changeDefaultAdminDelay`](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-).
+
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-rollbackDefaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">rollbackDefaultAdminDelay()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-rollbackDefaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Cancels a scheduled [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) change.
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+May emit a DefaultAdminDelayChangeCanceled event.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_rollbackDefaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rollbackDefaultAdminDelay()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_rollbackDefaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccessControlDefaultAdminRules.rollbackDefaultAdminDelay`](#AccessControlDefaultAdminRules-rollbackDefaultAdminDelay--).
+
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="AccessControlDefaultAdminRules-_delayChangeWait-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_delayChangeWait(uint48 newDelay) → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlDefaultAdminRules-_delayChangeWait-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the amount of seconds to wait after the `newDelay` will
+become the new [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--).
+
+The value returned guarantees that if the delay is reduced, it will go into effect
+after a wait that honors the previously set delay.
+
+See [`AccessControlDefaultAdminRules.defaultAdminDelayIncreaseWait`](#AccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--).
+
+</div>
+</div>
+
+<a id="AccessControlEnumerable"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AccessControlEnumerable`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/AccessControlEnumerable.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+```
+
+Extension of [`AccessControl`](#AccessControl) that allows enumerating the members of each role.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [supportsInterface(interfaceId)](#AccessControlEnumerable-supportsInterface-bytes4-)
+- [getRoleMember(role, index)](#AccessControlEnumerable-getRoleMember-bytes32-uint256-)
+- [getRoleMemberCount(role)](#AccessControlEnumerable-getRoleMemberCount-bytes32-)
+- [_grantRole(role, account)](#AccessControlEnumerable-_grantRole-bytes32-address-)
+- [_revokeRole(role, account)](#AccessControlEnumerable-_revokeRole-bytes32-address-)
+#### AccessControl
+- [hasRole(role, account)](#AccessControl-hasRole-bytes32-address-)
+- [_checkRole(role)](#AccessControl-_checkRole-bytes32-)
+- [_checkRole(role, account)](#AccessControl-_checkRole-bytes32-address-)
+- [getRoleAdmin(role)](#AccessControl-getRoleAdmin-bytes32-)
+- [grantRole(role, account)](#AccessControl-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#AccessControl-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#AccessControl-renounceRole-bytes32-address-)
+- [_setupRole(role, account)](#AccessControl-_setupRole-bytes32-address-)
+- [_setRoleAdmin(role, adminRole)](#AccessControl-_setRoleAdmin-bytes32-bytes32-)
+- [DEFAULT_ADMIN_ROLE()](#AccessControl-DEFAULT_ADMIN_ROLE-bytes32)
+#### ERC165
+#### IERC165
+#### IAccessControlEnumerable
+#### IAccessControl
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### AccessControl
+#### ERC165
+#### IERC165
+#### IAccessControlEnumerable
+#### IAccessControl
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="AccessControlEnumerable-supportsInterface-bytes4-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsInterface(bytes4 interfaceId) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlEnumerable-supportsInterface-bytes4-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC165.supportsInterface`](/contracts/4.x/api/utils#IERC165-supportsInterface-bytes4-).
+
+</div>
+</div>
+
+<a id="AccessControlEnumerable-getRoleMember-bytes32-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRoleMember(bytes32 role, uint256 index) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlEnumerable-getRoleMember-bytes32-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns one of the accounts that have `role`. `index` must be a
+value between 0 and [`AccessControlEnumerable.getRoleMemberCount`](#AccessControlEnumerable-getRoleMemberCount-bytes32-), non-inclusive.
+
+Role bearers are not sorted in any particular way, and their ordering may
+change at any point.
+
+<Callout type="warn">
+When using [`AccessControlEnumerable.getRoleMember`](#AccessControlEnumerable-getRoleMember-bytes32-uint256-) and [`AccessControlEnumerable.getRoleMemberCount`](#AccessControlEnumerable-getRoleMemberCount-bytes32-), make sure
+you perform all queries on the same block. See the following
+[forum post](https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296)
+for more information.
+</Callout>
+
+</div>
+</div>
+
+<a id="AccessControlEnumerable-getRoleMemberCount-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRoleMemberCount(bytes32 role) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccessControlEnumerable-getRoleMemberCount-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the number of accounts that have `role`. Can be used
+together with [`AccessControlEnumerable.getRoleMember`](#AccessControlEnumerable-getRoleMember-bytes32-uint256-) to enumerate all bearers of a role.
+
+</div>
+</div>
+
+<a id="AccessControlEnumerable-_grantRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_grantRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlEnumerable-_grantRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overload [`AccessControl._grantRole`](#AccessControl-_grantRole-bytes32-address-) to track enumerable memberships
+
+</div>
+</div>
+
+<a id="AccessControlEnumerable-_revokeRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_revokeRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccessControlEnumerable-_revokeRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Overload [`AccessControl._revokeRole`](#AccessControl-_revokeRole-bytes32-address-) to track enumerable memberships
+
+</div>
+</div>
+
+<a id="IAccessControl"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IAccessControl`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/IAccessControl.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/IAccessControl.sol";
+```
+
+External interface of AccessControl declared to support ERC165 detection.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [hasRole(role, account)](#IAccessControl-hasRole-bytes32-address-)
+- [getRoleAdmin(role)](#IAccessControl-getRoleAdmin-bytes32-)
+- [grantRole(role, account)](#IAccessControl-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#IAccessControl-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#IAccessControl-renounceRole-bytes32-address-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="IAccessControl-hasRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">hasRole(bytes32 role, address account) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControl-hasRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `true` if `account` has been granted `role`.
+
+</div>
+</div>
+
+<a id="IAccessControl-getRoleAdmin-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRoleAdmin(bytes32 role) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControl-getRoleAdmin-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the admin role that controls `role`. See [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-) and
+[`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-).
+
+To change a role's admin, use [`AccessControl._setRoleAdmin`](#AccessControl-_setRoleAdmin-bytes32-bytes32-).
+
+</div>
+</div>
+
+<a id="IAccessControl-grantRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">grantRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControl-grantRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Grants `role` to `account`.
+
+If `account` had not been already granted `role`, emits a [`IAccessControl.RoleGranted`](#IAccessControl-RoleGranted-bytes32-address-address-)
+event.
+
+Requirements:
+
+- the caller must have ``role``'s admin role.
+
+</div>
+</div>
+
+<a id="IAccessControl-revokeRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">revokeRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControl-revokeRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revokes `role` from `account`.
+
+If `account` had been granted `role`, emits a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-) event.
+
+Requirements:
+
+- the caller must have ``role``'s admin role.
+
+</div>
+</div>
+
+<a id="IAccessControl-renounceRole-bytes32-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">renounceRole(bytes32 role, address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControl-renounceRole-bytes32-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Revokes `role` from the calling account.
+
+Roles are often managed via [`AccessControl.grantRole`](#AccessControl-grantRole-bytes32-address-) and [`AccessControl.revokeRole`](#AccessControl-revokeRole-bytes32-address-): this function's
+purpose is to provide a mechanism for accounts to lose their privileges
+if they are compromised (such as when a trusted device is misplaced).
+
+If the calling account had been granted `role`, emits a [`IAccessControl.RoleRevoked`](#IAccessControl-RoleRevoked-bytes32-address-address-)
+event.
+
+Requirements:
+
+- the caller must be `account`.
+
+</div>
+</div>
+
+<a id="IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole`
+
+`DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite
+[`IAccessControl.RoleAdminChanged`](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-) not being emitted signaling this.
+
+_Available since v3.1._
+
+</div>
+</div>
+<a id="IAccessControl-RoleGranted-bytes32-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControl-RoleGranted-bytes32-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when `account` is granted `role`.
+
+`sender` is the account that originated the contract call, an admin role
+bearer except when using [`AccessControl._setupRole`](#AccessControl-_setupRole-bytes32-address-).
+
+</div>
+</div>
+<a id="IAccessControl-RoleRevoked-bytes32-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControl-RoleRevoked-bytes32-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when `account` is revoked `role`.
+
+`sender` is the account that originated the contract call:
+  - if using `revokeRole`, it is the admin role bearer
+  - if using `renounceRole`, it is the role bearer (i.e. `account`)
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IAccessControlDefaultAdminRules`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/IAccessControlDefaultAdminRules.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/IAccessControlDefaultAdminRules.sol";
+```
+
+External interface of AccessControlDefaultAdminRules declared to support ERC165 detection.
+
+_Available since v4.9._
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [defaultAdmin()](#IAccessControlDefaultAdminRules-defaultAdmin--)
+- [pendingDefaultAdmin()](#IAccessControlDefaultAdminRules-pendingDefaultAdmin--)
+- [defaultAdminDelay()](#IAccessControlDefaultAdminRules-defaultAdminDelay--)
+- [pendingDefaultAdminDelay()](#IAccessControlDefaultAdminRules-pendingDefaultAdminDelay--)
+- [beginDefaultAdminTransfer(newAdmin)](#IAccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-)
+- [cancelDefaultAdminTransfer()](#IAccessControlDefaultAdminRules-cancelDefaultAdminTransfer--)
+- [acceptDefaultAdminTransfer()](#IAccessControlDefaultAdminRules-acceptDefaultAdminTransfer--)
+- [changeDefaultAdminDelay(newDelay)](#IAccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-)
+- [rollbackDefaultAdminDelay()](#IAccessControlDefaultAdminRules-rollbackDefaultAdminDelay--)
+- [defaultAdminDelayIncreaseWait()](#IAccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--)
+#### IAccessControl
+- [hasRole(role, account)](#IAccessControl-hasRole-bytes32-address-)
+- [getRoleAdmin(role)](#IAccessControl-getRoleAdmin-bytes32-)
+- [grantRole(role, account)](#IAccessControl-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#IAccessControl-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#IAccessControl-renounceRole-bytes32-address-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [DefaultAdminTransferScheduled(newAdmin, acceptSchedule)](#IAccessControlDefaultAdminRules-DefaultAdminTransferScheduled-address-uint48-)
+- [DefaultAdminTransferCanceled()](#IAccessControlDefaultAdminRules-DefaultAdminTransferCanceled--)
+- [DefaultAdminDelayChangeScheduled(newDelay, effectSchedule)](#IAccessControlDefaultAdminRules-DefaultAdminDelayChangeScheduled-uint48-uint48-)
+- [DefaultAdminDelayChangeCanceled()](#IAccessControlDefaultAdminRules-DefaultAdminDelayChangeCanceled--)
+#### IAccessControl
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-defaultAdmin--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">defaultAdmin() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-defaultAdmin--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the current `DEFAULT_ADMIN_ROLE` holder.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-pendingDefaultAdmin--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pendingDefaultAdmin() → address newAdmin, uint48 acceptSchedule</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-pendingDefaultAdmin--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns a tuple of a `newAdmin` and an accept schedule.
+
+After the `schedule` passes, the `newAdmin` will be able to accept the [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) role
+by calling [`AccessControlDefaultAdminRules.acceptDefaultAdminTransfer`](#AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--), completing the role transfer.
+
+A zero value only in `acceptSchedule` indicates no pending admin transfer.
+
+NOTE: A zero address `newAdmin` means that [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) is being renounced.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-defaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">defaultAdminDelay() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-defaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the delay required to schedule the acceptance of a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer started.
+
+This delay will be added to the current timestamp when calling [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) to set
+the acceptance schedule.
+
+NOTE: If a delay change has been scheduled, it will take effect as soon as the schedule passes, making this
+function returns the new delay. See [`AccessControlDefaultAdminRules.changeDefaultAdminDelay`](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-).
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-pendingDefaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pendingDefaultAdminDelay() → uint48 newDelay, uint48 effectSchedule</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-pendingDefaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns a tuple of `newDelay` and an effect schedule.
+
+After the `schedule` passes, the `newDelay` will get into effect immediately for every
+new [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer started with [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+A zero value only in `effectSchedule` indicates no pending delay change.
+
+NOTE: A zero value only for `newDelay` means that the next [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--)
+will be zero after the effect schedule.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">beginDefaultAdminTransfer(address newAdmin)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Starts a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer by setting a [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) scheduled for acceptance
+after the current timestamp plus a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--).
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+Emits a DefaultAdminRoleChangeStarted event.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-cancelDefaultAdminTransfer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">cancelDefaultAdminTransfer()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-cancelDefaultAdminTransfer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Cancels a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer previously started with [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+A [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) not yet accepted can also be cancelled with this function.
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+May emit a DefaultAdminTransferCanceled event.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-acceptDefaultAdminTransfer--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">acceptDefaultAdminTransfer()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-acceptDefaultAdminTransfer--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Completes a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer previously started with [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-).
+
+After calling the function:
+
+- `DEFAULT_ADMIN_ROLE` should be granted to the caller.
+- `DEFAULT_ADMIN_ROLE` should be revoked from the previous holder.
+- [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) should be reset to zero values.
+
+Requirements:
+
+- Only can be called by the [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--)'s `newAdmin`.
+- The [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--)'s `acceptSchedule` should've passed.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">changeDefaultAdminDelay(uint48 newDelay)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initiates a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) update by setting a [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) scheduled for getting
+into effect after the current timestamp plus a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--).
+
+This function guarantees that any call to [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) done between the timestamp this
+method is called and the [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) effect schedule will use the current [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--)
+set before calling.
+
+The [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--)'s effect schedule is defined in a way that waiting until the schedule and then
+calling [`AccessControlDefaultAdminRules.beginDefaultAdminTransfer`](#AccessControlDefaultAdminRules-beginDefaultAdminTransfer-address-) with the new delay will take at least the same as another [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--)
+complete transfer (including acceptance).
+
+The schedule is designed for two scenarios:
+
+- When the delay is changed for a larger one the schedule is `block.timestamp + newDelay` capped by
+[`AccessControlDefaultAdminRules.defaultAdminDelayIncreaseWait`](#AccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--).
+- When the delay is changed for a shorter one, the schedule is `block.timestamp + (current delay - new delay)`.
+
+A [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) that never got into effect will be canceled in favor of a new scheduled change.
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+Emits a DefaultAdminDelayChangeScheduled event and may emit a DefaultAdminDelayChangeCanceled event.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-rollbackDefaultAdminDelay--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">rollbackDefaultAdminDelay()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-rollbackDefaultAdminDelay--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Cancels a scheduled [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) change.
+
+Requirements:
+
+- Only can be called by the current [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--).
+
+May emit a DefaultAdminDelayChangeCanceled event.
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">defaultAdminDelayIncreaseWait() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-defaultAdminDelayIncreaseWait--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Maximum time in seconds for an increase to [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) (that is scheduled using [`AccessControlDefaultAdminRules.changeDefaultAdminDelay`](#AccessControlDefaultAdminRules-changeDefaultAdminDelay-uint48-))
+to take effect. Default to 5 days.
+
+When the [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) is scheduled to be increased, it goes into effect after the new delay has passed with
+the purpose of giving enough time for reverting any accidental change (i.e. using milliseconds instead of seconds)
+that may lock the contract. However, to avoid excessive schedules, the wait is capped by this function and it can
+be overrode for a custom [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) increase scheduling.
+
+<Callout type="warn">
+Make sure to add a reasonable amount of time while overriding this value, otherwise,
+there's a risk of setting a high new delay that goes into effect almost immediately without the
+possibility of human intervention in the case of an input error (eg. set milliseconds instead of seconds).
+</Callout>
+
+</div>
+</div>
+
+<a id="IAccessControlDefaultAdminRules-DefaultAdminTransferScheduled-address-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DefaultAdminTransferScheduled(address indexed newAdmin, uint48 acceptSchedule)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-DefaultAdminTransferScheduled-address-uint48-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) transfer is started, setting `newAdmin` as the next
+address to become the [`AccessControlDefaultAdminRules.defaultAdmin`](#AccessControlDefaultAdminRules-defaultAdmin--) by calling [`AccessControlDefaultAdminRules.acceptDefaultAdminTransfer`](#AccessControlDefaultAdminRules-acceptDefaultAdminTransfer--) only after `acceptSchedule`
+passes.
+
+</div>
+</div>
+<a id="IAccessControlDefaultAdminRules-DefaultAdminTransferCanceled--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DefaultAdminTransferCanceled()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-DefaultAdminTransferCanceled--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a [`AccessControlDefaultAdminRules.pendingDefaultAdmin`](#AccessControlDefaultAdminRules-pendingDefaultAdmin--) is reset if it was never accepted, regardless of its schedule.
+
+</div>
+</div>
+<a id="IAccessControlDefaultAdminRules-DefaultAdminDelayChangeScheduled-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DefaultAdminDelayChangeScheduled(uint48 newDelay, uint48 effectSchedule)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-DefaultAdminDelayChangeScheduled-uint48-uint48-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a [`AccessControlDefaultAdminRules.defaultAdminDelay`](#AccessControlDefaultAdminRules-defaultAdminDelay--) change is started, setting `newDelay` as the next
+delay to be applied between default admin transfer after `effectSchedule` has passed.
+
+</div>
+</div>
+<a id="IAccessControlDefaultAdminRules-DefaultAdminDelayChangeCanceled--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DefaultAdminDelayChangeCanceled()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="IAccessControlDefaultAdminRules-DefaultAdminDelayChangeCanceled--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a [`AccessControlDefaultAdminRules.pendingDefaultAdminDelay`](#AccessControlDefaultAdminRules-pendingDefaultAdminDelay--) is reset if its schedule didn't pass.
+
+</div>
+</div>
+
+<a id="IAccessControlEnumerable"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IAccessControlEnumerable`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/IAccessControlEnumerable.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/IAccessControlEnumerable.sol";
+```
+
+External interface of AccessControlEnumerable declared to support ERC165 detection.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [getRoleMember(role, index)](#IAccessControlEnumerable-getRoleMember-bytes32-uint256-)
+- [getRoleMemberCount(role)](#IAccessControlEnumerable-getRoleMemberCount-bytes32-)
+#### IAccessControl
+- [hasRole(role, account)](#IAccessControl-hasRole-bytes32-address-)
+- [getRoleAdmin(role)](#IAccessControl-getRoleAdmin-bytes32-)
+- [grantRole(role, account)](#IAccessControl-grantRole-bytes32-address-)
+- [revokeRole(role, account)](#IAccessControl-revokeRole-bytes32-address-)
+- [renounceRole(role, account)](#IAccessControl-renounceRole-bytes32-address-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IAccessControl
+- [RoleAdminChanged(role, previousAdminRole, newAdminRole)](#IAccessControl-RoleAdminChanged-bytes32-bytes32-bytes32-)
+- [RoleGranted(role, account, sender)](#IAccessControl-RoleGranted-bytes32-address-address-)
+- [RoleRevoked(role, account, sender)](#IAccessControl-RoleRevoked-bytes32-address-address-)
+</div>
+</div>
+
+<a id="IAccessControlEnumerable-getRoleMember-bytes32-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRoleMember(bytes32 role, uint256 index) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlEnumerable-getRoleMember-bytes32-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns one of the accounts that have `role`. `index` must be a
+value between 0 and [`AccessControlEnumerable.getRoleMemberCount`](#AccessControlEnumerable-getRoleMemberCount-bytes32-), non-inclusive.
+
+Role bearers are not sorted in any particular way, and their ordering may
+change at any point.
+
+<Callout type="warn">
+When using [`AccessControlEnumerable.getRoleMember`](#AccessControlEnumerable-getRoleMember-bytes32-uint256-) and [`AccessControlEnumerable.getRoleMemberCount`](#AccessControlEnumerable-getRoleMemberCount-bytes32-), make sure
+you perform all queries on the same block. See the following
+[forum post](https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296)
+for more information.
+</Callout>
+
+</div>
+</div>
+
+<a id="IAccessControlEnumerable-getRoleMemberCount-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRoleMemberCount(bytes32 role) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IAccessControlEnumerable-getRoleMemberCount-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the number of accounts that have `role`. Can be used
+together with [`AccessControlEnumerable.getRoleMember`](#AccessControlEnumerable-getRoleMember-bytes32-uint256-) to enumerate all bearers of a role.
+
+</div>
+</div>
+
+<a id="Ownable"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Ownable`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/Ownable.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/Ownable.sol";
+```
+
+Contract module which provides a basic access control mechanism, where
+there is an account (an owner) that can be granted exclusive access to
+specific functions.
+
+By default, the owner account will be the one that deploys the contract. This
+can later be changed with [`Ownable.transferOwnership`](#Ownable-transferOwnership-address-).
+
+This module is used through inheritance. It will make available the modifier
+`onlyOwner`, which can be applied to your functions to restrict their use to
+the owner.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [onlyOwner()](#Ownable-onlyOwner--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor()](#Ownable-constructor--)
+- [owner()](#Ownable-owner--)
+- [_checkOwner()](#Ownable-_checkOwner--)
+- [renounceOwnership()](#Ownable-renounceOwnership--)
+- [transferOwnership(newOwner)](#Ownable-transferOwnership-address-)
+- [_transferOwnership(newOwner)](#Ownable-_transferOwnership-address-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [OwnershipTransferred(previousOwner, newOwner)](#Ownable-OwnershipTransferred-address-address-)
+</div>
+</div>
+
+<a id="Ownable-onlyOwner--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyOwner()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Ownable-onlyOwner--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Throws if called by any account other than the owner.
+
+</div>
+</div>
+
+<a id="Ownable-constructor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Ownable-constructor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initializes the contract setting the deployer as the initial owner.
+
+</div>
+</div>
+
+<a id="Ownable-owner--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">owner() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Ownable-owner--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the current owner.
+
+</div>
+</div>
+
+<a id="Ownable-_checkOwner--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkOwner()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Ownable-_checkOwner--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Throws if the sender is not the owner.
+
+</div>
+</div>
+
+<a id="Ownable-renounceOwnership--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">renounceOwnership()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Ownable-renounceOwnership--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Leaves the contract without owner. It will not be possible to call
+`onlyOwner` functions. Can only be called by the current owner.
+
+NOTE: Renouncing ownership will leave the contract without an owner,
+thereby disabling any functionality that is only available to the owner.
+
+</div>
+</div>
+
+<a id="Ownable-transferOwnership-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">transferOwnership(address newOwner)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Ownable-transferOwnership-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers ownership of the contract to a new account (`newOwner`).
+Can only be called by the current owner.
+
+</div>
+</div>
+
+<a id="Ownable-_transferOwnership-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_transferOwnership(address newOwner)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Ownable-_transferOwnership-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers ownership of the contract to a new account (`newOwner`).
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="Ownable-OwnershipTransferred-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">OwnershipTransferred(address indexed previousOwner, address indexed newOwner)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="Ownable-OwnershipTransferred-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="Ownable2Step"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Ownable2Step`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/access/Ownable2Step.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
+```
+
+Contract module which provides access control mechanism, where
+there is an account (an owner) that can be granted exclusive access to
+specific functions.
+
+By default, the owner account will be the one that deploys the contract. This
+can later be changed with [`Ownable.transferOwnership`](#Ownable-transferOwnership-address-) and [`Ownable2Step.acceptOwnership`](#Ownable2Step-acceptOwnership--).
+
+This module is used through inheritance. It will make available all functions
+from parent (Ownable).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [pendingOwner()](#Ownable2Step-pendingOwner--)
+- [transferOwnership(newOwner)](#Ownable2Step-transferOwnership-address-)
+- [_transferOwnership(newOwner)](#Ownable2Step-_transferOwnership-address-)
+- [acceptOwnership()](#Ownable2Step-acceptOwnership--)
+#### Ownable
+- [owner()](#Ownable-owner--)
+- [_checkOwner()](#Ownable-_checkOwner--)
+- [renounceOwnership()](#Ownable-renounceOwnership--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [OwnershipTransferStarted(previousOwner, newOwner)](#Ownable2Step-OwnershipTransferStarted-address-address-)
+#### Ownable
+- [OwnershipTransferred(previousOwner, newOwner)](#Ownable-OwnershipTransferred-address-address-)
+</div>
+</div>
+
+<a id="Ownable2Step-pendingOwner--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">pendingOwner() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Ownable2Step-pendingOwner--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the pending owner.
+
+</div>
+</div>
+
+<a id="Ownable2Step-transferOwnership-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">transferOwnership(address newOwner)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Ownable2Step-transferOwnership-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one.
+Can only be called by the current owner.
+
+</div>
+</div>
+
+<a id="Ownable2Step-_transferOwnership-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_transferOwnership(address newOwner)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Ownable2Step-_transferOwnership-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers ownership of the contract to a new account (`newOwner`) and deletes any pending owner.
+Internal function without access restriction.
+
+</div>
+</div>
+
+<a id="Ownable2Step-acceptOwnership--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">acceptOwnership()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Ownable2Step-acceptOwnership--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The new owner accepts the ownership transfer.
+
+</div>
+</div>
+
+<a id="Ownable2Step-OwnershipTransferStarted-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="Ownable2Step-OwnershipTransferStarted-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+</div>
+</div>

@@ -1,0 +1,375 @@
+---
+title: Fungible Token Vault
+---
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/tokens/src/vault)
+
+The Fungible Token Vault extends the [Fungible Token](/stellar-contracts/tokens/fungible/fungible) and implements the ERC-4626 tokenized vault standard,
+enabling fungible tokens to represent shares in an underlying asset pool. The tokenized vault standard
+is the formalized interface for yield-bearing vaults that hold underlying assets. Vault shares enable
+hyperfungible collaterals in DeFi and remain fully compatible with standard fungible token operations.
+
+This module allows users to deposit underlying assets in exchange for vault shares, and later redeem
+those shares for the underlying assets. The vault maintains a dynamic conversion rate between shares and
+assets based on the total supply of shares and total assets held by the vault contract.
+
+## Overview
+
+The [Vault](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/tokens/src/vault) module provides a complete implementation of tokenized vaults following the ERC-4626 standard. Vaults are useful for:
+
+- **Yield-bearing tokens**: Represent shares in a yield-generating strategy
+- **Liquidity pools**: Pool assets together with automatic share calculation
+- **Asset management**: Manage a pool of assets with proportional ownership
+- **Wrapped tokens**: Create wrapped versions of tokens with additional features
+
+The vault automatically handles:
+- Share-to-asset conversion with configurable precision
+- Deposit and withdrawal operations
+- Minting and redemption of shares
+- Preview functions for simulating operations
+
+## Key Concepts
+
+### Shares vs Assets
+
+- **Assets**: The underlying token that the vault manages (e.g., USDC, XLM)
+- **Shares**: The Token Vaults that represent proportional ownership of the assets
+
+When assets are deposited into a vault, shares are minted to the depositor.
+The number of shares minted depends on the current exchange rate, which is determined by:
+
+```
+shares = (assets × totalSupply) / totalAssets
+```
+
+When withdrawing or redeeming, the reverse calculation applies:
+
+```
+assets = (shares × totalAssets) / totalSupply
+```
+
+### Virtual Decimals Offset
+
+The vault uses a "virtual decimals offset" to add extra precision to share calculations.
+This helps prevent rounding errors and improves the accuracy of share-to-asset conversions,
+especially when the vault has few assets or shares. It's also a key defense mechanism against
+[inflation attacks](#inflation-precision-attacks).
+
+The offset adds virtual shares and assets to the conversion formula:
+
+```
+shares = (assets × (totalSupply + 10^offset)) / (totalAssets + 1)
+```
+
+The offset is bounded to a maximum of 10 with both security and UX taken into account.
+Values higher than 10 provide minimal practical benefits and may cause overflow errors.
+
+## Rounding Behavior
+
+The vault implements specific rounding behavior to protect against being drained through repeated rounding exploits.
+Without proper rounding, an attacker could exploit precision loss to extract more assets than they deposited by
+performing many small operations where rounding errors accumulate in their favor.
+
+To prevent this:
+
+- **Deposit/Redeem**: Rounds **down** (depositor receives slightly fewer shares/assets)
+- **Mint/Withdraw**: Rounds **up** (depositor provides slightly more assets/shares)
+
+This ensures the vault always retains a slight advantage in conversions, making such attacks unprofitable.
+
+| Operation  | Input  | Output | Rounding Direction           |
+| ---------- | ------ | ------ | ---------------------------- |
+| `deposit`  | assets | shares | Down (fewer shares)          |
+| `mint`     | shares | assets | Up (more assets required)    |
+| `withdraw` | assets | shares | Up (more shares burned)      |
+| `redeem`   | shares | assets | Down (fewer assets received) |
+
+## Security Considerations
+
+### Initialization
+
+The vault **MUST** be properly initialized before use:
+
+1. Call `Vault::set_asset(e, asset)` to set the underlying asset
+2. Call `Vault::set_decimals_offset(e, offset)` to set the decimals offset
+3. Initialize metadata with `Base::set_metadata()`
+
+These should typically be done in the constructor. Once set, the asset address and decimals offset are **immutable**.
+
+### Decimal Offset Limits
+
+The decimals offset is limited to a maximum of 10 to prevent:
+- Overflow errors in calculations
+- Excessive precision that provides no practical benefit
+- Poor user experience with unnecessarily large numbers
+
+If a higher offset is required, a custom version of `set_decimals_offset()` must be implemented.
+
+### Inflation (Precision) Attacks
+
+The virtual decimals offset helps protect against inflation attacks where an attacker:
+1. Deposits 1 stroop to get the first share (becoming the sole shareholder)
+2. **Donates** (not deposits) an enormous amount of assets directly to the vault contract via a direct transfer, without receiving any shares in return. This inflates the vault's total assets while keeping total shares at 1, making that single share worth an enormous amount
+3. When a legitimate user tries to deposit (e.g., 1000 stroops), the share calculation rounds down to 0 shares because their deposit is negligible compared to the inflated vault balance. The user loses their deposit while receiving nothing
+
+For example: If the attacker donates 1,000,000 stroops after their initial 1 stroop deposit, the vault has 1,000,001 total assets and 1 total share. A user depositing 1000 stroops would receive `(1000 × 1) / 1,000,001 = 0.000999` shares, which rounds down to 0.
+
+The offset adds virtual shares and assets to the conversion formula, making such attacks economically infeasible by ensuring the denominator is never so small that legitimate deposits round to zero.
+
+For more details about the mechanics of this attack, see the [OpenZeppelin ERC-4626 security documentation](https://docs.openzeppelin.com/contracts/5.x/erc4626#security-concern-inflation-attack).
+
+### Custom Authorization
+
+Custom authorization logic can be implemented as needed:
+
+```rust
+fn deposit(
+    e: &Env,
+    assets: i128,
+    receiver: Address,
+    from: Address,
+    operator: Address,
+) -> i128 {
+    // Custom authorization: only allow deposits from whitelisted addresses
+    if !is_whitelisted(e, &from) {
+        panic_with_error!(e, Error::NotWhitelisted);
+    }
+
+    operator.require_auth();
+    Vault::deposit(e, assets, receiver, from, operator)
+}
+```
+
+## Compatibility and Compliance
+
+The vault module implements the ERC-4626 tokenized vault standard with one minor deviation (see Security Considerations).
+
+### ERC-4626 Deviation
+
+<Callout type="warning">
+The `query_asset()` function will **panic if the asset address is not set**, whereas ERC-4626 requires it to never revert.
+
+**Rationale**: Soroban doesn't have a "zero address" concept like EVM. Returning `Option<Address>` would break ERC-4626 compatibility.
+
+**Mitigation**: Always initialize the vault properly in the constructor. Once initialized, `query_asset()` will never panic during normal operations.
+</Callout>
+
+Aside from this deviation, the vault implementation for Soroban provides:
+
+- **Cross-ecosystem familiarity**: Ethereum developers will recognize the interface
+- **Standard compliance**: Compatible with ERC-4626 tooling and integrations
+
+## Usage
+
+### Basic Implementation
+
+To create a vault contract, implement both the `FungibleToken` and `FungibleVault` traits:
+
+```rust
+use soroban_sdk::{contract, contractimpl, Address, Env, String};
+use stellar_macros::default_impl;
+use stellar_tokens::{
+    fungible::{Base, FungibleToken},
+    vault::{FungibleVault, Vault},
+};
+
+#[contract]
+pub struct VaultContract;
+
+#[contractimpl]
+impl VaultContract {
+    pub fn __constructor(e: &Env, asset: Address, decimals_offset: u32) {
+        // Set the underlying asset address (immutable after initialization)
+        Vault::set_asset(e, asset);
+
+        // Set the decimals offset for precision (immutable after initialization)
+        Vault::set_decimals_offset(e, decimals_offset);
+
+        // Initialize token metadata
+        // Note: Vault overrides the decimals function, so set offset first
+        Base::set_metadata(
+            e,
+            Vault::decimals(e),
+            String::from_str(e, "Vault Token"),
+            String::from_str(e, "VLT"),
+        );
+    }
+}
+
+#[default_impl]
+#[contractimpl]
+impl FungibleToken for VaultContract {
+    type ContractType = Vault;
+
+    fn decimals(e: &Env) -> u32 {
+        Vault::decimals(e)
+    }
+}
+
+#[contractimpl]
+impl FungibleVault for VaultContract {
+    fn deposit(
+        e: &Env,
+        assets: i128,
+        receiver: Address,
+        from: Address,
+        operator: Address,
+    ) -> i128 {
+        operator.require_auth();
+        Vault::deposit(e, assets, receiver, from, operator)
+    }
+
+    fn withdraw(
+        e: &Env,
+        assets: i128,
+        receiver: Address,
+        owner: Address,
+        operator: Address,
+    ) -> i128 {
+        operator.require_auth();
+        Vault::withdraw(e, assets, receiver, owner, operator)
+    }
+
+    // Implement other required methods...
+}
+```
+
+### Initialization
+
+The vault **must** be properly initialized in the constructor:
+
+1. **Set the underlying asset**: Call `Vault::set_asset(e, asset)` with the address of the token contract that the vault will manage
+2. **Set the decimals offset**: Call `Vault::set_decimals_offset(e, offset)` to configure precision (0-10 recommended)
+3. **Initialize metadata**: Call `Base::set_metadata()` with appropriate token information
+
+**Important**: The asset address and decimals offset are immutable once set and cannot be changed.
+
+### Core Operations
+
+#### Depositing Assets
+
+Users can deposit underlying assets to receive vault shares:
+
+```rust
+// Deposit 1000 assets and receive shares
+let shares_received = vault_client.deposit(
+    &1000,              // Amount of assets to deposit
+    &user_address,      // Address to receive shares
+    &user_address,      // Address providing assets
+    &user_address,      // Operator (requires auth)
+);
+```
+
+Alternatively, mint a specific amount of shares:
+
+```rust
+// Mint exactly 500 shares by depositing required assets
+let assets_required = vault_client.mint(
+    &500,               // Amount of shares to mint
+    &user_address,      // Address to receive shares
+    &user_address,      // Address providing assets
+    &user_address,      // Operator (requires auth)
+);
+```
+
+#### Withdrawing Assets
+
+Users can withdraw assets by burning their shares:
+
+```rust
+// Withdraw 500 assets by burning required shares
+let shares_burned = vault_client.withdraw(
+    &500,               // Amount of assets to withdraw
+    &user_address,      // Address to receive assets
+    &user_address,      // Owner of shares
+    &user_address,      // Operator (requires auth)
+);
+```
+
+Or redeem a specific amount of shares:
+
+```rust
+// Redeem 200 shares for underlying assets
+let assets_received = vault_client.redeem(
+    &200,               // Amount of shares to redeem
+    &user_address,      // Address to receive assets
+    &user_address,      // Owner of shares
+    &user_address,      // Operator (requires auth)
+);
+```
+
+### Preview Functions
+
+Preview functions allow you to simulate operations without executing them:
+
+```rust
+let expected_shares = vault_client.preview_deposit(&1000);
+
+let required_assets = vault_client.preview_mint(&500);
+
+let shares_to_burn = vault_client.preview_withdraw(&500);
+
+let expected_assets = vault_client.preview_redeem(&200);
+```
+
+### Conversion Functions
+
+Convert between assets and shares at the current exchange rate:
+
+```rust
+// Convert assets to shares
+let shares = vault_client.convert_to_shares(&1000);
+
+// Convert shares to assets
+let assets = vault_client.convert_to_assets(&500);
+```
+
+### Query Functions
+
+Check vault state and limits:
+
+```rust
+// Get the underlying asset address
+let asset_address = vault_client.query_asset();
+
+// Get total assets held by the vault
+let total_assets = vault_client.total_assets();
+
+// Check maximum amounts for operations
+let max_deposit = vault_client.max_deposit(&user_address);
+let max_mint = vault_client.max_mint(&user_address);
+let max_withdraw = vault_client.max_withdraw(&user_address);
+let max_redeem = vault_client.max_redeem(&user_address);
+```
+
+### Operator Pattern
+
+The vault supports an operator pattern where one address can perform operations on behalf of another:
+
+```rust
+// User approves operator to spend their assets on the underlying token
+asset_client.approve(&user, &operator, &1000, &expiration_ledger);
+
+// Operator deposits user's assets to a receiver
+vault_client.deposit(
+    &1000,
+    &receiver,      // Receives the shares
+    &user,          // Provides the assets
+    &operator,      // Performs the operation (requires auth)
+);
+```
+
+For withdrawals, the operator must have allowance on the **vault shares**:
+
+```rust
+// User approves operator to spend their vault shares
+vault_client.approve(&user, &operator, &500, &expiration_ledger);
+
+// Operator withdraws on behalf of user
+vault_client.withdraw(
+    &500,
+    &receiver,      // Receives the assets
+    &user,          // Owns the shares
+    &operator,      // Performs the operation (requires auth)
+);
+```

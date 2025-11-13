@@ -1,0 +1,86 @@
+---
+title: Remix Plugin
+---
+
+When coding and compiling contracts from [Remix IDE](https://remix.ethereum.org/), you can use Defender Plugin to deploy your contracts by configuring a [Deployment Environment](/defender/module/deploy) and using an Approval Process as deployer.
+
+## Installation
+
+1. Go to [Remix IDE](https://remix.ethereum.org/) and click on Plugin manager (bottom left corner).
+2. Search **Defender Deploy** from the Modules list, and click "Activate".
+3. A new tab in the left nav bar with the OpenZeppelin icon should be displayed.
+
+![Install Defender Remix Plugin](/defender/remix-plugin-install.png)
+
+## Usage
+
+### API Key generation
+In your Defender dashboard, go to **Settings -> API Keys** and click **Create API Key**, you only need _Manage Deployments_ permission.
+
+<Callout type='warn'>
+We also recommend to set an expiration for the API Key, considering that is going to be used from an external site.
+</Callout>
+
+![Defender Remix Plugin Api Key](/defender/remix-plugin-api-key.png)
+
+### Deployment from Remix
+
+Go to Remix IDE site, and open Defender plugin (see Installation step).
+
+#### Setup
+Set your **API Key** and **API Secret** and press "Authenticate". If the keys are valid, you should see a green tick in at the right indicating that you were succesfully authenticated, also a message in the Remix terminal.
+
+![Defender Remix Plugin Setup](/defender/remix-plugin-setup.png)
+
+#### Network
+Select any of the supported networks. This also includes private and fork networks configured in your tenant.
+
+![Defender Remix Plugin Network](/defender/remix-plugin-network.png)
+
+#### Approval Process
+Here you have 3 options:
+
+* Select an existing approval process from your **Deployment Environment** configured for the selected network.
+
+<Callout>
+If you have an existing deployment environment in the selected network, this is the only option allowed.
+</Callout>
+
+* If the **Deployment Envoronment** does not exist for the selected network, then you can create a new one.
+
+<Callout>
+If the Approval Process to be created is a Relayer, the API Key must include _Manage Relayers_ permission.
+</Callout>
+
+* Additionally, you can use the **injected provider** from Remix (a browser wallet) to deploy the contract, this will create a Defender **Deployment Environment** under the hood after deploying the contract.
+
+![Defender Remix Plugin Approval Process](/defender/remix-plugin-approval-process.png)
+
+#### Deploy
+You should see the latest compiled contract along with the constructor inputs.
+
+<Callout>
+In case you don’t see it, compile the target contract again, the Defender plug-in should detect the compilation and display the contructor inputs.
+</Callout>
+
+<Callout type='warn'>
+Upgradable contracts are not yet fully supported. This action will only deploy the implementation contract without initializing. For safe upgrades, we strongly recommend usign [Upgrades Package](https://github.com/OpenZeppelin/openzeppelin-upgrades).
+</Callout>
+
+![Defender Remix Plugin Deploy](/defender/remix-plugin-deploy.png)
+
+#### Deterministic Deployments
+
+Defender Deploy supports a `salt` value to create deployments to deterministic addresses using `create2`. Click on `Deterministic` checkbox and set the salt field to any arbitrary value.
+
+![Defender Remix Plugin Deploy Deterministic](/defender/remix-plugin-deploy-deterministic.png)
+
+#### Further Steps
+
+Once the contract deployment was submitted to Defender, in some cases you will need to complete the deployment from Defender Dashboard, you should see a green banner indicating that the contract was submitted and a link to your Deployment in Defender.
+
+![Defender Remix Plugin Deploy Completed](/defender/remix-plugin-deploy-completed.png)
+
+## Feedback
+
+The Defender Remix Plugin is open source, for feedback related to the plugin, please submit an issue in the [Github Repository](https://github.com/OpenZeppelin/defender-deploy-plugin) or send an email to `defender-support@openzeppelin.com`.

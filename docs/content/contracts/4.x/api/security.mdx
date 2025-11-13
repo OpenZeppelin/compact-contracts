@@ -1,0 +1,486 @@
+---
+title: "Security"
+description: "Smart contract security utilities and implementations"
+---
+
+These contracts aim to cover common security practices.
+
+* [`PullPayment`](#PullPayment): A pattern that can be used to avoid reentrancy attacks.
+* [`ReentrancyGuard`](#ReentrancyGuard): A modifier that can prevent reentrancy during certain functions.
+* [`Pausable`](#Pausable): A common emergency response mechanism that can pause functionality while a remediation is pending.
+
+<Callout>
+For an overview on reentrancy and the possible mechanisms to prevent it, read our article [Reentrancy After Istanbul](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+</Callout>
+
+## Contracts
+
+[`PullPayment`](#PullPayment)
+
+[`ReentrancyGuard`](#ReentrancyGuard)
+
+[`Pausable`](#Pausable)
+
+<a id="Pausable"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Pausable`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/security/Pausable.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/security/Pausable.sol";
+```
+
+Contract module which allows children to implement an emergency stop
+mechanism that can be triggered by an authorized account.
+
+This module is used through inheritance. It will make available the
+modifiers `whenNotPaused` and `whenPaused`, which can be applied to
+the functions of your contract. Note that they will not be pausable by
+simply including this module, only once the modifiers are put in place.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [whenNotPaused()](#Pausable-whenNotPaused--)
+- [whenPaused()](#Pausable-whenPaused--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor()](#Pausable-constructor--)
+- [paused()](#Pausable-paused--)
+- [_requireNotPaused()](#Pausable-_requireNotPaused--)
+- [_requirePaused()](#Pausable-_requirePaused--)
+- [_pause()](#Pausable-_pause--)
+- [_unpause()](#Pausable-_unpause--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [Paused(account)](#Pausable-Paused-address-)
+- [Unpaused(account)](#Pausable-Unpaused-address-)
+</div>
+</div>
+
+<a id="Pausable-whenNotPaused--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">whenNotPaused()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-whenNotPaused--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Modifier to make a function callable only when the contract is not paused.
+
+Requirements:
+
+- The contract must not be paused.
+
+</div>
+</div>
+
+<a id="Pausable-whenPaused--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">whenPaused()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-whenPaused--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Modifier to make a function callable only when the contract is paused.
+
+Requirements:
+
+- The contract must be paused.
+
+</div>
+</div>
+
+<a id="Pausable-constructor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-constructor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Initializes the contract in unpaused state.
+
+</div>
+</div>
+
+<a id="Pausable-paused--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">paused() → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Pausable-paused--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if the contract is paused, and false otherwise.
+
+</div>
+</div>
+
+<a id="Pausable-_requireNotPaused--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_requireNotPaused()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-_requireNotPaused--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Throws if the contract is paused.
+
+</div>
+</div>
+
+<a id="Pausable-_requirePaused--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_requirePaused()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-_requirePaused--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Throws if the contract is not paused.
+
+</div>
+</div>
+
+<a id="Pausable-_pause--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_pause()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-_pause--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Triggers stopped state.
+
+Requirements:
+
+- The contract must not be paused.
+
+</div>
+</div>
+
+<a id="Pausable-_unpause--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_unpause()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Pausable-_unpause--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns to normal state.
+
+Requirements:
+
+- The contract must be paused.
+
+</div>
+</div>
+
+<a id="Pausable-Paused-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">Paused(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="Pausable-Paused-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the pause is triggered by `account`.
+
+</div>
+</div>
+<a id="Pausable-Unpaused-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">Unpaused(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="Pausable-Unpaused-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when the pause is lifted by `account`.
+
+</div>
+</div>
+
+<a id="PullPayment"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `PullPayment`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/security/PullPayment.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/security/PullPayment.sol";
+```
+
+Simple implementation of a
+[pull-payment](https://consensys.github.io/smart-contract-best-practices/development-recommendations/general/external-calls/#favor-pull-over-push-for-external-calls)
+strategy, where the paying contract doesn't interact directly with the
+receiver account, which must withdraw its payments itself.
+
+Pull-payments are often considered the best practice when it comes to sending
+Ether, security-wise. It prevents recipients from blocking execution, and
+eliminates reentrancy concerns.
+
+TIP: If you would like to learn more about reentrancy and alternative ways
+to protect against it, check out our blog post
+[Reentrancy After Istanbul](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+
+To use, derive from the `PullPayment` contract, and use [`PullPayment._asyncTransfer`](#PullPayment-_asyncTransfer-address-uint256-)
+instead of Solidity's `transfer` function. Payees can query their due
+payments with [`PullPayment.payments`](#PullPayment-payments-address-), and retrieve them with [`PullPayment.withdrawPayments`](#PullPayment-withdrawPayments-address-payable-).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor()](#PullPayment-constructor--)
+- [withdrawPayments(payee)](#PullPayment-withdrawPayments-address-payable-)
+- [payments(dest)](#PullPayment-payments-address-)
+- [_asyncTransfer(dest, amount)](#PullPayment-_asyncTransfer-address-uint256-)
+</div>
+</div>
+
+<a id="PullPayment-constructor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="PullPayment-constructor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="PullPayment-withdrawPayments-address-payable-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">withdrawPayments(address payable payee)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PullPayment-withdrawPayments-address-payable-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Withdraw accumulated payments, forwarding all gas to the recipient.
+
+Note that _any_ account can call this function, not just the `payee`.
+This means that contracts unaware of the `PullPayment` protocol can still
+receive funds this way, by having a separate account call
+[`PullPayment.withdrawPayments`](#PullPayment-withdrawPayments-address-payable-).
+
+<Callout type="warn">
+Forwarding all gas opens the door to reentrancy vulnerabilities.
+Make sure you trust the recipient, or are either following the
+checks-effects-interactions pattern or using [`ReentrancyGuard`](#ReentrancyGuard).
+</Callout>
+
+</div>
+</div>
+
+<a id="PullPayment-payments-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">payments(address dest) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="PullPayment-payments-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the payments owed to an address.
+
+</div>
+</div>
+
+<a id="PullPayment-_asyncTransfer-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_asyncTransfer(address dest, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="PullPayment-_asyncTransfer-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Called by the payer to store the sent amount as credit to be pulled.
+Funds sent in this way are stored in an intermediate [`Escrow`](/contracts/4.x/api/utils#Escrow) contract, so
+there is no danger of them being spent before withdrawal.
+
+</div>
+</div>
+
+<a id="ReentrancyGuard"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ReentrancyGuard`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/security/ReentrancyGuard.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+```
+
+Contract module that helps prevent reentrant calls to a function.
+
+Inheriting from `ReentrancyGuard` will make the [`ReentrancyGuard.nonReentrant`](#ReentrancyGuard-nonReentrant--) modifier
+available, which can be applied to functions to make sure there are no nested
+(reentrant) calls to them.
+
+Note that because there is a single `nonReentrant` guard, functions marked as
+`nonReentrant` may not call one another. This can be worked around by making
+those functions `private`, and then adding `external` `nonReentrant` entry
+points to them.
+
+TIP: If you would like to learn more about reentrancy and alternative ways
+to protect against it, check out our blog post
+[Reentrancy After Istanbul](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [nonReentrant()](#ReentrancyGuard-nonReentrant--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor()](#ReentrancyGuard-constructor--)
+- [_reentrancyGuardEntered()](#ReentrancyGuard-_reentrancyGuardEntered--)
+</div>
+</div>
+
+<a id="ReentrancyGuard-nonReentrant--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">nonReentrant()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ReentrancyGuard-nonReentrant--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Prevents a contract from calling itself, directly or indirectly.
+Calling a `nonReentrant` function from another `nonReentrant`
+function is not supported. It is possible to prevent this from happening
+by making the `nonReentrant` function external, and making it call a
+`private` function that does the actual work.
+
+</div>
+</div>
+
+<a id="ReentrancyGuard-constructor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ReentrancyGuard-constructor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ReentrancyGuard-_reentrancyGuardEntered--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_reentrancyGuardEntered() → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ReentrancyGuard-_reentrancyGuardEntered--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if the reentrancy guard is currently set to "entered", which indicates there is a
+`nonReentrant` function in the call stack.
+
+</div>
+</div>

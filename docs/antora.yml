@@ -1,8 +1,0 @@
-name: contracts-compact
-title: Contracts for Compact
-version: 0.0.1
-nav:
-  - modules/ROOT/nav.adoc
-asciidoc:
-  attributes:
-    page-sidebar-collapse-default: 'Access,Security,FungibleToken,NonFungibleToken,MultiToken,Utils'

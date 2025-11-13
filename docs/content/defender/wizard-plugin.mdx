@@ -1,0 +1,85 @@
+---
+title: Contracts Wizard Deploy Plugin
+---
+
+When configuring contracts from [Contracts Wizard](https://wizard.openzeppelin.com/), you can directly deploy the configured Smart Contract using your Defender account.
+
+## Usage
+
+### API Key generation
+In your Defender dashboard, go to **Settings -> API Keys** and click **Create API Key**, you only need _Manage Deployments_ permission.
+
+<Callout type='warn'>
+We also recommend to set an expiration for the API Key, considering that is going to be used from an external site.
+</Callout>
+
+![Defender Remix Plugin Api Key](/defender/remix-plugin-api-key.png)
+
+### Deployment from Contracts Wizard
+
+Go to [Contracts Wizard](https://wizard.openzeppelin.com/) site, and after editing your contract, click on "Deploy with Defender".
+
+![Defender Wizard Plugin Getting Started](/defender/wizard-plugin-start.png)
+
+#### Configure
+Set your **API Key** and **API Secret** and press "Authenticate". You should see a message below the button indicating that the credentials are valid.
+
+![Defender Wizard Plugin Configure](/defender/wizard-plugin-configure.png)
+![Defender Wizard Plugin API keys](/defender/wizard-plugin-configure-2.png)
+
+#### Network
+Select any of the supported networks. This also includes private and forked networks configured in your tenant.
+
+![Defender Wizard Plugin Network](/defender/wizard-plugin-network-2.png)
+
+#### Approval Process
+Here you have 3 options:
+
+* Select an existing approval process from your **Deployment Environment** configured for the selected network.
+
+<Callout>
+If you have an existing deployment environment in the selected network, this is the only option allowed.
+</Callout>
+
+* If the **Deployment Envoronment** does not exist for the selected network, then you can create a new one.
+
+<Callout>
+If the Approval Process to be created is a Relayer, the API Key must include _Manage Relayers_ permission.
+</Callout>
+
+* Additionally, you can use the **injected provider** from Remix (a browser wallet) to deploy the contract, this will create a Defender **Deployment Environment** under the hood after deploying the contract.
+
+![Defender Wizard Plugin Approval Process](/defender/wizard-plugin-approval-process.png)
+
+#### Deploy
+In this step, you should see the constructor inputs of your configured contract (if any), and the option to create a deterministic deployment.
+
+<Callout>
+This step is reactive, if you modify the contract you will see the new constructor arguments updated right after.
+</Callout>
+
+<Callout type='warn'>
+Upgradable contracts are not yet fully supported. This action will only deploy the implementation contract without initializing. For safe upgrades, we strongly recommend usign [Upgrades Package](https://github.com/OpenZeppelin/openzeppelin-upgrades).
+</Callout>
+
+![Defender Wizard Plugin Deploy](/defender/wizard-plugin-deploy.png)
+
+#### Deterministic Deployments
+
+Defender Deploy supports a `salt` value to create deployments to deterministic addresses using `CREATE2`. Click on `Deterministic` checkbox and set the salt field to any arbitrary value.
+
+<Callout>
+If the approval process selected is a Multisig, the `salt` is required as Defender only support deterministic deployments when using Multisigs.
+</Callout>
+
+![Defender Wizard Plugin Deterministic Deployments](/defender/wizard-plugin-deterministic.png)
+
+#### Further Steps
+
+Once the contract deployment is submitted to Defender, in some cases you may need to complete the deployment from Defender Dashboard. You will see message indicating that the contract was submitted and a button that redirects to your Deployment in Defender.
+
+![Defender Wizard Plugin Further Steps](/defender/wizard-deploy-further-steps.png)
+
+## Feedback
+
+The Defender Deploy Plugin is open source, for feedback related to the plugin, please submit an issue in the [Github Repository](https://github.com/OpenZeppelin/defender-deploy-plugin) or send an email to `defender-support@openzeppelin.com`.

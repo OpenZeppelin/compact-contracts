@@ -1,0 +1,394 @@
+---
+title: Payment
+---
+
+<Callout>
+This document is better viewed at https://docs.openzeppelin.com/contracts/api/payment
+</Callout>
+
+Utilities related to sending and receiving payments. Examples are PullPayment, which implements the best security practices when sending funds to third parties, and PaymentSplitter to receive incoming payments among a number of beneficiaries.
+
+<Callout>
+When transferring funds to and from untrusted third parties, there is always a security risk of reentrancy. If you would like to learn more about this and ways to protect against it, check out our blog post [Reentrancy After Istanbul](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+</Callout>
+
+## Utilities
+
+### ``PaymentSplitter``
+
+This contract allows to split Ether payments among a group of accounts. The sender does not need to be aware
+that the Ether will be split in this way, since it is handled transparently by the contract.
+
+The split can be in equal parts or in any other arbitrary proportion. The way this is specified is by assigning each
+account to a number of shares. Of all the Ether that this contract receives, each account will then be able to claim
+an amount proportional to the percentage of total shares they were assigned.
+
+`PaymentSplitter` follows a _pull payment_ model. This means that payments are not automatically forwarded to the
+accounts but kept in this contract, and the actual transfer is triggered as a separate step by calling the release
+function.
+
+**Functions**
+
+* [`constructor(payees, shares_)`](#PaymentSplitter-constructor-address---uint256-)
+* [`receive()`](#PaymentSplitter-receive)
+* [`totalShares()`](#PaymentSplitter-totalShares)
+* [`totalReleased()`](#PaymentSplitter-totalReleased)
+* [`shares(account)`](#PaymentSplitter-shares-address-)
+* [`released(account)`](#PaymentSplitter-released-address-)
+* [`payee(index)`](#PaymentSplitter-payee-uint256-)
+* [`release(account)`](#PaymentSplitter-release-address-payable-)
+
+**Events**
+
+* [`PayeeAdded(account, shares)`](#PaymentSplitter-PayeeAdded-address-uint256-)
+* [`PaymentReleased(to, amount)`](#PaymentSplitter-PaymentReleased-address-uint256-)
+* [`PaymentReceived(from, amount)`](#PaymentSplitter-PaymentReceived-address-uint256-)
+
+<a id="PaymentSplitter-constructor"></a>
+
+#### `constructor(address[] payees, uint256[] shares_) *public*`
+
+Creates an instance of `PaymentSplitter` where each account in `payees` is assigned the number of shares at
+the matching position in the `shares` array.
+
+All addresses in `payees` must be non-zero. Both arrays must have the same non-zero length, and there must be no
+duplicates in `payees`.
+
+<a id="PaymentSplitter-receive"></a>
+
+#### `receive() *external*`
+
+The Ether received will be logged with PaymentReceived events. Note that these events are not fully
+reliable: it’s possible for a contract to receive Ether without triggering this function. This only affects the
+reliability of the events, and not the actual splitting of Ether.
+
+To learn more about this see the Solidity documentation for
+https://solidity.readthedocs.io/en/latest/contracts.html#fallback-function[fallback
+functions].
+
+<a id="PaymentSplitter-totalShares"></a>
+
+#### `totalShares() → uint256 *public*`
+
+Getter for the total shares held by payees.
+
+<a id="PaymentSplitter-totalReleased"></a>
+
+#### `totalReleased() → uint256 *public*`
+
+Getter for the total amount of Ether already released.
+
+<a id="PaymentSplitter-shares"></a>
+
+#### `shares(address account) → uint256 *public*`
+
+Getter for the amount of shares held by an account.
+
+<a id="PaymentSplitter-released"></a>
+
+#### `released(address account) → uint256 *public*`
+
+Getter for the amount of Ether already released to a payee.
+
+<a id="PaymentSplitter-payee"></a>
+
+#### `payee(uint256 index) → address *public*`
+
+Getter for the address of the payee number `index`.
+
+<a id="PaymentSplitter-release"></a>
+
+#### `release(address payable account) *public*`
+
+Triggers a transfer to `account` of the amount of Ether they are owed, according to their percentage of the
+total shares and their previous withdrawals.
+
+<a id="PaymentSplitter-PayeeAdded"></a>
+
+#### `PayeeAdded(address account, uint256 shares) *event*`
+
+<a id="PaymentSplitter-PaymentReleased"></a>
+
+#### `PaymentReleased(address to, uint256 amount) *event*`
+
+<a id="PaymentSplitter-PaymentReceived"></a>
+
+#### `PaymentReceived(address from, uint256 amount) *event*`
+
+### ``PullPayment``
+
+Simple implementation of a
+[pull-payment](https://consensys.github.io/smart-contract-best-practices/recommendations/#favor-pull-over-push-for-external-calls)
+strategy, where the paying contract doesn’t interact directly with the
+receiver account, which must withdraw its payments itself.
+
+Pull-payments are often considered the best practice when it comes to sending
+Ether, security-wise. It prevents recipients from blocking execution, and
+eliminates reentrancy concerns.
+
+<Callout>
+If you would like to learn more about reentrancy and alternative ways
+to protect against it, check out our blog post
+[Reentrancy After Istanbul](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+</Callout>
+
+To use, derive from the `PullPayment` contract, and use _asyncTransfer
+instead of Solidity’s `transfer` function. Payees can query their due
+payments with payments, and retrieve them with withdrawPayments.
+
+**Functions**
+
+* [`constructor()`](#PullPayment-constructor)
+* [`withdrawPayments(payee)`](#PullPayment-withdrawPayments-address-payable-)
+* [`payments(dest)`](#PullPayment-payments-address-)
+* [`_asyncTransfer(dest, amount)`](#PullPayment-_asyncTransfer-address-uint256-)
+
+<a id="PaymentSplitter-constructor"></a>
+
+#### `constructor() *internal*`
+
+<a id="PaymentSplitter-withdrawPayments"></a>
+
+#### `withdrawPayments(address payable payee) *public*`
+
+Withdraw accumulated payments, forwarding all gas to the recipient.
+
+Note that _any_ account can call this function, not just the `payee`.
+This means that contracts unaware of the `PullPayment` protocol can still
+receive funds this way, by having a separate account call
+withdrawPayments.
+
+<Callout type='warn'>
+Forwarding all gas opens the door to reentrancy vulnerabilities.
+Make sure you trust the recipient, or are either following the
+checks-effects-interactions pattern or using ReentrancyGuard.
+</Callout>
+
+<a id="PaymentSplitter-payments"></a>
+
+#### `payments(address dest) → uint256 *public*`
+
+Returns the payments owed to an address.
+
+<a id="PaymentSplitter-_asyncTransfer"></a>
+
+#### `_asyncTransfer(address dest, uint256 amount) *internal*`
+
+Called by the payer to store the sent amount as credit to be pulled.
+Funds sent in this way are stored in an intermediate Escrow contract, so
+there is no danger of them being spent before withdrawal.
+
+## Escrow
+
+### ``Escrow``
+
+Base escrow contract, holds funds designated for a payee until they
+withdraw them.
+
+Intended usage: This contract (and derived escrow contracts) should be a
+standalone contract, that only interacts with the contract that instantiated
+it. That way, it is guaranteed that all Ether will be handled according to
+the `Escrow` rules, and there is no need to check for payable functions or
+transfers in the inheritance tree. The contract that uses the escrow as its
+payment method should be its owner, and provide public methods redirecting
+to the escrow’s deposit and withdraw.
+
+**Functions**
+
+* [`depositsOf(payee)`](#Escrow-depositsOf-address-)
+* [`deposit(payee)`](#Escrow-deposit-address-)
+* [`withdraw(payee)`](#Escrow-withdraw-address-payable-)
+
+**Ownable**
+
+* [`constructor()`](#Ownable-constructor)
+* [`owner()`](#Ownable-owner)
+* [`renounceOwnership()`](#Ownable-renounceOwnership)
+* [`transferOwnership(newOwner)`](#Ownable-transferOwnership-address-)
+
+**Events**
+
+* [`Deposited(payee, weiAmount)`](#Escrow-Deposited-address-uint256-)
+* [`Withdrawn(payee, weiAmount)`](#Escrow-Withdrawn-address-uint256-)
+
+**Ownable**
+
+* [`OwnershipTransferred(previousOwner, newOwner)`](#Ownable-OwnershipTransferred-address-address-)
+
+<a id="PaymentSplitter-depositsOf"></a>
+
+#### `depositsOf(address payee) → uint256 *public*`
+
+<a id="PaymentSplitter-deposit"></a>
+
+#### `deposit(address payee) *public*`
+
+Stores the sent amount as credit to be withdrawn.
+
+<a id="PaymentSplitter-withdraw"></a>
+
+#### `withdraw(address payable payee) *public*`
+
+Withdraw accumulated balance for a payee, forwarding all gas to the
+recipient.
+
+<Callout type='warn'>
+Forwarding all gas opens the door to reentrancy vulnerabilities.
+Make sure you trust the recipient, or are either following the
+checks-effects-interactions pattern or using ReentrancyGuard.
+</Callout>
+
+<a id="PaymentSplitter-Deposited"></a>
+
+#### `Deposited(address payee, uint256 weiAmount) *event*`
+
+<a id="PaymentSplitter-Withdrawn"></a>
+
+#### `Withdrawn(address payee, uint256 weiAmount) *event*`
+
+### ``ConditionalEscrow``
+
+Base abstract escrow to only allow withdrawal if a condition is met.
+Intended usage: See Escrow. Same usage guidelines apply here.
+
+**Functions**
+
+* [`withdrawalAllowed(payee)`](#ConditionalEscrow-withdrawalAllowed-address-)
+* [`withdraw(payee)`](#ConditionalEscrow-withdraw-address-payable-)
+
+**Escrow**
+
+* [`depositsOf(payee)`](#Escrow-depositsOf-address-)
+* [`deposit(payee)`](#Escrow-deposit-address-)
+
+**Ownable**
+
+* [`constructor()`](#Ownable-constructor)
+* [`owner()`](#Ownable-owner)
+* [`renounceOwnership()`](#Ownable-renounceOwnership)
+* [`transferOwnership(newOwner)`](#Ownable-transferOwnership-address-)
+
+**Events**
+
+**Escrow**
+
+* [`Deposited(payee, weiAmount)`](#Escrow-Deposited-address-uint256-)
+* [`Withdrawn(payee, weiAmount)`](#Escrow-Withdrawn-address-uint256-)
+
+**Ownable**
+
+* [`OwnershipTransferred(previousOwner, newOwner)`](#Ownable-OwnershipTransferred-address-address-)
+
+<a id="PaymentSplitter-withdrawalAllowed"></a>
+
+#### `withdrawalAllowed(address payee) → bool *public*`
+
+Returns whether an address is allowed to withdraw their funds. To be
+implemented by derived contracts.
+
+<a id="PaymentSplitter-withdraw"></a>
+
+#### `withdraw(address payable payee) *public*`
+
+### ``RefundEscrow``
+
+Escrow that holds funds for a beneficiary, deposited from multiple
+parties.
+Intended usage: See Escrow. Same usage guidelines apply here.
+The owner account (that is, the contract that instantiates this
+contract) may deposit, close the deposit period, and allow for either
+withdrawal by the beneficiary, or refunds to the depositors. All interactions
+with `RefundEscrow` will be made through the owner contract.
+
+**Functions**
+
+* [`constructor(beneficiary_)`](#RefundEscrow-constructor-address-payable-)
+* [`state()`](#RefundEscrow-state)
+* [`beneficiary()`](#RefundEscrow-beneficiary)
+* [`deposit(refundee)`](#RefundEscrow-deposit-address-)
+* [`close()`](#RefundEscrow-close)
+* [`enableRefunds()`](#RefundEscrow-enableRefunds)
+* [`beneficiaryWithdraw()`](#RefundEscrow-beneficiaryWithdraw)
+* [`withdrawalAllowed(_)`](#RefundEscrow-withdrawalAllowed-address-)
+
+**ConditionalEscrow**
+
+* [`withdraw(payee)`](#ConditionalEscrow-withdraw-address-payable-)
+
+**Escrow**
+
+* [`depositsOf(payee)`](#Escrow-depositsOf-address-)
+
+**Ownable**
+
+* [`owner()`](#Ownable-owner)
+* [`renounceOwnership()`](#Ownable-renounceOwnership)
+* [`transferOwnership(newOwner)`](#Ownable-transferOwnership-address-)
+
+**Events**
+
+* [`RefundsClosed()`](#RefundEscrow-RefundsClosed)
+* [`RefundsEnabled()`](#RefundEscrow-RefundsEnabled)
+
+**Escrow**
+
+* [`Deposited(payee, weiAmount)`](#Escrow-Deposited-address-uint256-)
+* [`Withdrawn(payee, weiAmount)`](#Escrow-Withdrawn-address-uint256-)
+
+**Ownable**
+
+* [`OwnershipTransferred(previousOwner, newOwner)`](#Ownable-OwnershipTransferred-address-address-)
+
+<a id="PaymentSplitter-constructor"></a>
+
+#### `constructor(address payable beneficiary_) *public*`
+
+Constructor.
+
+<a id="PaymentSplitter-state"></a>
+
+#### `state() → enum RefundEscrow.State *public*`
+
+<a id="PaymentSplitter-beneficiary"></a>
+
+#### `beneficiary() → address payable *public*`
+
+<a id="PaymentSplitter-deposit"></a>
+
+#### `deposit(address refundee) *public*`
+
+Stores funds that may later be refunded.
+
+<a id="PaymentSplitter-close"></a>
+
+#### `close() *public*`
+
+Allows for the beneficiary to withdraw their funds, rejecting
+further deposits.
+
+<a id="PaymentSplitter-enableRefunds"></a>
+
+#### `enableRefunds() *public*`
+
+Allows for refunds to take place, rejecting further deposits.
+
+<a id="PaymentSplitter-beneficiaryWithdraw"></a>
+
+#### `beneficiaryWithdraw() *public*`
+
+Withdraws the beneficiary’s funds.
+
+<a id="PaymentSplitter-withdrawalAllowed"></a>
+
+#### `withdrawalAllowed(address) → bool *public*`
+
+Returns whether refundees can withdraw their deposits (be refunded). The overridden function receives a
+'payee' argument, but we ignore it here since the condition is global, not per-payee.
+
+<a id="PaymentSplitter-RefundsClosed"></a>
+
+#### `RefundsClosed() *event*`
+
+<a id="PaymentSplitter-RefundsEnabled"></a>
+
+#### `RefundsEnabled() *event*`

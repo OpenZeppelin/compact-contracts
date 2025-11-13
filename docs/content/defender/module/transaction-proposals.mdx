@@ -1,0 +1,23 @@
+---
+title: Transaction Proposals
+---
+
+Transaction Proposals are very similar to actions, but instead of having to write the javascript code, you can use a form-based editor to define the transaction parameters.\
+This low-code format is very useful for non technical users and simple scenarios, but lacks the flexibility of the Actions. If you need to invoke external APIs or contracts, or perform more complex logic, you should use the [Actions](/defender/module/actions) instead.
+
+## General Information
+To create a Transaction Proposal from Defender, you need to define a few parameters:
+
+* Title: A descriptive name for the proposal. This will be latter shown in the proposal list.
+* Description(optional): A longer description of the proposal. This will be shown in the proposal details.
+* Target Contract: The smart contract that you want to run the transaction on.
+
+<Callout>
+If you have trouble connecting your wallet to Defender, there may be a conflict between wallet extensions if multiple are installed.
+</Callout>
+
+## Function
+Define the function that you want to call on the target contract. You can select from a list of functions that are available on the contract interface. If the function has parameters, you can define them here.
+
+## Approval Process
+Define how you want the transaction to be executed. You can choose from any of the [transaction approval processes](/defender/settings#approval-processes) available in Defender that you have previously configured or you can optionally create a new one.

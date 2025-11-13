@@ -1,0 +1,727 @@
+---
+title: Relayers
+---
+
+Relayers allow you to send on-chain transactions via regular API requests or through other Defender modules, like Actions, Workflows, and Deploy. Relayers also automate the payment of gas fees and take care of private key secure storage, transaction signing, nonce management, gas pricing estimation, and resubmissions. With Relayers, you don’t have to worry about storing private keys on your back-end servers or monitoring gas prices and transactions to ensure they get confirmed.
+
+## Use cases
+
+* Execute transactions on smart contracts automatically to trigger a state transition.
+* Update an on-chain oracle with external data.
+* Send meta-transactions to build a gasless experience.
+* React to sign-ups in your app by airdropping tokens to your new users.
+* Sweep funds from protocol contracts to secure wallets,
+* Build bots with complete custom logic and flexibility.
+
+## What's a Relayer?
+
+A Relayer is an Ethereum-based externally-owned account (EOA) assigned exclusively to your team. Every time you create a new Relayer, Defender will create a new private key in a secure vault. Whenever you request Defender to send a transaction through that Relayer, the corresponding private key will be used for signing.
+
+You can think of each Relayer as a queue for sending transactions, where all transactions sent through the same Relayer will be sent in order and from the same account, controlled exclusively by your team. Learn more about the technical implemention [here](#under-the-hood).
+
+![Manage Relayers](/defender/manage-relayers.png)
+
+To create a Relayer, simply click the ***Create Relayer*** button on the top-right section of the page, specify a name and select the network.
+
+![Manage Relayers Detail](/defender/manage-relayers-detail.png)
+
+<Callout type='warn'>
+Keep in mind that you’ll need to fund each Relayer individually with ETH (or the native chain token) to ensure they have enough funds to pay for the gas of the transactions you send. Defender will send you an email notification if a Relayer’s funds drop below 0.1 ETH.
+</Callout>
+
+<Callout>
+Testnet Relayers created through the Deploy wizard will be automatically funded if possible. Read more [here](/defender/module/deploy#step-3-upgrading).
+</Callout>
+
+### API Keys
+
+Each Relayer can have one or more **API keys** associated with it. In order to send a transaction through a Relayer, you will need to authenticate the request with one an API key/secret pair. You can create or delete API keys as you see fit, and this will not change the sending address or Relayer balance.
+
+To create an API key for a Relayer, click on the Relayer and then on the **More** button to expand the dropdown and select **Create API Key**.
+
+![Manage Relayers Create API Key](/defender/manage-relayers-create-api-key.png)
+
+Once the API Key is created, make sure to write down the secret key. The API secret is only visible once during the creation — if you don’t write it down, it’s lost forever.
+
+![Manage Relayer API Key](/defender/manage-relayer-api-key.png)
+
+<Callout type='warn'>
+The API key of a Relayer is ***not*** related to its private key. The private key is always kept within a secure key vault and never exposed (see the [Security considerations](#security-considerations) section for more info). This decoupling allows you to freely rotate API keys while keeping the same address for your Relayer.
+</Callout>
+
+### Addresses
+
+Whenever you create a Relayer, a fresh EOA will be created to back it. For security reasons, it’s not possible to import an existing private key into a Relayer nor export the private key of a Relayer created by Defender. If you grant a privileged role to a Relayer address in your system to avoid lock-in, consider having an administrative method for switching it to a different one if needed.
+
+### Policies
+
+You can limit a Relayer’s behavior by specifying policies.
+
+To configure a Relayer’s policies, go to the [Relayer page](https://defender.openzeppelin.com/v2/#/relayers), select the Relayer, and then go to the **Policies** tab. You will then see a form where you can opt to enable policies and tweak their parameters.
+
+![Manage Relayer Policies](/defender/manage-relayer-policies.png)
+
+#### Gas price cap
+Specify a maximum gas price for every transaction sent with the Relayer. When this policy is enabled, Defender will overwrite the `gasPrice` or `maxFeePerGas` of any transaction that goes beyond the specified cap. Take into account that the gas price for a transaction is specified based on gas price oracles at the moment the Relayer actually sends the transaction to be mined, so this policy can be used as a protection on gas price surges.
+
+<Callout>
+In addition to the maximum gas price policy you can specify here, Defender implements a minimum gas price policy for networks that have minimum gas requirements. Check requirements with the individual networks you use.
+</Callout>
+
+#### Receiver whitelist
+Specify a list of authorized contracts for every transaction sent using the Relayer. Defender will reject and discard any transaction whose destination address is not in the list.
+
+<Callout>
+The whitelist applies only to the `to` field of a transaction. It doesn’t filter ERC20 or other assets receivers.
+</Callout>
+
+#### EIP1559 Pricing
+Specify if the transactions the Relayer sends should be EIP1559 by default or not. This applies whenever the Relayer sends a transaction with dynamic gas pricing or a non specified `gasPrice` or `maxFeePerGas`/`maxPriorityFeePerGas`. Note that this policy option is only shown for EIP1559 compatible networks.
+
+<Callout>
+EIP1559 Pricing policy is enabled by default for new Relayers. If you have a Relayer that was created without the default opt-in, you can always enable this flag.
+</Callout>
+
+#### Private transactions
+Specify if the transactions should be sent via private mempool. This means that a transaction will not be publicly seen until it’s included in a block.
+
+The parameter can be toggled between the following states: `true` to enable private mempool transactions, `false` to opt for public visibility. Alternatively, users can specify the transaction speed by setting the value to either `flashbots-normal` or `flashbots-fast`. By default, when the policy is set to `true`, the speed defaults to `flashbots-normal`, allowing for seamless inclusion while maintaining transaction privacy. This configuration empowers users to tailor their transaction strategy to suit their specific privacy and speed requirements effectively. You can read about faster transactions with Flashbots [here](https://docs.flashbots.net/flashbots-protect/quick-start#faster-transactions).
+
+<Callout>
+Private transactions are only enabled for _mainnet_ by using the [Flashbots Protect RPC](https://docs.flashbots.net/flashbots-protect/rpc/quick-start). So, the same [key considerations](https://docs.flashbots.net/flashbots-protect/rpc/quick-start#key-considerations) might apply while sending private transactions through Defender.
+</Callout>
+
+## Relayer Groups
+
+Relayer Groups are collections of individual relayers that work together to submit transactions. By grouping relayers, you can increase the overall transaction throughput and redundancy, which enhances the reliability of the transaction submission process. Relayer Groups are designed to distribute the workload across multiple relayers, ensuring that no single relayer becomes a bottleneck.
+
+### Benefits of Relayer Groups
+
+* ***Increased Throughput:*** Relayer Groups can handle a higher volume of transactions because the workload is spread across multiple relayers.
+* ***Redundancy:*** If one relayer in the group fails or becomes slow, others can take over, reducing the risk of delays.
+* ***Efficiency:*** By coordinating multiple relayers, you can optimize transaction submission and ensure that transactions are processed as quickly as possible.
+* ***Centralised Management:*** The ability to manage multiple relayers under a single API key simplifies administration, making it easier to maintain control over a complex system.
+
+### Drawbacks of Relayer Groups
+
+* ***Unified Configuration:*** Policies and configurations apply uniformly across all relayers in the group, making it difficult to manage individual relayer settings.
+* ***Limited Functionality:*** Certain functionalities, like message signing, are not available for relayers that are part of a group.
+* ***Group-Restricted Operation:*** Relayers within a group cannot be used independently; they must function collectively as part of the group.
+* ***Potential Transaction Order Issues:*** Since transactions are distributed among different relayers based on their condition, they may not be processed in the order they were received, leading to some transactions being mined out of sequence.
+
+### Health Monitoring
+Relayer groups rely on regular health checks to ensure that transactions are distributed efficiently among the relayers in the group. These health checks assess the performance and availability of each relayer, helping the system decide which relayers are best suited to handle new transactions.
+
+The system regularly evaluates each relayer in the group. It calculates a "weight" for each relayer based on several key factors. These weights are then used to determine how transactions should be distributed within the group, with priority given to the most reliable and responsive relayers.
+
+* ***Speed of First Transaction Processing (Highest Priority):*** The most important factor is how quickly a relayer starts processing transactions. The system looks at the time it takes for the first pending transaction to be sent and processed. A faster relayer is considered healthier and is given a higher priority.
+* ***Number of Pending Transactions:*** The system checks how many transactions are waiting in each relayer’s queue. If a relayer has a lot of pending transactions, it might indicate that it’s overloaded and could struggle to process new transactions quickly.
+* ***Remaining Balance:*** The relayer’s available balance is also considered. A relayer needs enough balance to cover transaction fees. If a relayer’s balance is low, it may have difficulty processing transactions, which affects its health score.
+
+Users can manually adjust the weight of individual relayers. For example, setting a weight of 0 would prevent a relayer from being used, offering precise control over which relayers are active.
+
+## Sending transactions
+
+The easiest way to send a transaction via a Relayer is using the [`Defender SDK`](https://www.npmjs.com/package/@openzeppelin/defender-sdk) package. The client is initialized with an API key/secret and exposes a simple API for sending transactions through the corresponding Relayer.
+
+```jsx
+const  Defender  = require('@openzeppelin/defender-sdk');
+const client = new Defender(
+  relayerApiKey: 'YOUR_API_KEY',
+  relayerApiSecret: 'YOUR_API_SECRET'
+);
+
+const tx = await client.relayerSigner.sendTransaction(
+  to, value, data, gasLimit, speed: 'fast'
+);
+
+const mined = await tx.wait();
+```
+
+
+
+For better reliability of the relayers, we recommend sending no more than **50 transactions/min** on a single relayer especially on fast moving chains like Polygon, Optimism, Arbitrum etc.. For example, if you want 250 transactions/min throughput, you would need to load balance across 5 relayers. These 5 relayers can be part of the same account.
+
+
+<Callout>
+You don’t need to enter a private key when initializing a Relayer client, since the private key is kept secure in the Defender vault.
+</Callout>
+
+<Callout type='warn'>
+Currently, _zkSync_ doesn’t have a way to precisely calculate `gasLimit` other than using the `eth_estimateGas` endpoint. Therefore, Defender can’t do any gasLimit and overrides the user input with the RPC estimation.
+</Callout>
+
+### Using ethers.js
+
+The Relayer client integrates with [ethers.js](https://docs.ethers.io/v6/) via a custom [signer](https://docs.ethers.org/v6/api/providers/#Signer). This allows you switch to a Relayer and send transactions with minimal changes in your codebase.
+
+```jsx
+const  Defender  = require('@openzeppelin/defender-sdk');
+const  ethers  = require('ethers');
+
+const credentials =  relayerApiKey: YOUR_RELAYER_API_KEY, relayerApiSecret: YOUR_RELAYER_API_SECRET ;
+const client = new Defender(credentials);
+
+const provider = client.relaySigner.getProvider();
+const signer = client.relaySigner.getSigner(provider,  speed: 'fast', validUntil );
+
+const erc20 = new ethers.Contract(ERC20_ADDRESS, ERC20_ABI, signer);
+const tx = await erc20.transfer(beneficiary, 1e18.toString());
+const mined = await tx.wait();
+```
+
+In the example above, we are also using a `DefenderRelayProvider` for making calls to the network. The signer can work with any provider, such as `ethers.getDefaultProvider()`, but you can rely on Defender as a network provider as well.
+
+You can read more about the ethers integration [here](https://www.npmjs.com/package/@openzeppelin/defender-sdk-relay-client).
+
+### Using web3.js
+
+The Relayer client integrates with [web3.js](https://web3js.readthedocs.io/) as well as via a custom [provider](https://web3js.readthedocs.io/en/v1.3.4/web3-eth.html#providers). This allows you to send transactions with a Relayer and query the network using the familiar web3 interface.
+
+```jsx
+const  Defender  = require('@openzeppelin/defender-sdk');
+const Web3 = require('web3');
+
+const credentials =  relayerApiKey: YOUR_RELAYER_API_KEY, relayerApiSecret: YOUR_RELAYER_API_SECRET ;
+const client = new Defender(credentials);
+
+const provider = client.relaySigner.getProvider();
+
+const web3 = new Web3(provider);
+
+const [from] = await web3.eth.getAccounts();
+const erc20 = new web3.eth.Contract(ERC20_ABI, ERC20_ADDRESS,  from );
+const tx = await erc20.methods.transfer(beneficiary, (1e18).toString()).send();
+```
+
+In the example above, the `transfer` transaction is signed and broadcasted by the Relayer, and any additional JSON RPC calls are routed via Defender private endpoint.
+
+You can read more about the web3 integration [here](https://www.npmjs.com/package/@openzeppelin/defender-sdk-relay-client).
+
+### Intents Support with Relay Signer
+
+When using the Defender SDK’s relay signer to send transactions from the context of an ethers/web3 contract, it is important to note that transactions in [intent mode](#the-intent-mechanism) are not supported. If the API returns an [intent response](#intent-response), an error will be thrown due to the current implementation expecting certain fields that are absent in the intent response.
+
+To avoid this issue, it is recommended to fallback to using the default SDK `sendTransaction` method for transaction submissions. This ensures that the transaction can be processed without errors.
+
+Additionally, the current implementation does not track transactions that are resubmitted, which can lead to complications when multiple hashes are generated due to retries. It is crucial to implement logic that can handle these scenarios effectively, ensuring that the process completes even when transaction hashes change in the background.
+
+### EIP1559 support
+
+Since not all of the supported networks are EIP1559 compatible, the EIP1559 transaction support is only enabled for those ***networks identified as compatible*** and enabled by the team.
+
+A Relayer can send EIP1559 transactions in the following ways:
+
+* Sending a transaction via UI with the [`EIP1559Pricing`](#eip1559-pricing) policy ***enabled***
+* Sending a transaction via API with both `maxFeePerGas` and `maxPriorityFeePerGas` specified
+* Sending a transaction via API with `speed` and with the [`EIP1559Pricing`](#eip1559-pricing) policy ***enabled***
+
+Once any transaction is sent, ***it will have the same type*** on every stage of its lifecycle (such as replacement and repricing), so it’s currently not possible to change the type if it’s already been submitted.
+
+<Callout>
+Any attempt to send `maxFeePerGas` or `maxPriorityFeePerGas` to non-EIP1559 compatible networks will be rejected and discarded by the Relayer.
+</Callout>
+
+You can tell if a network supports EIP1559 by looking at the Relayer [policies](#policies). If the EIP1559Pricing policy doesn’t show up, it means that we haven’t added EIP1559 support for that network.
+
+<Callout>
+If you notice an EIP1559 compatible network that we already support but doens’t have the EIP enabled, please don’t hesitate to reach out via [https://www.openzeppelin.com/defender2-feedback](https://www.openzeppelin.com/defender2-feedback).
+</Callout>
+
+### Private transactions
+
+Private transaction allows a Relayer to send transactions without being visible on the public mempool, and instead, the transaction is relayed via a private mempool using a special `eth_sendRawTransaction` provider, which will vary depending on the network and current support (such as Flashbots network coverage).
+
+A Relayer may send a private transaction in any of the following ways:
+
+* Sending a transaction via API with the [`privateTransactions`](#private-transactions) policy ***enabled*** or set to `flashbots-normal` or `flashbots-fast`
+* Sending a transaction via API with `isPrivate` parameter set to `true`
+* Sending a transaction via UI and checking the Mempool Visibility checkbox
+
+![Mempool visibility checkbox on Relayer's send transaction view](/defender/relayer-mempool-visibility-check.png)
+
+<Callout>
+Sending a transaction with the `isPrivate` flag set to `true` to a network that doesn’t support private transactions will be rejected and discarded by the Relayer.
+</Callout>
+
+Currently, only the following network is supported
+
+* **Mainnet**: Via [Flashbots Protect RPC](https://docs.flashbots.net/flashbots-protect/rpc/quick-start)
+
+### Speed
+
+Instead of the usual `gasPrice` or `maxFeePerGas`/`maxPriorityFeePerGas`, the Relayer may also accept a speed parameter, which can be `safeLow`, `average`, `fast`, or `fastest`. These values are mapped to actual gas prices when the transaction is sent or resubmitted and vary depending on the state of the network.
+
+If speed is provided, the transaction would be priced according to the `EIP1559Pricing` Relayer policy.
+
+<Callout>
+Mainnet gas prices and priority fees are calculated based on the values reported by [EthGasStation](https://ethgasstation.info/), [EtherChain](https://etherchain.org/tools/gasPriceOracle), [GasNow](https://www.gasnow.org/), [Blockative](https://docs.blocknative.com/gas-platform), and [Etherscan](https://etherscan.io/gastracker). In Polygon and its testnet, the [gas station](https://gasstation-mainnet.matic.network/v2) is used. In other networks, gas prices are obtained from a call to `eth_gasPrice` or `eth_feeHistory` to the network.
+</Callout>
+
+### Fixed Gas Pricing
+
+Alternatively, you may specify a ***fixed gasPrice*** or a ***fixed combination of maxFeePerGas and maxPriorityFeePerGas*** for a transaction, by setting either the `gasPrice` parameter or `maxFeePerGas` and `maxPriorityFeePerGas` parameters. Transactions with a fixed pricing are either mined with the specified pricing or replaced with a NOOP transaction if they couldn’t be mined before [validUntil](#valid-until) time.
+
+Keep in mind that you have to provide either `speed`, `gasPrice`, `maxFeePerGas`/`maxPriorityFeePerGas` or none, but not a mix between them in a send transaction request.
+
+<Callout>
+Whenever a send transaction request is sent without any pricing parameter, it will be priced with a `fast` default speed.
+</Callout>
+
+<Callout>
+If you’re providing both fixed `maxFeePerGas` and `maxPriorityFeePerGas`, make sure that `maxFeePerGas` is greater or equal than `maxPriorityFeePerGas`. Otherwise, it’ll be rejected.
+</Callout>
+
+### Valid Until
+
+Every transaction via a Relayer is valid for submission to the network until `validUntil` time. After `validUntil` time the transaction is replaced by a NOOP transaction in order to prevent Relayers from getting stuck at the transaction’s nonce. A NOOP transaction does nothing except advancing the Relayer’s nonce.
+
+`validUntil` defaults to 8 hours after the transaction creation. Note that you can combine validUntil with a [fixed pricing](#fixed-gas-pricing) to achieve extremely fast mining times and beating other transactions on `gasPrice` or `maxFeePerGas`.
+
+If you’re using `ethers.js`, you may set a `validForSeconds` option instead of `validUntil`. In the example below, we configure a `DefenderRelaySigner` to issue a transaction which will be valid for 120 seconds after its creation.
+
+```jsx
+const  DefenderRelayProvider, DefenderRelaySigner  = require('@openzeppelin/defender-sdk-relay-signer-client/ethers');
+const  ethers  = require('ethers');
+
+const credentials =  apiKey: API_KEY, apiSecret: API_SECRET ;
+const provider = new DefenderRelayProvider(credentials);
+const signer = new DefenderRelaySigner(credentials, provider,  speed: 'fast', validForSeconds: 120 );
+```
+
+<Callout>
+`validUntil` is a UTC timestamp. Make sure to use a UTC timezone and not a local one.
+</Callout>
+
+### Transaction IDs
+
+Since a Relayer may resubmit a transaction with an updated gas pricing if it does’t get confirmed in the expected time frame, the `hash` of a given transaction may change over time. To track the status of a given transaction, the Relayer API returns a `transactionId` identifier you can use to [query](https://www.npmjs.com/package/@openzeppelin/defender-sdk-relay-signer-client) it.
+
+```jsx
+import  Relayer  from '@openzeppelin/defender-sdk-relay-signer-client';
+const relayer = new Relayer( apiKey: API_KEY, apiSecret: API_SECRET );
+const latestTx = await relayer.getTransaction(tx.transactionId);
+```
+
+The returned transaction object `latestTx` will have the following shape:
+
+```jsx
+interface RelayerTransactionBase
+  transactionId: string; // Defender transaction identifier
+  hash: string; // Ethereum transaction hash
+  to: string;
+  from: string;
+  value?: string;
+  data?: string;
+  speed: 'safeLow' | 'average' | 'fast' | 'fastest';
+  gasLimit: number;
+  nonce: number;
+  status: 'pending' | 'sent' | 'submitted' | 'inmempool' | 'mined' | 'confirmed' | 'failed';
+  chainId: number;
+  validUntil: string;
+
+```
+
+<Callout>
+The `getTransaction` function will return the latest view of the transaction from the Defender service, which gets updated every minute.
+</Callout>
+
+### Replace Transactions
+
+While a Relayer will automatically resubmit transactions with increased gas pricing if they are not confirmed, and will automatically cancel them after their valid-until timestamp, you can still manually replace or cancel your transaction if it has not been mined yet. This allows you to cancel a transaction if it is no longer valid, tweak its TTL, or bump its speed or gas pricing.
+
+To do this, use the `replaceByNonce` or `replaceById` of the `@openzeppelin/defender-sdk-relay-client`:
+
+```jsx
+// Cancel tx payload (tx to a random address with zero value and data)
+replacement =
+  to: '0x6b175474e89094c44da98b954eedeac495271d0f',
+  value: '0x00',
+  data: '0x',
+  speed: 'fastest',
+  gasLimit: 21000
+;
+
+// Replace a tx by nonce
+tx = await relayer.replaceTransactionByNonce(42, replacement);
+
+// Or by transactionId
+tx = await relayer.replaceTransactionById('5fcb8a6d-8d3e-403a-b33d-ade27ce0f85a', replacement);
+```
+
+You can also replace a pending transaction by setting the `nonce` when sending a transaction using the `ethers` or `web3.js` adapters:
+
+```jsx
+// Using ethers
+erc20 = new ethers.Contract(ERC20_ADDRESS, ERC20_ABI, signer);
+replaced = await erc20.functions.transfer(beneficiary, 1e18.toString(),
+  nonce: 42
+);
+
+// Using web3.js
+erc20 = new web3.eth.Contract(ERC20_ABI, ERC20_ADDRESS,  from );
+replaced = await erc20.methods.transfer(beneficiary, (1e18).toString()).send(
+  nonce: 42
+);
+```
+
+<Callout>
+You can ***only*** replace transactions of the same type. For example, if you’re trying to replace an EIP1559 transaction, it ***can’t be replaced*** with a legacy transaction. Also, if `speed` is provided instead, the transaction will be repriced as its original type requires with the given speed.
+</Callout>
+
+### Webhooks Notifications
+
+Listening to transaction status changes can be efficiently achieved using a push-based approach through webhooks. This method allows your application to receive real-time notifications whenever there are updates to the status of a transaction.
+
+***Steps to Configure Webhook Notifications***:
+
+1. ***Access the Relayers Page***
+2. ***Select Transaction Statuses***:
+   On the Relayers page, you will find options to select the specific transaction statuses for which you want to receive notifications. Available statuses:
+   * ***Pending***: Transaction received by the Defender.
+   * ***Sent***: Transaction prepared for sending(priced and signed).
+   * ***Submitted***: Transaction submitted to the network.
+   * ***InMemPool***: Transaction found in the mempool.
+   * ***Mined***: Transaction mined.
+   * ***Confirmed***: Transaction confirmed(a minimum of 12 confirmations).
+3. ***Choose Notification Channel***:
+   After selecting the desired statuses, you need to choose webhook notification channels. This is where the webhook notifications will be sent.
+4. ***Save Your Configuration***:
+   Once you have selected the statuses and configured the notification channel, save your settings. This will register your webhook and start the process of receiving notifications for the selected events.
+
+Example of Webhook Notification:
+```json
+
+  "event": "transaction_status_change",
+  "timestamp": "2024-06-13T12:29:41.254Z",
+  "transaction": {
+    "signature": {
+      "r": "0xee81d58c53c1d3432c95847c71a525417bad6e8fa711007137b2e11155ba8f94",
+      "s": "0x362ce1f75d660504e22590f678c243bc24954ccfbf17864f4aab05fd8b1d6ca3",
+      "v": "0x1b"
+    ,
+    "maxPriorityFeePerGas": 7556907973,
+    "maxFeePerGas": 39004490874,
+    "chainId": 11155111,
+    "hash": "0xea04c34422295ef60b57fea50790b4f9396d852274fa46ee5cf8d0407d7cc32b",
+    "transactionId": "1eece8bb-05d6-493f-903a-12c750700b81",
+    "value": "0x5af3107a4000",
+    "gasLimit": 25200,
+    "to": "0x5e87fD270D40C47266B7E3c822f4a9d21043012D",
+    "from": "0xf87921a0999d522383afa2b41db2538231a647f0",
+    "data": "0x",
+    "nonce": 19,
+    "status": "mined",
+    "speed": "fast",
+    "validUntil": "2024-06-13T20:29:01.051Z",
+    "createdAt": "2024-06-13T12:29:01.546Z",
+    "sentAt": "2024-06-13T12:29:01.546Z",
+    "pricedAt": "2024-06-13T12:29:01.546Z",
+    "isPrivate": false
+  }
+}
+```
+
+### List Transactions
+
+You can also list the latest transactions sent via your Relayer, optionally filtering by status (pending, mined, or failed). This can be particularly useful to prevent your Actions scripts from re-sending a transaction already in-flight: before sending a transaction, you can use the list method filtered by `pending` status to see if there is a transaction in the queue with the same destination and calldata as the one you are about to send.
+
+```jsx
+const txs = await relayer.list(
+  since: new Date(Date.now() - 60 * 1000),
+  status: 'pending', // can be 'pending', 'mined', or 'failed'
+  limit: 5, // newest txs will be returned first
+  usePagination: true,
+  next: '' // optional next cursor for pagination
+  sort: 'desc'
+)
+```
+
+### Delete Pending Transaction
+
+In situations where a relayer is stuck and unable to process transactions, the system provides a functionality to delete pending transactions. This action is designed as a last resort to address issues with transactions that have not been mined for at least 30 minutes. This feature can be activated from the Relayer Drawer, under the Pending Transactions tab, when the relayer has pending transactions.
+
+Key Points:
+
+* ***Intended Use***: This feature is specifically aimed at resolving issues with relayers that are stuck due to unmined transactions. It is recommended to use this only after confirming that there have been no transactions mined for at least 30 minutes.
+* ***Operation Overview***: Upon initiating the delete operation, the relayer will enter a paused state. During this pause, the system will either send NOOPs (No-Operation Instructions) to clear certain transactions or remove them entirely from the database. This distinction is made based on the specific characteristics of each pending transaction.
+* ***Duration***: The entire process of deleting pending transactions and resuming normal operations can take up to 30 minutes. This includes the time taken to assess each transaction, apply the necessary actions, and ensure the relayer is ready to resume its functions.
+* ***Resumption of Operations***: After the completion of the delete operation, the relayer will automatically resume its standard activities. Users do not need to take any further action to reactivate the relayer.
+* ***Notification***: Users will receive an email notification once the process is complete and the relayer has resumed its operations.
+
+### The Intent Mechanism
+
+An "intent" is a concept introduced to improve the efficiency and reliability of transaction submissions. Instead of immediately submitting a transaction, an intent is a placeholder that indicates a transaction is ready to be sent but is temporarily held back. This mechanism helps manage situations where the transaction queue becomes too large or when the network or relayer is processing transactions slowly.
+
+Intents are used to maintain the order of transactions and prevent overloading the system. There are two primary scenarios where intents come into play:
+
+* ***High Transaction Volume:*** When the number of pending transactions exceeds the maximum allowed in-flight, new transactions are stored as intents. This prevents the system from being overwhelmed and ensures that transactions are submitted in the correct order.
+* ***Slow Processing:*** If the network or relayer is processing transactions slowly (e.g., no transaction has been mined in the last 30 minutes), new transactions are stored as intents to avoid adding to the congestion.
+
+#### Intent Response
+
+Intent response is similar to the response of a normal transaction, but with the following differences:
+
+* `hash` is `null`
+* `isIntent` is `true` and indicates the transaction was sent as an intent, this will not be set for normal transactions. This field will not be removed or changed when the intent is processed.
+* `pendingIntentSince` is the timestamp when the intent was created and indicates the intent is still pending. This field will be removed once the intent is processed.
+* `relayerId` is the same ID of the relayer group upon creation. This will change to the ID of the relayer that will process the intent once the assignment is made.
+* No gas-related fields are set, the transaction will be priced when it is processed.
+
+```json
+
+  "hash": null,
+  "transactionId": "transaction123",
+  "value": "0x1",
+  "gasLimit": 21000,
+  "to": "0x123...",
+  "data": "0x",
+  "status": "pending",
+  "speed": "fast",
+  "validUntil": "2000-01-01T20:00:00.000Z"
+  "isIntent": true,
+  "relayerId": "relayer123",
+  "tenantRelayerGroupId": "tenant123|relayerGroup123",
+  "createdAt": "2000-01-01T12:00:00.000Z"
+
+```
+
+#### Cancel Intents
+
+Relayer transaction intents can be canceled and permanently removed from our end. This feature is particularly useful when you need to prevent a specific intent from being submitted or want to free up space in the queue for other, more urgent transactions.
+
+To do this, use the `cancelTransactionById` method of the `@openzeppelin/defender-sdk-relay-client`:
+
+```jsx
+tx = await relayer.cancelTransactionById('5fcb8a6d-8d3e-403a-b33d-ade27ce0f85a');
+```
+
+## Signing
+
+In addition to sending transactions, a Relayer can also sign arbitrary messages according to the [EIP-191 Standard](https://eips.ethereum.org/EIPS/eip-191) (prefixed by `\x19Ethereum Signed Message:\n`) using its private key. You can access this feature via the `sign` method of the client or the equivalent ethers.js method.
+
+```jsx
+const signResponse = await relayer.sign( message );
+```
+
+<Callout>
+As opposed to most libraries, Relayers use non-deterministic ECDSA signatures. This means that if you request a Relayer to sign the same message multiple times, you will get multiple different signatures, which may differ to the result you get by signing using ethersjs or web3js. All those different signatures are valid. See [RFC6979](https://datatracker.ietf.org/doc/html/rfc6979#section-3) more information.
+</Callout>
+
+<Callout>
+For relayers that are part of a relayer group this method is not available.
+</Callout>
+
+## Signing Typed Data
+
+Along with the sign api method, Relayers also implement a `signTypedData`, which you can use to sign messages according to the [EIP712 Standard](https://eips.ethereum.org/EIPS/eip-712) for typed data signatures.
+You can either provide the `domainSeparator` and `hashStruct(message)` or use the equivalent ethers.js method
+
+```jsx
+const signTypedDataResponse = await relayer.signTypedData(
+  domainSeparator,
+  hashStructMessage
+);
+```
+
+<Callout>
+For relayers that are part of a relayer group this method is not available.
+</Callout>
+
+## Relayer Info
+
+A relayer’s address can be retrieved using the `getAddress` method of the `DefenderRelaySigner` class.
+
+```jsx
+const address = await signer.getAddress();
+```
+
+If you need more info about a Relayer then checkout the `getRelayer` method of the client. It returns the following data:
+
+```jsx
+const info = await relayer.getRelayer();
+console.log('Relayer info', info);
+
+export interface RelayerModel
+  relayerId: string;
+  name: string;
+  address: string;
+  network: string;
+  paused: boolean;
+  createdAt: string;
+  pendingTxCost: string;
+
+```
+
+<Callout>
+For relayers that are part of a relayer group this method will return the relayer group information.
+</Callout>
+
+## Relayer Status
+
+To gain better insight into the current status of a relayer, one can use the `getRelayerStatus` method from the `DefenderRelaySigner` class. This method provides real-time information about a relayer, such as its nonce, transaction quota, and the number of pending transactions.
+```jsx
+const address = await signer.getRelayerStatus();
+```
+
+If you need info about a Relayer then checkout the `getRelayer` method of the client. It returns the following data:
+
+```jsx
+export interface RelayerStatus
+  relayerId: string;
+  name: string;
+  nonce: number;
+  address: string;
+  numberOfPendingTransactions: number;
+  paused: boolean;
+  pendingTxCost?: string;
+  txsQuotaUsage: number;
+  rpcQuotaUsage: number;
+  lastConfirmedTransaction?: {
+    hash: string;
+    status: string;
+    minedAt: string;
+    sentAt: string;
+    nonce: number;
+  ;
+}
+```
+
+<Callout>
+For relayers that are part of a relayer group this method will return an array of status responses for the group.
+</Callout>
+
+## Network calls
+
+Defender also provides an easy way to make arbitrary JSON RPC calls to the network. You can use the low-level `relayer.call` method to send any JSON RPC HTTP request:
+
+```jsx
+const balance = await relayer.call('eth_getBalance', ['0x6b175474e89094c44da98b954eedeac495271d0f', 'latest']);
+```
+
+If you are using ethers.js, this is supported via a custom `DefenderRelayProvider` [provider](https://docs.ethers.org/v6/api/providers/) object:
+
+```jsx
+const provider = new DefenderRelayProvider(credentials);
+const balance = await provider.getBalance('0x6b175474e89094c44da98b954eedeac495271d0f');
+```
+
+## Withdrawing funds
+
+You can withdraw funds from a Relayer on the [Relayers page](https://defender.openzeppelin.com/v2/#/relayers), selecting the Relayer, and clicking on **Withdraw**.
+
+![Relayer Withdraw Button](/defender/relayer-withdraw.png)
+
+At the **Withdraw** screen, you can choose to send funds in ETH or pick from a built-in list of ERC20 tokens.
+
+![Relayer Withdraw Funds Screen](/defender/relayer-withdraw-screen.png)
+
+## Under the hood
+
+Each Relayer is associated to a private key. When a request to send a transaction is received, the Relayer validates the request, atomically assigns it a nonce, reserves balance for paying for its gas fees, resolves its speed to a `gasPrice` or `maxFeePerGas`/`maxPriorityFeePerGas` depending on its EIP1559 pricing policy, signs it with its private key, and enqueues it for submission to the blockchain. The response is sent back to the client only after this process has finished. Then, the transaction is broadcasted through multiple node providers for redundancy and retried up to three times in case APIs are down.
+
+Every minute, all in-flight transactions are checked by the system. If they have not been mined and more than a certain time has passed (which depends on the transaction speed), they are resubmitted with a 10% increase in their respective transaction type pricing (or the latest pricing for their speed, if it’s greater), which could be up to a **150% of the reported gas pricing for their speed**. This process causes the transaction hash to change, but their ID is preserved. On the other hand, if the transaction has been mined, it is still monitored for several blocks until we consider it to be confirmed.
+
+### Insufficient Funds
+
+Defender carefully tracks the costs of transactions sent to a relayer. In instances where the relayer cannot immediately process a transaction, Defender accumulates the costs of all pending transactions. Before allowing any new transactions to be submitted, Defender will ensure that the balance of the relayer is sufficient to cover the costs of all pending transactions including the new one. Consequently, you may encounter an "insufficient funds" error for a particular transaction during such occurrences.
+
+* The cost of a transaction is calculated as: `txCost = gasLimit * maxFeePerGas + value`.
+* The balance of a relayer is calculated as: `predictedBalance = balance - pendingTxCosts`.
+
+An "insufficient funds" error will throw when: `txCost > predictedBalance`.
+
+## Transaction Throughput and Load Balancing
+
+<Callout>
+We recommend using relayer groups for increased throughput and redundancy. However, if that is not an option, you could use the method below to optimize your setup.
+</Callout>
+
+Relayers assign nonces atomically which allows them to handle many concurrent transactions. However, there do exist limits to optimize the infrastructure (all numbers below are cumulative of all Relayers in an account)
+
+By default, when you create an api key for a specific relayer it’s automatically assigned with the following rate limits.
+
+* 100 requests/second with a burst of 300 requests.
+
+These rate limits are for both reads ( e.g. - getting transaction status ) and writes ( e.g. - sending transactions ).
+
+If you need additional throughput for your use case please reach out `defender-support@openzeppelin.com`. You need to be on **enterprise tier** for throughput increases.
+
+For better reliability of the relayers, we recommend sending no more than **50 transactions/min** on a single relayer especially on fast moving chains like Polygon, Optimism, Arbitrum etc.. For example, if you want 250 transactions/min throughput, you would need to load balance across 5 relayers. These 5 relayers can be part of the same account.
+
+You may use the [`Defender SDK`](https://www.npmjs.com/package/@openzeppelin/defender-sdk) package to load balance across multiple relayers. Here is a simple example on how you can do this:
+
+```ts
+require('dotenv').config();
+
+const  Defender  = require('@openzeppelin/defender-sdk');
+
+async function loadbalance()
+  const LOAD_BALANCE_THRESHOLD = 50;
+  const relayerCredsForMainNet = [
+    {
+      relayerApiKey: process.env.RELAYER_API_KEY_1,
+      relayerApiSecret: process.env.RELAYER_API_SECRET_1,
+    ,
+
+      relayerApiKey: process.env.RELAYER_API_KEY_2,
+      relayerApiSecret: process.env.RELAYER_API_SECRET_2,
+    ,
+  ];
+  const relayerClientsForMainNet = relayerCredsForMainNet.map((creds) => new Defender(creds));
+
+    const getNextAvailableRelayer = async () =>
+      for (const client of relayerClientsForMainNet) {
+        const relayerStatus = await client.relaySigner.getRelayerStatus();
+        if (relayerStatus.numberOfPendingTransactions < LOAD_BALANCE_THRESHOLD) {
+          return client;
+
+        console.log(
+          `$relayerStatus.relayerId is busy. Pending transactions: $relayerStatus.numberOfPendingTransactions/$LOAD_BALANCE_THRESHOLD`,
+        );
+      }
+      return undefined;
+    };
+
+    const executeTransaction = async () =>
+      const client = await getNextAvailableRelayer();
+      if (!client) throw new Error('Unable to load balance. All relayers are operating above the suggested threshold.');
+
+    const txResponse = await client.relaySigner.sendTransaction({
+      to: '0x179810822f56b0e79469189741a3fa5f2f9a7631',
+      value: 1,
+      speed: 'fast',
+      gasLimit: '21000',
+    );
+    console.log('txResponse', JSON.stringify(txResponse, null, 2));
+
+    await executeTransaction();
+}
+
+async function main()
+  try {
+    return await loadbalance();
+   catch (e)
+    console.log(`Unexpected error:`, e);
+    process.exit(1);
+
+}
+
+if (require.main === module)
+  main().catch(console.error);
+
+```
+
+## Security considerations
+
+All private keys are stored in the AWS Key Management Service. Keys are generated within the KMS and never leave it, i.e., all sign operations are executed within the KMS. Furthermore, we rely on dynamically generated AWS Identity and Access Management policies to isolate access to the private keys among tenants.
+
+As for API secrets, these are only kept in memory during creation when they are sent to the client. After that, they are hashed and stored securely in AWS Cognito, which is used behind the scenes for authenticating Relayer requests. This makes API keys easy to rotate while preserving the same private key on the KMS.
+
+### Rollups
+
+When sending transactions to a rollup chain, such as Arbitrum or Optimism, Relayers currently depend on the chain’s sequencer/aggregator. This means that, if the sequencer goes down or censors transactions, Relayers will not bypass it and commit directly to layer 1.
+
+## Inactivity
+
+Testnet relayers are considered inactive if they haven’t sent any transactions in more than 60 days. When a testnet relayer is inactive, we provide a 14-day grace period to mark the relayer as active. If users don’t take any action, the relayer will be automatically deleted once the period is over.

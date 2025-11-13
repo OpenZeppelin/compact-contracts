@@ -1,0 +1,83 @@
+---
+title: Cryptography
+---
+
+<Callout>
+This document is better viewed at https://docs.openzeppelin.com/contracts/api/cryptography
+</Callout>
+
+This collection of libraries provides simple and safe ways to use different cryptographic primitives.
+
+The following related EIPs are in draft status and can be found in the drafts directory.
+
+* EIP712
+
+## Libraries
+
+### ``ECDSA``
+
+Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
+
+These functions can be used to verify that a message was signed by the holder
+of the private keys of a given address.
+
+**Functions**
+
+* [`recover(hash, signature)`](#ECDSA-recover-bytes32-bytes-)
+* [`recover(hash, v, r, s)`](#ECDSA-recover-bytes32-uint8-bytes32-bytes32-)
+* [`toEthSignedMessageHash(hash)`](#ECDSA-toEthSignedMessageHash-bytes32-)
+
+<a id="ECDSA-recover"></a>
+
+#### `recover(bytes32 hash, bytes signature) → address *internal*`
+
+Returns the address that signed a hashed message (`hash`) with
+`signature`. This address can then be used for verification purposes.
+
+The `ecrecover` EVM opcode allows for malleable (non-unique) signatures:
+this function rejects them by requiring the `s` value to be in the lower
+half order, and the `v` value to be either 27 or 28.
+
+<Callout type='warn'>
+`hash` _must_ be the result of a hash operation for the
+verification to be secure: it is possible to craft signatures that
+recover to arbitrary addresses for non-hashed data. A safe way to ensure
+this is by receiving a hash of the original message (which may otherwise
+be too long), and then calling toEthSignedMessageHash on it.
+</Callout>
+
+<a id="ECDSA-recover"></a>
+
+#### `recover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) → address *internal*`
+
+Overload of ECDSA-recover-bytes32-bytes- that receives the `v`,
+`r` and `s` signature fields separately.
+
+<a id="ECDSA-toEthSignedMessageHash"></a>
+
+#### `toEthSignedMessageHash(bytes32 hash) → bytes32 *internal*`
+
+Returns an Ethereum Signed Message, created from a `hash`. This
+replicates the behavior of the
+[`eth_sign`](https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_sign)
+JSON-RPC method.
+
+See recover.
+/
+
+### ``MerkleProof``
+
+These functions deal with verification of Merkle trees (hash trees),
+
+**Functions**
+
+* [`verify(proof, root, leaf)`](#MerkleProof-verify-bytes32---bytes32-bytes32-)
+
+<a id="ECDSA-verify"></a>
+
+#### `verify(bytes32[] proof, bytes32 root, bytes32 leaf) → bool *internal*`
+
+Returns true if a `leaf` can be proved to be a part of a Merkle tree
+defined by `root`. For this, a `proof` must be provided, containing
+sibling hashes on the branch from the leaf to the root of the tree. Each
+pair of leaves and each pair of pre-images are assumed to be sorted.

@@ -1,0 +1,1403 @@
+[
+	{
+		"type": "page",
+		"name": "Getting Started",
+		"url": "/contracts"
+	},
+	{
+		"type": "separator",
+		"name": "Solidity Contracts"
+	},
+	{
+		"type": "folder",
+		"name": "OpenZeppelin Contracts",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/contracts/5.x"
+			},
+			{
+				"type": "page",
+				"name": "Contracts Wizard",
+				"url": "/contracts/5.x/wizard"
+			},
+			{
+				"type": "page",
+				"name": "Extending Contracts",
+				"url": "/contracts/5.x/extending-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Using with Upgrades",
+				"url": "/contracts/5.x/upgradeable"
+			},
+			{
+				"type": "page",
+				"name": "Backwards Compatibility",
+				"url": "/contracts/5.x/backwards-compatibility"
+			},
+			{
+				"type": "page",
+				"name": "Access Control",
+				"url": "/contracts/5.x/access-control"
+			},
+			{
+				"type": "folder",
+				"name": "Account Abstraction",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/contracts/5.x/account-abstraction"
+				},
+				"children": [
+					{
+						"type": "folder",
+						"name": "Accounts",
+						"index": {
+							"type": "page",
+							"name": "Overview",
+							"url": "/contracts/5.x/accounts"
+						},
+						"children": [
+							{
+								"type": "page",
+								"name": "EOA Delegation",
+								"url": "/contracts/5.x/eoa-delegation"
+							},
+							{
+								"type": "page",
+								"name": "Multisig",
+								"url": "/contracts/5.x/multisig"
+							}
+						]
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Tokens",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/contracts/5.x/tokens"
+				},
+				"children": [
+					{
+						"type": "folder",
+						"name": "ERC-20",
+						"index": {
+							"type": "page",
+							"name": "Overview",
+							"url": "/contracts/5.x/erc20"
+						},
+						"children": [
+							{
+								"type": "page",
+								"name": "Creating Supply",
+								"url": "/contracts/5.x/erc20-supply"
+							}
+						]
+					},
+					{
+						"type": "page",
+						"name": "ERC-721",
+						"url": "/contracts/5.x/erc721"
+					},
+					{
+						"type": "page",
+						"name": "ERC-1155",
+						"url": "/contracts/5.x/erc1155"
+					},
+					{
+						"type": "page",
+						"name": "ERC-4626",
+						"url": "/contracts/5.x/erc4626"
+					},
+					{
+						"type": "page",
+						"name": "ERC-6909",
+						"url": "/contracts/5.x/erc6909"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Governance",
+				"url": "/contracts/5.x/governance"
+			},
+			{
+				"type": "page",
+				"name": "Utilities",
+				"url": "/contracts/5.x/utilities"
+			},
+			{
+				"type": "folder",
+				"name": "Subgraphs",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/contracts/5.x/subgraphs"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Automatic Generation",
+						"url": "/contracts/5.x/subgraphs/generate"
+					},
+					{
+						"type": "page",
+						"name": "Query Examples",
+						"url": "/contracts/5.x/subgraphs/examples/query"
+					},
+					{
+						"type": "page",
+						"name": "Subgraph Examples",
+						"url": "/contracts/5.x/subgraphs/examples/subgraph"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "FAQ",
+				"url": "/contracts/5.x/faq"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/contracts/5.x/changelog"
+			},
+			{
+				"type": "folder",
+				"name": "API Reference",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/contracts/5.x/api"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Access",
+						"url": "/contracts/5.x/api/access"
+					},
+					{
+						"type": "page",
+						"name": "Account",
+						"url": "/contracts/5.x/api/account"
+					},
+					{
+						"type": "page",
+						"name": "Crosschain",
+						"url": "/contracts/5.x/api/crosschain"
+					},
+					{
+						"type": "page",
+						"name": "Finance",
+						"url": "/contracts/5.x/api/finance"
+					},
+					{
+						"type": "page",
+						"name": "Governance",
+						"url": "/contracts/5.x/api/governance"
+					},
+					{
+						"type": "page",
+						"name": "Interfaces",
+						"url": "/contracts/5.x/api/interfaces"
+					},
+					{
+						"type": "page",
+						"name": "Meta Transactions",
+						"url": "/contracts/5.x/api/metatx"
+					},
+					{
+						"type": "page",
+						"name": "Proxy",
+						"url": "/contracts/5.x/api/proxy"
+					},
+					{
+						"type": "folder",
+						"name": "Token",
+						"children": [
+							{
+								"type": "page",
+								"name": "Common",
+								"url": "/contracts/5.x/api/token/common"
+							},
+							{
+								"type": "page",
+								"name": "ERC20",
+								"url": "/contracts/5.x/api/token/ERC20"
+							},
+							{
+								"type": "page",
+								"name": "ERC721",
+								"url": "/contracts/5.x/api/token/ERC721"
+							},
+							{
+								"type": "page",
+								"name": "ERC1155",
+								"url": "/contracts/5.x/api/token/ERC1155"
+							},
+							{
+								"type": "page",
+								"name": "ERC6909",
+								"url": "/contracts/5.x/api/token/ERC6909"
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "Utils",
+						"index": {
+							"type": "page",
+							"name": "Overview",
+							"url": "/contracts/5.x/api/utils"
+						},
+						"children": [
+							{
+								"type": "page",
+								"name": "Cryptography",
+								"url": "/contracts/5.x/api/utils/cryptography"
+							}
+						]
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Previous Versions",
+				"children": [
+					{
+						"type": "folder",
+						"name": "v4",
+						"children": [
+							{
+								"type": "page",
+								"name": "Overview",
+								"url": "/contracts/4.x"
+							},
+							{
+								"type": "page",
+								"name": "Extending Contracts",
+								"url": "/contracts/4.x/extending-contracts"
+							},
+							{
+								"type": "page",
+								"name": "Using with Upgrades",
+								"url": "/contracts/4.x/upgradeable"
+							},
+							{
+								"type": "page",
+								"name": "Releases & Stability",
+								"url": "/contracts/4.x/releases-stability"
+							},
+							{
+								"type": "page",
+								"name": "Access Control",
+								"url": "/contracts/4.x/access-control"
+							},
+							{
+								"type": "folder",
+								"name": "Tokens",
+								"index": {
+									"type": "page",
+									"name": "Overview",
+									"url": "/contracts/4.x/tokens"
+								},
+								"children": [
+									{
+										"type": "folder",
+										"name": "ERC-20",
+										"index": {
+											"type": "page",
+											"name": "Overview",
+											"url": "/contracts/4.x/erc20"
+										},
+										"children": [
+											{
+												"type": "page",
+												"name": "Creating Supply",
+												"url": "/contracts/4.x/erc20-supply"
+											}
+										]
+									},
+									{
+										"type": "page",
+										"name": "ERC-721",
+										"url": "/contracts/4.x/erc721"
+									},
+									{
+										"type": "page",
+										"name": "ERC-777",
+										"url": "/contracts/4.x/erc777"
+									},
+									{
+										"type": "page",
+										"name": "ERC-1155",
+										"url": "/contracts/4.x/erc1155"
+									},
+									{
+										"type": "page",
+										"name": "ERC-4626",
+										"url": "/contracts/4.x/erc4626"
+									}
+								]
+							},
+							{
+								"type": "page",
+								"name": "Crosschain",
+								"url": "/contracts/4.x/crosschain"
+							},
+							{
+								"type": "page",
+								"name": "Governance",
+								"url": "/contracts/4.x/governance"
+							},
+							{
+								"type": "page",
+								"name": "Utilities",
+								"url": "/contracts/4.x/utilities"
+							},
+							{
+								"type": "page",
+								"name": "Drafts",
+								"url": "/contracts/4.x/drafts"
+							},
+							{
+								"type": "page",
+								"name": "Crowdsales (Legacy)",
+								"url": "/contracts/4.x/crowdsales"
+							},
+							{
+								"type": "folder",
+								"name": "API Reference",
+								"index": {
+									"type": "page",
+									"name": "Overview",
+									"url": "/contracts/4.x/api"
+								},
+								"children": [
+									{
+										"type": "page",
+										"name": "Access",
+										"url": "/contracts/4.x/api/access"
+									},
+									{
+										"type": "page",
+										"name": "Crosschain",
+										"url": "/contracts/4.x/api/crosschain"
+									},
+									{
+										"type": "page",
+										"name": "Finance",
+										"url": "/contracts/4.x/api/finance"
+									},
+									{
+										"type": "page",
+										"name": "Governance",
+										"url": "/contracts/4.x/api/governance"
+									},
+									{
+										"type": "page",
+										"name": "Interfaces",
+										"url": "/contracts/4.x/api/interfaces"
+									},
+									{
+										"type": "page",
+										"name": "Meta Transactions",
+										"url": "/contracts/4.x/api/metatx"
+									},
+									{
+										"type": "page",
+										"name": "Proxy",
+										"url": "/contracts/4.x/api/proxy"
+									},
+									{
+										"type": "page",
+										"name": "Security",
+										"url": "/contracts/4.x/api/security"
+									},
+									{
+										"type": "folder",
+										"name": "Token",
+										"children": [
+											{
+												"type": "page",
+												"name": "Common",
+												"url": "/contracts/4.x/api/token/common"
+											},
+											{
+												"type": "page",
+												"name": "ERC20",
+												"url": "/contracts/4.x/api/token/ERC20"
+											},
+											{
+												"type": "page",
+												"name": "ERC721",
+												"url": "/contracts/4.x/api/token/ERC721"
+											},
+											{
+												"type": "page",
+												"name": "ERC777",
+												"url": "/contracts/4.x/api/token/ERC777"
+											},
+											{
+												"type": "page",
+												"name": "ERC1155",
+												"url": "/contracts/4.x/api/token/ERC1155"
+											}
+										]
+									},
+									{
+										"type": "page",
+										"name": "Utils",
+										"url": "/contracts/4.x/api/utils"
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "v3",
+						"children": [
+							{
+								"type": "page",
+								"name": "Overview",
+								"url": "/contracts/3.x"
+							},
+							{
+								"type": "page",
+								"name": "Extending Contracts",
+								"url": "/contracts/3.x/extending-contracts"
+							},
+							{
+								"type": "page",
+								"name": "Using with Upgrades",
+								"url": "/contracts/3.x/upgradeable"
+							},
+							{
+								"type": "page",
+								"name": "Releases & Stability",
+								"url": "/contracts/3.x/releases-stability"
+							},
+							{
+								"type": "page",
+								"name": "Access Control",
+								"url": "/contracts/3.x/access-control"
+							},
+							{
+								"type": "folder",
+								"name": "Tokens",
+								"index": {
+									"type": "page",
+									"name": "Overview",
+									"url": "/contracts/3.x/tokens"
+								},
+								"children": [
+									{
+										"type": "folder",
+										"name": "ERC-20",
+										"index": {
+											"type": "page",
+											"name": "Overview",
+											"url": "/contracts/3.x/erc20"
+										},
+										"children": [
+											{
+												"type": "page",
+												"name": "Creating Supply",
+												"url": "/contracts/3.x/erc20-supply"
+											}
+										]
+									},
+									{
+										"type": "page",
+										"name": "ERC-721",
+										"url": "/contracts/3.x/erc721"
+									},
+									{
+										"type": "page",
+										"name": "ERC-777",
+										"url": "/contracts/3.x/erc777"
+									},
+									{
+										"type": "page",
+										"name": "ERC-1155",
+										"url": "/contracts/3.x/erc1155"
+									}
+								]
+							},
+							{
+								"type": "folder",
+								"name": "Gas Station Network",
+								"index": {
+									"type": "page",
+									"name": "Overview",
+									"url": "/contracts/3.x/gsn"
+								},
+								"children": [
+									{
+										"type": "page",
+										"name": "Strategies",
+										"url": "/contracts/3.x/gsn-strategies"
+									}
+								]
+							},
+							{
+								"type": "page",
+								"name": "Utilities",
+								"url": "/contracts/3.x/utilities"
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Community Contracts",
+		"index": {
+			"type": "page",
+			"name": "Overview",
+			"url": "/community-contracts"
+		},
+		"children": [
+			{
+				"type": "folder",
+				"name": "Account Abstraction",
+				"children": [
+					{
+						"type": "page",
+						"name": "Modules",
+						"url": "/community-contracts/account-modules"
+					},
+					{
+						"type": "page",
+						"name": "Paymasters",
+						"url": "/community-contracts/paymasters"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Crosschain",
+				"url": "/community-contracts/crosschain"
+			},
+			{
+				"type": "page",
+				"name": "Utilities",
+				"url": "/community-contracts/utilities"
+			},
+			{
+				"type": "folder",
+				"name": "API Reference",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/community-contracts/api"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Access",
+						"url": "/community-contracts/api/access"
+					},
+					{
+						"type": "page",
+						"name": "Account",
+						"url": "/community-contracts/api/account"
+					},
+					{
+						"type": "page",
+						"name": "Crosschain",
+						"url": "/community-contracts/api/crosschain"
+					},
+					{
+						"type": "page",
+						"name": "Interfaces",
+						"url": "/community-contracts/api/interfaces"
+					},
+					{
+						"type": "page",
+						"name": "Proxy",
+						"url": "/community-contracts/api/proxy"
+					},
+					{
+						"type": "page",
+						"name": "Token",
+						"url": "/community-contracts/api/token"
+					},
+					{
+						"type": "page",
+						"name": "Utils",
+						"url": "/community-contracts/api/utils"
+					},
+					{
+						"type": "page",
+						"name": "Cryptography",
+						"url": "/community-contracts/api/utils/cryptography"
+					}
+				]
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Upgrades Plugins",
+		"index": {
+			"type": "page",
+			"name": "Overview",
+			"url": "/upgrades-plugins"
+		},
+		"children": [
+			{
+				"type": "folder",
+				"name": "Using with Hardhat",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/upgrades-plugins/hardhat-upgrades"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Network Files",
+						"url": "/upgrades-plugins/network-files"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Using with Foundry",
+				"url": "/upgrades-plugins/foundry/foundry-upgrades"
+			},
+			{
+				"type": "page",
+				"name": "Writing Upgradeable Contracts",
+				"url": "/upgrades-plugins/writing-upgradeable"
+			},
+			{
+				"type": "page",
+				"name": "Proxy Upgrade Pattern",
+				"url": "/upgrades-plugins/proxies"
+			},
+			{
+				"type": "page",
+				"name": "Frequently Asked Questions",
+				"url": "/upgrades-plugins/faq"
+			},
+			{
+				"type": "separator",
+				"name": "API Reference"
+			},
+			{
+				"type": "page",
+				"name": "Hardhat Upgrades API",
+				"url": "/upgrades-plugins/api-hardhat-upgrades"
+			},
+			{
+				"type": "folder",
+				"name": "Foundry Upgrades API",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/upgrades-plugins/foundry/api"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Upgrades",
+						"url": "/upgrades-plugins/foundry/api/Upgrades"
+					},
+					{
+						"type": "page",
+						"name": "LegacyUpgrades",
+						"url": "/upgrades-plugins/foundry/api/LegacyUpgrades"
+					},
+					{
+						"type": "page",
+						"name": "Defender",
+						"url": "/upgrades-plugins/foundry/api/Defender"
+					},
+					{
+						"type": "page",
+						"name": "Options",
+						"url": "/upgrades-plugins/foundry/api/Options"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Upgrades Core & CLI",
+				"url": "/upgrades-plugins/api-core"
+			}
+		]
+	},
+	{
+		"type": "page",
+		"name": "Contracts Wizard",
+		"url": "/wizard"
+	},
+	{
+		"type": "folder",
+		"name": "Learn",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/contracts/5.x/learn"
+			},
+			{
+				"type": "page",
+				"name": "Setting up a Node project",
+				"url": "/contracts/5.x/learn/setting-up-a-node-project"
+			},
+			{
+				"type": "page",
+				"name": "Developing smart contracts",
+				"url": "/contracts/5.x/learn/developing-smart-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Deploying and interacting",
+				"url": "/contracts/5.x/learn/deploying-and-interacting"
+			},
+			{
+				"type": "page",
+				"name": "Writing automated tests",
+				"url": "/contracts/5.x/learn/writing-automated-tests"
+			},
+			{
+				"type": "page",
+				"name": "Connecting to public test networks",
+				"url": "/contracts/5.x/learn/connecting-to-public-test-networks"
+			},
+			{
+				"type": "page",
+				"name": "Upgrading smart contracts",
+				"url": "/contracts/5.x/learn/upgrading-smart-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Preparing for mainnet",
+				"url": "/contracts/5.x/learn/preparing-for-mainnet"
+			},
+			{
+				"type": "page",
+				"name": "WebAuthn Smart Accounts",
+				"url": "/contracts/5.x/learn/webauthn-smart-accounts"
+			}
+		]
+	},
+	{
+		"type": "separator",
+		"name": "Open Source Tools"
+	},
+	{
+		"type": "folder",
+		"name": "Relayer",
+		"index": {
+			"type": "page",
+			"name": "Overview",
+			"url": "/relayer/1.1.x"
+		},
+		"children": [
+			{
+				"type": "page",
+				"name": "Quickstart",
+				"url": "/relayer/1.1.x/quickstart"
+			},
+			{
+				"type": "folder",
+				"name": "Configuration",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/relayer/1.1.x/configuration"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Signers",
+						"url": "/relayer/1.1.x/configuration/signers"
+					},
+					{
+						"type": "page",
+						"name": "Network Configuration",
+						"url": "/relayer/1.1.x/network_configuration"
+					},
+					{
+						"type": "page",
+						"name": "Storage Configuration",
+						"url": "/relayer/1.1.x/configuration/storage"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "EVM Integration",
+				"url": "/relayer/1.1.x/evm"
+			},
+			{
+				"type": "page",
+				"name": "Solana Integration",
+				"url": "/relayer/1.1.x/solana"
+			},
+			{
+				"type": "folder",
+				"name": "API Reference",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/relayer/1.1.x/api"
+				},
+				"children": [
+					{
+						"type": "folder",
+						"name": "Relayers",
+						"children": [
+							{
+								"type": "page",
+								"name": "List Relayers",
+								"url": "/relayer/1.1.x/api/listRelayers"
+							},
+							{
+								"type": "page",
+								"name": "Create Relayer",
+								"url": "/relayer/1.1.x/api/createRelayer"
+							},
+							{
+								"type": "page",
+								"name": "Get Relayer",
+								"url": "/relayer/1.1.x/api/getRelayer"
+							},
+							{
+								"type": "page",
+								"name": "Delete Relayer",
+								"url": "/relayer/1.1.x/api/deleteRelayer"
+							},
+							{
+								"type": "page",
+								"name": "Update Relayer",
+								"url": "/relayer/1.1.x/api/updateRelayer"
+							},
+							{
+								"type": "page",
+								"name": "Get Relayer Balance",
+								"url": "/relayer/1.1.x/api/getRelayerBalance"
+							},
+							{
+								"type": "page",
+								"name": "RPC",
+								"url": "/relayer/1.1.x/api/rpc"
+							},
+							{
+								"type": "page",
+								"name": "Sign",
+								"url": "/relayer/1.1.x/api/sign"
+							},
+							{
+								"type": "page",
+								"name": "Sign Transaction",
+								"url": "/relayer/1.1.x/api/signTransaction"
+							},
+							{
+								"type": "page",
+								"name": "Sign Typed Data",
+								"url": "/relayer/1.1.x/api/signTypedData"
+							},
+							{
+								"type": "page",
+								"name": "Get Relayer Status",
+								"url": "/relayer/1.1.x/api/getRelayerStatus"
+							},
+							{
+								"type": "page",
+								"name": "Send Transaction",
+								"url": "/relayer/1.1.x/api/sendTransaction"
+							},
+							{
+								"type": "page",
+								"name": "List Transactions",
+								"url": "/relayer/1.1.x/api/listTransactions"
+							},
+							{
+								"type": "page",
+								"name": "Get Transaction by Nonce",
+								"url": "/relayer/1.1.x/api/getTransactionByNonce"
+							},
+							{
+								"type": "page",
+								"name": "Delete Pending Transactions",
+								"url": "/relayer/1.1.x/api/deletePendingTransactions"
+							},
+							{
+								"type": "page",
+								"name": "Get Transaction by ID",
+								"url": "/relayer/1.1.x/api/getTransactionById"
+							},
+							{
+								"type": "page",
+								"name": "Replace Transaction",
+								"url": "/relayer/1.1.x/api/replaceTransaction"
+							},
+							{
+								"type": "page",
+								"name": "Cancel Transaction",
+								"url": "/relayer/1.1.x/api/cancelTransaction"
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "Plugins",
+						"children": [
+							{
+								"type": "page",
+								"name": "Call Plugin",
+								"url": "/relayer/1.1.x/api/callPlugin"
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "Notifications",
+						"children": [
+							{
+								"type": "page",
+								"name": "List Notifications",
+								"url": "/relayer/1.1.x/api/listNotifications"
+							},
+							{
+								"type": "page",
+								"name": "Create Notification",
+								"url": "/relayer/1.1.x/api/createNotification"
+							},
+							{
+								"type": "page",
+								"name": "Get Notification",
+								"url": "/relayer/1.1.x/api/getNotification"
+							},
+							{
+								"type": "page",
+								"name": "Delete Notification",
+								"url": "/relayer/1.1.x/api/deleteNotification"
+							},
+							{
+								"type": "page",
+								"name": "Update Notification",
+								"url": "/relayer/1.1.x/api/updateNotification"
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "Signers",
+						"children": [
+							{
+								"type": "page",
+								"name": "List Signers",
+								"url": "/relayer/1.1.x/api/listSigners"
+							},
+							{
+								"type": "page",
+								"name": "Create Signer",
+								"url": "/relayer/1.1.x/api/createSigner"
+							},
+							{
+								"type": "page",
+								"name": "Get Signer",
+								"url": "/relayer/1.1.x/api/getSigner"
+							},
+							{
+								"type": "page",
+								"name": "Delete Signer",
+								"url": "/relayer/1.1.x/api/deleteSigner"
+							},
+							{
+								"type": "page",
+								"name": "Update Signer",
+								"url": "/relayer/1.1.x/api/updateSigner"
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "Metrics",
+						"children": [
+							{
+								"type": "page",
+								"name": "Scrape Metrics",
+								"url": "/relayer/1.1.x/api/scrape_metrics"
+							},
+							{
+								"type": "page",
+								"name": "List Metrics",
+								"url": "/relayer/1.1.x/api/list_metrics"
+							},
+							{
+								"type": "page",
+								"name": "Metric Detail",
+								"url": "/relayer/1.1.x/api/metric_detail"
+							}
+						]
+					},
+					{
+						"type": "folder",
+						"name": "Health",
+						"children": [
+							{
+								"type": "page",
+								"name": "Health",
+								"url": "/relayer/1.1.x/api/health"
+							}
+						]
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Project Structure",
+				"url": "/relayer/1.1.x/structure"
+			},
+			{
+				"type": "page",
+				"name": "Project Roadmap",
+				"url": "/relayer/1.1.x/roadmap"
+			},
+			{
+				"type": "folder",
+				"name": "Plugins",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/relayer/1.1.x/plugins"
+				},
+				"children": []
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/relayer/1.1.x/changelog"
+			},
+			{
+				"type": "page",
+				"name": "Rust Book",
+				"url": "https://docs-v1-1--openzeppelin-relayer.netlify.app/openzeppelin_relayer/",
+				"external": true
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Monitor",
+		"index": {
+			"type": "page",
+			"name": "Overview",
+			"url": "/monitor/1.1.x"
+		},
+		"children": [
+			{
+				"type": "page",
+				"name": "Quickstart",
+				"url": "/monitor/1.1.x/quickstart"
+			},
+			{
+				"type": "page",
+				"name": "Architecture Guide",
+				"url": "/monitor/1.1.x/architecture"
+			},
+			{
+				"type": "page",
+				"name": "Project Structure",
+				"url": "/monitor/1.1.x/project-structure"
+			},
+			{
+				"type": "page",
+				"name": "RPC Client",
+				"url": "/monitor/1.1.x/rpc"
+			},
+			{
+				"type": "page",
+				"name": "Custom scripts",
+				"url": "/monitor/1.1.x/scripts"
+			},
+			{
+				"type": "page",
+				"name": "Error Handling",
+				"url": "/monitor/1.1.x/error"
+			},
+			{
+				"type": "page",
+				"name": "Testing",
+				"url": "/monitor/1.1.x/testing"
+			},
+			{
+				"type": "page",
+				"name": "Contribution guidelines",
+				"url": "/monitor/1.1.x/contribution"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/monitor/1.1.x/changelog"
+			},
+			{
+				"type": "page",
+				"name": "Rust Book",
+				"url": "https://docs-v1-1--openzeppelin-monitor.netlify.app/openzeppelin_monitor/",
+				"external": true
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "UI Builder",
+		"children": [
+			{
+				"type": "page",
+				"name": "Quickstart",
+				"url": "/ui-builder"
+			},
+			{
+				"type": "page",
+				"name": "Networks",
+				"url": "/ui-builder/networks"
+			},
+			{
+				"type": "page",
+				"name": "Loading Contracts",
+				"url": "/ui-builder/loading-contracts"
+			},
+			{
+				"type": "page",
+				"name": "Functions",
+				"url": "/ui-builder/functions"
+			},
+			{
+				"type": "page",
+				"name": "Customization",
+				"url": "/ui-builder/customization"
+			},
+			{
+				"type": "page",
+				"name": "Exporting and History",
+				"url": "/ui-builder/exporting-and-history"
+			},
+			{
+				"type": "page",
+				"name": "Building Adapters",
+				"url": "/ui-builder/building-adapters"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/ui-builder/changelog"
+			}
+		]
+	},
+	{
+		"type": "folder",
+		"name": "Defender",
+		"children": [
+			{
+				"type": "page",
+				"name": "Overview",
+				"url": "/defender"
+			},
+			{
+				"type": "folder",
+				"name": "Modules",
+				"children": [
+					{
+						"type": "page",
+						"name": "Code Inspector",
+						"url": "/defender/module/code"
+					},
+					{
+						"type": "page",
+						"name": "Audit",
+						"url": "/defender/module/audit"
+					},
+					{
+						"type": "page",
+						"name": "Deploy",
+						"url": "/defender/module/deploy"
+					},
+					{
+						"type": "page",
+						"name": "Relayers",
+						"url": "/defender/module/relayers"
+					},
+					{
+						"type": "page",
+						"name": "Monitor",
+						"url": "/defender/module/monitor"
+					},
+					{
+						"type": "page",
+						"name": "Actions",
+						"url": "/defender/module/actions"
+					},
+					{
+						"type": "page",
+						"name": "Transaction Proposals",
+						"url": "/defender/module/transaction-proposals"
+					},
+					{
+						"type": "page",
+						"name": "Address Book",
+						"url": "/defender/module/address-book"
+					},
+					{
+						"type": "page",
+						"name": "Access Control",
+						"url": "/defender/module/access-control"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Settings",
+				"index": {
+					"type": "page",
+					"name": "Overview",
+					"url": "/defender/settings"
+				},
+				"children": [
+					{
+						"type": "page",
+						"name": "Logs",
+						"url": "/defender/logs"
+					},
+					{
+						"type": "page",
+						"name": "Notifications",
+						"url": "/defender/settings/notifications"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Tutorials",
+				"children": [
+					{
+						"type": "page",
+						"name": "Deploy",
+						"url": "/defender/tutorial/deploy"
+					},
+					{
+						"type": "page",
+						"name": "Relayer",
+						"url": "/defender/tutorial/relayer"
+					},
+					{
+						"type": "page",
+						"name": "Monitor",
+						"url": "/defender/tutorial/monitor"
+					},
+					{
+						"type": "page",
+						"name": "Actions",
+						"url": "/defender/tutorial/actions"
+					},
+					{
+						"type": "page",
+						"name": "Access Control",
+						"url": "/defender/tutorial/access-control"
+					},
+					{
+						"type": "page",
+						"name": "Workflows",
+						"url": "/defender/tutorial/workflows"
+					}
+				]
+			},
+			{
+				"type": "folder",
+				"name": "Guides",
+				"children": [
+					{
+						"type": "page",
+						"name": "Deploy a smart contract on a forked network",
+						"url": "/defender/guide/forked-network"
+					},
+					{
+						"type": "page",
+						"name": "Adding a complete private network",
+						"url": "/defender/guide/private-network"
+					},
+					{
+						"type": "page",
+						"name": "Relaying gasless meta-transactions",
+						"url": "/defender/guide/meta-tx"
+					},
+					{
+						"type": "page",
+						"name": "Automatic monitoring for factory clones",
+						"url": "/defender/guide/factory-monitor"
+					},
+					{
+						"type": "page",
+						"name": "Managing roles of a TimelockController",
+						"url": "/defender/guide/timelock-roles"
+					},
+					{
+						"type": "page",
+						"name": "Managing usage notifications",
+						"url": "/defender/guide/usage-notification"
+					},
+					{
+						"type": "page",
+						"name": "Setup Fireblocks integrations within Defender",
+						"url": "/defender/guide/fireblock-defender-integration"
+					},
+					{
+						"type": "page",
+						"name": "Upgrading actions dependencies",
+						"url": "/defender/guide/upgrade-actions-dependencies"
+					}
+				]
+			},
+			{
+				"type": "page",
+				"name": "Defender as Code",
+				"url": "/defender/dac"
+			},
+			{
+				"type": "page",
+				"name": "Remix Plugin",
+				"url": "/defender/remix-plugin"
+			},
+			{
+				"type": "page",
+				"name": "Contracts Wizard Plugin",
+				"url": "/defender/wizard-plugin"
+			},
+			{
+				"type": "page",
+				"name": "SDK and API",
+				"url": "/defender/sdk"
+			},
+			{
+				"type": "page",
+				"name": "Integrations",
+				"url": "/defender/integrations"
+			},
+			{
+				"type": "page",
+				"name": "FAQ",
+				"url": "/defender/faq"
+			},
+			{
+				"type": "page",
+				"name": "Changelog",
+				"url": "/defender/changelog"
+			}
+		]
+	}
+]

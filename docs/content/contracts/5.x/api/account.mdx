@@ -1,0 +1,2422 @@
+---
+title: "Account"
+description: "Smart contract account utilities and implementations"
+---
+
+This directory includes contracts to build accounts for ERC-4337. These include:
+
+* [`Account`](#Account): An ERC-4337 smart account implementation that includes the core logic to process user operations.
+* [`AccountERC7579`](#AccountERC7579): An extension of `Account` that implements support for ERC-7579 modules.
+* [`AccountERC7579Hooked`](#AccountERC7579Hooked): An extension of `AccountERC7579` with support for a single hook module (type 4).
+* [`ERC7821`](#ERC7821): Minimal batch executor implementation contracts. Useful to enable easy batch execution for smart contracts.
+* [`ERC4337Utils`](#ERC4337Utils): Utility functions for working with ERC-4337 user operations.
+* [`ERC7579Utils`](#ERC7579Utils): Utility functions for working with ERC-7579 modules and account modularity.
+
+## Core
+
+[`Account`](#Account)
+
+## Extensions
+
+[`AccountERC7579`](#AccountERC7579)
+
+[`AccountERC7579Hooked`](#AccountERC7579Hooked)
+
+[`ERC7821`](#ERC7821)
+
+## Utilities
+
+[`ERC4337Utils`](#ERC4337Utils)
+
+[`ERC7579Utils`](#ERC7579Utils)
+
+<a id="Account"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Account`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/Account.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/Account.sol";
+```
+
+A simple ERC4337 account implementation. This base implementation only includes the minimal logic to process
+user operations.
+
+Developers must implement the [`AbstractSigner._rawSignatureValidation`](/contracts/5.x/api/utils/cryptography#AbstractSigner-_rawSignatureValidation-bytes32-bytes-) function to define the account's validation logic.
+
+<Callout>
+This core account doesn't include any mechanism for performing arbitrary external calls. This is an essential
+feature that all Account should have. We leave it up to the developers to implement the mechanism of their choice.
+Common choices include ERC-6900, ERC-7579 and ERC-7821 (among others).
+</Callout>
+
+<Callout type="warn">
+Implementing a mechanism to validate signatures is a security-sensitive operation as it may allow an
+attacker to bypass the account's security measures. Check out [`SignerECDSA`](/contracts/5.x/api/utils/cryptography#SignerECDSA), [`SignerP256`](/contracts/5.x/api/utils/cryptography#SignerP256), or [`SignerRSA`](/contracts/5.x/api/utils/cryptography#SignerRSA) for
+digital signature validation implementations.
+</Callout>
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [onlyEntryPointOrSelf()](#Account-onlyEntryPointOrSelf--)
+- [onlyEntryPoint()](#Account-onlyEntryPoint--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [entryPoint()](#Account-entryPoint--)
+- [getNonce()](#Account-getNonce--)
+- [getNonce(key)](#Account-getNonce-uint192-)
+- [validateUserOp(userOp, userOpHash, missingAccountFunds)](#Account-validateUserOp-struct-PackedUserOperation-bytes32-uint256-)
+- [_validateUserOp(userOp, userOpHash, signature)](#Account-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-)
+- [_signableUserOpHash(, userOpHash)](#Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-)
+- [_payPrefund(missingAccountFunds)](#Account-_payPrefund-uint256-)
+- [_checkEntryPoint()](#Account-_checkEntryPoint--)
+- [_checkEntryPointOrSelf()](#Account-_checkEntryPointOrSelf--)
+- [receive()](#Account-receive--)
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+- [_rawSignatureValidation(hash, signature)](#AbstractSigner-_rawSignatureValidation-bytes32-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [AccountUnauthorized(sender)](#Account-AccountUnauthorized-address-)
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="Account-onlyEntryPointOrSelf--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyEntryPointOrSelf()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-onlyEntryPointOrSelf--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Revert if the caller is not the entry point or the account itself.
+
+</div>
+</div>
+
+<a id="Account-onlyEntryPoint--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyEntryPoint()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-onlyEntryPoint--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Revert if the caller is not the entry point.
+
+</div>
+</div>
+
+<a id="Account-entryPoint--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">entryPoint() → contract IEntryPoint</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Account-entryPoint--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Canonical entry point for the account that forwards and validates user operations.
+
+</div>
+</div>
+
+<a id="Account-getNonce--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getNonce() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Account-getNonce--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Return the account nonce for the canonical sequence.
+
+</div>
+</div>
+
+<a id="Account-getNonce-uint192-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getNonce(uint192 key) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Account-getNonce-uint192-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Return the account nonce for a given sequence (key).
+
+</div>
+</div>
+
+<a id="Account-validateUserOp-struct-PackedUserOperation-bytes32-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">validateUserOp(struct PackedUserOperation userOp, bytes32 userOpHash, uint256 missingAccountFunds) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="Account-validateUserOp-struct-PackedUserOperation-bytes32-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates a user operation.
+
+* MUST validate the caller is a trusted EntryPoint
+* MUST validate that the signature is a valid signature of the userOpHash, and SHOULD
+  return SIG_VALIDATION_FAILED (and not revert) on signature mismatch. Any other error MUST revert.
+* MUST pay the entryPoint (caller) at least the “missingAccountFunds” (which might
+  be zero, in case the current account’s deposit is high enough)
+
+Returns an encoded packed validation data that is composed of the following elements:
+
+- `authorizer` (`address`): 0 for success, 1 for failure, otherwise the address of an authorizer contract
+- `validUntil` (`uint48`): The UserOp is valid only up to this time. Zero for “infinite”.
+- `validAfter` (`uint48`): The UserOp is valid only after this time.
+
+</div>
+</div>
+
+<a id="Account-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateUserOp(struct PackedUserOperation userOp, bytes32 userOpHash, bytes signature) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the validationData for a given user operation. By default, this checks the signature of the
+signable hash (produced by [`Account._signableUserOpHash`](#Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-)) using the abstract signer ([`AbstractSigner._rawSignatureValidation`](/contracts/5.x/api/utils/cryptography#AbstractSigner-_rawSignatureValidation-bytes32-bytes-)).
+
+The `signature` parameter is taken directly from the user operation's `signature` field.
+This design enables derived contracts to implement custom signature handling logic,
+such as embedding additional data within the signature and processing it by overriding this function
+and optionally invoking `super`.
+
+<Callout>
+The userOpHash is assumed to be correct. Calling this function with a userOpHash that does not match the
+userOp will result in undefined behavior.
+</Callout>
+
+</div>
+</div>
+
+<a id="Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_signableUserOpHash(struct PackedUserOperation, bytes32 userOpHash) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Virtual function that returns the signable hash for a user operations. Since v0.8.0 of the entrypoint,
+`userOpHash` is an EIP-712 hash that can be signed directly.
+
+</div>
+</div>
+
+<a id="Account-_payPrefund-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_payPrefund(uint256 missingAccountFunds)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-_payPrefund-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sends the missing funds for executing the user operation to the `entrypoint`.
+The `missingAccountFunds` must be defined by the entrypoint when calling [`Account.validateUserOp`](#Account-validateUserOp-struct-PackedUserOperation-bytes32-uint256-).
+
+</div>
+</div>
+
+<a id="Account-_checkEntryPoint--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkEntryPoint()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-_checkEntryPoint--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Ensures the caller is the `entrypoint`.
+
+</div>
+</div>
+
+<a id="Account-_checkEntryPointOrSelf--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkEntryPointOrSelf()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="Account-_checkEntryPointOrSelf--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Ensures the caller is the `entrypoint` or the account itself.
+
+</div>
+</div>
+
+<a id="Account-receive--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">receive()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="Account-receive--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Receive Ether.
+
+</div>
+</div>
+
+<a id="Account-AccountUnauthorized-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">AccountUnauthorized(address sender)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="Account-AccountUnauthorized-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Unauthorized call to the account.
+
+</div>
+</div>
+
+<a id="AccountERC7579"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AccountERC7579`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/extensions/draft-AccountERC7579.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/extensions/draft-AccountERC7579.sol";
+```
+
+Extension of [`Account`](#Account) that implements support for ERC-7579 modules.
+
+To comply with the ERC-1271 support requirement, this contract defers signature validation to
+installed validator modules by calling [`IERC7579Validator.isValidSignatureWithSender`](/contracts/5.x/api/interfaces#IERC7579Validator-isValidSignatureWithSender-address-bytes32-bytes-).
+
+This contract does not implement validation logic for user operations since this functionality
+is often delegated to self-contained validation modules. Developers must install a validator module
+upon initialization (or any other mechanism to enable execution from the account):
+
+```solidity
+contract MyAccountERC7579 is AccountERC7579, Initializable {
+  function initializeAccount(address validator, bytes calldata validatorData) public initializer {
+    _installModule(MODULE_TYPE_VALIDATOR, validator, validatorData);
+  }
+}
+```
+
+<Callout>
+* Hook support is not included. See [`AccountERC7579Hooked`](#AccountERC7579Hooked) for a version that hooks to execution.
+* Validator selection, when verifying either ERC-1271 signature or ERC-4337 UserOperation is implemented in
+  internal virtual functions [`AccountERC7579._extractUserOpValidator`](#AccountERC7579-_extractUserOpValidator-struct-PackedUserOperation-) and [`AccountERC7579._extractSignatureValidator`](#AccountERC7579-_extractSignatureValidator-bytes-). Both are implemented
+  following common practices. However, this part is not standardized in ERC-7579 (or in any follow-up ERC). Some
+  accounts may want to override these internal functions.
+* When combined with [`ERC7739`](/contracts/5.x/api/utils/cryptography#ERC7739), resolution ordering of [`AccountERC7579.isValidSignature`](#AccountERC7579-isValidSignature-bytes32-bytes-) may have an impact ([`ERC7739`](/contracts/5.x/api/utils/cryptography#ERC7739) does not
+  call super). Manual resolution might be necessary.
+* Static calls (using callType `0xfe`) are currently NOT supported.
+</Callout>
+<Callout type="warn">
+Removing all validator modules will render the account inoperable, as no user operations can be validated thereafter.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [onlyModule(moduleTypeId, additionalContext)](#AccountERC7579-onlyModule-uint256-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [fallback()](#AccountERC7579-fallback-bytes-)
+- [accountId()](#AccountERC7579-accountId--)
+- [supportsExecutionMode(encodedMode)](#AccountERC7579-supportsExecutionMode-bytes32-)
+- [supportsModule(moduleTypeId)](#AccountERC7579-supportsModule-uint256-)
+- [installModule(moduleTypeId, module, initData)](#AccountERC7579-installModule-uint256-address-bytes-)
+- [uninstallModule(moduleTypeId, module, deInitData)](#AccountERC7579-uninstallModule-uint256-address-bytes-)
+- [isModuleInstalled(moduleTypeId, module, additionalContext)](#AccountERC7579-isModuleInstalled-uint256-address-bytes-)
+- [execute(mode, executionCalldata)](#AccountERC7579-execute-bytes32-bytes-)
+- [executeFromExecutor(mode, executionCalldata)](#AccountERC7579-executeFromExecutor-bytes32-bytes-)
+- [isValidSignature(hash, signature)](#AccountERC7579-isValidSignature-bytes32-bytes-)
+- [_validateUserOp(userOp, userOpHash, signature)](#AccountERC7579-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-)
+- [_execute(mode, executionCalldata)](#AccountERC7579-_execute-Mode-bytes-)
+- [_installModule(moduleTypeId, module, initData)](#AccountERC7579-_installModule-uint256-address-bytes-)
+- [_uninstallModule(moduleTypeId, module, deInitData)](#AccountERC7579-_uninstallModule-uint256-address-bytes-)
+- [_fallback()](#AccountERC7579-_fallback--)
+- [_fallbackHandler(selector)](#AccountERC7579-_fallbackHandler-bytes4-)
+- [_checkModule(moduleTypeId, module, additionalContext)](#AccountERC7579-_checkModule-uint256-address-bytes-)
+- [_extractUserOpValidator(userOp)](#AccountERC7579-_extractUserOpValidator-struct-PackedUserOperation-)
+- [_extractSignatureValidator(signature)](#AccountERC7579-_extractSignatureValidator-bytes-)
+- [_decodeFallbackData(data)](#AccountERC7579-_decodeFallbackData-bytes-)
+- [_rawSignatureValidation(, )](#AccountERC7579-_rawSignatureValidation-bytes32-bytes-)
+#### IERC7579ModuleConfig [!toc]
+#### IERC7579AccountConfig [!toc]
+#### IERC7579Execution [!toc]
+#### IERC1271 [!toc]
+#### Account [!toc]
+- [entryPoint()](#Account-entryPoint--)
+- [getNonce()](#Account-getNonce--)
+- [getNonce(key)](#Account-getNonce-uint192-)
+- [validateUserOp(userOp, userOpHash, missingAccountFunds)](#Account-validateUserOp-struct-PackedUserOperation-bytes32-uint256-)
+- [_signableUserOpHash(, userOpHash)](#Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-)
+- [_payPrefund(missingAccountFunds)](#Account-_payPrefund-uint256-)
+- [_checkEntryPoint()](#Account-_checkEntryPoint--)
+- [_checkEntryPointOrSelf()](#Account-_checkEntryPointOrSelf--)
+- [receive()](#Account-receive--)
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC7579ModuleConfig [!toc]
+- [ModuleInstalled(moduleTypeId, module)](#IERC7579ModuleConfig-ModuleInstalled-uint256-address-)
+- [ModuleUninstalled(moduleTypeId, module)](#IERC7579ModuleConfig-ModuleUninstalled-uint256-address-)
+#### IERC7579AccountConfig [!toc]
+#### IERC7579Execution [!toc]
+#### IERC1271 [!toc]
+#### Account [!toc]
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC7579MissingFallbackHandler(selector)](#AccountERC7579-ERC7579MissingFallbackHandler-bytes4-)
+- [ERC7579CannotDecodeFallbackData()](#AccountERC7579-ERC7579CannotDecodeFallbackData--)
+#### IERC7579ModuleConfig [!toc]
+#### IERC7579AccountConfig [!toc]
+#### IERC7579Execution [!toc]
+#### IERC1271 [!toc]
+#### Account [!toc]
+- [AccountUnauthorized(sender)](#Account-AccountUnauthorized-address-)
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="AccountERC7579-onlyModule-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyModule(uint256 moduleTypeId, bytes additionalContext)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-onlyModule-uint256-bytes-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Modifier that checks if the caller is an installed module of the given type.
+
+</div>
+</div>
+
+<a id="AccountERC7579-fallback-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">fallback(bytes) → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="AccountERC7579-fallback-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`AccountERC7579._fallback`](#AccountERC7579-_fallback--).
+
+</div>
+</div>
+
+<a id="AccountERC7579-accountId--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">accountId() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-accountId--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the account id of the smart account
+
+</div>
+</div>
+
+<a id="AccountERC7579-supportsExecutionMode-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsExecutionMode(bytes32 encodedMode) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-supportsExecutionMode-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Supported call types:
+* Single (`0x00`): A single transaction execution.
+* Batch (`0x01`): A batch of transactions execution.
+* Delegate (`0xff`): A delegate call execution.
+
+Supported exec types:
+* Default (`0x00`): Default execution type (revert on failure).
+* Try (`0x01`): Try execution type (emits ERC7579TryExecuteFail on failure).
+
+</div>
+</div>
+
+<a id="AccountERC7579-supportsModule-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsModule(uint256 moduleTypeId) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-supportsModule-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Supported module types:
+
+* Validator: A module used during the validation phase to determine if a transaction is valid and
+should be executed on the account.
+* Executor: A module that can execute transactions on behalf of the smart account via a callback.
+* Fallback Handler: A module that can extend the fallback functionality of a smart account.
+
+</div>
+</div>
+
+<a id="AccountERC7579-installModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">installModule(uint256 moduleTypeId, address module, bytes initData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-installModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Installs a Module of a certain type on the smart account
+
+</div>
+</div>
+
+<a id="AccountERC7579-uninstallModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">uninstallModule(uint256 moduleTypeId, address module, bytes deInitData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-uninstallModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Uninstalls a Module of a certain type on the smart account
+
+</div>
+</div>
+
+<a id="AccountERC7579-isModuleInstalled-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isModuleInstalled(uint256 moduleTypeId, address module, bytes additionalContext) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-isModuleInstalled-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns whether a module is installed on the smart account
+
+</div>
+</div>
+
+<a id="AccountERC7579-execute-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execute(bytes32 mode, bytes executionCalldata)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-execute-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes a transaction on behalf of the account.
+
+</div>
+</div>
+
+<a id="AccountERC7579-executeFromExecutor-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">executeFromExecutor(bytes32 mode, bytes executionCalldata) → bytes[] returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-executeFromExecutor-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes a transaction on behalf of the account.
+        This function is intended to be called by Executor Modules
+
+</div>
+</div>
+
+<a id="AccountERC7579-isValidSignature-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isValidSignature(bytes32 hash, bytes signature) → bytes4</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579-isValidSignature-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Implement ERC-1271 through IERC7579Validator modules. If module based validation fails, fallback to
+"native" validation by the abstract signer.
+
+<Callout>
+when combined with [`ERC7739`](/contracts/5.x/api/utils/cryptography#ERC7739), resolution ordering may have an impact ([`ERC7739`](/contracts/5.x/api/utils/cryptography#ERC7739) does not call super).
+Manual resolution might be necessary.
+</Callout>
+
+</div>
+</div>
+
+<a id="AccountERC7579-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateUserOp(struct PackedUserOperation userOp, bytes32 userOpHash, bytes signature) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validates a user operation with [`Account._signableUserOpHash`](#Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-) and returns the validation data
+if the module specified by the first 20 bytes of the nonce key is installed. Falls back to
+[`Account._validateUserOp`](#Account-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-) otherwise.
+
+See [`AccountERC7579._extractUserOpValidator`](#AccountERC7579-_extractUserOpValidator-struct-PackedUserOperation-) for the module extraction logic.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_execute-Mode-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_execute(Mode mode, bytes executionCalldata) → bytes[] returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_execute-Mode-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+ERC-7579 execution logic. See [`AccountERC7579.supportsExecutionMode`](#AccountERC7579-supportsExecutionMode-bytes32-) for supported modes.
+
+Reverts if the call type is not supported.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_installModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_installModule(uint256 moduleTypeId, address module, bytes initData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_installModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Installs a module of the given type with the given initialization data.
+
+For the fallback module type, the `initData` is expected to be the (packed) concatenation of a 4-byte
+selector and the rest of the data to be sent to the handler when calling [`IERC7579Module.onInstall`](/contracts/5.x/api/interfaces#IERC7579Module-onInstall-bytes-).
+
+Requirements:
+
+* Module type must be supported. See [`AccountERC7579.supportsModule`](#AccountERC7579-supportsModule-uint256-). Reverts with [`ERC7579Utils.ERC7579UnsupportedModuleType`](#ERC7579Utils-ERC7579UnsupportedModuleType-uint256-).
+* Module must be of the given type. Reverts with [`ERC7579Utils.ERC7579MismatchedModuleTypeId`](#ERC7579Utils-ERC7579MismatchedModuleTypeId-uint256-address-).
+* Module must not be already installed. Reverts with [`ERC7579Utils.ERC7579AlreadyInstalledModule`](#ERC7579Utils-ERC7579AlreadyInstalledModule-uint256-address-).
+
+Emits a [`IERC7579ModuleConfig.ModuleInstalled`](/contracts/5.x/api/interfaces#IERC7579ModuleConfig-ModuleInstalled-uint256-address-) event.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_uninstallModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_uninstallModule(uint256 moduleTypeId, address module, bytes deInitData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_uninstallModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Uninstalls a module of the given type with the given de-initialization data.
+
+For the fallback module type, the `deInitData` is expected to be the (packed) concatenation of a 4-byte
+selector and the rest of the data to be sent to the handler when calling [`IERC7579Module.onUninstall`](/contracts/5.x/api/interfaces#IERC7579Module-onUninstall-bytes-).
+
+Requirements:
+
+* Module must be already installed. Reverts with [`ERC7579Utils.ERC7579UninstalledModule`](#ERC7579Utils-ERC7579UninstalledModule-uint256-address-) otherwise.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_fallback--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_fallback() → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_fallback--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Fallback function that delegates the call to the installed handler for the given selector.
+
+Reverts with [`AccountERC7579.ERC7579MissingFallbackHandler`](#AccountERC7579-ERC7579MissingFallbackHandler-bytes4-) if the handler is not installed.
+
+Calls the handler with the original `msg.sender` appended at the end of the calldata following
+the ERC-2771 format.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_fallbackHandler-bytes4-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_fallbackHandler(bytes4 selector) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_fallbackHandler-bytes4-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the fallback handler for the given selector. Returns `address(0)` if not installed.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_checkModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkModule(uint256 moduleTypeId, address module, bytes additionalContext)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_checkModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Checks if the module is installed. Reverts if the module is not installed.
+
+</div>
+</div>
+
+<a id="AccountERC7579-_extractUserOpValidator-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_extractUserOpValidator(struct PackedUserOperation userOp) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_extractUserOpValidator-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Extracts the nonce validator from the user operation.
+
+To construct a nonce key, set nonce as follows:
+
+```
+<module address (20 bytes)> | <key (4 bytes)> | <nonce (8 bytes)>
+```
+<Callout>
+The default behavior of this function replicates the behavior of
+[Safe adapter](https://github.com/rhinestonewtf/safe7579/blob/bb29e8b1a66658790c4169e72608e27d220f79be/src/Safe7579.sol#L266),
+[Etherspot's Prime Account](https://github.com/etherspot/etherspot-prime-contracts/blob/cfcdb48c4172cea0d66038324c0bae3288aa8caa/src/modular-etherspot-wallet/wallet/ModularEtherspotWallet.sol#L227), and
+[ERC7579 reference implementation](https://github.com/erc7579/erc7579-implementation/blob/16138d1afd4e9711f6c1425133538837bd7787b5/src/MSAAdvanced.sol#L247).
+</Callout>
+
+This is not standardized in ERC-7579 (or in any follow-up ERC). Some accounts may want to override these internal functions.
+
+For example, [Biconomy's Nexus](https://github.com/bcnmy/nexus/blob/54f4e19baaff96081a8843672977caf712ef19f4/contracts/lib/NonceLib.sol#L17)
+uses a similar yet incompatible approach (the validator address is also part of the nonce, but not at the same location)
+
+</div>
+</div>
+
+<a id="AccountERC7579-_extractSignatureValidator-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_extractSignatureValidator(bytes signature) → address module, bytes innerSignature</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_extractSignatureValidator-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Extracts the signature validator from the signature.
+
+To construct a signature, set the first 20 bytes as the module address and the remaining bytes as the
+signature data:
+
+```
+<module address (20 bytes)> | <signature data>
+```
+
+<Callout>
+The default behavior of this function replicates the behavior of
+[Safe adapter](https://github.com/rhinestonewtf/safe7579/blob/bb29e8b1a66658790c4169e72608e27d220f79be/src/Safe7579.sol#L350),
+[Biconomy's Nexus](https://github.com/bcnmy/nexus/blob/54f4e19baaff96081a8843672977caf712ef19f4/contracts/Nexus.sol#L239),
+[Etherspot's Prime Account](https://github.com/etherspot/etherspot-prime-contracts/blob/cfcdb48c4172cea0d66038324c0bae3288aa8caa/src/modular-etherspot-wallet/wallet/ModularEtherspotWallet.sol#L252), and
+[ERC7579 reference implementation](https://github.com/erc7579/erc7579-implementation/blob/16138d1afd4e9711f6c1425133538837bd7787b5/src/MSAAdvanced.sol#L296).
+</Callout>
+
+This is not standardized in ERC-7579 (or in any follow-up ERC). Some accounts may want to override these internal functions.
+
+<Callout>
+This function expects the signature to be at least 20 bytes long. Panics with [`Panic.ARRAY_OUT_OF_BOUNDS`](/contracts/5.x/api/utils#Panic-ARRAY_OUT_OF_BOUNDS-uint256) (0x32) otherwise.
+</Callout>
+
+</div>
+</div>
+
+<a id="AccountERC7579-_decodeFallbackData-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_decodeFallbackData(bytes data) → bytes4 selector, bytes remaining</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_decodeFallbackData-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Extract the function selector from initData/deInitData for MODULE_TYPE_FALLBACK
+
+<Callout>
+If we had calldata here, we could use calldata slice which are cheaper to manipulate and don't require
+actual copy. However, this would require `_installModule` to get a calldata bytes object instead of a memory
+bytes object. This would prevent calling `_installModule` from a contract constructor and would force the use
+of external initializers. That may change in the future, as most accounts will probably be deployed as
+clones/proxy/ERC-7702 delegates and therefore rely on initializers anyway.
+</Callout>
+
+</div>
+</div>
+
+<a id="AccountERC7579-_rawSignatureValidation-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_rawSignatureValidation(bytes32, bytes) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579-_rawSignatureValidation-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+By default, only use the modules for validation of userOp and signature. Disable raw signatures.
+
+</div>
+</div>
+
+<a id="AccountERC7579-ERC7579MissingFallbackHandler-bytes4-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579MissingFallbackHandler(bytes4 selector)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="AccountERC7579-ERC7579MissingFallbackHandler-bytes4-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The account's [`AccountERC7579.fallback`](#AccountERC7579-fallback-bytes-) was called with a selector that doesn't have an installed handler.
+
+</div>
+</div>
+
+<a id="AccountERC7579-ERC7579CannotDecodeFallbackData--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579CannotDecodeFallbackData()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="AccountERC7579-ERC7579CannotDecodeFallbackData--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The provided initData/deInitData for a fallback module is too short to extract a selector.
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `AccountERC7579Hooked`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/extensions/draft-AccountERC7579Hooked.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/extensions/draft-AccountERC7579Hooked.sol";
+```
+
+Extension of [`AccountERC7579`](#AccountERC7579) with support for a single hook module (type 4).
+
+If installed, this extension will call the hook module's [`IERC7579Hook.preCheck`](/contracts/5.x/api/interfaces#IERC7579Hook-preCheck-address-uint256-bytes-) before executing any operation
+with [`AccountERC7579._execute`](#AccountERC7579-_execute-Mode-bytes-) (including [`AccessManager.execute`](/contracts/5.x/api/access#AccessManager-execute-address-bytes-) and [`AccountERC7579.executeFromExecutor`](#AccountERC7579-executeFromExecutor-bytes32-bytes-) by default) and [`IERC7579Hook.postCheck`](/contracts/5.x/api/interfaces#IERC7579Hook-postCheck-bytes-) thereafter.
+
+<Callout>
+Hook modules break the check-effect-interaction pattern. In particular, the [`IERC7579Hook.preCheck`](/contracts/5.x/api/interfaces#IERC7579Hook-preCheck-address-uint256-bytes-) hook can
+lead to potentially dangerous reentrancy. Using the `withHook()` modifier is safe if no effect is performed
+before the preHook or after the postHook. That is the case on all functions here, but it may not be the case if
+functions that have this modifier are overridden. Developers should be extremely careful when implementing hook
+modules or further overriding functions that involve hooks.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [withHook()](#AccountERC7579Hooked-withHook--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [accountId()](#AccountERC7579Hooked-accountId--)
+- [hook()](#AccountERC7579Hooked-hook--)
+- [supportsModule(moduleTypeId)](#AccountERC7579Hooked-supportsModule-uint256-)
+- [isModuleInstalled(moduleTypeId, module, data)](#AccountERC7579Hooked-isModuleInstalled-uint256-address-bytes-)
+- [_installModule(moduleTypeId, module, initData)](#AccountERC7579Hooked-_installModule-uint256-address-bytes-)
+- [_uninstallModule(moduleTypeId, module, deInitData)](#AccountERC7579Hooked-_uninstallModule-uint256-address-bytes-)
+- [_execute(mode, executionCalldata)](#AccountERC7579Hooked-_execute-Mode-bytes-)
+- [_fallback()](#AccountERC7579Hooked-_fallback--)
+#### AccountERC7579 [!toc]
+- [fallback()](#AccountERC7579-fallback-bytes-)
+- [supportsExecutionMode(encodedMode)](#AccountERC7579-supportsExecutionMode-bytes32-)
+- [installModule(moduleTypeId, module, initData)](#AccountERC7579-installModule-uint256-address-bytes-)
+- [uninstallModule(moduleTypeId, module, deInitData)](#AccountERC7579-uninstallModule-uint256-address-bytes-)
+- [execute(mode, executionCalldata)](#AccountERC7579-execute-bytes32-bytes-)
+- [executeFromExecutor(mode, executionCalldata)](#AccountERC7579-executeFromExecutor-bytes32-bytes-)
+- [isValidSignature(hash, signature)](#AccountERC7579-isValidSignature-bytes32-bytes-)
+- [_validateUserOp(userOp, userOpHash, signature)](#AccountERC7579-_validateUserOp-struct-PackedUserOperation-bytes32-bytes-)
+- [_fallbackHandler(selector)](#AccountERC7579-_fallbackHandler-bytes4-)
+- [_checkModule(moduleTypeId, module, additionalContext)](#AccountERC7579-_checkModule-uint256-address-bytes-)
+- [_extractUserOpValidator(userOp)](#AccountERC7579-_extractUserOpValidator-struct-PackedUserOperation-)
+- [_extractSignatureValidator(signature)](#AccountERC7579-_extractSignatureValidator-bytes-)
+- [_decodeFallbackData(data)](#AccountERC7579-_decodeFallbackData-bytes-)
+- [_rawSignatureValidation(, )](#AccountERC7579-_rawSignatureValidation-bytes32-bytes-)
+#### IERC7579ModuleConfig [!toc]
+#### IERC7579AccountConfig [!toc]
+#### IERC7579Execution [!toc]
+#### IERC1271 [!toc]
+#### Account [!toc]
+- [entryPoint()](#Account-entryPoint--)
+- [getNonce()](#Account-getNonce--)
+- [getNonce(key)](#Account-getNonce-uint192-)
+- [validateUserOp(userOp, userOpHash, missingAccountFunds)](#Account-validateUserOp-struct-PackedUserOperation-bytes32-uint256-)
+- [_signableUserOpHash(, userOpHash)](#Account-_signableUserOpHash-struct-PackedUserOperation-bytes32-)
+- [_payPrefund(missingAccountFunds)](#Account-_payPrefund-uint256-)
+- [_checkEntryPoint()](#Account-_checkEntryPoint--)
+- [_checkEntryPointOrSelf()](#Account-_checkEntryPointOrSelf--)
+- [receive()](#Account-receive--)
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### AccountERC7579 [!toc]
+#### IERC7579ModuleConfig [!toc]
+- [ModuleInstalled(moduleTypeId, module)](#IERC7579ModuleConfig-ModuleInstalled-uint256-address-)
+- [ModuleUninstalled(moduleTypeId, module)](#IERC7579ModuleConfig-ModuleUninstalled-uint256-address-)
+#### IERC7579AccountConfig [!toc]
+#### IERC7579Execution [!toc]
+#### IERC1271 [!toc]
+#### Account [!toc]
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC7579HookModuleAlreadyPresent(hook)](#AccountERC7579Hooked-ERC7579HookModuleAlreadyPresent-address-)
+#### AccountERC7579 [!toc]
+- [ERC7579MissingFallbackHandler(selector)](#AccountERC7579-ERC7579MissingFallbackHandler-bytes4-)
+- [ERC7579CannotDecodeFallbackData()](#AccountERC7579-ERC7579CannotDecodeFallbackData--)
+#### IERC7579ModuleConfig [!toc]
+#### IERC7579AccountConfig [!toc]
+#### IERC7579Execution [!toc]
+#### IERC1271 [!toc]
+#### Account [!toc]
+- [AccountUnauthorized(sender)](#Account-AccountUnauthorized-address-)
+#### IAccount [!toc]
+#### AbstractSigner [!toc]
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-withHook--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">withHook()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579Hooked-withHook--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Calls [`IERC7579Hook.preCheck`](/contracts/5.x/api/interfaces#IERC7579Hook-preCheck-address-uint256-bytes-) before executing the modified function and [`IERC7579Hook.postCheck`](/contracts/5.x/api/interfaces#IERC7579Hook-postCheck-bytes-)
+thereafter.
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-accountId--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">accountId() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579Hooked-accountId--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the account id of the smart account
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-hook--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">hook() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579Hooked-hook--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the hook module address if installed, or `address(0)` otherwise.
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-supportsModule-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsModule(uint256 moduleTypeId) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579Hooked-supportsModule-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Supports hook modules. See [`AccountERC7579.supportsModule`](#AccountERC7579-supportsModule-uint256-)
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-isModuleInstalled-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isModuleInstalled(uint256 moduleTypeId, address module, bytes data) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="AccountERC7579Hooked-isModuleInstalled-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns whether a module is installed on the smart account
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-_installModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_installModule(uint256 moduleTypeId, address module, bytes initData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579Hooked-_installModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Installs a module with support for hook modules. See [`AccountERC7579._installModule`](#AccountERC7579-_installModule-uint256-address-bytes-)
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-_uninstallModule-uint256-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_uninstallModule(uint256 moduleTypeId, address module, bytes deInitData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579Hooked-_uninstallModule-uint256-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Uninstalls a module with support for hook modules. See [`AccountERC7579._uninstallModule`](#AccountERC7579-_uninstallModule-uint256-address-bytes-)
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-_execute-Mode-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_execute(Mode mode, bytes executionCalldata) → bytes[]</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579Hooked-_execute-Mode-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hooked version of [`AccountERC7579._execute`](#AccountERC7579-_execute-Mode-bytes-).
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-_fallback--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_fallback() → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="AccountERC7579Hooked-_fallback--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Hooked version of [`AccountERC7579._fallback`](#AccountERC7579-_fallback--).
+
+</div>
+</div>
+
+<a id="AccountERC7579Hooked-ERC7579HookModuleAlreadyPresent-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579HookModuleAlreadyPresent(address hook)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="AccountERC7579Hooked-ERC7579HookModuleAlreadyPresent-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+A hook module is already present. This contract only supports one hook module.
+
+</div>
+</div>
+
+<a id="ERC7821"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7821`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/extensions/draft-ERC7821.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/extensions/draft-ERC7821.sol";
+```
+
+Minimal batch executor following ERC-7821.
+
+Only supports single batch mode (`0x01000000000000000000`). Does not support optional "opData".
+
+@custom:stateless
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [execute(mode, executionData)](#ERC7821-execute-bytes32-bytes-)
+- [supportsExecutionMode(mode)](#ERC7821-supportsExecutionMode-bytes32-)
+- [_erc7821AuthorizedExecutor(caller, , )](#ERC7821-_erc7821AuthorizedExecutor-address-bytes32-bytes-)
+#### IERC7821 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [UnsupportedExecutionMode()](#ERC7821-UnsupportedExecutionMode--)
+#### IERC7821 [!toc]
+</div>
+</div>
+
+<a id="ERC7821-execute-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execute(bytes32 mode, bytes executionData)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7821-execute-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes the calls in `executionData` with no optional `opData` support.
+
+<Callout>
+Access to this function is controlled by [`ERC7821._erc7821AuthorizedExecutor`](#ERC7821-_erc7821AuthorizedExecutor-address-bytes32-bytes-). Changing access permissions, for
+example to approve calls by the ERC-4337 entrypoint, should be implemented by overriding it.
+</Callout>
+
+Reverts and bubbles up error if any call fails.
+
+</div>
+</div>
+
+<a id="ERC7821-supportsExecutionMode-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsExecutionMode(bytes32 mode) → bool result</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC7821-supportsExecutionMode-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+This function is provided for frontends to detect support.
+Only returns true for:
+- `bytes32(0x01000000000000000000...)`: does not support optional `opData`.
+- `bytes32(0x01000000000078210001...)`: supports optional `opData`.
+
+</div>
+</div>
+
+<a id="ERC7821-_erc7821AuthorizedExecutor-address-bytes32-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_erc7821AuthorizedExecutor(address caller, bytes32, bytes) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7821-_erc7821AuthorizedExecutor-address-bytes32-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Access control mechanism for the [`AccessManager.execute`](/contracts/5.x/api/access#AccessManager-execute-address-bytes-) function.
+By default, only the contract itself is allowed to execute.
+
+Override this function to implement custom access control, for example to allow the
+ERC-4337 entrypoint to execute.
+
+```solidity
+function _erc7821AuthorizedExecutor(
+  address caller,
+  bytes32 mode,
+  bytes calldata executionData
+) internal view virtual override returns (bool) {
+  return caller == address(entryPoint()) || super._erc7821AuthorizedExecutor(caller, mode, executionData);
+}
+```
+
+</div>
+</div>
+
+<a id="ERC7821-UnsupportedExecutionMode--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">UnsupportedExecutionMode()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7821-UnsupportedExecutionMode--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="EIP7702Utils"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `EIP7702Utils`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/EIP7702Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/EIP7702Utils.sol";
+```
+
+Library with common EIP-7702 utility functions.
+
+See [ERC-7702](https://eips.ethereum.org/EIPS/eip-7702).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [fetchDelegate(account)](#EIP7702Utils-fetchDelegate-address-)
+</div>
+</div>
+
+<a id="EIP7702Utils-fetchDelegate-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">fetchDelegate(address account) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="EIP7702Utils-fetchDelegate-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the address of the delegate if `account` has an EIP-7702 delegation setup, or address(0) otherwise.
+
+</div>
+</div>
+
+<a id="IEntryPointExtra"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `IEntryPointExtra`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC4337Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC4337Utils.sol";
+```
+
+This is available on all entrypoint since v0.4.0, but is not formally part of the ERC.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [getUserOpHash(userOp)](#IEntryPointExtra-getUserOpHash-struct-PackedUserOperation-)
+</div>
+</div>
+
+<a id="IEntryPointExtra-getUserOpHash-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getUserOpHash(struct PackedUserOperation userOp) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="IEntryPointExtra-getUserOpHash-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC4337Utils"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC4337Utils`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC4337Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC4337Utils.sol";
+```
+
+Library with common ERC-4337 utility functions.
+
+See [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [parseValidationData(validationData)](#ERC4337Utils-parseValidationData-uint256-)
+- [packValidationData(aggregator, validAfter, validUntil)](#ERC4337Utils-packValidationData-address-uint48-uint48-)
+- [packValidationData(sigSuccess, validAfter, validUntil)](#ERC4337Utils-packValidationData-bool-uint48-uint48-)
+- [combineValidationData(validationData1, validationData2)](#ERC4337Utils-combineValidationData-uint256-uint256-)
+- [getValidationData(validationData)](#ERC4337Utils-getValidationData-uint256-)
+- [hash(self, entrypoint)](#ERC4337Utils-hash-struct-PackedUserOperation-address-)
+- [factory(self)](#ERC4337Utils-factory-struct-PackedUserOperation-)
+- [factoryData(self)](#ERC4337Utils-factoryData-struct-PackedUserOperation-)
+- [verificationGasLimit(self)](#ERC4337Utils-verificationGasLimit-struct-PackedUserOperation-)
+- [callGasLimit(self)](#ERC4337Utils-callGasLimit-struct-PackedUserOperation-)
+- [maxPriorityFeePerGas(self)](#ERC4337Utils-maxPriorityFeePerGas-struct-PackedUserOperation-)
+- [maxFeePerGas(self)](#ERC4337Utils-maxFeePerGas-struct-PackedUserOperation-)
+- [gasPrice(self)](#ERC4337Utils-gasPrice-struct-PackedUserOperation-)
+- [paymaster(self)](#ERC4337Utils-paymaster-struct-PackedUserOperation-)
+- [paymasterVerificationGasLimit(self)](#ERC4337Utils-paymasterVerificationGasLimit-struct-PackedUserOperation-)
+- [paymasterPostOpGasLimit(self)](#ERC4337Utils-paymasterPostOpGasLimit-struct-PackedUserOperation-)
+- [paymasterData(self)](#ERC4337Utils-paymasterData-struct-PackedUserOperation-)
+</div>
+</div>
+
+<a id="ERC4337Utils-parseValidationData-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">parseValidationData(uint256 validationData) → address aggregator, uint48 validAfter, uint48 validUntil</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-parseValidationData-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Parses the validation data into its components. See [`ERC4337Utils.packValidationData`](#ERC4337Utils-packValidationData-bool-uint48-uint48-).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-packValidationData-address-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">packValidationData(address aggregator, uint48 validAfter, uint48 validUntil) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-packValidationData-address-uint48-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Packs the validation data into a single uint256. See [`ERC4337Utils.parseValidationData`](#ERC4337Utils-parseValidationData-uint256-).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-packValidationData-bool-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">packValidationData(bool sigSuccess, uint48 validAfter, uint48 validUntil) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-packValidationData-bool-uint48-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Same as [`ERC4337Utils.packValidationData`](#ERC4337Utils-packValidationData-bool-uint48-uint48-), but with a boolean signature success flag.
+
+</div>
+</div>
+
+<a id="ERC4337Utils-combineValidationData-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">combineValidationData(uint256 validationData1, uint256 validationData2) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-combineValidationData-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Combines two validation data into a single one.
+
+The `aggregator` is set to [`ERC4337Utils.SIG_VALIDATION_SUCCESS`](#ERC4337Utils-SIG_VALIDATION_SUCCESS-uint256) if both are successful, while
+the `validAfter` is the maximum and the `validUntil` is the minimum of both.
+
+</div>
+</div>
+
+<a id="ERC4337Utils-getValidationData-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getValidationData(uint256 validationData) → address aggregator, bool outOfTimeRange</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-getValidationData-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the aggregator of the `validationData` and whether it is out of time range.
+
+</div>
+</div>
+
+<a id="ERC4337Utils-hash-struct-PackedUserOperation-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">hash(struct PackedUserOperation self, address entrypoint) → bytes32</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-hash-struct-PackedUserOperation-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Get the hash of a user operation for a given entrypoint
+
+</div>
+</div>
+
+<a id="ERC4337Utils-factory-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">factory(struct PackedUserOperation self) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-factory-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `factory` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation), or address(0) if the initCode is empty or not properly formatted.
+
+</div>
+</div>
+
+<a id="ERC4337Utils-factoryData-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">factoryData(struct PackedUserOperation self) → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-factoryData-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `factoryData` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation), or empty bytes if the initCode is empty or not properly formatted.
+
+</div>
+</div>
+
+<a id="ERC4337Utils-verificationGasLimit-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verificationGasLimit(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-verificationGasLimit-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `verificationGasLimit` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-callGasLimit-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">callGasLimit(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-callGasLimit-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns `callGasLimit` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-maxPriorityFeePerGas-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxPriorityFeePerGas(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-maxPriorityFeePerGas-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the first section of `gasFees` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-maxFeePerGas-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">maxFeePerGas(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-maxFeePerGas-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the second section of `gasFees` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-gasPrice-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">gasPrice(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-gasPrice-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the total gas price for the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation) (ie. `maxFeePerGas` or `maxPriorityFeePerGas + basefee`).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-paymaster-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">paymaster(struct PackedUserOperation self) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-paymaster-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the first section of `paymasterAndData` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-paymasterVerificationGasLimit-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">paymasterVerificationGasLimit(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-paymasterVerificationGasLimit-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the second section of `paymasterAndData` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-paymasterPostOpGasLimit-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">paymasterPostOpGasLimit(struct PackedUserOperation self) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-paymasterPostOpGasLimit-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the third section of `paymasterAndData` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="ERC4337Utils-paymasterData-struct-PackedUserOperation-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">paymasterData(struct PackedUserOperation self) → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4337Utils-paymasterData-struct-PackedUserOperation-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the fourth section of `paymasterAndData` from the [`PackedUserOperation`](/contracts/5.x/api/interfaces#PackedUserOperation).
+
+</div>
+</div>
+
+<a id="Mode"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `Mode`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+<a id="CallType"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `CallType`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+<a id="ExecType"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ExecType`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+<a id="ModeSelector"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ModeSelector`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+<a id="ModePayload"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ModePayload`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+<a id="ERC7579Utils"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC7579Utils`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+Library with common ERC-7579 utility functions.
+
+See [ERC-7579](https://eips.ethereum.org/EIPS/eip-7579).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [execSingle(executionCalldata, execType)](#ERC7579Utils-execSingle-bytes-ExecType-)
+- [execBatch(executionCalldata, execType)](#ERC7579Utils-execBatch-bytes-ExecType-)
+- [execDelegateCall(executionCalldata, execType)](#ERC7579Utils-execDelegateCall-bytes-ExecType-)
+- [encodeMode(callType, execType, selector, payload)](#ERC7579Utils-encodeMode-CallType-ExecType-ModeSelector-ModePayload-)
+- [decodeMode(mode)](#ERC7579Utils-decodeMode-Mode-)
+- [encodeSingle(target, value, callData)](#ERC7579Utils-encodeSingle-address-uint256-bytes-)
+- [decodeSingle(executionCalldata)](#ERC7579Utils-decodeSingle-bytes-)
+- [encodeDelegate(target, callData)](#ERC7579Utils-encodeDelegate-address-bytes-)
+- [decodeDelegate(executionCalldata)](#ERC7579Utils-decodeDelegate-bytes-)
+- [encodeBatch(executionBatch)](#ERC7579Utils-encodeBatch-struct-Execution---)
+- [decodeBatch(executionCalldata)](#ERC7579Utils-decodeBatch-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [ERC7579TryExecuteFail(batchExecutionIndex, returndata)](#ERC7579Utils-ERC7579TryExecuteFail-uint256-bytes-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC7579UnsupportedCallType(callType)](#ERC7579Utils-ERC7579UnsupportedCallType-CallType-)
+- [ERC7579UnsupportedExecType(execType)](#ERC7579Utils-ERC7579UnsupportedExecType-ExecType-)
+- [ERC7579MismatchedModuleTypeId(moduleTypeId, module)](#ERC7579Utils-ERC7579MismatchedModuleTypeId-uint256-address-)
+- [ERC7579UninstalledModule(moduleTypeId, module)](#ERC7579Utils-ERC7579UninstalledModule-uint256-address-)
+- [ERC7579AlreadyInstalledModule(moduleTypeId, module)](#ERC7579Utils-ERC7579AlreadyInstalledModule-uint256-address-)
+- [ERC7579UnsupportedModuleType(moduleTypeId)](#ERC7579Utils-ERC7579UnsupportedModuleType-uint256-)
+- [ERC7579DecodingError()](#ERC7579Utils-ERC7579DecodingError--)
+</div>
+</div>
+
+<a id="ERC7579Utils-execSingle-bytes-ExecType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execSingle(bytes executionCalldata, ExecType execType) → bytes[] returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-execSingle-bytes-ExecType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes a single call.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-execBatch-bytes-ExecType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execBatch(bytes executionCalldata, ExecType execType) → bytes[] returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-execBatch-bytes-ExecType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes a batch of calls.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-execDelegateCall-bytes-ExecType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execDelegateCall(bytes executionCalldata, ExecType execType) → bytes[] returnData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-execDelegateCall-bytes-ExecType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Executes a delegate call.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-encodeMode-CallType-ExecType-ModeSelector-ModePayload-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">encodeMode(CallType callType, ExecType execType, ModeSelector selector, ModePayload payload) → Mode mode</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-encodeMode-CallType-ExecType-ModeSelector-ModePayload-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Encodes the mode with the provided parameters. See [`ERC7579Utils.decodeMode`](#ERC7579Utils-decodeMode-Mode-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-decodeMode-Mode-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decodeMode(Mode mode) → CallType callType, ExecType execType, ModeSelector selector, ModePayload payload</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-decodeMode-Mode-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Decodes the mode into its parameters. See [`ERC7579Utils.encodeMode`](#ERC7579Utils-encodeMode-CallType-ExecType-ModeSelector-ModePayload-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-encodeSingle-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">encodeSingle(address target, uint256 value, bytes callData) → bytes executionCalldata</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-encodeSingle-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Encodes a single call execution. See [`ERC7579Utils.decodeSingle`](#ERC7579Utils-decodeSingle-bytes-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-decodeSingle-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decodeSingle(bytes executionCalldata) → address target, uint256 value, bytes callData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-decodeSingle-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Decodes a single call execution. See [`ERC7579Utils.encodeSingle`](#ERC7579Utils-encodeSingle-address-uint256-bytes-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-encodeDelegate-address-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">encodeDelegate(address target, bytes callData) → bytes executionCalldata</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-encodeDelegate-address-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Encodes a delegate call execution. See [`ERC7579Utils.decodeDelegate`](#ERC7579Utils-decodeDelegate-bytes-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-decodeDelegate-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decodeDelegate(bytes executionCalldata) → address target, bytes callData</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-decodeDelegate-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Decodes a delegate call execution. See [`ERC7579Utils.encodeDelegate`](#ERC7579Utils-encodeDelegate-address-bytes-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-encodeBatch-struct-Execution---"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">encodeBatch(struct Execution[] executionBatch) → bytes executionCalldata</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-encodeBatch-struct-Execution---">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Encodes a batch of executions. See [`ERC7579Utils.decodeBatch`](#ERC7579Utils-decodeBatch-bytes-).
+
+</div>
+</div>
+
+<a id="ERC7579Utils-decodeBatch-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">decodeBatch(bytes executionCalldata) → struct Execution[] executionBatch</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC7579Utils-decodeBatch-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Decodes a batch of executions. See [`ERC7579Utils.encodeBatch`](#ERC7579Utils-encodeBatch-struct-Execution---).
+
+<Callout>
+This function runs some checks and will throw a [`ERC7579Utils.ERC7579DecodingError`](#ERC7579Utils-ERC7579DecodingError--) if the input is not properly formatted.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579TryExecuteFail-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579TryExecuteFail(uint256 batchExecutionIndex, bytes returndata)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579TryExecuteFail-uint256-bytes-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emits when an [`ERC7579Utils.EXECTYPE_TRY`](#ERC7579Utils-EXECTYPE_TRY-ExecType) execution fails.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579UnsupportedCallType-CallType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579UnsupportedCallType(CallType callType)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579UnsupportedCallType-CallType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The provided [`CallType`](#CallType) is not supported.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579UnsupportedExecType-ExecType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579UnsupportedExecType(ExecType execType)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579UnsupportedExecType-ExecType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The provided [`ExecType`](#ExecType) is not supported.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579MismatchedModuleTypeId-uint256-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579MismatchedModuleTypeId(uint256 moduleTypeId, address module)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579MismatchedModuleTypeId-uint256-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The provided module doesn't match the provided module type.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579UninstalledModule-uint256-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579UninstalledModule(uint256 moduleTypeId, address module)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579UninstalledModule-uint256-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The module is not installed.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579AlreadyInstalledModule-uint256-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579AlreadyInstalledModule(uint256 moduleTypeId, address module)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579AlreadyInstalledModule-uint256-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The module is already installed.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579UnsupportedModuleType-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579UnsupportedModuleType(uint256 moduleTypeId)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579UnsupportedModuleType-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The module type is not supported.
+
+</div>
+</div>
+
+<a id="ERC7579Utils-ERC7579DecodingError--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC7579DecodingError()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC7579Utils-ERC7579DecodingError--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Input calldata not properly formatted and possibly malicious.
+
+</div>
+</div>
+
+<a id="eqCallType-CallType-CallType-"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `eqCallType`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+Compares two `CallType` values for equality.
+
+<a id="eqCallType-CallType-CallType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">eqCallType(CallType a, CallType b) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="eqCallType-CallType-CallType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Compares two `CallType` values for equality.
+
+</div>
+</div>
+
+<a id="eqExecType-ExecType-ExecType-"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `eqExecType`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+Compares two `ExecType` values for equality.
+
+<a id="eqExecType-ExecType-ExecType-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">eqExecType(ExecType a, ExecType b) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="eqExecType-ExecType-ExecType-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Compares two `ExecType` values for equality.
+
+</div>
+</div>
+
+<a id="eqModeSelector-ModeSelector-ModeSelector-"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `eqModeSelector`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+Compares two `ModeSelector` values for equality.
+
+<a id="eqModeSelector-ModeSelector-ModeSelector-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">eqModeSelector(ModeSelector a, ModeSelector b) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="eqModeSelector-ModeSelector-ModeSelector-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Compares two `ModeSelector` values for equality.
+
+</div>
+</div>
+
+<a id="eqModePayload-ModePayload-ModePayload-"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `eqModePayload`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/account/utils/draft-ERC7579Utils.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/account/utils/draft-ERC7579Utils.sol";
+```
+
+Compares two `ModePayload` values for equality.
+
+<a id="eqModePayload-ModePayload-ModePayload-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">eqModePayload(ModePayload a, ModePayload b) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="eqModePayload-ModePayload-ModePayload-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Compares two `ModePayload` values for equality.
+
+</div>
+</div>

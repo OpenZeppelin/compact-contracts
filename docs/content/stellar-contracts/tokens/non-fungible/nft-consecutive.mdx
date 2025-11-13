@@ -1,0 +1,58 @@
+---
+title: Non-Fungible Consecutive
+---
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/tokens/src/non-fungible/extensions/consecutive)
+
+Consecutive extension for [Non-Fungible Token](/stellar-contracts/tokens/non-fungible/non-fungible) is useful
+for efficiently minting multiple tokens in a single transaction. This can significantly
+reduce costs and improve performance when creating a large number of tokens at once.
+
+## Usage
+
+We’ll continue with the [example](/stellar-contracts/tokens/non-fungible/non-fungible#usage) from **Non-Fungible Token**
+and modify the contract so that now batches of tokens can be minted with each call
+to `award_items`. Please note any account can call `award_items` and we might want to
+implement access control to restrict who can mint.
+
+```rust
+use soroban_sdk::{contract, contractimpl, Address, Env, String};
+use stellar_macros::default_impl;
+use stellar_tokens::non_fungible::{
+    consecutive::{Consecutive, NonFungibleConsecutive},
+    Base, ContractOverrides, NonFungibleToken,
+};
+
+#[contract]
+pub struct GameItem;
+
+#[contractimpl]
+impl GameItem {
+    pub fn __constructor(e: &Env) {
+        Base::set_metadata(
+            e,
+            String::from_str(e, "www.mygame.com"),
+            String::from_str(e, "My Game Items Collection"),
+            String::from_str(e, "MGMC"),
+        );
+    }
+
+    pub fn award_items(e: &Env, to: Address, amount: u32) -> u32 {
+        // access control might be needed
+        Consecutive::batch_mint(e, &to, amount)
+    }
+
+    pub fn burn(e: &Env, from: Address, token_id: u32) {
+        Consecutive::burn(e, &from, token_id);
+    }
+}
+
+#[default_impl]
+#[contractimpl]
+impl NonFungibleToken for GameItem {
+    type ContractType = Consecutive;
+}
+
+// no entry-point functions required, marker impl
+impl NonFungibleConsecutive for GameItem {}
+```

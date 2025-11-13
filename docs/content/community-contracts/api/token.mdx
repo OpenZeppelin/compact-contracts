@@ -1,0 +1,2078 @@
+---
+title: "Token"
+description: "Smart contract token utilities and implementations"
+---
+
+Set of extensions and utilities for tokens (e.g ERC-20, ERC-721, ERC-1155) and derivated ERCs (e.g. ERC-4626, ERC-1363).
+
+* [`OnTokenTransferAdapter`](#OnTokenTransferAdapter): Adapter of the ERC-1363 receiver interface to comply with Chainlink’s 667 interface.
+* [`ERC20Allowlist`](#ERC20Allowlist): Extension of ERC20 with transfers and approvals that require users to be registered into an allowlist.
+* [`ERC20Blocklist`](#ERC20Blocklist): Extension of ERC20 with transfers and approvals that can be disabled by adding users into a blocklist.
+* [`ERC20Collateral`](#ERC20Collateral): Oracle-agnostic extension of ERC20 that limits the total supply based on a collateral amount.
+* [`ERC20Custodian`](#ERC20Custodian): Extension of ERC20 that implements an access-control agnostic approach to define a custodian that can freeze user’s transfers and approvals.
+* [`ERC4626Fees`](#ERC4626Fees): ERC4626 vault with fees on entry (deposit/mint) or exit (withdraw/redeem).
+
+## General
+
+[`OnTokenTransferAdapter`](#OnTokenTransferAdapter)
+
+## ERC20
+
+[`ERC20Allowlist`](#ERC20Allowlist)
+
+[`ERC20Blocklist`](#ERC20Blocklist)
+
+[`ERC20Collateral`](#ERC20Collateral)
+
+[`ERC20Custodian`](#ERC20Custodian)
+
+[`ERC4626Fees`](#ERC4626Fees)
+
+<a id="ERC20Allowlist"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20Allowlist`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Allowlist.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20Allowlist.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) that allows to implement an allowlist
+mechanism that can be managed by an authorized account with the
+[`ERC20Allowlist._disallowUser`](#ERC20Allowlist-_disallowUser-address-) and [`ERC20Allowlist._allowUser`](#ERC20Allowlist-_allowUser-address-) functions.
+
+The allowlist provides the guarantee to the contract owner
+(e.g. a DAO or a well-configured multisig) that any account won't be
+able to execute transfers or approvals to other entities to operate
+on its behalf if [`ERC20Allowlist._allowUser`](#ERC20Allowlist-_allowUser-address-) was not called with such account as an
+argument. Similarly, the account will be disallowed again if
+[`ERC20Allowlist._disallowUser`](#ERC20Allowlist-_disallowUser-address-) is called.
+
+<Callout type="warn">
+Deprecated. Use [`ERC20Restricted`](#ERC20Restricted) instead.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [allowed(./account)](#ERC20Allowlist-allowed-address-)
+- [_allowUser(user)](#ERC20Allowlist-_allowUser-address-)
+- [_disallowUser(user)](#ERC20Allowlist-_disallowUser-address-)
+- [_update(from, to, value)](#ERC20Allowlist-_update-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20Allowlist-_approve-address-address-uint256-bool-)
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [UserAllowed(user)](#ERC20Allowlist-UserAllowed-address-)
+- [UserDisallowed(user)](#ERC20Allowlist-UserDisallowed-address-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC20Disallowed(user)](#ERC20Allowlist-ERC20Disallowed-address-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20Allowlist-allowed-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">allowed(address account) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Allowlist-allowed-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the allowed status of an account.
+
+</div>
+</div>
+
+<a id="ERC20Allowlist-_allowUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_allowUser(address user) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Allowlist-_allowUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Allows a user to receive and transfer tokens, including minting and burning.
+
+</div>
+</div>
+
+<a id="ERC20Allowlist-_disallowUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_disallowUser(address user) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Allowlist-_disallowUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Disallows a user from receiving and transferring tokens, including minting and burning.
+
+</div>
+</div>
+
+<a id="ERC20Allowlist-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 value)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Allowlist-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_update`.
+
+</div>
+</div>
+
+<a id="ERC20Allowlist-_approve-address-address-uint256-bool-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_approve(address owner, address spender, uint256 value, bool emitEvent)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Allowlist-_approve-address-address-uint256-bool-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_approve`.
+
+</div>
+</div>
+
+<a id="ERC20Allowlist-UserAllowed-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">UserAllowed(address indexed user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Allowlist-UserAllowed-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a `user` is allowed to transfer and approve.
+
+</div>
+</div>
+<a id="ERC20Allowlist-UserDisallowed-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">UserDisallowed(address indexed user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Allowlist-UserDisallowed-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a user is disallowed.
+
+</div>
+</div>
+
+<a id="ERC20Allowlist-ERC20Disallowed-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20Disallowed(address user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Allowlist-ERC20Disallowed-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The operation failed because the user is not allowed.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20Blocklist`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Blocklist.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20Blocklist.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) that allows to implement a blocklist
+mechanism that can be managed by an authorized account with the
+[`ERC20Blocklist._blockUser`](#ERC20Blocklist-_blockUser-address-) and [`ERC20Blocklist._unblockUser`](#ERC20Blocklist-_unblockUser-address-) functions.
+
+The blocklist provides the guarantee to the contract owner
+(e.g. a DAO or a well-configured multisig) that any account won't be
+able to execute transfers or approvals to other entities to operate
+on its behalf if [`ERC20Blocklist._blockUser`](#ERC20Blocklist-_blockUser-address-) was not called with such account as an
+argument. Similarly, the account will be unblocked again if
+[`ERC20Blocklist._unblockUser`](#ERC20Blocklist-_unblockUser-address-) is called.
+
+<Callout type="warn">
+Deprecated. Use [`ERC20Restricted`](#ERC20Restricted) instead.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [blocked(./account)](#ERC20Blocklist-blocked-address-)
+- [_blockUser(user)](#ERC20Blocklist-_blockUser-address-)
+- [_unblockUser(user)](#ERC20Blocklist-_unblockUser-address-)
+- [_update(from, to, value)](#ERC20Blocklist-_update-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20Blocklist-_approve-address-address-uint256-bool-)
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [UserBlocked(user)](#ERC20Blocklist-UserBlocked-address-)
+- [UserUnblocked(user)](#ERC20Blocklist-UserUnblocked-address-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC20Blocked(user)](#ERC20Blocklist-ERC20Blocked-address-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20Blocklist-blocked-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">blocked(address account) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Blocklist-blocked-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the blocked status of an account.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist-_blockUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_blockUser(address user) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Blocklist-_blockUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Blocks a user from receiving and transferring tokens, including minting and burning.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist-_unblockUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_unblockUser(address user) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Blocklist-_unblockUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Unblocks a user from receiving and transferring tokens, including minting and burning.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 value)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Blocklist-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_update`.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist-_approve-address-address-uint256-bool-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_approve(address owner, address spender, uint256 value, bool emitEvent)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Blocklist-_approve-address-address-uint256-bool-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_approve`.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist-UserBlocked-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">UserBlocked(address indexed user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Blocklist-UserBlocked-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a user is blocked.
+
+</div>
+</div>
+<a id="ERC20Blocklist-UserUnblocked-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">UserUnblocked(address indexed user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Blocklist-UserUnblocked-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a user is unblocked.
+
+</div>
+</div>
+
+<a id="ERC20Blocklist-ERC20Blocked-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20Blocked(address user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Blocklist-ERC20Blocked-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The operation failed because the user is blocked.
+
+</div>
+</div>
+
+<a id="ERC20Collateral"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20Collateral`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Collateral.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20Collateral.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) that limits the supply of tokens based
+on a collateral amount and time-based expiration.
+
+The [`ERC20Collateral.collateral`](#ERC20Collateral-collateral--) function must be implemented to return the collateral
+data. This function can call external oracles or use any local storage.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(liveness_)](#ERC20Collateral-constructor-uint48-)
+- [liveness()](#ERC20Collateral-liveness--)
+- [clock()](#ERC20Collateral-clock--)
+- [CLOCK_MODE()](#ERC20Collateral-CLOCK_MODE--)
+- [collateral()](#ERC20Collateral-collateral--)
+- [_update(from, to, value)](#ERC20Collateral-_update-address-address-uint256-)
+#### IERC6372 [!toc]
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20-_approve-address-address-uint256-bool-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC6372 [!toc]
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC20ExceededSupply(increasedSupply, cap)](#ERC20Collateral-ERC20ExceededSupply-uint256-uint256-)
+- [ERC20ExpiredCollateral(timestamp, expiration)](#ERC20Collateral-ERC20ExpiredCollateral-uint48-uint48-)
+#### IERC6372 [!toc]
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20Collateral-constructor-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(uint48 liveness_)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Collateral-constructor-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Sets the value of the `_liveness`. This value is immutable, it can only be
+set once during construction.
+
+</div>
+</div>
+
+<a id="ERC20Collateral-liveness--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">liveness() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Collateral-liveness--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the minimum liveness duration of collateral.
+
+</div>
+</div>
+
+<a id="ERC20Collateral-clock--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">clock() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Collateral-clock--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Clock used for flagging checkpoints. Can be overridden to implement timestamp based checkpoints (and voting).
+
+</div>
+</div>
+
+<a id="ERC20Collateral-CLOCK_MODE--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">CLOCK_MODE() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Collateral-CLOCK_MODE--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Description of the clock
+
+</div>
+</div>
+
+<a id="ERC20Collateral-collateral--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">collateral() → uint256 amount, uint48 timestamp</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Collateral-collateral--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the collateral data of the token.
+
+</div>
+</div>
+
+<a id="ERC20Collateral-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 value)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Collateral-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_update`.
+
+</div>
+</div>
+
+<a id="ERC20Collateral-ERC20ExceededSupply-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20ExceededSupply(uint256 increasedSupply, uint256 cap)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Collateral-ERC20ExceededSupply-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Total supply cap has been exceeded.
+
+</div>
+</div>
+
+<a id="ERC20Collateral-ERC20ExpiredCollateral-uint48-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20ExpiredCollateral(uint48 timestamp, uint48 expiration)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Collateral-ERC20ExpiredCollateral-uint48-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Collateral amount has expired.
+
+</div>
+</div>
+
+<a id="ERC20Custodian"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20Custodian`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Custodian.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20Custodian.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) that allows to implement a custodian
+mechanism that can be managed by an authorized account with the
+[`ERC20Custodian.freeze`](#ERC20Custodian-freeze-address-uint256-) function.
+
+This mechanism allows a custodian (e.g. a DAO or a
+well-configured multisig) to freeze and unfreeze the balance
+of a user.
+
+The frozen balance is not available for transfers or approvals
+to other entities to operate on its behalf if. The frozen balance
+can be reduced by calling [`ERC20Custodian.freeze`](#ERC20Custodian-freeze-address-uint256-) again with a lower amount.
+
+<Callout type="warn">
+Deprecated. Use [`ERC20Freezable`](#ERC20Freezable) instead.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Modifiers</h3>
+<div className="font-mono">
+- [onlyCustodian()](#ERC20Custodian-onlyCustodian--)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [frozen(user)](#ERC20Custodian-frozen-address-)
+- [freeze(user, amount)](#ERC20Custodian-freeze-address-uint256-)
+- [availableBalance(./account)](#ERC20Custodian-availableBalance-address-)
+- [_isCustodian(user)](#ERC20Custodian-_isCustodian-address-)
+- [_update(from, to, value)](#ERC20Custodian-_update-address-address-uint256-)
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20-_approve-address-address-uint256-bool-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [TokensFrozen(user, amount)](#ERC20Custodian-TokensFrozen-address-uint256-)
+- [TokensUnfrozen(user, amount)](#ERC20Custodian-TokensUnfrozen-address-uint256-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC20InsufficientUnfrozenBalance(user)](#ERC20Custodian-ERC20InsufficientUnfrozenBalance-address-)
+- [ERC20InsufficientFrozenBalance(user)](#ERC20Custodian-ERC20InsufficientFrozenBalance-address-)
+- [ERC20NotCustodian()](#ERC20Custodian-ERC20NotCustodian--)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20Custodian-onlyCustodian--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onlyCustodian()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Custodian-onlyCustodian--">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Modifier to restrict access to custodian accounts only.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-frozen-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">frozen(address user) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Custodian-frozen-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the amount of tokens frozen for a user.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-freeze-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">freeze(address user, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="ERC20Custodian-freeze-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Adjusts the amount of tokens frozen for a user.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-availableBalance-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">availableBalance(address account) → uint256 available</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Custodian-availableBalance-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the available (unfrozen) balance of an account.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-_isCustodian-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_isCustodian(address user) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Custodian-_isCustodian-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Checks if the user is a custodian.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 value)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Custodian-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
+(or `to`) is the zero address. All customizations to transfers, mints, and burns should be done by overriding
+this function.
+
+Emits a [`ERC7786OpenBridge.UnsupportedNativeTransfer`](./crosschain#ERC7786OpenBridge-UnsupportedNativeTransfer--) event.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-TokensFrozen-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">TokensFrozen(address indexed user, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Custodian-TokensFrozen-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when tokens are frozen for a user.
+
+</div>
+</div>
+<a id="ERC20Custodian-TokensUnfrozen-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">TokensUnfrozen(address indexed user, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Custodian-TokensUnfrozen-address-uint256-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when tokens are unfrozen for a user.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-ERC20InsufficientUnfrozenBalance-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20InsufficientUnfrozenBalance(address user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Custodian-ERC20InsufficientUnfrozenBalance-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The operation failed because the user has insufficient unfrozen balance.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-ERC20InsufficientFrozenBalance-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20InsufficientFrozenBalance(address user)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Custodian-ERC20InsufficientFrozenBalance-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The operation failed because the user has insufficient frozen balance.
+
+</div>
+</div>
+
+<a id="ERC20Custodian-ERC20NotCustodian--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20NotCustodian()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Custodian-ERC20NotCustodian--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Error thrown when a non-custodian account attempts to perform a custodian-only operation.
+
+</div>
+</div>
+
+<a id="ERC20Freezable"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20Freezable`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Freezable.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20Freezable.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) that allows to implement a freezing
+mechanism that can be managed by an authorized account with the
+`_freezeTokens` and `_unfreezeTokens` functions.
+
+The freezing mechanism provides the guarantee to the contract owner
+(e.g. a DAO or a well-configured multisig) that a specific amount
+of tokens held by an account won't be transferable until those
+tokens are unfrozen using `_unfreezeTokens`.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [frozen(./account)](#ERC20Freezable-frozen-address-)
+- [available(./account)](#ERC20Freezable-available-address-)
+- [_setFrozen(user, amount)](#ERC20Freezable-_setFrozen-address-uint256-)
+- [_update(from, to, value)](#ERC20Freezable-_update-address-address-uint256-)
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20-_approve-address-address-uint256-bool-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC20InsufficientUnfrozenBalance(user, needed, available)](#ERC20Freezable-ERC20InsufficientUnfrozenBalance-address-uint256-uint256-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20Freezable-frozen-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">frozen(address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Freezable-frozen-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the frozen balance of an account.
+
+</div>
+</div>
+
+<a id="ERC20Freezable-available-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">available(address account) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Freezable-available-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the available (unfrozen) balance of an account. Up to `balanceOf`.
+
+</div>
+</div>
+
+<a id="ERC20Freezable-_setFrozen-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setFrozen(address user, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Freezable-_setFrozen-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Internal function to set the frozen token amount for a user.
+
+</div>
+</div>
+
+<a id="ERC20Freezable-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 value)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Freezable-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_update`.
+
+Requirements:
+
+* `from` must have sufficient unfrozen balance.
+
+</div>
+</div>
+
+<a id="ERC20Freezable-ERC20InsufficientUnfrozenBalance-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20InsufficientUnfrozenBalance(address user, uint256 needed, uint256 available)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Freezable-ERC20InsufficientUnfrozenBalance-address-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The operation failed because the user has insufficient unfrozen balance.
+
+</div>
+</div>
+
+<a id="ERC20Restricted"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20Restricted`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Restricted.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20Restricted.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) that allows to implement user account transfer restrictions
+through the [`IERC7943.isUserAllowed`](./interfaces#IERC7943-isUserAllowed-address-) function. Inspired by [EIP-7943](https://eips.ethereum.org/EIPS/eip-7943).
+
+By default, each account has no explicit restriction. The [`IERC7943.isUserAllowed`](./interfaces#IERC7943-isUserAllowed-address-) function acts as
+a blocklist. Developers can override [`IERC7943.isUserAllowed`](./interfaces#IERC7943-isUserAllowed-address-) to check that `restriction == ALLOWED`
+to implement an allowlist.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [getRestriction(./account)](#ERC20Restricted-getRestriction-address-)
+- [isUserAllowed(./account)](#ERC20Restricted-isUserAllowed-address-)
+- [_update(from, to, value)](#ERC20Restricted-_update-address-address-uint256-)
+- [_setRestriction(./account, restriction)](#ERC20Restricted-_setRestriction-address-enum-ERC20Restricted-Restriction-)
+- [_blockUser(./account)](#ERC20Restricted-_blockUser-address-)
+- [_allowUser(./account)](#ERC20Restricted-_allowUser-address-)
+- [_resetUser(./account)](#ERC20Restricted-_resetUser-address-)
+- [_checkRestriction(./account)](#ERC20Restricted-_checkRestriction-address-)
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20-_approve-address-address-uint256-bool-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [UserRestrictionsUpdated(./account, restriction)](#ERC20Restricted-UserRestrictionsUpdated-address-enum-ERC20Restricted-Restriction-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [ERC20UserRestricted(./account)](#ERC20Restricted-ERC20UserRestricted-address-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20Restricted-getRestriction-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getRestriction(address account) → enum ERC20Restricted.Restriction</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Restricted-getRestriction-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the restriction of a user account.
+
+</div>
+</div>
+
+<a id="ERC20Restricted-isUserAllowed-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isUserAllowed(address account) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20Restricted-isUserAllowed-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns whether a user account is allowed to interact with the token.
+
+Default implementation only disallows explicitly BLOCKED accounts (i.e. a blocklist).
+
+To convert into an allowlist, override as:
+
+```solidity
+function isUserAllowed(address account) public view virtual override returns (bool) {
+    return getRestriction(./account) == Restriction.ALLOWED;
+}
+```
+
+</div>
+</div>
+
+<a id="ERC20Restricted-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 value)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Restricted-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See `ERC20-_update`. Enforces restriction transfers (excluding minting and burning).
+
+Requirements:
+
+* `from` must be allowed to transfer tokens (see [`IERC7943.isUserAllowed`](./interfaces#IERC7943-isUserAllowed-address-)).
+* `to` must be allowed to receive tokens (see [`IERC7943.isUserAllowed`](./interfaces#IERC7943-isUserAllowed-address-)).
+
+</div>
+</div>
+
+<a id="ERC20Restricted-_setRestriction-address-enum-ERC20Restricted-Restriction-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_setRestriction(address account, enum ERC20Restricted.Restriction restriction)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Restricted-_setRestriction-address-enum-ERC20Restricted-Restriction-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Updates the restriction of a user account.
+
+</div>
+</div>
+
+<a id="ERC20Restricted-_blockUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_blockUser(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Restricted-_blockUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Convenience function to block a user account (set to BLOCKED).
+
+</div>
+</div>
+
+<a id="ERC20Restricted-_allowUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_allowUser(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Restricted-_allowUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Convenience function to allow a user account (set to ALLOWED).
+
+</div>
+</div>
+
+<a id="ERC20Restricted-_resetUser-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_resetUser(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Restricted-_resetUser-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Convenience function to reset a user account to default restriction.
+
+</div>
+</div>
+
+<a id="ERC20Restricted-_checkRestriction-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkRestriction(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20Restricted-_checkRestriction-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Checks if a user account is restricted. Reverts with [`ERC20Restricted`](#ERC20Restricted) if so.
+
+</div>
+</div>
+
+<a id="ERC20Restricted-UserRestrictionsUpdated-address-enum-ERC20Restricted-Restriction-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">UserRestrictionsUpdated(address indexed account, enum ERC20Restricted.Restriction restriction)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="ERC20Restricted-UserRestrictionsUpdated-address-enum-ERC20Restricted-Restriction-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a user account's restriction is updated.
+
+</div>
+</div>
+
+<a id="ERC20Restricted-ERC20UserRestricted-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC20UserRestricted(address account)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="ERC20Restricted-ERC20UserRestricted-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The operation failed because the user account is restricted.
+
+</div>
+</div>
+
+<a id="ERC20uRWA"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC20uRWA`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC20uRWA.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC20uRWA.sol";
+```
+
+Extension of [`PaymasterERC20`](./account#PaymasterERC20) according to [EIP-7943](https://eips.ethereum.org/EIPS/eip-7943).
+
+Combines standard ERC-20 functionality with RWA-specific features like user restrictions,
+asset freezing, and forced asset transfers.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [isUserAllowed(user)](#ERC20uRWA-isUserAllowed-address-)
+- [supportsInterface(interfaceId)](#ERC20uRWA-supportsInterface-bytes4-)
+- [isTransferAllowed(from, to, , amount)](#ERC20uRWA-isTransferAllowed-address-address-uint256-uint256-)
+- [getFrozen(user, )](#ERC20uRWA-getFrozen-address-uint256-)
+- [setFrozen(user, , amount)](#ERC20uRWA-setFrozen-address-uint256-uint256-)
+- [forceTransfer(from, to, , amount)](#ERC20uRWA-forceTransfer-address-address-uint256-uint256-)
+- [_update(from, to, amount)](#ERC20uRWA-_update-address-address-uint256-)
+- [_checkEnforcer(from, to, amount)](#ERC20uRWA-_checkEnforcer-address-address-uint256-)
+- [_checkFreezer(user, amount)](#ERC20uRWA-_checkFreezer-address-uint256-)
+#### IERC7943 [!toc]
+#### ERC20Restricted [!toc]
+- [getRestriction(./account)](#ERC20Restricted-getRestriction-address-)
+- [_setRestriction(./account, restriction)](#ERC20Restricted-_setRestriction-address-enum-ERC20Restricted-Restriction-)
+- [_blockUser(./account)](#ERC20Restricted-_blockUser-address-)
+- [_allowUser(./account)](#ERC20Restricted-_allowUser-address-)
+- [_resetUser(./account)](#ERC20Restricted-_resetUser-address-)
+- [_checkRestriction(./account)](#ERC20Restricted-_checkRestriction-address-)
+#### ERC20Freezable [!toc]
+- [frozen(./account)](#ERC20Freezable-frozen-address-)
+- [available(./account)](#ERC20Freezable-available-address-)
+- [_setFrozen(user, amount)](#ERC20Freezable-_setFrozen-address-uint256-)
+#### ERC165 [!toc]
+#### IERC165 [!toc]
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [decimals()](#ERC20-decimals--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20-_approve-address-address-uint256-bool-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### IERC7943 [!toc]
+- [ForcedTransfer(from, to, tokenId, amount)](#IERC7943-ForcedTransfer-address-address-uint256-uint256-)
+- [Frozen(user, tokenId, amount)](#IERC7943-Frozen-address-uint256-uint256-)
+#### ERC20Restricted [!toc]
+- [UserRestrictionsUpdated(./account, restriction)](#ERC20Restricted-UserRestrictionsUpdated-address-enum-ERC20Restricted-Restriction-)
+#### ERC20Freezable [!toc]
+#### ERC165 [!toc]
+#### IERC165 [!toc]
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### IERC7943 [!toc]
+- [ERC7943NotAllowedUser(./account)](#IERC7943-ERC7943NotAllowedUser-address-)
+- [ERC7943NotAllowedTransfer(from, to, tokenId, amount)](#IERC7943-ERC7943NotAllowedTransfer-address-address-uint256-uint256-)
+- [ERC7943InsufficientUnfrozenBalance(user, tokenId, amount, unfrozen)](#IERC7943-ERC7943InsufficientUnfrozenBalance-address-uint256-uint256-uint256-)
+#### ERC20Restricted [!toc]
+- [ERC20UserRestricted(./account)](#ERC20Restricted-ERC20UserRestricted-address-)
+#### ERC20Freezable [!toc]
+- [ERC20InsufficientUnfrozenBalance(user, needed, available)](#ERC20Freezable-ERC20InsufficientUnfrozenBalance-address-uint256-uint256-)
+#### ERC165 [!toc]
+#### IERC165 [!toc]
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC20uRWA-isUserAllowed-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isUserAllowed(address user) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20uRWA-isUserAllowed-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns whether a user account is allowed to interact with the token.
+
+Default implementation only disallows explicitly BLOCKED accounts (i.e. a blocklist).
+
+To convert into an allowlist, override as:
+
+```solidity
+function isUserAllowed(address account) public view virtual override returns (bool) {
+    return getRestriction(./account) == Restriction.ALLOWED;
+}
+```
+
+</div>
+</div>
+
+<a id="ERC20uRWA-supportsInterface-bytes4-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">supportsInterface(bytes4 interfaceId) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20uRWA-supportsInterface-bytes4-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns true if this contract implements the interface defined by
+`interfaceId`. See the corresponding
+[ERC section](https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified)
+to learn more about how these ids are created.
+
+This function call must use less than 30 000 gas.
+
+</div>
+</div>
+
+<a id="ERC20uRWA-isTransferAllowed-address-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isTransferAllowed(address from, address to, uint256, uint256 amount) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">external</p>
+<a className="peer" data-card href="ERC20uRWA-isTransferAllowed-address-address-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC7943.isTransferAllowed`](./interfaces#IERC7943-isTransferAllowed-address-address-uint256-uint256-).
+
+CAUTION: This function is only meant for external use. Overriding it will not apply the new checks to
+the internal [`ERC20Allowlist._update`](#ERC20Allowlist-_update-address-address-uint256-) function. Consider overriding [`ERC20Allowlist._update`](#ERC20Allowlist-_update-address-address-uint256-) accordingly to keep both functions in sync.
+
+</div>
+</div>
+
+<a id="ERC20uRWA-getFrozen-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getFrozen(address user, uint256) → uint256 amount</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20uRWA-getFrozen-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC20uRWA-setFrozen-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">setFrozen(address user, uint256, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20uRWA-setFrozen-address-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC7943.setFrozen`](./interfaces#IERC7943-setFrozen-address-uint256-uint256-).
+
+<Callout>
+The `amount` is capped to the balance of the `user` to ensure the [`IERC7943.Frozen`](./interfaces#IERC7943-Frozen-address-uint256-uint256-) event
+emits values that consistently reflect the actual amount of tokens that are frozen.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC20uRWA-forceTransfer-address-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">forceTransfer(address from, address to, uint256, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC20uRWA-forceTransfer-address-address-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+See [`IERC7943.forceTransfer`](./interfaces#IERC7943-forceTransfer-address-address-uint256-uint256-).
+
+Bypasses the [`ERC20Restricted`](#ERC20Restricted) restrictions for the `from` address and adjusts the frozen balance
+to the new balance after the transfer.
+
+<Callout>
+This function uses [`ERC20Allowlist._update`](#ERC20Allowlist-_update-address-address-uint256-) to perform the transfer, ensuring all standard ERC20
+side effects (such as balance updates and events) are preserved. If you override [`ERC20Allowlist._update`](#ERC20Allowlist-_update-address-address-uint256-)
+to add additional restrictions or logic, those changes will also apply here.
+Consider overriding this function to bypass newer restrictions if needed.
+</Callout>
+
+</div>
+</div>
+
+<a id="ERC20uRWA-_update-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_update(address from, address to, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20uRWA-_update-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
+(or `to`) is the zero address. All customizations to transfers, mints, and burns should be done by overriding
+this function.
+
+Emits a [`ERC7786OpenBridge.UnsupportedNativeTransfer`](./crosschain#ERC7786OpenBridge-UnsupportedNativeTransfer--) event.
+
+</div>
+</div>
+
+<a id="ERC20uRWA-_checkEnforcer-address-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkEnforcer(address from, address to, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20uRWA-_checkEnforcer-address-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Internal function to check if the `enforcer` is allowed to forcibly transfer the `amount` of `tokens`.
+
+Example usage with `AccessControl-onlyRole`:
+
+```solidity
+function _checkEnforcer(address from, address to, uint256 amount) internal view override onlyRole(ENFORCER_ROLE) {}
+```
+
+</div>
+</div>
+
+<a id="ERC20uRWA-_checkFreezer-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_checkFreezer(address user, uint256 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC20uRWA-_checkFreezer-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Internal function to check if the `freezer` is allowed to freeze the `amount` of `tokens`.
+
+Example usage with `AccessControl-onlyRole`:
+
+```solidity
+function _checkFreezer(address user, uint256 amount) internal view override onlyRole(FREEZER_ROLE) {}
+```
+
+</div>
+</div>
+
+<a id="ERC4626Fees"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC4626Fees`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626Fees.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/ERC20/extensions/ERC4626Fees.sol";
+```
+
+ERC-4626 vault with entry/exit fees expressed in [basis point (bp)](https://en.wikipedia.org/wiki/Basis_point).
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [previewDeposit(assets)](#ERC4626Fees-previewDeposit-uint256-)
+- [previewMint(shares)](#ERC4626Fees-previewMint-uint256-)
+- [previewWithdraw(assets)](#ERC4626Fees-previewWithdraw-uint256-)
+- [previewRedeem(shares)](#ERC4626Fees-previewRedeem-uint256-)
+- [_deposit(caller, receiver, assets, shares)](#ERC4626Fees-_deposit-address-address-uint256-uint256-)
+- [_withdraw(caller, receiver, owner, assets, shares)](#ERC4626Fees-_withdraw-address-address-address-uint256-uint256-)
+- [_entryFeeBasisPoints()](#ERC4626Fees-_entryFeeBasisPoints--)
+- [_exitFeeBasisPoints()](#ERC4626Fees-_exitFeeBasisPoints--)
+- [_entryFeeRecipient()](#ERC4626Fees-_entryFeeRecipient--)
+- [_exitFeeRecipient()](#ERC4626Fees-_exitFeeRecipient--)
+#### ERC4626 [!toc]
+- [decimals()](#ERC4626-decimals--)
+- [asset()](#ERC4626-asset--)
+- [totalAssets()](#ERC4626-totalAssets--)
+- [convertToShares(assets)](#ERC4626-convertToShares-uint256-)
+- [convertToAssets(shares)](#ERC4626-convertToAssets-uint256-)
+- [maxDeposit()](#ERC4626-maxDeposit-address-)
+- [maxMint()](#ERC4626-maxMint-address-)
+- [maxWithdraw(owner)](#ERC4626-maxWithdraw-address-)
+- [maxRedeem(owner)](#ERC4626-maxRedeem-address-)
+- [deposit(assets, receiver)](#ERC4626-deposit-uint256-address-)
+- [mint(shares, receiver)](#ERC4626-mint-uint256-address-)
+- [withdraw(assets, receiver, owner)](#ERC4626-withdraw-uint256-address-address-)
+- [redeem(shares, receiver, owner)](#ERC4626-redeem-uint256-address-address-)
+- [_convertToShares(assets, rounding)](#ERC4626-_convertToShares-uint256-enum-Math-Rounding-)
+- [_convertToAssets(shares, rounding)](#ERC4626-_convertToAssets-uint256-enum-Math-Rounding-)
+- [_decimalsOffset()](#ERC4626-_decimalsOffset--)
+#### IERC4626 [!toc]
+#### ERC20 [!toc]
+- [name()](#ERC20-name--)
+- [symbol()](#ERC20-symbol--)
+- [totalSupply()](#ERC20-totalSupply--)
+- [balanceOf(./account)](#ERC20-balanceOf-address-)
+- [transfer(to, value)](#ERC20-transfer-address-uint256-)
+- [allowance(owner, spender)](#ERC20-allowance-address-address-)
+- [approve(spender, value)](#ERC20-approve-address-uint256-)
+- [transferFrom(from, to, value)](#ERC20-transferFrom-address-address-uint256-)
+- [_transfer(from, to, value)](#ERC20-_transfer-address-address-uint256-)
+- [_update(from, to, value)](#ERC20-_update-address-address-uint256-)
+- [_mint(./account, value)](#ERC20-_mint-address-uint256-)
+- [_burn(./account, value)](#ERC20-_burn-address-uint256-)
+- [_approve(owner, spender, value)](#ERC20-_approve-address-address-uint256-)
+- [_approve(owner, spender, value, emitEvent)](#ERC20-_approve-address-address-uint256-bool-)
+- [_spendAllowance(owner, spender, value)](#ERC20-_spendAllowance-address-address-uint256-)
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### ERC4626 [!toc]
+#### IERC4626 [!toc]
+- [Deposit(sender, owner, assets, shares)](#IERC4626-Deposit-address-address-uint256-uint256-)
+- [Withdraw(sender, receiver, owner, assets, shares)](#IERC4626-Withdraw-address-address-address-uint256-uint256-)
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+- [Transfer(from, to, value)](#IERC20-Transfer-address-address-uint256-)
+- [Approval(owner, spender, value)](#IERC20-Approval-address-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+#### ERC4626 [!toc]
+- [ERC4626ExceededMaxDeposit(receiver, assets, max)](#ERC4626-ERC4626ExceededMaxDeposit-address-uint256-uint256-)
+- [ERC4626ExceededMaxMint(receiver, shares, max)](#ERC4626-ERC4626ExceededMaxMint-address-uint256-uint256-)
+- [ERC4626ExceededMaxWithdraw(owner, assets, max)](#ERC4626-ERC4626ExceededMaxWithdraw-address-uint256-uint256-)
+- [ERC4626ExceededMaxRedeem(owner, shares, max)](#ERC4626-ERC4626ExceededMaxRedeem-address-uint256-uint256-)
+#### IERC4626 [!toc]
+#### ERC20 [!toc]
+#### IERC20Errors [!toc]
+- [ERC20InsufficientBalance(sender, balance, needed)](#IERC20Errors-ERC20InsufficientBalance-address-uint256-uint256-)
+- [ERC20InvalidSender(sender)](#IERC20Errors-ERC20InvalidSender-address-)
+- [ERC20InvalidReceiver(receiver)](#IERC20Errors-ERC20InvalidReceiver-address-)
+- [ERC20InsufficientAllowance(spender, allowance, needed)](#IERC20Errors-ERC20InsufficientAllowance-address-uint256-uint256-)
+- [ERC20InvalidApprover(approver)](#IERC20Errors-ERC20InvalidApprover-address-)
+- [ERC20InvalidSpender(spender)](#IERC20Errors-ERC20InvalidSpender-address-)
+#### IERC20Metadata [!toc]
+#### IERC20 [!toc]
+</div>
+</div>
+
+<a id="ERC4626Fees-previewDeposit-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewDeposit(uint256 assets) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC4626Fees-previewDeposit-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Preview taking an entry fee on deposit. See `IERC4626-previewDeposit`.
+
+</div>
+</div>
+
+<a id="ERC4626Fees-previewMint-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewMint(uint256 shares) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC4626Fees-previewMint-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Preview adding an entry fee on mint. See `IERC4626-previewMint`.
+
+</div>
+</div>
+
+<a id="ERC4626Fees-previewWithdraw-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewWithdraw(uint256 assets) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC4626Fees-previewWithdraw-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Preview adding an exit fee on withdraw. See `IERC4626-previewWithdraw`.
+
+</div>
+</div>
+
+<a id="ERC4626Fees-previewRedeem-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">previewRedeem(uint256 shares) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC4626Fees-previewRedeem-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Preview taking an exit fee on redeem. See `IERC4626-previewRedeem`.
+
+</div>
+</div>
+
+<a id="ERC4626Fees-_deposit-address-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_deposit(address caller, address receiver, uint256 assets, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4626Fees-_deposit-address-address-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Send entry fee to [`ERC4626Fees._entryFeeRecipient`](#ERC4626Fees-_entryFeeRecipient--). See `IERC4626-_deposit`.
+
+</div>
+</div>
+
+<a id="ERC4626Fees-_withdraw-address-address-address-uint256-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4626Fees-_withdraw-address-address-address-uint256-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Send exit fee to [`ERC4626Fees._exitFeeRecipient`](#ERC4626Fees-_exitFeeRecipient--). See `IERC4626-_deposit`.
+
+</div>
+</div>
+
+<a id="ERC4626Fees-_entryFeeBasisPoints--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_entryFeeBasisPoints() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4626Fees-_entryFeeBasisPoints--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC4626Fees-_exitFeeBasisPoints--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_exitFeeBasisPoints() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4626Fees-_exitFeeBasisPoints--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC4626Fees-_entryFeeRecipient--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_entryFeeRecipient() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4626Fees-_entryFeeRecipient--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC4626Fees-_exitFeeRecipient--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_exitFeeRecipient() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC4626Fees-_exitFeeRecipient--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="OnTokenTransferAdapter"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `OnTokenTransferAdapter`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-community-contracts/blob/master/contracts/token/OnTokenTransferAdapter.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/community-contracts/token/OnTokenTransferAdapter.sol";
+```
+
+This contract exposes the 667 `onTokenTransfer` hook on top of `IERC1363Receiver-onTransferReceived`.
+
+Inheriting from this adapter makes your `ERC1363Receiver` contract automatically compatible with tokens, such as
+Chainlink's Link, that implement the 667 interface for transferAndCall.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [onTokenTransfer(from, amount, data)](#OnTokenTransferAdapter-onTokenTransfer-address-uint256-bytes-)
+#### IERC1363Receiver [!toc]
+- [onTransferReceived(operator, from, value, data)](#IERC1363Receiver-onTransferReceived-address-address-uint256-bytes-)
+</div>
+</div>
+
+<a id="OnTokenTransferAdapter-onTokenTransfer-address-uint256-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">onTokenTransfer(address from, uint256 amount, bytes data) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="OnTokenTransferAdapter-onTokenTransfer-address-uint256-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>

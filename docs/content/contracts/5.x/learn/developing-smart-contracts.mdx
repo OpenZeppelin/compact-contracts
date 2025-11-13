@@ -1,0 +1,239 @@
+---
+title: Developing smart contracts
+---
+
+Welcome to the exciting world of smart contract development! This guide will let you get started writing Solidity contracts by going over the following:
+
+* [Setting up a Solidity Project](#setting-up-a-project)
+* [Compiling Solidity Source Code](#compiling-solidity)
+* [Adding More Contracts](#adding-more-contracts)
+* [Using OpenZeppelin Contracts](#using-openzeppelin-contracts)
+
+## About Solidity
+
+We won’t cover language concepts such as syntax or keywords in this guide. For that, you’ll want to check out the following curated content, which feature great learning resources for both newcomers and experienced developers:
+
+* For a general overview of how Ethereum and smart contracts work, the official website hosts a [Learn about Ethereum](https://ethereum.org/learn/) section with lots of beginner-friendly content.
+* If you’re new to the language, the [official Solidity documentation](https://solidity.readthedocs.io/en/latest/introduction-to-smart-contracts.html) is a good resource to have handy. Take a look at their [security recommendations](https://solidity.readthedocs.io/en/latest/security-considerations.html), which nicely go over the differences between blockchains and traditional software platforms.
+* Consensys' [best practices](https://consensys.github.io/smart-contract-best-practices/) are quite extensive, and include both [proven patterns](https://consensys.github.io/smart-contract-best-practices/development-recommendations/) to learn from and [known pitfalls](https://consensys.github.io/smart-contract-best-practices/attacks/) to avoid.
+* The [Ethernaut](https://ethernaut.openzeppelin.com/) web-based game will have you look for subtle vulnerabilities in smart contracts as you advance through levels of increasing difficulty.
+
+With that out of the way, let’s get started!
+
+## Setting up a Project
+
+The first step after [creating a project](./setting-up-a-node-project#creating-a-project) is to install a development tool.
+
+The most popular development frameworks for Ethereum are [Hardhat](https://hardhat.org/) and [Foundry](https://github.com/foundry-rs/foundry). Each has their strengths and it is useful to be comfortable using all of them.
+
+In these guides we will show how to develop, test and deploy smart contracts using Hardhat, and we cover its most common use with [ethers.js](https://docs.ethers.io/).
+
+To get started with Hardhat we will install it in our [project directory](./setting-up-a-node-project#creating-a-project).
+
+```bash
+npm install --save-dev hardhat
+```
+
+Once installed, we can run `npx hardhat`. This will create a Hardhat config file (`hardhat.config.js`) in our project directory.
+
+```bash
+npx hardhat
+# 888    888                      888 888               888
+# 888    888                      888 888               888
+# 888    888                      888 888               888
+# 8888888888  8888b.  888d888 .d88888 88888b.   8888b.  888888
+# 888    888     "88b 888P"  d88" 888 888 "88b     "88b 888
+# 888    888 .d888888 888    888  888 888  888 .d888888 888
+# 888    888 888  888 888    Y88b 888 888  888 888  888 Y88b.
+# 888    888 "Y888888 888     "Y88888 888  888 "Y888888  "Y888
+#
+# 👷 Welcome to Hardhat v2.22.12 👷‍
+#
+# ✔ What do you want to do? · Create an empty hardhat.config.js
+# Config file created
+```
+
+## First contract
+
+We store our Solidity source files (`.sol`) in a `contracts` directory. This is equivalent to the `src` directory you may be familiar with from other languages.
+
+We can now write our first simple smart contract, called `Box`: it will let people store a value that can be later retrieved.
+
+We will save this file as `contracts/Box.sol`. Each `.sol` file should have the code for a single contract, and be named after it.
+
+```solidity
+pragma solidity ^0.8.0;
+
+contract Box {
+    uint256 private _value;
+
+    // Emitted when the stored value changes
+    event ValueChanged(uint256 value);
+
+    // Stores a new value in the contract
+    function store(uint256 value) public {
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    // Reads the last stored value
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+## Compiling Solidity
+
+The Ethereum Virtual Machine (EVM) cannot execute Solidity code directly: we first need to compile it into EVM bytecode.
+
+Our `Box.sol` contract uses Solidity 0.8 so we need to first [configure Hardhat to use an appropriate solc version](https://hardhat.org/config/#solidity-configuration).
+
+We specify a Solidity 0.8 solc version in our `hardhat.config.js`.
+
+```js
+
+/**
+ * @type import('hardhat/config').HardhatUserConfig
+ */
+ module.exports =
+  solidity: "0.8.24",
+;
+```
+
+Compiling can then be achieved by running a single compile command:
+
+<Callout>
+If you’re unfamiliar with the `npx` command, check out our [Node project setup guide](./setting-up-a-node-project#using-npx).
+</Callout>
+
+```bash
+npx hardhat compile
+# Compiled 1 Solidity file successfully (evm target: paris).
+```
+
+The [`compile`](https://hardhat.org/guides/compile-contracts.html#compiling-your-contracts) built-in task will automatically look for all contracts in the `contracts` directory, and compile them using the Solidity compiler using the configuration in [`hardhat.config.js`](https://hardhat.org/config/#solidity-configuration).
+
+You will notice an `artifacts` directory was created: it holds the compiled artifacts (bytecode and metadata), which are .json files. It’s a good idea to add this directory to your `.gitignore`.
+
+## Adding more contracts
+
+As your project grows, you will begin to create more contracts that interact with each other: each one should be stored in its own `.sol` file.
+
+To see how this looks, let’s add a simple access control system to our `Box` contract: we will store an administrator address in a contract called `Auth`, and only let `Box` be used by those accounts that `Auth` allows.
+
+Because the compiler will pick up all files in the `contracts` directory and subdirectories, you are free to organize your code as you see fit. Here, we’ll store the `Auth` contract in an `access-control` subdirectory:
+
+<a name="auth-contract"></a>
+```solidity
+pragma solidity ^0.8.0;
+
+contract Auth {
+    address private _administrator;
+
+    constructor(address deployer) {
+        // Make the deployer of the contract the administrator
+        _administrator = deployer;
+    }
+
+    function isAdministrator(address user) public view returns (bool) {
+        return user == _administrator;
+    }
+}
+```
+
+To use this contract from `Box` we use an `import` statement, referring to `Auth` by its relative path:
+
+```solidity
+pragma solidity ^0.8.0;
+
+import "./access-control/Auth.sol";
+
+contract Box {
+    uint256 private _value;
+    Auth private _auth;
+
+    event ValueChanged(uint256 value);
+
+    constructor() {
+        _auth = new Auth(msg.sender);
+    }
+
+    function store(uint256 value) public {
+        // Require that the caller is registered as an administrator in Auth
+        require(_auth.isAdministrator(msg.sender), "Unauthorized");
+
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+Separating concerns across multiple contracts is a great way to keep each one simple, and is generally a good practice.
+
+However, this is not the only way to split your code into modules. You can also use _inheritance_ for encapsulation and code reuse in Solidity, as we’ll see next.
+
+## Using OpenZeppelin Contracts
+
+Reusable modules and libraries are the cornerstone of great software. [**OpenZeppelin Contracts**](/contracts) contains lots of useful building blocks for smart contracts to build on. And you can rest easy when building on them: they’ve been the subject of multiple audits, with their security and correctness battle-tested.
+
+### About inheritance
+
+Many of the contracts in the library are not standalone, that is, you’re not expected to deploy them as-is. Instead, you will use them as a starting point to build your own contracts by adding features to them. Solidity provides _multiple inheritance_ as a mechanism to achieve this: take a look at the [Solidity documentation](https://solidity.readthedocs.io/en/latest/contracts.html#inheritance) for more details.
+
+For example, the [`Ownable`](../api/access#Ownable) contract marks the deployer account as the contract’s owner, and provides a modifier called `onlyOwner`. When applied to a function, `onlyOwner` will cause all function calls that do not originate from the owner account to revert. Functions to [transfer](/contracts/5.x/api/access#Ownable-transferOwnership-address-) and [renounce](/contracts/5.x/api/access#Ownable-renounceOwnership--) ownership are also available.
+
+When used this way, inheritance becomes a powerful mechanism that allows for modularization, without forcing you to deploy and manage multiple contracts.
+
+### Importing OpenZeppelin Contracts
+
+The latest published release of the OpenZeppelin Contracts library can be downloaded by running:
+
+```bash
+npm install @openzeppelin/contracts
+```
+
+<Callout>
+You should always use the library from these published releases: copy-pasting library source code into your project is a dangerous practice that makes it very easy to introduce security vulnerabilities in your contracts.
+</Callout>
+
+To use one of the OpenZeppelin Contracts, `import` it by prefixing its path with `@openzeppelin/contracts`. For example, in order to replace our own [`Auth`](#auth-contract) contract, we will import `@openzeppelin/contracts/access/Ownable.sol` to add access control to `Box`:
+
+<a name="ownable-box-contract"></a>
+```solidity
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract Box is Ownable {
+    uint256 private _value;
+
+    event ValueChanged(uint256 value);
+
+    constructor() Ownable(msg.sender) {}
+
+    // The onlyOwner modifier restricts who can call the store function
+    function store(uint256 value) public onlyOwner {
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+The [OpenZeppelin Contracts documentation](/contracts) is a great place to learn about developing secure smart contract systems. It features both guides and a detailed API reference: see for example the [Access Control](../access-control) guide to know more about the `Ownable` contract used in the code sample above.
+
+## Next steps
+
+Writing and compiling Solidity contracts are but the first steps in the journey to having your decentralized application running on the Ethereum network. Once you are comfortable with this setup, you’ll want to move on to more advanced tasks:
+
+* [Deploying and Interacting](./deploying-and-interacting)
+* [Writing Automated Tests](./writing-automated-tests)
+* [Connecting to Public Test Networks](./connecting-to-public-test-networks)

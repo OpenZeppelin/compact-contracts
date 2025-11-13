@@ -1,0 +1,153 @@
+---
+title: Using Relayer for Sending Transactions
+---
+
+In this tutorial, we will explore how to use the [Relayers](/defender/module/relayers) to send transactions. We will cover:
+
+* Checking relayer information.
+* Sending a transaction.
+* Checking the relayer status.
+
+By the end of this tutorial, you will have a basic understanding of how to use the Relayer to interact with smart contracts.
+
+## Pre-requisites
+
+* OpenZeppelin Defender account.
+* [NodeJS and NPM](https://nodejs.org/en)
+* [Typescript for Node js](https://www.npmjs.com/package/ts-node)
+* Any IDE or text editor
+
+## 1. Set Up Relayer
+
+Let’s start by creating a Relayer:
+
+* Open [Defender Operate & Automate](https://defender.openzeppelin.com/#/relayers) in a web browser.
+
+  ![Manage Relayer](/defender/tutorial-relayer-step1.png)
+* Click on **Create Relayer** with the name ETH Sepolia Relayer and Sepolia network.
+
+  ![Create Relayer](/defender/tutorial-relayer-step2.png)
+* Fund it with some Sepolia ETH. This relayer will send and pay for the automated transactions.
+* To create an API key for a Relayer, click on the Relayer and then on the **More** button to expand the dropdown and select **Create API Key**
+
+  ![Create Relayer API](/defender/tutorial-relayer-step3.png)
+* Now you can set API key expiration in minutes, hours or days.
+
+  ![Save Relayer API](/defender/tutorial-relayer-step3-1.png)
+* Once the API Key is created, make sure to write down the secret key. The API secret is only visible once during the creation — if you don’t write it down, it’s lost forever.
+
+  ![Save Relayer API](/defender/tutorial-relayer-step4.png)
+
+## 2. Check Relayer Information
+
+* Let’s start by checking the information of our relayer.
+* Add Relayer in `.env` File
+* Edit `.env` file in your project root directory and add your Relayer API Key and Secret:
+
+  ```jsx
+  RELAYER_API_KEY=your_api_key
+  RELAYER_SECRET_KEY=your_api_secret
+  ```
+* Create a file named `storeObject.ts` in the project.
+* Now let’s add the following code:
+
+  ```jsx
+  const  Defender  = require('@openzeppelin/defender-sdk');
+
+  const dotenv = require('dotenv');
+
+  dotenv.config();
+
+  async function main()
+
+  const client = new Defender({
+
+  relayerApiKey: process.env.RELAYER_API_KEY,
+  relayerApiSecret: process.env.RELAYER_SECRET_KEY,
+  );
+
+  const info = await client.relaySigner.getRelayer();
+  console.log('Relayer Info:', JSON.stringify(info, null, 2));
+
+  }
+
+  main().catch((error) =>
+  console.error(error);
+  process.exitCode = 1;
+  );
+
+  ```
+* Execute the script to check the relayer information:
+
+  ```jsx
+  ts-node storeObject.ts
+  ```
+
+      Alternatively, if you want to use Node directly:
+```jsx
+node storeObject.js
+```
+
+## 3. Send Transaction
+
+Next, we will send a transaction using the relayer.
+
+* Let’s edit the same file and add the following code:
+
+  ```jsx
+  const tx = await client.relaySigner.sendTransaction(
+      to: '0x1B9ec5Cc45977927fe6707f2A02F51e1415f2052',
+      speed: 'fast',
+      data: '0x6057361d000000000000000000000000000000000000000000000000000000000000000a',
+      gasLimit: '80000',
+    );
+  console.log('Transaction sent! Hash:', tx.hash);
+  ```
+
+Here we are using the Sepolia [Box contract](https://sepolia.etherscan.io/address/0x1B9ec5Cc45977927fe6707f2A02F51e1415f2052) as the target, which is:
+```jsx
+0x1B9ec5Cc45977927fe6707f2A02F51e1415f2052
+```
+
+and data is the encoded version of the store() function with ‘10’ as input parameter.
+```jsx
+0x6057361d000000000000000000000000000000000000000000000000000000000000000a
+```
+
+* Execute the script to send a transaction:
+
+  ```jsx
+  ts-node storeObject.ts
+  ```
+
+      Alternatively, if you want to use Node directly:
+```jsx
+node storeObject.js
+```
+
+## 4. Check Transaction Status
+
+Finally, let’s check the status of our transaction status.
+
+* Edit the file again and add the following code:
+
+  ```jsx
+  const txUpdate = await client.relaySigner.getTransaction(tx.transactionId);
+  console.log('Tx Status', JSON.stringify(txUpdate, null, 2));
+  ```
+* Execute the script to check the relayer status:
+
+  ```jsx
+  ts-node storeObject.ts
+  ```
+
+      Alternatively, if you want to use Node directly:
+```jsx
+node storeObject.js
+```
+
+## 5. Next Steps
+Congratulations! You have successfully used the Relayer to check information, send transactions, and verify the transaction status. By following this tutorial, you have gained a fundamental understanding of how to interact with smart contracts using the Relayer.
+
+* For more information on using Relayer, refer to the [Relayers](/defender/module/relayers) documentation.
+* Explore the [Actions](/defender/tutorial/actions) to automate your smart contract operational tasks with easy integration with the rest of Defender.

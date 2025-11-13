@@ -1,0 +1,232 @@
+---
+title: "Metatx"
+description: "Smart contract metatx utilities and implementations"
+---
+
+## Core
+
+[`ERC2771Context`](#ERC2771Context)
+
+## Utils
+
+[`MinimalForwarder`](#MinimalForwarder)
+
+<a id="ERC2771Context"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `ERC2771Context` 
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/metatx/ERC2771Context.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+```
+
+Context variant with ERC2771 support.
+
+<Callout type="warn">
+The usage of `delegatecall` in this contract is dangerous and may result in context corruption.
+Any forwarded request to this contract triggering a `delegatecall` to itself will result in an invalid [`ERC2771Context._msgSender`](#ERC2771Context-_msgSender--)
+recovery.
+</Callout>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor(trustedForwarder)](#ERC2771Context-constructor-address-)
+- [isTrustedForwarder(forwarder)](#ERC2771Context-isTrustedForwarder-address-)
+- [_msgSender()](#ERC2771Context-_msgSender--)
+- [_msgData()](#ERC2771Context-_msgData--)
+- [_contextSuffixLength()](#ERC2771Context-_contextSuffixLength--)
+</div>
+</div>
+
+<a id="ERC2771Context-constructor-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor(address trustedForwarder)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-constructor-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC2771Context-isTrustedForwarder-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">isTrustedForwarder(address forwarder) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="ERC2771Context-isTrustedForwarder-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC2771Context-_msgSender--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_msgSender() → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-_msgSender--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC2771Context-_msgData--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_msgData() → bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-_msgData--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="ERC2771Context-_contextSuffixLength--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_contextSuffixLength() → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="ERC2771Context-_contextSuffixLength--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+ERC-2771 specifies the context as being a single address (20 bytes).
+
+</div>
+</div>
+
+<a id="MinimalForwarder"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `MinimalForwarder` 
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.6/contracts/metatx/MinimalForwarder.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
+```
+
+Simple minimal forwarder to be used together with an ERC2771 compatible contract. See [`ERC2771Context`](#ERC2771Context).
+
+MinimalForwarder is mainly meant for testing, as it is missing features to be a good production-ready forwarder. This
+contract does not intend to have all the properties that are needed for a sound forwarding system. A fully
+functioning forwarding system with good properties requires more complexity. We suggest you look at other projects
+such as the GSN which do have the goal of building a system like that.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [constructor()](#MinimalForwarder-constructor--)
+- [getNonce(from)](#MinimalForwarder-getNonce-address-)
+- [verify(req, signature)](#MinimalForwarder-verify-struct-MinimalForwarder-ForwardRequest-bytes-)
+- [execute(req, signature)](#MinimalForwarder-execute-struct-MinimalForwarder-ForwardRequest-bytes-)
+#### EIP712
+- [_domainSeparatorV4()](#EIP712-_domainSeparatorV4--)
+- [_hashTypedDataV4(structHash)](#EIP712-_hashTypedDataV4-bytes32-)
+- [eip712Domain()](#EIP712-eip712Domain--)
+#### IERC5267
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+#### EIP712
+#### IERC5267
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+</div>
+</div>
+
+<a id="MinimalForwarder-constructor--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">constructor()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MinimalForwarder-constructor--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="MinimalForwarder-getNonce-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getNonce(address from) → uint256</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MinimalForwarder-getNonce-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="MinimalForwarder-verify-struct-MinimalForwarder-ForwardRequest-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">verify(struct MinimalForwarder.ForwardRequest req, bytes signature) → bool</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MinimalForwarder-verify-struct-MinimalForwarder-ForwardRequest-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+
+<a id="MinimalForwarder-execute-struct-MinimalForwarder-ForwardRequest-bytes-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">execute(struct MinimalForwarder.ForwardRequest req, bytes signature) → bool, bytes</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="MinimalForwarder-execute-struct-MinimalForwarder-ForwardRequest-bytes-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+</div>
+</div>
+

@@ -1,0 +1,66 @@
+---
+title: Non-Fungible Enumerable
+---
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/tokens/src/non-fungible/extensions/enumerable)
+
+Enumerable extension for [Non-Fungible Token](/stellar-contracts/tokens/non-fungible/non-fungible) allows for enumeration
+of all the token IDs in the contract as well as all the token IDs owned by each account. This is
+useful for applications that need to list or iterate over tokens, such as marketplaces or wallets.
+
+## Usage
+
+We’ll build on the [example](/stellar-contracts/tokens/non-fungible/non-fungible#usage) from **Non-Fungible Token**
+and modify the contract so that all tokens an address own can be listed. Please note any account
+can call `award_item` and we might want to implement access control to restrict who can mint.
+
+```rust
+use soroban_sdk::{contract, contractimpl, Address, Env, String};
+use stellar_macros::default_impl;
+use stellar_tokens::non_fungible::{
+    enumerable::{Enumerable, NonFungibleEnumerable},
+    Base, ContractOverrides, NonFungibleToken,
+};
+
+#[contract]
+pub struct GameItem;
+
+#[contractimpl]
+impl GameItem {
+    pub fn __constructor(e: &Env) {
+        Base::set_metadata(
+            e,
+            String::from_str(e, "www.mygame.com"),
+            String::from_str(e, "My Game Items Collection"),
+            String::from_str(e, "MGMC"),
+        );
+    }
+
+    pub fn award_item(e: &Env, to: Address) -> u32 {
+        // access control might be needed
+        Enumerable::sequential_mint(e, &to)
+    }
+
+    pub fn burn(e: &Env, from: Address, token_id: u32) {
+        Enumerable::sequential_burn(e, &from, token_id);
+    }
+}
+
+#[default_impl]
+#[contractimpl]
+impl NonFungibleToken for GameItem {
+    type ContractType = Enumerable;
+}
+
+#[default_impl]
+#[contractimpl]
+impl NonFungibleEnumerable for GameItem {}
+```
+
+The extension exposes additionally the following entry-point functions, automatically implemented by `#[default_impl]`:
+
+```rust
+fn total_supply(e: &Env) -> u32;
+fn get_owner_token_id(e: &Env, owner: Address, index: u32) -> u32;
+fn get_token_id(e: &Env, index: u32) -> u32;
+```

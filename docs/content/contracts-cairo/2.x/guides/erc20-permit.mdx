@@ -1,0 +1,63 @@
+---
+title: ERC20Permit
+---
+
+The [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612) standard, commonly referred to as ERC20Permit, is designed to support gasless token approvals. This is achieved with an off-chain
+signature following the [SNIP12](https://github.com/starknet-io/SNIPs/blob/main/SNIPS/snip-12.md) standard, rather than with an on-chain transaction. The [permit](../api/erc20#ERC20Component-permit) function verifies the signature and sets
+the spender’s allowance if the signature is valid. This approach improves user experience and reduces gas costs.
+
+## Differences from Solidity
+
+Although this extension is mostly similar to the [Solidity implementation](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Permit.sol) of [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612), there are some notable differences in the parameters of the [permit](../api/erc20#ERC20Component-permit) function:
+
+* The `deadline` parameter is represented by `u64` rather than `u256`.
+* The `signature` parameter is represented by a span of felts rather than `v`, `r`, and `s` values.
+
+<Callout>
+Unlike Solidity, there is no enforced format for signatures on Starknet. A signature is represented by an array or span of felts,
+and there is no universal method for validating signatures of unknown formats. Consequently, a signature provided to the [permit](../api/erc20#ERC20Component-permit) function
+is validated through an external `is_valid_signature` call to the contract at the `owner` address.
+</Callout>
+
+
+## Usage
+
+The functionality is provided as an embeddable [ERC20Permit](../api/erc20#ERC20Component-Embeddable-Impls-ERC20PermitImpl) trait of the [ERC20Component](../api/erc20#ERC20Component).
+
+```rust
+#[abi(embed_v0)]
+impl ERC20PermitImpl = ERC20Component::ERC20PermitImpl<ContractState>;
+```
+
+A contract must meet the following requirements to be able to use the [ERC20Permit](../api/erc20#ERC20Component-Embeddable-Impls-ERC20PermitImpl) trait:
+
+* Implement [ERC20Component](../api/erc20#ERC20Component).
+* Implement [NoncesComponent](../api/utilities#NoncesComponent).
+* Implement [SNIP12Metadata](../api/utilities#snip12) trait (used in signature generation).
+
+## Typed message
+
+To safeguard against replay attacks and ensure the uniqueness of each approval via [permit](../api/erc20#ERC20Component-permit), the data signed includes:
+
+* The address of the `owner`.
+* The parameters specified in the [approve](../api/erc20#ERC20Component-approve) function (`spender` and `amount`)
+* The address of the `token` contract itself.
+* A `nonce`, which must be unique for each operation.
+* The `chain_id`, which protects against cross-chain replay attacks.
+
+The format of the `Permit` structure in a signed permit message is as follows:
+```rust
+struct Permit {
+    token: ContractAddress,
+    spender: ContractAddress,
+    amount: u256,
+    nonce: felt252,
+    deadline: u64,
+}
+```
+
+<Callout>
+The owner of the tokens is also part of the signed message. It is used as the `signer` parameter in the `get_message_hash` call.
+</Callout>
+
+Further details on preparing and signing a typed message can be found in the [SNIP12 guide](./snip12).

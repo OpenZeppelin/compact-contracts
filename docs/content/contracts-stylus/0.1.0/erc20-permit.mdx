@@ -1,0 +1,37 @@
+---
+title: ERC-20 Permit
+---
+
+Adds the permit method, which can be used to change an account’s ERC20 allowance (see [`IErc20::allowance`](https://docs.rs/openzeppelin-stylus/0.1.0/openzeppelin_stylus/token/erc20/trait.IErc20.html#tymethod.allowance)) by presenting a message signed by the account. By not relying on [`IErc20::approve`](https://docs.rs/openzeppelin-stylus/0.1.0/openzeppelin_stylus/token/erc20/trait.IErc20.html#tymethod.approve), the token holder account doesn’t need to send a transaction, and thus is not required to hold Ether at all.
+
+## Usage
+
+In order to have [`ERC-20 Permit`](https://docs.rs/openzeppelin-stylus/0.1.0/openzeppelin_stylus/token/erc20/extensions/permit/index.html) token, you need to use only this contract without [ERC-20](/contracts-stylus/0.1.0/erc20) as follows:
+
+```rust
+use openzeppelin_stylus::{
+    token::erc20::extensions::Erc20Permit, utils::cryptography::eip712::IEip712,
+};
+
+sol_storage! {
+    #[entrypoint]
+    struct Erc20PermitExample {
+        #[borrow]
+        Erc20Permit<Eip712> erc20_permit;
+    }
+
+    struct Eip712 {}
+}
+
+// Define `NAME` and `VERSION` for your contract.
+impl IEip712 for Eip712 {
+    const NAME: &'static str = "ERC-20 Permit Example";
+    const VERSION: &'static str = "1";
+}
+
+#[public]
+#[inherit(Erc20Permit<Eip712>)]
+impl Erc20PermitExample {
+    // ...
+}
+```
