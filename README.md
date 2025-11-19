@@ -11,6 +11,12 @@
 > Expect rapid iteration.
 > **Use at your own risk.**
 
+## Learn
+
+### Documentation
+
+Check out the [full documentation site](https://docs.openzeppelin.com/contracts-compact)!
+
 ## Usage
 
 Make sure you have [nvm](https://github.com/nvm-sh/nvm) and [yarn](https://yarnpkg.com/getting-started/install) installed on your machine.
