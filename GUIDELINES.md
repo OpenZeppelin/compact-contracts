@@ -27,6 +27,10 @@ TypeScript code should be written in a consistent format enforced by the project
 
 ## Documentation
 
+The online version of the Compact contracts documentation is maintained at [OpenZeppelin/docs](https://github.com/OpenZeppelin/docs).
+It should mirror all documentation embedded within the contracts themselves with additional context and usage examples if applicable.
+Pull requests in [OpenZeppelin/docs](https://github.com/OpenZeppelin/docs) should be linked to the corresponding pull request in this repo.
+
 For contributors, project guidelines and processes must be documented publicly.
 
 For users, features must be abundantly documented. Documentation should include answers to common questions, solutions to common problems, and recommendations for critical decisions that the user may face.

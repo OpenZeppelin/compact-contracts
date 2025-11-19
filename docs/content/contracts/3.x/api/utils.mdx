@@ -1,0 +1,901 @@
+---
+title: Utilities
+---
+
+<Callout>
+This document is better viewed at https://docs.openzeppelin.com/contracts/api/utils
+</Callout>
+
+Miscellaneous contracts and libraries containing utility functions you can use to improve security, work with new data types, or safely use low-level primitives.
+
+Security tools include:
+
+* Pausable: provides a simple way to halt activity in your contracts (often in response to an external threat).
+* ReentrancyGuard: protects you from [reentrant calls](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+
+The Address, Arrays and Strings libraries provide more operations related to these native data types, while SafeCast adds ways to safely convert between the different signed and unsigned numeric types.
+
+For new data types:
+
+* Counters: a simple way to get a counter that can only be incremented or decremented. Very useful for ID generation, counting contract activity, among others.
+* EnumerableMap: like Solidity’s [`mapping`](https://solidity.readthedocs.io/en/latest/types.html#mapping-types) type, but with key-value _enumeration_: this will let you know how many entries a mapping has, and iterate over them (which is not possible with `mapping`).
+* EnumerableSet: like EnumerableMap, but for [sets](https://en.wikipedia.org/wiki/Set_(abstract_data_type)). Can be used to store privileged accounts, issued IDs, etc.
+
+
+
+Because Solidity does not support generic types, EnumerableMap and EnumerableSet are specialized to a limited number of key-value types.
+
+As of v3.0, EnumerableMap supports `uint256 -> address` (`UintToAddressMap`), and EnumerableSet supports `address` and `uint256` (`AddressSet` and `UintSet`).
+
+
+Finally, Create2 contains all necessary utilities to safely use the [`CREATE2` EVM opcode](https://blog.openzeppelin.com/getting-the-most-out-of-create2/), without having to deal with low-level assembly.
+
+## Contracts
+
+### ``Pausable``
+
+Contract module which allows children to implement an emergency stop
+mechanism that can be triggered by an authorized account.
+
+This module is used through inheritance. It will make available the
+modifiers `whenNotPaused` and `whenPaused`, which can be applied to
+the functions of your contract. Note that they will not be pausable by
+simply including this module, only once the modifiers are put in place.
+
+**Modifiers**
+
+* [`whenNotPaused()`](#Pausable-whenNotPaused)
+* [`whenPaused()`](#Pausable-whenPaused)
+
+**Functions**
+
+* [`constructor()`](#Pausable-constructor)
+* [`paused()`](#Pausable-paused)
+* [`_pause()`](#Pausable-_pause)
+* [`_unpause()`](#Pausable-_unpause)
+
+**Events**
+
+* [`Paused(account)`](#Pausable-Paused-address-)
+* [`Unpaused(account)`](#Pausable-Unpaused-address-)
+
+<a id="Pausable-whenNotPaused"></a>
+
+#### `whenNotPaused() *modifier*
+
+Modifier to make a function callable only when the contract is not paused.
+
+Requirements:
+
+*` The contract must not be paused.
+
+<a id="Pausable-whenPaused"></a>
+
+#### `whenPaused() *modifier*
+
+Modifier to make a function callable only when the contract is paused.
+
+Requirements:
+
+*` The contract must be paused.
+
+<a id="Pausable-constructor"></a>
+
+#### `constructor() *internal*`
+
+Initializes the contract in unpaused state.
+
+<a id="Pausable-paused"></a>
+
+#### `paused() → bool *public*`
+
+Returns true if the contract is paused, and false otherwise.
+
+<a id="Pausable-_pause"></a>
+
+#### `_pause() *internal*
+
+Triggers stopped state.
+
+Requirements:
+
+*` The contract must not be paused.
+
+<a id="Pausable-_unpause"></a>
+
+#### `_unpause() *internal*
+
+Returns to normal state.
+
+Requirements:
+
+*` The contract must be paused.
+
+<a id="Pausable-Paused"></a>
+
+#### `Paused(address account) *event*`
+
+Emitted when the pause is triggered by `account`.
+
+<a id="Pausable-Unpaused"></a>
+
+#### `Unpaused(address account) *event*`
+
+Emitted when the pause is lifted by `account`.
+
+### ``ReentrancyGuard``
+
+Contract module that helps prevent reentrant calls to a function.
+
+Inheriting from `ReentrancyGuard` will make the nonReentrant modifier
+available, which can be applied to functions to make sure there are no nested
+(reentrant) calls to them.
+
+Note that because there is a single `nonReentrant` guard, functions marked as
+`nonReentrant` may not call one another. This can be worked around by making
+those functions `private`, and then adding `external` `nonReentrant` entry
+points to them.
+
+<Callout>
+If you would like to learn more about reentrancy and alternative ways
+to protect against it, check out our blog post
+[Reentrancy After Istanbul](https://blog.openzeppelin.com/reentrancy-after-istanbul/).
+</Callout>
+
+**Modifiers**
+
+* [`nonReentrant()`](#ReentrancyGuard-nonReentrant)
+
+**Functions**
+
+* [`constructor()`](#ReentrancyGuard-constructor)
+
+<a id="Pausable-nonReentrant"></a>
+
+#### `nonReentrant() *modifier*`
+
+Prevents a contract from calling itself, directly or indirectly.
+Calling a `nonReentrant` function from another `nonReentrant`
+function is not supported. It is possible to prevent this from happening
+by making the `nonReentrant` function external, and make it call a
+`private` function that does the actual work.
+
+<a id="Pausable-constructor"></a>
+
+#### `constructor() *internal*`
+
+## Libraries
+
+### ``Address``
+
+Collection of functions related to the address type
+
+**Functions**
+
+* [`isContract(account)`](#Address-isContract-address-)
+* [`sendValue(recipient, amount)`](#Address-sendValue-address-payable-uint256-)
+* [`functionCall(target, data)`](#Address-functionCall-address-bytes-)
+* [`functionCall(target, data, errorMessage)`](#Address-functionCall-address-bytes-string-)
+* [`functionCallWithValue(target, data, value)`](#Address-functionCallWithValue-address-bytes-uint256-)
+* [`functionCallWithValue(target, data, value, errorMessage)`](#Address-functionCallWithValue-address-bytes-uint256-string-)
+* [`functionStaticCall(target, data)`](#Address-functionStaticCall-address-bytes-)
+* [`functionStaticCall(target, data, errorMessage)`](#Address-functionStaticCall-address-bytes-string-)
+* [`functionDelegateCall(target, data)`](#Address-functionDelegateCall-address-bytes-)
+* [`functionDelegateCall(target, data, errorMessage)`](#Address-functionDelegateCall-address-bytes-string-)
+
+<a id="Pausable-isContract"></a>
+
+#### `isContract(address account) → bool *internal*`
+
+Returns true if `account` is a contract.
+
+<Callout type='warn'>
+
+
+It is unsafe to assume that an address for which this function returns
+false is an externally-owned account (EOA) and not a contract.
+
+Among others, `isContract` will return false for the following
+types of addresses:
+
+* an externally-owned account
+* a contract in construction
+* an address where a contract will be created
+* an address where a contract lived, but was destroyed
+
+</Callout>
+
+<a id="Pausable-sendValue"></a>
+
+#### `sendValue(address payable recipient, uint256 amount) *internal*`
+
+Replacement for Solidity’s `transfer`: sends `amount` wei to
+`recipient`, forwarding all available gas and reverting on errors.
+
+[EIP1884](https://eips.ethereum.org/EIPS/eip-1884) increases the gas cost
+of certain opcodes, possibly making contracts go over the 2300 gas limit
+imposed by `transfer`, making them unable to receive funds via
+`transfer`. sendValue removes this limitation.
+
+[Learn more](https://diligence.consensys.net/posts/2019/09/stop-using-soliditys-transfer-now/).
+
+<Callout type='warn'>
+because control is transferred to `recipient`, care must be
+taken to not create reentrancy vulnerabilities. Consider using
+ReentrancyGuard or the
+[checks-effects-interactions pattern](https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern).
+</Callout>
+
+<a id="Pausable-functionCall"></a>
+
+#### `functionCall(address target, bytes data) → bytes *internal*`
+
+Performs a Solidity function call using a low level `call`. A
+plain`call` is an unsafe replacement for a function call: use this
+function instead.
+
+If `target` reverts with a revert reason, it is bubbled up by this
+function (like regular Solidity function calls).
+
+Returns the raw returned data. To convert to the expected return value,
+use [`abi.decode`](https://solidity.readthedocs.io/en/latest/units-and-global-variables.html?highlight=abi.decode#abi-encoding-and-decoding-functions).
+
+Requirements:
+
+* `target` must be a contract.
+* calling `target` with `data` must not revert.
+
+_Available since v3.1._
+
+<a id="Pausable-functionCall"></a>
+
+#### `functionCall(address target, bytes data, string errorMessage) → bytes *internal*`
+
+Same as [`functionCall`](#Address-functionCall-address-bytes-), but with
+`errorMessage` as a fallback revert reason when `target` reverts.
+
+_Available since v3.1._
+
+<a id="Pausable-functionCallWithValue"></a>
+
+#### `functionCallWithValue(address target, bytes data, uint256 value) → bytes *internal*`
+
+Same as [`functionCall`](#Address-functionCall-address-bytes-),
+but also transferring `value` wei to `target`.
+
+Requirements:
+
+* the calling contract must have an ETH balance of at least `value`.
+* the called Solidity function must be `payable`.
+
+_Available since v3.1._
+
+<a id="Pausable-functionCallWithValue"></a>
+
+#### `functionCallWithValue(address target, bytes data, uint256 value, string errorMessage) → bytes *internal*`
+
+Same as [`functionCallWithValue`](#Address-functionCallWithValue-address-bytes-uint256-), but
+with `errorMessage` as a fallback revert reason when `target` reverts.
+
+_Available since v3.1._
+
+<a id="Pausable-functionStaticCall"></a>
+
+#### `functionStaticCall(address target, bytes data) → bytes *internal*`
+
+Same as [`functionCall`](#Address-functionCall-address-bytes-),
+but performing a static call.
+
+_Available since v3.3._
+
+<a id="Pausable-functionStaticCall"></a>
+
+#### `functionStaticCall(address target, bytes data, string errorMessage) → bytes *internal*`
+
+Same as [`functionCall`](#Address-functionCall-address-bytes-string-),
+but performing a static call.
+
+_Available since v3.3._
+
+<a id="Pausable-functionDelegateCall"></a>
+
+#### `functionDelegateCall(address target, bytes data) → bytes *internal*`
+
+Same as [`functionCall`](#Address-functionCall-address-bytes-),
+but performing a delegate call.
+
+_Available since v3.4._
+
+<a id="Pausable-functionDelegateCall"></a>
+
+#### `functionDelegateCall(address target, bytes data, string errorMessage) → bytes *internal*`
+
+Same as [`functionCall`](#Address-functionCall-address-bytes-string-),
+but performing a delegate call.
+
+_Available since v3.4._
+
+### ``Arrays``
+
+Collection of functions related to array types.
+
+**Functions**
+
+* [`findUpperBound(array, element)`](#Arrays-findUpperBound-uint256---uint256-)
+
+<a id="Pausable-findUpperBound"></a>
+
+#### `findUpperBound(uint256[] array, uint256 element) → uint256 *internal*`
+
+Searches a sorted `array` and returns the first index that contains
+a value greater or equal to `element`. If no such index exists (i.e. all
+values in the array are strictly less than `element`), the array length is
+returned. Time complexity O(log n).
+
+`array` is expected to be sorted in ascending order, and to contain no
+repeated elements.
+
+### ``Counters``
+
+Provides counters that can only be incremented or decremented by one. This can be used e.g. to track the number
+of elements in a mapping, issuing ERC721 ids, or counting request ids.
+
+Include with `using Counters for Counters.Counter;`
+Since it is not possible to overflow a 256 bit integer with increments of one, `increment` can skip the SafeMath
+overflow check, thereby saving gas. This does assume however correct usage, in that the underlying `_value` is never
+directly accessed.
+
+**Functions**
+
+* [`current(counter)`](#Counters-current-struct-Counters-Counter-)
+* [`increment(counter)`](#Counters-increment-struct-Counters-Counter-)
+* [`decrement(counter)`](#Counters-decrement-struct-Counters-Counter-)
+
+<a id="Pausable-current"></a>
+
+#### `current(struct Counters.Counter counter) → uint256 *internal*`
+
+<a id="Pausable-increment"></a>
+
+#### `increment(struct Counters.Counter counter) *internal*`
+
+<a id="Pausable-decrement"></a>
+
+#### `decrement(struct Counters.Counter counter) *internal*`
+
+### ``Create2``
+
+Helper to make usage of the `CREATE2` EVM opcode easier and safer.
+`CREATE2` can be used to compute in advance the address where a smart
+contract will be deployed, which allows for interesting new mechanisms known
+as 'counterfactual interactions'.
+
+See the [EIP](https://eips.ethereum.org/EIPS/eip-1014#motivation) for more
+information.
+
+**Functions**
+
+* [`deploy(amount, salt, bytecode)`](#Create2-deploy-uint256-bytes32-bytes-)
+* [`computeAddress(salt, bytecodeHash)`](#Create2-computeAddress-bytes32-bytes32-)
+* [`computeAddress(salt, bytecodeHash, deployer)`](#Create2-computeAddress-bytes32-bytes32-address-)
+
+<a id="Pausable-deploy"></a>
+
+#### `deploy(uint256 amount, bytes32 salt, bytes bytecode) → address *internal*`
+
+Deploys a contract using `CREATE2`. The address where the contract
+will be deployed can be known in advance via computeAddress.
+
+The bytecode for a contract can be obtained from Solidity with
+`type(contractName).creationCode`.
+
+Requirements:
+
+* `bytecode` must not be empty.
+* `salt` must have not been used for `bytecode` already.
+* the factory must have a balance of at least `amount`.
+* if `amount` is non-zero, `bytecode` must have a `payable` constructor.
+
+<a id="Pausable-computeAddress"></a>
+
+#### `computeAddress(bytes32 salt, bytes32 bytecodeHash) → address *internal*`
+
+Returns the address where a contract will be stored if deployed via deploy. Any change in the
+`bytecodeHash` or `salt` will result in a new destination address.
+
+<a id="Pausable-computeAddress"></a>
+
+#### `computeAddress(bytes32 salt, bytes32 bytecodeHash, address deployer) → address *internal*`
+
+Returns the address where a contract will be stored if deployed via deploy from a contract located at
+`deployer`. If `deployer` is this contract’s address, returns the same value as computeAddress.
+
+### ``EnumerableMap``
+
+Library for managing an enumerable variant of Solidity’s
+[`mapping`](https://solidity.readthedocs.io/en/latest/types.html#mapping-types)
+type.
+
+Maps have the following properties:
+
+* Entries are added, removed, and checked for existence in constant time
+(O(1)).
+* Entries are enumerated in O(n). No guarantees are made on the ordering.
+
+```
+contract Example 
+    // Add the library methods
+    using EnumerableMap for EnumerableMap.UintToAddressMap;
+
+    // Declare a set state variable
+    EnumerableMap.UintToAddressMap private myMap;
+
+```
+
+As of v3.0.0, only maps of type `uint256 -> address` (`UintToAddressMap`) are
+supported.
+
+**Functions**
+
+* [`set(map, key, value)`](#EnumerableMap-set-struct-EnumerableMap-UintToAddressMap-uint256-address-)
+* [`remove(map, key)`](#EnumerableMap-remove-struct-EnumerableMap-UintToAddressMap-uint256-)
+* [`contains(map, key)`](#EnumerableMap-contains-struct-EnumerableMap-UintToAddressMap-uint256-)
+* [`length(map)`](#EnumerableMap-length-struct-EnumerableMap-UintToAddressMap-)
+* [`at(map, index)`](#EnumerableMap-at-struct-EnumerableMap-UintToAddressMap-uint256-)
+* [`tryGet(map, key)`](#EnumerableMap-tryGet-struct-EnumerableMap-UintToAddressMap-uint256-)
+* [`get(map, key)`](#EnumerableMap-get-struct-EnumerableMap-UintToAddressMap-uint256-)
+* [`get(map, key, errorMessage)`](#EnumerableMap-get-struct-EnumerableMap-UintToAddressMap-uint256-string-)
+
+<a id="Pausable-set"></a>
+
+#### `set(struct EnumerableMap.UintToAddressMap map, uint256 key, address value) → bool *internal*`
+
+Adds a key-value pair to a map, or updates the value for an existing
+key. O(1).
+
+Returns true if the key was added to the map, that is if it was not
+already present.
+
+<a id="Pausable-remove"></a>
+
+#### `remove(struct EnumerableMap.UintToAddressMap map, uint256 key) → bool *internal*`
+
+Removes a value from a set. O(1).
+
+Returns true if the key was removed from the map, that is if it was present.
+
+<a id="Pausable-contains"></a>
+
+#### `contains(struct EnumerableMap.UintToAddressMap map, uint256 key) → bool *internal*`
+
+Returns true if the key is in the map. O(1).
+
+<a id="Pausable-length"></a>
+
+#### `length(struct EnumerableMap.UintToAddressMap map) → uint256 *internal*`
+
+Returns the number of elements in the map. O(1).
+
+<a id="Pausable-at"></a>
+
+#### `at(struct EnumerableMap.UintToAddressMap map, uint256 index) → uint256, address *internal*`
+
+Returns the element stored at position `index` in the set. O(1).
+Note that there are no guarantees on the ordering of values inside the
+array, and it may change when more values are added or removed.
+
+Requirements:
+
+* `index` must be strictly less than length.
+
+<a id="Pausable-tryGet"></a>
+
+#### `tryGet(struct EnumerableMap.UintToAddressMap map, uint256 key) → bool, address *internal*`
+
+Tries to returns the value associated with `key`.  O(1).
+Does not revert if `key` is not in the map.
+
+_Available since v3.4._
+
+<a id="Pausable-get"></a>
+
+#### `get(struct EnumerableMap.UintToAddressMap map, uint256 key) → address *internal*`
+
+Returns the value associated with `key`.  O(1).
+
+Requirements:
+
+* `key` must be in the map.
+
+<a id="Pausable-get"></a>
+
+#### `get(struct EnumerableMap.UintToAddressMap map, uint256 key, string errorMessage) → address *internal*`
+
+Same as get, with a custom error message when `key` is not in the map.
+
+<Callout type='warn'>
+This function is deprecated because it requires allocating memory for the error
+message unnecessarily. For custom revert reasons use tryGet.
+</Callout>
+
+### ``EnumerableSet``
+
+Library for managing
+[sets](https://en.wikipedia.org/wiki/Set_(abstract_data_type)) of primitive
+types.
+
+Sets have the following properties:
+
+* Elements are added, removed, and checked for existence in constant time
+(O(1)).
+* Elements are enumerated in O(n). No guarantees are made on the ordering.
+
+```
+contract Example 
+    // Add the library methods
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    // Declare a set state variable
+    EnumerableSet.AddressSet private mySet;
+
+```
+
+As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+and `uint256` (`UintSet`) are supported.
+
+**Functions**
+
+* [`add(set, value)`](#EnumerableSet-add-struct-EnumerableSet-Bytes32Set-bytes32-)
+* [`remove(set, value)`](#EnumerableSet-remove-struct-EnumerableSet-Bytes32Set-bytes32-)
+* [`contains(set, value)`](#EnumerableSet-contains-struct-EnumerableSet-Bytes32Set-bytes32-)
+* [`length(set)`](#EnumerableSet-length-struct-EnumerableSet-Bytes32Set-)
+* [`at(set, index)`](#EnumerableSet-at-struct-EnumerableSet-Bytes32Set-uint256-)
+* [`add(set, value)`](#EnumerableSet-add-struct-EnumerableSet-AddressSet-address-)
+* [`remove(set, value)`](#EnumerableSet-remove-struct-EnumerableSet-AddressSet-address-)
+* [`contains(set, value)`](#EnumerableSet-contains-struct-EnumerableSet-AddressSet-address-)
+* [`length(set)`](#EnumerableSet-length-struct-EnumerableSet-AddressSet-)
+* [`at(set, index)`](#EnumerableSet-at-struct-EnumerableSet-AddressSet-uint256-)
+* [`add(set, value)`](#EnumerableSet-add-struct-EnumerableSet-UintSet-uint256-)
+* [`remove(set, value)`](#EnumerableSet-remove-struct-EnumerableSet-UintSet-uint256-)
+* [`contains(set, value)`](#EnumerableSet-contains-struct-EnumerableSet-UintSet-uint256-)
+* [`length(set)`](#EnumerableSet-length-struct-EnumerableSet-UintSet-)
+* [`at(set, index)`](#EnumerableSet-at-struct-EnumerableSet-UintSet-uint256-)
+
+<a id="Pausable-add"></a>
+
+#### `add(struct EnumerableSet.Bytes32Set set, bytes32 value) → bool *internal*`
+
+Add a value to a set. O(1).
+
+Returns true if the value was added to the set, that is if it was not
+already present.
+
+<a id="Pausable-remove"></a>
+
+#### `remove(struct EnumerableSet.Bytes32Set set, bytes32 value) → bool *internal*`
+
+Removes a value from a set. O(1).
+
+Returns true if the value was removed from the set, that is if it was
+present.
+
+<a id="Pausable-contains"></a>
+
+#### `contains(struct EnumerableSet.Bytes32Set set, bytes32 value) → bool *internal*`
+
+Returns true if the value is in the set. O(1).
+
+<a id="Pausable-length"></a>
+
+#### `length(struct EnumerableSet.Bytes32Set set) → uint256 *internal*`
+
+Returns the number of values in the set. O(1).
+
+<a id="Pausable-at"></a>
+
+#### `at(struct EnumerableSet.Bytes32Set set, uint256 index) → bytes32 *internal*`
+
+Returns the value stored at position `index` in the set. O(1).
+
+Note that there are no guarantees on the ordering of values inside the
+array, and it may change when more values are added or removed.
+
+Requirements:
+
+* `index` must be strictly less than length.
+
+<a id="Pausable-add"></a>
+
+#### `add(struct EnumerableSet.AddressSet set, address value) → bool *internal*`
+
+Add a value to a set. O(1).
+
+Returns true if the value was added to the set, that is if it was not
+already present.
+
+<a id="Pausable-remove"></a>
+
+#### `remove(struct EnumerableSet.AddressSet set, address value) → bool *internal*`
+
+Removes a value from a set. O(1).
+
+Returns true if the value was removed from the set, that is if it was
+present.
+
+<a id="Pausable-contains"></a>
+
+#### `contains(struct EnumerableSet.AddressSet set, address value) → bool *internal*`
+
+Returns true if the value is in the set. O(1).
+
+<a id="Pausable-length"></a>
+
+#### `length(struct EnumerableSet.AddressSet set) → uint256 *internal*`
+
+Returns the number of values in the set. O(1).
+
+<a id="Pausable-at"></a>
+
+#### `at(struct EnumerableSet.AddressSet set, uint256 index) → address *internal*`
+
+Returns the value stored at position `index` in the set. O(1).
+
+Note that there are no guarantees on the ordering of values inside the
+array, and it may change when more values are added or removed.
+
+Requirements:
+
+* `index` must be strictly less than length.
+
+<a id="Pausable-add"></a>
+
+#### `add(struct EnumerableSet.UintSet set, uint256 value) → bool *internal*`
+
+Add a value to a set. O(1).
+
+Returns true if the value was added to the set, that is if it was not
+already present.
+
+<a id="Pausable-remove"></a>
+
+#### `remove(struct EnumerableSet.UintSet set, uint256 value) → bool *internal*`
+
+Removes a value from a set. O(1).
+
+Returns true if the value was removed from the set, that is if it was
+present.
+
+<a id="Pausable-contains"></a>
+
+#### `contains(struct EnumerableSet.UintSet set, uint256 value) → bool *internal*`
+
+Returns true if the value is in the set. O(1).
+
+<a id="Pausable-length"></a>
+
+#### `length(struct EnumerableSet.UintSet set) → uint256 *internal*`
+
+Returns the number of values on the set. O(1).
+
+<a id="Pausable-at"></a>
+
+#### `at(struct EnumerableSet.UintSet set, uint256 index) → uint256 *internal*`
+
+Returns the value stored at position `index` in the set. O(1).
+
+Note that there are no guarantees on the ordering of values inside the
+array, and it may change when more values are added or removed.
+
+Requirements:
+
+* `index` must be strictly less than length.
+
+### ``SafeCast``
+
+Wrappers over Solidity’s uintXX/intXX casting operators with added overflow
+checks.
+
+Downcasting from uint256/int256 in Solidity does not revert on overflow. This can
+easily result in undesired exploitation or bugs, since developers usually
+assume that overflows raise errors. `SafeCast` restores this intuition by
+reverting the transaction when such an operation overflows.
+
+Using this library instead of the unchecked operations eliminates an entire
+class of bugs, so it’s recommended to use it always.
+
+Can be combined with SafeMath and SignedSafeMath to extend it to smaller types, by performing
+all math on `uint256` and `int256` and then downcasting.
+
+**Functions**
+
+* [`toUint128(value)`](#SafeCast-toUint128-uint256-)
+* [`toUint64(value)`](#SafeCast-toUint64-uint256-)
+* [`toUint32(value)`](#SafeCast-toUint32-uint256-)
+* [`toUint16(value)`](#SafeCast-toUint16-uint256-)
+* [`toUint8(value)`](#SafeCast-toUint8-uint256-)
+* [`toUint256(value)`](#SafeCast-toUint256-int256-)
+* [`toInt128(value)`](#SafeCast-toInt128-int256-)
+* [`toInt64(value)`](#SafeCast-toInt64-int256-)
+* [`toInt32(value)`](#SafeCast-toInt32-int256-)
+* [`toInt16(value)`](#SafeCast-toInt16-int256-)
+* [`toInt8(value)`](#SafeCast-toInt8-int256-)
+* [`toInt256(value)`](#SafeCast-toInt256-uint256-)
+
+<a id="Pausable-toUint128"></a>
+
+#### `toUint128(uint256 value) → uint128 *internal*`
+
+Returns the downcasted uint128 from uint256, reverting on
+overflow (when the input is greater than largest uint128).
+
+Counterpart to Solidity’s `uint128` operator.
+
+Requirements:
+
+* input must fit into 128 bits
+
+<a id="Pausable-toUint64"></a>
+
+#### `toUint64(uint256 value) → uint64 *internal*`
+
+Returns the downcasted uint64 from uint256, reverting on
+overflow (when the input is greater than largest uint64).
+
+Counterpart to Solidity’s `uint64` operator.
+
+Requirements:
+
+* input must fit into 64 bits
+
+<a id="Pausable-toUint32"></a>
+
+#### `toUint32(uint256 value) → uint32 *internal*`
+
+Returns the downcasted uint32 from uint256, reverting on
+overflow (when the input is greater than largest uint32).
+
+Counterpart to Solidity’s `uint32` operator.
+
+Requirements:
+
+* input must fit into 32 bits
+
+<a id="Pausable-toUint16"></a>
+
+#### `toUint16(uint256 value) → uint16 *internal*`
+
+Returns the downcasted uint16 from uint256, reverting on
+overflow (when the input is greater than largest uint16).
+
+Counterpart to Solidity’s `uint16` operator.
+
+Requirements:
+
+* input must fit into 16 bits
+
+<a id="Pausable-toUint8"></a>
+
+#### `toUint8(uint256 value) → uint8 *internal*`
+
+Returns the downcasted uint8 from uint256, reverting on
+overflow (when the input is greater than largest uint8).
+
+Counterpart to Solidity’s `uint8` operator.
+
+Requirements:
+
+* input must fit into 8 bits.
+
+<a id="Pausable-toUint256"></a>
+
+#### `toUint256(int256 value) → uint256 *internal*
+
+Converts a signed int256 into an unsigned uint256.
+
+Requirements:
+
+*` input must be greater than or equal to 0.
+
+<a id="Pausable-toInt128"></a>
+
+#### `toInt128(int256 value) → int128 *internal*`
+
+Returns the downcasted int128 from int256, reverting on
+overflow (when the input is less than smallest int128 or
+greater than largest int128).
+
+Counterpart to Solidity’s `int128` operator.
+
+Requirements:
+
+* input must fit into 128 bits
+
+_Available since v3.1._
+
+<a id="Pausable-toInt64"></a>
+
+#### `toInt64(int256 value) → int64 *internal*`
+
+Returns the downcasted int64 from int256, reverting on
+overflow (when the input is less than smallest int64 or
+greater than largest int64).
+
+Counterpart to Solidity’s `int64` operator.
+
+Requirements:
+
+* input must fit into 64 bits
+
+_Available since v3.1._
+
+<a id="Pausable-toInt32"></a>
+
+#### `toInt32(int256 value) → int32 *internal*`
+
+Returns the downcasted int32 from int256, reverting on
+overflow (when the input is less than smallest int32 or
+greater than largest int32).
+
+Counterpart to Solidity’s `int32` operator.
+
+Requirements:
+
+* input must fit into 32 bits
+
+_Available since v3.1._
+
+<a id="Pausable-toInt16"></a>
+
+#### `toInt16(int256 value) → int16 *internal*`
+
+Returns the downcasted int16 from int256, reverting on
+overflow (when the input is less than smallest int16 or
+greater than largest int16).
+
+Counterpart to Solidity’s `int16` operator.
+
+Requirements:
+
+* input must fit into 16 bits
+
+_Available since v3.1._
+
+<a id="Pausable-toInt8"></a>
+
+#### `toInt8(int256 value) → int8 *internal*`
+
+Returns the downcasted int8 from int256, reverting on
+overflow (when the input is less than smallest int8 or
+greater than largest int8).
+
+Counterpart to Solidity’s `int8` operator.
+
+Requirements:
+
+* input must fit into 8 bits.
+
+_Available since v3.1._
+
+<a id="Pausable-toInt256"></a>
+
+#### `toInt256(uint256 value) → int256 *internal*
+
+Converts an unsigned uint256 into a signed int256.
+
+Requirements:
+
+*` input must be less than or equal to maxInt256.
+
+### ``Strings``
+
+String operations.
+
+**Functions**
+
+* [`toString(value)`](#Strings-toString-uint256-)
+
+<a id="Pausable-toString"></a>
+
+#### `toString(uint256 value) → string *internal*`
+
+Converts a `uint256` to its ASCII `string` representation.

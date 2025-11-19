@@ -2,39 +2,89 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "compact:security": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/security/**/*.compact"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME",
+        "SKIP_ZK"
+      ],
+      "inputs": [
+        "src/security/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**/"]
+      "outputs": [
+        "artifacts/**/"
+      ]
     },
     "compact:utils": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/utils/**/*.compact"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME",
+        "SKIP_ZK"
+      ],
+      "inputs": [
+        "src/utils/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**/"]
+      "outputs": [
+        "artifacts/**/"
+      ]
     },
     "compact:access": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/access/**/*.compact"],
+      "dependsOn": [
+        "^build",
+        "compact:security",
+        "compact:utils"
+      ],
+      "env": [
+        "COMPACT_HOME",
+        "SKIP_ZK"
+      ],
+      "inputs": [
+        "src/access/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**/"]
+      "outputs": [
+        "artifacts/**/"
+      ]
     },
     "compact:archive": {
-      "dependsOn": ["^build", "compact:utils"],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/archive/**/*.compact"],
+      "dependsOn": [
+        "^build",
+        "compact:utils"
+      ],
+      "env": [
+        "COMPACT_HOME",
+        "SKIP_ZK"
+      ],
+      "inputs": [
+        "src/archive/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**/"]
+      "outputs": [
+        "artifacts/**/"
+      ]
     },
     "compact:token": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/token/**/*.compact"],
+      "dependsOn": [
+        "^build",
+        "compact:security",
+        "compact:utils"
+      ],
+      "env": [
+        "COMPACT_HOME",
+        "SKIP_ZK"
+      ],
+      "inputs": [
+        "src/token/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**/"]
+      "outputs": [
+        "artifacts/**/"
+      ]
     },
     "compact": {
       "dependsOn": [
@@ -44,14 +94,26 @@
         "compact:archive",
         "compact:token"
       ],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/**/*.compact", "test/**/*.compact"],
+      "env": [
+        "COMPACT_HOME",
+        "SKIP_ZK"
+      ],
+      "inputs": [
+        "src/**/*.compact",
+        "test/**/*.compact"
+      ],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**"]
+      "outputs": [
+        "artifacts/**"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
       "inputs": [
         "src/**/*.ts",
         "src/**/*.compact",
@@ -62,8 +124,12 @@
       "cache": false
     },
     "build": {
-      "dependsOn": ["^build"],
-      "env": ["COMPACT_HOME"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "COMPACT_HOME"
+      ],
       "inputs": [
         "src/**/*.ts",
         "!src/**/*.test.ts",
@@ -71,7 +137,9 @@
         "tsconfig.build.json",
         ".env"
       ],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
     "types": {
       "dependsOn": [
@@ -87,14 +155,6 @@
       "cache": false
     },
     "clean": {
-      "outputs": [],
-      "cache": false
-    },
-    "docs": {
-      "outputs": [],
-      "cache": false
-    },
-    "docs:watch": {
       "outputs": [],
       "cache": false
     }

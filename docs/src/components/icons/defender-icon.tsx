@@ -1,0 +1,20 @@
+export function DefenderIcon({ className }: { className: string }) {
+	return (
+		<svg
+			width="1em"
+			height="1em"
+			viewBox="0 0 113.38 100.78"
+			fill="none"
+			xmlns="http://www.w3.org/2000/svg"
+			className={className}
+		>
+			<title>Defender Icon</title>
+			<g id="icon" fill="currentColor">
+				<polygon points="49.94 58.16 33.29 29.08 49.94 0 16.65 0 0 29.08 16.65 58.16 49.94 58.16"></polygon>
+				<polygon points="74.09 42.62 57.44 71.7 24.15 71.7 40.8 100.78 74.09 100.78 90.74 71.7 74.09 42.62"></polygon>
+				<polygon points="46.79 29.08 80.08 29.08 96.73 58.16 113.38 29.08 96.73 0 63.44 0 46.79 29.08"></polygon>
+				<polygon points="64.88 38.06 57.3 50.23 50.39 38.06 64.88 38.06"></polygon>
+			</g>
+		</svg>
+	);
+}

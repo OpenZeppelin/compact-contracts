@@ -1,0 +1,49 @@
+---
+title: Utilities
+---
+
+The OpenZeppelin Stylus Contracts provides a ton of useful utilities that you can use in your project.
+For a complete list, check out the [API Reference](https://docs.rs/openzeppelin-stylus/0.2.0/openzeppelin_stylus/utils/index.html).
+Here are some of the more popular ones.
+
+## Introspection
+
+It’s frequently helpful to know whether a contract supports an interface you’d like to use.
+[`ERC-165`](https://eips.ethereum.org/EIPS/eip-165) is a standard that helps do runtime interface detection.
+Contracts for Stylus provides helpers for implementing ERC-165 in your contracts:
+
+* [`IERC165`](https://docs.rs/openzeppelin-stylus/0.2.0/openzeppelin_stylus/utils/introspection/erc165/trait.IErc165.html) — this is the ERC-165 trait that defines [`supportsInterface`](https://docs.rs/openzeppelin-stylus/0.2.0/openzeppelin_stylus/utils/introspection/erc165/trait.IErc165.html#tymethod.supports_interface). In order to implement ERC-165 interface detection, you should manually expose [`supportsInterface`](https://docs.rs/openzeppelin-stylus/0.2.0/openzeppelin_stylus/utils/introspection/erc165/trait.IErc165.html#tymethod.supports_interface) function in your contract.
+
+```rust
+#[entrypoint]
+#[storage]
+struct Erc721Example {
+    erc721: Erc721,
+}
+
+#[public]
+#[implements(IErc721<Error = Error>, IErc165)]
+impl Erc721Example {
+    // ...
+}
+
+#[public]
+impl IErc165 for Erc721Example {
+    fn supports_interface(&self, interface_id: FixedBytes<4>) -> bool {
+        self.erc721.supports_interface(interface_id)
+    }
+}
+
+#[public]
+impl IErc721 for Erc721Example {
+    // ...
+}
+```
+
+## Structures
+
+Some use cases require more powerful data structures than arrays and mappings offered natively in alloy and the Stylus sdk.
+Contracts for Stylus provides these libraries for enhanced data structure management:
+
+* [`BitMaps`](https://docs.rs/openzeppelin-stylus/0.2.0/openzeppelin_stylus/utils/structs/bitmap/index.html): Store packed booleans in storage.
+* [`Checkpoints`](https://docs.rs/openzeppelin-stylus/0.2.0/openzeppelin_stylus/utils/structs/checkpoints/index.html): Checkpoint values with built-in lookups.

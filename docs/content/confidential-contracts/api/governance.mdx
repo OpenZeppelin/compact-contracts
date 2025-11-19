@@ -1,0 +1,454 @@
+---
+title: "Governance"
+description: "Smart contract governance utilities and implementations"
+---
+
+This directory includes primitives for on-chain confidential governance.
+
+* [`VotesConfidential`](#VotesConfidential): Abstract contract that keeps track of confidential voting units, enabling checkpointed voting through governance.
+
+## Utils
+[`VotesConfidential`](#VotesConfidential)
+
+<a id="VotesConfidential"></a>
+
+<div style={{marginTop: "4em"}} className="w-full flex flex-row items-center justify-between">
+
+## `VotesConfidential`
+
+<a target="_blank" style={{marginTop: "1.5em"}} href="https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/v0.2.0/contracts/governance/utils/VotesConfidential.sol">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+</a>
+
+</div>
+
+```solidity
+import "@openzeppelin/confidential-contracts/governance/utils/VotesConfidential.sol";
+```
+
+A confidential votes contract tracking confidential voting power of accounts over time.
+It features vote delegation to delegators.
+
+This contract keeps a history (checkpoints) of each account's confidential vote power. Confidential
+voting power can be delegated either by calling the [`VotesConfidential.delegate`](#VotesConfidential-delegate-address-) function directly, or by providing
+a signature to be used with [`VotesConfidential.delegateBySig`](#VotesConfidential-delegateBySig-address-uint256-uint256-uint8-bytes32-bytes32-). Confidential voting power handles can be queried
+through the public accessors [`VotesConfidential.getVotes`](#VotesConfidential-getVotes-address-) and [`VotesConfidential.getPastVotes`](#VotesConfidential-getPastVotes-address-uint256-) but can only be decrypted by accounts
+allowed to access them. Ensure that [`HandleAccessManager._validateHandleAllowance`](./utils#HandleAccessManager-_validateHandleAllowance-bytes32-) is implemented properly, allowing all
+necessary addresses to access voting power handles.
+
+By default, voting units does not account for voting power. This makes transfers of underlying
+voting units cheaper. The downside is that it requires users to delegate to themselves in order
+to activate checkpoints and have their voting power tracked.
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Functions</h3>
+<div className="font-mono">
+- [clock()](#VotesConfidential-clock--)
+- [CLOCK_MODE()](#VotesConfidential-CLOCK_MODE--)
+- [getVotes(account)](#VotesConfidential-getVotes-address-)
+- [getPastVotes(account, timepoint)](#VotesConfidential-getPastVotes-address-uint256-)
+- [getPastTotalSupply(timepoint)](#VotesConfidential-getPastTotalSupply-uint256-)
+- [confidentialTotalSupply()](#VotesConfidential-confidentialTotalSupply--)
+- [delegates(account)](#VotesConfidential-delegates-address-)
+- [delegate(delegatee)](#VotesConfidential-delegate-address-)
+- [delegateBySig(delegatee, nonce, expiry, v, r, s)](#VotesConfidential-delegateBySig-address-uint256-uint256-uint8-bytes32-bytes32-)
+- [_delegate(account, delegatee)](#VotesConfidential-_delegate-address-address-)
+- [_transferVotingUnits(from, to, amount)](#VotesConfidential-_transferVotingUnits-address-address-euint64-)
+- [_moveDelegateVotes(from, to, amount)](#VotesConfidential-_moveDelegateVotes-address-address-euint64-)
+- [_validateTimepoint(timepoint)](#VotesConfidential-_validateTimepoint-uint256-)
+- [_getVotingUnits()](#VotesConfidential-_getVotingUnits-address-)
+#### HandleAccessManager [!toc]
+- [getHandleAllowance(handle, account, persistent)](#HandleAccessManager-getHandleAllowance-bytes32-address-bool-)
+- [_validateHandleAllowance(handle)](#HandleAccessManager-_validateHandleAllowance-bytes32-)
+#### IERC6372 [!toc]
+#### EIP712 [!toc]
+- [_domainSeparatorV4()](#EIP712-_domainSeparatorV4--)
+- [_hashTypedDataV4(structHash)](#EIP712-_hashTypedDataV4-bytes32-)
+- [eip712Domain()](#EIP712-eip712Domain--)
+- [_EIP712Name()](#EIP712-_EIP712Name--)
+- [_EIP712Version()](#EIP712-_EIP712Version--)
+#### IERC5267 [!toc]
+#### Nonces [!toc]
+- [nonces(owner)](#Nonces-nonces-address-)
+- [_useNonce(owner)](#Nonces-_useNonce-address-)
+- [_useCheckedNonce(owner, nonce)](#Nonces-_useCheckedNonce-address-uint256-)
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Events</h3>
+<div className="font-mono">
+- [DelegateVotesChanged(delegate, previousVotes, newVotes)](#VotesConfidential-DelegateVotesChanged-address-euint64-euint64-)
+- [DelegateChanged(delegator, fromDelegate, toDelegate)](#VotesConfidential-DelegateChanged-address-address-address-)
+#### HandleAccessManager [!toc]
+#### IERC6372 [!toc]
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+- [EIP712DomainChanged()](#IERC5267-EIP712DomainChanged--)
+#### Nonces [!toc]
+</div>
+</div>
+
+<div className="bg-secondary p-4 rounded-md mb-6">
+<h3 style={{ marginTop: "0"}}>Errors</h3>
+<div className="font-mono">
+- [VotesExpiredSignature(expiry)](#VotesConfidential-VotesExpiredSignature-uint256-)
+- [ERC6372InconsistentClock()](#VotesConfidential-ERC6372InconsistentClock--)
+- [ERC5805FutureLookup(timepoint, clock)](#VotesConfidential-ERC5805FutureLookup-uint256-uint48-)
+#### HandleAccessManager [!toc]
+#### IERC6372 [!toc]
+#### EIP712 [!toc]
+#### IERC5267 [!toc]
+#### Nonces [!toc]
+- [InvalidAccountNonce(account, currentNonce)](#Nonces-InvalidAccountNonce-address-uint256-)
+</div>
+</div>
+
+<a id="VotesConfidential-clock--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">clock() → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-clock--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Clock used for flagging checkpoints. Can be overridden to implement timestamp based
+checkpoints (and voting), in which case [`VotesConfidential.CLOCK_MODE`](#VotesConfidential-CLOCK_MODE--) should be overridden as well to match.
+
+</div>
+</div>
+
+<a id="VotesConfidential-CLOCK_MODE--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">CLOCK_MODE() → string</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-CLOCK_MODE--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Machine-readable description of the clock as specified in ERC-6372.
+
+</div>
+</div>
+
+<a id="VotesConfidential-getVotes-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getVotes(address account) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-getVotes-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the current amount of votes that `account` has.
+
+</div>
+</div>
+
+<a id="VotesConfidential-getPastVotes-address-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getPastVotes(address account, uint256 timepoint) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-getPastVotes-address-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the amount of votes that `account` had at a specific moment in the past. If the [`VotesConfidential.clock`](#VotesConfidential-clock--) is
+configured to use block numbers, this will return the value at the end of the corresponding block.
+
+Requirements:
+
+- `timepoint` must be in the past. If operating using block numbers, the block must be already mined.
+
+</div>
+</div>
+
+<a id="VotesConfidential-getPastTotalSupply-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">getPastTotalSupply(uint256 timepoint) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-getPastTotalSupply-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the total supply of votes available at a specific moment in the past. If the [`VotesConfidential.clock`](#VotesConfidential-clock--) is
+configured to use block numbers, this will return the value at the end of the corresponding block.
+
+<Callout>
+This value is the sum of all available votes, which is not necessarily the sum of all delegated votes.
+Votes that have not been delegated are still part of total supply, even though they would not participate in a
+vote.
+</Callout>
+
+Requirements:
+
+- `timepoint` must be in the past. If operating using block numbers, the block must be already mined.
+
+</div>
+</div>
+
+<a id="VotesConfidential-confidentialTotalSupply--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">confidentialTotalSupply() → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-confidentialTotalSupply--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the current total supply of votes as an encrypted uint64 (euint64). Must be implemented
+by the derived contract.
+
+</div>
+</div>
+
+<a id="VotesConfidential-delegates-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">delegates(address account) → address</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-delegates-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Returns the delegate that `account` has chosen.
+
+</div>
+</div>
+
+<a id="VotesConfidential-delegate-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">delegate(address delegatee)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-delegate-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Delegates votes from the sender to `delegatee`.
+
+</div>
+</div>
+
+<a id="VotesConfidential-delegateBySig-address-uint256-uint256-uint8-bytes32-bytes32-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">public</p>
+<a className="peer" data-card href="VotesConfidential-delegateBySig-address-uint256-uint256-uint8-bytes32-bytes32-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Delegates votes from an EOA to `delegatee` via an ECDSA signature.
+
+</div>
+</div>
+
+<a id="VotesConfidential-_delegate-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_delegate(address account, address delegatee)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VotesConfidential-_delegate-address-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Delegate all of `account`'s voting units to `delegatee`.
+
+Emits events `IVotes-DelegateChanged` and `IVotes-DelegateVotesChanged`.
+
+</div>
+</div>
+
+<a id="VotesConfidential-_transferVotingUnits-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_transferVotingUnits(address from, address to, euint64 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VotesConfidential-_transferVotingUnits-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Transfers, mints, or burns voting units. To register a mint, `from` should be zero. To register a burn, `to`
+should be zero. Total supply of voting units will be adjusted with mints and burns.
+
+<Callout type="warn">
+Must be called after [`VotesConfidential.confidentialTotalSupply`](#VotesConfidential-confidentialTotalSupply--) is updated.
+</Callout>
+
+</div>
+</div>
+
+<a id="VotesConfidential-_moveDelegateVotes-address-address-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_moveDelegateVotes(address from, address to, euint64 amount)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VotesConfidential-_moveDelegateVotes-address-address-euint64-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Moves delegated votes from one delegate to another.
+
+</div>
+</div>
+
+<a id="VotesConfidential-_validateTimepoint-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_validateTimepoint(uint256 timepoint) → uint48</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VotesConfidential-_validateTimepoint-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Validate that a timepoint is in the past, and return it as a uint48.
+
+</div>
+</div>
+
+<a id="VotesConfidential-_getVotingUnits-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">_getVotingUnits(address) → euint64</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">internal</p>
+<a className="peer" data-card href="VotesConfidential-_getVotingUnits-address-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Must return the voting units held by an account.
+
+</div>
+</div>
+
+<a id="VotesConfidential-DelegateVotesChanged-address-euint64-euint64-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DelegateVotesChanged(address indexed delegate, euint64 previousVotes, euint64 newVotes)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VotesConfidential-DelegateVotesChanged-address-euint64-euint64-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when a token transfer or delegate change results in changes to a delegate's number of voting units.
+
+</div>
+</div>
+<a id="VotesConfidential-DelegateChanged-address-address-address-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">event</p>
+<a className="peer" data-card href="VotesConfidential-DelegateChanged-address-address-address-">#</a>
+</div>
+</div>
+
+<div className="px-4">
+
+Emitted when an account changes their delegate.
+
+</div>
+</div>
+
+<a id="VotesConfidential-VotesExpiredSignature-uint256-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">VotesExpiredSignature(uint256 expiry)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="VotesConfidential-VotesExpiredSignature-uint256-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The signature used has expired.
+
+</div>
+</div>
+
+<a id="VotesConfidential-ERC6372InconsistentClock--"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC6372InconsistentClock()</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="VotesConfidential-ERC6372InconsistentClock--">#</a>
+</div>
+</div>
+<div className="px-4">
+
+The clock was incorrectly modified.
+
+</div>
+</div>
+
+<a id="VotesConfidential-ERC5805FutureLookup-uint256-uint48-"></a>
+
+<div className="border rounded-md mb-4">
+<div className="bg-secondary flex w-full justify-between px-4">
+<p className="font-bold text-sm font-mono">ERC5805FutureLookup(uint256 timepoint, uint48 clock)</p>
+<div className="flex flex-row items-center gap-2">
+<p className="font-light text-sm">error</p>
+<a className="peer" data-card href="VotesConfidential-ERC5805FutureLookup-uint256-uint48-">#</a>
+</div>
+</div>
+<div className="px-4">
+
+Lookup to future votes is not available.
+
+</div>
+</div>

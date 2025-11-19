@@ -1,0 +1,867 @@
+---
+title: Access Control
+---
+
+This crate provides ways to restrict who can access the functions of a contract or when they can do it.
+
+- [Ownable](#OwnableComponent) is a simple mechanism with a single "owner" role that can be assigned to a single account. This mechanism can be useful in simple scenarios, but fine grained access needs are likely to outgrow it.
+- [AccessControl](#AccessControlComponent) provides a general role based access control mechanism. Multiple hierarchical roles can be created and assigned each to multiple accounts.
+
+## Interfaces
+
+import { UMBRELLA_VERSION } from "../utils/constants.js";
+
+### `IAccessControl` [toc] [#IAccessControl]
+<APIGithubLinkHeader
+    moduleName="IAccessControl"
+    link={`https://github.com/OpenZeppelin/cairo-contracts/blob/release-v${UMBRELLA_VERSION}/packages/acess/src/accesscontrol/interface.cairo`}
+/>
+
+```rust
+use openzeppelin_access::accesscontrol::interface::IAccessControl;
+```
+
+External interface of AccessControl.
+
+[SRC5 ID](./introspection#ISRC5)
+
+```text
+0x23700be02858dbe2ac4dc9c9f66d0b6b0ed81ec7f970ca6844500a56ff61751
+```
+
+Functions
+
+- [`has_role(role, account)`](#IAccessControl-has_role)
+- [`get_role_admin(role)`](#IAccessControl-get_role_admin)
+- [`grant_role(role, account)`](#IAccessControl-grant_role)
+- [`revoke_role(role, account)`](#IAccessControl-revoke_role)
+- [`renounce_role(role, account)`](#IAccessControl-renounce_role)
+
+Events
+
+- [`RoleAdminChanged(role, previous_admin_role, new_admin_role)`](#IAccessControl-RoleAdminChanged)
+- [`RoleGranted(role, account, sender)`](#IAccessControl-RoleGranted)
+- [`RoleRevoked(role, account, sender)`](#IAccessControl-RoleRevoked)
+
+
+#### Functions [!toc] [#IAccessControl-Functions]
+
+<APIItem
+    functionSignature="has_role(role: felt252, account: ContractAddress) → bool"
+    id="IAccessControl-has_role"
+    kind="external"
+>
+Returns whether `account` can act as `role`.
+</APIItem>
+
+<APIItem
+    functionSignature="get_role_admin(role: felt252) → felt252"
+    id="IAccessControl-get_role_admin"
+    kind="external"
+>
+Returns the admin role that controls `role`. See [grant\_role](#IAccessControl-grant_role) and [revoke\_role](#IAccessControl-revoke_role).
+
+To change a role’s admin, use [set\_role\_admin](#AccessControlComponent-set_role_admin).
+</APIItem>
+
+<APIItem
+    functionSignature="grant_role(role: felt252, account: ContractAddress)"
+    id="IAccessControl-grant_role"
+    kind="external"
+>
+Grants `role` to `account`.
+
+If `account` had not been already granted `role`, emits a [RoleGranted](#IAccessControl-RoleGranted) event.
+
+Requirements:
+
+- the caller must have `role`'s admin role.
+</APIItem>
+
+<APIItem
+    functionSignature="revoke_role(role: felt252, account: ContractAddress)"
+    id="IAccessControl-revoke_role"
+    kind="external"
+>
+Revokes `role` from `account`.
+
+If `account` had been granted `role`, emits a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+
+Requirements:
+
+- the caller must have `role`'s admin role.
+</APIItem>
+
+<APIItem
+    functionSignature="renounce_role(role: felt252, account: ContractAddress)"
+    id="IAccessControl-renounce_role"
+    kind="external"
+>
+Revokes `role` from the calling account.
+
+Roles are often managed via [grant\_role](#IAccessControl-grant_role) and [revoke\_role](#IAccessControl-revoke_role). This function’s purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced).
+
+If the calling account had been granted `role`, emits a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+
+Requirements:
+
+- the caller must be `account`.
+</APIItem>
+
+#### Events [!toc] [#IAccessControl-Events]
+
+<APIItem
+    functionSignature="RoleAdminChanged(role: felt252, previous_admin_role: ContractAddress, new_admin_role: ContractAddress)"
+    id="IAccessControl-RoleAdminChanged"
+    kind="event"
+>
+Emitted when `new_admin_role` is set as `role`'s admin role, replacing `previous_admin_role`
+
+`DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite [RoleAdminChanged](#IAccessControl-RoleAdminChanged) not being emitted signaling this.
+</APIItem>
+
+<APIItem
+    functionSignature="RoleGranted(role: felt252, account: ContractAddress, sender: ContractAddress)"
+    id="IAccessControl-RoleGranted"
+    kind="event"
+>
+Emitted when `account` is granted `role`.
+
+`sender` is the account that originated the contract call, an account with the admin role or the deployer address if `_grant_role` is called from the constructor.
+</APIItem>
+
+<APIItem
+    functionSignature="RoleRevoked(role: felt252, account: ContractAddress, sender: ContractAddress)"
+    id="IAccessControl-RoleRevoked"
+    kind="event"
+>
+Emitted when `account` is revoked `role`.
+
+`sender` is the account that originated the contract call:
+
+- if using `revoke_role`, it is the admin role bearer.
+- if using `renounce_role`, it is the role bearer (i.e. `account`).
+</APIItem>
+
+### `IAccessControlWithDelay` [toc] [#IAccessControlWithDelay]
+<APIGithubLinkHeader
+    moduleName="IAccessControlWithDelay"
+    link={`https://github.com/OpenZeppelin/cairo-contracts/blob/release-v${UMBRELLA_VERSION}/packages/access/src/accesscontrol/interface.cairo`}
+/>
+
+```rust
+use openzeppelin_access::accesscontrol::interface::IAccessControlWithDelay;
+```
+
+External interface for the extended `AccessControlWithDelay` functionality.
+
+Functions
+
+- [`get_role_status(role, account)`](#IAccessControlWithDelay-get_role_status)
+- [`grant_role_with_delay(role, account, delay)`](#IAccessControlWithDelay-grant_role_with_delay)
+
+Events
+
+- [`RoleGrantedWithDelay(role, account, sender, delay)`](#IAccessControlWithDelay-RoleGrantedWithDelay)
+
+#### Functions [!toc] [#IAccessControlWithDelay-Functions]
+
+<APIItem
+    functionSignature="get_role_status(role: felt252, account: ContractAddress) → RoleStatus"
+    id="IAccessControlWithDelay-get_role_status"
+    kind="external"
+>
+Returns the account’s status for the given role. The possible statuses are:
+
+- `NotGranted`: the role has not been granted to the account.
+- `Delayed`: The role has been granted to the account but is not yet active due to a time delay.
+- `Effective`: the role has been granted to the account and is currently active.
+</APIItem>
+
+<APIItem
+    functionSignature="grant_role_with_delay(role: felt252, account: ContractAddress, delay: u64)"
+    id="IAccessControlWithDelay-grant_role_with_delay"
+    kind="external"
+>
+Attempts to grant `role` to `account` with the specified activation delay.
+
+Requirements:
+
+- The caller must have `role`'s admin role.
+- delay must be greater than 0.
+- the `role` must not be already effective for `account`.
+
+May emit a [RoleGrantedWithDelay](#IAccessControlWithDelay-RoleGrantedWithDelay) event.
+</APIItem>
+
+#### Events [!toc] [#IAccessControlWithDelay-Events]
+
+<APIItem
+    functionSignature="RoleGrantedWithDelay(role: felt252, account: ContractAddress, sender: ContractAddress, delay: u64)"
+    id="IAccessControlWithDelay-RoleGrantedWithDelay"
+    kind="event"
+>
+Emitted when `account` is granted `role` with a delay.
+
+`sender` is the account that originated the contract call, an account with the admin role or the deployer address if [\_grant\_role\_with\_delay](#AccessControlComponent-_grant_role_with_delay) is called from the constructor.
+</APIItem>
+
+## Core
+
+### `OwnableComponent` [toc] [#OwnableComponent]
+<APIGithubLinkHeader
+    moduleName="OwnableComponent"
+    link={`https://github.com/OpenZeppelin/cairo-contracts/blob/release-v${UMBRELLA_VERSION}/packages/access/src/ownable/ownable.cairo`}
+/>
+
+```rust
+use openzeppelin_access::ownable::OwnableComponent;
+```
+
+`Ownable` provides a basic access control mechanism where an account (an owner) can be granted exclusive access to specific functions.
+
+This module includes the internal `assert_only_owner` to restrict a function to be used only by the owner.
+
+[Embeddable Mixin Implementations](../components#mixins)
+
+#### OwnableMixinImpl [!toc] [#OwnableComponent-Embeddable-Impls-OwnableMixinImpl]
+
+- [`OwnableImpl`](#OwnableComponent-Embeddable-Impls-OwnableImpl)
+- [`OwnableCamelOnlyImpl`](#OwnableComponent-Embeddable-Impls-OwnableCamelOnlyImpl)
+
+#### OwnableTwoStepMixinImpl [!toc] [#OwnableComponent-Embeddable-Impls-OwnableTwoStepMixinImpl]
+
+- [`OwnableTwoStepImpl`](#OwnableComponent-Embeddable-Impls-OwnableTwoStepImpl)
+- [`OwnableTwoStepCamelOnlyImpl`](#OwnableComponent-Embeddable-Impls-OwnableTwoStepCamelOnlyImpl)
+
+Embeddable Implementations
+
+#### OwnableImpl [!toc] [#OwnableComponent-Embeddable-Impls-OwnableImpl]
+
+- [`owner(self)`](#OwnableComponent-owner)
+- [`transfer_ownership(self, new_owner)`](#OwnableComponent-transfer_ownership)
+- [`renounce_ownership(self)`](#OwnableComponent-renounce_ownership)
+
+#### OwnableTwoStepImpl [!toc] [#OwnableComponent-Embeddable-Impls-OwnableTwoStepImpl]
+
+- [`owner(self)`](#OwnableComponent-two-step-owner)
+- [`pending_owner(self)`](#OwnableComponent-two-step-pending_owner)
+- [`accept_ownership(self)`](#OwnableComponent-two-step-accept_ownership)
+- [`transfer_ownership(self, new_owner)`](#OwnableComponent-two-step-transfer_ownership)
+- [`renounce_ownership(self)`](#OwnableComponent-two-step-renounce_ownership)
+
+#### OwnableCamelOnlyImpl [!toc] [#OwnableComponent-Embeddable-Impls-OwnableCamelOnlyImpl]
+
+- [`transferOwnership(self, newOwner)`](#OwnableComponent-transferOwnership)
+- [`renounceOwnership(self)`](#OwnableComponent-renounceOwnership)
+
+#### OwnableTwoStepCamelOnlyImpl [!toc] [#OwnableComponent-Embeddable-Impls-OwnableTwoStepCamelOnlyImpl]
+
+- [`pendingOwner(self)`](#OwnableComponent-two-step-pendingOwner)
+- [`acceptOwnership(self)`](#OwnableComponent-two-step-acceptOwnership)
+- [`transferOwnership(self, new_owner)`](#OwnableComponent-two-step-transferOwnership)
+- [`renounceOwnership(self)`](#OwnableComponent-two-step-renounceOwnership)
+
+Internal Implementations
+
+#### InternalImpl [!toc] [#OwnableComponent-InternalImpl]
+
+- [`initializer(self, owner)`](#OwnableComponent-initializer)
+- [`assert_only_owner(self)`](#OwnableComponent-assert_only_owner)
+- [`_transfer_ownership(self, new_owner)`](#OwnableComponent-_transfer_ownership)
+- [`_propose_owner(self, new_owner)`](#OwnableComponent-_propose_owner)
+
+Events
+
+- [`OwnershipTransferStarted(previous_owner, new_owner)`](#OwnableComponent-OwnershipTransferStarted)
+- [`OwnershipTransferred(previous_owner, new_owner)`](#OwnableComponent-OwnershipTransferred)
+
+#### Embeddable functions [!toc] [#OwnableComponent-Embeddable-Functions]
+
+<APIItem
+    functionSignature="owner(self: @ContractState) → ContractAddress"
+    id="OwnableComponent-owner"
+    kind="external"
+>
+Returns the address of the current owner.
+</APIItem>
+
+<APIItem
+    functionSignature="transfer_ownership(ref self: ContractState, new_owner: ContractAddress)"
+    id="OwnableComponent-transfer_ownership"
+    kind="external"
+>
+Transfers ownership of the contract to a new account (`new_owner`). Can only be called by the current owner.
+
+Emits an [OwnershipTransferred](#OwnableComponent-OwnershipTransferred) event.
+</APIItem>
+
+<APIItem
+    functionSignature="renounce_ownership(ref self: ContractState)"
+    id="OwnableComponent-renounce_ownership"
+    kind="external"
+>
+Leaves the contract without owner. It will not be possible to call `assert_only_owner` functions anymore. Can only be called by the current owner.
+
+<Callout type='info'>
+Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.
+</Callout>
+</APIItem>
+
+#### Embeddable functions (two step transfer) [!toc] [#OwnableComponent-Embeddable-Functions-Two-Step]
+
+<APIItem
+    functionSignature="owner(self: @ContractState) → ContractAddress"
+    id="OwnableComponent-two-step-owner"
+    kind="external"
+>
+Returns the address of the current owner.
+</APIItem>
+
+<APIItem
+    functionSignature="pending_owner(self: @ContractState) → ContractAddress"
+    id="OwnableComponent-two-step-pending_owner"
+    kind="external"
+>
+Returns the address of the pending owner.
+</APIItem>
+
+<APIItem
+    functionSignature="accept_ownership(ref self: ContractState)"
+    id="OwnableComponent-two-step-accept_ownership"
+    kind="external"
+>
+Transfers ownership of the contract to the pending owner. Can only be called by the pending owner. Resets pending owner to zero address.
+
+Emits an [OwnershipTransferred](#OwnableComponent-OwnershipTransferred) event.
+</APIItem>
+
+<APIItem
+    functionSignature="transfer_ownership(ref self: ContractState, new_owner: ContractAddress)"
+    id="OwnableComponent-two-step-transfer_ownership"
+    kind="external"
+>
+Starts the two step ownership transfer process, by setting the pending owner. Setting `new_owner` to the zero address is allowed, this can be used to cancel an initiated ownership transfer.
+
+Can only be called by the current owner.
+
+Emits an [OwnershipTransferStarted](#OwnableComponent-OwnershipTransferStarted) event.
+</APIItem>
+
+<APIItem
+    functionSignature="renounce_ownership(ref self: ContractState)"
+    id="OwnableComponent-two-step-renounce_ownership"
+    kind="external"
+>
+Leaves the contract without owner. It will not be possible to call `assert_only_owner` functions anymore. Can only be called by the current owner.
+
+<Callout type='info'>
+Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.
+</Callout>
+</APIItem>
+
+<APIItem
+    functionSignature="transferOwnership(ref self: ContractState, newOwner: ContractAddress)"
+    id="OwnableComponent-two-step-transferOwnership"
+    kind="external"
+>
+See [transfer\_ownership](#OwnableComponent-transfer_ownership).
+</APIItem>
+
+<APIItem
+    functionSignature="renounceOwnership(ref self: ContractState)"
+    id="OwnableComponent-two-step-renounceOwnership"
+    kind="external"
+>
+See [renounce\_ownership](#OwnableComponent-renounce_ownership).
+</APIItem>
+
+<APIItem
+    functionSignature="pendingOwner(self: @ContractState)"
+    id="OwnableComponent-two-step-pendingOwner"
+    kind="external"
+>
+See [pending\_owner](#OwnableComponent-two-step-pending_owner).
+</APIItem>
+
+<APIItem
+    functionSignature="acceptOwnership(self: @ContractState)"
+    id="OwnableComponent-two-step-acceptOwnership"
+    kind="external"
+>
+See [accept\_ownership](#OwnableComponent-two-step-accept_ownership).
+</APIItem>
+
+<APIItem
+    functionSignature="transferOwnership(self: @ContractState)"
+    id="OwnableComponent-two-step-transferOwnership"
+    kind="external"
+>
+See [transfer\_ownership](#OwnableComponent-two-step-transfer_ownership).
+</APIItem>
+
+<APIItem
+    functionSignature="renounceOwnership(self: @ContractState)"
+    id="OwnableComponent-two-step-renounceOwnership"
+    kind="external"
+>
+See [renounce\_ownership](#OwnableComponent-two-step-renounce_ownership).
+</APIItem>
+
+#### Internal functions [!toc] [#OwnableComponent-Internal-Functions]
+
+<APIItem
+    functionSignature="initializer(ref self: ContractState, owner: ContractAddress)"
+    id="OwnableComponent-initializer"
+    kind="internal"
+>
+Initializes the contract and sets `owner` as the initial owner.
+
+Requirements:
+
+- `owner` cannot be the zero address.
+
+Emits an [OwnershipTransferred](#OwnableComponent-OwnershipTransferred) event.
+</APIItem>
+
+<APIItem
+    functionSignature="assert_only_owner(self: @ContractState)"
+    id="OwnableComponent-assert_only_owner"
+    kind="internal"
+>
+Panics if called by any account other than the owner.
+</APIItem>
+
+<APIItem
+    functionSignature="_transfer_ownership(ref self: ContractState, new_owner: ContractAddress)"
+    id="OwnableComponent-_transfer_ownership"
+    kind="internal"
+>
+Transfers ownership of the contract to a new account (`new_owner`). Internal function without access restriction.
+
+Emits an [OwnershipTransferred](#OwnableComponent-OwnershipTransferred) event.
+</APIItem>
+
+<APIItem
+    functionSignature="_propose_owner(ref self: ContractState, new_owner: ContractAddress)"
+    id="OwnableComponent-_propose_owner"
+    kind="internal"
+>
+Sets a new pending owner in a two step transfer.
+
+Internal function without access restriction.
+
+Emits an [OwnershipTransferStarted](#OwnableComponent-OwnershipTransferStarted) event.
+</APIItem>
+
+#### Events [!toc] [#OwnableComponent-Events]
+
+<APIItem
+    functionSignature="OwnershipTransferStarted(previous_owner: ContractAddress, new_owner: ContractAddress)"
+    id="OwnableComponent-OwnershipTransferStarted"
+    kind="event"
+>
+Emitted when the pending owner is updated.
+</APIItem>
+
+<APIItem
+    functionSignature="OwnershipTransferred(previous_owner: ContractAddress, new_owner: ContractAddress)"
+    id="OwnableComponent-OwnershipTransferred"
+    kind="event"
+>
+Emitted when the ownership is transferred.
+</APIItem>
+
+### `AccessControlComponent` [toc] [#AccessControlComponent]
+<APIGithubLinkHeader
+    moduleName="AccessControlComponent"
+    link={`https://github.com/OpenZeppelin/cairo-contracts/blob/release-v${UMBRELLA_VERSION}/packages/access/src/accesscontrol/accesscontrol.cairo`}
+/>
+
+```rust
+use openzeppelin_access::accesscontrol::AccessControlComponent;
+```
+
+Component that allows contracts to implement role-based access control mechanisms. Roles are referred to by their `felt252` identifier:
+
+```rust
+const MY_ROLE: felt252 = selector!("MY_ROLE");
+```
+
+Roles can be used to represent a set of permissions. To restrict access to a function call, use [`assert_only_role`](#AccessControlComponent-assert_only_role):
+
+```rust
+(...)
+
+#[external(v0)]
+fn foo(ref self: ContractState) {
+    self.accesscontrol.assert_only_role(MY_ROLE);
+
+    // Do something
+}
+```
+
+Roles can be granted and revoked dynamically via the [grant\_role](#AccessControlComponent-grant_role), [grant\_role\_with\_delay](#IAccessControlWithDelay-grant_role_with_delay) and [revoke\_role](#AccessControlComponent-revoke_role) functions. Each role has an associated admin role, and only accounts that have a role’s admin role can call [grant\_role](#AccessControlComponent-grant_role), [grant\_role\_with\_delay](#IAccessControlWithDelay-grant_role_with_delay) and [revoke\_role](#AccessControlComponent-revoke_role).
+
+By default, the admin role for all roles is `DEFAULT_ADMIN_ROLE`, which means that only accounts with this role will be able to grant or revoke other roles. More complex role relationships can be created by using [set\_role\_admin](#AccessControlComponent-set_role_admin).
+
+<Callout type='warn'>
+The `DEFAULT_ADMIN_ROLE` is also its own admin: it has permission to grant and revoke this role. Extra precautions should be taken to secure accounts that have been granted it.
+</Callout>
+
+[Embeddable Mixin Implementations](../components#mixins)
+
+#### AccessControlMixinImpl [!toc] [#AccessControlComponent-Embeddable-Impls-AccessControlMixinImpl]
+
+- [`AccessControlImpl`](#AccessControlComponent-Embeddable-Impls-AccessControlImpl)
+- [`AccessControlCamelImpl`](#AccessControlComponent-Embeddable-Impls-AccessControlCamelImpl)
+- [`AccessControlWithDelayImpl`](#AccessControlComponent-Embeddable-Impls-AccessControlWithDelayImpl)
+- [`SRC5Impl`](./introspection#SRC5Component-Embeddable-Impls)
+
+Embeddable Implementations
+
+#### AccessControlImpl [!toc] [#AccessControlComponent-Embeddable-Impls-AccessControlImpl]
+
+- [`has_role(self, role, account)`](#AccessControlComponent-has_role)
+- [`get_role_admin(self, role)`](#AccessControlComponent-get_role_admin)
+- [`grant_role(self, role, account)`](#AccessControlComponent-grant_role)
+- [`revoke_role(self, role, account)`](#AccessControlComponent-revoke_role)
+- [`renounce_role(self, role, account)`](#AccessControlComponent-renounce_role)
+
+#### AccessControlCamelImpl [!toc] [#AccessControlComponent-Embeddable-Impls-AccessControlCamelImpl]
+
+- [`hasRole(self, role, account)`](#AccessControlComponent-hasRole)
+- [`getRoleAdmin(self, role)`](#AccessControlComponent-getRoleAdmin)
+- [`grantRole(self, role, account)`](#AccessControlComponent-grantRole)
+- [`revokeRole(self, role, account)`](#AccessControlComponent-revokeRole)
+- [`renounceRole(self, role, account)`](#AccessControlComponent-renounceRole)
+
+#### AccessControlWithDelayImpl [!toc] [#AccessControlComponent-Embeddable-Impls-AccessControlWithDelayImpl]
+
+- [`get_role_status(self, role, account)`](#AccessControlComponent-get_role_status)
+- [`grant_role_with_delay(self, role, account, delay)`](#AccessControlComponent-grant_role_with_delay)
+
+#### SRC5Impl [!toc] [#AccessControlComponent-Embeddable-Impls-SRC5Impl]
+
+- [`supports_interface(self, interface_id: felt252)`](./introspection#ISRC5-supports_interface)
+
+Internal Implementations
+
+#### InternalImpl [!toc] [#AccessControlComponent-InternalImpl]
+
+- [`initializer(self)`](#AccessControlComponent-initializer)
+- [`assert_only_role(self, role)`](#AccessControlComponent-assert_only_role)
+- [`is_role_effective(self, role, account)`](#AccessControlComponent-is_role_effective)
+- [`resolve_role_status(self, role, account)`](#AccessControlComponent-resolve_role_status)
+- [`is_role_granted(self, role, account)`](#AccessControlComponent-is_role_granted)
+- [`set_role_admin(self, role, admin_role)`](#AccessControlComponent-set_role_admin)
+- [`_grant_role(self, role, account)`](#AccessControlComponent-_grant_role)
+- [`_grant_role_with_delay(self, role, account, delay)`](#AccessControlComponent-_grant_role_with_delay)
+- [`_revoke_role(self, role, account)`](#AccessControlComponent-_revoke_role)
+
+Events
+
+#### IAccessControl [!toc] [#AccessControlComponent-Events-IAccessControl]
+
+- [`RoleAdminChanged(role, previous_admin_role, new_admin_role)`](#AccessControlComponent-RoleAdminChanged)
+- [`RoleGranted(role, account, sender)`](#AccessControlComponent-RoleGranted)
+- [`RoleRevoked(role, account, sender)`](#AccessControlComponent-RoleRevoked)
+
+#### IAccessControlWithDelay [!toc] [#AccessControlComponent-Events-IAccessControlWithDelay]
+
+- [`RoleGrantedWithDelay(role, account, sender, delay)`](#AccessControlComponent-RoleGrantedWithDelay)
+
+#### Embeddable functions [!toc] [#AccessControlComponent-Embeddable-Functions]
+
+<APIItem
+    functionSignature="has_role(self: @ContractState, role: felt252, account: ContractAddress) → bool"
+    id="AccessControlComponent-has_role"
+    kind="external"
+>
+Returns whether `account` can act as `role`.
+</APIItem>
+
+<APIItem
+    functionSignature="get_role_admin(self: @ContractState, role: felt252) → felt252"
+    id="AccessControlComponent-get_role_admin"
+    kind="external"
+>
+Returns the admin role that controls `role`. See [grant\_role](#AccessControlComponent-grant_role) and [revoke\_role](#AccessControlComponent-revoke_role).
+
+To change a role’s admin, use [set\_role\_admin](#AccessControlComponent-set_role_admin).
+</APIItem>
+
+<APIItem
+    functionSignature="get_role_status(self: @ContractState, role: felt252, account: ContractAddress) → RoleStatus"
+    id="AccessControlComponent-get_role_status"
+    kind="external"
+>
+Returns the account’s status for the given role.
+
+The possible statuses are:
+
+- `NotGranted`: the role has not been granted to the account.
+- `Delayed`: The role has been granted to the account but is not yet active due to a time delay.
+- `Effective`: the role has been granted to the account and is currently active.
+</APIItem>
+
+<APIItem
+    functionSignature="grant_role(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-grant_role"
+    kind="external"
+>
+Grants `role` to `account`.
+
+If `account` had not been already granted `role`, emits a [RoleGranted](#IAccessControl-RoleGranted) event.
+
+Requirements:
+
+- the caller must have `role`'s admin role.
+
+May emit a [RoleGranted](#IAccessControl-RoleGranted) event.
+</APIItem>
+
+<APIItem
+    functionSignature="grant_role_with_delay(ref self: ContractState, role: felt252, account: ContractAddress, delay: u64)"
+    id="AccessControlComponent-grant_role_with_delay"
+    kind="external"
+>
+Attempts to grant `role` to `account` with the specified activation delay.
+
+Requirements:
+
+- The caller must have \`role’s admin role.
+- delay must be greater than 0.
+- the `role` must not be already effective for `account`.
+
+May emit a [RoleGrantedWithDelay](#IAccessControlWithDelay-RoleGrantedWithDelay) event.
+</APIItem>
+
+<APIItem
+    functionSignature="revoke_role(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-revoke_role"
+    kind="external"
+>
+Revokes `role` from `account`.
+
+If `account` had been granted `role`, emits a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+
+Requirements:
+
+- the caller must have `role`'s admin role.
+
+May emit a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+</APIItem>
+
+<APIItem
+    functionSignature="renounce_role(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-renounce_role"
+    kind="external"
+>
+Revokes `role` from the calling account.
+
+Roles are often managed via [grant\_role](#AccessControlComponent-grant_role) and [revoke\_role](#AccessControlComponent-revoke_role). This function’s purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced).
+
+If the calling account had been revoked `role`, emits a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+
+Requirements:
+
+- the caller must be `account`.
+
+May emit a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+</APIItem>
+
+<APIItem
+    functionSignature="supports_interface(self: @ContractState, interface_id: felt252) → bool"
+    id="AccessControlComponent-supports_interface"
+    kind="external"
+>
+See [ISRC5::supports\_interface](./introspection#ISRC5-supports_interface).
+</APIItem>
+
+<APIItem
+    functionSignature="hasRole(self: @ContractState, role: felt252, account: ContractAddress) → bool"
+    id="AccessControlComponent-hasRole"
+    kind="external"
+>
+See [has\_role](#AccessControlComponent-has_role).
+</APIItem>
+
+<APIItem
+    functionSignature="getRoleAdmin(self: @ContractState, role: felt252) → felt252"
+    id="AccessControlComponent-getRoleAdmin"
+    kind="external"
+>
+See [get\_role\_admin](#AccessControlComponent-get_role_admin).
+</APIItem>
+
+<APIItem
+    functionSignature="grantRole(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-grantRole"
+    kind="external"
+>
+See [grant\_role](#AccessControlComponent-grant_role).
+</APIItem>
+
+<APIItem
+    functionSignature="revokeRole(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-revokeRole"
+    kind="external"
+>
+See [revoke\_role](#AccessControlComponent-revoke_role).
+</APIItem>
+
+<APIItem
+    functionSignature="renounceRole(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-renounceRole"
+    kind="external"
+>
+See [renounce\_role](#AccessControlComponent-renounce_role).
+</APIItem>
+
+#### Internal functions [!toc] [#AccessControlComponent-Internal-Functions]
+
+<APIItem
+    functionSignature="initializer(ref self: ContractState)"
+    id="AccessControlComponent-initializer"
+    kind="internal"
+>
+Initializes the contract by registering the [IAccessControl](#IAccessControl) interface ID.
+</APIItem>
+
+<APIItem
+    functionSignature="assert_only_role(self: @ContractState, role: felt252)"
+    id="AccessControlComponent-assert_only_role"
+    kind="internal"
+>
+Validates that the caller can act as the given role. Otherwise it panics.
+</APIItem>
+
+<APIItem
+    functionSignature="is_role_effective(self: @ContractState, role: felt252, account: ContractAddress) → bool"
+    id="AccessControlComponent-is_role_effective"
+    kind="internal"
+>
+Returns whether the account can act as the given role.
+
+The account can act as the role if it is active and the `effective_from` time is before or equal to the current time.
+
+<Callout type='info'>
+If the `effective_from` timepoint is 0, the role is effective immediately. This is backwards compatible with implementations that didn’t use delays but a single boolean flag.
+</Callout>
+</APIItem>
+
+<APIItem
+    functionSignature="resolve_role_status(self: @ContractState, role: felt252, account: ContractAddress) → RoleStatus"
+    id="AccessControlComponent-resolve_role_status"
+    kind="internal"
+>
+Returns the account’s status for the given role.
+
+The possible statuses are:
+
+- `NotGranted`: the role has not been granted to the account.
+- `Delayed`: The role has been granted to the account but is not yet active due to a time delay.
+- `Effective`: the role has been granted to the account and is currently active.
+</APIItem>
+
+<APIItem
+    functionSignature="is_role_granted(self: @ContractState, role: felt252, account: ContractAddress) → bool"
+    id="AccessControlComponent-is_role_granted"
+    kind="internal"
+>
+Returns whether the account has the given role granted.
+
+<Callout type='info'>
+The account may not be able to act as the role yet, if a delay was set and has not passed yet. Use `is_role_effective` to check if the account can act as the role.
+</Callout>
+</APIItem>
+
+<APIItem
+    functionSignature="set_role_admin(ref self: ContractState, role: felt252, admin_role: felt252)"
+    id="AccessControlComponent-set_role_admin"
+    kind="internal"
+>
+Sets `admin_role` as `role`'s admin role.
+
+Internal function without access restriction.
+
+Emits a [RoleAdminChanged](#IAccessControl-RoleAdminChanged) event.
+</APIItem>
+
+<APIItem
+    functionSignature="_grant_role(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-_grant_role"
+    kind="internal"
+>
+Attempts to grant `role` to `account`. The function does nothing if `role` is already effective for `account`. If `role` has been granted to `account`, but is not yet active due to a time delay, the delay is removed and `role` becomes effective immediately.
+
+Internal function without access restriction.
+
+May emit a [RoleGranted](#IAccessControl-RoleGranted) event.
+</APIItem>
+
+<APIItem
+    functionSignature="_grant_role_with_delay(ref self: ContractState, role: felt252, account: ContractAddress, delay: u64)"
+    id="AccessControlComponent-_grant_role_with_delay"
+    kind="internal"
+>
+Attempts to grant `role` to `account` with the specified activation delay.
+
+The role will become effective after the given delay has passed. If the role is already active (`Effective`) for the account, the function will panic. If the role has been granted but is not yet active (being in the `Delayed` state), the existing delay will be overwritten with the new `delay`.
+
+Internal function without access restriction.
+
+Requirements:
+
+- delay must be greater than 0.
+- the `role` must not be already effective for `account`.
+
+May emit a [RoleGrantedWithDelay](#IAccessControlWithDelay-RoleGrantedWithDelay) event.
+</APIItem>
+
+<APIItem
+    functionSignature="_revoke_role(ref self: ContractState, role: felt252, account: ContractAddress)"
+    id="AccessControlComponent-_revoke_role"
+    kind="internal"
+>
+Revokes `role` from `account`.
+
+Internal function without access restriction.
+
+May emit a [RoleRevoked](#IAccessControl-RoleRevoked) event.
+</APIItem>
+
+#### Events [!toc] [#AccessControlComponent-Events]
+
+<APIItem
+    functionSignature="RoleAdminChanged(role: felt252, previous_admin_role: ContractAddress, new_admin_role: ContractAddress)"
+    id="AccessControlComponent-RoleAdminChanged"
+    kind="event"
+>
+See [IAccessControl::RoleAdminChanged](#IAccessControl-RoleAdminChanged).
+</APIItem>
+
+<APIItem
+    functionSignature="RoleGranted(role: felt252, account: ContractAddress, sender: ContractAddress)"
+    id="AccessControlComponent-RoleGranted"
+    kind="event"
+>
+See [IAccessControl::RoleGranted](#IAccessControl-RoleGranted).
+</APIItem>
+
+<APIItem
+    functionSignature="RoleGrantedWithDelay(role: felt252, account: ContractAddress, sender: ContractAddress, delay: u64)"
+    id="AccessControlComponent-RoleGrantedWithDelay"
+    kind="event"
+>
+See [IAccessControlWithDelay::RoleGrantedWithDelay](#IAccessControlWithDelay-RoleGrantedWithDelay).
+</APIItem>
+
+<APIItem
+    functionSignature="RoleRevoked(role: felt252, account: ContractAddress, sender: ContractAddress)"
+    id="AccessControlComponent-RoleRevoked"
+    kind="event"
+>
+See [IAccessControl::RoleRevoked](#IAccessControl-RoleRevoked).
+</APIItem>

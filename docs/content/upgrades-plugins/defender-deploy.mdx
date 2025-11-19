@@ -1,0 +1,107 @@
+---
+title: OpenZeppelin Defender with Hardhat
+---
+
+The Hardhat Upgrades package can use [OpenZeppelin Defender](/defender) for deployments instead of ethers.js, which allows for features such as gas pricing estimation, resubmissions, and automated bytecode and source code verification.
+
+## Configuration
+
+Create a deployment environment on OpenZeppelin Defender and provide the Team API Key and secret in your `hardhat.config.js` or `hardhat.config.ts` file under `defender`:
+
+```js
+module.exports =
+  defender: {
+    apiKey: process.env.API_KEY,
+    apiSecret: process.env.API_SECRET,
+
+}
+```
+
+<Callout>
+The API key for the above must at least have the capability to Manage Deployments (optionally Manage Relayers is needed to create an approval process with a Relayer). You can configure your API keys at https://defender.openzeppelin.com/#/settings/api-keys.
+</Callout>
+
+## Network Selection
+
+The network that is used with OpenZeppelin Defender is determined by the network that Hardhat is connected to.
+If you want to ensure that a specific network is used with Defender, set the `network` field in the `defender` section of your `hardhat.config.js` or `hardhat.config.ts` file:
+```js
+module.exports =
+  defender: {
+    apiKey: process.env.API_KEY,
+    apiSecret: process.env.API_SECRET,
+    network: "my-mainnet-fork",
+
+}
+```
+If set, this must be the name of a public, private or forked network in Defender. If Hardhat is connected to a different network while this is set, the deployment will not occur and will throw an error instead.
+
+<Callout>
+This is required if you have multiple forked networks in Defender with the same chainId, in which case the one with name matching the `network` field will be used.
+</Callout>
+
+## Usage
+
+When using the [Hardhat Upgrades API functions](/upgrades-plugins/api-hardhat-upgrades), enable OpenZeppelin Defender deployments using any of the ways below.
+
+<Callout>
+Only functions that have the `useDefenderDeploy` option in their API reference support deployments through OpenZeppelin Defender. If you enable the following but use functions that do not support `useDefenderDeploy`, the first way below will cause those functions to deploy using ethers.js, whereas the second and third ways will cause those functions to give an error.
+</Callout>
+
+* Recommended: In `hardhat.config.js` or `hardhat.config.ts`, set `useDefenderDeploy: true` under `defender`. For example:
+
+```js
+module.exports =
+  defender: {
+    apiKey: process.env.API_KEY,
+    apiSecret: process.env.API_SECRET,
+    useDefenderDeploy: true,
+
+}
+```
+
+```js
+// scripts/create-box.js
+const  ethers, upgrades  = require("hardhat");
+
+async function main()
+  const Box = await ethers.getContractFactory("Box");
+  const box = await upgrades.deployProxy(Box, [42]);
+  await box.waitForDeployment();
+  console.log("Box deployed to:", await box.getAddress());
+
+
+main();
+```
+
+* Use the `defender` module instead of `upgrades` from the Hardhat Runtime Environment. Use this if you want to make sure Defender is used and want to see an error if the function does not support Defender. For example:
+
+```js
+// scripts/create-box.js
+const  ethers, defender  = require("hardhat");
+
+async function main()
+  const Box = await ethers.getContractFactory("Box");
+  const box = await defender.deployProxy(Box, [42]);
+  await box.waitForDeployment();
+  console.log("Box deployed to:", await box.getAddress());
+
+
+main();
+```
+
+* Use the `useDefenderDeploy` common option. Setting this option overrides the above for specific functions. For example:
+
+```js
+// scripts/create-box.js
+const  ethers, upgrades  = require("hardhat");
+
+async function main()
+  const Box = await ethers.getContractFactory("Box");
+  const box = await upgrades.deployProxy(Box, [42], { useDefenderDeploy: true );
+  await box.waitForDeployment();
+  console.log("Box deployed to:", await box.getAddress());
+}
+
+main();
+```

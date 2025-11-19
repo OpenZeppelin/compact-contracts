@@ -1,0 +1,72 @@
+---
+title: Network Files
+---
+
+OpenZeppelin Hardhat Upgrades, by default, keeps track of all the contract versions you have deployed in an `.openzeppelin` folder in the project root. You will find one file per network there. It is advised that you commit to source control the files for all networks except the development ones (you may see them as `.openzeppelin/unknown-*.json`).
+
+<Callout>
+The format of the files within the `.openzeppelin` folder is not compatible with those of the OpenZeppelin CLI. If you want to use these plugins for an existing OpenZeppelin CLI project, you have to migrate it first. See [Migrate from CLI](/upgrades-plugins/migrate-from-cli) for instructions.
+</Callout>
+
+## `<network_name>.json`
+
+OpenZeppelin Hardhat Upgrades will generate a file for each of the networks you work on (`mainnet`, `sepolia`, etc.). These files share the same structure:
+
+```json
+// .openzeppelin/<network_name>.json
+
+  "manifestVersion": "3.0",
+  "impls": {
+    "...": {
+      "address": "...",
+      "txHash": "...",
+      "layout": {
+        "storage": [...],
+        "types": {...
+      }
+    },
+    "...":
+      "address": "...",
+      "txHash": "...",
+      "layout": {
+        "storage": [...],
+        "types": {...
+      }
+    }
+  }
+}
+```
+
+For every logic contract, besides the deployment address, the following info is also tracked:
+
+* `types` keeps track of all the types used in the contract or its ancestors, from basic types like `uint256` to custom `struct` types
+* `storage` tracks the storage layout of the linearized contract, referencing the types defined in the `types` section, and is used for verifying that any [storage layout changes between subsequent versions are compatible](/upgrades-plugins/faq#what-does-it-mean-for-an-implementation-to-be-compatible)
+
+The naming of the file will be `<network_name>.json`, but note that `<network_name>` is not taken from the name of the network’s entry in the Hardhat configuration file, but is instead inferred from the chain id associated to the entry.
+
+There is a limited set of public chains; Chains not on the list such as Ethereum Classic will have network files named `unknown-<chain_id>.json`.
+
+## Configuration Files in Version Control
+
+Public network files like `mainnet.json` or `sepolia.json` should be tracked in version control. These contain valuable information about your project’s status in the corresponding network, like the addresses of the contract versions that have been deployed. Such files should be identical for all the contributors of a project.
+
+Network files may also appear as `unknown-<chain_id>.json` if the network name is not known to the Hardhat plugin. If the chain ID corresponds to a public network, then it should also be tracked in version control. However, if the chain ID is for a temporary local network such as a development network, then it is only relevant to a single contributor of the project and should not be tracked in version control.
+
+## Temporary Files
+
+Hardhat development networks using Hardhat version 2.12.3 or later, and Anvil development networks connected from Hardhat, will have network files written to an `openzeppelin-upgrades` folder under the operating system’s temporary directory. These files are named `hardhat-<chain_id>-<instance_id>.json` or `anvil-<chain_id>-<instance_id>.json`, where `<instance_id>` is a 0x-prefixed hex id that uniquely identifies an instance/run of the Hardhat or Anvil network. Files in this temporary folder can be safely deleted when their corresponding Hardhat or Anvil network instance is no longer active, for example after testing is finished.
+
+You can determine the location of a temporary network file by doing the following:
+
+1. Run `export DEBUG=@openzeppelin:*` to enable debug logging.
+2. Run your Hardhat test or script.
+3. Find the log message containing the text `development manifest file:`.
+
+## Custom Network Files Location
+
+To customize the location of the `.openzeppelin` folder, set the `MANIFEST_DEFAULT_DIR` environment variable to an absolute path or a path relative to the root of your project. This variable allows you to specify different directories for storing network files, enabling you to deploy the same contracts to the same networks for different environments without conflicts. This can be used with private networks to avoid chain ID conflicts.
+
+For example:
+
+* Run `export MANIFEST_DEFAULT_DIR=.openzeppelin/tests` to configure OpenZeppelin Hardhat Upgrades to use `.openzeppelin/tests/<network_name>.json` for test deployments.
+* Run `export MANIFEST_DEFAULT_DIR=.openzeppelin/production` to configure OpenZeppelin Hardhat Upgrades to use `.openzeppelin/production/<network_name>.json` for production deployments.

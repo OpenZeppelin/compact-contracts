@@ -1,0 +1,226 @@
+---
+title: Migrate from OpenZeppelin CLI
+---
+
+<Callout>
+This guide is for migrating from an old CLI which is deprecated.
+</Callout>
+
+This guide will walk through migrating a project from the OpenZeppelin CLI to OpenZeppelin Upgrades Plugins for either Truffle or Hardhat.
+
+<Callout>
+If you’d like to try out the instructions on a sample OpenZeppelin CLI project, you can clone [OpenZeppelin/openzeppelin-upgrades-migration-example](https://github.com/OpenZeppelin/openzeppelin-upgrades-migration-example) and follow the setup instructions in the readme before continuing.
+</Callout>
+
+## Differences
+
+The main difference between the CLI and the plugins is that the former used to keep track of your upgradeable (and non-upgradeable) deployments for you. This was handy in some contexts since you didn’t need to worry too much about proxies, implementations or addresses and you could just focus on operations like upgrading or sending transactions to your contracts just by their name.
+
+But having the CLI keep track of your deployments came at the expense of limiting your freedom to integrate with different tools and workflows. And since the plugins were designed to work independently of the CLI, we lifted that restriction so now you have the flexibility to keep track of your proxies the way you think it’s best.
+
+Keeping that aside, everything else remains the same since both the CLI and plugins make use of the same known `Proxy` and `ProxyAdmin` contracts under the hood, making up two different interfaces to manage them. This means that migrating your project won’t touch ***anything*** on chain, everything is safe and local.
+
+## Installation
+
+[Install Hardhat](https://hardhat.org/tutorial/creating-a-new-hardhat-project.html) and when initializing it, select the `Create an empty hardhat.config.js` option.
+
+```bash
+$ npm install --save-dev hardhat
+$ npx hardhat
+```
+
+Then install the Upgrades plugin:
+
+```bash
+$ npm install --save-dev @openzeppelin/hardhat-upgrades
+$ npm install --save-dev @nomiclabs/hardhat-ethers ethers # peer dependencies
+```
+
+Once it is done, register the plugin in the Hardhat config file by adding these lines:
+
+```jsx
+require('@openzeppelin/hardhat-upgrades');
+
+module.exports =
+  // ...
+;
+```
+
+Install Truffle, and initialize your project.
+
+<Callout type='warn'>
+Choose not to overwrite contracts or test directories when Truffle asks. By not overwriting, you won’t get an [initial migration](https://www.trufflesuite.com/docs/truffle/getting-started/running-migrations#initial-migration). Make sure you create `Migrations.sol` and the initial migration.
+</Callout>
+
+```json
+$ npm install --save-dev truffle
+$ npx truffle init
+```
+
+Then install the Upgrades plugin:
+
+```bash
+$ npm install --save-dev @openzeppelin/truffle-upgrades
+```
+
+## Migrating the CLI project
+
+<Callout type='warn'>
+This is a one way process. Make sure you keep backups or version control copies of your `.openzeppelin/` folder.
+</Callout>
+
+Now, let’s migrate our project by running:
+
+```bash
+$ npx migrate-oz-cli-project
+```
+
+```bash
+✔ Successfully migrated .openzeppelin/rinkeby.json
+✔ Migration data exported to openzeppelin-cli-export.json
+✔ Deleting .openzeppelin/project.json
+
+These were your project’s compiler options:
+
+  "compilerSettings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": "200"
+
+  },
+  "typechain":
+    "enabled": false
+  ,
+  "manager": "openzeppelin",
+  "solcVersion": "0.6.12",
+  "artifactsDir": "build/contracts",
+  "contractsDir": "contracts"
+}
+```
+
+This script was installed along with the plugins and what it does is to delete the CLI project file and turn your old network files (all of which live under the `.openzeppelin` directory) into their Upgrades plugin equivalent. Again, nothing on chain is changed, only local files. Notice also that once you’ve run this you can no longer use the CLI to manage this project’s contracts unless you revert the changes through backups or version control.
+
+The migration script will also export a `openzeppelin-cli-export.json` file into your working directory containing all the data that the CLI used to manage for you and now you’re free to use however you think it’s best. This is including your compiler settings, which are also printed at the end of the migration for convenience. Let’s add them to our new project config:
+
+Copy compiler settings into the [`solidity` field](https://hardhat.org/config/#available-config-options) in the Hardhat config file
+
+```json
+
+module.exports =
+  // ...
+  solidity: {
+    version: "0.6.12",
+    settings: {
+      optimizer: {
+        enabled: false,
+        runs: 200
+
+    }
+  }
+}
+```
+
+Copy compiler settings into the [`compilers` field](https://www.trufflesuite.com/docs/truffle/reference/configuration#compiler-configuration) of our Truffle config file
+
+```json
+
+module.exports =
+  // ...
+  compilers: {
+    solc: {
+      version: "0.6.12",
+      settings: {
+        optimizer: {
+          enabled: false,
+          runs: 200
+
+      }
+    }
+  }
+}
+```
+
+<Callout>
+The solidity compiler configuration format is different in `truffle-config.js` and `hardhat.config.js` files
+</Callout>
+
+And that’s it, you have successfully migrated your CLI project. Let’s now try your new setup upgrading one of your migrated contracts.
+
+## Upgrade to a new version
+
+Let’s say we had a `Box` contract in our CLI project, deployed to the Rinkeby network. Then if we open our export file, we’ll see something like this:
+
+```json
+
+  "networks": {
+    "rinkeby": {
+      "proxies": {
+        "openzeppelin-upgrades-migration-example/Box": [
+          {
+            "address": "0x500D1d6A4c7D8Ae28240b47c8FCde034D827fD5e",
+            "version": "1.0.0",
+            "implementation": "0x038B86d9d8FAFdd0a02ebd1A476432877b0107C8",
+            "admin": "0x1A1FEe7EeD918BD762173e4dc5EfDB8a78C924A8",
+            "kind": "Upgradeable"
+
+        ]
+      }
+    }
+  },
+  "compiler":
+    // we’ll ignore compiler settings for this
+
+}
+```
+
+What we’re seeing in here is the JSON representation of our upgradeable contract in terms of addresses:
+
+* `address`: the proxy address (the proxy contract contains your upgradeable contract state)
+* `implementation`: the implementation address (your upgradeable contract logic)
+* `admin`: the address of the proxy admin, which will probably belong to a `ProxyAdmin` contract unless you set up otherwise
+
+And this is how it would look like if we decided to upgrade our `Box` contract to a `BoxV2` contract using the plugins and this export file:
+
+These scripts are just examples of how to use the exported data. We make no suggestions on whether to keep that file as it is or how to handle its data. This is up to the user now.
+
+With Hardhat, we would write a script (**you can read more about Hardhat scripts [here](https://hardhat.org/guides/scripts.html) and about using the `hardhat-upgrades` plugin [here](/upgrades-plugins/hardhat-upgrades)**):
+
+```jsx
+
+const  ethers, upgrades  = require("hardhat");
+const OZ_SDK_EXPORT = require("../openzeppelin-cli-export.json");
+
+async function main()
+  const [ Box ] = OZ_SDK_EXPORT.networks.rinkeby.proxies["openzeppelin-upgrades-migration-example/Box"];
+  const BoxV2 = await ethers.getContractFactory("BoxV2");
+  await upgrades.upgradeProxy(Box.address, BoxV2);
+
+
+main();
+```
+
+```bash
+$ npx hardhat run scripts/upgradeBoxToV2.js --network rinkeby
+```
+
+With Truffle, we would write a migration (**you can read more about Truffle migrations [here](https://www.trufflesuite.com/docs/truffle/getting-started/running-migrations) and about using the `truffle-upgrades` plugin [here](/upgrades-plugins/truffle-upgrades)**):
+
+```jsx
+
+const  upgradeProxy  = require('@openzeppelin/truffle-upgrades');
+const OZ_SDK_EXPORT = require("../openzeppelin-cli-export.json");
+
+const BoxV2 = artifacts.require('BoxV2');
+
+module.exports = async function (deployer)
+  const [ Box ] = OZ_SDK_EXPORT.networks.rinkeby.proxies["openzeppelin-upgrades-migration-example/Box"];
+  const instance = await upgradeProxy(Box.address, BoxV2, { deployer );
+  console.log("Upgraded", instance.address);
+};
+```
+
+```bash
+$ npx truffle migrate --network rinkeby
+```
+
+And that’s it! You have migrated your OpenZeppelin CLI project to Truffle or Hardhat and performed an upgrade using the plugins.

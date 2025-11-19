@@ -1,0 +1,109 @@
+---
+title: Merkle Distributor
+---
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/contract-utils/src/merkle-distributor)
+
+The Merkle Distributor package builds on the [crypto package](./crypto) to provide a system for distributing tokens or other assets using Merkle proofs for verification.
+
+## Key Components
+
+### IndexableLeaf
+
+The `IndexableLeaf` trait defines the interface that leaf nodes must implement to be used with the Merkle Distributor:
+
+```rust
+pub trait IndexableLeaf {
+    fn index(&self) -> u32;
+}
+```
+
+Each leaf in the merkle tree requires a unique index to track whether it has been claimed to prevent double-claiming. The custom leaf struct should implement this trait by returning a unique `u32` value for each recipient. This index serves as the key for storing claim status on-chain.
+
+### MerkleDistributor
+
+The `MerkleDistributor` struct is a generic component that manages the verification and claiming process. It is parameterized by a hash function (e.g. `Keccak256`) and provides the following core functionality:
+
+#### Setting the Merkle Root
+
+`set_root(env: &Env, root: BytesN<32>)` stores the Merkle tree root on-chain. This is typically called once during contract initialization or when updating the distribution list.
+
+#### Checking Claim Status
+
+`is_claimed(env: &Env, index: u32) -> bool` queries whether a specific index has already been claimed. This allows you to check claim status before attempting verification.
+
+#### Verifying and Claiming
+
+`verify_and_set_claimed(env: &Env, leaf: impl IndexableLeaf, proof: Vec<BytesN<32>>)` performs two operations atomically:
+
+1. **Verification**: Validates that the provided leaf and proof correctly reconstruct the stored Merkle root
+2. **Claiming**: Marks the leaf's index as claimed to prevent duplicate claims
+
+This function will panic if the proof is invalid or if the index has already been claimed, ensuring the integrity of the distribution process.
+
+## Usage Example
+
+```rust
+use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, Vec};
+use stellar_contract_utils::crypto::keccak::Keccak256;
+use stellar_contract_utils::merkle_distributor::{IndexableLeaf, MerkleDistributor};
+
+// Define a leaf node structure
+#[contracttype]
+struct LeafData {
+    pub index: u32,
+    pub address: Address,
+    pub amount: i128,
+}
+
+// Implement IndexableLeaf for the leaf structure
+impl IndexableLeaf for LeafData {
+    fn index(&self) -> u32 {
+        self.index
+    }
+}
+
+#[contract]
+pub struct TokenDistributor;
+
+#[contractimpl]
+impl TokenDistributor {
+    // Initialize the distributor with a Merkle root
+    pub fn initialize(e: &Env, root: BytesN<32>) {
+        MerkleDistributor::<Keccak256>::set_root(e, root);
+    }
+
+    // Claim tokens by providing a proof
+    pub fn claim(e: &Env, leaf: LeafData, proof: Vec<BytesN<32>>) {
+        // Verify the proof and mark as claimed
+        MerkleDistributor::<Keccak256>::verify_and_set_claimed(e, leaf.clone(), proof);
+
+        // Transfer tokens or perform other actions based on leaf data
+        // ...
+    }
+
+    // Check if an index has been claimed
+    pub fn is_claimed(e: &Env, index: u32) -> bool {
+        MerkleDistributor::<Keccak256>::is_claimed(e, index)
+    }
+}
+```
+
+## Use Cases
+
+### Token Airdrops
+
+Efficiently distribute tokens to a large number of recipients without requiring individual transactions for each recipient.
+
+### NFT Distributions
+
+Distribute NFTs to a whitelist of addresses, with each address potentially receiving different NFTs.
+
+### Off-chain Allowlists
+
+Maintain a list of eligible addresses off-chain and allow them to claim tokens or other assets on-chain.
+
+### Snapshot-based Voting
+
+Create a snapshot of token holders at a specific block and allow them to vote based on their holdings.
+

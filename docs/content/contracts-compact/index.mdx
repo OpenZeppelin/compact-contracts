@@ -1,0 +1,124 @@
+---
+title: Contracts for Compact
+---
+
+{/* links */}
+[Midnight]: https://midnight.network/
+[nvm]: https://github.com/nvm-sh/nvm
+[yarn]: https://yarnpkg.com/getting-started/install
+[compact-dev-tools]: https://docs.midnight.network/blog/compact-developer-tools
+
+**A library for secure smart contract development** written in Compact for [Midnight].
+This library consists of modules to build custom smart contracts.
+
+<Callout type="warn">
+This repo contains highly experimental code.
+Expect rapid iteration. **Use at your own risk.**
+</Callout>
+
+## Usage
+
+Make sure you have [nvm] and [yarn] installed on your machine.
+
+Follow Midnight's [Compact Developer Tools][compact-dev-tools] installation guide and confirm that `compact` is in the `PATH` env variable.
+
+```bash
+$ compact compile --version
+
+Compactc version: {{compact_compiler_version}}
+{{compact_compiler_version}}
+```
+
+### Installation
+
+Create a directory for your project.
+
+```bash
+mkdir my-project
+cd my-project
+```
+
+Initialize git and add OpenZeppelin Contracts for Compact as a submodule.
+
+```bash
+git init && \
+git submodule add https://github.com/OpenZeppelin/compact-contracts.git
+```
+
+`cd` into it and then install dependencies and prepare the environment.
+
+```bash
+nvm install && \
+yarn && \
+SKIP_ZK=true yarn compact
+```
+
+### Write a custom contract using library modules
+
+In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
+Import the modules through `compact-contracts/node_modules/@openzeppelin-compact/contracts/...`.
+Import modules through `node_modules` rather than directly to avoid state conflicts between shared dependencies.
+
+<Callout type="info">
+Installing the library will be easier once it's available as an NPM package.
+</Callout>
+
+```typescript
+// MyContract.compact
+
+pragma language_version >= {{compact_language_version}};
+
+import CompactStandardLibrary;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
+  prefix Ownable_;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable"
+  prefix Pausable_;
+import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+  prefix FungibleToken_;
+
+constructor(
+  _name: Opaque<"string">,
+  _symbol: Opaque<"string">,
+  _decimals: Uint<8>,
+  _recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  _amount: Uint<128>,
+  _initOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+) {
+  Ownable_initialize(_initOwner);
+  FungibleToken_initialize(_name, _symbol, _decimals);
+  FungibleToken__mint(_recipient, _amount);
+}
+
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_transfer(to, value);
+}
+
+export circuit pause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__unpause();
+}
+
+(...)
+```
+
+### Compile the contract
+
+In the project root, compile the contract using Compact's dev tools.
+
+```bash
+% compact compile MyContract.compact artifacts/MyContract
+Compiling 3 circuits:
+  circuit "pause" (k=10, rows=125)
+  circuit "transfer" (k=11, rows=1180)
+  circuit "unpause" (k=10, rows=121)
+Overall progress [====================] 3/3
+```

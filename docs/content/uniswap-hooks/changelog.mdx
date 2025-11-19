@@ -1,0 +1,68 @@
+---
+title: Changelog
+---
+
+<a id="v1.1.0"></a>
+# [v1.1.0](https://github.com/OpenZeppelin/uniswap-hooks/releases/tag/v1.1.0) - 2025-07-11
+
+### Changes by Category
+
+## Base
+
+* `BaseAsyncSwap`: Add interface `IHookEvents` to the contract in order to standardize event emissions in hooks. Add `_calculateSwapFee` function to calculate the swap fee amount in an asynchronous swap. ([#47](https://github.com/OpenZeppelin/uniswap-hooks/issues/47))
+* `BaseCustomAccounting`: Add interface `IHookEvents` to the contract in order to standardize event emissions in hooks ([#47](https://github.com/OpenZeppelin/uniswap-hooks/issues/47)).
+* `BaseCustomCurve`: Add function `_getSwapFeeAmount` to calculate the amount of fees paid to LPs. ([#47](https://github.com/OpenZeppelin/uniswap-hooks/issues/47))
+* `BaseHook`: Update imports from `v4-core` ([#66](https://github.com/OpenZeppelin/uniswap-hooks/issues/66))
+
+## Fee
+
+* `BaseDynamicAfterFee`: Add interface `IHookEvents` to the contract in order to standardize event emissions in hooks ([#47](https://github.com/OpenZeppelin/uniswap-hooks/issues/47)). Add functions `_transientTargetUnspecifiedAmount`, `_transientApplyTarget`, `_setTransientTargetUnspecifiedAmount`  and `_setTransientApplyTarget` to handle the target unspecified and the apply flag using transient storage. Rename `_getTargetOutput` to `_getTargetUnspecified` and handle both exact input and exact output cases for targets. ([#86](https://github.com/OpenZeppelin/uniswap-hooks/issues/86))
+* `BaseDynamicFee`:  Update imports from `v4-core` ([#66](https://github.com/OpenZeppelin/uniswap-hooks/issues/66))
+* `BaseOverrideFee`: Update imports from `v4-core` ([#66](https://github.com/OpenZeppelin/uniswap-hooks/issues/66))
+
+## General
+* `AntiSandwichHook`: Implementation of a sandwich-resistant pool using hooks. Specifically, it guarantees that no swaps get filled at a price better than the price at the beginning of the block. ([#80](https://github.com/OpenZeppelin/uniswap-hooks/issues/80))
+* `LimitOrderHook`: Hook to enable limit order placing on liquidity pools. The orders are placed as out-of-range liquidity increases. The hook allows for cancelling orders and withdrawing tokens after the orders are fulfilled. ([#77](https://github.com/OpenZeppelin/uniswap-hooks/issues/77))
+* `LiquidityPenaltyHook`: Hook that provides Just-in-time protection to pools. It penalizes LP fee collection during `_afterRemoveLiquidity` and disables it during `_afterAddLiquidity` if liquidity was recently added to the position. ([#67](https://github.com/OpenZeppelin/uniswap-hooks/issues/67))
+
+## Interfaces
+* `IHookEvents`: Interface created in order to standardize event emissions in hooks ([#47](https://github.com/OpenZeppelin/uniswap-hooks/issues/47))
+
+## Utilities
+
+* `CurrencySettler`: Update to use `SafeERC20` ([#49](https://github.com/OpenZeppelin/uniswap-hooks/issues/49))
+
+[Changes][v1.1.0]
+
+
+<a id="v1.0.0"></a>
+# [v1.0.0](https://github.com/OpenZeppelin/uniswap-hooks/releases/tag/v1.0.0) - 2025-02-24
+
+## Base
+
+Base contracts for building secure and modular Uniswap hooks, providing core functionality and common patterns for hook development.
+
+* `BaseCustomAccounting`: Base hook implementation for custom accounting, including support for swaps and liquidity management.
+* `BaseCustomCurve`: Base hook implementation for custom curves.
+* `BaseHook`: Base implementation for hooks.
+* `BaseAsyncSwap`: Base hook implementation for asynchronous swaps.
+
+## Fee
+
+Hooks for managing and customizing pool fees, including dynamic fee adjustments, fee overrides, and post-swap fee calculations.
+
+* `BaseDynamicFee`: Hook to apply a manual dynamic fee via the Uniswap PoolManager contract.
+* `BaseOverrideFee`: Hook that overrides and applies a fee before swapping automatically.
+* `BaseDynamicAfterFee`: Hook that applies a fee based on a delta after swapping.
+
+## Utilities
+
+Libraries and general purpose utilities to help develop hooks.
+
+* `CurrencySettler`: Library used to interact with the PoolManager to settle any open deltas, with support for ERC-6909 and native currencies.
+
+[Changes][v1.0.0]
+
+
+[v1.1.0]: https://github.com/OpenZeppelin/uniswap-hooks/compare/v1.0.0...v1.1.0
+[v1.0.0]: https://github.com/OpenZeppelin/uniswap-hooks/tree/v1.0.0

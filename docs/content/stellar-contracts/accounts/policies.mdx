@@ -1,0 +1,240 @@
+---
+title: Policies
+---
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/accounts/src/policies)
+
+Policies are enforcement modules that add constraints to context rules in smart accounts. While signers determine who can authorize actions, policies determine how those authorizations are enforced, enabling sophisticated patterns like multi-signature thresholds, spending limits, and time-based restrictions.
+
+Policies attach to context rules and execute during the authorization flow. A context rule can have up to **5 policies** attached, and policies are executed in the order they were added. If policies are present in a context rule, **all of them must be enforceable** (i.e., `can_enforce` must return `true`) for the rule to be considered matched and authorized.
+
+## The Policy Trait
+
+All policies must implement the `Policy` trait:
+
+```rust
+pub trait Policy {
+    type AccountParams: FromVal<Env, Val>;
+
+    /// Read-only pre-check to validate conditions
+    /// Must be idempotent and side-effect free
+    /// Returns true if the policy would allow the action
+    fn can_enforce(
+        e: &Env,
+        context: Context,
+        authenticated_signers: Vec<Signer>,
+        rule: ContextRule,
+        smart_account: Address,
+    ) -> bool;
+    
+    /// State-changing enforcement hook
+    /// Called when a context rule successfully matches and all can_enforce checks pass
+    /// Requires smart account authorization
+    fn enforce(
+        e: &Env,
+        context: Context,
+        authenticated_signers: Vec<Signer>,
+        rule: ContextRule,
+        smart_account: Address,
+    );
+    
+    /// Initialize policy-specific storage and configuration
+    /// Called when a new context rule with attached policies is created
+    fn install(
+        e: &Env,
+        param: Self::AccountParams,
+        rule: ContextRule,
+        smart_account: Address,
+    );
+    
+    /// Clean up policy data when removed
+    /// Called when a context rule is removed
+    fn uninstall(
+        e: &Env,
+        rule: ContextRule,
+        smart_account: Address,
+    );
+}
+```
+
+## Policy Lifecycle
+
+The four trait methods form a complete lifecycle for policy management:
+
+### Installation
+
+Installation occurs when a new context rule is created with attached policies or a policy is added to an existing context rule. The smart account calls `install()` on each policy contract, passing account-specific and context-specific parameters.
+
+This initialization step allows policies to configure their logic. For example:
+- A threshold policy might define the required number of signatures for that particular account and context rule
+- A spending limit policy might set daily or per-transaction caps
+
+Installation ensures that each policy has the necessary state and configuration ready before authorization checks begin.
+
+### Pre-check Validation
+
+Pre-check validation happens during authorization. When the matching algorithm iterates over context rules and their associated policies, it calls `can_enforce()` on each policy as a read-only pre-check.
+
+This function examines the current state without modifying it, for instance:
+- Verifying that a spending limit has not been exceeded
+- Checking that enough signers are present
+- Validating that time-based restrictions are met
+
+Policies that fail this check cause the algorithm to move to the next context rule.
+
+### Enforcement
+
+Enforcement is triggered when a context rule successfully matches. Once all policies in the matched rule pass their `can_enforce()` checks, the smart account calls `enforce()` on each policy.
+
+This state-changing hook allows policies to:
+- Update counters
+- Emit events
+- Record timestamps
+- Track authorization activity
+
+For example, a spending limit policy might deduct from the available balance and emit an event documenting the transaction.
+
+### Uninstallation
+
+Uninstallation occurs when a context rule is removed from the smart account. The account calls `uninstall()` on each attached policy, allowing them to clean up any stored data associated with that specific account and context rule pairing.
+
+This ensures that policies do not leave orphaned state in storage.
+
+## Stateful vs Stateless Policies
+
+Policies can be implemented as either stateful or stateless:
+
+### Stateless Policies
+
+Stateless policies perform validation based solely on the provided parameters without maintaining any storage:
+
+- No storage operations
+- No `require_auth` calls needed
+- Lower resource consumption
+- Example: Hard-coded threshold
+
+### Stateful Policies
+
+Stateful policies maintain storage to track state across multiple authorizations:
+
+- **Storage Segregation**: Must segregate storage entries by **both** smart account address AND context rule ID
+- **Multiple Rules Support**: The same policy contract can be installed on multiple context rules from the same smart account, with separate storage for each
+- **Authorization Required**: Must call `require_auth` from the smart account in `install`, `enforce`, and `uninstall`
+- **Event Emission**: Should emit events for state changes to enable tracking and auditing
+- Example: Spending limit (tracks cumulative spending over time)
+
+## Policy Sharing Models
+
+Policies can be deployed and used in different ways. A single policy contract instance can be shared across multiple smart accounts, multiple context rules within the same smart account, or different combinations of both. This shared model provides lower deployment costs (deploy once, use many times) and ensures consistent behavior across accounts, but requires proper storage segregation by smart account and rule ID. Alternatively, each smart account or context rule can have their own dedicated policy contract attached.
+
+## Policy Management
+
+The `SmartAccount` trait provides functions for managing policies within context rules:
+
+### Adding Policies
+
+```rust
+fn add_policy(
+    e: &Env,
+    context_rule_id: u32,
+    policy: Address,
+    account_params: Val,
+);
+```
+
+Adds a policy to an existing context rule and calls its `install()` function. The rule must not exceed the maximum of 5 policies.
+
+### Removing Policies
+
+```rust
+fn remove_policy(
+    e: &Env,
+    context_rule_id: u32,
+    policy: Address,
+);
+```
+
+Removes a policy from an existing context rule and calls its `uninstall()` function. The rule must maintain at least one signer OR one policy after removal.
+
+### Caveats
+
+**Signer Set Divergence in Threshold Policies**
+
+Threshold policies (both simple and weighted) store authorization requirements that are validated at installation time. However, policies are not automatically notified when signers are added to or removed from their parent context rule. This creates a state divergence that can lead to operational issues.
+
+**Removing Signers:** If signers are removed after policy installation, the total available signatures or weight may fall below the stored threshold, making it impossible to meet the authorization requirement and permanently blocking actions governed by that policy.
+
+**Example:** A 5-of-5 multisig where two signers are removed leaves only three signers, making the threshold of five unreachable.
+
+**Adding Signers:** Conversely, if signers are added without updating the threshold, the security guarantee silently weakens. A strict 3-of-3 multisig becomes a 3-of-5 multisig after adding two signers, reducing the required approval from 100% to 60% without any explicit warning.
+
+**Resolution:** Administrators must manually update thresholds and weights when modifying signer sets:
+1. Before removing signers, verify that the threshold remains achievable
+2. After adding signers, adjust thresholds or assign weights to maintain the desired security level
+3. Ideally, bundle these updates in the same transaction as the signer modifications
+
+## Example Policies
+
+The OpenZeppelin Stellar Contracts library provides the necessary utilities for three policy implementations:
+
+### Simple Threshold
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/accounts/src/policies/simple_threshold.rs)
+
+The `simple_threshold` policy implements N-of-M multisig authorization, requiring a minimum number of valid signatures before allowing an action. This is the most common multisig pattern, treating all signers equally. For example, a 2-of-3 multisig requires any 2 signatures from 3 allowed signers.
+
+The policy requires a single configuration parameter:
+
+- **Threshold**: The minimum number of signatures required (N)
+
+The total number of signers (M) is determined by the context rule's signer list.
+
+<Callout type="warning">
+When using threshold policies, be aware of signer set divergence issues. See the [Caveats](#caveats) section above for details on how adding or removing signers affects threshold policies and how to properly manage these changes.
+</Callout>
+
+### Weighted Threshold
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/accounts/src/policies/weighted_threshold.rs)
+
+The `weighted_threshold` policy implements flexible multisig authorization where each signer has an assigned weight. Authorization requires that the sum of signature weights meets or exceeds a specified threshold, enabling hierarchical and role-based authorization patterns.
+
+Unlike `simple_threshold` where all signers are equal, `weighted_threshold` assigns different weights to signers based on their authority level. This enables sophisticated patterns like "1 admin OR 2 managers OR 3 users" within a single rule.
+
+The policy requires two configuration parameters:
+
+- **Signer Weights**: Map of signers to their weights
+- **Threshold**: The minimum total weight required
+
+<Callout type="warning">
+When using threshold policies, be aware of signer set divergence issues. See the [Caveats](#caveats) section above for details on how adding or removing signers affects threshold policies and how to properly manage these changes.
+</Callout>
+
+### Spending Limit
+
+[Source Code](https://github.com/OpenZeppelin/stellar-contracts/tree/main/packages/accounts/src/policies/spending_limit.rs)
+
+The `spending_limit` policy enforces spending caps over time periods, enabling budget controls, allowances, and rate limiting for smart accounts. This is particularly useful for session keys, sub-accounts, and automated operations that need spending constraints.
+
+The policy tracks cumulative spending within a rolling time window and rejects transactions that would exceed the configured limit. The policy maintains state to track spending and automatically resets when the time window expires.
+
+The policy requires two configuration parameters:
+
+- **Limit Amount**: Maximum spending allowed in the time window
+- **Time Window**: Duration in seconds for the spending period
+
+## Best Practices
+
+1. **Order Matters**: Policies execute in order; place cheaper checks first
+2. **Keep Policies Focused**: Each policy should enforce one concern
+3. **Test Policy Combinations**: Ensure multiple policies work together correctly
+4. **Handle Errors Gracefully**: Return clear error messages from `enforce`
+5. **Clean Up Storage**: Always implement `uninstall` to free storage
+6. **Document Configuration**: Clearly document policy configuration parameters
+
+## See Also
+
+- [Smart Account](/stellar-contracts/accounts/smart-account)
+- [Context Rules](/stellar-contracts/accounts/context-rules)
+- [Signers and Verifiers](/stellar-contracts/accounts/signers-and-verifiers)
+- [Authorization Flow](/stellar-contracts/accounts/authorization-flow)
