@@ -399,7 +399,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/compact@workspace:packages/compact"
   dependencies:
-    "@tsconfig/node24": "npm:^24.0.1"
+    "@tsconfig/node24": "npm:^24.0.3"
     "@types/node": "npm:24.10.0"
     chalk: "npm:^5.6.2"
     log-symbols: "npm:^7.0.0"
@@ -419,7 +419,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@tsconfig/node24": "npm:^24.0.1"
+    "@tsconfig/node24": "npm:^24.0.3"
     "@types/node": "npm:24.10.0"
     fast-check: "npm:^4.3.0"
     typescript: "npm:^5.8.2"
@@ -433,7 +433,7 @@ __metadata:
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
     "@openzeppelin-compact/contracts-simulator": "workspace:^"
-    "@tsconfig/node24": "npm:^24.0.1"
+    "@tsconfig/node24": "npm:^24.0.3"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
@@ -649,10 +649,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node24@npm:^24.0.1":
-  version: 24.0.1
-  resolution: "@tsconfig/node24@npm:24.0.1"
-  checksum: 10/0ea96dea3aae641da61e0c376306f2314a6c63b200359925f8ad949705246d5dfab01cc25aaf8d8d04a81919390aa2bfddf172a947f85583e1db977a4dd3fb4f
+"@tsconfig/node24@npm:^24.0.3":
+  version: 24.0.3
+  resolution: "@tsconfig/node24@npm:24.0.3"
+  checksum: 10/02318441e4fc1a493be0ea4299813f952cc564e8eac7b23508f22a1774692e7b362ba58b9dddd9ffb052d1c9fadc4f1937f5590bc581584fe662ae83512feb8d
   languageName: node
   linkType: hard
 
