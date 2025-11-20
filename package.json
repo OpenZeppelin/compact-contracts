@@ -11,9 +11,9 @@
   "scripts": {
     "docs": "turbo run docs --filter=docs",
     "docs:watch": "turbo run docs:watch --filter=docs",
-    "compact": "turbo run compact --filter=@openzeppelin-compact/contracts --log-prefix=none",
+    "compact": "turbo run compact --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "build": "turbo run build --filter=!'docs' --log-prefix=none",
-    "test": "turbo run test --filter=@openzeppelin-compact/contracts --log-prefix=none",
+    "test": "turbo run test --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "fmt-and-lint": "biome check . --changed",
     "fmt-and-lint:fix": "biome check . --changed --write",
     "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
