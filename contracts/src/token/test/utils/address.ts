@@ -62,7 +62,7 @@ export const createEitherTestContractAddress = (str: string) => ({
 });
 
 export const zeroUint8Array = (length = 32) =>
-  convertFieldToBytes(length, 0n, "");
+  convertFieldToBytes(length, 0n, '');
 
 export const ZERO_KEY = {
   is_left: true,
