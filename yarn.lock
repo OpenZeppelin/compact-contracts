@@ -427,9 +427,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin-compact/contracts@workspace:contracts":
+"@openzeppelin/compact-contracts@workspace:contracts":
   version: 0.0.0-use.local
-  resolution: "@openzeppelin-compact/contracts@workspace:contracts"
+  resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
     "@openzeppelin-compact/compact": "workspace:^"
     "@openzeppelin-compact/contracts-simulator": "workspace:^"

@@ -70,12 +70,12 @@ export const createEitherTestContractAddress = (str: string) => {
 
 export const ZERO_KEY = {
   is_left: true,
-  left: { bytes: convertFieldToBytes(32, 0n, "") },
+  left: { bytes: convertFieldToBytes(32, 0n, '') },
   right: encodeToAddress(''),
 };
 
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
-  right: { bytes: convertFieldToBytes(32, 0n, "") },
+  right: { bytes: convertFieldToBytes(32, 0n, '') },
 };

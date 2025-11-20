@@ -63,7 +63,7 @@ jobs:
         echo "New version: $NEW_VERSION"
 
         # Update package.json version field manually
-        yarn workspace @openzeppelin-compact/contracts version "$NEW_VERSION"
+        yarn workspace @openzeppelin/compact-contracts version "$NEW_VERSION"
 
         # Escape special characters for sed
         ESCAPED_CURRENT=$(printf '%s' "$CURRENT_VERSION" | sed -e 's/[\/&]/\\&/g')

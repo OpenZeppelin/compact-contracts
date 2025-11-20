@@ -50,7 +50,7 @@ const mockExit = vi
   .mockImplementation(() => undefined as never);
 
 // Mock console methods
-const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => { });
+const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 
 describe('runCompiler CLI', () => {
   let mockCompile: ReturnType<typeof vi.fn>;

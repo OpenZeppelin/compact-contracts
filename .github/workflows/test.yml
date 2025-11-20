@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Compile contracts (with retry)
-        run: turbo compact --filter=@openzeppelin-compact/contracts --concurrency=1
+        run: turbo compact --filter=@openzeppelin/compact-contracts --concurrency=1
 
       - name: Run type checks
         run: turbo types

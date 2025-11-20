@@ -57,7 +57,7 @@ SKIP_ZK=true yarn compact
 ### Write a custom contract using library modules
 
 In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
-Import the modules through `compact-contracts/node_modules/@openzeppelin-compact/contracts/...`.
+Import the modules through `compact-contracts/node_modules/@openzeppelin/compact-contracts/...`.
 Import modules through `node_modules` rather than directly to avoid state conflicts between shared dependencies.
 
 > NOTE: Installing the library will be easier once it's available as an NPM package.
@@ -68,11 +68,11 @@ Import modules through `node_modules` rather than directly to avoid state confli
 pragma language_version >= 0.18.0;
 
 import CompactStandardLibrary;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/access/Ownable"
+import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/access/Ownable"
   prefix Ownable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/security/Pausable"
+import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/security/Pausable"
   prefix Pausable_;
-import "./compact-contracts/node_modules/@openzeppelin-compact/contracts/src/token/FungibleToken"
+import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/token/FungibleToken"
   prefix FungibleToken_;
 
 constructor(
@@ -180,7 +180,7 @@ ZK key generation is slow and usually unnecessary during development.
 
 ```bash
 # Individual module compilation (recommended for development)
-turbo compact:token  --filter=@openzeppelin-compact/contracts -- --skip-zk
+turbo compact:token  --filter=@openzeppelin/compact-contracts -- --skip-zk
 
 # Full compilation with skip-zk (use environment variable)
 SKIP_ZK=true turbo compact
