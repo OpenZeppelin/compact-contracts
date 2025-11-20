@@ -1,5 +1,5 @@
 {
-  "name": "@openzeppelin-compact/contracts",
+  "name": "@openzeppelin/compact-contracts",
   "version": "0.0.1",
   "description": "OpenZeppelin Compact contract library",
   "keywords": [
