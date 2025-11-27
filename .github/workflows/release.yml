@@ -79,7 +79,7 @@ jobs:
           fi
 
       - name: Publish to npm
-        run: npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
