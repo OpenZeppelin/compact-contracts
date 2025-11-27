@@ -65,20 +65,29 @@ jobs:
         echo "Current version: $CURRENT_VERSION"
         echo "New version: $NEW_VERSION"
 
-        # Update package.json version field manually
-        yarn workspace @openzeppelin/compact-contracts version "$NEW_VERSION"
+        # Update package.json version field
+        node -e '
+          const fs = require("fs");
+          const path = "./contracts/package.json";
+          const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+          pkg.version = process.env.NEW_VERSION;
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+        '
 
         # Escape special characters for sed
         ESCAPED_CURRENT=$(printf '%s' "$CURRENT_VERSION" | sed -e 's/[\/&]/\\&/g')
         ESCAPED_NEW=$(printf '%s' "$NEW_VERSION" | sed -e 's/[\/&]/\\&/g')
 
+        # Pattern to match version + optional prerelease (-alpha.1) and build (+build) suffixes
+        VERSION_SUFFIX='(-[A-Za-z0-9.]+)?(\+[A-Za-z0-9.]+)?'
+
         # Replace version in contracts/src/
         find ./contracts/src/ -type d -name '.*' -prune -o \
-          -type f -exec sed -i "s#$ESCAPED_CURRENT#$ESCAPED_NEW#g" {} +
+          -type f -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
 
         # Replace version in docs/, excluding package-lock.json
         find ./docs/ -type d -name '.*' -prune -o \
-          -type f ! -name 'package-lock.json' -exec sed -i "s#$ESCAPED_CURRENT#$ESCAPED_NEW#g" {} +
+          -type f ! -name 'package-lock.json' -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
 
     - name: Auto-commit changes
       uses: stefanzweifel/git-auto-commit-action@778341af668090896ca464160c2def5d1d1a3eb0 #v6.0.1
