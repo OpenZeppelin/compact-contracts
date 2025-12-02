@@ -108,16 +108,15 @@ describe('AccessControl', () => {
       accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
     });
 
-    describe.each(operatorTypes)(
-      'when the operator is a %s',
-      (_operatorType, _operator) => {
-        it(`should not throw if ${_operatorType} has role`, () => {
-          expect(() =>
-            accessControl._checkRole(OPERATOR_ROLE_1, _operator),
-          ).not.toThrow();
-        });
-      },
-    );
+    describe.each(
+      operatorTypes,
+    )('when the operator is a %s', (_operatorType, _operator) => {
+      it(`should not throw if ${_operatorType} has role`, () => {
+        expect(() =>
+          accessControl._checkRole(OPERATOR_ROLE_1, _operator),
+        ).not.toThrow();
+      });
+    });
 
     it('should throw if operator is unauthorized', () => {
       expect(() =>
@@ -187,25 +186,24 @@ describe('AccessControl', () => {
       accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
     });
 
-    describe.each(operatorTypes)(
-      'when the operator is a %s',
-      (_operatorType, _operator) => {
-        it('admin should revoke role', () => {
-          caller = ADMIN;
+    describe.each(
+      operatorTypes,
+    )('when the operator is a %s', (_operatorType, _operator) => {
+      it('admin should revoke role', () => {
+        caller = ADMIN;
 
-          accessControl.revokeRole(OPERATOR_ROLE_1, _operator, caller);
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
-        });
+        accessControl.revokeRole(OPERATOR_ROLE_1, _operator, caller);
+        expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
+      });
 
-        it('should throw if operator revokes role', () => {
-          caller = callerTypes[_operatorType];
+      it('should throw if operator revokes role', () => {
+        caller = callerTypes[_operatorType];
 
-          expect(() => {
-            accessControl.revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED, caller);
-          }).toThrow('AccessControl: unauthorized account');
-        });
-      },
-    );
+        expect(() => {
+          accessControl.revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED, caller);
+        }).toThrow('AccessControl: unauthorized account');
+      });
+    });
 
     it('admin should revoke multiple roles', () => {
       caller = ADMIN;
@@ -393,18 +391,17 @@ describe('AccessControl', () => {
   });
 
   describe('_revokeRole', () => {
-    describe.each(operatorTypes)(
-      'when the operator is a %s',
-      (_, _operator) => {
-        it('should revoke role', () => {
-          accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
-          expect(accessControl._revokeRole(OPERATOR_ROLE_1, _operator)).toBe(
-            true,
-          );
-          expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
-        });
-      },
-    );
+    describe.each(
+      operatorTypes,
+    )('when the operator is a %s', (_, _operator) => {
+      it('should revoke role', () => {
+        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
+        expect(accessControl._revokeRole(OPERATOR_ROLE_1, _operator)).toBe(
+          true,
+        );
+        expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
+      });
+    });
 
     it('should return false if account does not have role', () => {
       expect(accessControl._revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(
