@@ -53,7 +53,7 @@ const buildCommitmentFromId = (
   counter: bigint,
 ): Uint8Array => {
   const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
-  const bCounter = convertFieldToBytes(32, counter, "");
+  const bCounter = convertFieldToBytes(32, counter, '');
   const bDomain = new TextEncoder().encode(DOMAIN);
 
   const commitment = persistentHash(rt_type, [
@@ -84,7 +84,7 @@ const buildCommitment = (
   const id = createIdHash(pk, nonce);
 
   const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
-  const bCounter = convertFieldToBytes(32, counter, "");
+  const bCounter = convertFieldToBytes(32, counter, '');
   const bDomain = new TextEncoder().encode(domain);
 
   const commitment = persistentHash(rt_type, [
@@ -350,31 +350,33 @@ describe('SampleZOwnable', () => {
           counter: MAX_U64,
         },
       ];
-      it.each(testCases)(
-        'should match commitment for $label with counter $counter',
-        ({ ownerPK, counter }) => {
-          const id = createIdHash(ownerPK, secretNonce);
+      it.each(
+        testCases,
+      )('should match commitment for $label with counter $counter', ({
+        ownerPK,
+        counter,
+      }) => {
+        const id = createIdHash(ownerPK, secretNonce);
 
-          // Check buildCommitmentFromId
-          const hashFromContract = ownable._computeOwnerCommitment(id, counter);
-          const hashFromHelper1 = buildCommitmentFromId(
-            id,
-            INSTANCE_SALT,
-            counter,
-          );
-          expect(hashFromContract).toEqual(hashFromHelper1);
+        // Check buildCommitmentFromId
+        const hashFromContract = ownable._computeOwnerCommitment(id, counter);
+        const hashFromHelper1 = buildCommitmentFromId(
+          id,
+          INSTANCE_SALT,
+          counter,
+        );
+        expect(hashFromContract).toEqual(hashFromHelper1);
 
-          // Check buildCommitment
-          const hashFromHelper2 = buildCommitment(
-            ownerPK,
-            secretNonce,
-            INSTANCE_SALT,
-            counter,
-            DOMAIN,
-          );
-          expect(hashFromHelper1).toEqual(hashFromHelper2);
-        },
-      );
+        // Check buildCommitment
+        const hashFromHelper2 = buildCommitment(
+          ownerPK,
+          secretNonce,
+          INSTANCE_SALT,
+          counter,
+          DOMAIN,
+        );
+        expect(hashFromHelper1).toEqual(hashFromHelper2);
+      });
     });
 
     describe('_computeOwnerId', () => {
@@ -396,14 +398,16 @@ describe('SampleZOwnable', () => {
         },
       ];
 
-      it.each(testCases)(
-        'should match local and contract owner id for $label',
-        ({ eitherOwner, nonce }) => {
-          const ownerId = ownable._computeOwnerId(eitherOwner, nonce);
-          const expId = createIdHash(eitherOwner.left, nonce);
-          expect(ownerId).toEqual(expId);
-        },
-      );
+      it.each(
+        testCases,
+      )('should match local and contract owner id for $label', ({
+        eitherOwner,
+        nonce,
+      }) => {
+        const ownerId = ownable._computeOwnerId(eitherOwner, nonce);
+        const expId = createIdHash(eitherOwner.left, nonce);
+        expect(ownerId).toEqual(expId);
+      });
 
       it('should fail to compute ContractAddress id', () => {
         const eitherContract =

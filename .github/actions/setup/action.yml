@@ -24,7 +24,7 @@ runs:
         echo "COMPILER_VERSION=0.26.0" >> $GITHUB_ENV
         echo "LANGUAGE_VERSION=0.18.0" >> $GITHUB_ENV
 
-    - name: Get yarn cache directory path
+    - name: Enable corepack
       shell: bash
       run: corepack enable
 

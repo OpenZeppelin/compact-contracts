@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Environment
         uses: ./.github/actions/setup
@@ -81,7 +81,7 @@ jobs:
       - name: Publish to npm
         run: |
           # Publish the tarball with appropriate tag
-          npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public --provenance
+          npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public
         env:
           NPM_CONFIG_PROVENANCE: true
 

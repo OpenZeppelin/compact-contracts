@@ -1,6 +1,6 @@
 {
-  "name": "@openzeppelin-compact/contracts",
-  "version": "0.0.1",
+  "name": "@openzeppelin/compact-contracts",
+  "version": "0.0.1-alpha.1",
   "description": "OpenZeppelin Compact contract library",
   "keywords": [
     "openzeppelin",
@@ -40,10 +40,10 @@
   },
   "devDependencies": {
     "@openzeppelin-compact/contracts-simulator": "workspace:^",
-    "@tsconfig/node24": "^24.0.1",
+    "@tsconfig/node24": "^24.0.3",
     "@types/node": "24.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.15"
   }
 }
