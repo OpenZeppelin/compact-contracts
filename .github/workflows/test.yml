@@ -2,6 +2,11 @@ name: Compact Contracts Test Suite
 
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - ".github/**"
+      - ".gitignore"
+      - "**.json"
   push:
     branches:
       - main
