@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "**.md"
+      - ".github/**"
+      - ".gitignore"
+      - "**.json"
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
