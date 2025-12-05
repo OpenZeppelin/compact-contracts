@@ -6,6 +6,9 @@ inputs:
     description: "Skip Compact compiler installation"
     required: false
     default: "false"
+  gh-token:
+    description: "The GITHUB_TOKEN created by the calling workflow"
+    required: true
 
 outputs:
   compact-home:
@@ -63,6 +66,8 @@ runs:
       run: npm install turbo@${{ env.TURBO_MAJOR_VERSION }} -g
 
     - name: Install Compact compiler
+      env:
+        GITHUB_TOKEN: ${{ inputs.gh-token }} # avoid rate limiting
       if: inputs.skip-compact != 'true' && steps.compact-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |

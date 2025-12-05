@@ -2,9 +2,19 @@ name: Compact Contracts Test Suite
 
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - "biome.json"
+      - "turbo.json"
   push:
     branches:
       - main
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - "biome.json"
+      - "turbo.json"
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
@@ -28,9 +38,11 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
       - name: Compile contracts (with retry)
-        run: turbo compact --filter=@openzeppelin/compact-contracts --concurrency=1
+        run: turbo compact --filter=@openzeppelin/compact-contracts
 
       - name: Run type checks
         run: turbo types

@@ -25,6 +25,9 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
+        with:
+          skip-compact: 'true'
+          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
       - name: Format & Lint
         run: turbo fmt-and-lint:ci
