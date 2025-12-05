@@ -6,7 +6,8 @@ on:
       - "**.md"
       - ".github/**"
       - ".gitignore"
-      - "**.json"
+      - "biome.json"
+      - "turbo.json"
   push:
     branches:
       - main
@@ -14,7 +15,8 @@ on:
       - "**.md"
       - ".github/**"
       - ".gitignore"
-      - "**.json"
+      - "biome.json"
+      - "turbo.json"
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
