@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 2 # Recommended by turbo team
 
@@ -35,13 +35,13 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@fe4161a26a8629af62121b670040955b330f9af2 # v4
         with:
           languages: ${{ matrix.language }}
           # We can add custom queries later when needed
           # queries: security-extended
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@fe4161a26a8629af62121b670040955b330f9af2 # v4
         with:
           category: "/language:${{ matrix.language }}"
