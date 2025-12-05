@@ -38,6 +38,8 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
       - name: Compile contracts (with retry)
         run: turbo compact --filter=@openzeppelin/compact-contracts

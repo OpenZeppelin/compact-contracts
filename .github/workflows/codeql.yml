@@ -33,6 +33,8 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
+        with:
+          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@fe4161a26a8629af62121b670040955b330f9af2 # v4
