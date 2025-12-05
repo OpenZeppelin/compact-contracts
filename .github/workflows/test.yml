@@ -4,7 +4,6 @@ on:
   pull_request:
     paths-ignore:
       - "**.md"
-      - ".github/**"
       - ".gitignore"
       - "biome.json"
       - "turbo.json"
@@ -13,7 +12,6 @@ on:
       - main
     paths-ignore:
       - "**.md"
-      - ".github/**"
       - ".gitignore"
       - "biome.json"
       - "turbo.json"
