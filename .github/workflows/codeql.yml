@@ -17,11 +17,6 @@ jobs:
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ["javascript", "typescript"]
-
     env:
       COMPACT_INSTALLER_URL: ${{ vars.COMPACT_INSTALLER_URL }}
 
@@ -40,11 +35,9 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@fe4161a26a8629af62121b670040955b330f9af2 # v4
         with:
-          languages: ${{ matrix.language }}
+          languages: javascript-typescript
           # We can add custom queries later when needed
           # queries: security-extended
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@fe4161a26a8629af62121b670040955b330f9af2 # v4
-        with:
-          category: "/language:${{ matrix.language }}"
