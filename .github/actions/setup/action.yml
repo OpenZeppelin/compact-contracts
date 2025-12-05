@@ -63,6 +63,8 @@ runs:
       run: npm install turbo@${{ env.TURBO_MAJOR_VERSION }} -g
 
     - name: Install Compact compiler
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # avoid rate limiting
       if: inputs.skip-compact != 'true' && steps.compact-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
