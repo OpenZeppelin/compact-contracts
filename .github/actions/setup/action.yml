@@ -41,6 +41,6 @@ runs:
 
     - name: Setup Compact Compiler
       if: ${{ inputs.skip-compact != 'true' }}
-      uses: midnightntwrk/setup-compact-action@v1
+      uses: midnightntwrk/setup-compact-action@4130145456ad3f45934788dd4a65647eb283e658
       with:
         compact-version: "0.26.0"
