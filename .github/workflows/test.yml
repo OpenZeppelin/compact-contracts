@@ -16,13 +16,12 @@ on:
       - "biome.json"
       - "turbo.json"
 
-env:
-  TURBO_TELEMETRY_DISABLED: 1
-
 jobs:
   run-suite:
     name: Run Test Suite
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 15
 
     steps:
