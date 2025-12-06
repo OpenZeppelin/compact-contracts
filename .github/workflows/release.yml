@@ -11,17 +11,17 @@ jobs:
       contents: read
       id-token: write
 
-    env:
-      COMPACT_INSTALLER_URL: ${{ vars.COMPACT_INSTALLER_URL }}
-
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Setup Environment
         uses: ./.github/actions/setup
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
       - name: Build contracts
         run: turbo build --filter=!'docs'

@@ -16,21 +16,20 @@ on:
       - "biome.json"
       - "turbo.json"
 
-env:
-  TURBO_TELEMETRY_DISABLED: 1
-  COMPILER_VERSION: "0.26.0"
-  LANGUAGE_VERSION: "0.18.0"
-
 jobs:
   run-suite:
     name: Run Test Suite
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 15
 
-    env:
-      COMPACT_INSTALLER_URL: ${{ vars.COMPACT_INSTALLER_URL }}
-
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
       - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -38,10 +37,8 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
-      - name: Compile contracts (with retry)
+      - name: Compile contracts
         run: turbo compact --filter=@openzeppelin/compact-contracts
 
       - name: Run type checks
