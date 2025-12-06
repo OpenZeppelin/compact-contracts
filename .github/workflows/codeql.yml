@@ -22,9 +22,6 @@ jobs:
       matrix:
         language: ["javascript-typescript", "actions"]
 
-    env:
-      COMPACT_INSTALLER_URL: ${{ vars.COMPACT_INSTALLER_URL }}
-
     steps:
       - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -34,7 +31,6 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup
         with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
           skip-compact: "true"
 
       - name: Initialize CodeQL

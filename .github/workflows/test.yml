@@ -18,8 +18,6 @@ on:
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
-  COMPILER_VERSION: "0.26.0"
-  LANGUAGE_VERSION: "0.18.0"
 
 jobs:
   run-suite:
@@ -38,10 +36,8 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup
-        with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }} # secrets must be passed to composite actions
 
-      - name: Compile contracts (with retry)
+      - name: Compile contracts
         run: turbo compact --filter=@openzeppelin/compact-contracts
 
       - name: Run type checks
