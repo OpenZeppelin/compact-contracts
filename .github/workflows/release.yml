@@ -24,7 +24,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Build contracts
-        run: turbo build --filter=!'docs'
+        run: turbo build
 
       - name: Validate version consistency
         run: |
