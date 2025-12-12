@@ -144,7 +144,7 @@
     "types": {
       "dependsOn": [
         "@openzeppelin-compact/compact#build",
-        "@openzeppelin-compact/contracts#compact"
+        "@openzeppelin/compact-contracts#compact"
       ],
       "outputs": [],
       "cache": false
