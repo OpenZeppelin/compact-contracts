@@ -90,10 +90,6 @@ jobs:
           find ./contracts/src/ -type d -name '.*' -prune -o \
             -type f -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
 
-          # Replace version in docs/, excluding package-lock.json
-          find ./docs/ -type d -name '.*' -prune -o \
-            -type f ! -name 'package-lock.json' -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
-
       - name: Auto-commit changes
         uses: stefanzweifel/git-auto-commit-action@28e16e81777b558cc906c8750092100bbb34c5e3 #v7.0.0
         with:
