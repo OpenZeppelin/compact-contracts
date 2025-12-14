@@ -122,7 +122,10 @@ export class CompactBuilder {
    */
   public async build(): Promise<void> {
     // Run compact compilation as a prerequisite
-    const compiler = new CompactCompiler(this.compilerFlags, this.disableLogging);
+    const compiler = new CompactCompiler(
+      this.compilerFlags,
+      this.disableLogging,
+    );
     await compiler.compile();
 
     // Proceed with build steps

@@ -302,7 +302,6 @@ export class CompilerService {
  * ```
  */
 export class UIService {
-
   disableLogging: boolean;
 
   /**
@@ -422,7 +421,7 @@ export class UIService {
       chalk.yellow(`[COMPILE] No .compact files found in ${searchLocation}.`),
     );
   }
-};
+}
 
 /**
  * Main compiler class that orchestrates the compilation process.
@@ -582,7 +581,12 @@ export class CompactCompiler {
       version = env.COMPACT_TOOLCHAIN_VERSION ?? COMPACT_VERSION;
     }
 
-    return new CompactCompiler(flags.join(' '), disableLogging, targetDir, version);
+    return new CompactCompiler(
+      flags.join(' '),
+      disableLogging,
+      targetDir,
+      version,
+    );
   }
 
   /**
@@ -690,7 +694,6 @@ export class CompactCompiler {
     index: number,
     total: number,
   ): Promise<void> {
-
     try {
       const result = await this.compilerService.compileFile(
         file,
@@ -706,7 +709,6 @@ export class CompactCompiler {
       }
       this.UIService.printOutput(result.stderr, chalk.yellow);
     } catch (error) {
-
       if (
         error instanceof CompilationError &&
         isPromisifiedChildProcessError(error)
