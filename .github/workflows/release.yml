@@ -1,5 +1,8 @@
 name: Publish Package on Release
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
 on:
   release:
     types: [published]
