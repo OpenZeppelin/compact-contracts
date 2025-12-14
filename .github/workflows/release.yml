@@ -17,14 +17,21 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Checkout
+      - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0 # Recommended by turbo team with --affected flag
+          filter: "blob:none"
+
+      - name: Ensure main branch is up to date, and exists locally
+        if: github.ref != 'refs/heads/main'
+        run: git rev-parse --verify main || git remote set-branches origin main && git fetch --depth 1 origin main && git branch main origin/main
 
       - name: Setup Environment
         uses: ./.github/actions/setup
 
       - name: Build contracts
-        run: turbo build
+        run: turbo build --cache-dir=.turbo --affected
 
       - name: Validate version consistency
         run: |

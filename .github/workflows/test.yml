@@ -33,16 +33,21 @@ jobs:
       - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 2 # Recommended by turbo team
+          fetch-depth: 0 # Recommended by turbo team with --affected flag
+          filter: "blob:none"
+
+      - name: Ensure main branch is up to date, and exists locally
+        if: github.ref != 'refs/heads/main'
+        run: git rev-parse --verify main || git remote set-branches origin main && git fetch --depth 1 origin main && git branch main origin/main
 
       - name: Setup Environment
         uses: ./.github/actions/setup
 
       - name: Compile contracts
-        run: turbo compact --filter=@openzeppelin/compact-contracts
+        run: turbo compact --filter=@openzeppelin/compact-contracts --cache-dir=.turbo --affected
 
       - name: Run type checks
-        run: turbo types
+        run: turbo types --cache-dir=.turbo --affected
 
       - name: Run tests
-        run: turbo test
+        run: turbo test --cache-dir=.turbo --affected
