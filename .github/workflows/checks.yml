@@ -25,7 +25,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 2 # Recommended by turbo team
+          fetch-depth: 0 # Recommended by turbo team with --affected flag
+          filter: "blob:none"
 
       - name: Setup Environment
         uses: ./.github/actions/setup
@@ -33,4 +34,4 @@ jobs:
           skip-compact: "true"
 
       - name: Format & Lint
-        run: turbo fmt-and-lint:ci
+        run: turbo fmt-and-lint:ci --cache-dir=.turbo --affected
