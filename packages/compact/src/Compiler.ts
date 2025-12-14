@@ -301,7 +301,19 @@ export class CompilerService {
  * UIService.printOutput('Compilation successful', chalk.green);
  * ```
  */
-export const UIService = {
+export class UIService {
+
+  disableLogging: boolean;
+
+  /**
+   * Creates a new CompilerService instance.
+   *
+   * @param execFn - Function to execute shell commands (defaults to promisified child_process.exec)
+   */
+  constructor(disableLogging: boolean) {
+    this.disableLogging = disableLogging;
+  }
+
   /**
    * Prints formatted output with consistent indentation and coloring.
    * Filters empty lines and adds consistent indentation for readability.
@@ -315,12 +327,14 @@ export const UIService = {
    * ```
    */
   printOutput(output: string, colorFn: (text: string) => string): void {
+    if (this.disableLogging) return;
+
     const lines = output
       .split('\n')
       .filter((line) => line.trim() !== '')
       .map((line) => `    ${line}`);
     console.log(colorFn(lines.join('\n')));
-  },
+  }
 
   /**
    * Displays environment information including tool versions and configuration.
@@ -346,6 +360,8 @@ export const UIService = {
     targetDir?: string,
     version?: string,
   ): void {
+    if (this.disableLogging) return;
+
     const spinner = ora();
 
     if (targetDir) {
@@ -362,7 +378,7 @@ export const UIService = {
     if (version) {
       spinner.info(chalk.blue(`[COMPILE] Using toolchain version: ${version}`));
     }
-  },
+  }
 
   /**
    * Displays compilation start message with file count and optional location.
@@ -376,6 +392,8 @@ export const UIService = {
    * ```
    */
   showCompilationStart(fileCount: number, targetDir?: string): void {
+    if (this.disableLogging) return;
+
     const searchLocation = targetDir ? ` in ${targetDir}/` : '';
     const spinner = ora();
     spinner.info(
@@ -383,7 +401,7 @@ export const UIService = {
         `[COMPILE] Found ${fileCount} .compact file(s) to compile${searchLocation}`,
       ),
     );
-  },
+  }
 
   /**
    * Displays a warning message when no .compact files are found.
@@ -396,12 +414,14 @@ export const UIService = {
    * ```
    */
   showNoFiles(targetDir?: string): void {
+    if (this.disableLogging) return;
+
     const searchLocation = targetDir ? `${targetDir}/` : '';
     const spinner = ora();
     spinner.warn(
       chalk.yellow(`[COMPILE] No .compact files found in ${searchLocation}.`),
     );
-  },
+  }
 };
 
 /**
@@ -440,6 +460,8 @@ export class CompactCompiler {
   private readonly fileDiscovery: FileDiscovery;
   /** Compilation execution service */
   private readonly compilerService: CompilerService;
+  /** UI service */
+  private readonly UIService: UIService;
 
   /** Compiler flags to pass to the Compact CLI */
   private readonly flags: string;
@@ -473,6 +495,7 @@ export class CompactCompiler {
    */
   constructor(
     flags = '',
+    disableLogging = false,
     targetDir?: string,
     version?: string,
     execFn?: ExecFunction,
@@ -483,6 +506,7 @@ export class CompactCompiler {
     this.environmentValidator = new EnvironmentValidator(execFn);
     this.fileDiscovery = new FileDiscovery();
     this.compilerService = new CompilerService(execFn);
+    this.UIService = new UIService(disableLogging);
   }
 
   /**
@@ -525,9 +549,12 @@ export class CompactCompiler {
     let targetDir: string | undefined;
     const flags: string[] = [];
     let version: string | undefined;
+    let disableLogging = false;
 
     if (env.SKIP_ZK === 'true') {
       flags.push('--skip-zk');
+    } else if (env.CI === 'true') {
+      disableLogging = true;
     }
 
     for (let i = 0; i < args.length; i++) {
@@ -555,7 +582,7 @@ export class CompactCompiler {
       version = env.COMPACT_TOOLCHAIN_VERSION ?? COMPACT_VERSION;
     }
 
-    return new CompactCompiler(flags.join(' '), targetDir, version);
+    return new CompactCompiler(flags.join(' '), disableLogging, targetDir, version);
   }
 
   /**
@@ -585,7 +612,7 @@ export class CompactCompiler {
   async validateEnvironment(): Promise<void> {
     const { devToolsVersion, toolchainVersion } =
       await this.environmentValidator.validate(this.version);
-    UIService.displayEnvInfo(
+    this.UIService.displayEnvInfo(
       devToolsVersion,
       toolchainVersion,
       this.targetDir,
@@ -637,11 +664,11 @@ export class CompactCompiler {
     const compactFiles = await this.fileDiscovery.getCompactFiles(searchDir);
 
     if (compactFiles.length === 0) {
-      UIService.showNoFiles(this.targetDir);
+      this.UIService.showNoFiles(this.targetDir);
       return;
     }
 
-    UIService.showCompilationStart(compactFiles.length, this.targetDir);
+    this.UIService.showCompilationStart(compactFiles.length, this.targetDir);
 
     for (const [index, file] of compactFiles.entries()) {
       await this.compileFile(file, index, compactFiles.length);
@@ -663,10 +690,6 @@ export class CompactCompiler {
     index: number,
     total: number,
   ): Promise<void> {
-    const step = `[${index + 1}/${total}]`;
-    const spinner = ora(
-      chalk.blue(`[COMPILE] ${step} Compiling ${file}`),
-    ).start();
 
     try {
       const result = await this.compilerService.compileFile(
@@ -675,16 +698,14 @@ export class CompactCompiler {
         this.version,
       );
 
-      spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));
       // Filter out compactc version output from compact compile
       const filteredOutput = result.stdout.split('\n').slice(1).join('\n');
 
       if (filteredOutput) {
-        UIService.printOutput(filteredOutput, chalk.cyan);
+        this.UIService.printOutput(filteredOutput, chalk.cyan);
       }
-      UIService.printOutput(result.stderr, chalk.yellow);
+      this.UIService.printOutput(result.stderr, chalk.yellow);
     } catch (error) {
-      spinner.fail(chalk.red(`[COMPILE] ${step} Failed ${file}`));
 
       if (
         error instanceof CompilationError &&
@@ -695,9 +716,9 @@ export class CompactCompiler {
         const filteredOutput = execError.stdout.split('\n').slice(1).join('\n');
 
         if (filteredOutput) {
-          UIService.printOutput(filteredOutput, chalk.cyan);
+          this.UIService.printOutput(filteredOutput, chalk.cyan);
         }
-        UIService.printOutput(execError.stderr, chalk.red);
+        this.UIService.printOutput(execError.stderr, chalk.red);
       }
 
       throw error;

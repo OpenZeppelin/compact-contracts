@@ -58,6 +58,7 @@ const execAsync = promisify(exec);
  */
 export class CompactBuilder {
   private readonly compilerFlags: string;
+  private readonly disableLogging: boolean = false;
   private readonly steps: Array<{ cmd: string; msg: string; shell?: string }> =
     [
       // Step 1: Clean dist directory
@@ -105,7 +106,10 @@ export class CompactBuilder {
    * Constructs a new ProjectBuilder instance.
    * @param compilerFlags - Optional space-separated string of `compactc` flags (e.g., "--skip-zk")
    */
-  constructor(compilerFlags = '') {
+  constructor(compilerFlags = '', disableLogging = '') {
+    if (disableLogging === 'true') {
+      this.disableLogging = true;
+    }
     this.compilerFlags = compilerFlags;
   }
 
@@ -118,7 +122,7 @@ export class CompactBuilder {
    */
   public async build(): Promise<void> {
     // Run compact compilation as a prerequisite
-    const compiler = new CompactCompiler(this.compilerFlags);
+    const compiler = new CompactCompiler(this.compilerFlags, this.disableLogging);
     await compiler.compile();
 
     // Proceed with build steps

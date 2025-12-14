@@ -30,7 +30,8 @@ async function runBuilder(): Promise<void> {
 
   try {
     const compilerFlags = process.argv.slice(2).join(' ');
-    const builder = new CompactBuilder(compilerFlags);
+    const disableLogging = process.env.CI;
+    const builder = new CompactBuilder(compilerFlags, disableLogging);
     await builder.build();
   } catch (err) {
     spinner.fail(

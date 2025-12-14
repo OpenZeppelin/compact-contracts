@@ -2,6 +2,7 @@ name: Compact Contracts Test Suite
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
+  CI: "true"
 
 on:
   pull_request:
