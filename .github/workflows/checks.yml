@@ -28,6 +28,10 @@ jobs:
           fetch-depth: 0 # Recommended by turbo team with --affected flag
           filter: "blob:none"
 
+      - name: Ensure main branch is up to date, and exists locally
+        if: github.ref != 'refs/heads/main'
+        run: git rev-parse --verify main || git remote set-branches origin main && git fetch --depth 1 origin main && git branch main origin/main
+
       - name: Setup Environment
         uses: ./.github/actions/setup
         with:
