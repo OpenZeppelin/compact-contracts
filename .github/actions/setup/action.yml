@@ -6,27 +6,10 @@ inputs:
     description: "Skip Compact compiler installation"
     required: false
     default: "false"
-  gh-token:
-    description: "The GITHUB_TOKEN created by the calling workflow"
-    required: true
-
-outputs:
-  compact-home:
-    description: "Path to Compact compiler installation"
-    value: ${{ steps.compact-outputs.outputs.compact-home }}
-  compact-version:
-    description: "Installed Compact compiler version"
-    value: ${{ steps.compact-outputs.outputs.version }}
 
 runs:
   using: "composite"
   steps:
-    - name: Set shared environment variables
-      shell: bash
-      run: |
-        echo "COMPILER_VERSION=0.26.0" >> $GITHUB_ENV
-        echo "LANGUAGE_VERSION=0.18.0" >> $GITHUB_ENV
-
     - name: Enable corepack
       shell: bash
       run: corepack enable
@@ -35,18 +18,9 @@ runs:
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: .turbo
-        key: ${{ runner.os }}-turbo-${{ hashFiles('.turbo/*') }}-${{ github.sha }}
+        key: ${{ runner.os }}-turbo-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-turbo-${{ hashFiles('.turbo/*') }}
-
-    - name: Cache Compact compiler
-      if: inputs.skip-compact != 'true'
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-      id: compact-cache
-      with:
-        path: |
-          ~/.local/bin/compact
-        key: compact-compiler-${{ env.COMPILER_VERSION }}-${{ runner.os }}
+          ${{ runner.os }}-turbo-
 
     - name: Setup Node.js
       uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
@@ -65,80 +39,8 @@ runs:
         TURBO_TELEMETRY_DISABLED: 1
       run: npm install turbo@${{ env.TURBO_MAJOR_VERSION }} -g
 
-    - name: Install Compact compiler
-      env:
-        GITHUB_TOKEN: ${{ inputs.gh-token }} # avoid rate limiting
-      if: inputs.skip-compact != 'true' && steps.compact-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-        COMPACT_HOME="$HOME/.local/bin"
-        mkdir -p "$COMPACT_HOME"
-
-        # Require COMPACT_INSTALLER_URL to be provided by the caller
-        if [ -z "${COMPACT_INSTALLER_URL:-}" ]; then
-          echo "::error::COMPACT_INSTALLER_URL is required but not set. Provide it via env or secrets."
-          exit 1
-        fi
-
-        echo "🔧 Installing Compact compiler from $COMPACT_INSTALLER_URL ..."
-        curl --proto '=https' --tlsv1.2 -LsSf "$COMPACT_INSTALLER_URL" | sh
-
-        echo "🔧 Updating Compact compiler to $COMPILER_VERSION..."
-        "$COMPACT_HOME/compact" update "$COMPILER_VERSION"
-
-        echo "✅ Compact compiler installed"
-
-    - name: Setup Compact environment
-      if: inputs.skip-compact != 'true'
-      shell: bash
-      run: |
-        COMPACT_HOME="$HOME/.local/bin"
-        echo "📁 Setting Compact environment variables..."
-        echo "COMPACT_HOME=$COMPACT_HOME" >> "$GITHUB_ENV"
-        echo "$COMPACT_HOME" >> "$GITHUB_PATH"
-
-        if [ -f "$COMPACT_HOME/compact" ]; then
-          echo "✅ Compact compiler is installed at $COMPACT_HOME"
-        else
-          echo "::error::❌ Compact compiler not found in $COMPACT_HOME"
-          exit 1
-        fi
-
-    - name: Set Compact outputs
-      if: inputs.skip-compact != 'true'
-      id: compact-outputs
-      shell: bash
-      run: |
-        echo "compact-home=$HOME/.local/bin" >> $GITHUB_OUTPUT
-        echo "version=$COMPILER_VERSION" >> $GITHUB_OUTPUT
-
-    - name: Check compiler and language version
-      if: inputs.skip-compact != 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        echo "🔧 Updating Compact compiler to $COMPILER_VERSION..."
-        "$COMPACT_HOME/compact" update "$COMPILER_VERSION"
-
-        echo "🔍 Checking Compact compiler version..."
-        COMPILER_OUTPUT=$("$COMPACT_HOME/compact" compile --version)
-        COMPUTED_COMPILER_VERSION=$(echo "$COMPILER_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | head -n 1)
-
-        if [ "$COMPUTED_COMPILER_VERSION" != "$COMPILER_VERSION" ]; then
-          echo "::error::❌ Compiler version mismatch!%0AExpected: $COMPILER_VERSION%0AGot: $COMPUTED_COMPILER_VERSION"
-          exit 1
-        fi
-        echo "✅ Compiler version matches: $COMPUTED_COMPILER_VERSION"
-
-        echo "🔍 Checking Compact language version..."
-        LANGUAGE_OUTPUT=$("$COMPACT_HOME/compact" compile --language-version)
-        COMPUTED_LANGUAGE_VERSION=$(echo "$LANGUAGE_OUTPUT" | grep -oP '\b0\.[0-9]+\.[0-9]+\b' | tail -n 1)
-
-        if [ "$COMPUTED_LANGUAGE_VERSION" != "$LANGUAGE_VERSION" ]; then
-          echo "::error::❌ Language version mismatch!%0AExpected: $LANGUAGE_VERSION%0AGot: $COMPUTED_LANGUAGE_VERSION"
-          exit 1
-        fi
-        echo "✅ Language version matches: $COMPUTED_LANGUAGE_VERSION"
-    
+    - name: Setup Compact Compiler
+      if: ${{ inputs.skip-compact != 'true' }}
+      uses: midnightntwrk/setup-compact-action@4130145456ad3f45934788dd4a65647eb283e658 # loose commit/not released
+      with:
+        compact-version: "0.26.0"

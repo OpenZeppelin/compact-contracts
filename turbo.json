@@ -89,14 +89,6 @@
     "clean": {
       "outputs": [],
       "cache": false
-    },
-    "docs": {
-      "outputs": [],
-      "cache": false
-    },
-    "docs:watch": {
-      "outputs": [],
-      "cache": false
     }
   }
 }
