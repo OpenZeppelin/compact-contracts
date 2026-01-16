@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Compile contracts
-        run: turbo compact --filter=@openzeppelin/compact-contracts
+        run: turbo compact --filter=@openzeppelin-compact/contracts
 
       - name: Run type checks
         run: turbo types
