@@ -54,6 +54,7 @@ yarn && \
 SKIP_ZK=true yarn compact
 ```
 
+
 ### Write a custom contract using library modules
 
 In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
