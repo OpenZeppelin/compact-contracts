@@ -18,8 +18,17 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Get github app token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        id: gh-app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          token: ${{ steps.gh-app-token.outputs.token }}
 
       - name: Enable Corepack
         run: corepack enable
@@ -90,7 +99,23 @@ jobs:
           find ./contracts/src/ -type d -name '.*' -prune -o \
             -type f -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
 
-      - name: Auto-commit changes
-        uses: stefanzweifel/git-auto-commit-action@28e16e81777b558cc906c8750092100bbb34c5e3 #v7.0.0
+      - name: Collect changed files
+        id: changes
+        run: |
+          echo "Changed files:"
+          git diff --name-only
+
+          {
+            echo 'files<<EOF'
+            git diff --name-only
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      # Uses GitHub API to create signed commits (requires creating blobs per file)
+      - name: Commit version bump
+        uses: iarekylew00t/verified-bot-commit@d7e8eea1f154881e1f9d70a3fd933e740148b7f4 # v2.1.1
         with:
-          commit_message: Bump version to ${{ env.NEW_VERSION }}
+          message: Bump version to ${{ env.NEW_VERSION }}
+          token: ${{ steps.gh-app-token.outputs.token }}
+          ref: ${{ github.ref_name }}
+          files: ${{ steps.changes.outputs.files }}
