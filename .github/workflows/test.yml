@@ -35,7 +35,6 @@ jobs:
         with:
           fetch-depth: 2 # Recommended by turbo team
           submodules: true
-          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Setup Environment
         uses: ./.github/actions/setup

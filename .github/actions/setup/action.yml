@@ -32,6 +32,30 @@ runs:
       shell: bash
       run: yarn install --immutable
 
+    - name: Build compact-tools submodule
+      shell: bash
+      run: |
+        echo "📦 Building compact-tools submodule..."
+        cd compact-tools
+        yarn install --immutable
+        yarn build
+        echo "✅ compact-tools built successfully"
+
+    - name: Validate compact-tools artifacts
+      shell: bash
+      run: |
+        REQUIRED_FILES=(
+          "compact-tools/packages/cli/dist/runCompiler.js"
+          "compact-tools/packages/cli/dist/runBuilder.js"
+        )
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "::error::❌ Missing required file: $file"
+            exit 1
+          fi
+        done
+        echo "✅ compact-tools artifacts validated"
+
     - name: Install Turbo Globally
       shell: bash
       env:
