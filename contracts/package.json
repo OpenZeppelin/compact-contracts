@@ -37,8 +37,8 @@
     "node": ">=22"
   },
   "devDependencies": {
-    "@openzeppelin/compact-tools-cli": "file:../compact-tools/packages/cli",
-    "@openzeppelin/compact-tools-simulator": "file:../compact-tools/packages/simulator",
+    "@openzeppelin/compact-tools-cli": "link:../compact-tools/packages/cli",
+    "@openzeppelin/compact-tools-simulator": "link:../compact-tools/packages/simulator",
     "@tsconfig/node24": "^24.0.3",
     "@types/node": "24.10.0",
     "ts-node": "^10.9.2",
