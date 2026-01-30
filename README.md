@@ -46,11 +46,21 @@ git init && \
 git submodule add https://github.com/OpenZeppelin/compact-contracts.git
 ```
 
-`cd` into it and then install dependencies and prepare the environment.
+`cd` into it and run the setup command:
 
 ```bash
-nvm install && \
-yarn && \
+cd compact-contracts && \
+make setup && \
+SKIP_ZK=true turbo compact
+```
+
+Or manually:
+
+```bash
+cd compact-contracts && \
+git submodule update --init --recursive && \
+cd compact-tools && yarn && yarn build && cd .. && \
+nvm install && yarn && \
 SKIP_ZK=true yarn compact
 ```
 
@@ -137,15 +147,44 @@ make sure to check out the [contribution guide](CONTRIBUTING.md) in advance.
 
 ### Set up the project
 
-Clone the OpenZeppelin Contracts for Compact library.
+Clone the OpenZeppelin Contracts for Compact library with submodules (this repository uses the `compact-tools` submodule).
 
 ```bash
-git clone git@github.com:OpenZeppelin/compact-contracts.git
+git clone --recursive git@github.com:OpenZeppelin/compact-contracts.git
+cd compact-contracts
 ```
 
-`cd` into it and then install dependencies and prepare the environment.
+#### Recommended: Using Makefile
+
+Run the setup command to initialize submodules, build `compact-tools`, and install dependencies:
 
 ```bash
+make setup
+```
+
+Then build the main project using turbo:
+
+```bash
+turbo compact
+```
+
+> **Tip:** Run `make help` to see all available commands.
+
+#### Alternative: Manual setup
+
+If you prefer to run commands manually or don't have `make` available:
+
+```bash
+# Initialize submodules (if you cloned without --recursive)
+git submodule update --init --recursive
+
+# Build the compact-tools submodule
+cd compact-tools && \
+yarn && \
+yarn build && \
+cd ..
+
+# Install dependencies and build the main project
 nvm install && \
 yarn && \
 turbo compact

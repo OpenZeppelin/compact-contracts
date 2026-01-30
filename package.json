@@ -8,12 +8,12 @@
     "packages/*"
   ],
   "scripts": {
-    "compact": "turbo run compact --filter=@openzeppelin-compact/contracts --log-prefix=none",
+    "compact": "turbo run compact --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "build": "turbo run build --log-prefix=none",
-    "test": "turbo run test --filter=@openzeppelin-compact/contracts --log-prefix=none",
-    "fmt-and-lint": "biome check . --changed",
-    "fmt-and-lint:fix": "biome check . --changed --write",
-    "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
+    "test": "turbo run test --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "fmt-and-lint": "cd contracts && biome check . --changed",
+    "fmt-and-lint:fix": "cd contracts && biome check . --changed --write",
+    "fmt-and-lint:ci": "cd contracts && biome ci . --changed --no-errors-on-unmatched",
     "types": "turbo run types",
     "clean": "turbo run clean"
   },

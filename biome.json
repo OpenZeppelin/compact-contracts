@@ -8,6 +8,7 @@
   },
   "files": {
     "ignoreUnknown": true,
+    "experimentalScannerIgnores": ["compact-tools/**"],
     "includes": [
       "**",
       "!**/tsconfig.base.json",
