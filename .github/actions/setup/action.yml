@@ -28,10 +28,6 @@ runs:
         node-version-file: ".nvmrc"
         cache: "yarn"
 
-    - name: Install dependencies
-      shell: bash
-      run: yarn install --immutable
-
     - name: Build compact-tools submodule
       shell: bash
       run: |
@@ -55,6 +51,10 @@ runs:
           fi
         done
         echo "✅ compact-tools artifacts validated"
+
+    - name: Install dependencies
+      shell: bash
+      run: yarn install --immutable
 
     - name: Install Turbo Globally
       shell: bash
