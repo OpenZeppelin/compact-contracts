@@ -406,7 +406,7 @@ __metadata:
 
 "@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
   version: 0.0.1
-  resolution: "@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli#../compact-tools/packages/cli::hash=67b6c9&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  resolution: "@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli#../compact-tools/packages/cli::hash=879ff4&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
   dependencies:
     chalk: "npm:^5.6.2"
     log-symbols: "npm:^7.0.0"
@@ -414,16 +414,16 @@ __metadata:
   bin:
     compact-builder: dist/runBuilder.js
     compact-compiler: dist/runCompiler.js
-  checksum: 10/4b18db7794c4ec0ad38bba9c000ce70ed99497e123f895b7e8b09bc1314b8741f8b73330c850f8ee1aeac0b2936944989a8eb8f8a659d458f6500f8d02dbac8e
+  checksum: 10/0156f84dbb457efc0903c586f75ff7e33e5d2de47f0b9909f07042f218424e0e0f2b33b3a019a984faa167767cb9ed139700306b6fdf16d5c3f98ee3c6e3b4e2
   languageName: node
   linkType: hard
 
 "@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
   version: 0.0.1
-  resolution: "@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator#../compact-tools/packages/simulator::hash=fff368&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  resolution: "@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator#../compact-tools/packages/simulator::hash=4ae230&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
   dependencies:
     "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
-  checksum: 10/a809c32e302e3c1b3e6a88750b44b41f0588ceb6c250853b4a1cce85641e19279aa29f7830b7f04584fbcc6a8b5b6c99af022337588dfeaa8fad2e5611c8401a
+  checksum: 10/31dbc25aa0fdda55e1f1c6cdc75769cf7944bbd35b9f367a53cb49748a75e10a0394472952116f7cb8f634f3f3b9baf06456f168a2b934d770663dac7e5fca5c
   languageName: node
   linkType: hard
 
