@@ -394,8 +394,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
-    "@openzeppelin/compact-tools-cli": "link:../compact-tools/packages/cli"
-    "@openzeppelin/compact-tools-simulator": "link:../compact-tools/packages/simulator"
+    "@openzeppelin/compact-tools-cli": "file:../compact-tools/packages/cli"
+    "@openzeppelin/compact-tools-simulator": "file:../compact-tools/packages/simulator"
     "@tsconfig/node24": "npm:^24.0.3"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"
@@ -404,17 +404,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin/compact-tools-cli@link:../compact-tools/packages/cli::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin/compact-tools-cli@link:../compact-tools/packages/cli::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+"@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
+  version: 0.0.1
+  resolution: "@openzeppelin/compact-tools-cli@file:../compact-tools/packages/cli#../compact-tools/packages/cli::hash=8cb0dc&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  dependencies:
+    chalk: "npm:^5.6.2"
+    log-symbols: "npm:^7.0.0"
+    ora: "npm:^9.0.0"
+  bin:
+    compact-builder: dist/runBuilder.js
+    compact-compiler: dist/runCompiler.js
+  checksum: 10/f4f6bdce7be3dc40d7aa093567483afcb35e0dea7628c5173c99928f32085e4fa623ae651dbca95fed1da2d22d01f797f450dee237d388752cf0685569ea5008
   languageName: node
-  linkType: soft
+  linkType: hard
 
-"@openzeppelin/compact-tools-simulator@link:../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin/compact-tools-simulator@link:../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+"@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
+  version: 0.0.1
+  resolution: "@openzeppelin/compact-tools-simulator@file:../compact-tools/packages/simulator#../compact-tools/packages/simulator::hash=8836cc&locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+  dependencies:
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
+  checksum: 10/3d02960a87ecb10825ffceed2743386266e1815abd50b91e58523d3370de3870cb864269a17b2d8bc4180100271146832852e04f805dcf67261dc6782f50bee1
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "@rollup/rollup-android-arm-eabi@npm:4.57.1":
   version: 4.57.1
@@ -785,6 +796,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ansi-regex@npm:^6.0.1":
+  version: 6.2.2
+  resolution: "ansi-regex@npm:6.2.2"
+  checksum: 10/9b17ce2c6daecc75bcd5966b9ad672c23b184dc3ed9bf3c98a0702f0d2f736c15c10d461913568f2cf527a5e64291c7473358885dd493305c84a1cfed66ba94f
+  languageName: node
+  linkType: hard
+
 "arg@npm:^4.1.0":
   version: 4.1.3
   resolution: "arg@npm:4.1.3"
@@ -825,10 +843,33 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.6.2":
+  version: 5.6.2
+  resolution: "chalk@npm:5.6.2"
+  checksum: 10/1b2f48f6fba1370670d5610f9cd54c391d6ede28f4b7062dd38244ea5768777af72e5be6b74fb6c6d54cb84c4a2dff3f3afa9b7cb5948f7f022cfd3d087989e0
+  languageName: node
+  linkType: hard
+
 "chownr@npm:^3.0.0":
   version: 3.0.0
   resolution: "chownr@npm:3.0.0"
   checksum: 10/b63cb1f73d171d140a2ed8154ee6566c8ab775d3196b0e03a2a94b5f6a0ce7777ee5685ca56849403c8d17bd457a6540672f9a60696a6137c7a409097495b82c
+  languageName: node
+  linkType: hard
+
+"cli-cursor@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "cli-cursor@npm:5.0.0"
+  dependencies:
+    restore-cursor: "npm:^5.0.0"
+  checksum: 10/1eb9a3f878b31addfe8d82c6d915ec2330cec8447ab1f117f4aa34f0137fbb3137ec3466e1c9a65bcb7557f6e486d343f2da57f253a2f668d691372dfa15c090
+  languageName: node
+  linkType: hard
+
+"cli-spinners@npm:^3.2.0":
+  version: 3.4.0
+  resolution: "cli-spinners@npm:3.4.0"
+  checksum: 10/6a4021c1999011fc34ae714f055dcdafb56309abc1f8fb021ea7d9370dfc524485fe8684226015e5fe6053dd30544e74270184ff7edc3fa4d37043b8efd0a054
   languageName: node
   linkType: hard
 
@@ -1040,6 +1081,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"get-east-asian-width@npm:^1.3.0":
+  version: 1.4.0
+  resolution: "get-east-asian-width@npm:1.4.0"
+  checksum: 10/c9ae85bfc2feaf4cc71cdb236e60f1757ae82281964c206c6aa89a25f1987d326ddd8b0de9f9ccd56e37711b9fcd988f7f5137118b49b0b45e19df93c3be8f45
+  languageName: node
+  linkType: hard
+
 "glob@npm:^13.0.0":
   version: 13.0.0
   resolution: "glob@npm:13.0.0"
@@ -1108,10 +1156,34 @@ __metadata:
   languageName: node
   linkType: hard
 
+"is-interactive@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "is-interactive@npm:2.0.0"
+  checksum: 10/e8d52ad490bed7ae665032c7675ec07732bbfe25808b0efbc4d5a76b1a1f01c165f332775c63e25e9a03d319ebb6b24f571a9e902669fc1e40b0a60b5be6e26c
+  languageName: node
+  linkType: hard
+
+"is-unicode-supported@npm:^2.0.0, is-unicode-supported@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "is-unicode-supported@npm:2.1.0"
+  checksum: 10/f254e3da6b0ab1a57a94f7273a7798dd35d1d45b227759f600d0fa9d5649f9c07fa8d3c8a6360b0e376adf916d151ec24fc9a50c5295c58bae7ca54a76a063f9
+  languageName: node
+  linkType: hard
+
 "isexe@npm:^3.1.1":
   version: 3.1.1
   resolution: "isexe@npm:3.1.1"
   checksum: 10/7fe1931ee4e88eb5aa524cd3ceb8c882537bc3a81b02e438b240e47012eef49c86904d0f0e593ea7c3a9996d18d0f1f3be8d3eaa92333977b0c3a9d353d5563e
+  languageName: node
+  linkType: hard
+
+"log-symbols@npm:^7.0.0, log-symbols@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "log-symbols@npm:7.0.1"
+  dependencies:
+    is-unicode-supported: "npm:^2.0.0"
+    yoctocolors: "npm:^2.1.1"
+  checksum: 10/0862313d84826b551582e39659b8586c56b65130c5f4f976420e2c23985228334f2a26fc4251ac22bf0a5b415d9430e86bf332557d934c10b036f9a549d63a09
   languageName: node
   linkType: hard
 
@@ -1154,6 +1226,13 @@ __metadata:
     promise-retry: "npm:^2.0.1"
     ssri: "npm:^13.0.0"
   checksum: 10/78da4fc1df83cb596e2bae25aa0653b8a9c6cbdd6674a104894e03be3acfcd08c70b78f06ef6407fbd6b173f6a60672480d78641e693d05eb71c09c13ee35278
+  languageName: node
+  linkType: hard
+
+"mimic-function@npm:^5.0.0":
+  version: 5.0.1
+  resolution: "mimic-function@npm:5.0.1"
+  checksum: 10/eb5893c99e902ccebbc267c6c6b83092966af84682957f79313311edb95e8bb5f39fb048d77132b700474d1c86d90ccc211e99bae0935447a4834eb4c882982c
   languageName: node
   linkType: hard
 
@@ -1310,6 +1389,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"onetime@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "onetime@npm:7.0.0"
+  dependencies:
+    mimic-function: "npm:^5.0.0"
+  checksum: 10/eb08d2da9339819e2f9d52cab9caf2557d80e9af8c7d1ae86e1a0fef027d00a88e9f5bd67494d350df360f7c559fbb44e800b32f310fb989c860214eacbb561c
+  languageName: node
+  linkType: hard
+
 "openzeppelin-compact@workspace:.":
   version: 0.0.0-use.local
   resolution: "openzeppelin-compact@workspace:."
@@ -1325,6 +1413,22 @@ __metadata:
     vitest: "npm:^4.0.15"
   languageName: unknown
   linkType: soft
+
+"ora@npm:^9.0.0":
+  version: 9.1.0
+  resolution: "ora@npm:9.1.0"
+  dependencies:
+    chalk: "npm:^5.6.2"
+    cli-cursor: "npm:^5.0.0"
+    cli-spinners: "npm:^3.2.0"
+    is-interactive: "npm:^2.0.0"
+    is-unicode-supported: "npm:^2.1.0"
+    log-symbols: "npm:^7.0.1"
+    stdin-discarder: "npm:^0.2.2"
+    string-width: "npm:^8.1.0"
+  checksum: 10/0932323d1e9ca4b2e3eb71ba15cdebb2cd613e959e8936633c6253d3418b203f97b8092958b337b6ab5d73131708cc54305490b5354a51f28ac4ef7061b457e7
+  languageName: node
+  linkType: hard
 
 "p-map@npm:^7.0.2":
   version: 7.0.4
@@ -1389,6 +1493,16 @@ __metadata:
     err-code: "npm:^2.0.2"
     retry: "npm:^0.12.0"
   checksum: 10/96e1a82453c6c96eef53a37a1d6134c9f2482f94068f98a59145d0986ca4e497bf110a410adf73857e588165eab3899f0ebcf7b3890c1b3ce802abc0d65967d4
+  languageName: node
+  linkType: hard
+
+"restore-cursor@npm:^5.0.0":
+  version: 5.1.0
+  resolution: "restore-cursor@npm:5.1.0"
+  dependencies:
+    onetime: "npm:^7.0.0"
+    signal-exit: "npm:^4.1.0"
+  checksum: 10/838dd54e458d89cfbc1a923b343c1b0f170a04100b4ce1733e97531842d7b440463967e521216e8ab6c6f8e89df877acc7b7f4c18ec76e99fb9bf5a60d358d2c
   languageName: node
   linkType: hard
 
@@ -1512,6 +1626,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"signal-exit@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "signal-exit@npm:4.1.0"
+  checksum: 10/c9fa63bbbd7431066174a48ba2dd9986dfd930c3a8b59de9c29d7b6854ec1c12a80d15310869ea5166d413b99f041bfa3dd80a7947bcd44ea8e6eb3ffeabfa1f
+  languageName: node
+  linkType: hard
+
 "smart-buffer@npm:^4.2.0":
   version: 4.2.0
   resolution: "smart-buffer@npm:4.2.0"
@@ -1567,6 +1688,32 @@ __metadata:
   version: 3.10.0
   resolution: "std-env@npm:3.10.0"
   checksum: 10/19c9cda4f370b1ffae2b8b08c72167d8c3e5cfa972aaf5c6873f85d0ed2faa729407f5abb194dc33380708c00315002febb6f1e1b484736bfcf9361ad366013a
+  languageName: node
+  linkType: hard
+
+"stdin-discarder@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "stdin-discarder@npm:0.2.2"
+  checksum: 10/642ffd05bd5b100819d6b24a613d83c6e3857c6de74eb02fc51506fa61dc1b0034665163831873868157c4538d71e31762bcf319be86cea04c3aba5336470478
+  languageName: node
+  linkType: hard
+
+"string-width@npm:^8.1.0":
+  version: 8.1.1
+  resolution: "string-width@npm:8.1.1"
+  dependencies:
+    get-east-asian-width: "npm:^1.3.0"
+    strip-ansi: "npm:^7.1.0"
+  checksum: 10/65efd6279165c846bb9c9b5f815821fc67695e4f71c713a288a570a926ed5b7594c8c75bd46baba040448a3625b81853017858f2293ca6a08dcf13037df5a728
+  languageName: node
+  linkType: hard
+
+"strip-ansi@npm:^7.1.0":
+  version: 7.1.2
+  resolution: "strip-ansi@npm:7.1.2"
+  dependencies:
+    ansi-regex: "npm:^6.0.1"
+  checksum: 10/db0e3f9654e519c8a33c50fc9304d07df5649388e7da06d3aabf66d29e5ad65d5e6315d8519d409c15b32fa82c1df7e11ed6f8cd50b0e4404463f0c9d77c8d0b
   languageName: node
   linkType: hard
 
@@ -1930,5 +2077,12 @@ __metadata:
   version: 3.1.1
   resolution: "yn@npm:3.1.1"
   checksum: 10/2c487b0e149e746ef48cda9f8bad10fc83693cd69d7f9dcd8be4214e985de33a29c9e24f3c0d6bcf2288427040a8947406ab27f7af67ee9456e6b84854f02dd6
+  languageName: node
+  linkType: hard
+
+"yoctocolors@npm:^2.1.1":
+  version: 2.1.2
+  resolution: "yoctocolors@npm:2.1.2"
+  checksum: 10/6ee42d665a4cc161c7de3f015b2a65d6c65d2808bfe3b99e228bd2b1b784ef1e54d1907415c025fc12b400f26f372bfc1b71966c6c738d998325ca422eb39363
   languageName: node
   linkType: hard
