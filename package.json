@@ -17,6 +17,11 @@
     "types": "turbo run types",
     "clean": "turbo run clean"
   },
+  "resolutions": {
+    "tar": "~7.5.7",
+    "glob": "~10.5.0",
+    "diff": "~4.0.4"
+  },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.9.0"
   },
