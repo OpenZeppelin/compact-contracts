@@ -15,7 +15,7 @@ allowing you to simulate contract behavior locally without blockchain deployment
 
 ```typescript
 import { createSimulator } from '@openzeppelin-compact/contracts-simulator';
-import { Contract, ledger } from './artifacts/MyContract/contract/index.cjs';
+import { Contract, ledger } from './artifacts/MyContract/contract/index.js';
 
 // 1. Define your contract arguments type
 type MyContractArgs = readonly [owner: Uint8Array, value: bigint];
@@ -46,7 +46,7 @@ The base simulator acts as a configuration class that the actual simulator will 
 
 ```typescript
 import { createSimulator } from '@openzeppelin-compact/contracts-simulator';
-import { Contract as MyContract, ledger } from './artifacts/MyContract/contract/index.cjs';
+import { Contract as MyContract, ledger } from './artifacts/MyContract/contract/index.js';
 import { MyContractWitnesses, MyContractPrivateState } from './MyContractWitnesses.js';
 
 // Define contract constructor arguments as a tuple type
