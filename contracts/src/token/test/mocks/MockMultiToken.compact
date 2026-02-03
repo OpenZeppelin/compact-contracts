@@ -1,4 +1,4 @@
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.20.0;
 
 import CompactStandardLibrary;
 import "../../MultiToken" prefix MultiToken_;
