@@ -1,6 +1,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../test-artifacts/Witness/contract/index.cjs';
+import type { Ledger } from '../../artifacts/Witness/contract/index.js';
 
 const randomBigInt = (bits: number): bigint => {
   const bytes = Math.ceil(bits / 8);

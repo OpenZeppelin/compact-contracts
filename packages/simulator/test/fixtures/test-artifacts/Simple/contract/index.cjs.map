@@ -1,8 +1,0 @@
-{
-  "version": 3,
-  "file": "index.cjs",
-  "sourceRoot": "../../../../../",
-  "sources": ["test/fixtures/sample-contracts/Simple.compact"],
-  "names": [],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAOA,AAAA,MAEC;;;;;cAFqB,GAAQ;;;;;;;;;;;;;;;;;;yCAAR,GAAQ;;;;;;;mEAAR,GAAQ;;;OAE7B;MAED,AAAA,MAEC;;;;;;;;;;;;;;;;;;;;;;OAAA;;;;;;GACA;EAdD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAKA;;;;;;;;;uDAA0B;;;;;;;GASzB;EAPD,AAAA,SAEC,4BAFqB,GAAQ;IAC5B;;;;;;;yGAAgB,GAAC;;uDAAb;;GACL;EAED,AAAA,SAEC;mCADQ;;;;;;;;;;;sFAAI;GACZ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IARD;qCAAA;;;;;;;;;;;wFAA0B;KAAA;;;;;;;;;;;;;;"
-}

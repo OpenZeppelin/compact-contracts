@@ -1,12 +1,12 @@
 import { type BaseSimulatorOptions, createSimulator } from '../../src/index';
 import {
+  ledger,
+  Contract as WitnessContract,
+} from '../fixtures/artifacts/Witness/contract/index.js';
+import {
   WitnessPrivateState,
   WitnessWitnesses,
 } from '../fixtures/sample-contracts/witnesses/WitnessWitnesses';
-import {
-  ledger,
-  Contract as SampleZOwnable,
-} from '../fixtures/test-artifacts/Witness/contract/index.cjs';
 
 /**
  * Type constructor args
@@ -20,10 +20,11 @@ const WitnessSimulatorBase = createSimulator<
   WitnessPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof WitnessWitnesses>,
+  WitnessContract<WitnessPrivateState>,
   WitnessArgs
 >({
   contractFactory: (witnesses) =>
-    new SampleZOwnable<WitnessPrivateState>(witnesses),
+    new WitnessContract<WitnessPrivateState>(witnesses),
   defaultPrivateState: () => WitnessPrivateState.generate(),
   contractArgs: () => {
     return [];
@@ -33,7 +34,7 @@ const WitnessSimulatorBase = createSimulator<
 });
 
 /**
- * SampleZOwnable Simulator
+ * Witness Simulator
  */
 export class WitnessSimulator extends WitnessSimulatorBase {
   constructor(

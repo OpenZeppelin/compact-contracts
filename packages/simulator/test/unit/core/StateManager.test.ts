@@ -1,22 +1,21 @@
 import {
+  ChargedState,
   type CircuitContext,
-  ContractState,
   dummyContractAddress,
-  type EncodedQualifiedCoinInfo,
+  type EncodedQualifiedShieldedCoinInfo,
   type EncodedZswapLocalState,
-  encodeQualifiedCoinInfo,
-  type QualifiedCoinInfo,
+  encodeQualifiedShieldedCoinInfo,
+  type QualifiedShieldedCoinInfo,
   QueryContext,
-  StateValue,
-  sampleTokenType,
+  sampleRawTokenType,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CircuitContextManager } from '../../../src/core/CircuitContextManager';
+import { Contract as MockSimple } from '../../fixtures/artifacts/Simple/contract/index.js';
 import {
   type SimplePrivateState,
   SimpleWitnesses,
 } from '../../fixtures/sample-contracts/witnesses/SimpleWitnesses';
-import { Contract as MockSimple } from '../../fixtures/test-artifacts/Simple/contract/index.cjs';
 import { encodeToAddress, toHexPadded } from '../../fixtures/utils/address';
 
 // Constants
@@ -65,17 +64,17 @@ describe('CircuitContextManager', () => {
     });
 
     it('should set original state', () => {
-      expect(ctx.originalState).toBeInstanceOf(ContractState);
-      expect(ctx.originalState).toHaveProperty('__wbg_ptr');
-      expect((ctx.originalState as any).__wbg_ptr).toBeTypeOf('number');
+      expect(ctx.currentQueryContext).toBeInstanceOf(QueryContext);
+      expect(ctx.currentQueryContext).toHaveProperty('__wbg_ptr');
+      expect((ctx.currentQueryContext as any).__wbg_ptr).toBeTypeOf('number');
     });
 
     it('should set tx ctx', () => {
       // Need to go deeper
-      expect(ctx.transactionContext).toBeInstanceOf(QueryContext);
-      expect(ctx.transactionContext.address).toEqual(dummyContractAddress());
-      expect(ctx.transactionContext.state).toBeInstanceOf(StateValue);
-      expect(ctx.transactionContext.state).toHaveProperty('__wbg_ptr');
+      expect(ctx.currentQueryContext).toBeInstanceOf(QueryContext);
+      expect(ctx.currentQueryContext.address).toEqual(dummyContractAddress());
+      expect(ctx.currentQueryContext.state).toBeInstanceOf(ChargedState);
+      expect(ctx.currentQueryContext.state).toHaveProperty('__wbg_ptr');
     });
   });
 
@@ -100,14 +99,14 @@ describe('CircuitContextManager', () => {
     it('should set new ctx', () => {
       const oldCtx = circuitCtxManager.getContext();
 
-      const qualCoin: QualifiedCoinInfo = {
-        type: sampleTokenType(),
+      const qualCoin: QualifiedShieldedCoinInfo = {
+        type: sampleRawTokenType(),
         nonce: toHexPadded('nonce'),
         value: 123n,
         mt_index: 987n,
       };
-      const encQualCoin: EncodedQualifiedCoinInfo =
-        encodeQualifiedCoinInfo(qualCoin);
+      const encQualCoin: EncodedQualifiedShieldedCoinInfo =
+        encodeQualifiedShieldedCoinInfo(qualCoin);
 
       // zswap local state
       const zswapLocalState_1: EncodedZswapLocalState = {
@@ -119,21 +118,18 @@ describe('CircuitContextManager', () => {
         outputs: [],
       };
 
-      // OG state
-      const NEW_OG_STATE: ContractState = new ContractState();
-
       // Query ctx
       const modifiedTxCtx: QueryContext = {
-        ...ctx.transactionContext,
+        ...ctx.currentQueryContext,
         address: encodeToAddress('otherAddress'),
       } as unknown as QueryContext;
 
       // Build new ctx
       const newCtx: CircuitContext<SimplePrivateState> = {
-        originalState: NEW_OG_STATE,
+        currentQueryContext: modifiedTxCtx,
         currentPrivateState: initialPrivateState,
         currentZswapLocalState: zswapLocalState_1,
-        transactionContext: modifiedTxCtx,
+        costModel: ctx.costModel,
       };
 
       circuitCtxManager.setContext(newCtx);
