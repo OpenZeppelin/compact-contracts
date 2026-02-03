@@ -345,7 +345,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v7@npm:7.0.0, @midnight-ntwrk/ledger-v7@npm:^7.0.0":
+"@midnight-ntwrk/ledger-v7@npm:7.0.0":
   version: 7.0.0
   resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0"
   checksum: 10/cd04c6cdfb2e15192c10c3beb4a3b65f5c6419eedb0f52f65d67cb50ae6ecb492a1fa96e76479f2db2796d89512d4290cf26de4424e47378c90c743529ddb82a
@@ -393,7 +393,7 @@ __metadata:
   resolution: "@openzeppelin-compact/compact@workspace:packages/compact"
   dependencies:
     "@tsconfig/node24": "npm:^24.0.3"
-    "@types/node": "npm:24.10.0"
+    "@types/node": "npm:24.10.1"
     chalk: "npm:^5.6.2"
     log-symbols: "npm:^7.0.0"
     ora: "npm:^9.0.0"
@@ -659,6 +659,15 @@ __metadata:
   dependencies:
     undici-types: "npm:~7.16.0"
   checksum: 10/bc3abd9adc61423b1a72324208f3fcfe4f957b9fc8b9e81bf3fed584deb0b40f0e2af63cd0e2afa8f408d06f14bdba899ac638ac619f646badf8e72de246c052
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:24.10.1":
+  version: 24.10.1
+  resolution: "@types/node@npm:24.10.1"
+  dependencies:
+    undici-types: "npm:~7.16.0"
+  checksum: 10/ddac8c97be5f7401e31ea0e9316c6e864993c6cd06689b7f9874ecfb576ef8349f2d14298248a08b94a6dd029570a46a285cddc4d50e524817f1a3730b29a86e
   languageName: node
   linkType: hard
 
@@ -1530,7 +1539,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:^2.3.8"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
-    "@midnight-ntwrk/ledger-v7": "npm:^7.0.0"
+    "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"

@@ -2,11 +2,11 @@
 
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
-import { CompactCompiler } from './Compiler.js';
+import { CompactCompiler } from './Compiler.ts';
 import {
   type CompilationError,
   isPromisifiedChildProcessError,
-} from './types/errors.js';
+} from './types/errors.ts';
 
 /**
  * Executes the Compact compiler CLI with improved error handling and user feedback.
@@ -171,7 +171,18 @@ function showUsageHelp(): void {
   console.log(chalk.yellow('\nOptions:'));
   console.log(
     chalk.yellow(
-      '  --dir <directory> Compile specific directory (access, archive, security, token, utils)',
+      '  --dir <directory> Compile specific subdirectory within src',
+    ),
+  );
+  console.log(
+    chalk.yellow('  --src <directory> Source directory (default: src)'),
+  );
+  console.log(
+    chalk.yellow('  --out <directory> Output directory (default: artifacts)'),
+  );
+  console.log(
+    chalk.yellow(
+      '  --hierarchical    Preserve source directory structure in artifacts output',
     ),
   );
   console.log(
@@ -182,10 +193,20 @@ function showUsageHelp(): void {
       '  +<version>        Use specific toolchain version (e.g., +0.26.0)',
     ),
   );
+  console.log(chalk.yellow('\nArtifact Output Structure:'));
+  console.log(chalk.yellow('  Default (flattened): <out>/<ContractName>/'));
+  console.log(
+    chalk.yellow('  With --hierarchical: <out>/<subdir>/<ContractName>/'),
+  );
   console.log(chalk.yellow('\nExamples:'));
   console.log(
     chalk.yellow(
-      '  compact-compiler                           # Compile all files',
+      '  compact-compiler                           # Compile all files (flattened)',
+    ),
+  );
+  console.log(
+    chalk.yellow(
+      '  compact-compiler --hierarchical            # Compile with nested structure',
     ),
   );
   console.log(
@@ -196,6 +217,11 @@ function showUsageHelp(): void {
   console.log(
     chalk.yellow(
       '  compact-compiler --dir access --skip-zk     # Compile access with flags',
+    ),
+  );
+  console.log(
+    chalk.yellow(
+      '  compact-compiler --src contracts --out build  # Custom directories',
     ),
   );
   console.log(

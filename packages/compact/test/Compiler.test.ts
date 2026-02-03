@@ -21,7 +21,6 @@ import {
   CompilationError,
   DirectoryNotFoundError,
 } from '../src/types/errors.js';
-import { COMPACT_VERSION } from '../src/versions.js';
 
 // Mock Node.js modules
 vi.mock('node:fs');
@@ -202,7 +201,7 @@ describe('FileDiscovery', () => {
     it('should handle directory read errors gracefully', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       mockReaddir.mockRejectedValueOnce(new Error('Permission denied'));
 
@@ -298,6 +297,40 @@ describe('CompilerService', () => {
       );
     });
 
+    it('should use flattened artifacts output by default', async () => {
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile(
+        'access/AccessControl.compact',
+        '--skip-zk',
+      );
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "src/access/AccessControl.compact" "artifacts/AccessControl"',
+      );
+    });
+
+    it('should flatten nested directory structure by default', async () => {
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile(
+        'access/test/AccessControl.mock.compact',
+        '--skip-zk',
+      );
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "src/access/test/AccessControl.mock.compact" "artifacts/AccessControl.mock"',
+      );
+    });
+
     it('should throw CompilationError when compilation fails', async () => {
       mockExec.mockRejectedValue(new Error('Syntax error on line 10'));
 
@@ -329,12 +362,111 @@ describe('CompilerService', () => {
       }
     });
   });
+
+  describe('compileFile with hierarchical option', () => {
+    beforeEach(() => {
+      service = new CompilerService(mockExec, { hierarchical: true });
+    });
+
+    it('should preserve directory structure in artifacts output when hierarchical is true', async () => {
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile(
+        'access/AccessControl.compact',
+        '--skip-zk',
+      );
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "src/access/AccessControl.compact" "artifacts/access/AccessControl"',
+      );
+    });
+
+    it('should preserve nested directory structure when hierarchical is true', async () => {
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile(
+        'access/test/AccessControl.mock.compact',
+        '--skip-zk',
+      );
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "src/access/test/AccessControl.mock.compact" "artifacts/access/test/AccessControl.mock"',
+      );
+    });
+
+    it('should use flattened output for root-level files even when hierarchical is true', async () => {
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile('MyToken.compact', '--skip-zk');
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "src/MyToken.compact" "artifacts/MyToken"',
+      );
+    });
+  });
+
+  describe('compileFile with custom srcDir and outDir', () => {
+    beforeEach(() => {
+      service = new CompilerService(mockExec, {
+        srcDir: 'contracts',
+        outDir: 'build',
+      });
+    });
+
+    it('should use custom srcDir and outDir', async () => {
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile('MyToken.compact', '--skip-zk');
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "contracts/MyToken.compact" "build/MyToken"',
+      );
+    });
+
+    it('should use custom directories with hierarchical option', async () => {
+      service = new CompilerService(mockExec, {
+        srcDir: 'contracts',
+        outDir: 'dist/artifacts',
+        hierarchical: true,
+      });
+      mockExec.mockResolvedValue({
+        stdout: 'Compilation successful',
+        stderr: '',
+      });
+
+      const result = await service.compileFile(
+        'access/AccessControl.compact',
+        '--skip-zk',
+      );
+
+      expect(result).toEqual({ stdout: 'Compilation successful', stderr: '' });
+      expect(mockExec).toHaveBeenCalledWith(
+        'compact compile --skip-zk "contracts/access/AccessControl.compact" "dist/artifacts/access/AccessControl"',
+      );
+    });
+  });
 });
 
 describe('UIService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => { });
   });
 
   describe('printOutput', () => {
@@ -455,22 +587,39 @@ describe('CompactCompiler', () => {
       compiler = new CompactCompiler();
 
       expect(compiler).toBeInstanceOf(CompactCompiler);
+      expect(compiler.testOptions.flags).toBe('');
+      expect(compiler.testOptions.targetDir).toBeUndefined();
+      expect(compiler.testOptions.version).toBeUndefined();
+      expect(compiler.testOptions.hierarchical).toBe(false);
+      expect(compiler.testOptions.srcDir).toBe('src');
+      expect(compiler.testOptions.outDir).toBe('artifacts');
     });
 
     it('should create instance with all parameters', () => {
       compiler = new CompactCompiler(
-        '--skip-zk',
-        'security',
-        '0.26.0',
+        {
+          flags: '--skip-zk',
+          targetDir: 'security',
+          version: '0.26.0',
+          hierarchical: true,
+          srcDir: 'contracts',
+          outDir: 'build',
+        },
         mockExec,
       );
 
       expect(compiler).toBeInstanceOf(CompactCompiler);
+      expect(compiler.testOptions.flags).toBe('--skip-zk');
+      expect(compiler.testOptions.targetDir).toBe('security');
+      expect(compiler.testOptions.version).toBe('0.26.0');
+      expect(compiler.testOptions.hierarchical).toBe(true);
+      expect(compiler.testOptions.srcDir).toBe('contracts');
+      expect(compiler.testOptions.outDir).toBe('build');
     });
 
     it('should trim flags', () => {
-      compiler = new CompactCompiler('  --skip-zk --verbose  ');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+      compiler = new CompactCompiler({ flags: '  --skip-zk --verbose  ' });
+      expect(compiler.testOptions.flags).toBe('--skip-zk --verbose');
     });
   });
 
@@ -478,28 +627,29 @@ describe('CompactCompiler', () => {
     it('should parse empty arguments', () => {
       compiler = CompactCompiler.fromArgs([]);
 
-      expect(compiler.testFlags).toBe('');
-      expect(compiler.testTargetDir).toBeUndefined();
-      expect(compiler.testVersion).toBe(COMPACT_VERSION);
+      expect(compiler.testOptions.flags).toBe('');
+      expect(compiler.testOptions.targetDir).toBeUndefined();
+      expect(compiler.testOptions.version).toBeUndefined();
+      expect(compiler.testOptions.hierarchical).toBe(false);
     });
 
     it('should handle SKIP_ZK environment variable', () => {
       compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
 
-      expect(compiler.testFlags).toBe('--skip-zk');
+      expect(compiler.testOptions.flags).toBe('--skip-zk');
     });
 
     it('should ignore SKIP_ZK when not "true"', () => {
       compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'false' });
 
-      expect(compiler.testFlags).toBe('');
+      expect(compiler.testOptions.flags).toBe('');
     });
 
     it('should parse --dir flag', () => {
       compiler = CompactCompiler.fromArgs(['--dir', 'security']);
 
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testFlags).toBe('');
+      expect(compiler.testOptions.targetDir).toBe('security');
+      expect(compiler.testOptions.flags).toBe('');
     });
 
     it('should parse --dir flag with additional flags', () => {
@@ -510,15 +660,15 @@ describe('CompactCompiler', () => {
         '--verbose',
       ]);
 
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+      expect(compiler.testOptions.targetDir).toBe('security');
+      expect(compiler.testOptions.flags).toBe('--skip-zk --verbose');
     });
 
     it('should parse version flag', () => {
       compiler = CompactCompiler.fromArgs(['+0.26.0']);
 
-      expect(compiler.testVersion).toBe('0.26.0');
-      expect(compiler.testFlags).toBe('');
+      expect(compiler.testOptions.version).toBe('0.26.0');
+      expect(compiler.testOptions.flags).toBe('');
     });
 
     it('should parse complex arguments', () => {
@@ -530,9 +680,9 @@ describe('CompactCompiler', () => {
         '+0.26.0',
       ]);
 
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
-      expect(compiler.testVersion).toBe('0.26.0');
+      expect(compiler.testOptions.targetDir).toBe('security');
+      expect(compiler.testOptions.flags).toBe('--skip-zk --verbose');
+      expect(compiler.testOptions.version).toBe('0.26.0');
     });
 
     it('should combine environment variables with CLI flags', () => {
@@ -540,8 +690,8 @@ describe('CompactCompiler', () => {
         SKIP_ZK: 'true',
       });
 
-      expect(compiler.testTargetDir).toBe('access');
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+      expect(compiler.testOptions.targetDir).toBe('access');
+      expect(compiler.testOptions.flags).toBe('--skip-zk --verbose');
     });
 
     it('should deduplicate flags when both env var and CLI flag are present', () => {
@@ -549,7 +699,7 @@ describe('CompactCompiler', () => {
         SKIP_ZK: 'true',
       });
 
-      expect(compiler.testFlags).toBe('--skip-zk --verbose');
+      expect(compiler.testOptions.flags).toBe('--skip-zk --verbose');
     });
 
     it('should throw error for --dir without argument', () => {
@@ -561,6 +711,91 @@ describe('CompactCompiler', () => {
     it('should throw error for --dir followed by another flag', () => {
       expect(() => CompactCompiler.fromArgs(['--dir', '--skip-zk'])).toThrow(
         '--dir flag requires a directory name',
+      );
+    });
+
+    it('should parse --hierarchical flag', () => {
+      compiler = CompactCompiler.fromArgs(['--hierarchical']);
+
+      expect(compiler.testOptions.hierarchical).toBe(true);
+      expect(compiler.testOptions.flags).toBe('');
+    });
+
+    it('should parse --hierarchical flag with other options', () => {
+      compiler = CompactCompiler.fromArgs([
+        '--hierarchical',
+        '--dir',
+        'security',
+        '--skip-zk',
+        '+0.26.0',
+      ]);
+
+      expect(compiler.testOptions.hierarchical).toBe(true);
+      expect(compiler.testOptions.targetDir).toBe('security');
+      expect(compiler.testOptions.flags).toBe('--skip-zk');
+      expect(compiler.testOptions.version).toBe('0.26.0');
+    });
+
+    it('should default to flattened output (hierarchical = false)', () => {
+      compiler = CompactCompiler.fromArgs(['--skip-zk']);
+
+      expect(compiler.testOptions.hierarchical).toBe(false);
+    });
+
+    it('should parse --src flag', () => {
+      compiler = CompactCompiler.fromArgs(['--src', 'contracts']);
+
+      expect(compiler.testOptions.srcDir).toBe('contracts');
+    });
+
+    it('should parse --out flag', () => {
+      compiler = CompactCompiler.fromArgs(['--out', 'build']);
+
+      expect(compiler.testOptions.outDir).toBe('build');
+    });
+
+    it('should parse --src and --out flags together', () => {
+      compiler = CompactCompiler.fromArgs([
+        '--src',
+        'contracts',
+        '--out',
+        'dist/artifacts',
+        '--skip-zk',
+      ]);
+
+      expect(compiler.testOptions.srcDir).toBe('contracts');
+      expect(compiler.testOptions.outDir).toBe('dist/artifacts');
+      expect(compiler.testOptions.flags).toBe('--skip-zk');
+    });
+
+    it('should use default srcDir and outDir when not specified', () => {
+      compiler = CompactCompiler.fromArgs([]);
+
+      expect(compiler.testOptions.srcDir).toBe('src');
+      expect(compiler.testOptions.outDir).toBe('artifacts');
+    });
+
+    it('should throw error for --src without argument', () => {
+      expect(() => CompactCompiler.fromArgs(['--src'])).toThrow(
+        '--src flag requires a directory path',
+      );
+    });
+
+    it('should throw error for --src followed by another flag', () => {
+      expect(() => CompactCompiler.fromArgs(['--src', '--skip-zk'])).toThrow(
+        '--src flag requires a directory path',
+      );
+    });
+
+    it('should throw error for --out without argument', () => {
+      expect(() => CompactCompiler.fromArgs(['--out'])).toThrow(
+        '--out flag requires a directory path',
+      );
+    });
+
+    it('should throw error for --out followed by another flag', () => {
+      expect(() => CompactCompiler.fromArgs(['--out', '--skip-zk'])).toThrow(
+        '--out flag requires a directory path',
       );
     });
   });
@@ -576,14 +811,16 @@ describe('CompactCompiler', () => {
         }); // getToolchainVersion
 
       compiler = new CompactCompiler(
-        '--skip-zk',
-        'security',
-        '0.26.0',
+        {
+          flags: '--skip-zk',
+          targetDir: 'security',
+          version: '0.26.0',
+        },
         mockExec,
       );
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await expect(compiler.validateEnvironment()).resolves.not.toThrow();
 
@@ -609,7 +846,7 @@ describe('CompactCompiler', () => {
 
     it('should handle CompactCliNotFoundError with installation instructions', async () => {
       mockExec.mockRejectedValue(new Error('Command not found'));
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      compiler = new CompactCompiler({}, mockExec);
 
       await expect(compiler.validateEnvironment()).rejects.toThrow(
         CompactCliNotFoundError,
@@ -621,7 +858,7 @@ describe('CompactCompiler', () => {
         .mockResolvedValueOnce({ stdout: 'compact 0.1.0', stderr: '' }) // validate() succeeds
         .mockRejectedValueOnce(new Error('Version command failed')); // getDevToolsVersion() fails
 
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      compiler = new CompactCompiler({}, mockExec);
 
       await expect(compiler.validateEnvironment()).rejects.toThrow(
         'Version command failed',
@@ -634,7 +871,7 @@ describe('CompactCompiler', () => {
       childProcessError.stderr = 'some error';
 
       mockExec.mockRejectedValue(childProcessError);
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      compiler = new CompactCompiler({}, mockExec);
 
       await expect(compiler.validateEnvironment()).rejects.toThrow(
         "'compact' CLI not found in PATH. Please install the Compact developer tools.",
@@ -643,7 +880,7 @@ describe('CompactCompiler', () => {
 
     it('should handle non-Error exceptions gracefully', async () => {
       mockExec.mockRejectedValue('String error message');
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      compiler = new CompactCompiler({}, mockExec);
 
       await expect(compiler.validateEnvironment()).rejects.toThrow(
         CompactCliNotFoundError,
@@ -659,10 +896,10 @@ describe('CompactCompiler', () => {
           stderr: '',
         });
 
-      compiler = new CompactCompiler('', undefined, '0.26.0', mockExec);
+      compiler = new CompactCompiler({ version: '0.26.0' }, mockExec);
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await compiler.validateEnvironment();
 
@@ -690,10 +927,10 @@ describe('CompactCompiler', () => {
           stderr: '',
         });
 
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      compiler = new CompactCompiler({}, mockExec);
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await compiler.validateEnvironment();
 
@@ -713,14 +950,14 @@ describe('CompactCompiler', () => {
   describe('compile', () => {
     it('should handle empty source directory', async () => {
       mockReaddir.mockResolvedValue([]);
-      compiler = new CompactCompiler('', undefined, undefined, mockExec);
+      compiler = new CompactCompiler({}, mockExec);
 
       await expect(compiler.compile()).resolves.not.toThrow();
     });
 
     it('should throw error if target directory does not exist', async () => {
       mockExistsSync.mockReturnValue(false);
-      compiler = new CompactCompiler('', 'nonexistent', undefined, mockExec);
+      compiler = new CompactCompiler({ targetDir: 'nonexistent' }, mockExec);
 
       await expect(compiler.compile()).rejects.toThrow(DirectoryNotFoundError);
     });
@@ -739,12 +976,7 @@ describe('CompactCompiler', () => {
         },
       ];
       mockReaddir.mockResolvedValue(mockDirents as any);
-      compiler = new CompactCompiler(
-        '--skip-zk',
-        undefined,
-        undefined,
-        mockExec,
-      );
+      compiler = new CompactCompiler({ flags: '--skip-zk' }, mockExec);
 
       await compiler.compile();
 
@@ -771,7 +1003,7 @@ describe('CompactCompiler', () => {
         .mockResolvedValueOnce({ stdout: 'Compactc 0.26.0', stderr: '' }) // getToolchainVersion
         .mockRejectedValueOnce(new Error('Compilation failed')); // compileFile execution
 
-      compiler = new CompactCompiler('', undefined, undefined, testMockExec);
+      compiler = new CompactCompiler({}, testMockExec);
 
       // Test that compilation errors are properly propagated
       let thrownError: unknown;
@@ -805,34 +1037,34 @@ describe('CompactCompiler', () => {
     it('should handle turbo compact command', () => {
       compiler = CompactCompiler.fromArgs([]);
 
-      expect(compiler.testFlags).toBe('');
-      expect(compiler.testTargetDir).toBeUndefined();
+      expect(compiler.testOptions.flags).toBe('');
+      expect(compiler.testOptions.targetDir).toBeUndefined();
     });
 
     it('should handle SKIP_ZK=true turbo compact command', () => {
       compiler = CompactCompiler.fromArgs([], { SKIP_ZK: 'true' });
 
-      expect(compiler.testFlags).toBe('--skip-zk');
+      expect(compiler.testOptions.flags).toBe('--skip-zk');
     });
 
     it('should handle turbo compact:access command', () => {
       compiler = CompactCompiler.fromArgs(['--dir', 'access']);
 
-      expect(compiler.testFlags).toBe('');
-      expect(compiler.testTargetDir).toBe('access');
+      expect(compiler.testOptions.flags).toBe('');
+      expect(compiler.testOptions.targetDir).toBe('access');
     });
 
     it('should handle turbo compact:security -- --skip-zk command', () => {
       compiler = CompactCompiler.fromArgs(['--dir', 'security', '--skip-zk']);
 
-      expect(compiler.testFlags).toBe('--skip-zk');
-      expect(compiler.testTargetDir).toBe('security');
+      expect(compiler.testOptions.flags).toBe('--skip-zk');
+      expect(compiler.testOptions.targetDir).toBe('security');
     });
 
     it('should handle version specification', () => {
       compiler = CompactCompiler.fromArgs(['+0.26.0']);
 
-      expect(compiler.testVersion).toBe('0.26.0');
+      expect(compiler.testOptions.version).toBe('0.26.0');
     });
 
     it.each([
@@ -871,11 +1103,11 @@ describe('CompactCompiler', () => {
     ])('should handle complex command $name', ({ args, env }) => {
       compiler = CompactCompiler.fromArgs(args, env);
 
-      expect(compiler.testFlags).toBe(
+      expect(compiler.testOptions.flags).toBe(
         '--skip-zk --no-communications-commitment',
       );
-      expect(compiler.testTargetDir).toBe('security');
-      expect(compiler.testVersion).toBe('0.26.0');
+      expect(compiler.testOptions.targetDir).toBe('security');
+      expect(compiler.testOptions.version).toBe('0.26.0');
     });
   });
 });
