@@ -41,7 +41,6 @@
         "compact:security",
         "compact:utils",
         "compact:access",
-        "compact:archive",
         "compact:token"
       ],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
