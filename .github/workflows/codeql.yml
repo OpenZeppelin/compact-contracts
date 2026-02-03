@@ -5,12 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-24.04
-    if: github.event.repository.private == false
     timeout-minutes: 30
     permissions:
       actions: read
