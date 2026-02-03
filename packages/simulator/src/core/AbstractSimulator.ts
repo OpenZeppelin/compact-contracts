@@ -15,7 +15,8 @@ import type {
  * for pure and impure circuit functions.
  */
 export abstract class AbstractSimulator<P, L>
-  implements IContractSimulator<P, L> {
+  implements IContractSimulator<P, L>
+{
   /**
    * Single-use caller override (cleared after each circuit call).
    * Set via `as(caller)` for one-time caller context switching.
@@ -174,5 +175,5 @@ export abstract class AbstractSimulator<P, L>
    * Optional method to reset any cached circuit proxies.
    * Implementations can override this to clear cached proxy instances.
    */
-  public resetCircuitProxies?(): void { }
+  public resetCircuitProxies?(): void {}
 }

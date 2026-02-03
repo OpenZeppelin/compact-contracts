@@ -71,12 +71,12 @@ const baseGeneratePubKeyPair = (
   str: string,
   asEither: boolean,
 ): [
-    string,
-    (
-      | Compact.ZswapCoinPublicKey
-      | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
-    ),
-  ] => {
+  string,
+  (
+    | Compact.ZswapCoinPublicKey
+    | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
+  ),
+] => {
   const pk = toHexPadded(str);
   const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
   return [pk, zpk];

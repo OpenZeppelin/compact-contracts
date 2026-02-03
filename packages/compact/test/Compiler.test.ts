@@ -201,7 +201,7 @@ describe('FileDiscovery', () => {
     it('should handle directory read errors gracefully', async () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
 
       mockReaddir.mockRejectedValueOnce(new Error('Permission denied'));
 
@@ -466,7 +466,7 @@ describe('CompilerService', () => {
 describe('UIService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, 'log').mockImplementation(() => { });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   describe('printOutput', () => {
@@ -820,7 +820,7 @@ describe('CompactCompiler', () => {
       );
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
 
       await expect(compiler.validateEnvironment()).resolves.not.toThrow();
 
@@ -899,7 +899,7 @@ describe('CompactCompiler', () => {
       compiler = new CompactCompiler({ version: '0.26.0' }, mockExec);
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
 
       await compiler.validateEnvironment();
 
@@ -930,7 +930,7 @@ describe('CompactCompiler', () => {
       compiler = new CompactCompiler({}, mockExec);
       const displaySpy = vi
         .spyOn(UIService, 'displayEnvInfo')
-        .mockImplementation(() => { });
+        .mockImplementation(() => {});
 
       await compiler.validateEnvironment();
 
