@@ -1,7 +1,7 @@
 import type {
   CircuitContext,
   CoinPublicKey,
-  ContractState,
+  StateValue,
 } from '@midnight-ntwrk/compact-runtime';
 import type {
   ContextlessCircuits,
@@ -15,8 +15,7 @@ import type {
  * for pure and impure circuit functions.
  */
 export abstract class AbstractSimulator<P, L>
-  implements IContractSimulator<P, L>
-{
+  implements IContractSimulator<P, L> {
   /**
    * Single-use caller override (cleared after each circuit call).
    * Set via `as(caller)` for one-time caller context switching.
@@ -79,12 +78,12 @@ export abstract class AbstractSimulator<P, L>
   }
 
   /**
-   * Retrieves the original contract state from the circuit context.
+   * Retrieves the current contract state data.
    *
-   * @returns The current contract state from the blockchain
+   * @returns The current state value containing the ledger data
    */
-  public getContractState(): ContractState {
-    return this.circuitContext.originalState;
+  public getContractState(): StateValue {
+    return this.circuitContext.currentQueryContext.state.state;
   }
 
   /**
@@ -175,5 +174,5 @@ export abstract class AbstractSimulator<P, L>
    * Optional method to reset any cached circuit proxies.
    * Implementations can override this to clear cached proxy instances.
    */
-  public resetCircuitProxies?(): void {}
+  public resetCircuitProxies?(): void { }
 }

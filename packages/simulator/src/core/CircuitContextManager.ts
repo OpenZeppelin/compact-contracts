@@ -4,7 +4,8 @@ import {
   type ConstructorContext,
   type ContractAddress,
   type ContractState,
-  constructorContext,
+  CostModel,
+  createConstructorContext,
   type EncodedZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -44,7 +45,7 @@ export class CircuitContextManager<P> {
     contractAddress: ContractAddress,
     ...contractArgs: any[]
   ) {
-    const initCtx = constructorContext(privateState, coinPK);
+    const initCtx = createConstructorContext(privateState, coinPK);
 
     const {
       currentPrivateState,
@@ -52,14 +53,14 @@ export class CircuitContextManager<P> {
       currentZswapLocalState,
     } = contract.initialState(initCtx, ...contractArgs);
 
+    // Extract ChargedState from the compiler-generated ContractState
+    const chargedState = currentContractState.data;
+
     this.context = {
       currentPrivateState,
       currentZswapLocalState,
-      originalState: currentContractState,
-      transactionContext: new QueryContext(
-        currentContractState.data,
-        contractAddress,
-      ),
+      currentQueryContext: new QueryContext(chargedState, contractAddress),
+      costModel: CostModel.initialCostModel(),
     };
   }
 

@@ -1,15 +1,18 @@
 import type { StateValue } from '@midnight-ntwrk/compact-runtime';
+import type { IMinimalContract } from '../types/Contract.ts';
 /**
  * Configuration interface for the simulator factory.
  * @template P - Private state type
  * @template L - Ledger state type
  * @template W - Witnesses type
+ * @template TContract - Contract type
  * @template TArgs - Tuple type of contract-specific arguments passed to CircuitContextManager
  */
 export interface SimulatorConfig<
   P,
   L,
   W,
+  TContract extends IMinimalContract,
   TArgs extends readonly any[] = readonly any[],
 > {
   /** Factory function to create the contract instance */

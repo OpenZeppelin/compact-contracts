@@ -1,8 +1,9 @@
 import {
+  type ChargedState,
   type CircuitContext,
   type CoinPublicKey,
   type ContractAddress,
-  type ContractState,
+  CostModel,
   emptyZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -15,22 +16,22 @@ import type { IContractSimulator } from '../types/index.js';
  * for executing circuits, including contract state, private state,
  * sender identity, and transaction data.
  * @param privateState - The private state data specific to the contract
- * @param contractState - The current contract state from the blockchain
+ * @param chargedState - The charged state (wraps StateValue with cost tracking)
  * @param sender - The public key of the transaction sender
  * @param contractAddress - The address of the contract being executed
  * @returns A complete CircuitContext ready for circuit execution
  */
 export function useCircuitContext<P>(
   privateState: P,
-  contractState: ContractState,
+  chargedState: ChargedState,
   sender: CoinPublicKey,
   contractAddress: ContractAddress,
 ): CircuitContext<P> {
   return {
-    originalState: contractState,
     currentPrivateState: privateState,
-    transactionContext: new QueryContext(contractState.data, contractAddress),
+    currentQueryContext: new QueryContext(chargedState, contractAddress),
     currentZswapLocalState: emptyZswapLocalState(sender),
+    costModel: CostModel.initialCostModel(),
   };
 }
 
@@ -47,14 +48,19 @@ export function useCircuitContextSender<
   L,
   C extends IContractSimulator<P, L>,
 >(contract: C, sender: CoinPublicKey): CircuitContext<P> {
+  const currentCircuitContext = contract.circuitContext;
   const currentPrivateState = contract.getPrivateState();
-  const originalState = contract.getContractState();
+  const existingChargedState = currentCircuitContext.currentQueryContext.state;
   const contractAddress = contract.contractAddress;
 
   return {
-    originalState,
     currentPrivateState,
-    transactionContext: new QueryContext(originalState.data, contractAddress),
+    currentQueryContext: new QueryContext(
+      existingChargedState,
+      contractAddress,
+    ),
     currentZswapLocalState: emptyZswapLocalState(sender),
+    costModel: currentCircuitContext.costModel,
+    gasLimit: currentCircuitContext.gasLimit,
   };
 }
