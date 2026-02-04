@@ -1,7 +1,7 @@
 import {
   type CircuitContext,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   QueryContext,
   sampleContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
@@ -41,7 +41,7 @@ export class PausableSimulator
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
+    } = this.contract.initialState(createConstructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,

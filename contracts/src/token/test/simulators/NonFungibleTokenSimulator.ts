@@ -2,7 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   emptyZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -49,7 +49,7 @@ export class NonFungibleTokenSimulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)),
+      createConstructorContext({}, '0'.repeat(64)),
       name,
       symbol,
       init,

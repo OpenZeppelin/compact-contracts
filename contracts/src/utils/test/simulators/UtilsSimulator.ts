@@ -1,7 +1,7 @@
 import {
   type CircuitContext,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { sampleContractAddress } from '@midnight-ntwrk/zswap';
@@ -44,7 +44,7 @@ export class UtilsSimulator
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
+    } = this.contract.initialState(createConstructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,

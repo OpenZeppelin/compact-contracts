@@ -2,7 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   emptyZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -50,7 +50,7 @@ export class OwnableSimulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)),
+      createConstructorContext({}, '0'.repeat(64)),
       initialOwner,
       isInit,
     );
