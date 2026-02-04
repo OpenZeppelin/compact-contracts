@@ -3,7 +3,7 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger';
-import type * as Compact from '../../../../artifacts/MockOwnable/contract/index.cjs';
+import type * as Compact from '../../../../artifacts/MockOwnable/contract/index.js';
 
 const PREFIX_ADDRESS = '0200';
 
@@ -65,12 +65,12 @@ const baseGeneratePubKeyPair = (
   str: string,
   asEither: boolean,
 ): [
-  string,
-  (
-    | Compact.ZswapCoinPublicKey
-    | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
-  ),
-] => {
+    string,
+    (
+      | Compact.ZswapCoinPublicKey
+      | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
+    ),
+  ] => {
   const pk = toHexPadded(str);
   const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
   return [pk, zpk];

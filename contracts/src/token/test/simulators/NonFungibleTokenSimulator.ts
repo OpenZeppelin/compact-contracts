@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNonFungibleToken/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockNonFungibleToken/contract/index.js'; // Combined imports
 import {
   type NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,
@@ -27,8 +27,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class NonFungibleTokenSimulator
-  implements IContractSimulator<NonFungibleTokenPrivateState, Ledger>
-{
+  implements IContractSimulator<NonFungibleTokenPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockNonFungibleToken<NonFungibleTokenPrivateState>;
 

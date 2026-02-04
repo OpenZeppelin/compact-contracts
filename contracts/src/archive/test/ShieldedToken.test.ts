@@ -6,7 +6,7 @@ import {
   tokenType,
 } from '@midnight-ntwrk/onchain-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Maybe } from '../../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
+import type { Maybe } from '../../../artifacts/MockShieldedToken/contract/index.js'; // Combined imports
 import { ShieldedTokenSimulator } from './simulators/ShieldedTokenSimulator.js';
 import * as utils from './utils/address.js';
 

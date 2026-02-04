@@ -1,6 +1,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../artifacts/MockZOwnablePK/contract/index.cjs';
+import type { Ledger } from '../../../artifacts/MockZOwnablePK/contract/index.js';
 
 /**
  * @description Interface defining the witness methods for ZOwnablePK operations.

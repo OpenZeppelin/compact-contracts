@@ -15,7 +15,7 @@ import {
   type Maybe,
   Contract as MockMultiToken,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockMultiToken/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockMultiToken/contract/index.js'; // Combined imports
 import {
   type MultiTokenPrivateState,
   MultiTokenWitnesses,
@@ -28,8 +28,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class MultiTokenSimulator
-  implements IContractSimulator<MultiTokenPrivateState, Ledger>
-{
+  implements IContractSimulator<MultiTokenPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockMultiToken<MultiTokenPrivateState>;
 

@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockOwnable,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockOwnable/contract/index.js'; // Combined imports
 import {
   type OwnablePrivateState,
   OwnableWitnesses,
@@ -27,8 +27,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class OwnableSimulator
-  implements IContractSimulator<OwnablePrivateState, Ledger>
-{
+  implements IContractSimulator<OwnablePrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockOwnable<OwnablePrivateState>;
 

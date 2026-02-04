@@ -12,7 +12,7 @@ import {
   ledger,
   Contract as MockUtils,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockUtils/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockUtils/contract/index.js'; // Combined imports
 import {
   type UtilsPrivateState,
   UtilsWitnesses,
@@ -25,8 +25,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class UtilsSimulator
-  implements IContractSimulator<UtilsPrivateState, Ledger>
-{
+  implements IContractSimulator<UtilsPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockUtils<UtilsPrivateState>;
 
