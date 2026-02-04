@@ -35,12 +35,16 @@ export abstract class ContractSimulator<P, L> extends AbstractSimulator<P, L> {
    */
   public getCallerContext(): CircuitContext<P> {
     const activeCaller = this.callerOverride || this.persistentCallerOverride;
+    const baseCtx = this.circuitContext;
 
     return {
-      ...this.circuitContext,
+      currentPrivateState: baseCtx.currentPrivateState,
+      currentQueryContext: baseCtx.currentQueryContext,
       currentZswapLocalState: activeCaller
         ? emptyZswapLocalState(activeCaller)
-        : this.circuitContext.currentZswapLocalState,
+        : baseCtx.currentZswapLocalState,
+      costModel: baseCtx.costModel,
+      gasLimit: baseCtx.gasLimit,
     };
   }
 

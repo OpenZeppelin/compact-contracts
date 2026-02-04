@@ -323,7 +323,16 @@ describe('runCompiler CLI', () => {
       );
       expect(mockConsoleLog).toHaveBeenCalledWith('\nOptions:');
       expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  --dir <directory> Compile specific directory (access, archive, security, token, utils)',
+        '  --dir <directory> Compile specific subdirectory within src',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  --src <directory> Source directory (default: src)',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  --out <directory> Output directory (default: artifacts)',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  --hierarchical    Preserve source directory structure in artifacts output',
       );
       expect(mockConsoleLog).toHaveBeenCalledWith(
         '  --skip-zk         Skip zero-knowledge proof generation',
@@ -331,15 +340,30 @@ describe('runCompiler CLI', () => {
       expect(mockConsoleLog).toHaveBeenCalledWith(
         '  +<version>        Use specific toolchain version (e.g., +0.26.0)',
       );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '\nArtifact Output Structure:',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  Default (flattened): <out>/<ContractName>/',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  With --hierarchical: <out>/<subdir>/<ContractName>/',
+      );
       expect(mockConsoleLog).toHaveBeenCalledWith('\nExamples:');
       expect(mockConsoleLog).toHaveBeenCalledWith(
-        '  compact-compiler                           # Compile all files',
+        '  compact-compiler                           # Compile all files (flattened)',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  compact-compiler --hierarchical            # Compile with nested structure',
       );
       expect(mockConsoleLog).toHaveBeenCalledWith(
         '  compact-compiler --dir security             # Compile security directory',
       );
       expect(mockConsoleLog).toHaveBeenCalledWith(
         '  compact-compiler --dir access --skip-zk     # Compile access with flags',
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '  compact-compiler --src contracts --out build  # Custom directories',
       );
       expect(mockConsoleLog).toHaveBeenCalledWith(
         '  SKIP_ZK=true compact-compiler --dir token   # Use environment variable',

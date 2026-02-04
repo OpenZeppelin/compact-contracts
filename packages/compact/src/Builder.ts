@@ -4,25 +4,31 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
-import { CompactCompiler } from './Compiler.js';
-import { isPromisifiedChildProcessError } from './types/errors.js';
+import { CompactCompiler, type CompilerOptions } from './Compiler.ts';
+import { isPromisifiedChildProcessError } from './types/errors.ts';
 
 // Promisified exec for async execution
 const execAsync = promisify(exec);
 
 /**
+ * Configuration options for the Builder CLI.
+ * Inherits from CompilerOptions but excludes `flags` (which would allow --skip-zk).
+ * Builds should always include ZK proofs.
+ */
+export type BuilderOptions = Omit<CompilerOptions, 'flags'>;
+
+/**
  * A class to handle the build process for a project.
  * Runs CompactCompiler as a prerequisite, then executes build steps (TypeScript compilation,
- * artifact copying, etc.) with progress feedback and colored output for success and error states.
- *
- * Creates a clean distribution structure without src/ paths for professional import experience.
+ * artifact copying, etc.)
+ * with progress feedback and colored output for success and error states.
  *
  * @notice `cmd` scripts discard `stderr` output and fail silently because this is
  * handled in `executeStep`.
  *
  * @example
  * ```typescript
- * const builder = new ProjectBuilder('--skip-zk'); // Optional flags for compactc
+ * const builder = new CompactBuilder({ flags: '--skip-zk' });
  * builder.build().catch(err => console.error(err));
  * ```
  *
@@ -57,56 +63,47 @@ const execAsync = promisify(exec);
  * ```
  */
 export class CompactBuilder {
-  private readonly compilerFlags: string;
+  private readonly options: BuilderOptions;
   private readonly steps: Array<{ cmd: string; msg: string; shell?: string }> =
     [
-      // Step 1: Clean dist directory
-      {
-        cmd: 'rm -rf dist && mkdir -p dist',
-        msg: 'Cleaning dist directory',
-        shell: '/bin/bash',
-      },
-
-      // Step 2: TypeScript compilation (witnesses/ -> dist/witnesses/)
       {
         cmd: 'tsc --project tsconfig.build.json',
         msg: 'Compiling TypeScript',
       },
-
-      // Step 3: Copy .compact files preserving structure (excludes Mock* files and archive/)
       {
-        // biome-ignore-start lint/suspicious/noUselessEscapeInString: Needed inside JS template literal
-        cmd: `
-        find src -type f -name "*.compact" ! -name "Mock*" ! -path "*/archive/*" | while read file; do
-          # Remove src/ prefix from path
-          rel_path="\${file#src/}"
-          mkdir -p "dist/\$(dirname "\$rel_path")"
-          cp "\$file" "dist/\$rel_path"
-        done
-      `,
-        // biome-ignore-end lint/suspicious/noUselessEscapeInString: Needed inside JS template literal
-        msg: 'Copying .compact files (excluding mocks and archive)',
+        cmd: 'mkdir -p dist/artifacts && cp -Rf src/artifacts/* dist/artifacts/ 2>/dev/null || true',
+        msg: 'Copying artifacts',
         shell: '/bin/bash',
       },
-
-      // Step 4: Copy essential files for distribution
       {
-        cmd: `
-        # Copy package.json and README
-        cp package.json dist/ 2>/dev/null || true
-        cp ../README.md dist/  # Go up one level to monorepo root
-      `,
-        msg: 'Copying package metadata',
+        cmd: 'mkdir -p dist && find src -type f -name "*.compact" -exec cp {} dist/ \\; 2>/dev/null && rm dist/Mock*.compact 2>/dev/null || true',
+        msg: 'Copying and cleaning .compact files',
         shell: '/bin/bash',
       },
     ];
 
   /**
-   * Constructs a new ProjectBuilder instance.
-   * @param compilerFlags - Optional space-separated string of `compactc` flags (e.g., "--skip-zk")
+   * Constructs a new CompactBuilder instance.
+   * @param options - Compiler options (flags, srcDir, outDir, hierarchical, etc.)
    */
-  constructor(compilerFlags = '') {
-    this.compilerFlags = compilerFlags;
+  constructor(options: CompilerOptions = {}) {
+    this.options = options;
+  }
+
+  /**
+   * Factory method to create a CompactBuilder from command-line arguments.
+   * Reuses CompactCompiler.parseArgs for consistent argument parsing.
+   *
+   * @param args - Array of command-line arguments
+   * @param env - Environment variables (defaults to process.env)
+   * @returns New CompactBuilder instance configured from arguments
+   */
+  static fromArgs(
+    args: string[],
+    env: NodeJS.ProcessEnv = process.env,
+  ): CompactBuilder {
+    const options = CompactCompiler.parseArgs(args, env);
+    return new CompactBuilder(options);
   }
 
   /**
@@ -118,15 +115,13 @@ export class CompactBuilder {
    */
   public async build(): Promise<void> {
     // Run compact compilation as a prerequisite
-    const compiler = new CompactCompiler(this.compilerFlags);
+    const compiler = new CompactCompiler(this.options);
     await compiler.compile();
 
     // Proceed with build steps
     for (const [index, step] of this.steps.entries()) {
       await this.executeStep(step, index, this.steps.length);
     }
-
-    console.log(chalk.green('\n✅ Build complete!'));
   }
 
   /**
@@ -183,8 +178,6 @@ export class CompactBuilder {
       .split('\n')
       .filter((line: string): boolean => line.trim() !== '')
       .map((line: string): string => `    ${line}`);
-    if (lines.length > 0) {
-      console.log(colorFn(lines.join('\n')));
-    }
+    console.log(colorFn(lines.join('\n')));
   }
 }
