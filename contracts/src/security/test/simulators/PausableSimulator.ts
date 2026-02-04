@@ -1,6 +1,5 @@
 import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
-  type Ledger,
   ledger,
   Contract as MockPausable,
 } from '../../../../artifacts/MockPausable/contract/index.js';
