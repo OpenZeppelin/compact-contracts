@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.0.1-alpha.1 (security/witnesses/PausableWitnesses.ts)
 
-import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../artifacts/MockPausable/contract/index.js';
-
 /**
  * @description Interface defining the witness methods for Pausable operations.
  * @template P - The private state type.
