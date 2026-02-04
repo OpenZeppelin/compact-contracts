@@ -49,6 +49,8 @@ export interface CompilerOptions {
   flags?: string;
   /** Optional subdirectory within srcDir to compile (e.g., 'security', 'token') */
   targetDir?: string;
+  /** Optional subdirectory within srcDir to skip compilation (e.g., 'archive') */
+  skipDir?: string;
   /** Optional toolchain version to use (e.g., '0.26.0') */
   version?: string;
   /**
@@ -67,7 +69,7 @@ export interface CompilerOptions {
 type ResolvedCompilerOptions = Required<
   Pick<CompilerOptions, 'flags' | 'hierarchical' | 'srcDir' | 'outDir'>
 > &
-  Pick<CompilerOptions, 'targetDir' | 'version'>;
+  Pick<CompilerOptions, 'targetDir' | 'version' | 'skipDir'>;
 
 /**
  * Service responsible for validating the Compact CLI environment.
@@ -201,14 +203,16 @@ export class EnvironmentValidator {
  */
 export class FileDiscovery {
   private srcDir: string;
+  private skipDir?: string;
 
   /**
    * Creates a new FileDiscovery instance.
    *
    * @param srcDir - Base source directory for relative path calculation (default: 'src')
    */
-  constructor(srcDir: string = DEFAULT_SRC_DIR) {
+  constructor(srcDir: string = DEFAULT_SRC_DIR, skipDir?: string) {
     this.srcDir = srcDir;
+    this.skipDir = skipDir;
   }
 
   /**
@@ -225,7 +229,13 @@ export class FileDiscovery {
    */
   async getCompactFiles(dir: string): Promise<string[]> {
     try {
-      const dirents = await readdir(dir, { withFileTypes: true });
+      let dirents = await readdir(dir, { withFileTypes: true });
+
+      const skipDir = this.skipDir;
+      if (typeof skipDir === "string") {
+        dirents = dirents.filter(dirent => !dirent.name.startsWith(skipDir));
+      }
+
       const filePromises = dirents.map(async (entry) => {
         const fullPath = join(dir, entry.name);
         try {
@@ -411,6 +421,7 @@ export const UIService = {
    * @param devToolsVersion - Version string of the Compact developer tools
    * @param toolchainVersion - Version string of the Compact toolchain/compiler
    * @param targetDir - Optional target directory being compiled
+   * @param skipDir - Optional target directory to skip compilation
    * @param version - Optional specific version being used
    * @example
    * ```typescript
@@ -418,6 +429,7 @@ export const UIService = {
    *   'compact 0.1.0',
    *   'Compactc version: 0.26.0',
    *   'security',
+   *   'archive',
    *   '0.26.0'
    * );
    * ```
@@ -426,12 +438,17 @@ export const UIService = {
     devToolsVersion: string,
     toolchainVersion: string,
     targetDir?: string,
+    skipDir?: string,
     version?: string,
   ): void {
     const spinner = ora();
 
     if (targetDir) {
       spinner.info(chalk.blue(`[COMPILE] TARGET_DIR: ${targetDir}`));
+    }
+
+    if (skipDir) {
+      spinner.info(chalk.blue(`[COMPILE] SKIP_DIR: ${skipDir}`));
     }
 
     spinner.info(
@@ -451,18 +468,20 @@ export const UIService = {
    *
    * @param fileCount - Number of files to be compiled
    * @param targetDir - Optional target directory being compiled
+   * @param skipDir - Optional target directory to skip compilation
    * @example
    * ```typescript
-   * UIService.showCompilationStart(5, 'security');
-   * // Output: "Found 5 .compact file(s) to compile in security/"
+   * UIService.showCompilationStart(5, 'security', 'archive');
+   * // Output: "Found 5 .compact file(s) to compile in security/ with filter archive/"
    * ```
    */
-  showCompilationStart(fileCount: number, targetDir?: string): void {
+  showCompilationStart(fileCount: number, targetDir?: string, skipDir?: string): void {
     const searchLocation = targetDir ? ` in ${targetDir}/` : '';
+    const filterInfo = skipDir ? ` with filter ${skipDir}/` : '';
     const spinner = ora();
     spinner.info(
       chalk.blue(
-        `[COMPILE] Found ${fileCount} .compact file(s) to compile${searchLocation}`,
+        `[COMPILE] Found ${fileCount} .compact file(s) to compile${searchLocation}${filterInfo}`,
       ),
     );
   },
@@ -471,17 +490,19 @@ export const UIService = {
    * Displays a warning message when no .compact files are found.
    *
    * @param targetDir - Optional target directory that was searched
+   * @param skipDir - Optional target directory that was skipped
    * @example
    * ```typescript
    * UIService.showNoFiles('security');
    * // Output: "No .compact files found in security/."
    * ```
    */
-  showNoFiles(targetDir?: string): void {
+  showNoFiles(targetDir?: string, skipDir?: string): void {
     const searchLocation = targetDir ? `${targetDir}/` : '';
+    const filterInfo = skipDir ? ` with filter ${skipDir}/` : '';
     const spinner = ora();
     spinner.warn(
-      chalk.yellow(`[COMPILE] No .compact files found in ${searchLocation}.`),
+      chalk.yellow(`[COMPILE] No .compact files found in ${searchLocation}${filterInfo}.`),
     );
   },
 };
@@ -562,13 +583,14 @@ export class CompactCompiler {
     this.options = {
       flags: (options.flags ?? '').trim(),
       targetDir: options.targetDir,
+      skipDir: options.skipDir,
       version: options.version,
       hierarchical: options.hierarchical ?? false,
       srcDir: options.srcDir ?? DEFAULT_SRC_DIR,
       outDir: options.outDir ?? DEFAULT_OUT_DIR,
     };
     this.environmentValidator = new EnvironmentValidator(execFn);
-    this.fileDiscovery = new FileDiscovery(this.options.srcDir);
+    this.fileDiscovery = new FileDiscovery(this.options.srcDir, this.options.skipDir);
     this.compilerService = new CompilerService(execFn, {
       hierarchical: this.options.hierarchical,
       srcDir: this.options.srcDir,
@@ -581,6 +603,7 @@ export class CompactCompiler {
    *
    * Supported argument patterns:
    * - `--dir <directory>` - Target specific subdirectory within srcDir
+   * - `--skipDir <directory>` - Target specific subdirectory within srcDir to skip compilation
    * - `--src <directory>` - Source directory containing .compact files (default: 'src')
    * - `--out <directory>` - Output directory for artifacts (default: 'artifacts')
    * - `--hierarchical` - Preserve source directory structure in artifacts output
@@ -615,6 +638,15 @@ export class CompactCompiler {
           i++;
         } else {
           throw new Error('--dir flag requires a directory name');
+        }
+      } else if (args[i] === '--skipDir') {
+        const valueExists =
+          i + 1 < args.length && !args[i + 1].startsWith('--');
+        if (valueExists) {
+          options.skipDir = args[i + 1];
+          i++;
+        } else {
+          throw new Error('--skipDir flag requires a directory name');
         }
       } else if (args[i] === '--src') {
         const valueExists =
@@ -656,6 +688,7 @@ export class CompactCompiler {
    *
    * Supported argument patterns:
    * - `--dir <directory>` - Target specific subdirectory within srcDir
+   * - `--skipDir <directory>` - Target specific subdirectory within srcDir to skip compilation
    * - `--src <directory>` - Source directory containing .compact files (default: 'src')
    * - `--out <directory>` - Output directory for artifacts (default: 'artifacts')
    * - `--hierarchical` - Preserve source directory structure in artifacts output
@@ -669,9 +702,10 @@ export class CompactCompiler {
    * @throws {Error} If --dir, --src, or --out flag is provided without a value
    * @example
    * ```typescript
-   * // Parse command line: compact-compiler --dir security --skip-zk +0.26.0
+   * // Parse command line: compact-compiler --dir security --skip-zk +0.26.0 --skipDir archive
    * const compiler = CompactCompiler.fromArgs([
    *   '--dir', 'security',
+   *   '--skipDir', 'archive',
    *   '--skip-zk',
    *   '+0.26.0'
    * ]);
@@ -738,6 +772,7 @@ export class CompactCompiler {
       devToolsVersion,
       toolchainVersion,
       this.options.targetDir,
+      this.options.skipDir,
       this.options.version,
     );
   }
@@ -777,6 +812,10 @@ export class CompactCompiler {
       ? join(this.options.srcDir, this.options.targetDir)
       : this.options.srcDir;
 
+    const skippedDir = this.options.skipDir
+      ? join(this.options.srcDir, this.options.skipDir)
+      : undefined;
+
     // Validate target directory exists
     if (this.options.targetDir && !existsSync(searchDir)) {
       throw new DirectoryNotFoundError(
@@ -785,14 +824,22 @@ export class CompactCompiler {
       );
     }
 
+    // Validate skipped directory exists
+    if (skippedDir && !existsSync(skippedDir)) {
+      throw new DirectoryNotFoundError(
+        `Skipped directory ${skippedDir} does not exist`,
+        skippedDir,
+      );
+    }
+
     const compactFiles = await this.fileDiscovery.getCompactFiles(searchDir);
 
     if (compactFiles.length === 0) {
-      UIService.showNoFiles(this.options.targetDir);
+      UIService.showNoFiles(this.options.targetDir, this.options.skipDir);
       return;
     }
 
-    UIService.showCompilationStart(compactFiles.length, this.options.targetDir);
+    UIService.showCompilationStart(compactFiles.length, this.options.targetDir, this.options.skipDir);
 
     for (const [index, file] of compactFiles.entries()) {
       await this.compileFile(file, index, compactFiles.length);
