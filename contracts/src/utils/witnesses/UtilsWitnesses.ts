@@ -29,4 +29,3 @@ export const UtilsPrivateState = {
  */
 export const UtilsWitnesses =
   (): IUtilsWitnesses<UtilsPrivateState> => ({});
-
