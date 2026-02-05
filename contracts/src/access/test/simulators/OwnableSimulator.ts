@@ -2,7 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   emptyZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockOwnable,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockOwnable/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockOwnable/contract/index.js'; // Combined imports
 import {
   type OwnablePrivateState,
   OwnableWitnesses,
@@ -27,8 +27,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class OwnableSimulator
-  implements IContractSimulator<OwnablePrivateState, Ledger>
-{
+  implements IContractSimulator<OwnablePrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockOwnable<OwnablePrivateState>;
 
@@ -51,7 +50,7 @@ export class OwnableSimulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)),
+      createConstructorContext({}, '0'.repeat(64)),
       initialOwner,
       isInit,
     );

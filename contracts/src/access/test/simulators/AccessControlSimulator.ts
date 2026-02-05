@@ -2,7 +2,7 @@ import {
   type CircuitContext,
   type CoinPublicKey,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   emptyZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -14,7 +14,7 @@ import {
   ledger,
   Contract as MockAccessControl,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockAccessControl/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockAccessControl/contract/index.js'; // Combined imports
 import {
   type AccessControlPrivateState,
   AccessControlWitnesses,
@@ -27,8 +27,7 @@ import type { IContractSimulator } from '../types/test.js';
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
 export class AccessControlSimulator
-  implements IContractSimulator<AccessControlPrivateState, Ledger>
-{
+  implements IContractSimulator<AccessControlPrivateState, Ledger> {
   /** @description The underlying contract instance managing contract logic. */
   readonly contract: MockAccessControl<AccessControlPrivateState>;
 
@@ -49,7 +48,7 @@ export class AccessControlSimulator
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
+    } = this.contract.initialState(createConstructorContext({}, '0'.repeat(64)));
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,

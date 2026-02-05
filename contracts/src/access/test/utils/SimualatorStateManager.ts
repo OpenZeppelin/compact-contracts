@@ -2,7 +2,7 @@ import {
   type CircuitContext,
   type ConstructorContext,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   QueryContext,
   sampleContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
@@ -66,7 +66,7 @@ export class SimulatorStateManager<P> {
     contractAddress?: string,
     ...contractArgs: any[]
   ) {
-    const initCtx = constructorContext(privateState, coinPK);
+    const initCtx = createConstructorContext(privateState, coinPK);
 
     const {
       currentPrivateState,
