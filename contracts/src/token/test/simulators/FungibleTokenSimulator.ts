@@ -1,102 +1,58 @@
+import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
-  type CircuitContext,
-  type CoinPublicKey,
-  type ContractState,
-  createConstructorContext,
-  emptyZswapLocalState,
-  QueryContext,
-} from '@midnight-ntwrk/compact-runtime';
-import { sampleContractAddress } from '@midnight-ntwrk/zswap';
-import {
-  type ContractAddress,
-  type Either,
-  type Ledger,
   ledger,
   Contract as MockFungibleToken,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockFungibleToken/contract/index.js'; // Combined imports
+  type ContractAddress,
+  type Either
+} from '../../../../artifacts/MockFungibleToken/contract/index.js';
 import {
-  type FungibleTokenPrivateState,
+  FungibleTokenPrivateState,
   FungibleTokenWitnesses,
 } from '../../witnesses/FungibleTokenWitnesses.js';
-import type { IContractSimulator } from '../types/test.js';
 
 /**
- * @description A simulator implementation of a FungibleToken contract for testing purposes.
- * @template P - The private state type, fixed to FungibleTokenPrivateState.
- * @template L - The ledger type, fixed to Contract.Ledger.
+ * Type constructor args
  */
-export class FungibleTokenSimulator
-  implements IContractSimulator<FungibleTokenPrivateState, Ledger> {
-  /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockFungibleToken<FungibleTokenPrivateState>;
+type FungibleTokenArgs = readonly [name: string, symbol: string, decimals: bigint, init: boolean];
 
-  /** @description The deployed address of the contract. */
-  readonly contractAddress: string;
+const FungibleTokenSimulatorBase = createSimulator<
+  FungibleTokenPrivateState,
+  ReturnType<typeof ledger>,
+  ReturnType<typeof FungibleTokenWitnesses>,
+  MockFungibleToken<FungibleTokenPrivateState>,
+  FungibleTokenArgs
+>({
+  contractFactory: (witnesses) => new MockFungibleToken<FungibleTokenPrivateState>(witnesses),
+  defaultPrivateState: () => FungibleTokenPrivateState.generate(),
+  contractArgs: (name, symbol, decimals, init) => [name, symbol, decimals, init],
+  ledgerExtractor: (state) => ledger(state),
+  witnessesFactory: () => FungibleTokenWitnesses(),
+});
 
-  /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<FungibleTokenPrivateState>;
 
-  /**
-   * @description Initializes the mock contract.
-   */
-  constructor(name: string, symbol: string, decimals: bigint, init: boolean) {
-    this.contract = new MockFungibleToken<FungibleTokenPrivateState>(
-      FungibleTokenWitnesses,
-    );
-    const {
-      currentPrivateState,
-      currentContractState,
-      currentZswapLocalState,
-    } = this.contract.initialState(
-      createConstructorContext({}, '0'.repeat(64)),
-      name,
-      symbol,
-      decimals,
-      init,
-    );
-    this.circuitContext = {
-      currentPrivateState,
-      currentZswapLocalState,
-      originalState: currentContractState,
-      transactionContext: new QueryContext(
-        currentContractState.data,
-        sampleContractAddress(),
-      ),
-    };
-    this.contractAddress = this.circuitContext.transactionContext.address;
+/**
+ * FungibleToken Simulator
+ */
+export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
+  constructor(
+    name: string,
+    symbol: string,
+    decimals: bigint,
+    init: boolean,
+    options: BaseSimulatorOptions<
+      FungibleTokenPrivateState,
+      ReturnType<typeof FungibleTokenWitnesses>
+    > = {},
+  ) {
+    super([name, symbol, decimals, init], options);
   }
-
-  /**
-   * @description Retrieves the current public ledger state of the contract.
-   * @returns The ledger state as defined by the contract.
-   */
-  public getCurrentPublicState(): Ledger {
-    return ledger(this.circuitContext.transactionContext.state);
-  }
-
-  /**
-   * @description Retrieves the current private state of the contract.
-   * @returns The private state of type FungibleTokenPrivateState.
-   */
-  public getCurrentPrivateState(): FungibleTokenPrivateState {
-    return this.circuitContext.currentPrivateState;
-  }
-
-  /**
-   * @description Retrieves the current contract state.
-   * @returns The contract state object.
-   */
-  public getCurrentContractState(): ContractState {
-    return this.circuitContext.originalState;
-  }
-
   /**
    * @description Returns the token name.
    * @returns The token name.
    */
   public name(): string {
-    return this.contract.impureCircuits.name(this.circuitContext).result;
+    return this.circuits.impure.name();
   }
 
   /**
@@ -104,7 +60,7 @@ export class FungibleTokenSimulator
    * @returns The token name.
    */
   public symbol(): string {
-    return this.contract.impureCircuits.symbol(this.circuitContext).result;
+    return this.circuits.impure.symbol();
   }
 
   /**
@@ -112,7 +68,7 @@ export class FungibleTokenSimulator
    * @returns The account's token balance.
    */
   public decimals(): bigint {
-    return this.contract.impureCircuits.decimals(this.circuitContext).result;
+    return this.circuits.impure.decimals();
   }
 
   /**
@@ -120,7 +76,7 @@ export class FungibleTokenSimulator
    * @returns The total supply of tokens.
    */
   public totalSupply(): bigint {
-    return this.contract.impureCircuits.totalSupply(this.circuitContext).result;
+    return this.circuits.impure.totalSupply();
   }
 
   /**
@@ -131,8 +87,7 @@ export class FungibleTokenSimulator
   public balanceOf(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ): bigint {
-    return this.contract.impureCircuits.balanceOf(this.circuitContext, account)
-      .result;
+    return this.circuits.impure.balanceOf(account);
   }
 
   /**
@@ -146,126 +101,64 @@ export class FungibleTokenSimulator
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
   ): bigint {
-    return this.contract.impureCircuits.allowance(
-      this.circuitContext,
-      owner,
-      spender,
-    ).result;
+    return this.circuits.impure.allowance(owner, spender);
   }
 
   /**
    * @description Moves a `value` amount of tokens from the caller's account to `to`.
    * @param to The recipient of the transfer, either a user or a contract.
    * @param value The amount to transfer.
-   * @param sender The simulated caller.
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public transfer(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
-    sender?: CoinPublicKey,
   ): boolean {
-    const res = this.contract.impureCircuits.transfer(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      to,
-      value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure.transfer(to, value);
   }
 
   /**
    * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
    * @param to The recipient of the transfer, either a user or a contract.
    * @param value The amount to transfer.
-   * @param sender The simulated caller.
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public _unsafeTransfer(
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
-    sender?: CoinPublicKey,
   ): boolean {
-    const res = this.contract.impureCircuits._unsafeTransfer(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      to,
-      value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure._unsafeTransfer(to, value);
   }
 
   /**
    * @description Moves `value` tokens from `from` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
-   * @param from The current owner of the tokens for the transfer, either a user or a contract.
+   * @param fromAddress The current owner of the tokens for the transfer, either a user or a contract.
    * @param to The recipient of the transfer, either a user or a contract.
    * @param value The amount to transfer.
-   * @param sender The simulated caller.
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public transferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
-    sender?: CoinPublicKey,
   ): boolean {
-    const res = this.contract.impureCircuits.transferFrom(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      from,
-      to,
-      value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure.transferFrom(fromAddress, to, value);
   }
 
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
-   * @param from The current owner of the tokens for the transfer, either a user or a contract.
+   * @param fromAddress The current owner of the tokens for the transfer, either a user or a contract.
    * @param to The recipient of the transfer, either a user or a contract.
    * @param value The amount to transfer.
-   * @param sender The simulated caller.
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public _unsafeTransferFrom(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
-    sender?: CoinPublicKey,
   ): boolean {
-    const res = this.contract.impureCircuits._unsafeTransferFrom(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      from,
-      to,
-      value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure._unsafeTransferFrom(fromAddress, to, value);
   }
 
   /**
@@ -278,21 +171,8 @@ export class FungibleTokenSimulator
   public approve(
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
-    sender?: CoinPublicKey,
   ): boolean {
-    const res = this.contract.impureCircuits.approve(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: sender
-          ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      spender,
-      value,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure.approve(spender, value);
   }
 
   ///
@@ -303,40 +183,30 @@ export class FungibleTokenSimulator
    * @description Moves a `value` amount of tokens from `from` to `to`.
    * This internal function is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
-   * @param from The owner of the tokens to transfer.
+   * @param fromAddress The owner of the tokens to transfer.
    * @param to The receipient of the transferred tokens.
    * @param value The amount of tokens to transfer.
    */
   public _transfer(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._transfer(
-      this.circuitContext,
-      from,
-      to,
-      value,
-    ).context;
+    this.circuits.impure._transfer(fromAddress, to, value);
   }
 
   /**
    * @description Unsafe variant of `_transfer` which allows transfers to contract addresses.
-   * @param from The owner of the tokens to transfer.
+   * @param fromAddress The owner of the tokens to transfer.
    * @param to The receipient of the transferred tokens.
    * @param value The amount of tokens to transfer.
    */
   public _unsafeUncheckedTransfer(
-    from: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._unsafeUncheckedTransfer(
-      this.circuitContext,
-      from,
-      to,
-      value,
-    ).context;
+    this.circuits.impure._unsafeUncheckedTransfer(fromAddress, to, value);
   }
 
   /**
@@ -349,11 +219,7 @@ export class FungibleTokenSimulator
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._mint(
-      this.circuitContext,
-      account,
-      value,
-    ).context;
+    this.circuits.impure._mint(account, value);
   }
 
   /**
@@ -365,11 +231,7 @@ export class FungibleTokenSimulator
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._unsafeMint(
-      this.circuitContext,
-      account,
-      value,
-    ).context;
+    this.circuits.impure._unsafeMint(account, value);
   }
 
   /**
@@ -382,11 +244,7 @@ export class FungibleTokenSimulator
     account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._burn(
-      this.circuitContext,
-      account,
-      value,
-    ).context;
+    this.circuits.impure._burn(account, value);
   }
 
   /**
@@ -402,31 +260,9 @@ export class FungibleTokenSimulator
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
-    this.circuitContext = this.contract.impureCircuits._approve(
-      this.circuitContext,
-      owner,
-      spender,
-      value,
-    ).context;
+    this.circuits.impure._approve(owner, spender, value);
   }
 
-  /**
-   * @description Updates `owner`'s allowance for `spender` based on spent `value`.
-   * Does not update the allowance value in case of infinite allowance.
-   * @param owner The owner of the tokens.
-   * @param spender The spender of the tokens.
-   * @param value The amount of token allowance to spend.
-   */
-  public _spendAllowance(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
-    value: bigint,
-  ) {
-    this.circuitContext = this.contract.impureCircuits._spendAllowance(
-      this.circuitContext,
-      owner,
-      spender,
-      value,
-    ).context;
-  }
+
+  public readonly privateState = {};
 }
