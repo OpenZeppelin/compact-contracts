@@ -81,14 +81,14 @@ describe('AccessControl', () => {
     it('should allow operator with role to call', () => {
       caller = OPERATOR_1;
       expect(() =>
-        accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
+        accessControl.as(caller).assertOnlyRole(OPERATOR_ROLE_1),
       ).not.toThrow();
     });
 
     it('should throw if caller is unauthorized', () => {
       caller = UNAUTHORIZED;
       expect(() =>
-        accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
+        accessControl.as(caller).assertOnlyRole(OPERATOR_ROLE_1),
       ).toThrow('AccessControl: unauthorized account');
     });
 
@@ -97,7 +97,7 @@ describe('AccessControl', () => {
       accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
 
       expect(() =>
-        accessControl.assertOnlyRole(OPERATOR_ROLE_1, caller),
+        accessControl.as(caller).assertOnlyRole(OPERATOR_ROLE_1),
       ).toThrow('AccessControl: unauthorized account');
     });
   });
@@ -147,7 +147,7 @@ describe('AccessControl', () => {
     });
 
     it('admin should grant role', () => {
-      accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
+      accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(true);
     });
 
@@ -155,7 +155,7 @@ describe('AccessControl', () => {
       for (let i = 0; i < operatorRoles.length; i++) {
         // length - 1 because we test ContractAddress separately
         for (let j = 0; j < operatorPKs.length - 1; j++) {
-          accessControl.grantRole(operatorRoles[i], operatorPKs[j], caller);
+          accessControl.as(caller).grantRole(operatorRoles[i], operatorPKs[j]);
           expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
             true,
           );
@@ -164,17 +164,17 @@ describe('AccessControl', () => {
     });
 
     it('should throw if operator grants role', () => {
-      accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
+      accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
 
       caller = OPERATOR_1;
       expect(() => {
-        accessControl.grantRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED, caller);
+        accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED);
       }).toThrow('AccessControl: unauthorized account');
     });
 
     it('should throw if admin grants role to ContractAddress', () => {
       expect(() => {
-        accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT, caller);
+        accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
       }).toThrow('AccessControl: unsafe role approval');
     });
   });
@@ -192,7 +192,7 @@ describe('AccessControl', () => {
       it('admin should revoke role', () => {
         caller = ADMIN;
 
-        accessControl.revokeRole(OPERATOR_ROLE_1, _operator, caller);
+        accessControl.as(caller).revokeRole(OPERATOR_ROLE_1, _operator);
         expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
       });
 
@@ -200,7 +200,7 @@ describe('AccessControl', () => {
         caller = callerTypes[_operatorType];
 
         expect(() => {
-          accessControl.revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED, caller);
+          accessControl.as(caller).revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED);
         }).toThrow('AccessControl: unauthorized account');
       });
     });
@@ -211,7 +211,7 @@ describe('AccessControl', () => {
       for (let i = 0; i < operatorRoles.length; i++) {
         for (let j = 0; j < operatorPKs.length; j++) {
           accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]);
-          accessControl.revokeRole(operatorRoles[i], operatorPKs[j], caller);
+          accessControl.as(caller).revokeRole(operatorRoles[i], operatorPKs[j]);
           expect(accessControl.hasRole(operatorRoles[i], operatorPKs[j])).toBe(
             false,
           );
@@ -227,7 +227,7 @@ describe('AccessControl', () => {
     });
 
     it('should allow operator to renounce own role', () => {
-      accessControl.renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
+      accessControl.as(caller).renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
       expect(accessControl.hasRole(OPERATOR_ROLE_1, Z_OPERATOR_1)).toBe(false);
     });
 
@@ -236,10 +236,9 @@ describe('AccessControl', () => {
       accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
 
       expect(() => {
-        accessControl.renounceRole(
+        accessControl.as(caller).renounceRole(
           OPERATOR_ROLE_1,
           Z_OPERATOR_CONTRACT,
-          caller,
         );
       }).toThrow('AccessControl: bad confirmation');
     });
@@ -247,7 +246,7 @@ describe('AccessControl', () => {
     it('unauthorized renounce should throw', () => {
       caller = UNAUTHORIZED;
       expect(() => {
-        accessControl.renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller);
+        accessControl.as(caller).renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
       }).toThrow('AccessControl: bad confirmation');
     });
   });
@@ -285,10 +284,10 @@ describe('AccessControl', () => {
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
 
       expect(() =>
-        accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+        accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).not.toThrow();
       expect(() =>
-        accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+        accessControl.as(caller).revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).not.toThrow();
     });
 
@@ -300,10 +299,10 @@ describe('AccessControl', () => {
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
 
       expect(() =>
-        accessControl.grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+        accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).toThrow('AccessControl: unauthorized account');
       expect(() =>
-        accessControl.revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1, caller),
+        accessControl.as(caller).revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).toThrow('AccessControl: unauthorized account');
     });
   });
