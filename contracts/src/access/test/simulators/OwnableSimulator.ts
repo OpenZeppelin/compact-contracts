@@ -14,7 +14,7 @@ import {
 /**
  * Type constructor args
  */
-type OwnableArgs = readonly [];
+type OwnableArgs = readonly [initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isInit: boolean];
 
 const OwnableSimulatorBase = createSimulator<
   OwnablePrivateState,
@@ -25,7 +25,7 @@ const OwnableSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) => new MockOwnable<OwnablePrivateState>(witnesses),
   defaultPrivateState: () => OwnablePrivateState.generate(),
-  contractArgs: () => [],
+  contractArgs: (initialOwner, isInit) => [initialOwner, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => OwnableWitnesses(),
 });
@@ -36,12 +36,14 @@ const OwnableSimulatorBase = createSimulator<
  */
 export class OwnableSimulator extends OwnableSimulatorBase {
   constructor(
+    initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+    isInit: boolean,
     options: BaseSimulatorOptions<
       OwnablePrivateState,
       ReturnType<typeof OwnableWitnesses>
     > = {},
   ) {
-    super([], options);
+    super([initialOwner, isInit], options);
   }
   /**
    * @description Returns the current contract owner.
