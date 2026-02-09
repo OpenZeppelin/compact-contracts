@@ -60,7 +60,7 @@ export class PausableSimulator extends PausableSimulatorBase {
    * @description Makes a circuit only callable when the contract is not paused.
    */
   public assertNotPaused() {
-    this.circuits.impure.assertPaused();
+    this.circuits.impure.assertNotPaused();
   }
 
   /**
