@@ -263,6 +263,21 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
     this.circuits.impure._approve(owner, spender, value);
   }
 
+  /**
+ * @description Updates `owner`'s allowance for `spender` based on spent `value`.
+ * Does not update the allowance value in case of infinite allowance.
+ * @param owner The owner of the tokens.
+ * @param spender The spender of the tokens.
+ * @param value The amount of token allowance to spend.
+ */
+  public _spendAllowance(
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    value: bigint,
+  ) {
+    this.circuits.impure._spendAllowance(owner, spender, value);
+  }
+
 
   public readonly privateState = {};
 }
