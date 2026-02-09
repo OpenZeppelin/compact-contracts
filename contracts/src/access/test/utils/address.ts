@@ -3,9 +3,7 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger-v7';
-import type * as Compact from '../../../../artifacts/MockOwnable/contract/index.js';
-
-const PREFIX_ADDRESS = '0200';
+import type * as Compact from '../../../../artifacts/MockUtils/contract/index.js';
 
 /**
  * @description Converts an ASCII string to its hexadecimal representation,
@@ -34,7 +32,7 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
  * @returns Encoded `ZswapCoinPublicKey`.
  */
 export const encodeToAddress = (str: string): Compact.ContractAddress => ({
-  bytes: encodeContractAddress(PREFIX_ADDRESS + toHexPadded(str)),
+  bytes: encodeContractAddress(toHexPadded(str)),
 });
 
 /**

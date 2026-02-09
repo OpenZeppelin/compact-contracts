@@ -3,9 +3,7 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger-v7';
-import type * as Compact from '../../../../artifacts/MockFungibleToken/contract/index.js';
-
-const PREFIX_ADDRESS = '0200';
+import type * as Compact from '../../../../artifacts/MockUtils/contract/index.js';
 
 /**
  * @description Converts an ASCII string to its hexadecimal representation,
@@ -34,7 +32,7 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
  * @returns Encoded `ZswapCoinPublicKey`.
  */
 export const encodeToAddress = (str: string): Compact.ContractAddress => ({
-  bytes: encodeContractAddress(PREFIX_ADDRESS + toHexPadded(str)),
+  bytes: encodeContractAddress(toHexPadded(str)),
 });
 
 /**
@@ -60,6 +58,30 @@ export const createEitherTestContractAddress = (str: string) => ({
   left: encodeToPK(''),
   right: encodeToAddress(str),
 });
+
+const baseGeneratePubKeyPair = (
+  str: string,
+  asEither: boolean,
+): [
+    string,
+    (
+      | Compact.ZswapCoinPublicKey
+      | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
+    ),
+  ] => {
+  const pk = toHexPadded(str);
+  const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
+  return [pk, zpk];
+};
+
+export const generatePubKeyPair = (str: string) =>
+  baseGeneratePubKeyPair(str, false) as [string, Compact.ZswapCoinPublicKey];
+
+export const generateEitherPubKeyPair = (str: string) =>
+  baseGeneratePubKeyPair(str, true) as [
+    string,
+    Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>,
+  ];
 
 export const zeroUint8Array = (length = 32) =>
   convertFieldToBytes(length, 0n, '');
