@@ -10,22 +10,22 @@ describe('Initializable', () => {
 
   it('should generate the initial ledger state deterministically', () => {
     const initializable2 = new InitializableSimulator();
-    expect(initializable.getCurrentPublicState()).toEqual(
-      initializable2.getCurrentPublicState(),
+    expect(initializable.getPublicState()).toEqual(
+      initializable2.getPublicState(),
     );
   });
 
   describe('initialize', () => {
     it('should not be initialized', () => {
       expect(
-        initializable.getCurrentPublicState().Initializable__isInitialized,
+        initializable.getPublicState().Initializable__isInitialized,
       ).toEqual(false);
     });
 
     it('should initialize', () => {
       initializable.initialize();
       expect(
-        initializable.getCurrentPublicState().Initializable__isInitialized,
+        initializable.getPublicState().Initializable__isInitialized,
       ).toEqual(true);
     });
   });
