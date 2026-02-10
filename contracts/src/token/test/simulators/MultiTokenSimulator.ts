@@ -4,7 +4,8 @@ import {
   Contract as MockMultiToken,
   type ZswapCoinPublicKey,
   type ContractAddress,
-  type Either
+  type Either,
+  type Maybe
 } from '../../../../artifacts/MockMultiToken/contract/index.js';
 import {
   MultiTokenPrivateState,
@@ -14,7 +15,7 @@ import {
 /**
  * Type constructor args
  */
-type MultiTokenArgs = readonly [_uri: string];
+type MultiTokenArgs = readonly [_uri: Maybe<string>];
 
 const MultiTokenSimulatorBase = createSimulator<
   MultiTokenPrivateState,
@@ -36,7 +37,7 @@ const MultiTokenSimulatorBase = createSimulator<
  */
 export class MultiTokenSimulator extends MultiTokenSimulatorBase {
   constructor(
-    _uri: string,
+    _uri: Maybe<string>,
     options: BaseSimulatorOptions<
       MultiTokenPrivateState,
       ReturnType<typeof MultiTokenWitnesses>
