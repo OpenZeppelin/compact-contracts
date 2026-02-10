@@ -1,11 +1,14 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
-  ledger,
-  Contract as MockMultiToken,
-  type ZswapCoinPublicKey,
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
+import {
   type ContractAddress,
   type Either,
-  type Maybe
+  ledger,
+  type Maybe,
+  Contract as MockMultiToken,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockMultiToken/contract/index.js';
 import {
   MultiTokenPrivateState,
@@ -24,13 +27,13 @@ const MultiTokenSimulatorBase = createSimulator<
   MockMultiToken<MultiTokenPrivateState>,
   MultiTokenArgs
 >({
-  contractFactory: (witnesses) => new MockMultiToken<MultiTokenPrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockMultiToken<MultiTokenPrivateState>(witnesses),
   defaultPrivateState: () => MultiTokenPrivateState.generate(),
   contractArgs: (_uri) => [_uri],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => MultiTokenWitnesses(),
 });
-
 
 /**
  * MultiToken Simulator

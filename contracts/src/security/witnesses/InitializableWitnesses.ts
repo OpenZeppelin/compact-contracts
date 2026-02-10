@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for Initializable operations.
  * @template P - The private state type.
  */
-export interface IInitializableWitnesses<P> { }
+export type IInitializableWitnesses<_P> = Record<string, never>;
 
-
-export type InitializablePrivateState = {};
+export type InitializablePrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a Initializable contract.

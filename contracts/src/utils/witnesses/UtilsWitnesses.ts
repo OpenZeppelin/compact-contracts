@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for Utils operations.
  * @template P - The private state type.
  */
-export interface IUtilsWitnesses<P> { }
+export type IUtilsWitnesses<_P> = Record<string, never>;
 
-
-export type UtilsPrivateState = {};
+export type UtilsPrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a Utils contract.
@@ -27,5 +26,4 @@ export const UtilsPrivateState = {
  * @description Factory function creating witness implementations for Utils operations.
  * @returns An object implementing the Witnesses interface for UtilsPrivateState.
  */
-export const UtilsWitnesses =
-  (): IUtilsWitnesses<UtilsPrivateState> => ({});
+export const UtilsWitnesses = (): IUtilsWitnesses<UtilsPrivateState> => ({});

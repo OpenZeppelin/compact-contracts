@@ -1,4 +1,7 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
+import {
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
 import {
   ledger,
   Contract as MockInitializable,
@@ -20,13 +23,13 @@ const InitializableSimulatorBase = createSimulator<
   MockInitializable<InitializablePrivateState>,
   InitializableArgs
 >({
-  contractFactory: (witnesses) => new MockInitializable<InitializablePrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockInitializable<InitializablePrivateState>(witnesses),
   defaultPrivateState: () => InitializablePrivateState.generate(),
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => InitializableWitnesses(),
 });
-
 
 /**
  * Initializable Simulator

@@ -237,10 +237,9 @@ describe('FungibleToken', () => {
         it('should transfer partial', () => {
           const partialAmt = AMOUNT - 1n;
           caller = OWNER;
-          const txSuccess = token.as(caller)._unsafeTransfer(
-            recipient,
-            partialAmt,
-          );
+          const txSuccess = token
+            .as(caller)
+            ._unsafeTransfer(recipient, partialAmt);
 
           expect(txSuccess).toBe(true);
           expect(token.balanceOf(Z_OWNER)).toEqual(1n);
@@ -388,11 +387,9 @@ describe('FungibleToken', () => {
         caller = SPENDER;
         const partialAmt = AMOUNT - 1n;
 
-        const txSuccess = token.as(caller).transferFrom(
-          Z_OWNER,
-          Z_RECIPIENT,
-          partialAmt,
-        );
+        const txSuccess = token
+          .as(caller)
+          .transferFrom(Z_OWNER, Z_RECIPIENT, partialAmt);
         expect(txSuccess).toBe(true);
 
         // Check balances
@@ -405,11 +402,9 @@ describe('FungibleToken', () => {
       it('should transferFrom spender (full)', () => {
         caller = SPENDER;
 
-        const txSuccess = token.as(caller).transferFrom(
-          Z_OWNER,
-          Z_RECIPIENT,
-          AMOUNT,
-        );
+        const txSuccess = token
+          .as(caller)
+          .transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT);
         expect(txSuccess).toBe(true);
 
         // Check balances
@@ -424,11 +419,9 @@ describe('FungibleToken', () => {
         token.as(caller).approve(Z_SPENDER, MAX_UINT128);
 
         caller = SPENDER;
-        const txSuccess = token.as(caller).transferFrom(
-          Z_OWNER,
-          Z_RECIPIENT,
-          AMOUNT,
-        );
+        const txSuccess = token
+          .as(caller)
+          .transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT);
         expect(txSuccess).toBe(true);
 
         // Check balances
@@ -507,11 +500,9 @@ describe('FungibleToken', () => {
           caller = SPENDER;
           const partialAmt = AMOUNT - 1n;
 
-          const txSuccess = token.as(caller)._unsafeTransferFrom(
-            Z_OWNER,
-            recipient,
-            partialAmt,
-          );
+          const txSuccess = token
+            .as(caller)
+            ._unsafeTransferFrom(Z_OWNER, recipient, partialAmt);
           expect(txSuccess).toBe(true);
 
           // Check balances
@@ -524,11 +515,9 @@ describe('FungibleToken', () => {
         it('should transferFrom spender (full)', () => {
           caller = SPENDER;
 
-          const txSuccess = token.as(caller)._unsafeTransferFrom(
-            Z_OWNER,
-            recipient,
-            AMOUNT,
-          );
+          const txSuccess = token
+            .as(caller)
+            ._unsafeTransferFrom(Z_OWNER, recipient, AMOUNT);
           expect(txSuccess).toBe(true);
 
           // Check balances
@@ -543,11 +532,9 @@ describe('FungibleToken', () => {
           token.as(caller).approve(Z_SPENDER, MAX_UINT128);
 
           caller = SPENDER;
-          const txSuccess = token.as(caller)._unsafeTransferFrom(
-            Z_OWNER,
-            recipient,
-            AMOUNT,
-          );
+          const txSuccess = token
+            .as(caller)
+            ._unsafeTransferFrom(Z_OWNER, recipient, AMOUNT);
           expect(txSuccess).toBe(true);
 
           // Check balances
@@ -572,7 +559,9 @@ describe('FungibleToken', () => {
 
           caller = SPENDER;
           expect(() => {
-            token.as(caller)._unsafeTransferFrom(Z_OWNER, recipient, AMOUNT + 1n);
+            token
+              .as(caller)
+              ._unsafeTransferFrom(Z_OWNER, recipient, AMOUNT + 1n);
           }).toThrow('FungibleToken: insufficient balance');
         });
 
@@ -605,11 +594,9 @@ describe('FungibleToken', () => {
         caller = SPENDER;
 
         expect(() => {
-          token.as(caller)._unsafeTransferFrom(
-            Z_OWNER,
-            utils.ZERO_ADDRESS,
-            AMOUNT,
-          );
+          token
+            .as(caller)
+            ._unsafeTransferFrom(Z_OWNER, utils.ZERO_ADDRESS, AMOUNT);
         }).toThrow('FungibleToken: invalid receiver');
       });
     });

@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for Pausable operations.
  * @template P - The private state type.
  */
-export interface IPausableWitnesses<P> { }
+export type IPausableWitnesses<_P> = Record<string, never>;
 
-
-export type PausablePrivateState = {};
+export type PausablePrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a Pausable contract.

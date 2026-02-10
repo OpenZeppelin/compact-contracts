@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for Ownable operations.
  * @template P - The private state type.
  */
-export interface IOwnableWitnesses<P> { }
+export type IOwnableWitnesses<_P> = Record<string, never>;
 
-
-export type OwnablePrivateState = {};
+export type OwnablePrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a Ownable contract.

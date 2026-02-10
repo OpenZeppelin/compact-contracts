@@ -1026,18 +1026,18 @@ describe('NonFungibleToken', () => {
     it('unapproved operator should not transfer', () => {
       _caller = SPENDER;
       expect(() => {
-        token.as(_caller)._unsafeTransferFrom(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1);
+        token
+          .as(_caller)
+          ._unsafeTransferFrom(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
 
     it('should not transfer token that has not been minted', () => {
       _caller = OWNER;
       expect(() => {
-        token.as(_caller)._unsafeTransferFrom(
-          Z_OWNER,
-          Z_SPENDER,
-          NON_EXISTENT_TOKEN,
-        );
+        token
+          .as(_caller)
+          ._unsafeTransferFrom(Z_OWNER, Z_SPENDER, NON_EXISTENT_TOKEN);
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 

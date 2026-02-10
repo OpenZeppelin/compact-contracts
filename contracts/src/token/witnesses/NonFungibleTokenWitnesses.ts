@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for NonFungibleToken operations.
  * @template P - The private state type.
  */
-export interface INonFungibleTokenWitnesses<P> { }
+export type INonFungibleTokenWitnesses<_P> = Record<string, never>;
 
-
-export type NonFungibleTokenPrivateState = {};
+export type NonFungibleTokenPrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a NonFungibleToken contract.

@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for FungibleToken operations.
  * @template P - The private state type.
  */
-export interface IFungibleTokenWitnesses<P> { }
+export type IFungibleTokenWitnesses<_P> = Record<string, never>;
 
-
-export type FungibleTokenPrivateState = {};
+export type FungibleTokenPrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a FungibleToken contract.

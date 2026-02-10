@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for AccessControl operations.
  * @template P - The private state type.
  */
-export interface IAccessControlWitnesses<P> { }
+export type IAccessControlWitnesses<_P> = Record<string, never>;
 
-
-export type AccessControlPrivateState = {};
+export type AccessControlPrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a AccessControl contract.

@@ -1,10 +1,13 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
+import {
+  type ContractAddress,
+  type Either,
   ledger,
   Contract as MockFungibleToken,
   type ZswapCoinPublicKey,
-  type ContractAddress,
-  type Either
 } from '../../../../artifacts/MockFungibleToken/contract/index.js';
 import {
   FungibleTokenPrivateState,
@@ -14,7 +17,12 @@ import {
 /**
  * Type constructor args
  */
-type FungibleTokenArgs = readonly [name: string, symbol: string, decimals: bigint, init: boolean];
+type FungibleTokenArgs = readonly [
+  name: string,
+  symbol: string,
+  decimals: bigint,
+  init: boolean,
+];
 
 const FungibleTokenSimulatorBase = createSimulator<
   FungibleTokenPrivateState,
@@ -23,13 +31,18 @@ const FungibleTokenSimulatorBase = createSimulator<
   MockFungibleToken<FungibleTokenPrivateState>,
   FungibleTokenArgs
 >({
-  contractFactory: (witnesses) => new MockFungibleToken<FungibleTokenPrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockFungibleToken<FungibleTokenPrivateState>(witnesses),
   defaultPrivateState: () => FungibleTokenPrivateState.generate(),
-  contractArgs: (name, symbol, decimals, init) => [name, symbol, decimals, init],
+  contractArgs: (name, symbol, decimals, init) => [
+    name,
+    symbol,
+    decimals,
+    init,
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => FungibleTokenWitnesses(),
 });
-
 
 /**
  * FungibleToken Simulator
@@ -264,12 +277,12 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
   }
 
   /**
- * @description Updates `owner`'s allowance for `spender` based on spent `value`.
- * Does not update the allowance value in case of infinite allowance.
- * @param owner The owner of the tokens.
- * @param spender The spender of the tokens.
- * @param value The amount of token allowance to spend.
- */
+   * @description Updates `owner`'s allowance for `spender` based on spent `value`.
+   * Does not update the allowance value in case of infinite allowance.
+   * @param owner The owner of the tokens.
+   * @param spender The spender of the tokens.
+   * @param value The amount of token allowance to spend.
+   */
   public _spendAllowance(
     owner: Either<ZswapCoinPublicKey, ContractAddress>,
     spender: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -277,7 +290,6 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
   ) {
     this.circuits.impure._spendAllowance(owner, spender, value);
   }
-
 
   public readonly privateState = {};
 }

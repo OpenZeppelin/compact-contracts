@@ -1,10 +1,13 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
-  ledger,
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
+import {
+  type ContractAddress,
   type Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
+  ledger,
   Contract as MockAccessControl,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockAccessControl/contract/index.js';
 import {
   AccessControlPrivateState,
@@ -23,13 +26,13 @@ const AccessControlSimulatorBase = createSimulator<
   MockAccessControl<AccessControlPrivateState>,
   AccessControlArgs
 >({
-  contractFactory: (witnesses) => new MockAccessControl<AccessControlPrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockAccessControl<AccessControlPrivateState>(witnesses),
   defaultPrivateState: () => AccessControlPrivateState.generate(),
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => AccessControlWitnesses(),
 });
-
 
 /**
  * AccessControl Simulator

@@ -5,10 +5,9 @@
  * @description Interface defining the witness methods for MultiToken operations.
  * @template P - The private state type.
  */
-export interface IMultiTokenWitnesses<P> { }
+export type IMultiTokenWitnesses<_P> = Record<string, never>;
 
-
-export type MultiTokenPrivateState = {};
+export type MultiTokenPrivateState = Record<string, never>;
 
 /**
  * @description Utility object for managing the private state of a MultiToken contract.

@@ -1,10 +1,13 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
-  ledger,
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
+import {
+  type ContractAddress,
   type Either,
-  ZswapCoinPublicKey,
-  ContractAddress,
+  ledger,
   Contract as MockOwnable,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockOwnable/contract/index.js';
 import {
   OwnablePrivateState,
@@ -14,7 +17,10 @@ import {
 /**
  * Type constructor args
  */
-type OwnableArgs = readonly [initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isInit: boolean];
+type OwnableArgs = readonly [
+  initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+  isInit: boolean,
+];
 
 const OwnableSimulatorBase = createSimulator<
   OwnablePrivateState,
@@ -23,13 +29,13 @@ const OwnableSimulatorBase = createSimulator<
   MockOwnable<OwnablePrivateState>,
   OwnableArgs
 >({
-  contractFactory: (witnesses) => new MockOwnable<OwnablePrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockOwnable<OwnablePrivateState>(witnesses),
   defaultPrivateState: () => OwnablePrivateState.generate(),
   contractArgs: (initialOwner, isInit) => [initialOwner, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => OwnableWitnesses(),
 });
-
 
 /**
  * Ownable Simulator

@@ -1,4 +1,7 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
+import {
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
 import {
   ledger,
   Contract as MockPausable,
@@ -20,13 +23,13 @@ const PausableSimulatorBase = createSimulator<
   MockPausable<PausablePrivateState>,
   PausableArgs
 >({
-  contractFactory: (witnesses) => new MockPausable<PausablePrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockPausable<PausablePrivateState>(witnesses),
   defaultPrivateState: () => PausablePrivateState.generate(),
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => PausableWitnesses(),
 });
-
 
 /**
  * Pausable Simulator

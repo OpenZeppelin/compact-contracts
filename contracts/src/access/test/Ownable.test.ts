@@ -230,7 +230,7 @@ describe('Ownable', () => {
         ownable.as(caller)._unsafeTransferOwnership(Z_NEW_OWNER);
 
         caller = NEW_OWNER;
-        ownable.as(caller)._unsafeTransferOwnership(Z_OWNER,);
+        ownable.as(caller)._unsafeTransferOwnership(Z_OWNER);
 
         caller = OWNER;
         ownable.as(caller)._unsafeTransferOwnership(Z_OWNER_CONTRACT);

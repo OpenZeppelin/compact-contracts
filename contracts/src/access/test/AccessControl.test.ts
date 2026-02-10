@@ -174,7 +174,9 @@ describe('AccessControl', () => {
 
     it('should throw if admin grants role to ContractAddress', () => {
       expect(() => {
-        accessControl.as(caller).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
+        accessControl
+          .as(caller)
+          .grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
       }).toThrow('AccessControl: unsafe role approval');
     });
   });
@@ -236,10 +238,9 @@ describe('AccessControl', () => {
       accessControl._unsafeGrantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
 
       expect(() => {
-        accessControl.as(caller).renounceRole(
-          OPERATOR_ROLE_1,
-          Z_OPERATOR_CONTRACT,
-        );
+        accessControl
+          .as(caller)
+          .renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
       }).toThrow('AccessControl: bad confirmation');
     });
 

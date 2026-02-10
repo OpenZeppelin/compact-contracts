@@ -1,10 +1,13 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
+import {
+  type ContractAddress,
+  type Either,
   ledger,
   Contract as MockUtils,
   type ZswapCoinPublicKey,
-  type ContractAddress,
-  type Either
 } from '../../../../artifacts/MockUtils/contract/index.js';
 import {
   UtilsPrivateState,
@@ -29,7 +32,6 @@ const UtilsSimulatorBase = createSimulator<
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => UtilsWitnesses(),
 });
-
 
 /**
  * Utils Simulator

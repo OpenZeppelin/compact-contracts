@@ -1,7 +1,7 @@
 import {
   convertFieldToBytes,
+  type EncodedContractAddress,
   encodeCoinPublicKey,
-  EncodedContractAddress,
   isContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger-v7';
@@ -36,10 +36,13 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
 export const encodeToAddress = (str: string): EncodedContractAddress => {
   const generatedAddress = toHexPadded(str);
   if (isContractAddress(generatedAddress)) {
-    return { bytes: encodeContractAddress(generatedAddress) } as EncodedContractAddress
-  } else {
-    throw new Error("Invalid Input: `generatedAddress` must be a valid `ContractAddress`")
+    return {
+      bytes: encodeContractAddress(generatedAddress),
+    } as EncodedContractAddress;
   }
+  throw new Error(
+    'Invalid Input: `generatedAddress` must be a valid `ContractAddress`',
+  );
 };
 
 /**
@@ -70,12 +73,12 @@ const baseGeneratePubKeyPair = (
   str: string,
   asEither: boolean,
 ): [
-    string,
-    (
-      | Compact.ZswapCoinPublicKey
-      | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
-    ),
-  ] => {
+  string,
+  (
+    | Compact.ZswapCoinPublicKey
+    | Compact.Either<Compact.ZswapCoinPublicKey, Compact.ContractAddress>
+  ),
+] => {
   const pk = toHexPadded(str);
   const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
   return [pk, zpk];

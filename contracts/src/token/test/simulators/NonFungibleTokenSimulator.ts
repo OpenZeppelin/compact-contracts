@@ -1,10 +1,13 @@
-import { createSimulator, BaseSimulatorOptions } from "@openzeppelin-compact/contracts-simulator";
 import {
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
+import {
+  type ContractAddress,
+  type Either,
   ledger,
   Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
-  type ContractAddress,
-  type Either
 } from '../../../../artifacts/MockNonFungibleToken/contract/index.js';
 import {
   NonFungibleTokenPrivateState,
@@ -14,7 +17,11 @@ import {
 /**
  * Type constructor args
  */
-type NonFungibleTokenArgs = readonly [name: string, symbol: string, init: boolean];
+type NonFungibleTokenArgs = readonly [
+  name: string,
+  symbol: string,
+  init: boolean,
+];
 
 const NonFungibleTokenSimulatorBase = createSimulator<
   NonFungibleTokenPrivateState,
@@ -23,13 +30,13 @@ const NonFungibleTokenSimulatorBase = createSimulator<
   MockNonFungibleToken<NonFungibleTokenPrivateState>,
   NonFungibleTokenArgs
 >({
-  contractFactory: (witnesses) => new MockNonFungibleToken<NonFungibleTokenPrivateState>(witnesses),
+  contractFactory: (witnesses) =>
+    new MockNonFungibleToken<NonFungibleTokenPrivateState>(witnesses),
   defaultPrivateState: () => NonFungibleTokenPrivateState.generate(),
   contractArgs: (name, symbol, init) => [name, symbol, init],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => NonFungibleTokenWitnesses(),
 });
-
 
 /**
  * NonFungibleToken Simulator
