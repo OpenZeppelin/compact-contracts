@@ -1,6 +1,8 @@
 import {
   convertFieldToBytes,
   encodeCoinPublicKey,
+  EncodedContractAddress,
+  isContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnight-ntwrk/ledger-v7';
 import type * as Compact from '../../../../artifacts/MockUtils/contract/index.js';
@@ -26,14 +28,19 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
 });
 
 /**
- * @description Generates ContractAddress from `str` for testing purposes.
- *              Prepends 32-byte hex with PREFIX_ADDRESS before encoding.
+ * @description Generates ContractAddress from 32-byte hex `str` for testing purposes.
  * @param str String to hexify and encode.
+ * @throws {Error} Thrown when function fails to generate a valid ContractAddress
  * @returns Encoded `ZswapCoinPublicKey`.
  */
-export const encodeToAddress = (str: string): Compact.ContractAddress => ({
-  bytes: encodeContractAddress(toHexPadded(str)),
-});
+export const encodeToAddress = (str: string): EncodedContractAddress => {
+  const generatedAddress = toHexPadded(str);
+  if (isContractAddress(generatedAddress)) {
+    return { bytes: encodeContractAddress(generatedAddress) } as EncodedContractAddress
+  } else {
+    throw new Error("Invalid Input: `generatedAddress` must be a valid `ContractAddress`")
+  }
+};
 
 /**
  * @description Generates an Either object for ZswapCoinPublicKey for testing.
