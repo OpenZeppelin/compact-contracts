@@ -43,4 +43,4 @@ runs:
       if: ${{ inputs.skip-compact != 'true' }}
       uses: midnightntwrk/setup-compact-action@836895c8fffbbea6bd986af2b17e8941ff29d1f8 # v1
       with:
-        compact-version: "0.28.0"
+        compact-version: "0.29.0"
