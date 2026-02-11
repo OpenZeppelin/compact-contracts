@@ -32,7 +32,7 @@ const NonFungibleTokenSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockNonFungibleToken<NonFungibleTokenPrivateState>(witnesses),
-  defaultPrivateState: () => NonFungibleTokenPrivateState.generate(),
+  defaultPrivateState: () => NonFungibleTokenPrivateState,
   contractArgs: (name, symbol, init) => [name, symbol, init],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => NonFungibleTokenWitnesses(),

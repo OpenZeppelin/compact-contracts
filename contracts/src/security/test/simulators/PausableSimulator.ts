@@ -25,7 +25,7 @@ const PausableSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockPausable<PausablePrivateState>(witnesses),
-  defaultPrivateState: () => PausablePrivateState.generate(),
+  defaultPrivateState: () => PausablePrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => PausableWitnesses(),

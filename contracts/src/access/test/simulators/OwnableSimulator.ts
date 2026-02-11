@@ -31,7 +31,7 @@ const OwnableSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockOwnable<OwnablePrivateState>(witnesses),
-  defaultPrivateState: () => OwnablePrivateState.generate(),
+  defaultPrivateState: () => OwnablePrivateState,
   contractArgs: (initialOwner, isInit) => [initialOwner, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => OwnableWitnesses(),

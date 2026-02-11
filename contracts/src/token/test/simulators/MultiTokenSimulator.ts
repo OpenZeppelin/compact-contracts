@@ -29,7 +29,7 @@ const MultiTokenSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockMultiToken<MultiTokenPrivateState>(witnesses),
-  defaultPrivateState: () => MultiTokenPrivateState.generate(),
+  defaultPrivateState: () => MultiTokenPrivateState,
   contractArgs: (_uri) => [_uri],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => MultiTokenWitnesses(),

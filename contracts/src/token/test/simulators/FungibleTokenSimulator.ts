@@ -33,7 +33,7 @@ const FungibleTokenSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockFungibleToken<FungibleTokenPrivateState>(witnesses),
-  defaultPrivateState: () => FungibleTokenPrivateState.generate(),
+  defaultPrivateState: () => FungibleTokenPrivateState,
   contractArgs: (name, symbol, decimals, init) => [
     name,
     symbol,

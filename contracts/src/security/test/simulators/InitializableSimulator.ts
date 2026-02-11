@@ -25,7 +25,7 @@ const InitializableSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockInitializable<InitializablePrivateState>(witnesses),
-  defaultPrivateState: () => InitializablePrivateState.generate(),
+  defaultPrivateState: () => InitializablePrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => InitializableWitnesses(),

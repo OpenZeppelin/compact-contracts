@@ -28,7 +28,7 @@ const AccessControlSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockAccessControl<AccessControlPrivateState>(witnesses),
-  defaultPrivateState: () => AccessControlPrivateState.generate(),
+  defaultPrivateState: () => AccessControlPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => AccessControlWitnesses(),

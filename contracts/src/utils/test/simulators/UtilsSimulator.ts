@@ -27,7 +27,7 @@ const UtilsSimulatorBase = createSimulator<
   UtilsArgs
 >({
   contractFactory: (witnesses) => new MockUtils<UtilsPrivateState>(witnesses),
-  defaultPrivateState: () => UtilsPrivateState.generate(),
+  defaultPrivateState: () => UtilsPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => UtilsWitnesses(),
