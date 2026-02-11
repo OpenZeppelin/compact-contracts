@@ -23,7 +23,7 @@ Verify your Compact installation:
 
 ```bash
 $ compact compile --version
-Compactc version: 0.28.0
+Compactc version: 0.29.0
 ```
 
 ## Binaries
@@ -52,7 +52,7 @@ compact-compiler [options]
 | `--out <directory>` | Output directory for compiled artifacts | `artifacts` |
 | `--hierarchical` | Preserve source directory structure in output | `false` |
 | `--skip-zk` | Skip zero-knowledge proof generation | `false` |
-| `+<version>` | Use specific toolchain version (e.g., `+0.28.0`) | (default) |
+| `+<version>` | Use specific toolchain version (e.g., `+0.29.0`) | (default) |
 
 ### Environment Variables
 
@@ -102,7 +102,7 @@ compact-compiler --dir security
 compact-compiler --skip-zk
 
 # Use specific toolchain version
-compact-compiler +0.28.0
+compact-compiler +0.29.0
 
 # Custom source and output directories
 compact-compiler --src contracts --out build
@@ -155,7 +155,7 @@ import { CompactCompiler } from '@openzeppelin/compact-tools-cli';
 const compiler = new CompactCompiler({
   flags: '--skip-zk',
   targetDir: 'security',
-  version: '0.28.0',
+  version: '0.29.0',
   hierarchical: true,
   srcDir: 'src',
   outDir: 'artifacts',
@@ -167,7 +167,7 @@ await compiler.compile();
 const compiler = CompactCompiler.fromArgs([
   '--dir', 'security',
   '--skip-zk',
-  '+0.28.0'
+  '+0.29.0'
 ]);
 
 await compiler.compile();
@@ -196,7 +196,7 @@ class CompactBuilder {
 interface CompilerOptions {
   flags?: string;           // Compiler flags (e.g., '--skip-zk --verbose')
   targetDir?: string;       // Subdirectory within srcDir to compile
-  version?: string;         // Toolchain version (e.g., '0.28.0')
+  version?: string;         // Toolchain version (e.g., '0.29.0')
   hierarchical?: boolean;   // Preserve directory structure in output
   srcDir?: string;          // Source directory (default: 'src')
   outDir?: string;          // Output directory (default: 'artifacts')
@@ -235,13 +235,13 @@ yarn clean
 
 ```bash
 ℹ [COMPILE] Compact compiler started
-ℹ [COMPILE] Compact developer tools: compact 0.2.0
-ℹ [COMPILE] Compact toolchain: Compactc version: 0.28.0
+ℹ [COMPILE] Compact developer tools: compact 0.4.0
+ℹ [COMPILE] Compact toolchain: Compactc version: 0.29.0
 ℹ [COMPILE] Found 2 .compact file(s) to compile
 ✔ [COMPILE] [1/2] Compiled AccessControl.compact
-    Compactc version: 0.28.0
+    Compactc version: 0.29.0
 ✔ [COMPILE] [2/2] Compiled Token.compact
-    Compactc version: 0.28.0
+    Compactc version: 0.29.0
 ```
 
 ## License
