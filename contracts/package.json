@@ -20,6 +20,9 @@
   },
   "homepage": "https://docs.openzeppelin.com/contracts-compact/",
   "type": "module",
+  "imports": {
+    "#test-utils/address.js": "./test-utils/address.js"
+  },
   "scripts": {
     "compact": "compact-compiler",
     "compact:access": "compact-compiler --dir access",
