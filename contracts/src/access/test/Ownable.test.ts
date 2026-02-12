@@ -132,7 +132,6 @@ describe('Ownable', () => {
       });
 
       it('should fail when transferring to zero (pk)', () => {
-
         expect(() => {
           ownable.as(OWNER).transferOwnership(utils.ZERO_KEY);
         }).toThrow('Ownable: invalid new owner');
@@ -159,7 +158,6 @@ describe('Ownable', () => {
       describe.each(
         newOwnerTypes,
       )('when the owner is a %s', (type, newOwner) => {
-
         it('should transfer ownership', () => {
           ownable.as(OWNER)._unsafeTransferOwnership(newOwner);
           expect(ownable.owner()).toEqual(newOwner);

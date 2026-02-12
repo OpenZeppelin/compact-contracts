@@ -1,10 +1,8 @@
-import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
 import {
   createEitherTestContractAddress,
-  createEitherTestUser,
-  toHexPadded,
+  generateEitherPubKeyPair,
   ZERO_ADDRESS,
   ZERO_KEY,
 } from './utils/address.js';
@@ -25,21 +23,17 @@ const SOME_URI = 'https://openzeppelin.example';
 const EMPTY_URI = '';
 const AMOUNT: bigint = BigInt(1);
 
-// Callers
-const OWNER = toHexPadded('OWNER');
-const SPENDER = toHexPadded('SPENDER');
-const UNAUTHORIZED = toHexPadded('UNAUTHORIZED');
+// PKs
+const [OWNER, Z_OWNER] = generateEitherPubKeyPair('OWNER');
+const [SPENDER, Z_SPENDER] = generateEitherPubKeyPair('SPENDER');
+const [UNAUTHORIZED, Z_UNAUTHORIZED] = generateEitherPubKeyPair('UNAUTHORIZED');
+const [, Z_RECIPIENT] = generateEitherPubKeyPair('RECIPIENT');
+const [, Z_OTHER] = generateEitherPubKeyPair('OTHER');
 
-// Encoded PK/Addresses
-const Z_OWNER = createEitherTestUser('OWNER');
-const Z_SPENDER = createEitherTestUser('SPENDER');
-const Z_RECIPIENT = createEitherTestUser('RECIPIENT');
-const Z_OTHER = createEitherTestUser('OTHER');
-const Z_UNAUTHORIZED = createEitherTestUser('UNAUTHORIZED');
+// Encoded contract addresses
 const SOME_CONTRACT = createEitherTestContractAddress('CONTRACT');
 
 let token: NonFungibleTokenSimulator;
-let _caller: CoinPublicKey;
 
 describe('NonFungibleToken', () => {
   describe('initializer and metadata', () => {
@@ -223,65 +217,54 @@ describe('NonFungibleToken', () => {
     });
 
     it('should throw if not owner', () => {
-      _caller = UNAUTHORIZED;
       expect(() => {
-        token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+        token.as(UNAUTHORIZED).approve(Z_SPENDER, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Approver');
     });
 
     it('should approve spender', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should allow operator to approve', () => {
-      _caller = OWNER;
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
-      _caller = SPENDER;
-      token.as(_caller).approve(Z_OTHER, TOKENID_1);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+      token.as(SPENDER).approve(Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_OTHER);
     });
 
     it('spender approved for only TOKENID_1 should not be able to approve', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
 
-      _caller = SPENDER;
       expect(() => {
-        token.as(_caller).approve(Z_OTHER, TOKENID_1);
+        token.as(SPENDER).approve(Z_OTHER, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Approver');
     });
 
     it('should approve same address multiple times', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should approve after token transfer', () => {
-      _caller = OWNER;
       token._transfer(Z_OWNER, Z_SPENDER, TOKENID_1);
 
-      _caller = SPENDER;
-      token.as(_caller).approve(Z_OTHER, TOKENID_1);
+      token.as(SPENDER).approve(Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_OTHER);
     });
 
     it('should approve after token burn and remint', () => {
-      _caller = OWNER;
       token._burn(TOKENID_1);
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should approve with very long token ID', () => {
-      _caller = OWNER;
       const longTokenId = BigInt('18446744073709551615');
       token._mint(Z_OWNER, longTokenId);
-      token.as(_caller).approve(Z_SPENDER, longTokenId);
+      token.as(OWNER).approve(Z_SPENDER, longTokenId);
       expect(token.getApproved(longTokenId)).toEqual(Z_SPENDER);
     });
   });
@@ -305,8 +288,7 @@ describe('NonFungibleToken', () => {
     });
 
     it('should get current approved spender', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_OWNER, TOKENID_1);
+      token.as(OWNER).approve(Z_OWNER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_OWNER);
     });
 
@@ -317,15 +299,13 @@ describe('NonFungibleToken', () => {
 
   describe('setApprovalForAll', () => {
     it('should not approve zero address', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
       expect(() => {
-        token.as(_caller).setApprovalForAll(ZERO_KEY, true);
+        token.as(OWNER).setApprovalForAll(ZERO_KEY, true);
       }).toThrow('NonFungibleToken: Invalid Operator');
     });
 
     it('should set operator', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
 
       token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
@@ -336,67 +316,58 @@ describe('NonFungibleToken', () => {
       token._mint(Z_OWNER, TOKENID_1);
       token._mint(Z_OWNER, TOKENID_2);
       token._mint(Z_OWNER, TOKENID_3);
-      _caller = OWNER;
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
 
-      _caller = SPENDER;
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
 
-      token.as(_caller).approve(Z_OTHER, TOKENID_2);
+      token.approve(Z_OTHER, TOKENID_2);
       expect(token.getApproved(TOKENID_2)).toEqual(Z_OTHER);
 
-      token.as(_caller).approve(Z_SPENDER, TOKENID_3);
+      token.approve(Z_SPENDER, TOKENID_3);
       expect(token.getApproved(TOKENID_3)).toEqual(Z_SPENDER);
     });
 
     it('should revoke approval for all', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
 
-      token.as(_caller).setApprovalForAll(Z_SPENDER, false);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, false);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(false);
 
-      _caller = SPENDER;
       expect(() => {
-        token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+        token.as(SPENDER).approve(Z_SPENDER, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Approver');
     });
 
     it('should set approval for all to same address multiple times', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
     });
 
     it('should set approval for all after token transfer', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
       token._transfer(Z_OWNER, Z_SPENDER, TOKENID_1);
 
-      _caller = SPENDER;
-      token.as(_caller).setApprovalForAll(Z_OTHER, true);
+      token.as(SPENDER).setApprovalForAll(Z_OTHER, true);
       expect(token.isApprovedForAll(Z_SPENDER, Z_OTHER)).toBe(true);
     });
 
     it('should set approval for all with multiple operators', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
-      token.as(_caller).setApprovalForAll(Z_OTHER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_OTHER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
       expect(token.isApprovedForAll(Z_OWNER, Z_OTHER)).toBe(true);
     });
 
     it('should set approval for all with very long token IDs', () => {
-      _caller = OWNER;
       const longTokenId = BigInt('18446744073709551615');
       token._mint(Z_OWNER, longTokenId);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
     });
   });
@@ -407,7 +378,6 @@ describe('NonFungibleToken', () => {
     });
 
     it('should return true if approval set', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
       token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
@@ -438,50 +408,42 @@ describe('NonFungibleToken', () => {
     });
 
     it('should not transfer from unauthorized', () => {
-      _caller = UNAUTHORIZED;
       expect(() => {
-        token.as(_caller).transferFrom(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1);
+        token.as(UNAUTHORIZED).transferFrom(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
 
     it('should not transfer token that has not been minted', () => {
-      _caller = OWNER;
       expect(() => {
-        token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, NON_EXISTENT_TOKEN);
+        token.as(OWNER).transferFrom(Z_OWNER, Z_SPENDER, NON_EXISTENT_TOKEN);
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
     it('should transfer token without approvers or operators', () => {
-      _caller = OWNER;
-      token.as(_caller).transferFrom(Z_OWNER, Z_RECIPIENT, TOKENID_1);
+      token.as(OWNER).transferFrom(Z_OWNER, Z_RECIPIENT, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_RECIPIENT);
     });
 
     it('should transfer token via approved operator', () => {
-      _caller = OWNER;
       token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
 
-      _caller = SPENDER;
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should transfer token via approvedForAll operator', () => {
-      _caller = OWNER;
       token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
 
-      _caller = SPENDER;
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should allow transfer to same address', () => {
-      _caller = OWNER;
       token._approve(Z_SPENDER, TOKENID_1, Z_OWNER);
       token._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
 
       expect(() => {
-        token.as(_caller).transferFrom(Z_OWNER, Z_OWNER, TOKENID_1);
+        token.as(OWNER).transferFrom(Z_OWNER, Z_OWNER, TOKENID_1);
       }).not.toThrow();
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_OWNER);
       expect(token.balanceOf(Z_OWNER)).toEqual(1n);
@@ -490,40 +452,34 @@ describe('NonFungibleToken', () => {
     });
 
     it('should not transfer after approval revocation', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
-      token.as(_caller).approve(ZERO_KEY, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(ZERO_KEY, TOKENID_1);
 
-      _caller = SPENDER;
       expect(() => {
-        token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+        token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
 
     it('should not transfer after approval for all revocation', () => {
-      _caller = OWNER;
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, false);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, false);
 
-      _caller = SPENDER;
       expect(() => {
-        token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+        token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
 
     it('should transfer multiple tokens in sequence', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_2);
       token._mint(Z_OWNER, TOKENID_3);
 
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
-      token.as(_caller).approve(Z_SPENDER, TOKENID_2);
-      token.as(_caller).approve(Z_SPENDER, TOKENID_3);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_2);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_3);
 
-      _caller = SPENDER;
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_2);
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_3);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_2);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_3);
 
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
       expect(token.ownerOf(TOKENID_2)).toEqual(Z_SPENDER);
@@ -531,31 +487,27 @@ describe('NonFungibleToken', () => {
     });
 
     it('should transfer with very long token IDs', () => {
-      _caller = OWNER;
       const longTokenId = BigInt('18446744073709551615');
       token._mint(Z_OWNER, longTokenId);
-      token.as(_caller).approve(Z_SPENDER, longTokenId);
+      token.as(OWNER).approve(Z_SPENDER, longTokenId);
 
-      _caller = SPENDER;
-      token.as(_caller).transferFrom(Z_OWNER, Z_SPENDER, longTokenId);
+      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, longTokenId);
       expect(token.ownerOf(longTokenId)).toEqual(Z_SPENDER);
     });
 
     it('should revoke approval after transferFrom', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       token._setApprovalForAll(Z_OWNER, Z_SPENDER, true);
 
-      token.as(_caller).transferFrom(Z_OWNER, Z_OTHER, TOKENID_1);
+      token.as(OWNER).transferFrom(Z_OWNER, Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
       expect(token._isAuthorized(Z_OTHER, Z_SPENDER, TOKENID_1)).toBe(false);
 
-      _caller = SPENDER;
       expect(() => {
-        token.as(_caller).approve(Z_UNAUTHORIZED, TOKENID_1);
+        token.as(SPENDER).approve(Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Invalid Approver');
       expect(() => {
-        token.as(_caller).transferFrom(Z_OTHER, Z_UNAUTHORIZED, TOKENID_1);
+        token.as(SPENDER).transferFrom(Z_OTHER, Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
   });
@@ -600,9 +552,8 @@ describe('NonFungibleToken', () => {
     });
 
     it('should approve if auth is approved for all', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       token._approve(Z_SPENDER, TOKENID_1, Z_SPENDER);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_SPENDER);
     });
@@ -637,15 +588,13 @@ describe('NonFungibleToken', () => {
 
     it('should not throw if approved', () => {
       token._mint(Z_OWNER, TOKENID_1);
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       token._checkAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
     });
 
     it('should not throw if approvedForAll', () => {
       token._mint(Z_OWNER, TOKENID_1);
-      _caller = OWNER;
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       token._checkAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1);
     });
   });
@@ -656,14 +605,12 @@ describe('NonFungibleToken', () => {
     });
 
     it('should return true if spender is authorized', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       expect(token._isAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1)).toBe(true);
     });
 
     it('should return true if spender is authorized for all', () => {
-      _caller = OWNER;
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       expect(token._isAuthorized(Z_OWNER, Z_SPENDER, TOKENID_1)).toBe(true);
     });
 
@@ -692,8 +639,7 @@ describe('NonFungibleToken', () => {
     });
 
     it('should return approved address', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       expect(token._getApproved(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
@@ -710,9 +656,8 @@ describe('NonFungibleToken', () => {
     });
 
     it('should revoke operator approval', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).setApprovalForAll(Z_SPENDER, true);
+      token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
       expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
 
       token._setApprovalForAll(Z_OWNER, Z_SPENDER, false);
@@ -803,8 +748,7 @@ describe('NonFungibleToken', () => {
     });
 
     it('should clear approval when token is burned', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(Z_SPENDER);
 
       token._burn(TOKENID_1);
@@ -835,8 +779,7 @@ describe('NonFungibleToken', () => {
     });
 
     it('should burn after approval', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       token._burn(TOKENID_1);
       expect(token._ownerOf(TOKENID_1)).toEqual(ZERO_KEY);
       expect(token._getApproved(TOKENID_1)).toEqual(ZERO_KEY);
@@ -883,9 +826,8 @@ describe('NonFungibleToken', () => {
     });
 
     it('should revoke approval after _transfer', () => {
-      _caller = OWNER;
       token._mint(Z_OWNER, TOKENID_1);
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       token._transfer(Z_OWNER, Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
@@ -985,8 +927,7 @@ describe('NonFungibleToken', () => {
     });
 
     it('should revoke approval after _unsafeTransfer', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
       token._unsafeTransfer(Z_OWNER, Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
@@ -1024,63 +965,52 @@ describe('NonFungibleToken', () => {
     });
 
     it('unapproved operator should not transfer', () => {
-      _caller = SPENDER;
       expect(() => {
         token
-          .as(_caller)
+          .as(SPENDER)
           ._unsafeTransferFrom(Z_OWNER, Z_UNAUTHORIZED, TOKENID_1);
       }).toThrow('NonFungibleToken: Insufficient Approval');
     });
 
     it('should not transfer token that has not been minted', () => {
-      _caller = OWNER;
       expect(() => {
         token
-          .as(_caller)
+          .as(OWNER)
           ._unsafeTransferFrom(Z_OWNER, Z_SPENDER, NON_EXISTENT_TOKEN);
       }).toThrow('NonFungibleToken: Nonexistent Token');
     });
 
     it('should transfer token to spender via approved operator', () => {
-      _caller = OWNER;
       token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
 
-      _caller = SPENDER;
-      token.as(_caller)._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.as(SPENDER)._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should transfer token to ContractAddress via approved operator', () => {
-      _caller = OWNER;
       token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
 
-      _caller = SPENDER;
-      token.as(_caller)._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1);
+      token.as(SPENDER)._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
     });
 
     it('should transfer token to spender via approvedForAll operator', () => {
-      _caller = OWNER;
       token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
 
-      _caller = SPENDER;
-      token.as(_caller)._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.as(SPENDER)._unsafeTransferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
     });
 
     it('should transfer token to ContractAddress via approvedForAll operator', () => {
-      _caller = OWNER;
       token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
 
-      _caller = SPENDER;
-      token.as(_caller)._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1);
+      token.as(SPENDER)._unsafeTransferFrom(Z_OWNER, SOME_CONTRACT, TOKENID_1);
       expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
     });
 
     it('should revoke approval after _unsafeTransferFrom', () => {
-      _caller = OWNER;
-      token.as(_caller).approve(Z_SPENDER, TOKENID_1);
-      token.as(_caller)._unsafeTransferFrom(Z_OWNER, Z_OTHER, TOKENID_1);
+      token.as(OWNER).approve(Z_SPENDER, TOKENID_1);
+      token.as(OWNER)._unsafeTransferFrom(Z_OWNER, Z_OTHER, TOKENID_1);
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
   });

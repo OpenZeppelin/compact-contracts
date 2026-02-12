@@ -1,6 +1,4 @@
-import {
-  convertFieldToBytes,
-} from '@midnight-ntwrk/compact-runtime';
+import { convertFieldToBytes } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
 import * as utils from './utils/address.js';
@@ -9,8 +7,10 @@ import * as utils from './utils/address.js';
 const [OPERATOR_1, Z_OPERATOR_1] = utils.generateEitherPubKeyPair('OPERATOR_1');
 const [_, Z_OPERATOR_2] = utils.generateEitherPubKeyPair('OPERATOR_2');
 const [ADMIN, Z_ADMIN] = utils.generateEitherPubKeyPair('ADMIN');
-const [CUSTOM_ADMIN, Z_CUSTOM_ADMIN] = utils.generateEitherPubKeyPair('CUSTOM_ADMIN');
-const [UNAUTHORIZED, Z_UNAUTHORIZED] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
+const [CUSTOM_ADMIN, Z_CUSTOM_ADMIN] =
+  utils.generateEitherPubKeyPair('CUSTOM_ADMIN');
+const [UNAUTHORIZED, Z_UNAUTHORIZED] =
+  utils.generateEitherPubKeyPair('UNAUTHORIZED');
 
 // Encoded contract addresses
 const OPERATOR_CONTRACT = utils.toHexPadded('OPERATOR_CONTRACT');
@@ -163,9 +163,7 @@ describe('AccessControl', () => {
 
     it('should throw if admin grants role to ContractAddress', () => {
       expect(() => {
-        accessControl
-          .as(ADMIN)
-          .grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
+        accessControl.as(ADMIN).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_CONTRACT);
       }).toThrow('AccessControl: unsafe role approval');
     });
   });
@@ -181,13 +179,12 @@ describe('AccessControl', () => {
       operatorTypes,
     )('when the operator is a %s', (_operatorType, _operator) => {
       it('admin should revoke role', () => {
-
         accessControl.as(ADMIN).revokeRole(OPERATOR_ROLE_1, _operator);
         expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
       });
 
       it('should throw if operator revokes role', () => {
-        let caller = callerTypes[_operatorType];
+        const caller = callerTypes[_operatorType];
 
         expect(() => {
           accessControl.as(caller).revokeRole(OPERATOR_ROLE_1, Z_UNAUTHORIZED);
@@ -196,7 +193,6 @@ describe('AccessControl', () => {
     });
 
     it('admin should revoke multiple roles', () => {
-
       for (let i = 0; i < operatorRoles.length; i++) {
         for (let j = 0; j < operatorPKs.length; j++) {
           accessControl._unsafeGrantRole(operatorRoles[i], operatorPKs[j]);
@@ -231,7 +227,9 @@ describe('AccessControl', () => {
 
     it('unauthorized renounce should throw', () => {
       expect(() => {
-        accessControl.as(UNAUTHORIZED).renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
+        accessControl
+          .as(UNAUTHORIZED)
+          .renounceRole(OPERATOR_ROLE_1, Z_OPERATOR_1);
       }).toThrow('AccessControl: bad confirmation');
     });
   });
@@ -263,7 +261,6 @@ describe('AccessControl', () => {
     });
 
     it('should authorize new admin to grant / revoke roles', () => {
-
       accessControl._grantRole(CUSTOM_ADMIN_ROLE, Z_CUSTOM_ADMIN);
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
 
@@ -271,12 +268,13 @@ describe('AccessControl', () => {
         accessControl.as(CUSTOM_ADMIN).grantRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).not.toThrow();
       expect(() =>
-        accessControl.as(CUSTOM_ADMIN).revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
+        accessControl
+          .as(CUSTOM_ADMIN)
+          .revokeRole(OPERATOR_ROLE_1, Z_OPERATOR_1),
       ).not.toThrow();
     });
 
     it('should disallow previous admin from granting / revoking roles', () => {
-
       accessControl._grantRole(DEFAULT_ADMIN_ROLE, Z_ADMIN);
       accessControl._grantRole(CUSTOM_ADMIN_ROLE, Z_CUSTOM_ADMIN);
       accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
