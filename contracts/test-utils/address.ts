@@ -36,7 +36,7 @@ export const encodeToPK = (str: string): ZswapCoinPublicKey => ({
  * @description Generates ContractAddress from 32-byte hex `str` for testing purposes.
  * @param str String to hexify and encode.
  * @throws {Error} Thrown when function fails to generate a valid ContractAddress
- * @returns Encoded `ZswapCoinPublicKey`.
+ * @returns EncodedContractAddress.
  */
 export const encodeToAddress = (str: string): EncodedContractAddress => {
   const generatedAddress = toHexPadded(str);
