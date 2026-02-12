@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import * as utils from '#test-utils/address.js';
 import { OwnableSimulator } from './simulators/OwnableSimulator.js';
-import * as utils from './utils/address.js';
 
 // PKs
 const [OWNER, Z_OWNER] = utils.generateEitherPubKeyPair('OWNER');

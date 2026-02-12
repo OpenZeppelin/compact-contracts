@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import * as utils from '#test-utils/address.js';
 import type { Maybe } from '../../../artifacts/MockMultiToken/contract/index.js'; // Combined imports
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator.js';
-import * as utils from './utils/address.js';
 
 // URIs
 const NO_STRING = '';

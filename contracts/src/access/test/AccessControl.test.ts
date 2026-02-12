@@ -1,7 +1,7 @@
 import { convertFieldToBytes } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
+import * as utils from '#test-utils/address.js';
 import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
-import * as utils from './utils/address.js';
 
 // PKs
 const [OPERATOR_1, Z_OPERATOR_1] = utils.generateEitherPubKeyPair('OPERATOR_1');

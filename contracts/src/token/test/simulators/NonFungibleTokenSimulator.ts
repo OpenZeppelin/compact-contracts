@@ -64,7 +64,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
 
   /**
    * @description Returns the symbol of the token.
-   * @returns The token name.
+   * @returns The token symbol.
    */
   public symbol(): string {
     return this.circuits.impure.symbol();

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
 import {
   createEitherTestContractAddress,
   generateEitherPubKeyPair,
   ZERO_ADDRESS,
   ZERO_KEY,
-} from './utils/address.js';
+} from '#test-utils/address.js';
+import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
 
 // Contract Metadata
 const NAME = 'NAME';
