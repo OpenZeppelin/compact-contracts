@@ -12,8 +12,6 @@ type ContractAddress = { bytes: Uint8Array };
 
 type Either<A, B> = { is_left: boolean; left: A; right: B };
 
-type Maybe<T> = { is_some: boolean; value: T };
-
 /**
  * @description Converts an ASCII string to its hexadecimal representation,
  * left-padded with zeros to a specified length. Useful for generating
@@ -81,10 +79,7 @@ const baseGeneratePubKeyPair = (
   asEither: boolean,
 ): [
     string,
-    (
-      | ZswapCoinPublicKey
-      | Either<ZswapCoinPublicKey, ContractAddress>
-    ),
+    ZswapCoinPublicKey | Either<ZswapCoinPublicKey, ContractAddress>,
   ] => {
   const pk = toHexPadded(str);
   const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
