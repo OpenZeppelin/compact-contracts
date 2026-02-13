@@ -388,7 +388,7 @@ describe('FungibleToken', () => {
 
       it('should fail when transfer amount exceeds allowance', () => {
         expect(() => {
-          token.as(OWNER).transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT + 1n);
+          token.as(SPENDER).transferFrom(Z_OWNER, Z_RECIPIENT, AMOUNT + 1n);
         }).toThrow('FungibleToken: insufficient allowance');
       });
 
