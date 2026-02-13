@@ -113,7 +113,6 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param to The recipient of the transferred assets.
    * @param id The unique identifier of the asset type.
    * @param value The quantity of `id` tokens to transfer.
-   * @param sender - Optional. Sets the caller context if provided.
    */
   public transferFrom(
     fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,

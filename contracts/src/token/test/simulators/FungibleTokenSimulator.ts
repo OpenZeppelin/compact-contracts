@@ -178,7 +178,6 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
    * @param spender The Zswap key or ContractAddress that may spend on behalf of the caller.
    * @param value The amount of tokens the `spender` may spend.
-   * @param sender The simulated caller.
    * @returns Returns a boolean value indicating whether the operation succeeded.
    */
   public approve(
