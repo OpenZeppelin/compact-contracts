@@ -290,6 +290,4 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
   ) {
     this.circuits.impure._spendAllowance(owner, spender, value);
   }
-
-  public readonly privateState = {};
 }

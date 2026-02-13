@@ -66,6 +66,4 @@ export class InitializableSimulator extends InitializableSimulatorBase {
   public assertNotInitialized() {
     this.circuits.impure.assertNotInitialized();
   }
-
-  public readonly privateState = {};
 }

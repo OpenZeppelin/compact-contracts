@@ -116,6 +116,4 @@ export class OwnableSimulator extends OwnableSimulatorBase {
   ) {
     this.circuits.impure._unsafeUncheckedTransferOwnership(newOwner);
   }
-
-  public readonly privateState = {};
 }

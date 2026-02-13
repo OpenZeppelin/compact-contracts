@@ -170,6 +170,4 @@ export class AccessControlSimulator extends AccessControlSimulatorBase {
   ): boolean {
     return this.circuits.impure._revokeRole(roleId, account);
   }
-
-  public readonly privateState = {};
 }

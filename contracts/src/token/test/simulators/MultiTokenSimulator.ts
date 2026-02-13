@@ -242,6 +242,4 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
   ) {
     this.circuits.impure._setApprovalForAll(owner, operator, approved);
   }
-
-  public readonly privateState = {};
 }

@@ -79,6 +79,4 @@ export class PausableSimulator extends PausableSimulatorBase {
   public unpause() {
     this.circuits.impure.unpause();
   }
-
-  public readonly privateState = {};
 }

@@ -100,6 +100,4 @@ export class UtilsSimulator extends UtilsSimulatorBase {
   public emptyString(): string {
     return this.circuits.pure.emptyString();
   }
-
-  public readonly privateState = {};
 }

@@ -447,6 +447,4 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
   ) {
     this.circuits.impure._unsafeMint(to, tokenId);
   }
-
-  public readonly privateState = {};
 }
