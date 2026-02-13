@@ -485,7 +485,7 @@ describe('FungibleToken', () => {
         it('should fail when transfer amount exceeds allowance', () => {
           expect(() => {
             token
-              .as(OWNER)
+              .as(SPENDER)
               ._unsafeTransferFrom(Z_OWNER, recipient, AMOUNT + 1n);
           }).toThrow('FungibleToken: insufficient allowance');
         });
