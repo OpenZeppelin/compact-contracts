@@ -296,8 +296,8 @@ describe('MultiToken', () => {
           token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
 
           // Set up two spenders
-          token.as(caller).setApprovalForAll(Z_SPENDER, true);
-          token.as(caller).setApprovalForAll(Z_OTHER, true);
+          token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+          token.as(OWNER).setApprovalForAll(Z_OTHER, true);
 
           // First spender transfers half
           token
