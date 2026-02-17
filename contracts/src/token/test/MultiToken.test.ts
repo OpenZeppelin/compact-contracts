@@ -506,7 +506,7 @@ describe('MultiToken', () => {
 
             // Second spender transfers remaining
             token
-              .as(caller)
+              .as(OTHER)
               ._unsafeTransferFrom(Z_OWNER, recipient, TOKEN_ID, AMOUNT);
             expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT * 2n);
           });
