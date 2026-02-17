@@ -477,9 +477,10 @@ describe('NonFungibleToken', () => {
       token.as(OWNER).approve(Z_SPENDER, TOKENID_2);
       token.as(OWNER).approve(Z_SPENDER, TOKENID_3);
 
-      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
-      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_2);
-      token.as(SPENDER).transferFrom(Z_OWNER, Z_SPENDER, TOKENID_3);
+      token.setPersistentCaller(SPENDER);
+      token.transferFrom(Z_OWNER, Z_SPENDER, TOKENID_1);
+      token.transferFrom(Z_OWNER, Z_SPENDER, TOKENID_2);
+      token.transferFrom(Z_OWNER, Z_SPENDER, TOKENID_3);
 
       expect(token.ownerOf(TOKENID_1)).toEqual(Z_SPENDER);
       expect(token.ownerOf(TOKENID_2)).toEqual(Z_SPENDER);
