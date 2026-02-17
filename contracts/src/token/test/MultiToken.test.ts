@@ -24,7 +24,7 @@ const [SPENDER, Z_SPENDER] = utils.generateEitherPubKeyPair('SPENDER');
 const [UNAUTHORIZED] = utils.generateEitherPubKeyPair('UNAUTHORIZED');
 const [ZERO] = utils.generateEitherPubKeyPair('');
 const [, Z_RECIPIENT] = utils.generateEitherPubKeyPair('RECIPIENT');
-const [, Z_OTHER] = utils.generateEitherPubKeyPair('OTHER');
+const [OTHER, Z_OTHER] = utils.generateEitherPubKeyPair('OTHER');
 
 // Encoded contract addresses
 const Z_OWNER_CONTRACT =
