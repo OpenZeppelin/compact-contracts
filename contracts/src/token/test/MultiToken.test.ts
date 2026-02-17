@@ -500,7 +500,7 @@ describe('MultiToken', () => {
 
             // First spender transfers half
             token
-              .as(caller)
+              .as(SPENDER)
               ._unsafeTransferFrom(Z_OWNER, recipient, TOKEN_ID, AMOUNT);
             expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
 
