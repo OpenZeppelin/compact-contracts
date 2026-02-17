@@ -292,26 +292,6 @@ describe('MultiToken', () => {
           expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
         });
 
-        it('should handle concurrent operations on same token ID', () => {
-          token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
-
-          // Set up two spenders
-          token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
-          token.as(OWNER).setApprovalForAll(Z_OTHER, true);
-
-          // First spender transfers half
-          token
-            .as(SPENDER)
-            .transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
-          expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
-
-          // Second spender transfers remaining
-          token
-            .as(OTHER)
-            .transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
-          expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
-        });
-
         it('should fail with insufficient balance', () => {
           expect(() => {
             token
@@ -359,6 +339,22 @@ describe('MultiToken', () => {
               .transferFrom(Z_OWNER, Z_RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT);
           }).toThrow('MultiToken: unsafe transfer');
         });
+      });
+
+      it('should handle concurrent operations on same token ID', () => {
+        token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
+
+        // Set up two spenders
+        token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+        token.as(OWNER).setApprovalForAll(Z_OTHER, true);
+
+        // First spender transfers half
+        token.as(SPENDER).transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+
+        // Second spender transfers remaining
+        token.as(OTHER).transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
       });
 
       describe('when the caller is unauthorized', () => {
@@ -491,26 +487,6 @@ describe('MultiToken', () => {
             expect(token.isApprovedForAll(Z_OWNER, Z_SPENDER)).toBe(true);
           });
 
-          it('should handle concurrent operations on same token ID', () => {
-            token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
-
-            // Set up two spenders
-            token.as(caller).setApprovalForAll(Z_SPENDER, true);
-            token.as(caller).setApprovalForAll(Z_OTHER, true);
-
-            // First spender transfers half
-            token
-              .as(SPENDER)
-              ._unsafeTransferFrom(Z_OWNER, recipient, TOKEN_ID, AMOUNT);
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
-
-            // Second spender transfers remaining
-            token
-              .as(OTHER)
-              ._unsafeTransferFrom(Z_OWNER, recipient, TOKEN_ID, AMOUNT);
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT * 2n);
-          });
-
           it('should fail with insufficient balance', () => {
             expect(() => {
               token
@@ -566,6 +542,26 @@ describe('MultiToken', () => {
               );
           }).toThrow('MultiToken: invalid receiver');
         });
+      });
+
+      it('should handle concurrent operations on same token ID', () => {
+        token._mint(Z_OWNER, TOKEN_ID, AMOUNT * 2n);
+
+        // Set up two spenders
+        token.as(OWNER).setApprovalForAll(Z_SPENDER, true);
+        token.as(OWNER).setApprovalForAll(Z_OTHER, true);
+
+        // First spender transfers half
+        token
+          .as(SPENDER)
+          ._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT);
+
+        // Second spender transfers remaining
+        token
+          .as(OTHER)
+          ._unsafeTransferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
+        expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
       });
 
       describe('when the caller is unauthorized', () => {
