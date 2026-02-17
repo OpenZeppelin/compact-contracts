@@ -307,7 +307,7 @@ describe('MultiToken', () => {
 
           // Second spender transfers remaining
           token
-            .as(SPENDER)
+            .as(OTHER)
             .transferFrom(Z_OWNER, Z_RECIPIENT, TOKEN_ID, AMOUNT);
           expect(token.balanceOf(Z_RECIPIENT, TOKEN_ID)).toEqual(AMOUNT * 2n);
         });
