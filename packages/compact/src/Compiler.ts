@@ -3,7 +3,7 @@
 import { exec as execCallback } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { basename, dirname, join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import chalk from 'chalk';
 import ora from 'ora';
