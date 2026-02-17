@@ -22,7 +22,7 @@ const execAsync = promisify(exec);
  *
  * @example
  * ```typescript
- * const builder = new ProjectBuilder('--skip-zk'); // Optional flags for compactc
+ * const builder = new CompactBuilder('--skip-zk'); // Optional flags for compactc
  * builder.build().catch(err => console.error(err));
  * ```
  *
@@ -102,7 +102,7 @@ export class CompactBuilder {
     ];
 
   /**
-   * Constructs a new ProjectBuilder instance.
+   * Constructs a new CompactBuilder instance.
    * @param compilerFlags - Optional space-separated string of `compactc` flags (e.g., "--skip-zk")
    */
   constructor(compilerFlags = '') {

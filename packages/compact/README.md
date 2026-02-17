@@ -1,18 +1,6 @@
-# @openzeppelin/compact-tools-cli
+# @openzeppelin-compact/compact
 
 CLI utilities for compiling and building Compact smart contracts.
-
-## Installation
-
-Until published to npm, use via git submodule or local path:
-
-```bash
-# As a local dependency
-yarn add @openzeppelin/compact-tools-cli@file:./compact-tools/packages/cli
-
-# Or invoke directly after building
-node compact-tools/packages/cli/dist/runCompiler.js
-```
 
 ## Requirements
 
@@ -48,9 +36,6 @@ compact-compiler [options]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--dir <directory>` | Compile specific subdirectory within src | (all) |
-| `--src <directory>` | Source directory containing `.compact` files | `src` |
-| `--out <directory>` | Output directory for compiled artifacts | `artifacts` |
-| `--hierarchical` | Preserve source directory structure in output | `false` |
 | `--skip-zk` | Skip zero-knowledge proof generation | `false` |
 | `+<version>` | Use specific toolchain version (e.g., `+0.29.0`) | (default) |
 
@@ -76,24 +61,11 @@ artifacts/           # Flattened output
   Token/
 ```
 
-**Hierarchical (`--hierarchical`):** Preserves source directory structure.
-
-```
-artifacts/           # Hierarchical output
-  access/
-    AccessControl/
-  token/
-    Token/
-```
-
 ### Examples
 
 ```bash
 # Compile all contracts (flattened output)
 compact-compiler
-
-# Compile with hierarchical artifact structure
-compact-compiler --hierarchical
 
 # Compile specific directory only
 compact-compiler --dir security
@@ -104,11 +76,8 @@ compact-compiler --skip-zk
 # Use specific toolchain version
 compact-compiler +0.29.0
 
-# Custom source and output directories
-compact-compiler --src contracts --out build
-
 # Combine options
-compact-compiler --dir access --skip-zk --hierarchical
+compact-compiler --dir access --skip-zk
 
 # Use environment variable
 SKIP_ZK=true compact-compiler
@@ -118,10 +87,10 @@ SKIP_ZK=true compact-compiler
 
 The builder runs the compiler as a prerequisite, then executes additional build steps:
 
-1. Compile `.compact` files (via `compact-compiler`)
+1. Clean `dist/` directory
 2. Compile TypeScript (`tsc --project tsconfig.build.json`)
-3. Copy artifacts to `dist/artifacts/`
-4. Copy and clean `.compact` files to `dist/`
+3. Copy .compact files preserving structure (excludes Mock* files and archive/)
+4. Copy package.json and README for distribution
 
 ### Usage
 
@@ -140,26 +109,21 @@ compact-builder
 # Build specific directory
 compact-builder --dir token
 
-# Build with custom directories
-compact-builder --src contracts --out build
-```
+# Build specific directory and skip proving key generation
+compact-builder --dir token --skip-zk
 
 ## Programmatic API
 
 The compiler can be used programmatically:
 
 ```typescript
-import { CompactCompiler } from '@openzeppelin/compact-tools-cli';
+import { CompactCompiler } from '@openzeppelin-compact/compact';
 
-// Using options object
-const compiler = new CompactCompiler({
-  flags: '--skip-zk',
-  targetDir: 'security',
-  version: '0.29.0',
-  hierarchical: true,
-  srcDir: 'src',
-  outDir: 'artifacts',
-});
+const compiler = new CompactCompiler(
+  '--skip-zk',
+  'security',
+  '0.29.0',
+);
 
 await compiler.compile();
 
@@ -178,30 +142,17 @@ await compiler.compile();
 ```typescript
 // Main compiler class
 class CompactCompiler {
-  constructor(options?: CompilerOptions, execFn?: ExecFunction);
+  constructor(flags = '', targetDir?: string, version?: string, execFn?: ExecFunction)
   static fromArgs(args: string[], env?: NodeJS.ProcessEnv): CompactCompiler;
-  static parseArgs(args: string[], env?: NodeJS.ProcessEnv): CompilerOptions;
   compile(): Promise<void>;
   validateEnvironment(): Promise<void>;
 }
 
 // Builder class
 class CompactBuilder {
-  constructor(options?: CompilerOptions);
-  static fromArgs(args: string[], env?: NodeJS.ProcessEnv): CompactBuilder;
+  constructor(compilerFlags = '')
   build(): Promise<void>;
 }
-
-// Options interface
-interface CompilerOptions {
-  flags?: string;           // Compiler flags (e.g., '--skip-zk --verbose')
-  targetDir?: string;       // Subdirectory within srcDir to compile
-  version?: string;         // Toolchain version (e.g., '0.29.0')
-  hierarchical?: boolean;   // Preserve directory structure in output
-  srcDir?: string;          // Source directory (default: 'src')
-  outDir?: string;          // Output directory (default: 'artifacts')
-}
-```
 
 ### Error Types
 
@@ -210,13 +161,13 @@ import {
   CompactCliNotFoundError,  // Compact CLI not in PATH
   CompilationError,         // Compilation failed (includes file path)
   DirectoryNotFoundError,   // Target directory doesn't exist
-} from '@openzeppelin/compact-tools-cli';
+} from '@openzeppelin-compact/compact';
 ```
 
 ## Development
 
 ```bash
-cd packages/cli
+cd packages/compact
 
 # Build
 yarn build
