@@ -319,7 +319,7 @@ describe('FungibleToken', () => {
         expect(token.allowance(Z_OWNER, Z_SPENDER)).toEqual(0n);
 
         expect(() => {
-          token.as(OWNER).transferFrom(Z_OWNER, Z_RECIPIENT, 1n);
+          token.as(SPENDER).transferFrom(Z_OWNER, Z_RECIPIENT, 1n);
         }).toThrow('FungibleToken: insufficient allowance');
       });
 
