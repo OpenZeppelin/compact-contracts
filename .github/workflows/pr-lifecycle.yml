@@ -1,13 +1,13 @@
 name: PR Lifecycle
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, converted_to_draft, ready_for_review, closed]
 
 permissions: {}
 
 jobs:
   pr-lifecycle:
-    uses: OpenZeppelin/midnight-handbook/.github/workflows/pr-lifecycle-template.yml@main
+    uses: OpenZeppelin/midnight-handbook/.github/workflows/pr-lifecycle-template.yml@5e717d2eb0cc9e957ae44f608e9601d09c9f43a0 # main as of 2026-02-25
     secrets:
       PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
