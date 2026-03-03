@@ -1,15 +1,12 @@
-import {
-  type BaseSimulatorOptions,
-  createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
 import type {
   DivResultU64,
   Witnesses,
 } from '@artifacts/Uint64.mock/contract/index.js';
+import { Contract, ledger } from '@artifacts/Uint64.mock/contract/index.js';
 import {
-  Contract,
-  ledger,
-} from '@artifacts/Uint64.mock/contract/index.js';
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
 import { wit_divUint64 } from '@src/math/witnesses/wit_divUint64.js';
 import { wit_sqrtUint64 } from '@src/math/witnesses/wit_sqrtUint64.js';
 import { wit_uint64ToUnpackedBytes } from '@src/math/witnesses/wit_uint64ToUnpackedBytes.js';

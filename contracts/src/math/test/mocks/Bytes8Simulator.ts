@@ -1,12 +1,9 @@
+import type { Witnesses } from '@artifacts/Bytes8.mock/contract/index.js';
+import { Contract, ledger } from '@artifacts/Bytes8.mock/contract/index.js';
 import {
   type BaseSimulatorOptions,
   createSimulator,
 } from '@openzeppelin-compact/contracts-simulator';
-import type { Witnesses } from '@artifacts/Bytes8.mock/contract/index.js';
-import {
-  Contract,
-  ledger,
-} from '@artifacts/Bytes8.mock/contract/index.js';
 import { wit_unpackBytes } from '@src/math/witnesses/wit_unpackBytes.js';
 
 export type Bytes8PrivateState = Record<string, never>;
