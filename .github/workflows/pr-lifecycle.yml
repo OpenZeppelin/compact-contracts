@@ -8,6 +8,6 @@ permissions: {}
 
 jobs:
   pr-lifecycle:
-    uses: OpenZeppelin/midnight-handbook/.github/workflows/pr-lifecycle-template.yml@5e717d2eb0cc9e957ae44f608e9601d09c9f43a0 # main as of 2026-02-25
+    uses: OpenZeppelin/midnight-handbook/.github/workflows/pr-lifecycle-template.yml@77d4dd0f93bc8a023e61e03e46eac5d6d532b4d5 # main as of 2026-02-25
     secrets:
       PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
