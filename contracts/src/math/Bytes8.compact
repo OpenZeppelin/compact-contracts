@@ -1,0 +1,127 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Midnight Apps Contracts v0.0.1-alpha.0 (math/Bytes8.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title Bytes8 module
+ * @description Canonical implementation for converting 8 bytes (as Vector or Bytes) to Uint<64>
+ * using little-endian (LE) byte ordering.
+ *
+ * @remarks
+ * Byte ordering convention (little-endian):
+ * - Element 0 is the least significant byte, element 7 is the most significant.
+ * - Works with Vector<8, Uint<8>> (e.g. from Uint64.toUnpackedBytes, or slices of Bytes32).
+ *
+ * Supported Operations:
+ * - Conversions:
+ *   - pack(vec): Converts Vector<8, Uint<8>> to Bytes<8>.
+ *   - unpack(bytes): Converts Bytes<8> to Vector<8, Uint<8>>.
+ *   - toUint64(vec): Converts Vector<8, Uint<8>> to Uint<64>.
+ *   - toUint64(bytes): Converts Bytes<8> to Uint<64>.
+ */
+module Bytes8 {
+  import { pack, unpack } from Pack<8> prefix Pack8_;
+
+  ////////////////////////////////////////////////////////////////
+  // Conversions
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @title pack circuit
+   * @description Packs a Vector<8, Uint<8>> into a Bytes<8>.
+   *
+   * @remarks
+   * This circuit converts an 8-element vector of bytes to an 8-byte array
+   * using little-endian byte ordering.
+   *
+   * @circuitInfo k=12, rows=2412
+   *
+   * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
+   *
+   * @returns {Bytes<8>} - The 8-byte array.
+   */
+  export circuit pack(vec: Vector<8, Uint<8>>): Bytes<8> {
+    return Pack8_pack(vec);
+  }
+
+  /**
+   * @title unpack circuit
+   * @description Unpacks a Bytes<8> into a Vector<8, Uint<8>>.
+   *
+   * @remarks
+   * This circuit converts an 8-byte array to an 8-element vector of bytes
+   * using little-endian byte ordering.
+   *
+   * @circuitInfo k=12, rows=2486
+   *
+   * @param {Bytes<8>} bytes - The 8-byte array to convert.
+   *
+   * @returns {Vector<8, Uint<8>>} - The 8-element vector of bytes.
+   */
+  export circuit unpack(bytes: Bytes<8>): Vector<8, Uint<8>> {
+    return Pack8_unpack(bytes);
+  }
+
+  /**
+   * @title _vector8ToUint64 internal circuit
+   * @description Converts a Vector<8, Uint<8>> to a Uint<64> using pure arithmetic.
+   *
+   * @remarks
+   * This circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
+   * using little-endian byte ordering (element 0 is the LSB, element 7 is the MSB).
+   *
+   * @circuitInfo k=8, rows=193
+   *
+   * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
+   *
+   * @returns {Uint<64>} - The 64-bit unsigned integer.
+   */
+  pure circuit _toUint64(vec: Vector<8, Uint<8>>): Uint<64> {
+    return vec[0] +
+           vec[1] * 0x100 +
+           vec[2] * 0x10000 +
+           vec[3] * 0x1000000 +
+           vec[4] * 0x100000000 +
+           vec[5] * 0x10000000000 +
+           vec[6] * 0x1000000000000 +
+           vec[7] * 0x100000000000000;
+  }
+
+  /**
+   * @title toUint64 circuit (from Vector)
+   * @description Converts a Vector<8, Uint<8>> to a Uint<64> using pure arithmetic.
+   *
+   * @remarks
+   * This circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
+   * using little-endian byte ordering (element 0 is the LSB, element 7 is the MSB).
+   *
+   * @circuitInfo k=8, rows=193
+   *
+   * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
+   *
+   * @returns {Uint<64>} - The 64-bit unsigned integer.
+   */
+  export pure circuit toUint64(vec: Vector<8, Uint<8>>): Uint<64> {
+    return _toUint64(vec);
+  }
+
+  /**
+   * @title toUint64 circuit (from Bytes)
+   * @description Converts a Bytes<8> to a Uint<64>.
+   *
+   * @remarks
+   * This circuit converts an 8-byte array to a 64-bit unsigned integer.
+   * The conversion is done by first unpacking to a vector via `unpack`,
+   * then converting to Uint<64>.
+   *
+   * @circuitInfo k=12, rows=2433
+   *
+   * @param {Bytes<8>} bytes - The 8-byte array to convert.
+   *
+   * @returns {Uint<64>} - The 64-bit unsigned integer.
+   */
+  export circuit toUint64(bytes: Bytes<8>): Uint<64> {
+    return _toUint64(unpack(bytes));
+  }
+}

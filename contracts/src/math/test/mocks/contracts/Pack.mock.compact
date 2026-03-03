@@ -1,0 +1,55 @@
+pragma language_version >= 0.20.0;
+
+import CompactStandardLibrary;
+
+import "../../../Pack"<8> prefix Pack8_;
+
+import "../../../Pack"<16> prefix Pack16_;
+
+import "../../../Pack"<32> prefix Pack32_;
+
+// Helper for test suite: hardcoded to true in every circuit to enable circuit metadata reporting;
+// only increases circuit size by 3 rows per exposed circuit.
+ledger toImpure: Boolean;
+
+////////////////////////////////////////////////////////////////
+// N = 8
+////////////////////////////////////////////////////////////////
+
+export circuit pack8(vec: Vector<8, Uint<8>>): Bytes<8> {
+  toImpure = true;
+  return Pack8_pack(vec);
+}
+
+export circuit unpack8(bytes: Bytes<8>): Vector<8, Uint<8>> {
+  toImpure = true;
+  return disclose(Pack8_unpack(bytes));
+}
+
+////////////////////////////////////////////////////////////////
+// N = 16
+////////////////////////////////////////////////////////////////
+
+export circuit pack16(vec: Vector<16, Uint<8>>): Bytes<16> {
+  toImpure = true;
+  return Pack16_pack(vec);
+}
+
+export circuit unpack16(bytes: Bytes<16>): Vector<16, Uint<8>> {
+  toImpure = true;
+  return disclose(Pack16_unpack(bytes));
+}
+
+////////////////////////////////////////////////////////////////
+// N = 32
+////////////////////////////////////////////////////////////////
+
+export circuit pack32(vec: Vector<32, Uint<8>>): Bytes<32> {
+  toImpure = true;
+  return Pack32_pack(vec);
+}
+
+export circuit unpack32(bytes: Bytes<32>): Vector<32, Uint<8>> {
+  toImpure = true;
+  return disclose(Pack32_unpack(bytes));
+}
