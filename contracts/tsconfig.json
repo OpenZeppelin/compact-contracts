@@ -3,8 +3,15 @@
   "include": [
     "src/**/witnesses/**/*.ts"
   ],
-  "exclude": ["src/archive/"],
+  "exclude": [
+    "src/archive/"
+  ],
   "compilerOptions": {
+    "paths": {
+      "#test-utils/*": [
+        "./test-utils/*"
+      ]
+    },
     "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
