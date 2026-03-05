@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/devcontainers/javascript-node
 
 # Midnight binaries and tools download URLs
 # Source: https://docs.midnight.network/relnotes/overview
-ARG COMPACT_TOOLCHAIN_VERSION=0.26.0
+ARG COMPACT_TOOLCHAIN_VERSION=0.29.0
 ARG COMPACT_VSCODE_VERSION=0.2.13
 ARG COMPACT_VSCODE_URL="https://raw.githubusercontent.com/midnight-ntwrk/releases/gh-pages/artifacts/vscode-extension/compact-${COMPACT_VSCODE_VERSION}/compact-${COMPACT_VSCODE_VERSION}.vsix"
 
