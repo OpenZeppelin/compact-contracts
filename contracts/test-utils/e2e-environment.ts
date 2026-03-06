@@ -1,10 +1,11 @@
-import { initializeMidnightProviders } from '@midnight-ntwrk/testkit-js'
-import type { ContractConfiguration, logger } from '@midnight-ntwrk/testkit-js'
-import { getSharedState } from './e2e-shared-state'
+import { initializeMidnightProviders, LocalTestEnvironment } from '@midnight-ntwrk/testkit-js'
+import type { ContractConfiguration } from '@midnight-ntwrk/testkit-js'
+import type { Logger } from 'pino'
 
-export async function createTestContext(_logger: typeof logger, contractConfig: ContractConfiguration) {
-  const { testEnvironment, environmentConfiguration } = getSharedState()
+export async function createTestContext(logger: Logger, contractConfig: ContractConfiguration) {
+  const testEnvironment = new LocalTestEnvironment(logger)
+  const environmentConfiguration = await testEnvironment.start()
   const wallet = await testEnvironment.getMidnightWalletProvider()
   const providers = initializeMidnightProviders(wallet, environmentConfiguration, contractConfig)
-  return { wallet, providers }
+  return { testEnvironment, wallet, providers }
 }

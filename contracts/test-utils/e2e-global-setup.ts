@@ -1,18 +1,19 @@
-import { LocalTestEnvironment, createDefaultTestLogger } from '@midnight-ntwrk/testkit-js'
-import { setSharedState } from './e2e-shared-state'
-
-let testEnvironment: LocalTestEnvironment
+import { LocalTestEnvironment, createDefaultTestLogger, defaultContainersConfiguration, setContainersConfiguration } from '@midnight-ntwrk/testkit-js'
+import path from 'path'
 
 export async function setup() {
   const logger = createDefaultTestLogger()
-  testEnvironment = new LocalTestEnvironment(logger)
+  globalThis.logger = logger
 
-  // start() internally handles DockerComposeEnvironment, uid, ports, and wait strategies
-  const environmentConfiguration = await testEnvironment.start()
-
-  setSharedState({ testEnvironment, environmentConfiguration })
-}
-
-export async function teardown() {
-  await testEnvironment?.shutdown()
+  setContainersConfiguration({
+    ...defaultContainersConfiguration,
+    standalone: {
+      ...defaultContainersConfiguration.standalone,
+      path: path.resolve('.'),  // contracts/ root where compose.yml lives
+    },
+    proofServer: {
+      ...defaultContainersConfiguration.proofServer,
+      path: path.resolve('.')
+    }
+  })
 }
