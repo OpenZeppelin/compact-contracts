@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Midnight Apps Contracts v0.0.1-alpha.0 (math/Pack.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title Pack module
+ * @description Generic module for packing and unpacking between Vector<N, Uint<8>> and Bytes<N>
+ * for any byte length N. Uses little-endian byte ordering (element 0 is the LSB).
+ *
+ * @remarks
+ * This module has no dependencies and exists so that BytesN and UintN modules can import
+ * pack/unpack without creating cyclic dependencies (e.g. Bytes32 needs Uint256_lt for
+ * comparisons while Uint256 needs pack for toBytes).
+ *
+ * Instantiate with a size parameter, e.g. Pack<8>, Pack<16>, Pack<32>.
+ *
+ * Supported Operations:
+ * - pack(vec): Converts Vector<N, Uint<8>> to Bytes<N>.
+ * - unpack(bytes): Converts Bytes<N> to Vector<N, Uint<8>> (uses witness, then verifies in-circuit).
+ */
+module Pack<#N> {
+  /**
+   * @title wit_unpackBytes witness
+   * @description Unpacks Bytes<N> into Vector<N, Uint<8>> off-chain. Implementation is supplied
+   * in TypeScript; the unpack circuit verifies the result by re-packing and asserting equality.
+   *
+   * @param bytes - The byte array to unpack.
+   * @returns A vector of N bytes where element 0 is the LSB.
+   */
+  witness wit_unpackBytes(bytes: Bytes<N>): Vector<N, Uint<8>>;
+
+  /**
+   * @title pack circuit
+   * @description Packs a Vector<N, Uint<8>> into Bytes<N>.
+   *
+   * @remarks
+   * This pure circuit converts an N-element vector of bytes to an N-byte array
+   * using little-endian byte ordering.
+   *
+   * @circuitInfo depends on N:
+   * - Pack<8>: k=12, rows=2412
+   * - Pack<16>: k=13, rows=5118
+   * - Pack<32>: k=14, rows=10231
+   *
+   * @param vec - The vector of N bytes to convert.
+   * @returns The byte array of length N.
+   */
+  export pure circuit pack(vec: Vector<N, Uint<8>>): Bytes<N> {
+    return Bytes[...vec];
+  }
+
+  /**
+   * @title unpack circuit
+   * @description Unpacks Bytes<N> into a Vector<N, Uint<8>>.
+   *
+   * @remarks
+   * Calls the wit_unpackBytes witness off-chain, then verifies in-circuit that
+   * pack(vec) equals the input bytes.
+   *
+   * @circuitInfo depends on N:
+   * - Pack<8>: k=12, rows=2486
+   * - Pack<16>: k=13, rows=5262
+   * - Pack<32>: k=14, rows=10521
+   *
+   * @param bytes - The byte array to unpack.
+   * @returns The vector of N bytes (element 0 is the LSB).
+   */
+  export circuit unpack(bytes: Bytes<N>): Vector<N, Uint<8>> {
+    const vec = wit_unpackBytes(bytes);
+    assert(pack(vec) == bytes, "Pack: unpack verification failed");
+    return vec;
+  }
+}

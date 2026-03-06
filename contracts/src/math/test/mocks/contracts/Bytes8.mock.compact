@@ -1,0 +1,33 @@
+pragma language_version >= 0.20.0;
+
+import CompactStandardLibrary;
+
+import "../../../Bytes8" prefix Bytes8_;
+
+// Helper for test suite: hardcoded to true in every circuit to enable circuit metadata reporting;
+// only increases circuit size by 3 rows per exposed circuit.
+ledger toImpure: Boolean;
+
+////////////////////////////////////////////////////////////////
+// Conversions
+////////////////////////////////////////////////////////////////
+
+export circuit pack(vec: Vector<8, Uint<8>>): Bytes<8> {
+  toImpure = true;
+  return Bytes8_pack(vec);
+}
+
+export circuit unpack(bytes: Bytes<8>): Vector<8, Uint<8>> {
+  toImpure = true;
+  return disclose(Bytes8_unpack(bytes));
+}
+
+export circuit vectorToUint64(vec: Vector<8, Uint<8>>): Uint<64> {
+  toImpure = true;
+  return Bytes8_toUint64(vec);
+}
+
+export circuit bytesToUint64(bytes: Bytes<8>): Uint<64> {
+  toImpure = true;
+  return disclose(Bytes8_toUint64(bytes));
+}

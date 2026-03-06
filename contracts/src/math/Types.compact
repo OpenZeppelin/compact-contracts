@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Midnight Apps Contracts v0.0.1-alpha.0 (math/types/Types.compact)
+
+pragma language_version >= 0.20.0;
+
+/**
+ * @title Types
+ * @dev Shared type definitions for U128 and U256 structs, used by Uint128 and Uint256 modules.
+ *
+ * These types exist in a separate module to avoid cyclic dependencies between Uint128 and
+ * Uint256. U256 is used as a return type for Uint128 operations that may overflow 128 bits
+ * (e.g. addition, multiplication), while U256 itself is composed of two U128 values.
+ *
+ * Import chain:
+ * - Types has no external dependencies (base types)
+ * - Uint128 imports U128 and U256 from Types
+ * - Uint256 imports U128 and U256 from Types
+ */
+module Types {
+  /**
+   * @description A struct representing a 128-bit unsigned integer as two 64-bit parts.
+   * The value is computed as: high * 2^64 + low
+   */
+  export struct U128 {
+    /**
+     * @description The least significant 64 bits (bits 0-63) of the 128-bit number
+     */
+    low: Uint<64>,
+    /**
+     * @description The most significant 64 bits (bits 64-127) of the 128-bit number
+     */
+    high: Uint<64>
+  }
+
+  /**
+   * @description A struct representing a 256-bit unsigned integer as two 128-bit parts.
+   * The value is computed as: high * 2^128 + low
+   */
+  export struct U256 {
+    /**
+     * @description The least significant 128 bits (bits 0-127) of the 256-bit number
+     */
+    low: U128,
+    /**
+     * @description The most significant 128 bits (bits 128-255) of the 256-bit number
+     */
+    high: U128
+  }
+}

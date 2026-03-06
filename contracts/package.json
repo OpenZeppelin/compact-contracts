@@ -30,6 +30,7 @@
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
+    "compact:math": "compact-compiler --dir math",
     "build": "compact-builder",
     "test": "compact-compiler --skip-zk && vitest run",
     "types": "tsc -p tsconfig.json --noEmit",
