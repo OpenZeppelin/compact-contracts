@@ -28,14 +28,14 @@
   },
   "scripts": {
     "compact": "compact-compiler",
-    "compact:access": "compact-compiler --dir access --skip-zk",
+    "compact:access": "compact-compiler --dir access",
     "compact:archive": "compact-compiler --dir archive",
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
     "build": "compact-builder",
     "test": "compact-compiler --skip-zk && vitest --project unit",
-    "test:e2e": "vitest --project e2e",
+    "test:e2e": "compact-compiler && NODE_OPTIONS=--experimental-vm-modules vitest --project e2e",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
@@ -46,12 +46,10 @@
     "@openzeppelin-compact/compact": "workspace:^"
   },
   "devDependencies": {
-    "@midnight-ntwrk/compact-js": "^2.4.3",
-    "@midnight-ntwrk/midnight-js-contracts": "^3.1.0",
-    "@midnight-ntwrk/testkit-js": "^3.1.0",
-    "@midnight-ntwrk/wallet-sdk-dust-wallet": "^1.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "^1.0.0",
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "^1.0.0",
+    "@midnight-ntwrk/compact-js": "2.4.0",
+    "@midnight-ntwrk/midnight-js-contracts": "3.1.0",
+    "@midnight-ntwrk/testkit-js": "3.1.0",
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0",
     "@openzeppelin-compact/contracts-simulator": "workspace:^",
     "@tsconfig/node24": "^24.0.3",
     "@types/node": "24.10.0",

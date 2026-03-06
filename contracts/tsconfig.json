@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "src/**/witnesses/**/*.ts"
+    "src/**/test/*.e2e.test.ts"
   ],
   "exclude": [
     "src/archive/"
@@ -12,7 +12,11 @@
         "./test-utils/*"
       ]
     },
-    "rootDir": "src",
+    "rootDir": ".",
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
     "outDir": "dist",
     "declaration": true,
     "allowJs": true,
