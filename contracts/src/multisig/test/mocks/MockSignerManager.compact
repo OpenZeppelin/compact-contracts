@@ -1,0 +1,41 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
+
+constructor(signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>, thresh: Uint<8>) {
+  Signer_initialize<3>(signers, thresh);
+}
+
+export circuit assertSigner(caller: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  return Signer_assertSigner(caller);
+}
+
+export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
+  return Signer_assertThresholdMet(approvalCount);
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return Signer_isSigner(account);
+}
+
+export circuit _addSigner(signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  return Signer__addSigner(signer);
+}
+
+export circuit _removeSigner(signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  return Signer__removeSigner(signer);
+}
+
+export circuit _changeThreshold(newThreshold: Uint<8>): [] {
+  return Signer__changeThreshold(newThreshold);
+}

@@ -1,0 +1,37 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedTreasury" prefix Treasury_;
+
+export circuit UINT128_MAX(): Uint<128> {
+  return Treasury_UINT128_MAX();
+}
+
+export circuit _deposit(coin: ShieldedCoinInfo): [] {
+  return Treasury__deposit(coin);
+}
+
+export circuit _send(
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    amount: Uint<128>,
+    color: Bytes<32>
+  ): ShieldedSendResult {
+  return Treasury__send(recipient, color, amount);
+}
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return Treasury_getTokenBalance(color);
+}
+
+export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedTotal(color);
+}
+
+export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getSentTotal(color);
+}
+
+export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedMinusSent(color);
+}

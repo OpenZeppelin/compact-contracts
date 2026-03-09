@@ -1,0 +1,113 @@
+pragma language_version >= 0.21.0;
+
+/**
+ * @module UnshieldedTreasury
+ * @description Manages unshielded (transparent) token deposits and
+ * transfers for multisig governance contracts.
+ *
+ * Balances are tracked per token color in a single map. Protocol-level
+ * balance comparison circuits (`unshieldedBalanceLte`,
+ * `unshieldedBalanceGte`) are used for overflow and sufficiency checks,
+ * avoiding the exact-match problem of `unshieldedBalance`.
+ *
+ * Underscore-prefixed circuits (_deposit, _send) have no access control
+ * enforcement. The consuming contract must gate these behind its own
+ * authorization policy.
+ */
+module UnshieldedTreasury {
+  import CompactStandardLibrary;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  ledger _balances: Map<Bytes<32>, Uint<128>>;
+
+  // ─── Constant ───────────────────────────────────────────────────
+
+  export circuit UINT128_MAX(): Uint<128> {
+    return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives unshielded tokens into the treasury.
+   *
+   * The token receive is executed at the protocol level first via
+   * `receiveUnshielded`. The balance map is then updated.
+   *
+   * Zero-value deposits are permitted. While currently a no-op
+   * economically, they may serve as signaling mechanisms when events
+   * are supported.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - Deposit must not cause balance overflow.
+   *
+   * @param {Bytes<32>} color - The token type identifier.
+   * @param {Uint<128>} amount - The amount to deposit.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
+    assert(
+      unshieldedBalanceLte(disclose(color), UINT128_MAX() - disclose(amount)),
+      "UnshieldedTreasury: overflow"
+    );
+
+    receiveUnshielded(disclose(color), disclose(amount));
+
+    const bal = getTokenBalance(color);
+    _balances.insert(disclose(color), disclose(bal + amount as Uint<128>));
+  }
+
+  // ─── Send ───────────────────────────────────────────────────────
+
+  /**
+   * @description Sends unshielded tokens from the treasury.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - The treasury must hold sufficient balance for the given token color.
+   *
+   * @param {Either<ContractAddress, UserAddress>} recipient - The recipient address.
+   * @param {Bytes<32>} color - The token type identifier.
+   * @param {Uint<128>} amount - The amount to send.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _send(
+    recipient: Either<ContractAddress, UserAddress>,
+    color: Bytes<32>,
+    amount: Uint<128>
+  ): [] {
+    assert(
+      unshieldedBalanceGte(disclose(color), disclose(amount)),
+      "UnshieldedTreasury: insufficient balance"
+    );
+
+    const bal = getTokenBalance(color);
+    _balances.insert(disclose(color), disclose(bal - amount as Uint<128>));
+    sendUnshielded(disclose(color), disclose(amount), disclose(recipient));
+  }
+
+  // ─── View ───────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the balance for a given token color.
+   *
+   * @param {Bytes<32>} color - The token type identifier.
+   * @returns {Uint<128>} The current balance.
+   */
+  export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+    if (!_balances.member(disclose(color))) {
+      return 0;
+    }
+    return _balances.lookup(disclose(color));
+  }
+}
