@@ -135,7 +135,7 @@ circuit _finalize(): [] {
 circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
 
-  const newCount = _approvalCount.lookup(disclose(id)) + 1 as Uint<8>;
+  const newCount = getApprovalCount() + 1 as Uint<8>;
   _approvalCount.insert(disclose(id), disclose(newCount));
 }
 
