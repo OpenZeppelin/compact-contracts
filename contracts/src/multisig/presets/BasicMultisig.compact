@@ -48,7 +48,7 @@ export circuit approveProposal(id: Uint<64>): [] {
   _approveProposal(id, callerPK);
 }
 
-export circuit cancelProposal(id: Uint<64>): [] {
+export circuit revokeApproval(id: Uint<64>): [] {
   // Check if active
   Proposal_assertProposalActive(id);
 
@@ -56,8 +56,15 @@ export circuit cancelProposal(id: Uint<64>): [] {
   const callerPK = getCaller();
   Signer_assertSigner(callerPK);
 
-  // Cancel
-  Proposal__cancelProposal(id);
+  // Check has approved
+  assert(isProposalApprovedBySigner(id, callerPK), "Multisig: not approved");
+
+  // Revoke
+  _revokeApproval(id, callerPK);
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Treasury__deposit(coin);
 }
 
 export circuit executeShieldedProposal(
@@ -93,6 +100,13 @@ circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, Contra
   _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
 
   const newCount = getApprovalCount(id) + 1 as Uint<8>;
+  _approvalCount.insert(disclose(id), disclose(newCount));
+}
+
+circuit _revokeApproval(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  _proposalApprovals.lookup(disclose(id)).remove(disclose(signer));
+
+  const newCount = getApprovalCount(id) - 1 as Uint<8>;
   _approvalCount.insert(disclose(id), disclose(newCount));
 }
 
