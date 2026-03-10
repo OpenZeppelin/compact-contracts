@@ -1,0 +1,173 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/Xor.compact)
+
+pragma language_version >= 0.18.0;
+
+/**
+ * @title XOR Implementation
+ * @dev Implements XOR operations from scratch using basic arithmetic
+ */
+module XOR {
+  import CompactStandardLibrary;
+
+  /**
+   * @title XOR Single Bit
+   * @description XOR operation for single bits (0 or 1)
+   * 
+   * Formula: a XOR b = (a + b) mod 2
+   * 
+   * @param a - First bit (0 or 1)
+   * @param b - Second bit (0 or 1)
+   * 
+   * @returns Result of a XOR b
+   */
+  export pure circuit xorBit(a: Uint<1>, b: Uint<1>): Uint<1> {
+    // a XOR b = (a + b) % 2
+    const sum = (a as Uint<2>) + (b as Uint<2>);
+    return (sum % 2) as Uint<1>;
+  }
+
+  /**
+   * @title XOR Single Bit (Alternative)
+   * @description Using boolean logic: a XOR b = (a AND NOT b) OR (NOT a AND b)
+   * 
+   * @param a - First bit (0 or 1)
+   * @param b - Second bit (0 or 1)
+   * 
+   * @returns Result of a XOR b
+   */
+  export pure circuit xorBitAlt(a: Boolean, b: Boolean): Boolean {
+    // a XOR b = (a AND NOT b) OR (NOT a AND b)
+    return (a && !b) || (!a && b);
+  }
+
+  /**
+   * @title XOR Byte (8 bits)
+   * @description XORs two bytes by processing each bit
+   * 
+   * @param a - First byte
+   * @param b - Second byte
+   * 
+   * @returns Result of a XOR b
+   */
+  // export circuit xorByte(a: Uint<8>, b: Uint<8>): Uint<8> {
+  //   let mut result: Uint<8> = 0;
+    
+  //   // Process each bit position
+  //   for i in 0..8 {
+  //     // Extract bit at position i
+  //     const bitA = (a >> i) & 1;
+  //     const bitB = (b >> i) & 1;
+      
+  //     // XOR the bits
+  //     const xorBit = (bitA + bitB) % 2;
+      
+  //     // Set bit in result
+  //     result = result | (xorBit << i);
+  //   }
+    
+  //   return result;
+  // }
+
+  /**
+   * @title XOR Byte (Optimized)
+   * @description XORs two bytes using arithmetic properties
+   * 
+   * XOR properties:
+   * - a XOR b = a + b - 2*(a AND b)
+   * 
+   * @circuitInfo k=10, rows=150
+   * 
+   * @param a - First byte
+   * @param b - Second byte
+   * 
+   * @returns Result of a XOR b
+   */
+  export pure circuit xorByteOptimized(a: Uint<8>, b: Uint<8>): Uint<8> {
+    // For each bit: XOR = (a + b) - 2*(a AND b)
+    // We need to do this bit by bit to avoid overflow
+    
+    let mut result: Uint<8> = 0;
+    let mut aBits: Uint<8> = a;
+    let mut bBits: Uint<8> = b;
+    
+    for i in 0..8 {
+      const bitA = aBits & 1;
+      const bitB = bBits & 1;
+      
+      // XOR for this bit
+      const xorBit = (bitA + bitB) % 2;
+      
+      // Add to result
+      result = result | (xorBit << i);
+      
+      // Shift for next bit
+      aBits = aBits >> 1;
+      bBits = bBits >> 1;
+    }
+    
+    return result;
+  }
+
+  /**
+   * @title XOR Byte with Constant
+   * @description XORs a byte with a constant byte (e.g., 0x36 or 0x5C for HMAC)
+   * 
+   * @circuitInfo k=10, rows=150
+   * 
+   * @param value - Input byte
+   * @param constant - Constant to XOR with (e.g., 0x36 or 0x5C)
+   * 
+   * @returns Result of value XOR constant
+   */
+  export circuit xorByteWithConstant(value: Uint<8>, constant: Uint<8>): Uint<8> {
+    return xorByte(value, constant);
+  }
+
+  /**
+   * @title XOR Array of Bytes
+   * @description XORs each byte in an array with a constant
+   * 
+   * @param bytes - Input byte array
+   * @param constant - Constant to XOR with each byte
+   * 
+   * @returns Array with each byte XORed with constant
+   */
+  export circuit xorByteArray<#N>(
+    bytes: Vector<N, Uint<8>>,
+    constant: Uint<8>
+  ): Vector<N, Uint<8>> {
+    let mut result: Vector<N, Uint<8>> = Vector::new();
+    
+    for i in 0..N {
+      const originalByte = bytes[i];
+      const xoredByte = xorByte(originalByte, constant);
+      result = result.push(xoredByte);
+    }
+    
+    return result;
+  }
+
+  /**
+   * @title XOR 64-Byte Array (for HMAC)
+   * @description XORs a 64-byte array with a constant (for HMAC ipad/opad)
+   * 
+   * @param bytes - 64-byte input array
+   * @param pad - Padding constant (0x36 for ipad, 0x5C for opad)
+   * 
+   * @returns 64-byte array with each byte XORed
+   */
+  export circuit xor64Bytes(
+    bytes: Vector<64, Uint<8>>,
+    pad: Uint<8>
+  ): Vector<64, Uint<8>> {
+    let mut result: Vector<64, Uint<8>> = Vector::new();
+    
+    for i in 0..64 {
+      const xoredByte = xorByte(bytes[i], pad);
+      result = result.push(xoredByte);
+    }
+    
+    return result;
+  }
+}

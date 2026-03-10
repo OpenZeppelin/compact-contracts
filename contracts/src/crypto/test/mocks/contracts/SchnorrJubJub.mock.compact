@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/test/mocks/contracts/SchnorrJubJub.mock.compact)
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../../../SchnorrJubJub" prefix Schnorr_;
+
+export { SchnorrSignature, SchnorrKeyPair };
+
+// Helper for test suite: toggling this variable activates circuit metadata reporting.
+// Only increases circuit size by 3 rows per exposed circuit.
+ledger toImpure: Boolean;
+
+export circuit derivePublicKey(sk: Bytes<32>): JubjubPoint {
+  toImpure = true;
+  return Schnorr_derivePublicKey(sk);
+}
+
+export circuit generateKeyPair(sk: Bytes<32>): SchnorrKeyPair {
+  toImpure = true;
+  return Schnorr_generateKeyPair(sk);
+}
+
+export circuit sign(sk: Bytes<32>, message: Bytes<32>, nonce: Bytes<32>): SchnorrSignature {
+  toImpure = true;
+  return Schnorr_sign(sk, message, nonce);
+}
+
+export circuit verifySignature(
+  publicKey: JubjubPoint,
+  message: Bytes<32>,
+  signature: SchnorrSignature
+): Boolean {
+  toImpure = true;
+  return disclose(Schnorr_verifySignature(publicKey, message, signature));
+}
+
+export circuit isValidPublicKey(publicKey: JubjubPoint): Boolean {
+  toImpure = true;
+  return disclose(Schnorr_isValidPublicKey(publicKey));
+}

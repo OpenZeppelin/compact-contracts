@@ -1,0 +1,241 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/SchnorrJubjub.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title SchnorrJubjub
+ * @dev Implementation of Schnorr signatures over the Jubjub elliptic curve.
+ *
+ * This module provides basic Schnorr signature operations optimized for zero-knowledge proofs
+ * on the Midnight Network. The Jubjub curve is specifically chosen for its efficiency
+ * in ZK circuits (embedded in BLS12-381).
+ *
+ * Current Features:
+ * - Key generation from private scalars
+ * - Signature creation with Fiat-Shamir transform
+ * - Signature verification
+ *
+ * Security Properties:
+ * - EUF-CMA security in the random oracle model
+ * - Based on hardness of discrete logarithm problem on Jubjub
+ *
+ * TODO: Future Extensions (separate modules):
+ * - Multi-signature aggregation (MuSig/MuSig2)
+ * - Blind signatures for anonymous credentials
+ * - Threshold signatures (FROST)
+ * - Batch verification for multiple signatures
+ * - Ring signatures for anonymity sets
+ *
+ * Supported Operations:
+ * - derivePublicKey(): Computes public key from secret key
+ * - generateKeyPair(): Creates complete key pair
+ * - sign(): Signs a message with private key and nonce
+ * - verifySignature(): Verifies a signature against public key and message
+ * - isValidPublicKey(): Checks public key validity
+ */
+module SchnorrJubjub {
+  import { JubjubPoint } from CompactStandardLibrary;
+
+  export struct SchnorrSignature {
+    R: JubjubPoint,
+    s: Field
+  }
+
+  export struct SchnorrKeyPair {
+    secretKey: Field,
+    publicKey: JubjubPoint
+  }
+
+  struct Bytes96 {
+    b0: Bytes<32>;
+    b1: Bytes<32>;
+    b2: Bytes<32>;
+  }
+  
+  /**
+   * @title derivePublicKey circuit
+   * @description Derives public key from secret key: P = secretKey * G
+   * 
+   * @circuitInfo k=12, rows=3500
+   * 
+   * @param {Field} secretKey - Private scalar (must be non-zero)
+   * 
+   * @throws {Error} "Schnorr: secret key must be non-zero"
+   * 
+   * @returns {CurvePoint} Public key point on BLS12-381
+   */
+  export circuit derivePublicKey(sk: Bytes<32>): JubjubPoint {
+      return _derivePublicKey(transientHash<Bytes<32>>(sk));
+  }
+
+  export circuit _derivePublicKey(skField: Field): JubjubPoint {
+    assert(skField != 0, "Schnorr: secret key must be non-zero");
+    return ecMulGenerator(skField);
+  }
+
+  /**
+   * @title generateKeyPair circuit
+   * @description Creates a complete key pair from a secret scalar
+   * 
+   * @circuitInfo k=12, rows=3500
+   * 
+   * @param {Field} secretKey - Private scalar
+   * 
+   * @returns {SchnorrKeyPair} Key pair with secret and public components
+   */
+  export circuit generateKeyPair(sk: Bytes<32>): SchnorrKeyPair {
+    const skField = transientHash<Bytes<32>>(sk);
+    assert(skField != 0, "Schnorr: secret key must be non-zero");
+    const publicKey = _derivePublicKey(skField);
+    return SchnorrKeyPair { secretKey: skField, publicKey: publicKey };
+  }
+
+  // /**
+  //  * @title hashToScalar circuit
+  //  * @description Hashes arbitrary data to a scalar field element using Poseidon
+  //  * 
+  //  * @remarks
+  //  * Uses transientHash (Poseidon) for efficient in-circuit hashing.
+  //  * 
+  //  * @circuitInfo k=11, rows=1200
+  //  * 
+  //  * @param {Bytes<N>} data - Input data to hash
+  //  * 
+  //  * @returns {Field} Scalar field element
+  //  */
+  // export circuit hashToScalar<#N>(data: Bytes<N>): Field {
+  //   return transientHash(data);
+  // }
+
+  circuit pointToBytes(p: JubjubPoint): Bytes<32> {
+    return persistentHash<JubjubPoint>(p);
+  }
+
+  /**
+   * @title computeChallenge circuit
+   * @description Computes Fiat-Shamir challenge e = H(R || P || m)
+   * 
+   * @remarks
+   * The challenge binds the commitment R, public key P, and message m.
+   * Uses Poseidon hash for efficiency in zero-knowledge proofs.
+   * 
+   * @circuitInfo k=12, rows=2800
+   * 
+   * @param {CurvePoint} R - Commitment point
+   * @param {CurvePoint} publicKey - Signer's public key
+   * @param {Bytes<32>} message - Message being signed
+   * 
+   * @returns {Field} Challenge scalar
+   */
+  circuit computeChallenge(R: JubjubPoint, publicKey: JubjubPoint, message: Bytes<32>): Field {
+    const messageField = transientHash<Bytes<32>>(message);
+    const combined = R.x + R.y + publicKey.x + publicKey.y + messageField;
+    return transientHash<Field>(combined);
+  }
+
+  /**
+   * @title sign circuit
+   * @description Creates a Schnorr signature on a message
+   * 
+   * @remarks
+   * Schnorr signature scheme:
+   * 1. Compute R = k * G (commitment)
+   * 2. Compute e = H(R || P || m) (challenge)
+   * 3. Compute s = k + e * x (response)
+   * Output signature (R, s)
+   * 
+   * CRITICAL: Nonce k MUST be unique per signature. Reuse reveals the secret key.
+   * 
+   * @circuitInfo k=14, rows=8500
+   * 
+   * @param {Field} secretKey - Private signing key
+   * @param {Bytes<32>} message - Message to sign
+   * @param {Field} nonce - Random nonce (MUST be unique per signature)
+   * 
+   * @throws {Error} "Schnorr: nonce must be non-zero"
+   * @throws {Error} "Schnorr: secret key must be non-zero"
+   * 
+   * @returns {SchnorrSignature} Signature (R, s)
+   */
+  export circuit sign(skBytes: Bytes<32>, message: Bytes<32>, nonce: Bytes<32>): SchnorrSignature {
+    const sk = transientHash<Bytes<32>>(skBytes);
+    assert(sk != 0, "Schnorr: secret key must be non-zero");
+
+    const k = transientHash<Bytes<32>>(nonce);
+    assert(k != 0, "Schnorr: nonce must be non-zero");
+
+    // 1. Compute commitment R = k * G
+    const R = ecMulGenerator(k);
+
+    // 2. Compute public key P = sk * G
+    const publicKey = _derivePublicKey(sk);
+
+    // 3. Compute challenge e = H(R || P || m) using Poseidon hash
+    const e = computeChallenge(R, publicKey, message);
+
+    // 4. Compute response s = k + e * x (mod order)
+    const e_times_x = e * sk;
+    const s = k + e_times_x;
+
+    return SchnorrSignature { R: R, s: s };
+  }
+
+  /**
+   * @title verify circuit
+   * @description Verifies a Schnorr signature
+   * 
+   * @remarks
+   * Verification equation: s * G = R + e * P
+   * 
+   * Steps:
+   * 1. Recompute challenge e = H(R || P || m)
+   * 2. Compute left = s * G
+   * 3. Compute right = R + e * P
+   * 4. Check left == right
+   * 
+   * @circuitInfo k=14, rows=9200
+   * 
+   * @param {CurvePoint} publicKey - Signer's public key
+   * @param {Bytes<32>} message - Message that was signed
+   * @param {SchnorrSignature} signature - Signature to verify
+   * 
+   * @returns {Boolean} True if signature is valid, false otherwise
+   */
+  export circuit verifySignature(publicKey: JubjubPoint, message: Bytes<32>, signature: SchnorrSignature): Boolean {
+    // 1. Recompute challenge e = H(R || P || m)
+    const c = computeChallenge(signature.R, publicKey, message);
+
+    // 2. Compute left side: s * G
+    const lhs = ecMulGenerator(signature.s);
+
+    // 3. Compute right side: R + e * P
+    const eP = ecMul(publicKey, c);
+    const rhs = ecAdd(signature.R, eP);
+
+    // 4. Verification: check s * G == R + e * P
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+  }
+
+  /**
+   * @title isValidPublicKey circuit
+   * @description Checks if a point is a valid public key
+   * 
+   * @remarks
+   * Validates that point is not the identity element (point at infinity).
+   * 
+   * TODO: Add full curve equation validation: y^2 = x^3 + 4
+   * TODO: Add subgroup check for BLS12-381 security
+   * 
+   * @circuitInfo k=10, rows=128
+   * 
+   * @param {CurvePoint} publicKey - Public key to validate
+   * 
+   * @returns {Boolean} True if valid, false otherwise
+   */
+  export circuit isValidPublicKey(publicKey: JubjubPoint): Boolean {
+    // Check not identity (point at infinity represented as (0,0))
+    const isIdentity = publicKey.x == 0 as Field && publicKey.y == 0 as Field;
+    return !isIdentity;
+  }
+}

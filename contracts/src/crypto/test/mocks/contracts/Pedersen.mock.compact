@@ -1,0 +1,72 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../../../Pedersen" prefix Pedersen_;
+
+export { Commitment, Opening };
+
+// Helper for test suite: toggling this variable activates circuit metadata reporting.
+// Only increases circuit size by 3 rows per exposed circuit.
+ledger toImpure: Boolean;
+
+export circuit VALUE_GENERATOR(): JubjubPoint {
+  toImpure = true;
+  return Pedersen_VALUE_GENERATOR();
+}
+
+export circuit commit(value: Field, randomness: Field): Commitment {
+  toImpure = true;
+  return Pedersen_commit(value, randomness);
+}
+
+export circuit open(
+  commitment: Commitment,
+  value: Field,
+  randomness: Field
+): Boolean {
+  toImpure = true;
+  return disclose(Pedersen_open(commitment, value, randomness));
+}
+
+export circuit verifyOpening(
+  commitment: Commitment,
+  opening: Opening
+): Boolean {
+  toImpure = true;
+  return disclose(Pedersen_verifyOpening(commitment, opening));
+}
+
+export circuit add(c1: Commitment, c2: Commitment): Commitment {
+  toImpure = true;
+  return Pedersen_add(c1, c2);
+}
+
+export circuit sub(c1: Commitment, c2: Commitment): Commitment {
+  toImpure = true;
+  return Pedersen_sub(c1, c2);
+}
+
+export circuit mockRandom(seed: Field): Field {
+  toImpure = true;
+  return Pedersen_mockRandom(seed);
+}
+
+export circuit mockRandomFromData(
+  data1: Field,
+  data2: Field,
+  nonce: Field
+): Field {
+  toImpure = true;
+  return Pedersen_mockRandomFromData(data1, data2, nonce);
+}
+
+export circuit zero(): Commitment {
+  toImpure = true;
+  return Pedersen_zero();
+}
+
+export circuit isZero(c: Commitment): Boolean {
+  toImpure = true;
+  return disclose(Pedersen_isZero(c));
+}
