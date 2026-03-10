@@ -117,10 +117,10 @@ circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
 // ─── View ───────────────────────────────────────────────────────────────
 
 export circuit isProposalApprovedBySigner(
-    id: Uint<64>,
-    signer: Either<ZswapCoinPublicKey, ContractAddress>
-  ): Boolean {
-  if (!_proposalApprovals.member(disclose(id))) {
+  id: Uint<64>,
+  signer: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
+  if (!_proposalApprovals.member(disclose(id)) || !_proposalApprovals.lookup(disclose(id)).member(disclose(signer))) {
     return false;
   }
 
