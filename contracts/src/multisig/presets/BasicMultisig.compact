@@ -155,7 +155,7 @@ circuit assertNotFinalized(): [] {
 
 // ─── View ───────────────────────────────────────────────────────────────
 
-export circuit isFinalized(id: Uint<64>): Boolean {
+export circuit isFinalized(): Boolean {
   return _finalized;
 }
 
