@@ -1,0 +1,247 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../ProposalManager" prefix Proposal_;
+import "../ShieldedTreasury" prefix Treasury_;
+import "../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
+import "./../../access/Ownable" prefix Ownable_;
+
+// ─── State ───────────────────────────────────────────────────────────────
+
+export ledger _finalized: Boolean;
+export ledger _proposalApprovals: Map<Uint<64>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+export ledger _approvalCount: Map<Uint<64>, Uint<8>>;
+
+// ─── Constructor ─────────────────────────────────────────────────────────
+
+constructor(
+  initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+  signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
+  thresh: Uint<8>
+) {
+  Ownable_initialize(initialOwner);
+  Signer_initialize<3>(signers, thresh);
+}
+
+// ─── Setup phase ─────────────────────────────────────────────────────────
+
+export circuit addSigner(
+  signer: Either<ZswapCoinPublicKey, ContractAddress>
+): [] {
+  Ownable_assertOnlyOwner();
+  assertNotFinalized();
+  Signer__addSigner(signer);
+}
+
+export circuit removeSigner(
+  signer: Either<ZswapCoinPublicKey, ContractAddress>
+): [] {
+  Ownable_assertOnlyOwner();
+  assertNotFinalized();
+  Signer__removeSigner(signer);
+}
+
+export circuit finalize(): [] {
+  Ownable_assertOnlyOwner();
+  assert(
+    Signer_getSignerCount() >= Signer_getThreshold(),
+    "Multisig: insufficient signers for threshold"
+  );
+  _finalize();
+}
+
+// ─── Proposals ───────────────────────────────────────────────────────────
+
+export circuit createShieldedProposal(
+  to: Proposal_Recipient,
+  color: Bytes<32>,
+  amount: Uint<128>
+): Uint<64> {
+  assertFinalized();
+
+  const callerPK = getCaller();
+  Signer_assertSigner(callerPK);
+
+  return Proposal__createProposal(to, color, amount);
+}
+
+export circuit approveProposal(id: Uint<64>): [] {
+  // Check if finalized
+  assertFinalized();
+
+  // Check if active
+  Proposal_assertProposalActive(id);
+
+  // Check signer
+  const callerPK = getCaller();
+  Signer_assertSigner(callerPK);
+
+  // Check if already approved
+  assert(!isProposalApprovedBySigner(id, callerPK), "Multisig: already approved");
+
+  // Approve
+  _approveProposal(id, callerPK);
+}
+
+export circuit cancelProposal(id: Uint<64>): [] {
+  // Check if finalized
+  assertFinalized();
+
+  // Check if active
+  Proposal_assertProposalActive(id);
+
+  // Check signer
+  const callerPK = getCaller();
+  Signer_assertSigner(callerPK);
+
+  // Cancel
+  Proposal__cancelProposal(id);
+}
+
+export circuit executeShieldedProposal(
+  id: Uint<64>,
+): ShieldedSendResult {
+  // Check finalized
+  assertFinalized();
+
+  // Check if active
+  Proposal_assertProposalActive(id);
+
+  // Check threshold
+  const approvalCount = getApprovalCount(id);
+  Signer_assertThresholdMet(approvalCount);
+
+  // Transfer
+  const { to, color, amount } = Proposal_getProposal(id);
+  const result = Treasury__send(
+    Proposal_toShieldedRecipient(to),
+    color,
+    amount,
+  );
+
+  // Finish lifecycle
+  Proposal__markExecuted(id);
+  return result;
+}
+
+// ─── Internal ───────────────────────────────────────────────────────────
+
+circuit _finalize(): [] {
+  assertNotFinalized();
+  _finalized = true;
+}
+
+circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
+
+  const newCount = _approvalCount.lookup(disclose(id)) + 1 as Uint<8>;
+  _approvalCount.insert(disclose(id), disclose(newCount));
+}
+
+circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+}
+
+// ─── Guards ──────────────────────────────────────────────────────────────
+
+circuit assertFinalized(): [] {
+  assert(_finalized, "Multisig: not finalized");
+}
+
+circuit assertNotFinalized(): [] {
+  assert(!_finalized, "Multisig: already finalized");
+}
+
+// ─── View ───────────────────────────────────────────────────────────────
+
+export circuit isFinalized(id: Uint<64>): Boolean {
+  return _finalized;
+}
+
+export circuit isProposalApprovedBySigner(
+    id: Uint<64>,
+    signer: Either<ZswapCoinPublicKey, ContractAddress>
+  ): Boolean {
+  if (_proposalApprovals.member(disclose(id))) {
+    return false;
+  }
+
+  return _proposalApprovals.lookup(disclose(id)).lookup(disclose(signer));
+}
+
+export circuit getApprovalCount(id: Uint<64>): Uint<8> {
+  if (!_approvalCount.member(disclose(id))) {
+    return 0;
+  }
+
+  return _approvalCount.lookup(disclose(id));
+}
+
+// IOwnable
+
+export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  return Ownable_transferOwnership(newOwner);
+}
+
+export circuit renounceOwnership(): [] {
+  return Ownable_renounceOwnership();
+}
+
+// IProposalManager
+
+export circuit getProposal(id: Uint<64>): Proposal_Proposal {
+  return Proposal_getProposal(id);
+}
+
+export circuit getProposalRecipient(id: Uint<64>): Proposal_Recipient {
+  return Proposal_getProposalRecipient(id);
+}
+
+export circuit getProposalAmount(id: Uint<64>): Uint<128> {
+  return Proposal_getProposalAmount(id);
+}
+
+export circuit getProposalColor(id: Uint<64>): Bytes<32> {
+  return Proposal_getProposalColor(id);
+}
+
+export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
+  return Proposal_getProposalStatus(id);
+}
+
+// IShieldedTreasury
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return Treasury_getTokenBalance(color);
+}
+
+export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedTotal(color);
+}
+
+export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getSentTotal(color);
+}
+
+export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedMinusSent(color);
+}
+
+// ISignerManager
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return Signer_isSigner(account);
+}
