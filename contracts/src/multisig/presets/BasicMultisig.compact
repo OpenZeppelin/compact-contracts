@@ -5,50 +5,19 @@ import CompactStandardLibrary;
 import "../ProposalManager" prefix Proposal_;
 import "../ShieldedTreasury" prefix Treasury_;
 import "../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
-import "./../../access/Ownable" prefix Ownable_;
 
 // ─── State ───────────────────────────────────────────────────────────────
 
-export ledger _finalized: Boolean;
 export ledger _proposalApprovals: Map<Uint<64>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
 export ledger _approvalCount: Map<Uint<64>, Uint<8>>;
 
 // ─── Constructor ─────────────────────────────────────────────────────────
 
 constructor(
-  initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
   signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
   thresh: Uint<8>
 ) {
-  Ownable_initialize(initialOwner);
   Signer_initialize<3>(signers, thresh);
-}
-
-// ─── Setup phase ─────────────────────────────────────────────────────────
-
-export circuit addSigner(
-  signer: Either<ZswapCoinPublicKey, ContractAddress>
-): [] {
-  Ownable_assertOnlyOwner();
-  assertNotFinalized();
-  Signer__addSigner(signer);
-}
-
-export circuit removeSigner(
-  signer: Either<ZswapCoinPublicKey, ContractAddress>
-): [] {
-  Ownable_assertOnlyOwner();
-  assertNotFinalized();
-  Signer__removeSigner(signer);
-}
-
-export circuit finalize(): [] {
-  Ownable_assertOnlyOwner();
-  assert(
-    Signer_getSignerCount() >= Signer_getThreshold(),
-    "Multisig: insufficient signers for threshold"
-  );
-  _finalize();
 }
 
 // ─── Proposals ───────────────────────────────────────────────────────────
@@ -58,8 +27,6 @@ export circuit createShieldedProposal(
   color: Bytes<32>,
   amount: Uint<128>
 ): Uint<64> {
-  assertFinalized();
-
   const callerPK = getCaller();
   Signer_assertSigner(callerPK);
 
@@ -67,9 +34,6 @@ export circuit createShieldedProposal(
 }
 
 export circuit approveProposal(id: Uint<64>): [] {
-  // Check if finalized
-  assertFinalized();
-
   // Check if active
   Proposal_assertProposalActive(id);
 
@@ -85,9 +49,6 @@ export circuit approveProposal(id: Uint<64>): [] {
 }
 
 export circuit cancelProposal(id: Uint<64>): [] {
-  // Check if finalized
-  assertFinalized();
-
   // Check if active
   Proposal_assertProposalActive(id);
 
@@ -102,9 +63,6 @@ export circuit cancelProposal(id: Uint<64>): [] {
 export circuit executeShieldedProposal(
   id: Uint<64>,
 ): ShieldedSendResult {
-  // Check finalized
-  assertFinalized();
-
   // Check if active
   Proposal_assertProposalActive(id);
 
@@ -127,15 +85,10 @@ export circuit executeShieldedProposal(
 
 // ─── Internal ───────────────────────────────────────────────────────────
 
-circuit _finalize(): [] {
-  assertNotFinalized();
-  _finalized = true;
-}
-
 circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
   _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
 
-  const newCount = getApprovalCount() + 1 as Uint<8>;
+  const newCount = getApprovalCount(id) + 1 as Uint<8>;
   _approvalCount.insert(disclose(id), disclose(newCount));
 }
 
@@ -143,21 +96,7 @@ circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
   return left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
 }
 
-// ─── Guards ──────────────────────────────────────────────────────────────
-
-circuit assertFinalized(): [] {
-  assert(_finalized, "Multisig: not finalized");
-}
-
-circuit assertNotFinalized(): [] {
-  assert(!_finalized, "Multisig: already finalized");
-}
-
 // ─── View ───────────────────────────────────────────────────────────────
-
-export circuit isFinalized(): Boolean {
-  return _finalized;
-}
 
 export circuit isProposalApprovedBySigner(
     id: Uint<64>,
@@ -176,20 +115,6 @@ export circuit getApprovalCount(id: Uint<64>): Uint<8> {
   }
 
   return _approvalCount.lookup(disclose(id));
-}
-
-// IOwnable
-
-export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
-  return Ownable_owner();
-}
-
-export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-  return Ownable_transferOwnership(newOwner);
-}
-
-export circuit renounceOwnership(): [] {
-  return Ownable_renounceOwnership();
 }
 
 // IProposalManager
