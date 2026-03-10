@@ -86,6 +86,10 @@ export circuit executeShieldedProposal(
 // ─── Internal ───────────────────────────────────────────────────────────
 
 circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  if (!_proposalApprovals.member(disclose(id))) {
+    _proposalApprovals.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+  }
+
   _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
 
   const newCount = getApprovalCount(id) + 1 as Uint<8>;
