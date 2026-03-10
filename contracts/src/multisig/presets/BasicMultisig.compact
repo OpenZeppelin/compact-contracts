@@ -102,7 +102,7 @@ export circuit isProposalApprovedBySigner(
     id: Uint<64>,
     signer: Either<ZswapCoinPublicKey, ContractAddress>
   ): Boolean {
-  if (_proposalApprovals.member(disclose(id))) {
+  if (!_proposalApprovals.member(disclose(id))) {
     return false;
   }
 
