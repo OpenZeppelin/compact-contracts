@@ -77,6 +77,52 @@ module ProposalManager {
     return Recipient { kind: RecipientKind.Contract, address: addr.bytes };
   }
 
+  /**
+   * @description Converts a Recipient to a shielded send recipient.
+   * Handles both ShieldedUser and Contract kinds.
+   *
+   * Requirements:
+   *
+   * - Recipient kind must be ShieldedUser or Contract.
+   *
+   * @param {Recipient} r - The recipient.
+   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The shielded recipient.
+   */
+  export circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
+    if (r.kind == RecipientKind.ShieldedUser) {
+      return left<ZswapCoinPublicKey, ContractAddress>(
+        ZswapCoinPublicKey { bytes: r.address }
+      );
+    }
+    assert(r.kind == RecipientKind.Contract, "ProposalManager: invalid shielded recipient");
+    return right<ZswapCoinPublicKey, ContractAddress>(
+      ContractAddress { bytes: r.address }
+    );
+  }
+
+  /**
+   * @description Converts a Recipient to an unshielded send recipient.
+   * Handles both UnshieldedUser and Contract kinds.
+   *
+   * Requirements:
+   *
+   * - Recipient kind must be UnshieldedUser or Contract.
+   *
+   * @param {Recipient} r - The recipient.
+   * @returns {Either<ContractAddress, UserAddress>} The unshielded recipient.
+   */
+  export circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
+    if (r.kind == RecipientKind.Contract) {
+      return left<ContractAddress, UserAddress>(
+        ContractAddress { bytes: r.address }
+      );
+    }
+    assert(r.kind == RecipientKind.UnshieldedUser, "ProposalManager: invalid unshielded recipient");
+    return right<ContractAddress, UserAddress>(
+      UserAddress { bytes: r.address }
+    );
+  }
+
   // ─── Guards ─────────────────────────────────────────────────────
 
   /**
