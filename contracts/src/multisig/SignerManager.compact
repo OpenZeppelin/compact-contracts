@@ -57,6 +57,8 @@ module SignerManager<T> {
     for (const signer of signers) {
       _addSigner(signer);
     }
+
+    assert(_signerCount >= thresh, "SignerManager: threshold exceeds signer count");
   }
 
   // ─── Guards ─────────────────────────────────────────────────────────────
