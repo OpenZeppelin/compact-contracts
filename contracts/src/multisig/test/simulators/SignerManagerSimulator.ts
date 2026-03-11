@@ -19,7 +19,7 @@ import {
  */
 type SignerManagerArgs = readonly [
   signers: Either<ZswapCoinPublicKey, ContractAddress>[],
-  thresh: bigint
+  thresh: bigint,
 ];
 
 const SignerManagerSimulatorBase = createSimulator<
@@ -68,7 +68,9 @@ export class SignerManagerSimulator extends SignerManagerSimulatorBase {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  public isSigner(
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): boolean {
     return this.circuits.impure.isSigner(account);
   }
 
