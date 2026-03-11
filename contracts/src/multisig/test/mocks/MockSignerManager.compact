@@ -4,6 +4,8 @@ import CompactStandardLibrary;
 
 import "../../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
 
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
 constructor(signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>, thresh: Uint<8>) {
   Signer_initialize<3>(signers, thresh);
 }
