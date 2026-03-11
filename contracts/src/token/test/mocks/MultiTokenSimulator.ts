@@ -9,11 +9,11 @@ import {
   type Maybe,
   Contract as MockMultiToken,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockMultiToken/contract/index.js';
-import {
-  MultiTokenPrivateState,
-  MultiTokenWitnesses,
-} from '../../witnesses/MultiTokenWitnesses.js';
+} from '../../../../artifacts/MultiToken.mock/contract/index.js';
+
+type MultiTokenPrivateState = Record<string, never>;
+const MultiTokenPrivateState: MultiTokenPrivateState = {};
+const MultiTokenWitnesses = () => ({});
 
 /**
  * Type constructor args

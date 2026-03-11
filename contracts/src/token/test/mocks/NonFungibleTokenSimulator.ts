@@ -8,11 +8,11 @@ import {
   ledger,
   Contract as MockNonFungibleToken,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNonFungibleToken/contract/index.js';
-import {
-  NonFungibleTokenPrivateState,
-  NonFungibleTokenWitnesses,
-} from '../../witnesses/NonFungibleTokenWitnesses.js';
+} from '../../../../artifacts/NonFungibleToken.mock/contract/index.js';
+
+type NonFungibleTokenPrivateState = Record<string, never>;
+const NonFungibleTokenPrivateState: NonFungibleTokenPrivateState = {};
+const NonFungibleTokenWitnesses = () => ({});
 
 /**
  * Type constructor args

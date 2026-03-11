@@ -6,9 +6,9 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
-import type { ZswapCoinPublicKey } from '../../../artifacts/MockOwnable/contract/index.js';
-import { ZOwnablePKPrivateState } from '../witnesses/ZOwnablePKWitnesses.js';
-import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
+import type { ZswapCoinPublicKey } from '../../../artifacts/Ownable.mock/contract/index.js';
+import { generate as generateZOwnablePKState } from './mocks/ZOwnablePKSimulator.js';
+import { ZOwnablePKSimulator } from './mocks/ZOwnablePKSimulator.js';
 
 // PKs
 const [OWNER, Z_OWNER] = utils.generatePubKeyPair('OWNER');
@@ -139,7 +139,7 @@ describe('ZOwnablePK', () => {
   describe('after initialization', () => {
     beforeEach(() => {
       // Create private state object and generate nonce
-      const PS = ZOwnablePKPrivateState.generate();
+      const PS = generateZOwnablePKState();
       // Bind nonce for convenience
       secretNonce = PS.secretNonce;
       // Prepare owner ID with gen nonce
@@ -171,7 +171,7 @@ describe('ZOwnablePK', () => {
 
       beforeEach(() => {
         // Prepare new owner commitment
-        newOwnerNonce = ZOwnablePKPrivateState.generate().secretNonce;
+        newOwnerNonce = generateZOwnablePKState().secretNonce;
         newCounter = INIT_COUNTER + 1n;
         newIdHash = createIdHash(Z_NEW_OWNER, newOwnerNonce);
         newOwnerCommitment = buildCommitment(

@@ -8,11 +8,30 @@ import {
   ledger,
   Contract as MockZOwnablePK,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockZOwnablePK/contract/index.js';
-import {
-  ZOwnablePKPrivateState,
-  ZOwnablePKWitnesses,
-} from '../../witnesses/ZOwnablePKWitnesses.js';
+} from '../../../../artifacts/ZOwnablePK.mock/contract/index.js';
+import { getRandomValues } from 'node:crypto';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import type { Ledger } from '../../../../artifacts/ZOwnablePK.mock/contract/index.js';
+
+export type ZOwnablePKPrivateState = {
+  secretNonce: Buffer;
+};
+
+export const generate = (): ZOwnablePKPrivateState => ({
+  secretNonce: getRandomValues(Buffer.alloc(32)),
+});
+
+export const withNonce = (nonce: Buffer): ZOwnablePKPrivateState => ({
+  secretNonce: nonce,
+});
+
+const ZOwnablePKWitnesses = () => ({
+  wit_secretNonce(
+    context: WitnessContext<Ledger, ZOwnablePKPrivateState>,
+  ): [ZOwnablePKPrivateState, Uint8Array] {
+    return [context.privateState, context.privateState.secretNonce];
+  },
+});
 
 /**
  * Type constructor args
@@ -42,7 +61,7 @@ const ZOwnablePKSimulatorBase: any = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockZOwnablePK<ZOwnablePKPrivateState>(witnesses),
-  defaultPrivateState: () => ZOwnablePKPrivateState.generate(),
+  defaultPrivateState: () => generate(),
   contractArgs: (owner, instanceSalt, isInit) => {
     return [owner, instanceSalt, isInit];
   },

@@ -8,11 +8,11 @@ import {
   ledger,
   Contract as MockUtils,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockUtils/contract/index.js';
-import {
-  UtilsPrivateState,
-  UtilsWitnesses,
-} from '../../witnesses/UtilsWitnesses.js';
+} from '../../../../artifacts/Utils.mock/contract/index.js';
+
+type UtilsPrivateState = Record<string, never>;
+const UtilsPrivateState: UtilsPrivateState = {};
+const UtilsWitnesses = () => ({});
 
 /**
  * Type constructor args

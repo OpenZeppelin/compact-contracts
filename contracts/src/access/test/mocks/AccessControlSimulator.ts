@@ -8,11 +8,11 @@ import {
   ledger,
   Contract as MockAccessControl,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockAccessControl/contract/index.js';
-import {
-  AccessControlPrivateState,
-  AccessControlWitnesses,
-} from '../../witnesses/AccessControlWitnesses.js';
+} from '../../../../artifacts/AccessControl.mock/contract/index.js';
+
+type AccessControlPrivateState = Record<string, never>;
+const AccessControlPrivateState: AccessControlPrivateState = {};
+const AccessControlWitnesses = () => ({});
 
 /**
  * Type constructor args

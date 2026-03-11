@@ -1,7 +1,7 @@
 pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
-import "../../MultiToken" prefix MultiToken_;
+import "../../../MultiToken" prefix MultiToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };

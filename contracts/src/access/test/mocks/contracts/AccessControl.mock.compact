@@ -4,7 +4,7 @@ pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
-import "../../AccessControl" prefix AccessControl_;
+import "../../../AccessControl" prefix AccessControl_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, AccessControl_DEFAULT_ADMIN_ROLE };
 

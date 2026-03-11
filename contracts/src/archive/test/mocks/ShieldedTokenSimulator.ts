@@ -18,12 +18,11 @@ import {
   Contract as MockShielded,
   type SendResult,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockShieldedToken/contract/index.js'; // Combined imports
-import {
-  type ShieldedTokenPrivateState,
-  ShieldedTokenWitnesses,
-} from '../../witnesses/ShieldedTokenWitnesses.js';
+} from '../../../../artifacts/ShieldedToken.mock/contract/index.js';
 import type { IContractSimulator } from '../types/test.js';
+
+type ShieldedTokenPrivateState = Record<string, never>;
+const ShieldedTokenWitnesses = {};
 
 /**
  * @description A simulator implementation of a shielded token contract for testing purposes.

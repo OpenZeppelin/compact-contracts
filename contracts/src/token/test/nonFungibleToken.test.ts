@@ -5,7 +5,7 @@ import {
   ZERO_ADDRESS,
   ZERO_KEY,
 } from '#test-utils/address.js';
-import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
+import { NonFungibleTokenSimulator } from './mocks/NonFungibleTokenSimulator.js';
 
 // Contract Metadata
 const NAME = 'NAME';

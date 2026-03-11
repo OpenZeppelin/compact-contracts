@@ -5,11 +5,11 @@ import {
 import {
   ledger,
   Contract as MockInitializable,
-} from '../../../../artifacts/MockInitializable/contract/index.js';
-import {
-  InitializablePrivateState,
-  InitializableWitnesses,
-} from '../../witnesses/InitializableWitnesses.js';
+} from '../../../../artifacts/Initializable.mock/contract/index.js';
+
+type InitializablePrivateState = Record<string, never>;
+const InitializablePrivateState: InitializablePrivateState = {};
+const InitializableWitnesses = () => ({});
 
 /**
  * Type constructor args

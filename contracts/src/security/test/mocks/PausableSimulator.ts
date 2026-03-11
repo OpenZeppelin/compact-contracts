@@ -5,11 +5,11 @@ import {
 import {
   ledger,
   Contract as MockPausable,
-} from '../../../../artifacts/MockPausable/contract/index.js';
-import {
-  PausablePrivateState,
-  PausableWitnesses,
-} from '../../witnesses/PausableWitnesses.js';
+} from '../../../../artifacts/Pausable.mock/contract/index.js';
+
+type PausablePrivateState = Record<string, never>;
+const PausablePrivateState: PausablePrivateState = {};
+const PausableWitnesses = () => ({});
 
 /**
  * Type constructor args
