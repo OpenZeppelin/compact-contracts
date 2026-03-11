@@ -14,8 +14,8 @@ export circuit _deposit(coin: ShieldedCoinInfo): [] {
 
 export circuit _send(
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-    amount: Uint<128>,
     color: Bytes<32>
+    amount: Uint<128>,
   ): ShieldedSendResult {
   return Treasury__send(recipient, color, amount);
 }
