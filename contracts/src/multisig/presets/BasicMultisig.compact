@@ -20,6 +20,12 @@ constructor(
   Signer_initialize<3>(signers, thresh);
 }
 
+// ─── Deposit ─────────────────────────────────────────────────────────────
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Treasury__deposit(coin);
+}
+
 // ─── Proposals ───────────────────────────────────────────────────────────
 
 export circuit createShieldedProposal(
@@ -61,10 +67,6 @@ export circuit revokeApproval(id: Uint<64>): [] {
 
   // Revoke
   _revokeApproval(id, callerPK);
-}
-
-export circuit deposit(coin: ShieldedCoinInfo): [] {
-  Treasury__deposit(coin);
 }
 
 export circuit executeShieldedProposal(
