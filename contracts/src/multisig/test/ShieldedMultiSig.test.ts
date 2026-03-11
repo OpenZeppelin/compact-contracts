@@ -16,7 +16,7 @@ const [SIGNER3, Z_SIGNER3] = utils.generateEitherPubKeyPair('SIGNER3');
 const SIGNERS = [Z_SIGNER1, Z_SIGNER2, Z_SIGNER3];
 
 const [_NON_SIGNER, Z_NON_SIGNER] = utils.generateEitherPubKeyPair('OTHER');
-const [RECIPIENT_PK, Z_RECIPIENT_PK] = utils.generatePubKeyPair('RECIPIENT');
+const [, Z_RECIPIENT_PK] = utils.generatePubKeyPair('RECIPIENT');
 
 function makeRecipient(pk: { bytes: Uint8Array }): {
   kind: number;
