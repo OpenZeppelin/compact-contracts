@@ -80,6 +80,7 @@ describe('ShieldedTreasury', () => {
     it('should allow zero value deposit', () => {
       treasury._deposit(makeCoin(COLOR, 0n));
       expect(treasury.getTokenBalance(COLOR)).toEqual(0n);
+      expect(treasury.getReceivedTotal(COLOR)).toEqual(0n);
     });
 
     it('should maintain receivedMinusSent consistency', () => {

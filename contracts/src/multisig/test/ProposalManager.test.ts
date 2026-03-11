@@ -28,6 +28,13 @@ describe('ProposalManager', () => {
       expect(recipient.address).toEqual(Z_RECIPIENT.bytes);
     });
 
+    it('should create unshielded user recipient', () => {
+      const addr = utils.encodeToPK('UNSHIELDED_USER');
+      const recipient = contract.unshieldedUserRecipient(addr);
+      expect(recipient.kind).toEqual(RecipientKind.UnshieldedUser);
+      expect(recipient.address).toEqual(addr.bytes);
+    });
+
     it('should create contract recipient', () => {
       const recipient = contract.contractRecipient(Z_CONTRACT_RECIPIENT);
       expect(recipient.kind).toEqual(RecipientKind.Contract);
@@ -65,6 +72,14 @@ describe('ProposalManager', () => {
       expect(unshielded.left.bytes).toEqual(Z_CONTRACT_RECIPIENT.bytes);
     });
 
+    it('should convert unshielded user recipient to unshielded send format', () => {
+      const addr = utils.encodeToPK('UNSHIELDED_USER');
+      const recipient = contract.unshieldedUserRecipient(addr);
+      const unshielded = contract.toUnshieldedRecipient(recipient);
+      expect(unshielded.is_left).toEqual(false);
+      expect(unshielded.right.bytes).toEqual(addr.bytes);
+    });
+
     it('should reject shielded user in toUnshieldedRecipient', () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       expect(() => {
@@ -98,6 +113,17 @@ describe('ProposalManager', () => {
       expect(proposal.color).toEqual(COLOR);
       expect(proposal.amount).toEqual(AMOUNT);
       expect(proposal.status).toEqual(ProposalStatus.Active);
+    });
+
+    it('should store contract recipient correctly', () => {
+      const recipient = contract.contractRecipient(Z_CONTRACT_RECIPIENT);
+      const id = contract._createProposal(recipient, COLOR2, AMOUNT2);
+
+      const proposal = contract.getProposal(id);
+      expect(proposal.to.kind).toEqual(RecipientKind.Contract);
+      expect(proposal.to.address).toEqual(Z_CONTRACT_RECIPIENT.bytes);
+      expect(proposal.color).toEqual(COLOR2);
+      expect(proposal.amount).toEqual(AMOUNT2);
     });
 
     it('should fail with zero amount', () => {

@@ -175,6 +175,17 @@ describe('ShieldedMultiSig', () => {
           multisig.as(SIGNER1).approveProposal(999n);
         }).toThrow('ProposalManager: proposal not found');
       });
+
+      it('should fail for executed proposal', () => {
+        multisig.deposit(makeCoin(COLOR, AMOUNT));
+        multisig.as(SIGNER1).approveProposal(proposalId);
+        multisig.as(SIGNER2).approveProposal(proposalId);
+        multisig.executeShieldedProposal(proposalId);
+
+        expect(() => {
+          multisig.as(SIGNER3).approveProposal(proposalId);
+        }).toThrow('ProposalManager: proposal not active');
+      });
     });
 
     describe('revokeApproval', () => {
@@ -216,6 +227,16 @@ describe('ShieldedMultiSig', () => {
         ).toEqual(true);
         expect(multisig.getApprovalCount(proposalId)).toEqual(1n);
       });
+
+      it('should fail for executed proposal', () => {
+        multisig.deposit(makeCoin(COLOR, AMOUNT));
+        multisig.as(SIGNER2).approveProposal(proposalId);
+        multisig.executeShieldedProposal(proposalId);
+
+        expect(() => {
+          multisig.as(SIGNER1).revokeApproval(proposalId);
+        }).toThrow('ProposalManager: proposal not active');
+      });
     });
 
     describe('executeShieldedProposal', () => {
@@ -239,6 +260,29 @@ describe('ShieldedMultiSig', () => {
         expect(multisig.getProposalStatus(proposalId)).toEqual(
           ProposalStatus.Executed,
         );
+      });
+
+      it('should return sent coin and change in result', () => {
+        const result = multisig.executeShieldedProposal(proposalId);
+        expect(result.sent.value).toEqual(PROPOSAL_AMOUNT);
+        expect(result.sent.color).toEqual(COLOR);
+        expect(result.change.is_some).toEqual(true);
+        expect(result.change.value.value).toEqual(AMOUNT - PROPOSAL_AMOUNT);
+        expect(result.change.value.color).toEqual(COLOR);
+      });
+
+      it('should return no change when sending full balance', () => {
+        // Create proposal for the full amount
+        const to = makeRecipient(Z_RECIPIENT_PK);
+        const fullId = multisig
+          .as(SIGNER1)
+          .createShieldedProposal(to, COLOR, AMOUNT);
+        multisig.as(SIGNER1).approveProposal(fullId);
+        multisig.as(SIGNER2).approveProposal(fullId);
+
+        const result = multisig.executeShieldedProposal(fullId);
+        expect(result.sent.value).toEqual(AMOUNT);
+        expect(result.change.is_some).toEqual(false);
       });
 
       it('should deduct from treasury balance', () => {
@@ -311,6 +355,31 @@ describe('ShieldedMultiSig', () => {
           .as(SIGNER1)
           .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
         expect(multisig.getApprovalCount(id)).toEqual(0n);
+      });
+    });
+
+    describe('view - proposal delegation', () => {
+      let proposalId: bigint;
+
+      beforeEach(() => {
+        const to = makeRecipient(Z_RECIPIENT_PK);
+        proposalId = multisig
+          .as(SIGNER1)
+          .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+      });
+
+      it('getProposalRecipient should return recipient', () => {
+        const recipient = multisig.getProposalRecipient(proposalId);
+        expect(recipient.kind).toEqual(RecipientKind.ShieldedUser);
+        expect(recipient.address).toEqual(Z_RECIPIENT_PK.bytes);
+      });
+
+      it('getProposalAmount should return amount', () => {
+        expect(multisig.getProposalAmount(proposalId)).toEqual(PROPOSAL_AMOUNT);
+      });
+
+      it('getProposalColor should return color', () => {
+        expect(multisig.getProposalColor(proposalId)).toEqual(COLOR);
       });
     });
 
