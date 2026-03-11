@@ -7,8 +7,10 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import type { ZswapCoinPublicKey } from '../../../artifacts/Ownable.mock/contract/index.js';
-import { generate as generateZOwnablePKState } from './mocks/ZOwnablePKSimulator.js';
-import { ZOwnablePKSimulator } from './mocks/ZOwnablePKSimulator.js';
+import {
+  generate as generateZOwnablePKState,
+  ZOwnablePKSimulator,
+} from './mocks/ZOwnablePKSimulator.js';
 
 // PKs
 const [OWNER, Z_OWNER] = utils.generatePubKeyPair('OWNER');

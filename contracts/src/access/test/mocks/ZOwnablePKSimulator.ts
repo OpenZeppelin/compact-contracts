@@ -1,7 +1,10 @@
+import { getRandomValues } from 'node:crypto';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import {
   type BaseSimulatorOptions,
   createSimulator,
 } from '@openzeppelin-compact/contracts-simulator';
+import type { Ledger } from '../../../../artifacts/ZOwnablePK.mock/contract/index.js';
 import {
   type ContractAddress,
   type Either,
@@ -9,9 +12,6 @@ import {
   Contract as MockZOwnablePK,
   type ZswapCoinPublicKey,
 } from '../../../../artifacts/ZOwnablePK.mock/contract/index.js';
-import { getRandomValues } from 'node:crypto';
-import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../../artifacts/ZOwnablePK.mock/contract/index.js';
 
 export type ZOwnablePKPrivateState = {
   secretNonce: Buffer;
