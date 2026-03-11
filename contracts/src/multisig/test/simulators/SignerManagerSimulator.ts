@@ -12,7 +12,7 @@ import {
 import {
   SignerManagerPrivateState,
   SignerManagerWitnesses,
-} from '../../witnesses/SignerManagerWitness.js';
+} from '../../witnesses/SignerManagerWitnesses.js';
 
 /**
  * Type constructor args
