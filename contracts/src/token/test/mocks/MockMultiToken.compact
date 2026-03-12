@@ -1,4 +1,4 @@
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 import "../../MultiToken" prefix MultiToken_;
@@ -44,39 +44,39 @@ export circuit isApprovedForAll(
 }
 
 export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken_transferFrom(from, to, id, value);
+  return MultiToken_transferFrom(fromAddress, to, id, value);
 }
 
 export circuit _unsafeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken__unsafeTransferFrom(from, to, id, value);
+  return MultiToken__unsafeTransferFrom(fromAddress, to, id, value);
 }
 
 export circuit _transfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken__transfer(from, to, id, value);
+  return MultiToken__transfer(fromAddress, to, id, value);
 }
 
 export circuit _unsafeTransfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken__unsafeTransfer(from, to, id, value);
+  return MultiToken__unsafeTransfer(fromAddress, to, id, value);
 }
 
 export circuit _setURI(newURI: Opaque<"string">): [] {
@@ -91,8 +91,8 @@ export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: 
   return MultiToken__unsafeMint(to, id, value);
 }
 
-export circuit _burn(from: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
-  return MultiToken__burn(from, id, value);
+export circuit _burn(fromAddress: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+  return MultiToken__burn(fromAddress, id, value);
 }
 
 export circuit _setApprovalForAll(

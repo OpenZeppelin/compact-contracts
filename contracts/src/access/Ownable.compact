@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.0.1-alpha.1 (access/Ownable.compact)
 
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 /**
  * @module Ownable
@@ -143,7 +143,7 @@ module Ownable {
   export circuit renounceOwnership(): [] {
     Initializable_assertInitialized();
     assertOnlyOwner();
-    _transferOwnership(burnAddress());
+    _transferOwnership(shieldedBurnAddress());
   }
 
   /**
@@ -206,7 +206,9 @@ module Ownable {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  export circuit _unsafeUncheckedTransferOwnership(
+                   newOwner: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): [] {
     Initializable_assertInitialized();
     _owner = disclose(newOwner);
   }
