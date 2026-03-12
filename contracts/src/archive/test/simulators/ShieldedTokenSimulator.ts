@@ -3,7 +3,7 @@ import {
   type CircuitResults,
   type CoinPublicKey,
   type ContractState,
-  constructorContext,
+  createConstructorContext,
   emptyZswapLocalState,
   QueryContext,
 } from '@midnight-ntwrk/compact-runtime';
@@ -18,7 +18,7 @@ import {
   Contract as MockShielded,
   type SendResult,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockShieldedToken/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockShieldedToken/contract/index.js'; // Combined imports
 import {
   type ShieldedTokenPrivateState,
   ShieldedTokenWitnesses,
@@ -59,7 +59,7 @@ export class ShieldedTokenSimulator
       currentContractState,
       currentZswapLocalState,
     } = this.contract.initialState(
-      constructorContext({}, '0'.repeat(64)),
+      createConstructorContext({}, '0'.repeat(64)),
       nonce,
       name,
       symbol,

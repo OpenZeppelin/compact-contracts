@@ -1,8 +1,0 @@
-{
-  "version": 3,
-  "file": "index.cjs",
-  "sourceRoot": "../../../../../",
-  "sources": ["test/fixtures/sample-contracts/Witness.compact"],
-  "names": [],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;;;;;;;;;;MAaA,AAAA,QAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;MAED,AAAA,QAGC;;;;;cAHuB,KAAU;;;;;;;;;;;;;;;;;;yCAAV,KAAU;;;;;;;qEAAV,KAAU;;;OAGjC;MAED,AAAA,OAGC;;;;;cAHsB,MAAe;cAAE,MAAe;;;;;;;;;;;;;;;;;;;;;;;;;yCAAhC,MAAe,+BAAE,MAAe;;;;;;;;;yCAAhC,MAAe;yCAAE,MAAe;;;OAGtD;;;;;;;GACA;EA3BD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAKA;;;;;;;;;uDAAmC;IACnC;;;;;;;;;uDAA+B;IAC/B;;;;;;;;;uDAAkC;;;;;;;GAoBjC;EAlBD,AAAA,kBAAqC;;0DAArC,eAAqC;;;;;;;;;;;;;;GAAA;EACrC,AAAA,yBAAmD,4BAApB,MAAW;;0DAA1C,sBAAmD;iFAApB,MAAW;;;;;;;;;;;;;;GAAS;EACnD,AAAA,yBAA4E,4BAA7C,MAAe,EAAE,MAAe;;0DAA/D,sBAA4E;iFAA7C,MAAe;iFAAE,MAAe;;;;;;;;;;;;;;GAAa;EAE5E,AAAA,WAGC;UAFO,KAAuB;IAC7B;;;;;;;yGAAqB,KAAG;;uDAAf;;GACV;EAED,AAAA,WAGC,4BAHuB,KAAU;UAC1B,KAAiC;;iDAAJ,KAAG;IACtC;;;;;;;yGAAqB,KAAG;;uDAAf;;GACV;EAED,AAAA,UAGC,4BAHsB,MAAe,EAAE,MAAe;UAC/C,KAAwC;;iDAAX,MAAI;iDAAE,MAAI;IAC7C;;;;;;;yGAAoB,KAAG;;uDAAf;;GACT;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IArBD;qCAAA;;;;;;;;;;;wFAAmC;KAAA;IACnC;qCAAA;;;;;;;;;;;wFAA+B;KAAA;IAC/B;qCAAA;;;;;;;;;;;wFAAkC;KAAA;;;;;;;;;;;;;;;;;;"
-}

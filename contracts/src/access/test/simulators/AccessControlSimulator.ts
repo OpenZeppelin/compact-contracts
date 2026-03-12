@@ -1,89 +1,50 @@
 import {
-  type CircuitContext,
-  type CoinPublicKey,
-  type ContractState,
-  constructorContext,
-  emptyZswapLocalState,
-  QueryContext,
-} from '@midnight-ntwrk/compact-runtime';
-import { sampleContractAddress } from '@midnight-ntwrk/zswap';
+  type BaseSimulatorOptions,
+  createSimulator,
+} from '@openzeppelin-compact/contracts-simulator';
 import {
   type ContractAddress,
   type Either,
-  type Ledger,
   ledger,
   Contract as MockAccessControl,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockAccessControl/contract/index.cjs'; // Combined imports
+} from '../../../../artifacts/MockAccessControl/contract/index.js';
 import {
-  type AccessControlPrivateState,
+  AccessControlPrivateState,
   AccessControlWitnesses,
 } from '../../witnesses/AccessControlWitnesses.js';
-import type { IContractSimulator } from '../types/test.js';
 
 /**
- * @description A simulator implementation of a AccessControl contract for testing purposes.
- * @template P - The private state type, fixed to AccessControlPrivateState.
- * @template L - The ledger type, fixed to Contract.Ledger.
+ * Type constructor args
  */
-export class AccessControlSimulator
-  implements IContractSimulator<AccessControlPrivateState, Ledger>
-{
-  /** @description The underlying contract instance managing contract logic. */
-  readonly contract: MockAccessControl<AccessControlPrivateState>;
+type AccessControlArgs = readonly [];
 
-  /** @description The deployed address of the contract. */
-  readonly contractAddress: string;
+const AccessControlSimulatorBase = createSimulator<
+  AccessControlPrivateState,
+  ReturnType<typeof ledger>,
+  ReturnType<typeof AccessControlWitnesses>,
+  MockAccessControl<AccessControlPrivateState>,
+  AccessControlArgs
+>({
+  contractFactory: (witnesses) =>
+    new MockAccessControl<AccessControlPrivateState>(witnesses),
+  defaultPrivateState: () => AccessControlPrivateState,
+  contractArgs: () => [],
+  ledgerExtractor: (state) => ledger(state),
+  witnessesFactory: () => AccessControlWitnesses(),
+});
 
-  /** @description The current circuit context, updated by contract operations. */
-  circuitContext: CircuitContext<AccessControlPrivateState>;
-
-  /**
-   * @description Initializes the mock contract.
-   */
-  constructor() {
-    this.contract = new MockAccessControl<AccessControlPrivateState>(
-      AccessControlWitnesses,
-    );
-    const {
-      currentPrivateState,
-      currentContractState,
-      currentZswapLocalState,
-    } = this.contract.initialState(constructorContext({}, '0'.repeat(64)));
-    this.circuitContext = {
-      currentPrivateState,
-      currentZswapLocalState,
-      originalState: currentContractState,
-      transactionContext: new QueryContext(
-        currentContractState.data,
-        sampleContractAddress(),
-      ),
-    };
-    this.contractAddress = this.circuitContext.transactionContext.address;
-  }
-
-  /**
-   * @description Retrieves the current public ledger state of the contract.
-   * @returns The ledger state as defined by the contract.
-   */
-  public getPublicState(): Ledger {
-    return ledger(this.circuitContext.transactionContext.state);
-  }
-
-  /**
-   * @description Retrieves the current private state of the contract.
-   * @returns The private state of type AccessControlPrivateState.
-   */
-  public getPrivateState(): AccessControlPrivateState {
-    return this.circuitContext.currentPrivateState;
-  }
-
-  /**
-   * @description Retrieves the current contract state.
-   * @returns The contract state object.
-   */
-  public getContractState(): ContractState {
-    return this.circuitContext.originalState;
+/**
+ * AccessControl Simulator
+ */
+export class AccessControlSimulator extends AccessControlSimulatorBase {
+  constructor(
+    options: BaseSimulatorOptions<
+      AccessControlPrivateState,
+      ReturnType<typeof AccessControlWitnesses>
+    > = {},
+  ) {
+    super([], options);
   }
 
   /**
@@ -96,30 +57,15 @@ export class AccessControlSimulator
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
-    return this.contract.impureCircuits.hasRole(
-      this.circuitContext,
-      roleId,
-      account,
-    ).result;
+    return this.circuits.impure.hasRole(roleId, account);
   }
 
   /**
    * @description Retrieves an account's permission for `roleId`.
-   * @param caller - Optional. Sets the caller context if provided.
    * @param roleId - The role identifier.
    */
-  public assertOnlyRole(roleId: Uint8Array, caller?: CoinPublicKey) {
-    const res = this.contract.impureCircuits.assertOnlyRole(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: caller
-          ? emptyZswapLocalState(caller)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      roleId,
-    );
-
-    this.circuitContext = res.context;
+  public assertOnlyRole(roleId: Uint8Array) {
+    this.circuits.impure.assertOnlyRole(roleId);
   }
 
   /**
@@ -131,11 +77,7 @@ export class AccessControlSimulator
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ) {
-    this.circuitContext = this.contract.impureCircuits._checkRole(
-      this.circuitContext,
-      roleId,
-      account,
-    ).context;
+    this.circuits.impure._checkRole(roleId, account);
   }
 
   /**
@@ -144,85 +86,43 @@ export class AccessControlSimulator
    * @returns The admin identifier for `roleId`.
    */
   public getRoleAdmin(roleId: Uint8Array): Uint8Array {
-    return this.contract.impureCircuits.getRoleAdmin(
-      this.circuitContext,
-      roleId,
-    ).result;
+    return this.circuits.impure.getRoleAdmin(roleId);
   }
 
   /**
    * @description Grants an account permissions to use `roleId`.
-   * @param caller - Optional. Sets the caller context if provided.
    * @param roleId - The role identifier.
    * @param account - A ZswapCoinPublicKey or a ContractAddress.
    */
   public grantRole(
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
-    caller?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.grantRole(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: caller
-          ? emptyZswapLocalState(caller)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      roleId,
-      account,
-    );
-
-    this.circuitContext = res.context;
+    this.circuits.impure.grantRole(roleId, account);
   }
 
   /**
    * @description Revokes an account's permission to use `roleId`.
-   * @param caller - Optional. Sets the caller context if provided.
    * @param roleId - The role identifier.
    * @param account - A ZswapCoinPublicKey or a ContractAddress.
    */
   public revokeRole(
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
-    caller?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.revokeRole(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: caller
-          ? emptyZswapLocalState(caller)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      roleId,
-      account,
-    );
-
-    this.circuitContext = res.context;
+    this.circuits.impure.revokeRole(roleId, account);
   }
 
   /**
    * @description Revokes `roleId` from the calling account.
-   * @param caller - Optional. Sets the caller context if provided.
    * @param roleId - The role identifier.
    * @param account - A ZswapCoinPublicKey or a ContractAddress.
    */
   public renounceRole(
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
-    caller?: CoinPublicKey,
   ) {
-    const res = this.contract.impureCircuits.renounceRole(
-      {
-        ...this.circuitContext,
-        currentZswapLocalState: caller
-          ? emptyZswapLocalState(caller)
-          : this.circuitContext.currentZswapLocalState,
-      },
-      roleId,
-      account,
-    );
-
-    this.circuitContext = res.context;
+    this.circuits.impure.renounceRole(roleId, account);
   }
 
   /**
@@ -231,11 +131,7 @@ export class AccessControlSimulator
    * @param adminId - The admin role identifier.
    */
   public _setRoleAdmin(roleId: Uint8Array, adminId: Uint8Array) {
-    this.circuitContext = this.contract.impureCircuits._setRoleAdmin(
-      this.circuitContext,
-      roleId,
-      adminId,
-    ).context;
+    this.circuits.impure._setRoleAdmin(roleId, adminId);
   }
 
   /**
@@ -247,14 +143,7 @@ export class AccessControlSimulator
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
-    const res = this.contract.impureCircuits._grantRole(
-      this.circuitContext,
-      roleId,
-      account,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure._grantRole(roleId, account);
   }
 
   /**
@@ -267,14 +156,7 @@ export class AccessControlSimulator
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
-    const res = this.contract.impureCircuits._unsafeGrantRole(
-      this.circuitContext,
-      roleId,
-      account,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure._unsafeGrantRole(roleId, account);
   }
 
   /**
@@ -286,13 +168,6 @@ export class AccessControlSimulator
     roleId: Uint8Array,
     account: Either<ZswapCoinPublicKey, ContractAddress>,
   ): boolean {
-    const res = this.contract.impureCircuits._revokeRole(
-      this.circuitContext,
-      roleId,
-      account,
-    );
-
-    this.circuitContext = res.context;
-    return res.result;
+    return this.circuits.impure._revokeRole(roleId, account);
   }
 }
