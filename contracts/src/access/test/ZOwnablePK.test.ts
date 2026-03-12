@@ -307,7 +307,7 @@ describe('ZOwnablePK', () => {
         );
 
         expect(() => {
-          ownable.as(OWNER).assertOnlyOwner()
+          ownable.as(OWNER).assertOnlyOwner();
         }).not.toThrow();
       });
 
