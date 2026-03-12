@@ -1,4 +1,4 @@
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 import "../../Pausable" prefix Pausable_;

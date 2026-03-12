@@ -176,7 +176,8 @@ export class FileDiscovery {
    */
   async getCompactFiles(dir: string): Promise<string[]> {
     try {
-      const dirents = await readdir(dir, { withFileTypes: true });
+      let dirents = await readdir(dir, { withFileTypes: true });
+      dirents = dirents.filter((dirent) => dirent.name !== 'archive');
       const filePromises = dirents.map(async (entry) => {
         const fullPath = join(dir, entry.name);
         try {
