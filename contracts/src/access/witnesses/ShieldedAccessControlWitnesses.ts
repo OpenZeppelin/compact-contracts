@@ -17,7 +17,7 @@ export interface IShieldedAccessControlWitnesses<P> {
    */
   wit_secretNonce(
     context: WitnessContext<Ledger, P>,
-    roleId: Uint8Array,
+    role: Uint8Array,
   ): [P, Uint8Array];
   wit_getRoleCommitmentPath(
     context: WitnessContext<Ledger, P>,
@@ -25,7 +25,7 @@ export interface IShieldedAccessControlWitnesses<P> {
   ): [P, MerkleTreePath<Uint8Array>];
 }
 
-type RoleId = string;
+type role = string;
 type SecretNonce = Uint8Array;
 
 /**
@@ -34,7 +34,7 @@ type SecretNonce = Uint8Array;
  */
 export type ShieldedAccessControlPrivateState = {
   /** @description A 32-byte secret nonce used as a privacy additive. */
-  roles: Record<RoleId, SecretNonce>;
+  roles: Record<role, SecretNonce>;
 };
 
 /**
@@ -42,7 +42,7 @@ export type ShieldedAccessControlPrivateState = {
  */
 export const ShieldedAccessControlPrivateState = {
   /**
-   * @description Generates a new private state with a random secret nonce and a default roleId of 0.
+   * @description Generates a new private state with a random secret nonce and a default role of 0.
    * @returns A fresh ShieldedAccessControlPrivateState instance.
    */
   generate: (): ShieldedAccessControlPrivateState => {
@@ -67,19 +67,19 @@ export const ShieldedAccessControlPrivateState = {
    * ```
    */
   withRoleAndNonce: (
-    roleId: Buffer,
+    role: Buffer,
     nonce: Buffer,
   ): ShieldedAccessControlPrivateState => {
-    const roleString = roleId.toString('hex');
+    const roleString = role.toString('hex');
     return { roles: { [roleString]: nonce } };
   },
 
   setRole: (
     privateState: ShieldedAccessControlPrivateState,
-    roleId: Buffer,
+    role: Buffer,
     nonce: Buffer,
   ): ShieldedAccessControlPrivateState => {
-    const roleString = roleId.toString('hex');
+    const roleString = role.toString('hex');
     privateState.roles[roleString] = nonce;
     return privateState;
   },
@@ -111,9 +111,9 @@ export const ShieldedAccessControlWitnesses =
   (): IShieldedAccessControlWitnesses<ShieldedAccessControlPrivateState> => ({
     wit_secretNonce(
       context: WitnessContext<Ledger, ShieldedAccessControlPrivateState>,
-      roleId: Uint8Array,
+      role: Uint8Array,
     ): [ShieldedAccessControlPrivateState, Uint8Array] {
-      const roleString = Buffer.from(roleId).toString('hex');
+      const roleString = Buffer.from(role).toString('hex');
       return [context.privateState, context.privateState.roles[roleString]];
     },
     wit_getRoleCommitmentPath(

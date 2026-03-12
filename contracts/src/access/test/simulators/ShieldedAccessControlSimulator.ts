@@ -4,8 +4,6 @@ import {
   createSimulator,
 } from '@openzeppelin-compact/contracts-simulator';
 import {
-  type ContractAddress,
-  type Either,
   ledger,
   Contract as MockShieldedAccessControl,
   type ZswapCoinPublicKey,
@@ -56,10 +54,10 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
   }
 
   public _computeRoleCommitment(
-    roleId: Uint8Array,
+    role: Uint8Array,
     accountId: Uint8Array,
   ): Uint8Array {
-    return this.circuits.impure._computeRoleCommitment(roleId, accountId);
+    return this.circuits.impure._computeRoleCommitment(role, accountId);
   }
 
   public _computeAccountId(
@@ -73,8 +71,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.pure._computeNullifier(roleCommitment);
   }
 
-  public proveCallerRole(roleId: Uint8Array): boolean {
-    return this.circuits.impure.proveCallerRole(roleId);
+  public proveCallerRole(role: Uint8Array): boolean {
+    return this.circuits.impure.proveCallerRole(role);
   }
 
   /**
@@ -82,12 +80,12 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * `newOwnerId` must be precalculated and given to the current owner off chain.
    * @param newOwnerId The new owner's unique identifier (`SHA256(pk, nonce)`).
    */
-  public assertOnlyRole(roleId: Uint8Array) {
-    this.circuits.impure.assertOnlyRole(roleId);
+  public assertOnlyRole(role: Uint8Array) {
+    this.circuits.impure.assertOnlyRole(role);
   }
 
-  public _validateRole(roleId: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._validateRole(roleId, accountId);
+  public _validateRole(role: Uint8Array, accountId: Uint8Array): boolean {
+    return this.circuits.impure._validateRole(role, accountId);
   }
 
   /**
@@ -97,8 +95,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * after every transfer to prevent duplicate commitments given the same `id`.
    * @returns The commitment derived from `id` and `counter`.
    */
-  public getRoleAdmin(roleId: Uint8Array): Uint8Array {
-    return this.circuits.impure.getRoleAdmin(roleId);
+  public getRoleAdmin(role: Uint8Array): Uint8Array {
+    return this.circuits.impure.getRoleAdmin(role);
   }
 
   /**
@@ -108,8 +106,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * @param nonce - A private nonce to scope the commitment.
    * @returns The computed owner ID.
    */
-  public grantRole(roleId: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure.grantRole(roleId, accountId);
+  public grantRole(role: Uint8Array, accountId: Uint8Array) {
+    this.circuits.impure.grantRole(role, accountId);
   }
 
   /**
@@ -117,8 +115,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public revokeRole(roleId: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure.revokeRole(roleId, accountId);
+  public revokeRole(role: Uint8Array, accountId: Uint8Array) {
+    this.circuits.impure.revokeRole(role, accountId);
   }
 
   /**
@@ -126,8 +124,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public renounceRole(roleId: Uint8Array, callerConfirmation: Uint8Array) {
-    this.circuits.impure.renounceRole(roleId, callerConfirmation);
+  public renounceRole(role: Uint8Array, callerConfirmation: Uint8Array) {
+    this.circuits.impure.renounceRole(role, callerConfirmation);
   }
 
   /**
@@ -135,8 +133,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _setRoleAdmin(roleId: Uint8Array, adminRole: Uint8Array) {
-    this.circuits.impure._setRoleAdmin(roleId, adminRole);
+  public _setRoleAdmin(role: Uint8Array, adminRole: Uint8Array) {
+    this.circuits.impure._setRoleAdmin(role, adminRole);
   }
 
   /**
@@ -144,8 +142,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _grantRole(roleId: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._grantRole(roleId, accountId);
+  public _grantRole(role: Uint8Array, accountId: Uint8Array): boolean {
+    return this.circuits.impure._grantRole(role, accountId);
   }
 
   /**
@@ -153,8 +151,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _revokeRole(roleId: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._revokeRole(roleId, accountId);
+  public _revokeRole(role: Uint8Array, accountId: Uint8Array): boolean {
+    return this.circuits.impure._revokeRole(role, accountId);
   }
 
   public readonly privateState = {
@@ -164,25 +162,25 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
      * @returns The ShieldedAccessControl private state after setting the new nonce.
      */
     injectSecretNonce: (
-      roleId: Uint8Array,
+      role: Uint8Array,
       newNonce: Buffer<ArrayBufferLike>,
     ): ShieldedAccessControlPrivateState => {
       const currentState = this.getPrivateState();
       const updatedState = {
         roles: { ...currentState.roles },
       };
-      const roleString = Buffer.from(roleId).toString('hex');
+      const roleString = Buffer.from(role).toString('hex');
       updatedState.roles[roleString] = newNonce;
       this.circuitContextManager.updatePrivateState(updatedState);
       return updatedState;
     },
 
     /**
-     * @description Returns the secret nonce for a given roleId.
+     * @description Returns the secret nonce for a given role.
      * @returns The secret nonce.
      */
-    getCurrentSecretNonce: (roleId: Uint8Array): Uint8Array => {
-      const roleString = Buffer.from(roleId).toString('hex');
+    getCurrentSecretNonce: (role: Uint8Array): Uint8Array => {
+      const roleString = Buffer.from(role).toString('hex');
       return this.getPrivateState().roles[roleString];
     },
     getCommitmentPathWithFindForLeaf: (

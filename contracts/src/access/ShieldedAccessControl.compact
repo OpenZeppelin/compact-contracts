@@ -734,7 +734,8 @@ module ShieldedAccessControl {
   }
 
   /**
-   * @description Revokes `role` from the calling account.
+   * @description Revokes `role` from the calling account. Fails silently if role is already revoked.
+   * `role` existence is not checked, so a caller can renounce roles they don't own or don't exist.
    *
    * @notice Roles are often managed via {grantRole} and {revokeRole}: this circuit's
    * purpose is to provide a mechanism for accounts to lose their privileges
