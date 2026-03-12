@@ -306,7 +306,9 @@ describe('ZOwnablePK', () => {
           secretNonce,
         );
 
-        expect(ownable.as(OWNER).assertOnlyOwner()).to.not.throw;
+        expect(() => {
+          ownable.as(OWNER).assertOnlyOwner()
+        }).not.toThrow();
       });
 
       it('should fail when the authorized caller has the wrong nonce', () => {
