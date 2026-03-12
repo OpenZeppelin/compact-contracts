@@ -1,14 +1,17 @@
 {
   "name": "@openzeppelin-compact/compact",
   "private": true,
+  "description": "CLI for building and packaging Compact smart contracts",
   "version": "0.0.1",
   "keywords": [
     "compact",
-    "compiler"
+    "compiler",
+    "packaging",
+    "distribution",
+    "release"
   ],
   "author": "",
   "license": "MIT",
-  "description": "Compact fetcher",
   "type": "module",
   "exports": "./index.js",
   "engines": {
@@ -26,7 +29,7 @@
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.3",
-    "@types/node": "24.10.0",
+    "@types/node": "24.10.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   },
