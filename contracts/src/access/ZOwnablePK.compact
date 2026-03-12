@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.0.1-alpha.1 (access/ZOwnablePK.compact)
 
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 /**
  * @module ZOwnablePK
@@ -191,13 +191,14 @@ module ZOwnablePK {
     Initializable_assertInitialized();
 
     const nonce = wit_secretNonce();
-    const callerAsEither = Either<ZswapCoinPublicKey, ContractAddress> {
-      is_left: true,
-      left: ownPublicKey(),
-      right: ContractAddress { bytes: pad(32, "") }
-    };
+    const callerAsEither =
+            Either<ZswapCoinPublicKey, ContractAddress> { is_left: true,
+                                                          left: ownPublicKey(),
+                                                          right: ContractAddress { bytes: pad(32, "") } };
     const id = _computeOwnerId(callerAsEither, nonce);
-    assert(_ownerCommitment == _computeOwnerCommitment(id, _counter), "ZOwnablePK: caller is not the owner");
+    assert(_ownerCommitment == _computeOwnerCommitment(id, _counter),
+           "ZOwnablePK: caller is not the owner"
+           );
   }
 
   /**
@@ -232,19 +233,11 @@ module ZOwnablePK {
    * after every transfer to prevent duplicate commitments given the same `id`.
    * @returns {Bytes<32>} The commitment derived from `id` and `counter`.
    */
-  export circuit _computeOwnerCommitment(
-    id: Bytes<32>,
-    counter: Uint<64>,
-  ): Bytes<32> {
+  export circuit _computeOwnerCommitment(id: Bytes<32>, counter: Uint<64>,): Bytes<32> {
     Initializable_assertInitialized();
     return persistentHash<Vector<4, Bytes<32>>>(
-      [
-        id,
-        _instanceSalt,
-        counter as Field as Bytes<32>,
-        pad(32, "ZOwnablePK:shield:")
-      ]
-    );
+             [id, _instanceSalt, counter as Field as Bytes<32>, pad(32, "ZOwnablePK:shield:")]
+             );
   }
 
   /**
@@ -280,9 +273,9 @@ module ZOwnablePK {
    * @returns {Bytes<32>} The computed owner ID.
    */
   export pure circuit _computeOwnerId(
-    pk: Either<ZswapCoinPublicKey, ContractAddress>,
-    nonce: Bytes<32>
-  ): Bytes<32> {
+                        pk: Either<ZswapCoinPublicKey, ContractAddress>,
+                        nonce: Bytes<32>
+                        ): Bytes<32> {
     assert(pk.is_left, "ZOwnablePK: contract address owners are not yet supported");
 
     return persistentHash<Vector<2, Bytes<32>>>([pk.left.bytes, nonce]);
