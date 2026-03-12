@@ -8,26 +8,30 @@
     "packages/*"
   ],
   "scripts": {
-    "compact": "turbo run compact --filter=@openzeppelin-compact/contracts --log-prefix=none",
+    "compact": "turbo run compact --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "build": "turbo run build --log-prefix=none",
-    "test": "turbo run test --filter=@openzeppelin-compact/contracts --log-prefix=none",
+    "test": "turbo run test --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "fmt-and-lint": "biome check . --changed",
     "fmt-and-lint:fix": "biome check . --changed --write",
     "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
     "types": "turbo run types",
     "clean": "turbo run clean"
   },
+  "resolutions": {
+    "tar": "~7.5.7",
+    "glob": "~10.5.0"
+  },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "^0.9.0"
+    "@midnight-ntwrk/compact-runtime": "0.14.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.8",
-    "@midnight-ntwrk/ledger": "^4.0.0",
+    "@midnight-ntwrk/ledger-v7": "7.0.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@types/node": "24.10.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.6.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   }
 }

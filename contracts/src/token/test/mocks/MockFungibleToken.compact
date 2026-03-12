@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
@@ -62,19 +62,19 @@ export circuit _unsafeTransfer(to: Either<ZswapCoinPublicKey, ContractAddress>, 
 }
 
 export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): Boolean {
-  return FungibleToken_transferFrom(from, to, value);
+  return FungibleToken_transferFrom(fromAddress, to, value);
 }
 
 export circuit _unsafeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): Boolean {
-  return FungibleToken__unsafeTransferFrom(from, to, value);
+  return FungibleToken__unsafeTransferFrom(fromAddress, to, value);
 }
 
 export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): Boolean {
@@ -90,19 +90,19 @@ export circuit _approve(
 }
 
 export circuit _transfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-  return FungibleToken__transfer(from, to, value);
+  return FungibleToken__transfer(fromAddress, to, value);
 }
 
 export circuit _unsafeUncheckedTransfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   value: Uint<128>
 ): [] {
-  return FungibleToken__unsafeUncheckedTransfer(from, to, value);
+  return FungibleToken__unsafeUncheckedTransfer(fromAddress, to, value);
 }
 
 export circuit _mint(
