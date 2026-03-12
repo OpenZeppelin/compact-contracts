@@ -200,7 +200,7 @@ describe('ZOwnablePK', () => {
         // New owner
         ownable.privateState.injectSecretNonce(Buffer.from(newOwnerNonce));
         expect(() => {
-          ownable.as(NEW_OWNER).assertOnlyOwner()
+          ownable.as(NEW_OWNER).assertOnlyOwner();
         }).not.toThrow();
       });
 
@@ -260,7 +260,7 @@ describe('ZOwnablePK', () => {
 
         // Check same owner maintains permissions after transfer
         expect(() => {
-          ownable.as(OWNER).assertOnlyOwner()
+          ownable.as(OWNER).assertOnlyOwner();
         }).not.toThrow();
       });
     });
@@ -483,11 +483,11 @@ describe('ZOwnablePK', () => {
       it('should allow anyone to transfer', () => {
         const id = createIdHash(Z_OWNER, secretNonce);
         expect(() => {
-          ownable.as(OWNER)._transferOwnership(id)
+          ownable.as(OWNER)._transferOwnership(id);
         }).not.toThrow();
 
         expect(() => {
-          ownable.as(UNAUTHORIZED)._transferOwnership(id)
+          ownable.as(UNAUTHORIZED)._transferOwnership(id);
         }).not.toThrow();
       });
     });
