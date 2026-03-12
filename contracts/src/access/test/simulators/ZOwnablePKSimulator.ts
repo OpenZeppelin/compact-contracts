@@ -6,9 +6,9 @@ import {
   type ContractAddress,
   type Either,
   ledger,
-  Contract as MockOwnable,
+  Contract as MockZOwnablePK,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockZOwnablePK/contract/index.cjs';
+} from '../../../../artifacts/MockZOwnablePK/contract/index.js';
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,
@@ -37,10 +37,11 @@ const ZOwnablePKSimulatorBase: any = createSimulator<
   ZOwnablePKPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof ZOwnablePKWitnesses>,
+  MockZOwnablePK<ZOwnablePKPrivateState>,
   ZOwnablePKArgs
 >({
   contractFactory: (witnesses) =>
-    new MockOwnable<ZOwnablePKPrivateState>(witnesses),
+    new MockZOwnablePK<ZOwnablePKPrivateState>(witnesses),
   defaultPrivateState: () => ZOwnablePKPrivateState.generate(),
   contractArgs: (owner, instanceSalt, isInit) => {
     return [owner, instanceSalt, isInit];
