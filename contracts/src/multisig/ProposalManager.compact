@@ -1,0 +1,310 @@
+pragma language_version >= 0.21.0;
+
+/**
+ * @module ProposalManager
+ * @description Token-agnostic proposal lifecycle management for multisig
+ * governance contracts.
+ *
+ * Supports shielded and unshielded proposals through a unified
+ * Recipient type with a RecipientKind tag. Typed helper circuits
+ * provide safe construction of recipients without exposing the
+ * internal Bytes<32> representation to consumers.
+ */
+module ProposalManager {
+  import CompactStandardLibrary;
+
+  // ─── Types ──────────────────────────────────────────────────────
+
+  export enum ProposalStatus {
+    Inactive,
+    Active,
+    Executed,
+    Cancelled
+  }
+
+  export enum RecipientKind {
+    ShieldedUser,
+    UnshieldedUser,
+    Contract
+  }
+
+  export struct Recipient {
+    kind: RecipientKind,
+    address: Bytes<32>
+  }
+
+  export struct Proposal {
+    to: Recipient,
+    color: Bytes<32>,
+    amount: Uint<128>,
+    status: ProposalStatus
+  }
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  ledger _nextProposalId: Counter;
+  ledger _proposals: Map<Uint<64>, Proposal>;
+
+  // ─── Recipient Helpers ──────────────────────────────────────────
+
+  /**
+   * @description Constructs a shielded user recipient.
+   *
+   * @param {ZswapCoinPublicKey} key - The shielded recipient's public key.
+   * @returns {Recipient} The typed recipient.
+   */
+  export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Recipient {
+    return Recipient { kind: RecipientKind.ShieldedUser, address: key.bytes };
+  }
+
+  /**
+   * @description Constructs an unshielded user recipient.
+   *
+   * @param {UserAddress} addr - The unshielded recipient's address.
+   * @returns {Recipient} The typed recipient.
+   */
+  export circuit unshieldedUserRecipient(addr: UserAddress): Recipient {
+    return Recipient { kind: RecipientKind.UnshieldedUser, address: addr.bytes };
+  }
+
+  /**
+   * @description Constructs a contract recipient.
+   *
+   * @param {ContractAddress} addr - The contract address.
+   * @returns {Recipient} The typed recipient.
+   */
+  export circuit contractRecipient(addr: ContractAddress): Recipient {
+    return Recipient { kind: RecipientKind.Contract, address: addr.bytes };
+  }
+
+  /**
+   * @description Converts a Recipient to a shielded send recipient.
+   * Handles both ShieldedUser and Contract kinds.
+   *
+   * Requirements:
+   *
+   * - Recipient kind must be ShieldedUser or Contract.
+   *
+   * @param {Recipient} r - The recipient.
+   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The shielded recipient.
+   */
+  export circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
+    if (r.kind == RecipientKind.ShieldedUser) {
+      return left<ZswapCoinPublicKey, ContractAddress>(
+        ZswapCoinPublicKey { bytes: r.address }
+      );
+    }
+    assert(r.kind == RecipientKind.Contract, "ProposalManager: invalid shielded recipient");
+    return right<ZswapCoinPublicKey, ContractAddress>(
+      ContractAddress { bytes: r.address }
+    );
+  }
+
+  /**
+   * @description Converts a Recipient to an unshielded send recipient.
+   * Handles both UnshieldedUser and Contract kinds.
+   *
+   * Requirements:
+   *
+   * - Recipient kind must be UnshieldedUser or Contract.
+   *
+   * @param {Recipient} r - The recipient.
+   * @returns {Either<ContractAddress, UserAddress>} The unshielded recipient.
+   */
+  export circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
+    if (r.kind == RecipientKind.Contract) {
+      return left<ContractAddress, UserAddress>(
+        ContractAddress { bytes: r.address }
+      );
+    }
+    assert(r.kind == RecipientKind.UnshieldedUser, "ProposalManager: invalid unshielded recipient");
+    return right<ContractAddress, UserAddress>(
+      UserAddress { bytes: r.address }
+    );
+  }
+
+  // ─── Guards ─────────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that a proposal exists.
+   *
+   * Requirements:
+   *
+   * - Proposal with `id` must have been created.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertProposalExists(id: Uint<64>): [] {
+    assert(
+      _proposals.member(disclose(id)),
+      "ProposalManager: proposal not found"
+    );
+  }
+
+  /**
+   * @description Asserts that a proposal exists and is active.
+   *
+   * Requirements:
+   *
+   * - Proposal must exist.
+   * - Proposal status must be Active.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertProposalActive(id: Uint<64>): [] {
+    assertProposalExists(id);
+    assert(
+      _proposals.lookup(disclose(id)).status == ProposalStatus.Active,
+      "ProposalManager: proposal not active"
+    );
+  }
+
+  // ─── Proposal Lifecycle ─────────────────────────────────────────
+
+  /**
+   * @description Creates a new proposal.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - `amount` must be greater than 0.
+   *
+   * @param {Recipient} to - The recipient (constructed via helper circuits).
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to transfer.
+   * @returns {Uint<64>} The new proposal ID.
+   */
+  export circuit _createProposal(
+    to: Recipient,
+    color: Bytes<32>,
+    amount: Uint<128>
+  ): Uint<64> {
+    assert(amount > 0, "ProposalManager: zero amount");
+
+    _nextProposalId.increment(1);
+    const id = _nextProposalId;
+
+    _proposals.insert(disclose(id), disclose(Proposal {
+      to: to,
+      color: color,
+      amount: amount,
+      status: ProposalStatus.Active
+    }));
+
+    return id;
+  }
+
+  /**
+   * @description Cancels a proposal.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - Proposal must be active.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _cancelProposal(id: Uint<64>): [] {
+    assertProposalActive(id);
+
+    const proposal = _proposals.lookup(disclose(id));
+    _proposals.insert(disclose(id), disclose(Proposal {
+      to: proposal.to,
+      color: proposal.color,
+      amount: proposal.amount,
+      status: ProposalStatus.Cancelled
+    }));
+  }
+
+  /**
+   * @description Marks a proposal as executed.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - Proposal must be active.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _markExecuted(id: Uint<64>): [] {
+    assertProposalActive(id);
+
+    const proposal = _proposals.lookup(disclose(id));
+    _proposals.insert(disclose(id), disclose(Proposal {
+      to: proposal.to,
+      color: proposal.color,
+      amount: proposal.amount,
+      status: ProposalStatus.Executed
+    }));
+  }
+
+  // ─── View ───────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the full proposal data.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {Proposal} The proposal.
+   */
+  export circuit getProposal(id: Uint<64>): Proposal {
+    assertProposalExists(id);
+    return _proposals.lookup(disclose(id));
+  }
+
+  /**
+   * @description Returns the recipient of a proposal.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {Recipient} The recipient.
+   */
+  export circuit getProposalRecipient(id: Uint<64>): Recipient {
+    assertProposalExists(id);
+    return _proposals.lookup(disclose(id)).to;
+  }
+
+  /**
+   * @description Returns the amount of a proposal.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {Uint<128>} The amount.
+   */
+  export circuit getProposalAmount(id: Uint<64>): Uint<128> {
+    assertProposalExists(id);
+    return _proposals.lookup(disclose(id)).amount;
+  }
+
+  /**
+   * @description Returns the token color of a proposal.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {Bytes<32>} The token color.
+   */
+  export circuit getProposalColor(id: Uint<64>): Bytes<32> {
+    assertProposalExists(id);
+    return _proposals.lookup(disclose(id)).color;
+  }
+
+  /**
+   * @description Returns the status of a proposal.
+   *
+   * @param {Uint<64>} id - The proposal ID.
+   * @returns {ProposalStatus} The proposal status.
+   */
+  export circuit getProposalStatus(id: Uint<64>): ProposalStatus {
+    assertProposalExists(id);
+    return _proposals.lookup(disclose(id)).status;
+  }
+}

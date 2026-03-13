@@ -27,6 +27,7 @@
     "compact": "compact-compiler",
     "compact:access": "compact-compiler --dir access",
     "compact:archive": "compact-compiler --dir archive",
+    "compact:multisig": "compact-compiler --dir multisig",
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",

@@ -29,6 +29,13 @@
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
+    "compact:multisig": {
+      "dependsOn": ["^build", "compact:security", "compact:utils"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/access/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
+    },
     "compact:token": {
       "dependsOn": ["^build", "compact:security", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
@@ -41,6 +48,7 @@
         "compact:security",
         "compact:utils",
         "compact:access",
+        "compact:multisig",
         "compact:token"
       ],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
