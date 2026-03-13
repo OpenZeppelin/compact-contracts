@@ -28,7 +28,7 @@
     "clean": "git clean -fXd"
   },
   "devDependencies": {
-    "@tsconfig/node24": "^24.0.3",
+    "@tsconfig/node24": "^24.0.4",
     "@types/node": "24.10.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
