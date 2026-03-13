@@ -1,10 +1,11 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "src/**/witnesses/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": ["src/archive/"],
   "compilerOptions": {
+    "baseUrl": ".",
     "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
@@ -13,5 +14,9 @@
     "noImplicitAny": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
+    "paths": {
+      "@artifacts/*": ["./artifacts/*"],
+      "@src/*": ["./src/*"]
+    }
   }
 }
