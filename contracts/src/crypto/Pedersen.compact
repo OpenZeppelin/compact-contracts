@@ -1,0 +1,275 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/Pedersen.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title PedersenCommitment
+ * @description Pedersen-style commitments for hiding values with homomorphic addition.
+ * 
+ * A Pedersen commitment C = r*G + v*H where:
+ * - r = random blinding factor (Field)
+ * - v = value to commit (Field)
+ * - G = primary generator (from ecMulGenerator)
+ * - H = secondary generator (from hashToCurve)
+ * 
+ * Properties:
+ * - Hiding: Commitment reveals nothing about v without r
+ * - Binding: Cannot change v after committing
+ * - Homomorphic: C1 + C2 = commit(v1+v2, r1+r2)
+ * 
+ * Supported Operations:
+ * - commit(): Create a commitment to a value with randomness
+ * - open(): Verify a commitment opening
+ * - add(): Homomorphically add two commitments
+ * - mockRandom(): Generate pseudo-random blinding factor (NOT cryptographically secure)
+ */
+module Pedersen {
+  import CompactStandardLibrary;
+
+  export struct Commitment {
+    point: JubjubPoint
+  }
+
+  export struct Opening {
+    value: Field,
+    randomness: Field
+  }
+
+  /**
+   * @title Field Negative One constant
+   * @description Returns -1 in field arithmetic (r - 1 where r is the scalar field modulus)
+   * 
+   * In field arithmetic modulo r, -1 is equivalent to r - 1.
+   * Compact's Field type uses the scalar field (Fr) of BLS12-381, not the base field (Fp).
+   * For BLS12-381 scalar field, r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+   * In decimal: 52435875175126190479447740508185965837690552500527637822603658699938581184513
+   * So -1 = r - 1 = 52435875175126190479447740508185965837690552500527637822603658699938581184512
+   * 
+   * @circuitInfo k=10, rows=1
+   *
+   * @returns {Field} The field element representing -1
+   */
+  export pure circuit FIELD_NEG_ONE(): Field {
+    // Scalar field modulus r - 1 = -1 mod r for BLS12-381
+    // Using hex representation: r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+    // So -1 = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000
+    return 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000 as Field;
+  }
+
+  /**
+   * @title Value Generator circuit
+   * @description Returns the secondary generator H for value commitments.
+   * Uses hashToCurve to derive a deterministic generator independent from G.
+   * 
+   * @circuitInfo k=10, rows=367
+   *
+   * @returns {JubjubPoint} The secondary generator H
+   */
+  export circuit VALUE_GENERATOR(): JubjubPoint {
+    return hashToCurve<Bytes<32>>(pad(32, "pedersen_value_generator_v1"));
+  }
+
+  /**
+   * @title Commit circuit
+   * @description Creates a Pedersen commitment C = r*G + v*H
+   *
+   * Computes a commitment that hides the value v using randomness r.
+   * The commitment is computationally binding (cannot change v after committing)
+   * and perfectly hiding (reveals nothing about v without r).
+   *
+   * @circuitInfo k=11, rows=1557
+   *
+   * @param {Field} value - The value to commit
+   * @param {Field} randomness - The blinding factor
+   *
+   * @returns {Commitment} The commitment C = r*G + v*H
+   */
+  export circuit commit(value: Field, randomness: Field): Commitment {
+    const H = VALUE_GENERATOR();
+    
+    // Compute r*G
+    const rG = ecMulGenerator(randomness);
+    
+    // Compute v*H
+    const vH = ecMul(H, value);
+    
+    // Compute C = r*G + v*H
+    const commitmentPoint = ecAdd(rG, vH);
+    
+    return Commitment { point: commitmentPoint };
+  }
+
+  /**
+   * @title Open circuit
+   * @description Verifies that a commitment was created with specific value and randomness
+   *
+   * Recomputes the commitment from the claimed value and randomness,
+   * then checks if it matches the original commitment. Returns true if valid.
+   *
+   * @circuitInfo k=11, rows=1570
+   *
+   * @param {Commitment} commitment - The commitment to verify
+   * @param {Field} value - The claimed value
+   * @param {Field} randomness - The claimed randomness
+   *
+   * @returns {Boolean} True if commitment opens correctly, false otherwise
+   */
+  export circuit open(
+    commitment: Commitment,
+    value: Field,
+    randomness: Field
+  ): Boolean {
+    const computed = commit(value, randomness);
+    return commitment.point == computed.point;
+  }
+
+  /**
+   * @title Verify Opening circuit
+   * @description Convenience wrapper that asserts commitment opens correctly
+   *
+   * @circuitInfo k=11, rows=1571
+   *
+   * @param {Commitment} commitment - The commitment to verify
+   * @param {Opening} opening - The value and randomness
+   *
+   * @throws {Error} "Pedersen: invalid opening" if opening is incorrect
+   *
+   * @returns {Boolean} Always returns true if assertion passes
+   */
+  export circuit verifyOpening(
+    commitment: Commitment,
+    opening: Opening
+  ): Boolean {
+    assert(
+      open(commitment, opening.value, opening.randomness),
+      "Pedersen: invalid opening"
+    );
+    return true;
+  }
+
+  /**
+   * @title Add Commitments circuit
+   * @description Homomorphically adds two commitments
+   *
+   * Computes C3 = C1 + C2, which is a commitment to (v1 + v2) with randomness (r1 + r2).
+   * This allows arithmetic on encrypted values without revealing them.
+   *
+   * Mathematical Property:
+   * If C1 = commit(v1, r1) and C2 = commit(v2, r2)
+   * Then add(C1, C2) = commit(v1 + v2, r1 + r2)
+   *
+   * @circuitInfo k=10, rows=111
+   *
+   * @param {Commitment} c1 - First commitment
+   * @param {Commitment} c2 - Second commitment
+   *
+   * @returns {Commitment} The sum commitment C1 + C2
+   */
+  export circuit add(c1: Commitment, c2: Commitment): Commitment {
+    const sumPoint = ecAdd(c1.point, c2.point);
+    return Commitment { point: sumPoint };
+  }
+
+  /**
+   * @title Subtract Commitments circuit
+   * @description Homomorphically subtracts one commitment from another
+   *
+   * Computes C3 = C1 - C2, which is a commitment to (v1 - v2).
+   * Note: This requires computing -C2 = (-r2)*G + (-v2)*H
+   *
+   * @circuitInfo k=10, rows=693
+   *
+   * @param {Commitment} c1 - First commitment (minuend)
+   * @param {Commitment} c2 - Second commitment (subtrahend)
+   *
+   * @returns {Commitment} The difference commitment C1 - C2
+   */
+  export circuit sub(c1: Commitment, c2: Commitment): Commitment {
+    // Special case: if c2 is zero, return c1 (subtracting zero doesn't change the commitment)
+    if (isZero(c2)) {
+      return c1;
+    }
+    
+    // Compute -C2 by negating the point using scalar multiplication with -1
+    // In field arithmetic, -1 = r - 1 where r is the scalar field modulus
+    // For BLS12-381 scalar field: r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+    // So -1 = r - 1 = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000 HEX
+    // So -1 = 52435875175126190479447740508185965837690552500527637822603658699938581184512 as Field DECIMAL
+    // We inline the hex value directly to avoid function call overhead
+    const r_minus_one = 52435875175126190479447740508185965837690552500527637822603658699938581184511 as Field;
+    const negC2Point = ecMul(c2.point, r_minus_one); // EmbeddedFr Error here
+    const diffPoint = ecAdd(c1.point, negC2Point);
+    return Commitment { point: diffPoint };
+  }
+
+  /**
+   * @title Mock Random circuit
+   * @description Generates a pseudo-random field element (NOT cryptographically secure!)
+   *
+   * WARNING: This is NOT suitable for production! Use only for testing/demos.
+   * A proper random source should use secure entropy from outside the circuit.
+   *
+   * This derives a deterministic value from a seed using transientHash (Poseidon).
+   * While the output is unpredictable without the seed, it's not truly random.
+   *
+   * @circuitInfo k=10, rows=77
+   *
+   * @param {Field} seed - Input seed (use different seeds for different randoms)
+   *
+   * @returns {Field} A pseudo-random field element
+   */
+  export circuit mockRandom(seed: Field): Field {
+    // Hash the seed with a domain separator
+    return transientHash<Vector<2, Field>>([seed, pad(32, "pedersen_mock_random_v1") as Field]);
+  }
+
+  /**
+   * @title Mock Random from Data circuit
+   * @description Generates pseudo-random value from arbitrary data
+   *
+   * WARNING: NOT cryptographically secure! Use only for testing.
+   *
+   * @circuitInfo k=10, rows=123
+   *
+   * @param {Field} data1 - First data element
+   * @param {Field} data2 - Second data element
+   * @param {Field} nonce - Nonce for uniqueness
+   *
+   * @returns {Field} A pseudo-random field element
+   */
+  export circuit mockRandomFromData(
+    data1: Field,
+    data2: Field,
+    nonce: Field
+  ): Field {
+    return transientHash<Vector<4, Field>>([data1, data2, nonce, pad(32, "pedersen_random_v1") as Field]);
+  }
+
+  /**
+   * @title Zero Commitment circuit
+   * @description Creates a commitment to zero (identity element)
+   *
+   * @circuitInfo k=11, rows=1533
+   *
+   * @returns {Commitment} A commitment to zero
+   */
+  export circuit zero(): Commitment {
+    return commit(0 as Field, 0 as Field);
+  }
+
+  /**
+   * @title Is Zero Commitment circuit
+   * @description Checks if a commitment is the zero commitment
+   *
+   * @circuitInfo k=11, rows=1546
+   *
+   * @param {Commitment} c - The commitment to check
+   *
+   * @returns {Boolean} True if commitment is zero
+   */
+  export circuit isZero(c: Commitment): Boolean {
+    const zeroCommit = zero();
+    return c.point == zeroCommit.point;
+  }
+}

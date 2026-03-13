@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "src/**/witnesses/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": ["src/archive/"],
   "compilerOptions": {
@@ -13,5 +13,9 @@
     "noImplicitAny": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"]
+    }
   }
 }
