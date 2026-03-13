@@ -68,7 +68,7 @@ Import modules through `node_modules` rather than directly to avoid state confli
 ```typescript
 // MyContract.compact
 
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.22.0;
 
 import CompactStandardLibrary;
 import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/access/Ownable"
