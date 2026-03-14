@@ -14,14 +14,15 @@ import {
   ZOwnablePKWitnesses,
 } from '../../witnesses/ZOwnablePKWitnesses.js';
 
-/**
- * Type constructor args
- */
+/** Type constructor args */
 type ZOwnablePKArgs = readonly [
   owner: Uint8Array,
   instanceSalt: Uint8Array,
   isInit: boolean,
 ];
+
+/** Concrete ledger type extracted from the generated artifact */
+type ZOwnablePKLedger = ReturnType<typeof ledger>;
 
 /**
  * Base simulator
@@ -47,7 +48,7 @@ const ZOwnablePKSimulatorBase: any = createSimulator<
     return [owner, instanceSalt, isInit];
   },
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ZOwnablePKWitnesses(),
+  witnessesFactory: () => ZOwnablePKWitnesses<ZOwnablePKLedger>(),
 });
 
 /**
