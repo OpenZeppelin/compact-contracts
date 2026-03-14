@@ -6,8 +6,8 @@ import {
   tokenType,
 } from '@midnight-ntwrk/onchain-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Maybe } from '../../../artifacts/MockShieldedToken/contract/index.js'; // Combined imports
-import { ShieldedTokenSimulator } from './simulators/ShieldedTokenSimulator.js';
+import type { Maybe } from '../../../artifacts/ShieldedToken.mock/contract/index.js'; // Combined imports
+import { ShieldedTokenSimulator } from './mocks/ShieldedTokenSimulator.js';
 import * as utils from './utils/address.js';
 
 const NO_STRING: Maybe<string> = {
