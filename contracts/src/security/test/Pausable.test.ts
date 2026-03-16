@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PausableSimulator } from './simulators/PausableSimulator.js';
+import { PausableSimulator } from './mocks/PausableSimulator.js';
 
 let pausable: PausableSimulator;
 

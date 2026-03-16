@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
-import { FungibleTokenSimulator } from './simulators/FungibleTokenSimulator.js';
+import { FungibleTokenSimulator } from './mocks/FungibleTokenSimulator.js';
 
 // Metadata
 const EMPTY_STRING = '';
