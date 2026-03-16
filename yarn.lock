@@ -414,7 +414,7 @@ __metadata:
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@tsconfig/node24": "npm:^24.0.3"
     "@types/node": "npm:24.10.0"
-    fast-check: "npm:^4.4.0"
+    fast-check: "npm:^4.6.0"
     typescript: "npm:^5.8.2"
     vitest: "npm:^4.0.16"
   languageName: unknown
@@ -1116,12 +1116,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-check@npm:^4.4.0":
-  version: 4.4.0
-  resolution: "fast-check@npm:4.4.0"
+"fast-check@npm:^4.6.0":
+  version: 4.6.0
+  resolution: "fast-check@npm:4.6.0"
   dependencies:
-    pure-rand: "npm:^7.0.0"
-  checksum: 10/2782ba964313335b01b32ba4fd9cd435fc809bb4edb6bf778255c505880625edc92869f4f64eea20484b49c300c37f1f35711fdb9d868295ed23ae4d425209eb
+    pure-rand: "npm:^8.0.0"
+  checksum: 10/b53b88ebf6247ea0eaa7f3f6d8923035e0cfd6f78bc8c393754cc1ccbdb591756dfbff02058a136b472e011279594fa72c05a30378177d6055a08ad7ed1b823e
   languageName: node
   linkType: hard
 
@@ -1637,10 +1637,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pure-rand@npm:^7.0.0":
-  version: 7.0.1
-  resolution: "pure-rand@npm:7.0.1"
-  checksum: 10/c61a576fda5032ec9763ecb000da4a8f19263b9e2f9ae9aa2759c8fbd9dc6b192b2ce78391ebd41abb394a5fedb7bcc4b03c9e6141ac8ab20882dd5717698b80
+"pure-rand@npm:^8.0.0":
+  version: 8.1.0
+  resolution: "pure-rand@npm:8.1.0"
+  checksum: 10/5197ed56c2ec624f08c7837922d7b2443d7b0541c02cd0c3bcd8faab856d8719dac26bb361f510cc5d423e4b494a7e0a5c535d49385506d042d9202c57f35c41
   languageName: node
   linkType: hard
 
