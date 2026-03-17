@@ -60,9 +60,7 @@ export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
     return pureCircuits.contractRecipient(addr);
   }
 
-  public toShieldedRecipient(
-    r: Recipient,
-  ): {
+  public toShieldedRecipient(r: Recipient): {
     is_left: boolean;
     left: { bytes: Uint8Array };
     right: { bytes: Uint8Array };
@@ -70,9 +68,7 @@ export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
     return pureCircuits.toShieldedRecipient(r);
   }
 
-  public toUnshieldedRecipient(
-    r: Recipient,
-  ): {
+  public toUnshieldedRecipient(r: Recipient): {
     is_left: boolean;
     left: { bytes: Uint8Array };
     right: { bytes: Uint8Array };

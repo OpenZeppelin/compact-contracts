@@ -186,9 +186,7 @@ describe('ProposalManager', () => {
       const id = contract._createProposal(recipient, COLOR, AMOUNT);
 
       contract._cancelProposal(id);
-      expect(contract.getProposalStatus(id)).toEqual(
-        ProposalStatus.Cancelled,
-      );
+      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Cancelled);
     });
 
     it('should preserve proposal data after cancellation', () => {
@@ -328,9 +326,7 @@ describe('ProposalManager', () => {
       expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Active);
 
       contract._cancelProposal(id);
-      expect(contract.getProposalStatus(id)).toEqual(
-        ProposalStatus.Cancelled,
-      );
+      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Cancelled);
     });
 
     it('should handle create -> execute flow', () => {
@@ -349,9 +345,7 @@ describe('ProposalManager', () => {
 
       contract._cancelProposal(id1);
 
-      expect(contract.getProposalStatus(id1)).toEqual(
-        ProposalStatus.Cancelled,
-      );
+      expect(contract.getProposalStatus(id1)).toEqual(ProposalStatus.Cancelled);
       expect(contract.getProposalStatus(id2)).toEqual(ProposalStatus.Active);
 
       contract._markExecuted(id2);
