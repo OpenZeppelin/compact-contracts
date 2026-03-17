@@ -182,7 +182,7 @@ yarn test
 yarn clean
 ```
 
-### Testing rc versions of the Compact compiler
+### Testing unreleased versions of the Compact compiler
 
 These steps assume the `compact` cli is already installed.
 
@@ -201,8 +201,13 @@ Checkout tagged commit
 git checkout v0.30.0-rc.1
 ```
 
-Follow the instructions in the README to build the compiler locally
-(may take a long time when building for the first time)
+Build the compactc-binary package locally.
+
+> **Note:** The default `nix build` target does not output all required binary files. Use the `compactc-binary` attribute explicitly as shown below to ensure the full set of binaries is produced.
+
+```bash
+nix build .#compactc-binary
+```
 
 Run `install-local.sh`
 
