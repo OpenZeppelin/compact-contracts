@@ -199,7 +199,9 @@ describe('ZOwnablePK', () => {
 
         // New owner
         ownable.privateState.injectSecretNonce(Buffer.from(newOwnerNonce));
-        expect(ownable.as(NEW_OWNER).assertOnlyOwner()).not.to.throw;
+        expect(() => {
+          ownable.as(NEW_OWNER).assertOnlyOwner();
+        }).not.toThrow();
       });
 
       it('should fail when transferring to id zero', () => {
@@ -257,7 +259,9 @@ describe('ZOwnablePK', () => {
         expect(newCommitment).toEqual(expNewCommitment);
 
         // Check same owner maintains permissions after transfer
-        expect(ownable.as(OWNER).assertOnlyOwner()).not.to.throw;
+        expect(() => {
+          ownable.as(OWNER).assertOnlyOwner();
+        }).not.toThrow();
       });
     });
 
@@ -277,21 +281,21 @@ describe('ZOwnablePK', () => {
       it('should fail when renouncing from unauthorized', () => {
         expect(() => {
           ownable.as(UNAUTHORIZED).renounceOwnership();
-        });
+        }).toThrow('ZOwnablePK: caller is not the owner');
       });
 
       it('should fail when renouncing from authorized with bad nonce', () => {
         ownable.privateState.injectSecretNonce(BAD_NONCE);
         expect(() => {
           ownable.as(OWNER).renounceOwnership();
-        });
+        }).toThrow('ZOwnablePK: caller is not the owner');
       });
 
       it('should fail when renouncing from unauthorized with bad nonce', () => {
         ownable.privateState.injectSecretNonce(BAD_NONCE);
         expect(() => {
           ownable.as(UNAUTHORIZED).renounceOwnership();
-        });
+        }).toThrow('ZOwnablePK: caller is not the owner');
       });
     });
 
@@ -302,7 +306,9 @@ describe('ZOwnablePK', () => {
           secretNonce,
         );
 
-        expect(ownable.as(OWNER).assertOnlyOwner()).to.not.throw;
+        expect(() => {
+          ownable.as(OWNER).assertOnlyOwner();
+        }).not.toThrow();
       });
 
       it('should fail when the authorized caller has the wrong nonce', () => {
@@ -478,8 +484,13 @@ describe('ZOwnablePK', () => {
 
       it('should allow anyone to transfer', () => {
         const id = createIdHash(Z_OWNER, secretNonce);
-        expect(ownable.as(OWNER)._transferOwnership(id)).not.to.throw;
-        expect(ownable.as(UNAUTHORIZED)._transferOwnership(id)).not.to.throw;
+        expect(() => {
+          ownable.as(OWNER)._transferOwnership(id);
+        }).not.toThrow();
+
+        expect(() => {
+          ownable.as(UNAUTHORIZED)._transferOwnership(id);
+        }).not.toThrow();
       });
     });
   });

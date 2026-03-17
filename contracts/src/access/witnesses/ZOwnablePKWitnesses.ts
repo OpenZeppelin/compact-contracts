@@ -50,7 +50,12 @@ export const ZOwnablePKPrivateState = {
    * ```
    */
   withNonce: (nonce: Buffer): ZOwnablePKPrivateState => {
-    return { secretNonce: nonce };
+    if (nonce.length !== 32) {
+      throw new Error(
+        `withNonce: expected 32-byte nonce, received ${nonce.length} bytes`,
+      );
+    }
+    return { secretNonce: Buffer.from(nonce) };
   },
 };
 
