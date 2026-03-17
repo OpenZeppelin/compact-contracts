@@ -345,10 +345,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v8@npm:8.0.0":
-  version: 8.0.0
-  resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.0"
-  checksum: 10/703f73f3653c79bccb88beaa3c960154f2c6ae3a0532328e1cf5d47bb370d2c75d6bd06d0c0b6e241a7bdaa77f0e2ec59399159df121cb15f987e95111127b7a
+"@midnight-ntwrk/compact-runtime@npm:0.15.0-rc.1":
+  version: 0.15.0-rc.1
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.15.0-rc.1"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/9ee16def46aeb95f30a75655238fb836fc8e24f8c2d714d3eac33a53e1693c780ea41c9d7c60e6e85e1d0bbdabfc4db2e3191ecd757f53207ba2796d20bb41e5
   languageName: node
   linkType: hard
 
@@ -359,7 +363,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0-rc.1":
+"@midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0, @midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0-rc.1":
   version: 3.0.0
   resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0"
   checksum: 10/873aeb9e631c3678373c62b5aef847de454de94427028fb3d3f28bfdc8b2c02a3c770bd79d9bfef183eb9db6fb8c23e6826636f2e512ffd6eacbcf7cc0651c5d
@@ -1536,8 +1540,8 @@ __metadata:
   resolution: "openzeppelin-compact@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.4.6"
-    "@midnight-ntwrk/compact-runtime": "npm:0.15.0-rc.0"
-    "@midnight-ntwrk/ledger-v8": "npm:8.0.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.15.0-rc.1"
+    "@midnight-ntwrk/ledger-v8": "npm:8.0.2"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"
