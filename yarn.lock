@@ -345,10 +345,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v7@npm:7.0.0":
-  version: 7.0.0
-  resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0"
-  checksum: 10/cd04c6cdfb2e15192c10c3beb4a3b65f5c6419eedb0f52f65d67cb50ae6ecb492a1fa96e76479f2db2796d89512d4290cf26de4424e47378c90c743529ddb82a
+"@midnight-ntwrk/ledger-v7@npm:7.0.3":
+  version: 7.0.3
+  resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.3"
+  checksum: 10/49f59fa611996a1514f3143828e240cff7d34db7cdaf76b2131b346687139b81dc9ecd7870b29103962cf3c296cd0d11aebf1cc7b2bf0f6a3bf9263d3af19815
   languageName: node
   linkType: hard
 
@@ -410,7 +410,7 @@ __metadata:
   resolution: "@openzeppelin-compact/contracts-simulator@workspace:packages/simulator"
   dependencies:
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
-    "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
+    "@midnight-ntwrk/ledger-v7": "npm:7.0.3"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@tsconfig/node24": "npm:^24.0.4"
     "@types/node": "npm:24.10.0"
@@ -1530,7 +1530,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:^2.4.7"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
-    "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
+    "@midnight-ntwrk/ledger-v7": "npm:7.0.3"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"
