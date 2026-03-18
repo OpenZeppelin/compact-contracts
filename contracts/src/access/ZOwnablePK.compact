@@ -299,6 +299,6 @@ module ZOwnablePK {
     Initializable_assertInitialized();
 
     _counter.increment(1);
-    _ownerCommitment = _computeOwnerCommitment(disclose(newOwnerId), _counter);
+    _ownerCommitment = disclose(_computeOwnerCommitment(newOwnerId, _counter));
   }
 }
