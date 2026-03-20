@@ -1,6 +1,6 @@
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../artifacts/MockZOwnablePK/contract/index.cjs';
+import type { Ledger } from '../../../artifacts/MockZOwnablePK/contract/index.js';
 
 /**
  * @description Interface defining the witness methods for ZOwnablePK operations.
@@ -50,7 +50,12 @@ export const ZOwnablePKPrivateState = {
    * ```
    */
   withNonce: (nonce: Buffer): ZOwnablePKPrivateState => {
-    return { secretNonce: nonce };
+    if (nonce.length !== 32) {
+      throw new Error(
+        `withNonce: expected 32-byte nonce, received ${nonce.length} bytes`,
+      );
+    }
+    return { secretNonce: Buffer.from(nonce) };
   },
 };
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changes
+
+- Add defensive Buffer copy to ZOwnablePKWitnesses (#397)
+- Disclose commitment instead of raw owner id in `_transferOwnership` in ZOwnablePK (#397)
+- Bump compact compiler to v0.29.0 (#366)
+
 ## 0.0.1-alpha.1 (2025-12-2)
 
 ### Added

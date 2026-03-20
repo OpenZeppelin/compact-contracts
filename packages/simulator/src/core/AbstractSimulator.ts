@@ -1,7 +1,7 @@
 import type {
   CircuitContext,
   CoinPublicKey,
-  ContractState,
+  StateValue,
 } from '@midnight-ntwrk/compact-runtime';
 import type {
   ContextlessCircuits,
@@ -79,12 +79,12 @@ export abstract class AbstractSimulator<P, L>
   }
 
   /**
-   * Retrieves the original contract state from the circuit context.
+   * Retrieves the current contract state data.
    *
-   * @returns The current contract state from the blockchain
+   * @returns The current state value containing the ledger data
    */
-  public getContractState(): ContractState {
-    return this.circuitContext.originalState;
+  public getContractState(): StateValue {
+    return this.circuitContext.currentQueryContext.state.state;
   }
 
   /**

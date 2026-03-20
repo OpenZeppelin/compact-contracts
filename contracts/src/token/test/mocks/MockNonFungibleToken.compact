@@ -1,4 +1,4 @@
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
@@ -68,11 +68,11 @@ export circuit isApprovedForAll(
 }
 
 export circuit transferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken_transferFrom(from, to, tokenId);
+  return NonFungibleToken_transferFrom(fromAddress, to, tokenId);
 }
 
 export circuit _requireOwned(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -131,11 +131,11 @@ export circuit _burn(tokenId: Uint<128>): [] {
 }
 
 export circuit _transfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__transfer(from, to, tokenId);
+  return NonFungibleToken__transfer(fromAddress, to, tokenId);
 }
 
 export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
@@ -143,19 +143,19 @@ export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] 
 }
 
 export circuit _unsafeTransferFrom(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__unsafeTransferFrom(from, to, tokenId);
+  return NonFungibleToken__unsafeTransferFrom(fromAddress, to, tokenId);
 }
 
 export circuit _unsafeTransfer(
-  from: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
   to: Either<ZswapCoinPublicKey, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__unsafeTransfer(from, to, tokenId);
+  return NonFungibleToken__unsafeTransfer(fromAddress, to, tokenId);
 }
 
 export circuit _unsafeMint(
