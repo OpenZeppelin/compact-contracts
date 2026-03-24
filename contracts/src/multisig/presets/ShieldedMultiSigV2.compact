@@ -235,7 +235,7 @@ export pure circuit _calculateSignerId(
   return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
     pk: pk,
     salt: salt,
-    domain: pad(32, "MultiSig:siger:")
+    domain: pad(32, "MultiSig:signer:")
   });
 }
 
