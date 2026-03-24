@@ -80,7 +80,7 @@ module ShieldedTreasuryStateless {
    *
    * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
    */
-  export circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+  circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
     return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
   }
 }
