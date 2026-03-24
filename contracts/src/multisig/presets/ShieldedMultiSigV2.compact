@@ -1,7 +1,7 @@
 pragma language_version >= 0.21.0;
 
 /**
- * @title ShieldedMultisig
+ * @title ShieldedMultisigV2
  * @description Privacy-preserving 2-of-3 multisig contract.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
