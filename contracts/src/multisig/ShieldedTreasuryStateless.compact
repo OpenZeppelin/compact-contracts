@@ -14,10 +14,6 @@ pragma language_version >= 0.21.0;
  * Cumulative received and sent totals are tracked per color for audit
  * purposes. The canonical balance query is `getTokenBalance`, which
  * reads the actual coin value from the UTXO map.
- *
- * Underscore-prefixed circuits (_deposit, _send) have no access control
- * enforcement. The consuming contract must gate these behind its own
- * authorization policy.
  */
 module ShieldedTreasuryStateless {
   import CompactStandardLibrary;
