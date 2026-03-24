@@ -1,0 +1,17 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+import "../../ShieldedTreasuryStateless" prefix Treasury_;
+
+export circuit _deposit(coin: ShieldedCoinInfo): [] {
+  Treasury__deposit(coin);
+}
+
+export circuit _send(
+  coin: QualifiedShieldedCoinInfo,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<128>
+): ShieldedSendResult {
+  return Treasury__send(coin, recipient, amount);
+}
+

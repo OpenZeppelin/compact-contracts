@@ -19,7 +19,7 @@ pragma language_version >= 0.21.0;
  * enforcement. The consuming contract must gate these behind its own
  * authorization policy.
  */
-module ShieldedTreasury2 {
+module ShieldedTreasuryStateless {
   import CompactStandardLibrary;
 
   // ─── Deposit ────────────────────────────────────────────────────
