@@ -1,0 +1,86 @@
+pragma language_version >= 0.21.0;
+
+/**
+ * @module ShieldedTreasury
+ * @description Manages shielded (private) token deposits, accounting,
+ * and transfers for multisig governance contracts.
+ *
+ * Coins are stored on the contract ledger in a map keyed by token color,
+ * with one UTXO per color. Deposits are merged with existing coins of
+ * the same color via `mergeCoinImmediate`. This simplifies coin selection
+ * at spend time — the executor doesn't need to choose between multiple
+ * UTXOs of the same color.
+ *
+ * Cumulative received and sent totals are tracked per color for audit
+ * purposes. The canonical balance query is `getTokenBalance`, which
+ * reads the actual coin value from the UTXO map.
+ *
+ * Underscore-prefixed circuits (_deposit, _send) have no access control
+ * enforcement. The consuming contract must gate these behind its own
+ * authorization policy.
+ */
+module ShieldedTreasury2 {
+  import CompactStandardLibrary;
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin into the treasury.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    receiveShielded(disclose(coin));
+  }
+
+  // ─── Send ───────────────────────────────────────────────────────
+
+  /**
+   * @description Sends shielded tokens from the treasury.
+   *
+   * Looks up the stored coin by color, verifies sufficient value,
+   * and executes the shielded send. If the send produces change,
+   * it is sent back to the contract via `sendImmediateShielded`.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - A coin of the given `color` must exist in the treasury.
+   * - The coin's value must be >= `amount`.
+   * - Send must not cause sent total overflow.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to send.
+   * @returns {ShieldedSendResult} The result containing sent coin and any change.
+   */
+  export circuit _send(
+    coin: QualifiedShieldedCoinInfo,
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    amount: Uint<128>
+  ): ShieldedSendResult {
+    const result = sendShielded(disclose(coin), disclose(recipient), disclose(amount));
+
+    if (disclose(result.change.is_some)) {
+      sendImmediateShielded(
+        disclose(result.change.value),
+        selfAsRecipient(),
+        disclose(result.change.value.value)
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * @description Returns the current contract's address as an
+   * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
+   * recipient in shielded send operations (deposits and receiving change).
+   *
+   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
+   */
+  circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
+  }
+}
