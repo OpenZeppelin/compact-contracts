@@ -6,8 +6,8 @@ import {
 import {
   ledger,
   Contract as MockShieldedAccessControl,
-  ZswapCoinPublicKey,
   type ShieldedAccessControl_UpdateType as UpdateType,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockShieldedAccessControl/contract/index.js';
 import {
   ShieldedAccessControlPrivateState,
@@ -38,7 +38,8 @@ const ShieldedAccessControlSimulatorBase = createSimulator<
     return [instanceSalt, isInit];
   },
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedAccessControlWitnesses<ShieldedAccessControlLedger>(),
+  witnessesFactory: () =>
+    ShieldedAccessControlWitnesses<ShieldedAccessControlLedger>(),
 });
 
 /**
@@ -92,7 +93,11 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.impure._revokeRole(role, accountId);
   }
 
-  public _updateRole(role: Uint8Array, accountId: Uint8Array, updateType: UpdateType) {
+  public _updateRole(
+    role: Uint8Array,
+    accountId: Uint8Array,
+    updateType: UpdateType,
+  ) {
     return this.circuits.impure._updateRole(role, accountId, updateType);
   }
 
@@ -119,18 +124,20 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.pure.computeNullifier(roleCommitment);
   }
 
-  public _computeAccountId(
-    role: Uint8Array,
-  ): Uint8Array {
+  public _computeAccountId(role: Uint8Array): Uint8Array {
     return this.circuits.impure._computeAccountId(role);
   }
 
   public computeAccountId(
     account: ZswapCoinPublicKey,
     secretNonce: Uint8Array,
-    instanceSalt: Uint8Array
+    instanceSalt: Uint8Array,
   ): Uint8Array {
-    return this.circuits.pure.computeAccountId(account, secretNonce, instanceSalt);
+    return this.circuits.pure.computeAccountId(
+      account,
+      secretNonce,
+      instanceSalt,
+    );
   }
 
   public readonly privateState = {
@@ -160,8 +167,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     getCurrentSecretNonce: (role: Uint8Array): Uint8Array => {
       const roleString = Buffer.from(role).toString('hex');
       const roleNonce = this.getPrivateState().roles[roleString];
-      if (typeof roleNonce === "undefined") {
-        throw new Error(`Missing secret nonce for role ${roleString}`)
+      if (typeof roleNonce === 'undefined') {
+        throw new Error(`Missing secret nonce for role ${roleString}`);
       }
       return roleNonce;
     },

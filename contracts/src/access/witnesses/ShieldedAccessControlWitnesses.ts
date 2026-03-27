@@ -1,6 +1,8 @@
 import { getRandomValues } from 'node:crypto';
-import type { WitnessContext, MerkleTreePath } from '@midnight-ntwrk/compact-runtime';
-
+import type {
+  MerkleTreePath,
+  WitnessContext,
+} from '@midnight-ntwrk/compact-runtime';
 
 /**
  * @description Interface defining the witness methods for ShieldedAccessControl operations
@@ -81,14 +83,14 @@ export const ShieldedAccessControlPrivateState = {
     const roles: Record<string, Uint8Array> = {};
 
     for (const [k, v] of Object.entries(privateState.roles)) {
-      if (typeof v === "undefined") {
+      if (typeof v === 'undefined') {
         throw new Error(`Missing secret nonce for role ${k}`);
       }
       roles[k] = new Uint8Array(v);
     }
 
     roles[roleString] = new Uint8Array(nonce);
-    return { roles }
+    return { roles };
   },
 
   getRoleCommitmentPath: <L>(
@@ -115,29 +117,30 @@ export const ShieldedAccessControlPrivateState = {
  * @description Factory function creating witness implementations for Shielded AccessControl operations.
  * @returns An object implementing the Witnesses interface for ShieldedAccessControlPrivateState.
  */
-export const ShieldedAccessControlWitnesses =
-  <L>(): IShieldedAccessControlWitnesses<L, ShieldedAccessControlPrivateState> => ({
-    wit_secretNonce(
-      context: WitnessContext<L, ShieldedAccessControlPrivateState>,
-      role: Uint8Array,
-    ): [ShieldedAccessControlPrivateState, Uint8Array] {
-      const roleString = Buffer.from(role).toString('hex');
-      const roleNonce = context.privateState.roles[roleString];
-      if (typeof roleNonce === "undefined") {
-        throw new Error(`Missing secret nonce for role ${roleString}`);
-      }
-      return [context.privateState, roleNonce];
-    },
-    wit_getRoleCommitmentPath(
-      context: WitnessContext<L, ShieldedAccessControlPrivateState>,
-      roleCommitment: Uint8Array,
-    ): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] {
-      return [
-        context.privateState,
-        ShieldedAccessControlPrivateState.getRoleCommitmentPath<L>(
-          context.ledger,
-          roleCommitment,
-        ),
-      ];
-    },
-  });
+export const ShieldedAccessControlWitnesses = <
+  L,
+>(): IShieldedAccessControlWitnesses<L, ShieldedAccessControlPrivateState> => ({
+  wit_secretNonce(
+    context: WitnessContext<L, ShieldedAccessControlPrivateState>,
+    role: Uint8Array,
+  ): [ShieldedAccessControlPrivateState, Uint8Array] {
+    const roleString = Buffer.from(role).toString('hex');
+    const roleNonce = context.privateState.roles[roleString];
+    if (typeof roleNonce === 'undefined') {
+      throw new Error(`Missing secret nonce for role ${roleString}`);
+    }
+    return [context.privateState, roleNonce];
+  },
+  wit_getRoleCommitmentPath(
+    context: WitnessContext<L, ShieldedAccessControlPrivateState>,
+    roleCommitment: Uint8Array,
+  ): [ShieldedAccessControlPrivateState, MerkleTreePath<Uint8Array>] {
+    return [
+      context.privateState,
+      ShieldedAccessControlPrivateState.getRoleCommitmentPath<L>(
+        context.ledger,
+        roleCommitment,
+      ),
+    ];
+  },
+});
