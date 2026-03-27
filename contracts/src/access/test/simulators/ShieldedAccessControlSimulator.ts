@@ -93,11 +93,7 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.impure._revokeRole(role, accountId);
   }
 
-  public _updateRole(
-    role: Uint8Array,
-    accountId: Uint8Array,
-    updateType: UpdateType,
-  ) {
+  public _updateRole(role: Uint8Array, accountId: Uint8Array, updateType: UpdateType) {
     return this.circuits.impure._updateRole(role, accountId, updateType);
   }
 
@@ -124,20 +120,18 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.pure.computeNullifier(roleCommitment);
   }
 
-  public _computeAccountId(role: Uint8Array): Uint8Array {
+  public _computeAccountId(
+    role: Uint8Array,
+  ): Uint8Array {
     return this.circuits.impure._computeAccountId(role);
   }
 
   public computeAccountId(
     account: ZswapCoinPublicKey,
     secretNonce: Uint8Array,
-    instanceSalt: Uint8Array,
+    instanceSalt: Uint8Array
   ): Uint8Array {
-    return this.circuits.pure.computeAccountId(
-      account,
-      secretNonce,
-      instanceSalt,
-    );
+    return this.circuits.pure.computeAccountId(account, secretNonce, instanceSalt);
   }
 
   public readonly privateState = {
