@@ -1134,6 +1134,25 @@ describe('ShieldedAccessControl', () => {
             ),
           ).toThrow('ShieldedAccessControl: unauthorized account');
         });
+
+        it('when admin role has been reassigned via _setRoleAdmin', () => {
+          // Make OPERATOR_1.role the admin of OPERATOR_2.role
+          shieldedAccessControl._setRoleAdmin(OPERATOR_2.role, OPERATOR_1.role);
+
+          shieldedAccessControl.privateState.injectSecretNonce(
+            OPERATOR_1.role,
+            ADMIN.secretNonce,
+          );
+
+          // ADMIN holds DEFAULT_ADMIN_ROLE but not OPERATOR_1.role,
+          // so granting OPERATOR_2.role should fail
+          expect(() =>
+            shieldedAccessControl.grantRole(
+              OPERATOR_2.role,
+              OPERATOR_2.accountId,
+            ),
+          ).toThrow('ShieldedAccessControl: unauthorized account');
+        });
       });
 
       describe('should not update _operatorRoles Merkle tree', () => {
@@ -1657,6 +1676,32 @@ describe('ShieldedAccessControl', () => {
             ),
         ).toBe(true);
       });
+
+      it('should permanently block re-grant to the same accountId after renounce', () => {
+        shieldedAccessControl.renounceRole(ADMIN.role, ADMIN.accountId);
+
+        // re-grant with same accountId — nullifier blocks it
+        shieldedAccessControl._grantRole(ADMIN.role, ADMIN.accountId);
+        expect(
+          shieldedAccessControl._validateRole(ADMIN.role, ADMIN.accountId),
+        ).toBe(false);
+      });
+
+      it('should allow re-grant with a new accountId after renounce', () => {
+        shieldedAccessControl.renounceRole(ADMIN.role, ADMIN.accountId);
+
+        const newNonce = Buffer.alloc(32, 'NEW_ADMIN_NONCE');
+        shieldedAccessControl.privateState.injectSecretNonce(
+          ADMIN.role,
+          newNonce,
+        );
+        const newAccountId = buildAccountIdHash(ADMIN.zPublicKey, newNonce);
+        shieldedAccessControl._grantRole(ADMIN.role, newAccountId);
+
+        expect(
+          shieldedAccessControl._validateRole(ADMIN.role, newAccountId),
+        ).toBe(true);
+      });
     });
 
     describe('revokeRole', () => {
@@ -1978,6 +2023,27 @@ describe('ShieldedAccessControl', () => {
               OPERATOR_1.accountId,
             ),
           ).toBe(false);
+        });
+
+        it('when admin self-revokes then cannot further grant or revoke', () => {
+          shieldedAccessControl.revokeRole(ADMIN.role, ADMIN.accountId);
+          expect(
+            shieldedAccessControl._validateRole(ADMIN.role, ADMIN.accountId),
+          ).toBe(false);
+
+          expect(() =>
+            shieldedAccessControl.grantRole(
+              OPERATOR_1.role,
+              OPERATOR_1.accountId,
+            ),
+          ).toThrow('ShieldedAccessControl: unauthorized account');
+
+          expect(() =>
+            shieldedAccessControl.revokeRole(
+              OPERATOR_1.role,
+              OPERATOR_1.accountId,
+            ),
+          ).toThrow('ShieldedAccessControl: unauthorized account');
         });
       });
     });
@@ -2367,6 +2433,27 @@ describe('ShieldedAccessControl', () => {
               ),
             ).toBe(true);
           });
+
+          it('when granting a different accountId for a role whose previous accountId was revoked', () => {
+            shieldedAccessControl._updateRole(
+              ADMIN.role,
+              ADMIN.accountId,
+              UpdateType.Revoke,
+            );
+            expect(
+              shieldedAccessControl._updateRole(
+                ADMIN.role,
+                OPERATOR_1.accountId,
+                UpdateType.Grant,
+              ),
+            ).toBe(true);
+            expect(
+              shieldedAccessControl._validateRole(
+                ADMIN.role,
+                OPERATOR_1.accountId,
+              ),
+            ).toBe(true);
+          });
         });
 
         describe('should update _operatorRoles merkle tree', () => {
@@ -2628,6 +2715,31 @@ describe('ShieldedAccessControl', () => {
           new Uint8Array(OPERATOR_2.role),
         );
       });
+
+      it('should return DEFAULT_ADMIN_ROLE when admin is explicitly set to zero bytes', () => {
+        // Set a custom admin first, then reset to zero bytes (DEFAULT_ADMIN_ROLE)
+        shieldedAccessControl._setRoleAdmin(OPERATOR_1.role, ADMIN.role);
+        shieldedAccessControl._setRoleAdmin(
+          OPERATOR_1.role,
+          new Uint8Array(32),
+        );
+
+        // getRoleAdmin takes the map-lookup path (member is true) but returns zero bytes,
+        // which should equal DEFAULT_ADMIN_ROLE
+        expect(
+          shieldedAccessControl.getRoleAdmin(OPERATOR_1.role),
+        ).toStrictEqual(new Uint8Array(32));
+        expect(
+          shieldedAccessControl.getRoleAdmin(OPERATOR_1.role),
+        ).toStrictEqual(shieldedAccessControl.DEFAULT_ADMIN_ROLE());
+      });
+
+      it('should allow a role to be set as its own admin', () => {
+        shieldedAccessControl._setRoleAdmin(OPERATOR_1.role, OPERATOR_1.role);
+        expect(shieldedAccessControl.getRoleAdmin(OPERATOR_1.role)).toEqual(
+          new Uint8Array(OPERATOR_1.role),
+        );
+      });
     });
 
     describe('_validateRole', () => {
@@ -2883,6 +2995,30 @@ describe('ShieldedAccessControl', () => {
           )(...args),
         ).not.toEqual(ADMIN.roleCommitment);
       });
+
+      it('should produce a different commitment for the same (role, accountId) when instanceSalt differs', () => {
+        const differentSalt = new Uint8Array(32).fill(1);
+        const otherInstance = new ShieldedAccessControlSimulator(
+          differentSalt,
+          true,
+          {
+            privateState: ShieldedAccessControlPrivateState.withRoleAndNonce(
+              ADMIN.role,
+              ADMIN.secretNonce,
+            ),
+          },
+        );
+
+        const commitment1 = shieldedAccessControl.computeRoleCommitment(
+          ADMIN.role,
+          ADMIN.accountId,
+        );
+        const commitment2 = otherInstance.computeRoleCommitment(
+          ADMIN.role,
+          ADMIN.accountId,
+        );
+        expect(commitment1).not.toEqual(commitment2);
+      });
     });
 
     describe('computeNullifier', () => {
@@ -2969,6 +3105,32 @@ describe('ShieldedAccessControl', () => {
         expect(computedAccountId).toEqual(
           buildAccountIdHash(UNAUTHORIZED.zPublicKey, ADMIN.secretNonce),
         );
+      });
+
+      it('should produce a different accountId for the same (account, nonce) when instanceSalt differs', () => {
+        const differentSalt = new Uint8Array(32).fill(1);
+        const accountId1 = shieldedAccessControl.computeAccountId(
+          ADMIN.zPublicKey,
+          ADMIN.secretNonce,
+          INSTANCE_SALT,
+        );
+        const accountId2 = shieldedAccessControl.computeAccountId(
+          ADMIN.zPublicKey,
+          ADMIN.secretNonce,
+          differentSalt,
+        );
+        expect(accountId1).not.toEqual(accountId2);
+      });
+
+      it('should succeed when secretNonce is zero bytes', () => {
+        const zeroNonce = new Uint8Array(32);
+        expect(
+          shieldedAccessControl.computeAccountId(
+            ADMIN.zPublicKey,
+            zeroNonce,
+            INSTANCE_SALT,
+          ),
+        ).toEqual(buildAccountIdHash(ADMIN.zPublicKey, zeroNonce));
       });
     });
   });
