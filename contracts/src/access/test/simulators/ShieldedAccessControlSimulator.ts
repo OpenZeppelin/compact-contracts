@@ -56,11 +56,67 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     super([instanceSalt, isInit], options);
   }
 
+  public DEFAULT_ADMIN_ROLE(): Uint8Array {
+    return this.circuits.pure.DEFAULT_ADMIN_ROLE();
+  }
+
+  public assertOnlyRole(role: Uint8Array) {
+    this.circuits.impure.assertOnlyRole(role);
+  }
+
+  public canProveRole(role: Uint8Array): boolean {
+    return this.circuits.impure.canProveRole(role);
+  }
+
+  public _uncheckedCanProveRole(role: Uint8Array): boolean {
+    return this.circuits.impure._uncheckedCanProveRole(role);
+  }
+
+  public grantRole(role: Uint8Array, accountId: Uint8Array) {
+    this.circuits.impure.grantRole(role, accountId);
+  }
+
+  public _grantRole(role: Uint8Array, accountId: Uint8Array): boolean {
+    return this.circuits.impure._grantRole(role, accountId);
+  }
+
+  public renounceRole(role: Uint8Array, callerConfirmation: Uint8Array) {
+    this.circuits.impure.renounceRole(role, callerConfirmation);
+  }
+
+  public revokeRole(role: Uint8Array, accountId: Uint8Array) {
+    this.circuits.impure.revokeRole(role, accountId);
+  }
+
+  public _revokeRole(role: Uint8Array, accountId: Uint8Array): boolean {
+    return this.circuits.impure._revokeRole(role, accountId);
+  }
+
+  public _updateRole(role: Uint8Array, accountId: Uint8Array, updateType: UpdateType) {
+    return this.circuits.impure._updateRole(role, accountId, updateType);
+  }
+
+  public getRoleAdmin(role: Uint8Array): Uint8Array {
+    return this.circuits.impure.getRoleAdmin(role);
+  }
+
+  public _setRoleAdmin(role: Uint8Array, adminRole: Uint8Array) {
+    this.circuits.impure._setRoleAdmin(role, adminRole);
+  }
+
+  public _validateRole(role: Uint8Array, accountId: Uint8Array): boolean {
+    return this.circuits.impure._validateRole(role, accountId);
+  }
+
   public computeRoleCommitment(
     role: Uint8Array,
     accountId: Uint8Array,
   ): Uint8Array {
     return this.circuits.impure.computeRoleCommitment(role, accountId);
+  }
+
+  public computeNullifier(roleCommitment: Uint8Array): Uint8Array {
+    return this.circuits.pure.computeNullifier(roleCommitment);
   }
 
   public _computeAccountId(
@@ -75,62 +131,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     instanceSalt: Uint8Array
   ): Uint8Array {
     return this.circuits.pure.computeAccountId(account, secretNonce, instanceSalt);
-  }
-
-  public computeNullifier(roleCommitment: Uint8Array): Uint8Array {
-    return this.circuits.pure.computeNullifier(roleCommitment);
-  }
-
-  public DEFAULT_ADMIN_ROLE(): Uint8Array {
-    return this.circuits.pure.DEFAULT_ADMIN_ROLE();
-  }
-
-  public canProveRole(role: Uint8Array): boolean {
-    return this.circuits.impure.canProveRole(role);
-  }
-
-  public _uncheckedCanProveRole(role: Uint8Array): boolean {
-    return this.circuits.impure._uncheckedCanProveRole(role);
-  }
-
-  public assertOnlyRole(role: Uint8Array) {
-    this.circuits.impure.assertOnlyRole(role);
-  }
-
-  public _validateRole(role: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._validateRole(role, accountId);
-  }
-
-  public getRoleAdmin(role: Uint8Array): Uint8Array {
-    return this.circuits.impure.getRoleAdmin(role);
-  }
-
-  public grantRole(role: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure.grantRole(role, accountId);
-  }
-
-  public revokeRole(role: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure.revokeRole(role, accountId);
-  }
-
-  public _updateRole(role: Uint8Array, accountId: Uint8Array, updateType: UpdateType) {
-    return this.circuits.impure._updateRole(role, accountId, updateType);
-  }
-
-  public renounceRole(role: Uint8Array, callerConfirmation: Uint8Array) {
-    this.circuits.impure.renounceRole(role, callerConfirmation);
-  }
-
-  public _setRoleAdmin(role: Uint8Array, adminRole: Uint8Array) {
-    this.circuits.impure._setRoleAdmin(role, adminRole);
-  }
-
-  public _grantRole(role: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._grantRole(role, accountId);
-  }
-
-  public _revokeRole(role: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._revokeRole(role, accountId);
   }
 
   public readonly privateState = {

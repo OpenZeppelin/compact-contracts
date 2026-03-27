@@ -44,36 +44,12 @@ constructor(instanceSalt: Bytes<32>, isInit: Boolean) {
   }
 }
 
-export circuit computeRoleCommitment(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
-                 ): ShieldedAccessControl_RoleCommitment {
-
-  return ShieldedAccessControl_computeRoleCommitment(role, accountId);
-}
-
 export pure circuit DEFAULT_ADMIN_ROLE(): ShieldedAccessControl_RoleIdentifier {
   return ShieldedAccessControl_DEFAULT_ADMIN_ROLE();
 }
 
-// circuit is reimplemented in the Mock contract for testing
-export circuit _computeAccountId(role: ShieldedAccessControl_RoleIdentifier): ShieldedAccessControl_AccountIdentifier {
-  return disclose(ShieldedAccessControl_computeAccountId(ownPublicKey(), wit_secretNonce(role), ShieldedAccessControl__instanceSalt));
-}
-
-export pure circuit computeAccountId(
-                      account: ZswapCoinPublicKey,
-                      secretNonce: Bytes<32>,
-                      instanceSalt: Bytes<32>
-                      ): ShieldedAccessControl_AccountIdentifier {
-
-  return ShieldedAccessControl_computeAccountId(account, secretNonce, instanceSalt);
-}
-
-export pure circuit computeNullifier(
-                      roleCommitment: ShieldedAccessControl_RoleCommitment
-                      ): ShieldedAccessControl_RoleNullifier {
-  return ShieldedAccessControl_computeNullifier(roleCommitment);
+export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
+  ShieldedAccessControl_assertOnlyRole(role);
 }
 
 export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
@@ -86,8 +62,76 @@ export circuit _uncheckedCanProveRole(role: ShieldedAccessControl_RoleIdentifier
   return _validateRole(role, accountId);
 }
 
-export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
-  ShieldedAccessControl_assertOnlyRole(role);
+export circuit grantRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  ShieldedAccessControl_grantRole(role, accountId);
+}
+
+export circuit _grantRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): Boolean {
+  return ShieldedAccessControl__grantRole(role, accountId);
+}
+
+export circuit renounceRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountIdConfirmation: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  ShieldedAccessControl_renounceRole(role, accountIdConfirmation);
+}
+
+export circuit revokeRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  ShieldedAccessControl_revokeRole(role, accountId);
+}
+
+export circuit _revokeRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): Boolean {
+  return ShieldedAccessControl__revokeRole(role, accountId);
+}
+
+// _updateRole is re-implemented in the Mock contract for testing
+export circuit _updateRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier,
+                 updateType: ShieldedAccessControl_UpdateType
+                 ): Boolean {
+  const roleCommitment = computeRoleCommitment(role, accountId);
+  const roleNullifier = computeNullifier(roleCommitment);
+  const isRevoked = ShieldedAccessControl__roleCommitmentNullifiers.member(disclose(roleNullifier));
+
+  if (isRevoked) {
+    return false;
+  }
+
+  // disclosure only necessary here because we’re exporting the circuit for testing
+  if (disclose(updateType) == ShieldedAccessControl_UpdateType.Grant) {
+    ShieldedAccessControl__operatorRoles.insert(disclose(roleCommitment));
+  } else {
+    ShieldedAccessControl__roleCommitmentNullifiers.insert(disclose(roleNullifier));
+  }
+
+  return true;
+}
+
+export circuit getRoleAdmin(
+                 role: ShieldedAccessControl_RoleIdentifier
+                 ): ShieldedAccessControl_RoleIdentifier {
+  return ShieldedAccessControl_getRoleAdmin(role);
+}
+
+export circuit _setRoleAdmin(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 adminRole: ShieldedAccessControl_RoleIdentifier
+                 ): [] {
+  ShieldedAccessControl__setRoleAdmin(role, adminRole);
 }
 
 // _validateRole is re-implemented in the Mock contract for testing
@@ -117,74 +161,30 @@ export circuit _validateRole(
   return isValidPath && !isRevoked;
 }
 
-export circuit getRoleAdmin(
-                 role: ShieldedAccessControl_RoleIdentifier
-                 ): ShieldedAccessControl_RoleIdentifier {
-  return ShieldedAccessControl_getRoleAdmin(role);
-}
-
-export circuit grantRole(
+export circuit computeRoleCommitment(
                  role: ShieldedAccessControl_RoleIdentifier,
                  accountId: ShieldedAccessControl_AccountIdentifier
-                 ): [] {
-  ShieldedAccessControl_grantRole(role, accountId);
+                 ): ShieldedAccessControl_RoleCommitment {
+
+  return ShieldedAccessControl_computeRoleCommitment(role, accountId);
 }
 
-export circuit revokeRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
-                 ): [] {
-  ShieldedAccessControl_revokeRole(role, accountId);
+export pure circuit computeNullifier(
+                      roleCommitment: ShieldedAccessControl_RoleCommitment
+                      ): ShieldedAccessControl_RoleNullifier {
+  return ShieldedAccessControl_computeNullifier(roleCommitment);
 }
 
-export circuit renounceRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountIdConfirmation: ShieldedAccessControl_AccountIdentifier
-                 ): [] {
-  ShieldedAccessControl_renounceRole(role, accountIdConfirmation);
+// circuit is reimplemented in the Mock contract for testing
+export circuit _computeAccountId(role: ShieldedAccessControl_RoleIdentifier): ShieldedAccessControl_AccountIdentifier {
+  return disclose(ShieldedAccessControl_computeAccountId(ownPublicKey(), wit_secretNonce(role), ShieldedAccessControl__instanceSalt));
 }
 
-export circuit _setRoleAdmin(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 adminRole: ShieldedAccessControl_RoleIdentifier
-                 ): [] {
-  ShieldedAccessControl__setRoleAdmin(role, adminRole);
-}
+export pure circuit computeAccountId(
+                      account: ZswapCoinPublicKey,
+                      secretNonce: Bytes<32>,
+                      instanceSalt: Bytes<32>
+                      ): ShieldedAccessControl_AccountIdentifier {
 
-export circuit _grantRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
-                 ): Boolean {
-  return ShieldedAccessControl__grantRole(role, accountId);
-}
-
-export circuit _revokeRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
-                 ): Boolean {
-  return ShieldedAccessControl__revokeRole(role, accountId);
-}
-
-// _updateRole is re-implemented in the Mock contract for testing
-export circuit _updateRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier,
-                 updateType: ShieldedAccessControl_UpdateType
-                 ): Boolean {
-  const roleCommitment = computeRoleCommitment(role, accountId);
-  const roleNullifier = computeNullifier(roleCommitment);
-  const isRevoked = ShieldedAccessControl__roleCommitmentNullifiers.member(disclose(roleNullifier));
-
-  if (isRevoked) {
-    return false;
-  }
-
-  // disclosure only necessary here because we're exporting the circuit for testing
-  if (disclose(updateType) == ShieldedAccessControl_UpdateType.Grant) {
-    ShieldedAccessControl__operatorRoles.insert(disclose(roleCommitment));
-  } else {
-    ShieldedAccessControl__roleCommitmentNullifiers.insert(disclose(roleNullifier));
-  }
-
-  return true;
+  return ShieldedAccessControl_computeAccountId(account, secretNonce, instanceSalt);
 }
