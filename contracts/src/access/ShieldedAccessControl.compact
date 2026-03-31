@@ -131,7 +131,7 @@ pragma language_version >= 0.21.0;
  *   Duplicate grants are benign from a security perspective. They produce identical
  *   commitments and a single nullifier invalidates all copies; however, they waste tree capacity.
  *   Implementing contracts are responsible for mitigating tree exhaustion risk.
-* - A single `secretKey` compromise exposes all roles held by that user within the contract
+ * - A single `secretKey` compromise exposes all roles held by that user within the contract
  *   instance, since all roles share the same `accountId`. Users requiring compartmentalization
  *   between roles should use separate keys per role and accept the additional key management overhead.
  *   In the event of key compromise, the user should coordinate with admins to revoke all roles
@@ -610,7 +610,6 @@ module ShieldedAccessControl {
    * Disclosures:
    *
    * - A Merkle tree path to a role commitment.
-   * - A role commitment corresponding to a `(role, accountId)` pairing.
    * - A nullifier for the respective role commitment.
    *
    * @notice The nullifier is disclosed via `_roleCommitmentNullifiers.member` on every call.
