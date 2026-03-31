@@ -131,13 +131,10 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     secretKey: Uint8Array,
     instanceSalt: Uint8Array,
   ): Uint8Array {
-    return this.circuits.pure.computeAccountId(
-      secretKey,
-      instanceSalt,
-    );
+    return this.circuits.pure.computeAccountId(secretKey, instanceSalt);
   }
 
-public readonly privateState = {
+  public readonly privateState = {
     /**
      * @description Replaces the secret key in the private state. Used in tests to
      * simulate switching between different user identities or injecting incorrect
