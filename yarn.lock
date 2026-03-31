@@ -468,6 +468,48 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@turbo/darwin-64@npm:2.9.1":
+  version: 2.9.1
+  resolution: "@turbo/darwin-64@npm:2.9.1"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@turbo/darwin-arm64@npm:2.9.1":
+  version: 2.9.1
+  resolution: "@turbo/darwin-arm64@npm:2.9.1"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@turbo/linux-64@npm:2.9.1":
+  version: 2.9.1
+  resolution: "@turbo/linux-64@npm:2.9.1"
+  conditions: os=linux & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@turbo/linux-arm64@npm:2.9.1":
+  version: 2.9.1
+  resolution: "@turbo/linux-arm64@npm:2.9.1"
+  conditions: os=linux & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@turbo/windows-64@npm:2.9.1":
+  version: 2.9.1
+  resolution: "@turbo/windows-64@npm:2.9.1"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@turbo/windows-arm64@npm:2.9.1":
+  version: 2.9.1
+  resolution: "@turbo/windows-arm64@npm:2.9.1"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
 "@tybys/wasm-util@npm:^0.10.1":
   version: 0.10.1
   resolution: "@tybys/wasm-util@npm:0.10.1"
@@ -1428,7 +1470,7 @@ __metadata:
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:24.10.0"
     ts-node: "npm:^10.9.2"
-    turbo: "npm:^2.8.16"
+    turbo: "npm:^2.9.1"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.1.0"
   languageName: unknown
@@ -1862,74 +1904,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo-darwin-64@npm:2.8.16":
-  version: 2.8.16
-  resolution: "turbo-darwin-64@npm:2.8.16"
-  conditions: os=darwin & cpu=x64
-  languageName: node
-  linkType: hard
-
-"turbo-darwin-arm64@npm:2.8.16":
-  version: 2.8.16
-  resolution: "turbo-darwin-arm64@npm:2.8.16"
-  conditions: os=darwin & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"turbo-linux-64@npm:2.8.16":
-  version: 2.8.16
-  resolution: "turbo-linux-64@npm:2.8.16"
-  conditions: os=linux & cpu=x64
-  languageName: node
-  linkType: hard
-
-"turbo-linux-arm64@npm:2.8.16":
-  version: 2.8.16
-  resolution: "turbo-linux-arm64@npm:2.8.16"
-  conditions: os=linux & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"turbo-windows-64@npm:2.8.16":
-  version: 2.8.16
-  resolution: "turbo-windows-64@npm:2.8.16"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
-"turbo-windows-arm64@npm:2.8.16":
-  version: 2.8.16
-  resolution: "turbo-windows-arm64@npm:2.8.16"
-  conditions: os=win32 & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"turbo@npm:^2.8.16":
-  version: 2.8.16
-  resolution: "turbo@npm:2.8.16"
+"turbo@npm:^2.9.1":
+  version: 2.9.1
+  resolution: "turbo@npm:2.9.1"
   dependencies:
-    turbo-darwin-64: "npm:2.8.16"
-    turbo-darwin-arm64: "npm:2.8.16"
-    turbo-linux-64: "npm:2.8.16"
-    turbo-linux-arm64: "npm:2.8.16"
-    turbo-windows-64: "npm:2.8.16"
-    turbo-windows-arm64: "npm:2.8.16"
+    "@turbo/darwin-64": "npm:2.9.1"
+    "@turbo/darwin-arm64": "npm:2.9.1"
+    "@turbo/linux-64": "npm:2.9.1"
+    "@turbo/linux-arm64": "npm:2.9.1"
+    "@turbo/windows-64": "npm:2.9.1"
+    "@turbo/windows-arm64": "npm:2.9.1"
   dependenciesMeta:
-    turbo-darwin-64:
+    "@turbo/darwin-64":
       optional: true
-    turbo-darwin-arm64:
+    "@turbo/darwin-arm64":
       optional: true
-    turbo-linux-64:
+    "@turbo/linux-64":
       optional: true
-    turbo-linux-arm64:
+    "@turbo/linux-arm64":
       optional: true
-    turbo-windows-64:
+    "@turbo/windows-64":
       optional: true
-    turbo-windows-arm64:
+    "@turbo/windows-arm64":
       optional: true
   bin:
     turbo: bin/turbo
-  checksum: 10/5ef7589969691169087e7009982afcd8e960524d6559d02ac93e82354c86363df828889b7132de56a4fade5c357e67111a14ac438eada1e677fc24a28d5e1cad
+  checksum: 10/bedcd8b17dda58c384ecd70fae5895894cb64d4f37677604500c72b94b4a02674ccc11c7d3065775eeac1048900c4f0db067ba2bd024cf469976ac367ad6436e
   languageName: node
   linkType: hard
 
