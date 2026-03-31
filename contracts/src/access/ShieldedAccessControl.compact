@@ -423,7 +423,7 @@ module ShieldedAccessControl {
    * if they are compromised (such as when a trusted device is misplaced).
    *
    * @warning Outside observers may be able to use timing and pattern analysis to weaken pseudonymity
-   *          guarantees if renounceRole is used in tandem with other on-chain actions.
+   * guarantees if renounceRole is used in tandem with other on-chain actions.
    *
    * Requirements:
    *
