@@ -927,14 +927,14 @@ describe('ShieldedAccessControl', () => {
             contract._validateRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
           ).toBe(false);
         });
-        
+
         it('when revoking a never-granted role should permanently block future grants', () => {
           contract.revokeRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID);
 
           expect(() =>
             contract._grantRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID),
           ).toThrow('ShieldedAccessControl: role is already revoked');
-        })
+        });
 
         it('when admin role is revoked and re-issued then can revoke again', () => {
           contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
@@ -1126,7 +1126,7 @@ describe('ShieldedAccessControl', () => {
           contract.DEFAULT_ADMIN_ROLE(),
         );
       });
-      
+
       it('should restore DEFAULT_ADMIN_ROLE grant/revoke authority after reset to zero bytes', () => {
         contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
 
