@@ -927,6 +927,14 @@ describe('ShieldedAccessControl', () => {
             contract._validateRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
           ).toBe(false);
         });
+        
+        it('when revoking a never-granted role should permanently block future grants', () => {
+          contract.revokeRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID);
+
+          expect(() =>
+            contract._grantRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID),
+          ).toThrow('ShieldedAccessControl: role is already revoked');
+        })
 
         it('when admin role is revoked and re-issued then can revoke again', () => {
           contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
@@ -1117,6 +1125,33 @@ describe('ShieldedAccessControl', () => {
         expect(contract.getRoleAdmin(ROLE_OP1)).toStrictEqual(
           contract.DEFAULT_ADMIN_ROLE(),
         );
+      });
+      
+      it('should restore DEFAULT_ADMIN_ROLE grant/revoke authority after reset to zero bytes', () => {
+        contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+
+        // Reassign OP1's admin to OP2
+        contract._setRoleAdmin(ROLE_OP1, ROLE_OP2);
+
+        // DEFAULT_ADMIN_ROLE holder cannot grant ROLE_OP1 anymore
+        expect(() => contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID)).toThrow(
+          'ShieldedAccessControl: unauthorized account',
+        );
+
+        // Reset OP1's admin back to DEFAULT_ADMIN_ROLE
+        contract._setRoleAdmin(ROLE_OP1, new Uint8Array(32));
+
+        // DEFAULT_ADMIN_ROLE holder can grant ROLE_OP1 again
+        expect(() =>
+          contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
+        ).not.toThrow();
+        expect(contract._validateRole(ROLE_OP1, OP1_ACCOUNT_ID)).toBe(true);
+
+        // And can revoke
+        expect(() =>
+          contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID),
+        ).not.toThrow();
+        expect(contract._validateRole(ROLE_OP1, OP1_ACCOUNT_ID)).toBe(false);
       });
 
       it('should return admin role after _setRoleAdmin', () => {
