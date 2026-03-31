@@ -95,13 +95,19 @@ pragma language_version >= 0.21.0;
  * - Outside observers will know when an admin is added and how many admins exist.
  * - Outside observers will know which role identifiers are admin identifiers.
  * - Outside observers will have knowledge of all role identifiers.
- * - Outside observers will have knowledge of all role nullifiers but cannot link them to
- *   their corresponding commitments unless the commitment value space is small enough to
- *   enumerate. The strength of this unlinkability depends on the number of plausible
- *   `(role, accountId)` pairings. Since role identifiers are public, the anonymity set
- *   is effectively the number of plausible account IDs per role.
+ * - Role commitments inserted into the `_operatorRoles` MerkleTree are NOT visible in the
+ *   public proof transcript. The MerkleTree insert hashes the value internally, and only
+ *   the internal leaf hash is declared as a public input. Observers cannot recover the
+ *   commitment from the leaf hash. This is in contrast to Set operations, where values
+ *   are directly visible in the proof transcript.
+ * - Because commitments are hidden, outside observers will have knowledge of all role
+ *   nullifiers but cannot link them to their corresponding commitments unless the
+ *   commitment value space is small enough to enumerate. The strength of this unlinkability
+ *   depends on the number of plausible `(role, accountId)` pairings. Since role identifiers
+ *   are public, the anonymity set is effectively the number of plausible account IDs per role.
  * - Outside observers will know when roles are granted and revoked.
- * - Outside observers can infer the total number of role grants made across all roles—not per-role counts, but the cumulative total.
+ * - Outside observers can infer the total number of role grants made across all roles—not per-role counts,
+ *   but the cumulative total.
  * - Outside observers can link calls made by the same role instance across time.
  * - Users can be retroactively deanonymized if their secret key is exposed.
  * - Outside observers will NOT be able to identify the holder of any role
