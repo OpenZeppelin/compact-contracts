@@ -838,6 +838,15 @@ describe('ShieldedAccessControl', () => {
           .ShieldedAccessControl__operatorRoles.root();
         expect(rootBefore).toEqual(rootAfter);
       });
+
+      it('should allow granting same role to new accountId after revoking different accountId', () => {
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+        contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
+
+        // Different accountId for the same role
+        expect(() => contract._grantRole(ROLE_OP1, OP2_ACCOUNT_ID)).not.toThrow();
+        expect(contract._validateRole(ROLE_OP1, OP2_ACCOUNT_ID)).toBe(true);
+      });
     });
 
     describe('revokeRole', () => {
@@ -1078,6 +1087,25 @@ describe('ShieldedAccessControl', () => {
         expect(contract._validateRole(ROLE_OP1, ADMIN_ACCOUNT_ID)).toBe(true);
         expect(contract._validateRole(ROLE_OP2, ADMIN_ACCOUNT_ID)).toBe(true);
       });
+
+      // Pre-burn scenario: a user can burn a nullifier for a (role, accountId) pairing
+      // that was never granted. This permanently blocks future grants to that accountId
+      // for the specified role, but does not affect other accountIds holding the same role
+      it('should allow renouncing a role never granted to this accountId', () => {
+        // OP1 has ROLE_OP1, but ADMIN does not
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+
+        // ADMIN renounces ROLE_OP1 despite never holding it
+        expect(() => contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID)).not.toThrow();
+
+        // OP1's grant is unaffected — different accountId, different nullifier
+        expect(contract._validateRole(ROLE_OP1, OP1_ACCOUNT_ID)).toBe(true);
+
+        // ADMIN's accountId is now burned for ROLE_OP1
+        expect(() => contract._grantRole(ROLE_OP1, ADMIN_ACCOUNT_ID)).toThrow(
+          'ShieldedAccessControl: role is already revoked',
+        );
+      });
     });
 
     describe('getRoleAdmin', () => {
@@ -1141,6 +1169,35 @@ describe('ShieldedAccessControl', () => {
         expect(contract.getRoleAdmin(ROLE_OP1)).toEqual(
           new Uint8Array(ROLE_OP1),
         );
+      });
+
+      it('when new admin revokes after _setRoleAdmin reassignment', () => {
+        contract._setRoleAdmin(ROLE_OP2, ROLE_OP1);
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+        contract._grantRole(ROLE_OP2, OP2_ACCOUNT_ID);
+
+        // Switch to operator 1 who is now admin of ROLE_OP2
+        contract.privateState.injectSecretKey(OPERATOR_1_SK);
+        expect(() => contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID)).not.toThrow();
+        expect(contract._validateRole(ROLE_OP2, OP2_ACCOUNT_ID)).toBe(false);
+      });
+
+      it('admin authority should not be transitive across role hierarchies', () => {
+        contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        contract._setRoleAdmin(ROLE_OP2, ROLE_OP1);
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+
+        // ADMIN can grant ROLE_OP1 (admin is DEFAULT_ADMIN_ROLE)
+        expect(() => contract.grantRole(ROLE_OP1, OP2_ACCOUNT_ID)).not.toThrow();
+
+        // But ADMIN cannot directly grant ROLE_OP2 (admin is ROLE_OP1, not DEFAULT_ADMIN_ROLE)
+        expect(() => contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID)).toThrow(
+          'ShieldedAccessControl: unauthorized account',
+        );
+
+        // OP1 holder can grant ROLE_OP2
+        contract.privateState.injectSecretKey(OPERATOR_1_SK);
+        expect(() => contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID)).not.toThrow();
       });
     });
 
