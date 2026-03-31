@@ -1175,5 +1175,93 @@ describe('ShieldedAccessControl', () => {
         expect(contract.canProveRole(ROLE_OP3)).toBe(true);
       });
     });
+
+    describe('mock/module equivalence', () => {
+      beforeEach(() => {
+        contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+      });
+
+      it('_computeAccountId should match computeAccountId', () => {
+        const fromInternal = contract._computeAccountId();
+        const fromPure = contract.computeAccountId(ADMIN_SK, INSTANCE_SALT);
+        expect(fromInternal).toEqual(fromPure);
+      });
+
+      it('_uncheckedCanProveRole should match canProveRole for granted role', () => {
+        expect(contract._uncheckedCanProveRole(ROLE_ADMIN)).toBe(
+          contract.canProveRole(ROLE_ADMIN),
+        );
+      });
+
+      it('_uncheckedCanProveRole should match canProveRole for ungranted role', () => {
+        expect(contract._uncheckedCanProveRole(ROLE_OP2)).toBe(
+          contract.canProveRole(ROLE_OP2),
+        );
+      });
+
+      it('_uncheckedCanProveRole should match canProveRole for revoked role', () => {
+        contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        expect(contract._uncheckedCanProveRole(ROLE_ADMIN)).toBe(
+          contract.canProveRole(ROLE_ADMIN),
+        );
+      });
+
+      it('_validateRole should be consistent with canProveRole', () => {
+        // canProveRole internally computes accountId then calls _validateRole
+        // so for the correct key, they should agree
+        expect(contract._validateRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID)).toBe(
+          contract.canProveRole(ROLE_ADMIN),
+        );
+      });
+
+      it('_validateRole should be consistent with canProveRole after revocation', () => {
+        contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
+        contract.privateState.injectSecretKey(OPERATOR_1_SK);
+        expect(contract._validateRole(ROLE_OP1, OP1_ACCOUNT_ID)).toBe(
+          contract.canProveRole(ROLE_OP1),
+        );
+      });
+
+      it('_validateRole should match canProveRole with malicious witness path', () => {
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+        contract.overrideWitness('wit_getRoleCommitmentPath', () => {
+          const ps = contract.getPrivateState();
+          const path = contract
+            .getPublicState()
+            .ShieldedAccessControl__operatorRoles.findPathForLeaf(
+              OP1_ROLE_COMMITMENT,
+            );
+          if (path) return [ps, path];
+          throw new Error('Path should be defined');
+        });
+
+        // Both should throw the same error for wrong-leaf path
+        expect(() =>
+          contract._validateRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
+        ).toThrow(
+          'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+        );
+        expect(() => contract.canProveRole(ROLE_ADMIN)).toThrow(
+          'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+        );
+      });
+
+      it('_validateRole should match canProveRole with invalid witness path', () => {
+        contract.overrideWitness('wit_getRoleCommitmentPath', RETURN_BAD_PATH);
+        expect(contract._validateRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID)).toBe(
+          contract.canProveRole(ROLE_ADMIN),
+        );
+      });
+
+      it('_computeAccountId should match computeAccountId after key rotation', () => {
+        const newKey = Buffer.alloc(32, 'ROTATED_KEY');
+        contract.privateState.injectSecretKey(newKey);
+
+        const fromInternal = contract._computeAccountId();
+        const fromPure = contract.computeAccountId(newKey, INSTANCE_SALT);
+        expect(fromInternal).toEqual(fromPure);
+      });
+    });
   });
 });
