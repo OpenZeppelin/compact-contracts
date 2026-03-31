@@ -97,25 +97,6 @@ export circuit _revokeRole(
   return ShieldedAccessControl__revokeRole(role, accountId);
 }
 
-// _updateRole is re-implemented in the Mock contract for testing
-export circuit _updateRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier,
-                 updateType: ShieldedAccessControl_UpdateType
-                 ): [] {
-  const roleCommitment = computeRoleCommitment(role, accountId);
-  const roleNullifier = computeNullifier(roleCommitment);
-  const isRevoked = ShieldedAccessControl__roleCommitmentNullifiers.member(disclose(roleNullifier));
-  assert(!isRevoked, "ShieldedAccessControl: role is already revoked");
-
-  // disclosure only necessary here because we’re exporting the circuit for testing
-  if (disclose(updateType) == ShieldedAccessControl_UpdateType.Grant) {
-    ShieldedAccessControl__operatorRoles.insert(disclose(roleCommitment));
-  } else {
-    ShieldedAccessControl__roleCommitmentNullifiers.insert(disclose(roleNullifier));
-  }
-}
-
 
 export circuit getRoleAdmin(
                  role: ShieldedAccessControl_RoleIdentifier

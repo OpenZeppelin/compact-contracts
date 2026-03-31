@@ -92,14 +92,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     this.circuits.impure._revokeRole(role, accountId);
   }
 
-  public _updateRole(
-    role: Uint8Array,
-    accountId: Uint8Array,
-    updateType: UpdateType,
-  ) {
-    this.circuits.impure._updateRole(role, accountId, updateType);
-  }
-
   public getRoleAdmin(role: Uint8Array): Uint8Array {
     return this.circuits.impure.getRoleAdmin(role);
   }
