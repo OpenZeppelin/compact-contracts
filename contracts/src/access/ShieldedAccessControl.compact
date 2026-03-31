@@ -390,7 +390,7 @@ module ShieldedAccessControl {
    *
    * @warning The `_operatorRoles` Merkle tree has a fixed capacity of 2^20 leaf slots.
    * Deployers should monitor slot consumption off-chain. Duplicate grants waste tree capacity
-   * but are otherwise benign — a single nullifier invalidates all duplicate commitments.
+   * but are otherwise benign. A single nullifier invalidates all duplicate commitments.
    * Implementing contracts are responsible for mitigating tree exhaustion risk.
    *
    * Requirements:
