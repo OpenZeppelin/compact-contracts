@@ -156,10 +156,10 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     },
 
     /**
-     * @description Returns the secret key for a given role.
+     * @description Returns the current secret key from the private state.
      * @returns The secret key.
      */
-    getCurrentSecretKey: (role: Uint8Array): Uint8Array => {
+    getCurrentSecretKey: (): Uint8Array => {
       const sk = this.getPrivateState().secretKey;
       if (typeof sk === 'undefined') {
         throw new Error('Missing secret key');
