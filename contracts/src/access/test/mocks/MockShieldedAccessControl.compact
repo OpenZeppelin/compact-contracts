@@ -97,7 +97,6 @@ export circuit _revokeRole(
   return ShieldedAccessControl__revokeRole(role, accountId);
 }
 
-
 export circuit getRoleAdmin(
                  role: ShieldedAccessControl_RoleIdentifier
                  ): ShieldedAccessControl_RoleIdentifier {
@@ -125,7 +124,6 @@ export circuit _validateRole(
               )
             );
 
-  // If the path is valid we assert it’s a path for the queried leaf (not some other leaf).
   if (isValidPath) {
     assert(roleCommitmentPath.leaf == roleCommitment,
            "ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing"
