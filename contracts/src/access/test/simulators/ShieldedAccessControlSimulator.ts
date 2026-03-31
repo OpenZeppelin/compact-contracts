@@ -137,20 +137,18 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     );
   }
 
-  public readonly privateState = {
+public readonly privateState = {
     /**
-     * @description Contextually sets a new key into the private state.
-     * @param newSK The secret key.
-     * @returns The ShieldedAccessControl private state after setting the new key.
+     * @description Replaces the secret key in the private state. Used in tests to
+     * simulate switching between different user identities or injecting incorrect
+     * keys to test failure paths.
+     * @param newSK - The new secret key to set.
+     * @returns The updated private state.
      */
     injectSecretKey: (
       newSK: Buffer<ArrayBufferLike>,
     ): ShieldedAccessControlPrivateState => {
-      const currentState = this.getPrivateState();
-      const updatedState = {
-        secretKey: {...currentState.secretKey }
-      };
-      updatedState.secretKey = newSK;
+      const updatedState = { secretKey: newSK };
       this.circuitContextManager.updatePrivateState(updatedState);
       return updatedState;
     },
@@ -158,6 +156,7 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     /**
      * @description Returns the current secret key from the private state.
      * @returns The secret key.
+     * @throws If the secret key is undefined.
      */
     getCurrentSecretKey: (): Uint8Array => {
       const sk = this.getPrivateState().secretKey;
@@ -166,6 +165,14 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
       }
       return sk;
     },
+
+    /**
+     * @description Searches the `_operatorRoles` Merkle tree for a leaf matching
+     * the given role commitment using the ledger's `findPathForLeaf` method.
+     * Returns the path if found, undefined otherwise.
+     * @param roleCommitment - The role commitment to search for.
+     * @returns The Merkle tree path if the commitment exists, undefined otherwise.
+     */
     getCommitmentPathWithFindForLeaf: (
       roleCommitment: Uint8Array,
     ): MerkleTreePath<Uint8Array> | undefined => {
@@ -173,6 +180,15 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
         roleCommitment,
       );
     },
+
+    /**
+     * @description Returns the Merkle tree path for a given role commitment using
+     * the witness implementation. Used to verify that the witness produces the
+     * expected path, or to compare against `getCommitmentPathWithFindForLeaf`
+     * to detect witness overrides or mismatches.
+     * @param roleCommitment - The role commitment to find a path for.
+     * @returns The Merkle tree path as returned by the witness.
+     */
     getCommitmentPathWithWitnessImpl: (
       roleCommitment: Uint8Array,
     ): MerkleTreePath<Uint8Array> => {
