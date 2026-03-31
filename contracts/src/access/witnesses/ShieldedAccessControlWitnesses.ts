@@ -5,36 +5,39 @@ import type {
 } from '@midnight-ntwrk/compact-runtime';
 
 /**
- * @description Interface defining the witness methods for ShieldedAccessControl operations
+ * @description Interface defining the witness methods for ShieldedAccessControl operations.
  * @template L - The ledger type.
  * @template P - The private state type.
  */
 export interface IShieldedAccessControlWitnesses<L, P> {
   /**
-   * Retrieves the secret nonce from the private state.
+   * Returns the user's secret key from the private state.
+   * The same key is used across all roles within a contract instance.
    * @param context - The witness context containing the private state.
-   * @returns A tuple of the private state and the secret nonce as a Uint8Array.
+   * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_secretNonce(
-    context: WitnessContext<L, P>,
-    role: Uint8Array,
-  ): [P, Uint8Array];
+  wit_secretKey(context: WitnessContext<L, P>): [P, Uint8Array];
+
+  /**
+   * Returns a Merkle tree path for a given role commitment.
+   * @param context - The witness context containing the private state and ledger.
+   * @param roleCommitment - The role commitment to find a path for.
+   * @returns A tuple of the private state and the Merkle tree path.
+   */
   wit_getRoleCommitmentPath(
     context: WitnessContext<L, P>,
     roleCommitment: Uint8Array,
   ): [P, MerkleTreePath<Uint8Array>];
 }
 
-type Role = string;
-type SecretNonce = Uint8Array;
-
 /**
- * @description Represents the private state of a Shielded AccessControl contract, storing
- * mappings from a 32 byte hex string to a 32 byte secret nonce.
+ * @description Represents the private state of a Shielded AccessControl contract.
+ * Contains a single secret key used to derive the user's account identifier.
+ * The same key is used across all roles within a contract instance.
  */
 export type ShieldedAccessControlPrivateState = {
-  /** @description A 32-byte secret nonce used as a privacy additive. */
-  roles: Record<Role, SecretNonce | undefined>;
+  /** @description A 32-byte secret key used to derive the shielded account identifier. */
+  secretKey: Uint8Array;
 };
 
 /**
@@ -42,57 +45,38 @@ export type ShieldedAccessControlPrivateState = {
  */
 export const ShieldedAccessControlPrivateState = {
   /**
-   * @description Generates a new private state with a random secret nonce and a default role of 0.
+   * @description Generates a new private state with a cryptographically random secret key.
    * @returns A fresh ShieldedAccessControlPrivateState instance.
    */
-  generate: (): ShieldedAccessControlPrivateState => {
-    const defaultRoleId: string = Buffer.alloc(32).toString('hex');
-    const secretNonce = new Uint8Array(getRandomValues(Buffer.alloc(32)));
-
-    return { roles: { [defaultRoleId]: secretNonce } };
-  },
+  generate: (): ShieldedAccessControlPrivateState => ({
+    secretKey: new Uint8Array(getRandomValues(Buffer.alloc(32))),
+  }),
 
   /**
-   * @description Generates a new private state with a user-defined secret nonce.
-   * Useful for deterministic nonce generation or advanced use cases.
+   * @description Creates a new private state with a user-defined secret key.
+   * Useful for deterministic key generation in testing or advanced use cases.
    *
-   * @param nonce - The 32-byte secret nonce to use.
-   * @returns A fresh ShieldedAccessControlPrivateState instance with the provided nonce.
+   * @param sk - The 32-byte secret key to use.
+   * @returns A fresh ShieldedAccessControlPrivateState instance with the provided key.
    *
    * @example
    * ```typescript
-   * // For deterministic nonces (user-defined scheme)
-   * const deterministicNonce = myDeterministicScheme(...);
-   * const privateState = ShieldedAccessControlPrivateState.withNonce(deterministicNonce);
+   * const deterministicKey = myDeterministicScheme(...);
+   * const privateState = ShieldedAccessControlPrivateState.withSecretKey(deterministicKey);
    * ```
    */
-  withRoleAndNonce: (
-    role: Buffer,
-    nonce: Buffer,
-  ): ShieldedAccessControlPrivateState => {
-    const roleString = role.toString('hex');
-    return { roles: { [roleString]: nonce } };
-  },
+  withSecretKey: (sk: Uint8Array): ShieldedAccessControlPrivateState => ({
+    secretKey: sk,
+  }),
 
-  setRole: (
-    privateState: ShieldedAccessControlPrivateState,
-    role: Buffer,
-    nonce: Buffer,
-  ): ShieldedAccessControlPrivateState => {
-    const roleString = role.toString('hex');
-    const roles: Record<string, Uint8Array> = {};
-
-    for (const [k, v] of Object.entries(privateState.roles)) {
-      if (typeof v === 'undefined') {
-        throw new Error(`Missing secret nonce for role ${k}`);
-      }
-      roles[k] = new Uint8Array(v);
-    }
-
-    roles[roleString] = new Uint8Array(nonce);
-    return { roles };
-  },
-
+  /**
+   * @description Returns the Merkle tree path for a given role commitment, or a default
+   * invalid path if the commitment is not found in the tree.
+   *
+   * @param ledger - The contract ledger containing the operator roles Merkle tree.
+   * @param roleCommitment - The role commitment to search for.
+   * @returns The Merkle tree path if found, otherwise a default invalid path.
+   */
   getRoleCommitmentPath: <L>(
     ledger: L,
     roleCommitment: Uint8Array,
@@ -120,17 +104,12 @@ export const ShieldedAccessControlPrivateState = {
 export const ShieldedAccessControlWitnesses = <
   L,
 >(): IShieldedAccessControlWitnesses<L, ShieldedAccessControlPrivateState> => ({
-  wit_secretNonce(
+  wit_secretKey(
     context: WitnessContext<L, ShieldedAccessControlPrivateState>,
-    role: Uint8Array,
   ): [ShieldedAccessControlPrivateState, Uint8Array] {
-    const roleString = Buffer.from(role).toString('hex');
-    const roleNonce = context.privateState.roles[roleString];
-    if (typeof roleNonce === 'undefined') {
-      throw new Error(`Missing secret nonce for role ${roleString}`);
-    }
-    return [context.privateState, roleNonce];
+    return [context.privateState, context.privateState.secretKey];
   },
+
   wit_getRoleCommitmentPath(
     context: WitnessContext<L, ShieldedAccessControlPrivateState>,
     roleCommitment: Uint8Array,
