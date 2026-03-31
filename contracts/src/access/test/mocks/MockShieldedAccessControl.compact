@@ -11,18 +11,10 @@ import CompactStandardLibrary;
 
 import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
 
-import "../../../security/Initializable" prefix Initializable_;
-
-export { ZswapCoinPublicKey,
-         ContractAddress,
-         Either,
-         Maybe,
-         MerkleTreePath,
-         ShieldedAccessControl_DEFAULT_ADMIN_ROLE,
+export { MerkleTreePath,
          ShieldedAccessControl__operatorRoles,
          ShieldedAccessControl__roleCommitmentNullifiers,
-         ShieldedAccessControl__adminRoles,
-         ShieldedAccessControl_UpdateType };
+         ShieldedAccessControl__adminRoles };
 
 // witnesses are re-implemented in the Mock contract for testing
 witness wit_getRoleCommitmentPath(

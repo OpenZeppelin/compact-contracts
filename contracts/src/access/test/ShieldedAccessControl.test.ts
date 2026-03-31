@@ -7,10 +7,7 @@ import {
   type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  type Ledger,
-  ShieldedAccessControl_UpdateType as UpdateType,
-} from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
+import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
 import { ShieldedAccessControlPrivateState } from '../witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 
@@ -844,7 +841,9 @@ describe('ShieldedAccessControl', () => {
         contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
         // Different accountId for the same role
-        expect(() => contract._grantRole(ROLE_OP1, OP2_ACCOUNT_ID)).not.toThrow();
+        expect(() =>
+          contract._grantRole(ROLE_OP1, OP2_ACCOUNT_ID),
+        ).not.toThrow();
         expect(contract._validateRole(ROLE_OP1, OP2_ACCOUNT_ID)).toBe(true);
       });
     });
@@ -1096,7 +1095,9 @@ describe('ShieldedAccessControl', () => {
         contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
         // ADMIN renounces ROLE_OP1 despite never holding it
-        expect(() => contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID)).not.toThrow();
+        expect(() =>
+          contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID),
+        ).not.toThrow();
 
         // OP1's grant is unaffected — different accountId, different nullifier
         expect(contract._validateRole(ROLE_OP1, OP1_ACCOUNT_ID)).toBe(true);
@@ -1178,7 +1179,9 @@ describe('ShieldedAccessControl', () => {
 
         // Switch to operator 1 who is now admin of ROLE_OP2
         contract.privateState.injectSecretKey(OPERATOR_1_SK);
-        expect(() => contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID)).not.toThrow();
+        expect(() =>
+          contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID),
+        ).not.toThrow();
         expect(contract._validateRole(ROLE_OP2, OP2_ACCOUNT_ID)).toBe(false);
       });
 
@@ -1188,7 +1191,9 @@ describe('ShieldedAccessControl', () => {
         contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
         // ADMIN can grant ROLE_OP1 (admin is DEFAULT_ADMIN_ROLE)
-        expect(() => contract.grantRole(ROLE_OP1, OP2_ACCOUNT_ID)).not.toThrow();
+        expect(() =>
+          contract.grantRole(ROLE_OP1, OP2_ACCOUNT_ID),
+        ).not.toThrow();
 
         // But ADMIN cannot directly grant ROLE_OP2 (admin is ROLE_OP1, not DEFAULT_ADMIN_ROLE)
         expect(() => contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID)).toThrow(
@@ -1197,7 +1202,9 @@ describe('ShieldedAccessControl', () => {
 
         // OP1 holder can grant ROLE_OP2
         contract.privateState.injectSecretKey(OPERATOR_1_SK);
-        expect(() => contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID)).not.toThrow();
+        expect(() =>
+          contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID),
+        ).not.toThrow();
       });
     });
 

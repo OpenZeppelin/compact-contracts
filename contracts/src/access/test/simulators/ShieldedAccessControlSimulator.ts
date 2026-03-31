@@ -6,7 +6,6 @@ import {
 import {
   ledger,
   Contract as MockShieldedAccessControl,
-  type ShieldedAccessControl_UpdateType as UpdateType,
 } from '../../../../artifacts/MockShieldedAccessControl/contract/index.js';
 import {
   ShieldedAccessControlPrivateState,
