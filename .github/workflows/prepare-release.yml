@@ -113,7 +113,7 @@ jobs:
 
       # Uses GitHub API to create signed commits (requires creating blobs per file)
       - name: Commit version bump
-        uses: iarekylew00t/verified-bot-commit@e5a15a06b84b655a7587a230df0b9631f2508d14 # v2.2.0
+        uses: iarekylew00t/verified-bot-commit@934fa64df2191ab067d0c0d73f422239b6933392 # v2.2.1
         with:
           message: Bump version to ${{ env.NEW_VERSION }}
           token: ${{ steps.gh-app-token.outputs.token }}
