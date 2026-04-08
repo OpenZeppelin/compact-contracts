@@ -182,6 +182,51 @@ yarn test
 yarn clean
 ```
 
+### Testing unreleased versions of the Compact compiler
+
+These steps assume the `compact` cli is already installed.
+
+Clone the Compact repo and `cd` into the new directory
+```bash
+git clone https://github.com/LFDT-Minokawa/compact.git
+```
+
+Fetch tags (if local repo hasn't been updated in awhile)
+```bash
+git fetch -t
+```
+
+Checkout tagged commit
+```bash
+git checkout v0.30.0-rc.1
+```
+
+Build the compactc-binary package locally.
+
+> **Note:** The default `nix build` target does not output all required binary files. Use the `compactc-binary` attribute explicitly as shown below to ensure the full set of binaries is produced.
+
+```bash
+nix build .#compactc-binary
+```
+
+Run `install-local.sh`
+
+The script installs a locally built version of the Compact toolchain into a subdirectory of the Compact devtool's artifact directory
+
+  **Usage**: ./install-local.sh <repo-path> [platform]
+
+  **Steps**:
+  1. Validates that the provided repo path exists and is a directory
+  2. Reads the git tag at HEAD from that repo (strips the leading v) — fails if HEAD isn't tagged
+  3. Detects the current platform (aarch64-darwin, x86_64-linux, etc.) from uname, or accepts one as the second argument — fails if unsupported
+  4. Creates ~/.compact/versions/<version>/<platform>/ and copies the built binaries from <repo-path>/result/bin/ into it
+  5. Runs compact update <version> to register the newly installed version with the toolchain manager
+
+Update `packages/compact/src/versions.ts` with the current compact and language version (eg `compact compile --language-version`)
+
+Rebuild compact package
+`yarn build`
+
 ## Output Example
 
 ```bash

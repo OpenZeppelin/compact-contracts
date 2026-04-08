@@ -2,7 +2,7 @@
   "name": "openzeppelin-compact",
   "description": "Secure Smart Contract library written in Compact for Midnight",
   "private": true,
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.13.0",
   "workspaces": [
     "contracts/",
     "packages/*"
@@ -22,11 +22,11 @@
     "glob": "~10.5.0"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.14.0"
+    "@midnight-ntwrk/compact-runtime": "0.15.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.7",
-    "@midnight-ntwrk/ledger-v7": "7.0.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.2",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@types/node": "24.10.0",
     "ts-node": "^10.9.2",
