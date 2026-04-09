@@ -140,7 +140,7 @@ describe('ShieldedAccessControl', () => {
             ...a: unknown[]
           ) => unknown
         )(...args);
-      }).not.toThrow('Initializable: contract not initialized');
+      }).not.toThrow();
     });
 
     it('should fail with zero instanceSalt', () => {
