@@ -629,6 +629,7 @@ module NonFungibleToken {
     Initializable_assertInitialized();
     const previousOwner = _update(shieldedBurnAddress(), tokenId, shieldedBurnAddress());
     assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Invalid Sender");
+    _tokenURIs.remove(disclose(tokenId));
   }
 
   /**
