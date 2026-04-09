@@ -713,7 +713,7 @@ module NonFungibleToken {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to approve
    * @param {Uint<128>} tokenId - The token to approve
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner the token
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner of the token
    * @return {[]} - Empty tuple.
    */
   export circuit _approve(
