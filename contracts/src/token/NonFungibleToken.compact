@@ -327,12 +327,9 @@ module NonFungibleToken {
                    operator: Either<ZswapCoinPublicKey, ContractAddress>
                    ): Boolean {
     Initializable_assertInitialized();
-    if (_operatorApprovals.member(disclose(owner)) &&
-        _operatorApprovals.lookup(owner).member(disclose(operator))) {
-      return _operatorApprovals.lookup(owner).lookup(disclose(operator));
-    } else {
-      return false;
-    }
+    return _operatorApprovals.member(disclose(owner)) &&
+           _operatorApprovals.lookup(owner).member(disclose(operator)) &&
+           _operatorApprovals.lookup(owner).lookup(disclose(operator));
   }
 
   /**
