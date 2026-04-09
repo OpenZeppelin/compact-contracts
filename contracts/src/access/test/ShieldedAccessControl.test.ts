@@ -32,10 +32,16 @@ const RETURN_BAD_PATH = (
 };
 
 // Helpers
+const encodePadded32 = (value: string): Uint8Array => {
+  const out = new Uint8Array(32);
+  out.set(new TextEncoder().encode(value));
+  return out;
+};
+
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
 
-  const bDomain = new TextEncoder().encode(ACCOUNT_DOMAIN);
+  const bDomain = encodePadded32(ACCOUNT_DOMAIN);
   return persistentHash(rt_type, [sk, INSTANCE_SALT, bDomain]);
 };
 
@@ -44,8 +50,7 @@ const buildRoleCommitmentHash = (
   accountId: Uint8Array,
 ): Uint8Array => {
   const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
-  const bDomain = new TextEncoder().encode(COMMITMENT_DOMAIN);
-
+  const bDomain = encodePadded32(COMMITMENT_DOMAIN);
   const commitment = persistentHash(rt_type, [
     role,
     accountId,
