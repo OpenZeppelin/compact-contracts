@@ -16,13 +16,6 @@ export { MerkleTreePath,
          ShieldedAccessControl__roleCommitmentNullifiers,
          ShieldedAccessControl__adminRoles };
 
-// witnesses are re-implemented in the Mock contract for testing
-witness wit_getRoleCommitmentPath(
-          roleCommitment: ShieldedAccessControl_RoleCommitment
-          ): MerkleTreePath<20, ShieldedAccessControl_RoleCommitment>;
-
-witness wit_secretKey(): Bytes<32>;
-
 /**
  * @description `isInit` is a param for testing.
  *
@@ -46,12 +39,6 @@ export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
 
 export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
   return ShieldedAccessControl_canProveRole(role);
-}
-
-// _uncheckCanProveRole is re-implemented in the Mock contract for testing
-export circuit _uncheckedCanProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
-  const accountId = _computeAccountId();
-  return _validateRole(role, accountId);
 }
 
 export circuit grantRole(
@@ -102,32 +89,6 @@ export circuit _setRoleAdmin(
   ShieldedAccessControl__setRoleAdmin(role, adminRole);
 }
 
-// _validateRole is re-implemented in the Mock contract for testing
-export circuit _validateRole(
-                 role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
-                 ): Boolean {
-  const roleCommitment = computeRoleCommitment(role, accountId);
-  const roleCommitmentPath = wit_getRoleCommitmentPath(roleCommitment);
-  const isValidPath =
-          ShieldedAccessControl__operatorRoles.checkRoot(
-            merkleTreePathRoot<20, ShieldedAccessControl_RoleCommitment>(
-              disclose(roleCommitmentPath)
-              )
-            );
-
-  if (isValidPath) {
-    assert(roleCommitmentPath.leaf == roleCommitment,
-           "ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing"
-           );
-  }
-
-  const roleNullifier = computeNullifier(roleCommitment);
-  const isRevoked = ShieldedAccessControl__roleCommitmentNullifiers.member(disclose(roleNullifier));
-
-  return isValidPath && !isRevoked;
-}
-
 export circuit computeRoleCommitment(
                  role: ShieldedAccessControl_RoleIdentifier,
                  accountId: ShieldedAccessControl_AccountIdentifier
@@ -140,11 +101,6 @@ export pure circuit computeNullifier(
                       roleCommitment: ShieldedAccessControl_RoleCommitment
                       ): ShieldedAccessControl_RoleNullifier {
   return ShieldedAccessControl_computeNullifier(roleCommitment);
-}
-
-// circuit is reimplemented in the Mock contract for testing
-export circuit _computeAccountId(): ShieldedAccessControl_AccountIdentifier {
-  return disclose(ShieldedAccessControl_computeAccountId(wit_secretKey(), ShieldedAccessControl__instanceSalt));
 }
 
 export pure circuit computeAccountId(

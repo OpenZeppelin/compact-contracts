@@ -67,10 +67,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.impure.canProveRole(role);
   }
 
-  public _uncheckedCanProveRole(role: Uint8Array): boolean {
-    return this.circuits.impure._uncheckedCanProveRole(role);
-  }
-
   public grantRole(role: Uint8Array, accountId: Uint8Array) {
     this.circuits.impure.grantRole(role, accountId);
   }
@@ -99,10 +95,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     this.circuits.impure._setRoleAdmin(role, adminRole);
   }
 
-  public _validateRole(role: Uint8Array, accountId: Uint8Array): boolean {
-    return this.circuits.impure._validateRole(role, accountId);
-  }
-
   public computeRoleCommitment(
     role: Uint8Array,
     accountId: Uint8Array,
@@ -112,10 +104,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
 
   public computeNullifier(roleCommitment: Uint8Array): Uint8Array {
     return this.circuits.pure.computeNullifier(roleCommitment);
-  }
-
-  public _computeAccountId(): Uint8Array {
-    return this.circuits.impure._computeAccountId();
   }
 
   public computeAccountId(
