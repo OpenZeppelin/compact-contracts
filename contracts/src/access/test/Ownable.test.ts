@@ -18,11 +18,6 @@ const isBadInit = false;
 
 let ownable: OwnableSimulator;
 
-const newOwnerTypes = [
-  ['contract', Z_OWNER_CONTRACT],
-  ['pubkey', Z_NEW_OWNER],
-] as const;
-
 const zeroTypes = [
   ['contract', utils.ZERO_ADDRESS],
   ['pubkey', utils.ZERO_KEY],
@@ -55,10 +50,8 @@ describe('Ownable', () => {
       ['owner', []],
       ['assertOnlyOwner', []],
       ['transferOwnership', [Z_OWNER]],
-      ['_unsafeTransferOwnership', [Z_OWNER]],
       ['renounceOwnership', []],
       ['_transferOwnership', [Z_OWNER]],
-      ['_unsafeUncheckedTransferOwnership', [Z_OWNER]],
     ];
     it.each(
       circuitsToFail,
@@ -154,57 +147,6 @@ describe('Ownable', () => {
       });
     });
 
-    describe('_unsafeTransferOwnership', () => {
-      describe.each(
-        newOwnerTypes,
-      )('when the owner is a %s', (type, newOwner) => {
-        it('should transfer ownership', () => {
-          ownable.as(OWNER)._unsafeTransferOwnership(newOwner);
-          expect(ownable.owner()).toEqual(newOwner);
-
-          // Original owner
-          expect(() => {
-            ownable.as(OWNER).assertOnlyOwner();
-          }).toThrow('Ownable: caller is not the owner');
-
-          if (type === 'pubkey') {
-            // New owner
-            expect(() => {
-              ownable.as(NEW_OWNER).assertOnlyOwner();
-            }).not.toThrow();
-          }
-        });
-      });
-
-      it('should fail when unauthorized transfers ownership', () => {
-        expect(() => {
-          ownable.as(UNAUTHORIZED)._unsafeTransferOwnership(Z_NEW_OWNER);
-        }).toThrow('Ownable: caller is not the owner');
-      });
-
-      it('should fail when transferring to zero (pk)', () => {
-        expect(() => {
-          ownable.as(OWNER)._unsafeTransferOwnership(utils.ZERO_KEY);
-        }).toThrow('Ownable: invalid new owner');
-      });
-
-      it('should fail when transferring to zero (contract)', () => {
-        expect(() => {
-          ownable.as(OWNER)._unsafeTransferOwnership(utils.ZERO_ADDRESS);
-        }).toThrow('Ownable: invalid new owner');
-      });
-
-      it('should transfer multiple times', () => {
-        ownable.as(OWNER)._unsafeTransferOwnership(Z_NEW_OWNER);
-
-        ownable.as(NEW_OWNER)._unsafeTransferOwnership(Z_OWNER);
-
-        ownable.as(OWNER)._unsafeTransferOwnership(Z_OWNER_CONTRACT);
-
-        expect(ownable.owner()).toEqual(Z_OWNER_CONTRACT);
-      });
-    });
-
     describe('renounceOwnership', () => {
       it('should renounce ownership', () => {
         expect(ownable.owner()).toEqual(Z_OWNER);
@@ -274,41 +216,5 @@ describe('Ownable', () => {
       });
     });
 
-    describe('_unsafeUncheckedTransferOwnership', () => {
-      describe.each(newOwnerTypes)('when the owner is a %s', (_, newOwner) => {
-        it('should transfer ownership', () => {
-          ownable._unsafeUncheckedTransferOwnership(newOwner);
-          expect(ownable.owner()).toEqual(newOwner);
-        });
-      });
-
-      it('should enforce permissions after transfer (pk)', () => {
-        ownable._unsafeUncheckedTransferOwnership(Z_NEW_OWNER);
-
-        // Original owner
-        expect(() => {
-          ownable.as(OWNER).assertOnlyOwner();
-        }).toThrow('Ownable: caller is not the owner');
-
-        expect(() => {
-          ownable.as(UNAUTHORIZED).assertOnlyOwner();
-        }).toThrow('Ownable: caller is not the owner');
-
-        // New owner
-        expect(() => {
-          ownable.as(NEW_OWNER).assertOnlyOwner();
-        }).not.toThrow();
-      });
-
-      it('should transfer multiple times', () => {
-        ownable.as(OWNER)._unsafeUncheckedTransferOwnership(Z_NEW_OWNER);
-
-        ownable.as(NEW_OWNER)._unsafeUncheckedTransferOwnership(Z_OWNER);
-
-        ownable.as(OWNER)._unsafeUncheckedTransferOwnership(Z_OWNER_CONTRACT);
-
-        expect(ownable.owner()).toEqual(Z_OWNER_CONTRACT);
-      });
-    });
   });
 });
