@@ -219,7 +219,7 @@ module NonFungibleToken {
   }
 
   /**
-   * @description Sets the the URI as `tokenURI` for the given `tokenId`.
+   * @description Sets the URI as `tokenURI` for the given `tokenId`.
    *
    * @circuitInfo k=10, rows=253
    *

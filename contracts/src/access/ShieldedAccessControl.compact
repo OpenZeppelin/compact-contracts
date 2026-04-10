@@ -4,7 +4,7 @@
 pragma language_version >= 0.21.0;
 
 /**
- * @module Shielded AccessControl
+ * @module ShieldedAccessControl
  * @description A Shielded AccessControl library.
  *
  * This module provides a shielded role-based access control (RBAC) mechanism, where roles can be used to

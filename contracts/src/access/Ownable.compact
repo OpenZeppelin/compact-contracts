@@ -128,7 +128,7 @@ module Ownable {
 
   /**
    * @description Leaves the contract without an owner.
-   * It will not be possible to call `assertOnlyOnwer` circuits anymore.
+   * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
    * @circuitInfo k=10, rows=124

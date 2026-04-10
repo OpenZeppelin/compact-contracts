@@ -137,7 +137,7 @@ module ZOwnablePK {
    * Requirements:
    *
    * - Contract is initialized.
-   * - Caller is the the current owner.
+   * - Caller is the current owner.
    * - `newOwnerId` is not an empty array.
    *
    * @param {Bytes<32>} newOwnerId - The new owner's unique identifier (`SHA256(pk, nonce)`).
@@ -153,7 +153,7 @@ module ZOwnablePK {
 
   /**
    * @description Leaves the contract without an owner.
-   * It will not be possible to call `assertOnlyOnwer` circuits anymore.
+   * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
    * @circuitInfo k=15, rows=24442
@@ -161,7 +161,7 @@ module ZOwnablePK {
    * Requirements:
    *
    * - Contract is initialized.
-   * - Caller is the the current owner.
+   * - Caller is the current owner.
    *
    * @returns {[]} Empty tuple.
    */
