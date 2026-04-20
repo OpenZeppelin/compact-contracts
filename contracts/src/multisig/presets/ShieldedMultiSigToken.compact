@@ -1,29 +1,37 @@
 pragma language_version >= 0.21.0;
 
 /**
- * @title ShieldedMultisigV2
- * @description Privacy-preserving multisig vault. Accepts unauthenticated deposits
- * and gates withdrawals behind threshold ECDSA authorization.
+ * @title ShieldedMultiSigToken
+ * @description Privacy-preserving multisig token contract. Both minting and
+ * burning require threshold ECDSA authorization — no single party can
+ * unilaterally create or destroy tokens.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
- * keys combined with an instance salt and domain separator. Signature
- * verification happens in a single transaction with no multi-step
- * proposal lifecycle. The contract enforces threshold authorization
- * and replay protection. All other coordination (signature collection,
- * coin selection) happens off-chain.
+ * keys combined with an instance salt and domain separator. Operations
+ * execute in a single transaction with no multi-step proposal lifecycle.
+ * The contract enforces threshold authorization and replay protection via
+ * a nonce. All other coordination (signature collection, coin selection)
+ * happens off-chain.
  *
- * Treasury is fully stateless meaning coin data is not stored on the public ledger.
- * Deposits call receiveShielded only. The operator discovers coin indices
- * through ZswapOutput events from the indexer, constructs QualifiedShieldedCoinInfo
- * off-chain, and provides it as a circuit parameter for spending.
+ * Treasury is fully stateless — coin data is not stored on the public
+ * ledger. The operator tracks UTXOs through ZswapOutput events from the
+ * Zswap indexer, constructing QualifiedShieldedCoinInfo off-chain and
+ * supplying it as a circuit parameter for burns.
  *
- * For a token contract where both minting and burning require threshold
- * authorization, see ShieldedMultiSigToken.
+ * Operation domain prefixes ("MGBP:MINT" / "MGBP:BURN") in the message
+ * hash prevent signatures for one operation type from being replayed as
+ * the other.
+ *
+ * @notice ECDSA verification is stubbed. Replace stubVerifySignature with
+ * ecdsaVerify, and persistentHash with keccak256, once the Compact ECDSA
+ * and Keccak primitives are available.
+ *
+ * For a vault contract that accepts unauthenticated deposits and gates
+ * withdrawals behind threshold authorization, see ShieldedMultiSigV2.
  */
 
 import CompactStandardLibrary;
 
-import "../ProposalManager" prefix Proposal_;
 import "../ShieldedTreasuryStateless" prefix Treasury_;
 import "../SignerManager"<Bytes<32>> prefix Signer_;
 
@@ -59,7 +67,7 @@ ledger _instanceSalt: Bytes<32>;
 // ─── Constructor ────────────────────────────────────────────────
 
 /**
- * @description Deploys the multisig with 3 signer commitments and
+ * @description Deploys the token contract with 3 signer commitments and
  * a threshold.
  *
  * Each commitment is computed off-chain as:
@@ -67,8 +75,8 @@ ledger _instanceSalt: Bytes<32>;
  * where domain is pad(32, "MultiSig:signer:").
  *
  * The instanceSalt should be a random value to prevent the same public
- * key from producing the same commitment across different multisig
- * deployments, breaking cross-contract signer correlation.
+ * key from producing the same commitment across different deployments,
+ * breaking cross-contract signer correlation.
  *
  * Requirements:
  *
@@ -89,94 +97,136 @@ constructor(
   Signer_initialize<3>(signerCommitments, thresh);
 }
 
-// ─── Deposit ────────────────────────────────────────────────────
+// ─── Mint ───────────────────────────────────────────────────────
 
 /**
- * @description Receives a shielded coin into the multisig vault.
+ * @description Mints tokens into the treasury by receiving a new shielded
+ * coin, authorized by threshold signatures.
  *
- * No access control — anyone may deposit. The coin is claimed at the
- * protocol level through receiveShielded. No coin data is stored on the
- * public ledger, preserving full balance privacy.
+ * The relayer constructs a new coin addressed to this contract and provides
+ * it as a circuit input. This circuit verifies the threshold, then calls
+ * receiveShielded to claim it. The coin never has a user-held secret key —
+ * the contract is the owner from the moment of creation.
  *
- * The operator discovers the coin's Merkle tree index by subscribing
- * to ZswapOutput events via the indexer, filtering by contract address,
- * and extracting mt_index. Combined with the known ShieldedCoinInfo,
- * this produces the QualifiedShieldedCoinInfo needed for spending.
+ * The message hash commits to the operation domain, nonce, color, and amount.
+ * The "MGBP:MINT" domain prefix ensures mint signatures cannot be replayed
+ * as burn operations for the same parameters.
  *
- * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
- */
-export circuit deposit(coin: ShieldedCoinInfo): [] {
-  receiveShielded(disclose(coin));
-}
-
-// ─── Execute ────────────────────────────────────────────────────
-
-/**
- * @description Executes a shielded send authorized by threshold signatures.
+ * The operator discovers the coin's Merkle tree index by subscribing to
+ * ZswapOutput events via the indexer.
  *
- * The circuit reads the current nonce from the ledger, increments it,
- * then reconstructs the message hash that signers must have signed
- * off-chain: `persistentHash(nonce, recipient address, coin color, amount)`.
- *
- * Signatures are verified via fold over parallel pubkey and signature
- * vectors. Each public key is hashed with the instance salt to produce
- * a commitment, checked against the signer registry, and the signature
- * is verified against the message hash. Duplicate signers are rejected
- * via inequality check on adjacent commitments.
- *
- * @notice ECDSA verification is stubbed. Replace stubVerifySignature
- * with ecdsaVerify when Compact ECDSA primitives are available.
- *
- * @notice Duplicate detection via != only works for exactly 2 signers.
- * Production contracts with larger signer sets need a different
- * uniqueness enforcement mechanism.
+ * @notice Replace persistentHash with keccak256 and stubVerifySignature with
+ * ecdsaVerify once the Compact ECDSA and Keccak primitives are available,
+ * to match BitGo's HSM signing format.
  *
  * Requirements:
  *
  * - Both public keys must hash to registered signer commitments.
- * - Both signatures must be valid over the message hash.
+ * - Both signatures must be valid over the mint message hash.
  * - Signers must not be duplicates.
- * - Coin value must be >= amount.
+ * - Threshold must be met.
+ * - coin.color must equal color.
+ * - coin.value must equal amount.
  *
- * @param {Proposal_Recipient} to - The recipient.
- * @param {Uint<128>} amount - The amount to send.
- * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
+ * @param {ShieldedCoinInfo} coin - The new coin to receive into the treasury.
+ * @param {Bytes<32>} color - The token color being minted.
+ * @param {Uint<128>} amount - The token amount being minted.
  * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
- * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the operation.
- * @returns {ShieldedSendResult} The send result including any change.
+ * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the mint hash.
  */
-export circuit execute(
-  to: Proposal_Recipient,
+export circuit mint(
+  coin: ShieldedCoinInfo,
+  color: Bytes<32>,
   amount: Uint<128>,
-  coin: QualifiedShieldedCoinInfo,
   pubkeys: Vector<2, Bytes<64>>,
   signatures: Vector<2, Bytes<64>>
-): ShieldedSendResult {
-  // Increment nonce
+): [] {
   const currentNonce = _nonce;
   _nonce.increment(1);
 
-  // Construct message hash
   const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "MGBP:MINT"),
     currentNonce as Bytes<32>,
-    to.address,
-    coin.color,
+    color,
     amount as Bytes<32>
   ]);
 
-  // Verify signatures via fold over parallel vectors
   const initialState = VerificationState {
     validCount: 0 as Uint<8>,
     prevCommitment: pad(32, ""),
-    msgHash: msgHash
+    msgHash
   };
-
   const finalState = fold(verifySignature, initialState, pubkeys, signatures);
   Signer_assertThresholdMet(finalState.validCount);
 
-  // Execute transfer
-  const normalizedRecipient = Proposal_toShieldedRecipient(to);
-  return Treasury__send(coin, normalizedRecipient, amount);
+  assert(coin.color == color, "Multisig: coin color mismatch");
+  assert(coin.value == amount, "Multisig: coin value mismatch");
+  receiveShielded(disclose(coin));
+}
+
+// ─── Burn ───────────────────────────────────────────────────────
+
+/**
+ * @description Burns tokens from the treasury by sending to the burn address,
+ * authorized by threshold signatures.
+ *
+ * The relayer supplies the QualifiedShieldedCoinInfo for the coin to destroy,
+ * constructed off-chain from the UTXO store (Zswap indexer). The circuit
+ * verifies the threshold, then calls sendShielded to spend the coin to the
+ * burn address. The nullifier is submitted on-chain, permanently marking the
+ * UTXO as spent. Any change (coin.value > amount) is returned to the treasury.
+ *
+ * The "MGBP:BURN" domain prefix ensures burn signatures cannot be replayed
+ * as mint operations for the same parameters.
+ *
+ * @notice Replace persistentHash with keccak256 and stubVerifySignature with
+ * ecdsaVerify once the Compact ECDSA and Keccak primitives are available,
+ * to match BitGo's HSM signing format.
+ *
+ * Requirements:
+ *
+ * - Both public keys must hash to registered signer commitments.
+ * - Both signatures must be valid over the burn message hash.
+ * - Signers must not be duplicates.
+ * - Threshold must be met.
+ * - coin.color must equal color.
+ * - coin.value must be >= amount (enforced by sendShielded).
+ *
+ * @param {QualifiedShieldedCoinInfo} coin - The coin to burn (from operator's UTXO store).
+ * @param {Bytes<32>} color - The token color being burned.
+ * @param {Uint<128>} amount - The token amount to burn.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the burn hash.
+ * @returns {ShieldedSendResult} The send result; change (if any) returns to the treasury.
+ */
+export circuit burn(
+  coin: QualifiedShieldedCoinInfo,
+  color: Bytes<32>,
+  amount: Uint<128>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): ShieldedSendResult {
+  const currentNonce = _nonce;
+  _nonce.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "MGBP:BURN"),
+    currentNonce as Bytes<32>,
+    color,
+    amount as Bytes<32>
+  ]);
+
+  const initialState = VerificationState {
+    validCount: 0 as Uint<8>,
+    prevCommitment: pad(32, ""),
+    msgHash
+  };
+  const finalState = fold(verifySignature, initialState, pubkeys, signatures);
+  Signer_assertThresholdMet(finalState.validCount);
+
+  assert(coin.color == color, "Multisig: coin color mismatch");
+
+  return Treasury__send(coin, burnAddress(), amount);
 }
 
 // ─── Signature Verification ─────────────────────────────────────
@@ -203,7 +253,6 @@ circuit verifySignature(
   // Duplicate detection — sufficient for 2 signers only
   assert(commitment != state.prevCommitment, "Multisig: duplicate signer");
 
-  // Verify this commitment is a registered signer
   Signer_assertSigner(commitment);
 
   // TODO: Replace with actual ECDSA primitive when available
@@ -225,8 +274,8 @@ circuit verifySignature(
  * - salt: instance-specific random value (prevents cross-contract correlation)
  * - domain: "MultiSig:signer:" (domain separation)
  *
- * This is a pure circuit. It can be called off-chain by the deployer
- * to compute commitments for the constructor.
+ * This is a pure circuit, callable off-chain by the deployer to compute
+ * commitments for the constructor.
  *
  * @param {Bytes<64>} pk - The ECDSA public key.
  * @param {Bytes<32>} salt - The instance salt.
