@@ -79,4 +79,20 @@ module Utils {
   export pure circuit emptyString(): Opaque<"string"> {
     return default<Opaque<"string">>;
   }
+
+  /**
+   * @description Zeroes out the unused side of an `Either` value. Prevents crafted
+   * inputs where both `left` and `right` fields carry data from bypassing checks that
+   * only inspect the active side.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The value to canonicalize.
+   * @return {Either<ZswapCoinPublicKey, ContractAddress>} - The canonicalized value.
+   */
+  export pure circuit canonicalizeKeyOrAddress(
+                        keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>
+                        ): Either<ZswapCoinPublicKey, ContractAddress> {
+    return keyOrAddress.is_left
+      ? Either<ZswapCoinPublicKey, ContractAddress>{ is_left: true, left: keyOrAddress.left, right: default<ContractAddress> }
+      : Either<ZswapCoinPublicKey, ContractAddress>{ is_left: false, left: default<ZswapCoinPublicKey>, right: keyOrAddress.right };
+  }
 }

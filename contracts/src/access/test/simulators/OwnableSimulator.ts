@@ -70,6 +70,17 @@ export class OwnableSimulator extends OwnableSimulatorBase {
   }
 
   /**
+   * @description Unsafe variant of `transferOwnership` that allows transferring
+   * ownership to a contract address.
+   * @param newOwner - The new owner.
+   */
+  public _unsafeTransferOwnership(
+    newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
+    this.circuits.impure._unsafeTransferOwnership(newOwner);
+  }
+
+  /**
    * @description Leaves the contract without an owner.
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
@@ -97,4 +108,14 @@ export class OwnableSimulator extends OwnableSimulatorBase {
     this.circuits.impure._transferOwnership(newOwner);
   }
 
+  /**
+   * @description Unsafe variant of `_transferOwnership` without caller checks
+   * that allows transferring ownership to a contract address.
+   * @param newOwner - The new owner.
+   */
+  public _unsafeUncheckedTransferOwnership(
+    newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+  ) {
+    this.circuits.impure._unsafeUncheckedTransferOwnership(newOwner);
+  }
 }

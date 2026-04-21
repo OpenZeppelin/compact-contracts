@@ -21,10 +21,14 @@ pragma language_version >= 0.21.0;
  * if a contract is granted ownership, the owner contract cannot directly call the protected
  * circuit.
  *
- * @notice Ownership transfers to contract addresses are not currently supported because
- * `assertOnlyOwner` cannot authenticate contract address callers. The platform does not
- * provide a mechanism to identify the calling contract. Until contract-to-contract calls
- * are supported, ownership is restricted to public key accounts.
+ * @notice This module does offer experimental circuits that allow ownership to be granted
+ * to contract addresses (`_unsafeTransferOwnership` and `_unsafeUncheckedTransferOwnership`).
+ * Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
+ * Until contract-to-contract calls are supported, there is no direct way for a contract
+ * to authenticate as an owner.
+ *
+ * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
+ * are supported.
  */
 module Ownable {
   import CompactStandardLibrary;
@@ -114,7 +118,7 @@ module Ownable {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     Initializable_assertInitialized();
     assertOnlyOwner();
     assert(!Utils_isKeyOrAddressZero(newOwner), "Ownable: invalid new owner");
@@ -156,8 +160,12 @@ module Ownable {
    */
   export circuit assertOnlyOwner(): [] {
     Initializable_assertInitialized();
-    const caller = ownPublicKey();
-    assert(caller == _owner.left, "Ownable: caller is not the owner");
+    if (_owner.is_left) {
+      const caller = ownPublicKey();
+      assert(caller == _owner.left, "Ownable: caller is not the owner");
+    } else {
+      assert(false, "Ownable: contract address owner authentication is not yet supported");
+    }
   }
 
   /**
@@ -201,10 +209,10 @@ module Ownable {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  circuit _unsafeUncheckedTransferOwnership(
+  export circuit _unsafeUncheckedTransferOwnership(
                    newOwner: Either<ZswapCoinPublicKey, ContractAddress>
                    ): [] {
     Initializable_assertInitialized();
-    _owner = disclose(newOwner);
+    _owner = disclose(Utils_canonicalizeKeyOrAddress(newOwner));
   }
 }
