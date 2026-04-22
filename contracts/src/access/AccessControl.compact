@@ -303,8 +303,6 @@ module AccessControl {
         disclose(roleId),
         default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
         );
-      _operatorRoles.lookup(roleId).insert(disclose(account), true);
-      return true;
     }
 
     _operatorRoles.lookup(roleId).insert(disclose(account), true);

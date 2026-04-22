@@ -1,18 +1,18 @@
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../artifacts/MockZOwnablePK/contract/index.js';
 
 /**
  * @description Interface defining the witness methods for ZOwnablePK operations.
+ * @template L - The ledger type.
  * @template P - The private state type.
  */
-export interface IZOwnablePKWitnesses<P> {
+export interface IZOwnablePKWitnesses<L, P> {
   /**
    * Retrieves the secret nonce from the private state.
-   * @param context - The witness context containing the private state.
+   * @param context - The witness context containing the ledger and private state.
    * @returns A tuple of the private state and the secret nonce as a Uint8Array.
    */
-  wit_secretNonce(context: WitnessContext<Ledger, P>): [P, Uint8Array];
+  wit_secretNonce(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -61,13 +61,16 @@ export const ZOwnablePKPrivateState = {
 
 /**
  * @description Factory function creating witness implementations for Ownable operations.
+ * @template L - The ledger type, supplied by the simulator.
  * @returns An object implementing the Witnesses interface for ZOwnablePKPrivateState.
  */
-export const ZOwnablePKWitnesses =
-  (): IZOwnablePKWitnesses<ZOwnablePKPrivateState> => ({
-    wit_secretNonce(
-      context: WitnessContext<Ledger, ZOwnablePKPrivateState>,
-    ): [ZOwnablePKPrivateState, Uint8Array] {
-      return [context.privateState, context.privateState.secretNonce];
-    },
-  });
+export const ZOwnablePKWitnesses = <L>(): IZOwnablePKWitnesses<
+  L,
+  ZOwnablePKPrivateState
+> => ({
+  wit_secretNonce(
+    context: WitnessContext<L, ZOwnablePKPrivateState>,
+  ): [ZOwnablePKPrivateState, Uint8Array] {
+    return [context.privateState, context.privateState.secretNonce];
+  },
+});

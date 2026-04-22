@@ -44,7 +44,7 @@ module Utils {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
+   * @return {Boolean} - Returns true if `keyOrAddress` is equal to `other`.
    */
   export pure circuit isKeyOrAddressEqual(
                         keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
