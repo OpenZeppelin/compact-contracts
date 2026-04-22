@@ -32,6 +32,8 @@
     "compact:utils": "compact-compiler --dir utils",
     "build": "compact-builder",
     "test": "compact-compiler --skip-zk && vitest run",
+    "test:integration": "compact-compiler --skip-zk && vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
@@ -42,9 +44,24 @@
     "@openzeppelin-compact/compact": "workspace:^"
   },
   "devDependencies": {
+    "@midnight-ntwrk/compact-js": "2.5.0",
+    "@midnight-ntwrk/compact-runtime": "0.15.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
+    "@midnight-ntwrk/midnight-js-contracts": "4.0.2",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-network-id": "4.0.2",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-types": "4.0.2",
+    "@midnight-ntwrk/midnight-js-utils": "4.0.2",
+    "@midnight-ntwrk/testkit-js": "4.0.2",
     "@openzeppelin-compact/contracts-simulator": "workspace:^",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "24.10.0",
+    "fast-check": "^4.6.0",
+    "pino": "^9.7.0",
+    "testcontainers": "^10.28.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
