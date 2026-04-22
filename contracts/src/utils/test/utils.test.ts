@@ -130,5 +130,19 @@ describe('Utils', () => {
       const canonical = contract.canonicalizeKeyOrAddress(SOME_CONTRACT);
       expect(canonical).toEqual(SOME_CONTRACT);
     });
+
+    it('should be idempotent for already-zero pubkey', () => {
+      const canonical = contract.canonicalizeKeyOrAddress(
+        contractUtils.ZERO_KEY,
+      );
+      expect(canonical).toEqual(contractUtils.ZERO_KEY);
+    });
+
+    it('should be idempotent for already-zero contract address', () => {
+      const canonical = contract.canonicalizeKeyOrAddress(
+        contractUtils.ZERO_ADDRESS,
+      );
+      expect(canonical).toEqual(contractUtils.ZERO_ADDRESS);
+    });
   });
 });

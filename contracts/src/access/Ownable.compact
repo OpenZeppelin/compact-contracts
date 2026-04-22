@@ -213,6 +213,6 @@ module Ownable {
                    newOwner: Either<ZswapCoinPublicKey, ContractAddress>
                    ): [] {
     Initializable_assertInitialized();
-    _owner = disclose(Utils_canonicalizeKeyOrAddress(newOwner));
+    _owner = disclose(Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(newOwner));
   }
 }

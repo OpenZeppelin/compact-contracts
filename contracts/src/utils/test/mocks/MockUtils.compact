@@ -39,5 +39,5 @@ export pure circuit emptyString(): Opaque<"string"> {
 export pure circuit canonicalizeKeyOrAddress(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>
 ): Either<ZswapCoinPublicKey, ContractAddress> {
-  return Utils_canonicalizeKeyOrAddress(keyOrAddress);
+  return Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(keyOrAddress);
 }
