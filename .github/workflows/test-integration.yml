@@ -1,0 +1,70 @@
+name: Compact Contracts Integration Suite
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  schedule:
+    - cron: "0 6 * * *" # nightly at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  run-integration:
+    # Run on scheduled/manual triggers, or on PRs carrying the `integration` label.
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'integration'))
+    name: Run Integration Suite
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+
+      - name: Compile contracts
+        run: turbo compact --filter=@openzeppelin/compact-contracts
+
+      - name: Start local Midnight stack
+        run: make env-up
+
+      - name: Wait for local stack health
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose -f local-env.yml ps --format json | \
+               grep -q '"Health":"healthy"'; then
+              echo "Local stack healthy"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Local stack did not become healthy in time"
+          docker compose -f local-env.yml ps
+          exit 1
+
+      - name: Run integration tests
+        run: yarn test:integration
+
+      - name: Upload container logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midnight-stack-logs
+          path: logs/
+          if-no-files-found: warn
+
+      - name: Tear down local stack
+        if: always()
+        run: make env-down
