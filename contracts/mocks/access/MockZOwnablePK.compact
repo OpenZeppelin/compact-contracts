@@ -8,7 +8,7 @@
 pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
-import "../../ZOwnablePK" prefix ZOwnablePK_;
+import "../../src/access/ZOwnablePK" prefix ZOwnablePK_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ZOwnablePK__ownerCommitment, ZOwnablePK__counter };

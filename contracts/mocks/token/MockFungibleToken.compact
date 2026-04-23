@@ -9,7 +9,7 @@ pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
-import "../../FungibleToken" prefix FungibleToken_;
+import "../../src/token/FungibleToken" prefix FungibleToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 

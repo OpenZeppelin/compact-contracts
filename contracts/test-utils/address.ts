@@ -4,7 +4,7 @@ import {
   encodeCoinPublicKey,
   isContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
-import { encodeContractAddress } from '@midnight-ntwrk/ledger-v7';
+import { encodeContractAddress } from '@midnight-ntwrk/ledger-v8';
 
 type ZswapCoinPublicKey = { bytes: Uint8Array };
 

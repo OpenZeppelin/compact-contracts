@@ -3,7 +3,7 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
-import type { TestWalletProvider } from './wallet.js';
+import type { MidnightWalletProvider } from '@midnight-ntwrk/testkit-js';
 
 /**
  * Build a fully-wired `MidnightProviders` bundle for a given compiled contract's
@@ -23,7 +23,7 @@ export function buildProviders<
   PrivateStateId extends string,
   PrivateState,
 >(
-  wallet: TestWalletProvider,
+  wallet: MidnightWalletProvider,
   artifactPath: string,
   privateStateStoreName: string,
 ): MidnightProviders<CircuitKey, PrivateStateId, PrivateState> {
@@ -32,8 +32,10 @@ export function buildProviders<
   const privateStateConfig = {
     privateStateStoreName,
     accountId: wallet.getCoinPublicKey(),
-    privateStoragePasswordProvider: () =>
-      `${wallet.getEncryptionPublicKey() as string}A!`,
+    // Fixed test password: local/undeployed wallets don't need real entropy.
+    // Chosen to satisfy `validatePassword` (no 3+ consecutive identical chars,
+    // min-length, mixed classes) deterministically across runs.
+    privateStoragePasswordProvider: () => 'Compact-Integration-Test-Pw!9',
   } as Parameters<typeof levelPrivateStateProvider<PrivateStateId>>[0];
 
   return {
