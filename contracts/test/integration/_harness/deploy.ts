@@ -10,12 +10,13 @@ import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Absolute path to `contracts/artifacts/<moduleName>/contract` — where compiled
- * artifacts, contract-info.json, and verifier keys live.
+ * Absolute path to `contracts/artifacts/<moduleName>/`.
+ * Used by `NodeZkConfigProvider`, which expects the directory containing
+ * `keys/` and `zkir/` (i.e. the module root, not the `contract/` subfolder).
  */
-export function artifactPathOf(moduleName: string): string {
+export function moduleRootPath(moduleName: string): string {
   // _harness/ is at contracts/test/integration/_harness/
-  // artifacts live at     contracts/artifacts/<moduleName>/contract
+  // module root at    contracts/artifacts/<moduleName>/
   return path.resolve(
     currentDir,
     '..',
@@ -23,8 +24,16 @@ export function artifactPathOf(moduleName: string): string {
     '..',
     'artifacts',
     moduleName,
-    'contract',
   );
+}
+
+/**
+ * Absolute path to `contracts/artifacts/<moduleName>/contract/` — where the
+ * compiled `index.js`, `index.d.ts`, and `contract-info.json` (in compiler/)
+ * live. Used by `CompiledContract.withCompiledFileAssets`.
+ */
+export function contractAssetsPath(moduleName: string): string {
+  return path.join(moduleRootPath(moduleName), 'contract');
 }
 
 /**

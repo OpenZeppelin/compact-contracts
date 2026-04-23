@@ -163,15 +163,26 @@ export class EnvironmentValidator {
  */
 export class FileDiscovery {
   /**
+   * Root of the source tree. Discovered paths are returned relative to this,
+   * so they reconstruct correctly when re-joined by `CompilerService`.
+   */
+  private readonly srcRoot: string;
+
+  constructor(srcRoot: string = SRC_DIR) {
+    this.srcRoot = srcRoot;
+  }
+
+  /**
    * Recursively discovers all .compact files in a directory.
-   * Returns relative paths from the SRC_DIR for consistent processing.
+   * Returns paths relative to `srcRoot` for consistent processing downstream.
    *
    * @param dir - Directory path to search (relative or absolute)
-   * @returns Promise resolving to array of relative file paths
+   * @returns Promise resolving to array of paths relative to `srcRoot`
    * @example
    * ```typescript
-   * const files = await discovery.getCompactFiles('src');
-   * // Returns: ['contracts/Token.compact', 'security/AccessControl.compact']
+   * const discovery = new FileDiscovery('src');
+   * const files = await discovery.getCompactFiles('src/security');
+   * // Returns: ['security/AccessControl.compact', ...]
    * ```
    */
   async getCompactFiles(dir: string): Promise<string[]> {
@@ -186,7 +197,7 @@ export class FileDiscovery {
           }
 
           if (entry.isFile() && fullPath.endsWith('.compact')) {
-            return [relative(SRC_DIR, fullPath)];
+            return [relative(this.srcRoot, fullPath)];
           }
           return [];
         } catch (err) {
@@ -263,8 +274,9 @@ export class CompilerService {
     file: string,
     flags: string,
     version?: string,
+    srcRoot: string = SRC_DIR,
   ): Promise<{ stdout: string; stderr: string }> {
-    const inputPath = join(SRC_DIR, file);
+    const inputPath = join(srcRoot, file);
     const outputDir = join(ARTIFACTS_DIR, basename(file, '.compact'));
 
     const versionFlag = version ? `+${version}` : '';
@@ -448,14 +460,23 @@ export class CompactCompiler {
   private readonly targetDir?: string;
   /** Optional specific toolchain version to use */
   private readonly version?: string;
+  /**
+   * Root directory containing .compact files. Defaults to `'src'` but can be
+   * overridden per-invocation via the `--src-root <path>` CLI flag or the
+   * `COMPACT_SRC_ROOT` environment variable. Useful when the same compiler
+   * binary needs to compile both a production `src/` tree and a parallel
+   * `mocks/` tree (integration-test scaffolding).
+   */
+  private readonly srcRoot: string;
 
   /**
    * Creates a new CompactCompiler instance with specified configuration.
    *
    * @param flags - Space-separated compiler flags (e.g., '--skip-zk --verbose')
-   * @param targetDir - Optional subdirectory within src/ to compile (e.g., 'security', 'token')
+   * @param targetDir - Optional subdirectory within `srcRoot` to compile (e.g., 'security')
    * @param version - Optional toolchain version to use (e.g., '0.26.0')
    * @param execFn - Optional custom exec function for dependency injection
+   * @param srcRoot - Optional override for the source-tree root (defaults to 'src')
    * @example
    * ```typescript
    * // Compile all files with flags
@@ -464,12 +485,8 @@ export class CompactCompiler {
    * // Compile specific directory
    * const compiler = new CompactCompiler('', 'security');
    *
-   * // Compile with specific version
-   * const compiler = new CompactCompiler('--skip-zk', undefined, '0.26.0');
-   *
-   * // For testing with custom exec function
-   * const mockExec = vi.fn();
-   * const compiler = new CompactCompiler('', undefined, undefined, mockExec);
+   * // Compile from an alternate root (e.g. mocks/ instead of src/)
+   * const compiler = new CompactCompiler('', 'security', undefined, undefined, 'mocks');
    * ```
    */
   constructor(
@@ -477,12 +494,14 @@ export class CompactCompiler {
     targetDir?: string,
     version?: string,
     execFn?: ExecFunction,
+    srcRoot?: string,
   ) {
     this.flags = flags.trim();
     this.targetDir = targetDir;
     this.version = version;
+    this.srcRoot = srcRoot ?? SRC_DIR;
     this.environmentValidator = new EnvironmentValidator(execFn);
-    this.fileDiscovery = new FileDiscovery();
+    this.fileDiscovery = new FileDiscovery(this.srcRoot);
     this.compilerService = new CompilerService(execFn);
   }
 
@@ -524,6 +543,7 @@ export class CompactCompiler {
     env: NodeJS.ProcessEnv = process.env,
   ): CompactCompiler {
     let targetDir: string | undefined;
+    let srcRoot: string | undefined;
     const flags: string[] = [];
     let version: string | undefined;
 
@@ -541,6 +561,15 @@ export class CompactCompiler {
         } else {
           throw new Error('--dir flag requires a directory name');
         }
+      } else if (args[i] === '--src-root') {
+        const rootExists =
+          i + 1 < args.length && !args[i + 1].startsWith('--');
+        if (rootExists) {
+          srcRoot = args[i + 1];
+          i++;
+        } else {
+          throw new Error('--src-root flag requires a directory path');
+        }
       } else if (args[i].startsWith('+')) {
         version = args[i].slice(1);
       } else {
@@ -556,7 +585,16 @@ export class CompactCompiler {
       version = env.COMPACT_TOOLCHAIN_VERSION ?? COMPACT_VERSION;
     }
 
-    return new CompactCompiler(flags.join(' '), targetDir, version);
+    // Priority: CLI flag > env var > default ('src').
+    const resolvedSrcRoot = srcRoot ?? env.COMPACT_SRC_ROOT;
+
+    return new CompactCompiler(
+      flags.join(' '),
+      targetDir,
+      version,
+      undefined,
+      resolvedSrcRoot,
+    );
   }
 
   /**
@@ -625,7 +663,9 @@ export class CompactCompiler {
   async compile(): Promise<void> {
     await this.validateEnvironment();
 
-    const searchDir = this.targetDir ? join(SRC_DIR, this.targetDir) : SRC_DIR;
+    const searchDir = this.targetDir
+      ? join(this.srcRoot, this.targetDir)
+      : this.srcRoot;
 
     // Validate target directory exists
     if (this.targetDir && !existsSync(searchDir)) {
@@ -674,6 +714,7 @@ export class CompactCompiler {
         file,
         this.flags,
         this.version,
+        this.srcRoot,
       );
 
       spinner.succeed(chalk.green(`[COMPILE] ${step} Compiled ${file}`));

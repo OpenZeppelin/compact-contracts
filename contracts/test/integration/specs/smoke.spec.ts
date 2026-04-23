@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { deployPausable, type PausableFixture } from '../fixtures/pausable.js';
+import type { PausableHarness } from '../_harness/harnesses/PausableHarness.js';
+import { deployPausable } from '../fixtures/pausable.js';
 
 /**
  * Smoke spec — proves the integration harness works end-to-end:
@@ -11,24 +12,21 @@ import { deployPausable, type PausableFixture } from '../fixtures/pausable.js';
  * subsequent spec can assume the harness is wired correctly.
  */
 describe('Smoke — Pausable deploy + initial state', () => {
-  let fixture: PausableFixture;
+  let pausable: PausableHarness;
 
   beforeAll(async () => {
-    fixture = await deployPausable();
+    pausable = await deployPausable();
   });
 
   afterAll(async () => {
-    await fixture?.teardown();
+    await pausable?.teardown();
   });
 
   it('deploys MockPausable to the local node', () => {
-    expect(fixture.deployed.deployTxData.public.contractAddress).toMatch(
-      /^[0-9a-f]+$/,
-    );
+    expect(pausable.contractAddress).toMatch(/^[0-9a-f]+$/);
   });
 
   it('initial Pausable__isPaused is false', async () => {
-    const paused = await fixture.readIsPaused();
-    expect(paused).toBe(false);
+    expect(await pausable.isPaused()).toBe(false);
   });
 });
