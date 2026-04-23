@@ -44,10 +44,10 @@
   },
   "devDependencies": {
     "@openzeppelin-compact/contracts-simulator": "workspace:^",
-    "@tsconfig/node24": "^24.0.3",
+    "@tsconfig/node24": "^24.0.4",
     "@types/node": "24.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.2"
   }
 }
