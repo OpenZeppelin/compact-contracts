@@ -2,7 +2,8 @@ pragma language_version >= 0.21.0;
 
 /**
  * @title ShieldedMultisigV2
- * @description Privacy-preserving 2-of-3 multisig contract.
+ * @description Privacy-preserving multisig vault. Accepts unauthenticated deposits
+ * and gates withdrawals behind threshold ECDSA authorization.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
  * keys combined with an instance salt and domain separator. Signature
@@ -15,6 +16,9 @@ pragma language_version >= 0.21.0;
  * Deposits call receiveShielded only. The operator discovers coin indices
  * through ZswapOutput events from the indexer, constructs QualifiedShieldedCoinInfo
  * off-chain, and provides it as a circuit parameter for spending.
+ *
+ * For a token contract where both minting and burning require threshold
+ * authorization, see ShieldedMultiSigToken.
  */
 
 import CompactStandardLibrary;
@@ -88,9 +92,9 @@ constructor(
 // ─── Deposit ────────────────────────────────────────────────────
 
 /**
- * @description Receives a shielded coin into the multisig treasury.
+ * @description Receives a shielded coin into the multisig vault.
  *
- * No access control which allows anyone to deposit. The coin is claimed at the
+ * No access control — anyone may deposit. The coin is claimed at the
  * protocol level through receiveShielded. No coin data is stored on the
  * public ledger, preserving full balance privacy.
  *

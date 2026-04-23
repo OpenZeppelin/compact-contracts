@@ -1,0 +1,350 @@
+pragma language_version >= 0.21.0;
+
+/**
+ * @title ShieldedMultiSigToken
+ * @description Privacy-preserving multisig token contract. Both minting and
+ * burning require threshold ECDSA authorization — no single party can
+ * unilaterally create or destroy tokens.
+ *
+ * Uses Midnight's native shielded token primitives:
+ *
+ * - `mint` creates a new UTXO via `mintToken`, addressed to the contract.
+ *   No external coin input; the supply is produced on-chain.
+ * - `burn` consumes a UTXO via `receive` + `sendImmediate` to `burnAddress()`.
+ *   Only coins of this contract's token type can be burned. Change is
+ *   returned to the contract.
+ *
+ * There is no `deposit` — supply can only enter through an authorized `mint`.
+ *
+ * Signer identities are stored as commitments: hashes of ECDSA public keys
+ * combined with an instance salt and domain separator. Operations execute
+ * in a single transaction with no multi-step proposal lifecycle. A counter
+ * provides replay protection for signatures, and also feeds `evolveNonce`
+ * to produce unique coin nonces on each mint.
+ *
+ * Operation domain prefixes ("MGBP:MINT" / "MGBP:BURN") in the message hash
+ * prevent signatures for one operation type from being replayed as the other.
+ *
+ * @notice ECDSA verification is stubbed. Replace stubVerifySignature with
+ * ecdsaVerify, and persistentHash with keccak256, once the Compact ECDSA
+ * and Keccak primitives are available.
+ *
+ * For a vault contract that accepts unauthenticated deposits and gates
+ * withdrawals behind threshold authorization, see ShieldedMultiSigV2.
+ */
+
+import CompactStandardLibrary;
+
+import "../SignerManager"<Bytes<32>> prefix Signer_;
+
+// ─── Types ──────────────────────────────────────────────────────
+
+/**
+ * @description Accumulator for fold-based signature verification.
+ * Threads the valid count, previous commitment (for duplicate
+ * detection), and message hash through each iteration.
+ */
+struct VerificationState {
+  validCount: Uint<8>,
+  prevCommitment: Bytes<32>,
+  msgHash: Bytes<32>
+}
+
+/**
+ * @description Input to persistentHash for computing signer commitments.
+ * Combines the ECDSA public key with an instance-specific salt and
+ * domain separator to produce a unique, unlinkable commitment.
+ */
+struct SignerCommitmentInput {
+  pk: Bytes<64>,
+  salt: Bytes<32>,
+  domain: Bytes<32>
+}
+
+// ─── State ──────────────────────────────────────────────────────
+
+ledger _counter: Counter;
+ledger _coinNonce: Bytes<32>;
+ledger _instanceSalt: Bytes<32>;
+sealed ledger _tokenDomain: Bytes<32>;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Deploys the token contract with 3 signer commitments and
+ * a threshold.
+ *
+ * Each commitment is computed off-chain as:
+ * persistentHash(SignerCommitmentInput { pk, instanceSalt, domain })
+ * where domain is pad(32, "MultiSig:signer:").
+ *
+ * `tokenDomain` is used with `kernel.self()` to derive the token color
+ * (`tokenType(_tokenDomain, kernel.self())`). Only coins of this color can
+ * be burned through this contract.
+ *
+ * `initCoinNonce` seeds the `evolveNonce` chain used to produce unique
+ * mint nonces. It must be cryptographically random.
+ *
+ * Requirements:
+ *
+ * - `thresh` must be > 0 and <= 3.
+ * - `signerCommitments` must not contain duplicates.
+ * - `instanceSalt` and `initCoinNonce` should be cryptographically random.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for signer commitment derivation.
+ * @param {Bytes<32>} initCoinNonce - Initial coin nonce seed.
+ * @param {Bytes<32>} tokenDomain - Domain string used to derive this contract's token color.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+ * @param {Uint<8>} thresh - Minimum approvals required.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  initCoinNonce: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  thresh: Uint<8>,
+) {
+  _instanceSalt = disclose(instanceSalt);
+  _coinNonce = disclose(initCoinNonce);
+  _tokenDomain = disclose(tokenDomain);
+  Signer_initialize<3>(signerCommitments, thresh);
+}
+
+// ─── Mint ───────────────────────────────────────────────────────
+
+/**
+ * @description Mints a new shielded coin to this contract, authorized by
+ * threshold signatures.
+ *
+ * Uses the native `mintToken` primitive to create a new UTXO of this
+ * contract's token type, addressed to the contract itself. No external
+ * coin input is required — the supply is produced on-chain. The operator
+ * discovers the new UTXO via ZswapOutput events from the Zswap indexer
+ * for later use in burn.
+ *
+ * The message hash commits to the operation domain, current counter value
+ * (acting as the operation nonce), and the amount. The "MGBP:MINT" domain
+ * prefix ensures mint signatures cannot be replayed as burn operations.
+ *
+ * Coin nonce uniqueness is guaranteed by `evolveNonce(_counter, _coinNonce)`
+ * after the counter has been incremented, binding each mint's nonce to a
+ * distinct counter value.
+ *
+ * @notice Replace persistentHash with keccak256 and stubVerifySignature with
+ * ecdsaVerify once the Compact ECDSA and Keccak primitives are available,
+ * to match BitGo's HSM signing format.
+ *
+ * Requirements:
+ *
+ * - Both public keys must hash to registered signer commitments.
+ * - Both signatures must be valid over the mint message hash.
+ * - Signers must not be duplicates.
+ * - Threshold must be met.
+ *
+ * @param {Uint<64>} amount - The token amount to mint.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the mint hash.
+ * @returns {CoinInfo} The newly-minted coin's descriptor.
+ */
+export circuit mint(
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): CoinInfo {
+  const opNonce = _counter;
+  _counter.increment(1);
+
+  const msgHash = persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "MGBP:MINT"),
+    opNonce as Bytes<32>,
+    amount as Bytes<32>
+  ]);
+
+  const initialState = VerificationState {
+    validCount: 0 as Uint<8>,
+    prevCommitment: pad(32, ""),
+    msgHash
+  };
+  const finalState = fold(verifySignature, initialState, pubkeys, signatures);
+  Signer_assertThresholdMet(finalState.validCount);
+
+  _coinNonce = evolveNonce(_counter, _coinNonce);
+  const contractRecipient = right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
+  return mintToken(_tokenDomain, disclose(amount), _coinNonce, disclose(contractRecipient));
+}
+
+// ─── Burn ───────────────────────────────────────────────────────
+
+/**
+ * @description Burns a shielded coin of this contract's token type,
+ * authorized by threshold signatures.
+ *
+ * Uses the native burn flow: `receive` registers the coin for spending,
+ * then `sendImmediate` spends it to `burnAddress()` — an unspendable
+ * address. The nullifier is submitted on-chain, permanently marking the
+ * UTXO as spent. Any change (coin.value > amount) is returned to the
+ * contract.
+ *
+ * Only coins of this contract's token type can be burned. The relayer
+ * supplies the CoinInfo for the coin to destroy, constructed off-chain
+ * from the operator's UTXO store (Zswap indexer).
+ *
+ * The "MGBP:BURN" domain prefix ensures burn signatures cannot be replayed
+ * as mint operations for the same parameters.
+ *
+ * @notice Replace persistentHash with keccak256 and stubVerifySignature with
+ * ecdsaVerify once the Compact ECDSA and Keccak primitives are available,
+ * to match BitGo's HSM signing format.
+ *
+ * Requirements:
+ *
+ * - Both public keys must hash to registered signer commitments.
+ * - Both signatures must be valid over the burn message hash.
+ * - Signers must not be duplicates.
+ * - Threshold must be met.
+ * - coin.color must equal tokenType(_tokenDomain, kernel.self()).
+ * - coin.value must be >= amount.
+ *
+ * @param {CoinInfo} coin - The coin to burn (from operator's UTXO store).
+ * @param {Uint<64>} amount - The token amount to burn.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the burn hash.
+ * @returns {SendResult} The send result; change (if any) returns to the contract.
+ */
+export circuit burn(
+  coin: CoinInfo,
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): SendResult {
+  const opNonce = _counter;
+  _counter.increment(1);
+
+  const msgHash = persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "MGBP:BURN"),
+    opNonce as Bytes<32>,
+    amount as Bytes<32>
+  ]);
+
+  const initialState = VerificationState {
+    validCount: 0 as Uint<8>,
+    prevCommitment: pad(32, ""),
+    msgHash
+  };
+  const finalState = fold(verifySignature, initialState, pubkeys, signatures);
+  Signer_assertThresholdMet(finalState.validCount);
+
+  assert(coin.color == tokenType(_tokenDomain, kernel.self()), "Multisig: coin not from this contract");
+  assert(coin.value >= amount, "Multisig: insufficient coin value");
+
+  receive(disclose(coin));
+  const sendRes = sendImmediate(disclose(coin), burnAddress(), disclose(amount));
+
+  if (disclose(sendRes.change.is_some)) {
+    const contractAddr = right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
+    sendImmediate(disclose(sendRes.change.value), contractAddr, disclose(sendRes.change.value.value));
+  }
+
+  return sendRes;
+}
+
+// ─── Signature Verification ─────────────────────────────────────
+
+/**
+ * @description Fold callback. Verifies one signer's approval.
+ *
+ * Computes the signer's commitment from their public key and the instance
+ * salt, checks for duplicates against the previous commitment, verifies
+ * registry membership, and validates the ECDSA signature.
+ *
+ * @param {VerificationState} state - Accumulator threaded through fold.
+ * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
+ * @param {Bytes<64>} signature - The signer's signature over msgHash.
+ * @returns {VerificationState} Updated accumulator.
+ */
+circuit verifySignature(
+  state: VerificationState,
+  pubkey: Bytes<64>,
+  signature: Bytes<64>
+): VerificationState {
+  const commitment = _calculateSignerId(pubkey, _instanceSalt);
+
+  // Duplicate detection — sufficient for 2 signers only
+  assert(commitment != state.prevCommitment, "Multisig: duplicate signer");
+
+  Signer_assertSigner(commitment);
+
+  // TODO: Replace with actual ECDSA primitive when available
+  // assert(ecdsaVerify(pubkey, state.msgHash, signature), "Multisig: invalid signature");
+  assert(stubVerifySignature(pubkey, state.msgHash, signature), "Multisig: invalid signature");
+
+  return VerificationState {
+    validCount: state.validCount + 1 as Uint<8>,
+    prevCommitment: commitment,
+    msgHash: state.msgHash
+  };
+}
+
+/**
+ * @description Computes a signer commitment from an ECDSA public key.
+ *
+ * The commitment is persistentHash(pk, salt, domain) where:
+ * - pk: the signer's ECDSA public key (64 bytes)
+ * - salt: instance-specific random value (prevents cross-contract correlation)
+ * - domain: "MultiSig:signer:" (domain separation)
+ *
+ * This is a pure circuit, callable off-chain by the deployer to compute
+ * commitments for the constructor.
+ *
+ * @param {Bytes<64>} pk - The ECDSA public key.
+ * @param {Bytes<32>} salt - The instance salt.
+ * @returns {Bytes<32>} The signer commitment.
+ */
+export pure circuit _calculateSignerId(
+  pk: Bytes<64>,
+  salt: Bytes<32>
+): Bytes<32> {
+  return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+    pk: pk,
+    salt: salt,
+    domain: pad(32, "MultiSig:signer:")
+  });
+}
+
+/**
+ * @description Stub for ECDSA signature verification.
+ * Always returns true. MUST be replaced before any non-test deployment.
+ */
+circuit stubVerifySignature(
+  pubkey: Bytes<64>,
+  msgHash: Bytes<32>,
+  signature: Bytes<64>
+): Boolean {
+  return true;
+}
+
+// ─── View ───────────────────────────────────────────────────────
+
+export circuit getNonce(): Uint<64> {
+  return _counter;
+}
+
+export circuit getTokenDomain(): Bytes<32> {
+  return _tokenDomain;
+}
+
+export circuit getTokenType(): Bytes<32> {
+  return tokenType(_tokenDomain, kernel.self());
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Signer_isSigner(commitment);
+}
