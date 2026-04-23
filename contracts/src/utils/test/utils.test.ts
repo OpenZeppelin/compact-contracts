@@ -95,4 +95,54 @@ describe('Utils', () => {
       expect(contract.emptyString()).toBe(EMPTY_STRING);
     });
   });
+
+  describe('canonicalizeKeyOrAddress', () => {
+    it('should zero the right side when is_left is true', () => {
+      const crafted = {
+        is_left: true,
+        left: Z_SOME_KEY.left,
+        right: SOME_CONTRACT.right,
+      };
+      const canonical = contract.canonicalizeKeyOrAddress(crafted);
+      expect(canonical.is_left).toBe(true);
+      expect(canonical.left).toEqual(Z_SOME_KEY.left);
+      expect(canonical.right).toEqual(contractUtils.ZERO_ADDRESS.right);
+    });
+
+    it('should zero the left side when is_left is false', () => {
+      const crafted = {
+        is_left: false,
+        left: Z_SOME_KEY.left,
+        right: SOME_CONTRACT.right,
+      };
+      const canonical = contract.canonicalizeKeyOrAddress(crafted);
+      expect(canonical.is_left).toBe(false);
+      expect(canonical.left).toEqual(contractUtils.ZERO_KEY.left);
+      expect(canonical.right).toEqual(SOME_CONTRACT.right);
+    });
+
+    it('should be idempotent for canonical pubkey', () => {
+      const canonical = contract.canonicalizeKeyOrAddress(Z_SOME_KEY);
+      expect(canonical).toEqual(Z_SOME_KEY);
+    });
+
+    it('should be idempotent for canonical contract address', () => {
+      const canonical = contract.canonicalizeKeyOrAddress(SOME_CONTRACT);
+      expect(canonical).toEqual(SOME_CONTRACT);
+    });
+
+    it('should be idempotent for already-zero pubkey', () => {
+      const canonical = contract.canonicalizeKeyOrAddress(
+        contractUtils.ZERO_KEY,
+      );
+      expect(canonical).toEqual(contractUtils.ZERO_KEY);
+    });
+
+    it('should be idempotent for already-zero contract address', () => {
+      const canonical = contract.canonicalizeKeyOrAddress(
+        contractUtils.ZERO_ADDRESS,
+      );
+      expect(canonical).toEqual(contractUtils.ZERO_ADDRESS);
+    });
+  });
 });

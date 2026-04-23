@@ -116,6 +116,12 @@ describe('AccessControl', () => {
     });
   });
 
+  describe('DEFAULT_ADMIN_ROLE', () => {
+    it('should return zero bytes', () => {
+      expect(accessControl.DEFAULT_ADMIN_ROLE()).toEqual(DEFAULT_ADMIN_ROLE);
+    });
+  });
+
   describe('getRoleAdmin', () => {
     it('should return default admin role if admin role not set', () => {
       expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(

@@ -100,4 +100,15 @@ export class UtilsSimulator extends UtilsSimulatorBase {
   public emptyString(): string {
     return this.circuits.pure.emptyString();
   }
+
+  /**
+   * @description Zeroes out the unused side of an `Either` value.
+   * @param keyOrAddress The value to canonicalize.
+   * @returns The canonicalized value.
+   */
+  public canonicalizeKeyOrAddress(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.circuits.pure.canonicalizeKeyOrAddress(keyOrAddress);
+  }
 }

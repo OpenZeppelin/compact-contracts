@@ -35,3 +35,9 @@ export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, C
 export pure circuit emptyString(): Opaque<"string"> {
   return Utils_emptyString();
 }
+
+export pure circuit canonicalizeKeyOrAddress(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>
+): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(keyOrAddress);
+}
