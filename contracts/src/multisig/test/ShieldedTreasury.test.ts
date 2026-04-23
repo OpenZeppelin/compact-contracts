@@ -27,13 +27,6 @@ describe('ShieldedTreasury', () => {
     treasury = new ShieldedTreasurySimulator();
   });
 
-  describe('UINT128_MAX', () => {
-    it('should return max uint128 value', () => {
-      const max = ShieldedTreasurySimulator.UINT128_MAX();
-      expect(max).toEqual((1n << 128n) - 1n);
-    });
-  });
-
   describe('initial state', () => {
     it('should return 0 balance for unknown color', () => {
       expect(treasury.getTokenBalance(COLOR)).toEqual(0n);

@@ -142,6 +142,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
  * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
  * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the operation.
+ *
  * @returns {ShieldedSendResult} The send result including any change.
  */
 export circuit execute(
@@ -190,6 +191,7 @@ export circuit execute(
  * @param {VerificationState} state - Accumulator threaded through fold.
  * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
  * @param {Bytes<64>} signature - The signer's signature over msgHash.
+ *
  * @returns {VerificationState} Updated accumulator.
  */
 circuit verifySignature(
@@ -229,6 +231,7 @@ circuit verifySignature(
  *
  * @param {Bytes<64>} pk - The ECDSA public key.
  * @param {Bytes<32>} salt - The instance salt.
+ *
  * @returns {Bytes<32>} The signer commitment.
  */
 export pure circuit _calculateSignerId(

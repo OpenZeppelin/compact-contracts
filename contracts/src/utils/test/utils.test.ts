@@ -145,4 +145,30 @@ describe('Utils', () => {
       expect(canonical).toEqual(contractUtils.ZERO_ADDRESS);
     });
   });
+
+  describe('selfAsRecipient', () => {
+    it('should return the contract address as a right-variant recipient', () => {
+      const result = contract.selfAsRecipient();
+      expect(result.is_left).toBe(false);
+      expect(contract.isContractAddress(result)).toBe(true);
+    });
+
+    it('should return a 32-byte contract address', () => {
+      const result = contract.selfAsRecipient();
+      expect(result.right.bytes).toBeInstanceOf(Uint8Array);
+      expect(result.right.bytes.length).toBe(32);
+    });
+
+    it('should return the same address on repeated calls', () => {
+      const first = contract.selfAsRecipient();
+      const second = contract.selfAsRecipient();
+      expect(first.right.bytes).toEqual(second.right.bytes);
+    });
+  });
+
+  describe('UINT128_MAX', () => {
+    it('should return 2^128 - 1', () => {
+      expect(contract.UINT128_MAX()).toBe((1n << 128n) - 1n);
+    });
+  });
 });

@@ -20,6 +20,7 @@ pragma language_version >= 0.21.0;
  */
 module ShieldedTreasuryStateless {
   import CompactStandardLibrary;
+  import { selfAsRecipient } from "../utils/Utils" prefix Utils_;
 
   // ─── Deposit ────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ module ShieldedTreasuryStateless {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
    * @param {Bytes<32>} color - The token color.
    * @param {Uint<128>} amount - The amount to send.
+   *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
    */
   export circuit _send(
@@ -64,22 +66,11 @@ module ShieldedTreasuryStateless {
     if (disclose(result.change.is_some)) {
       sendImmediateShielded(
         disclose(result.change.value),
-        selfAsRecipient(),
+        Utils_selfAsRecipient(),
         disclose(result.change.value.value)
       );
     }
 
     return result;
-  }
-
-  /**
-   * @description Returns the current contract's address as an
-   * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
-   * recipient in shielded send operations (deposits and receiving change).
-   *
-   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
-   */
-  circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
-    return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
   }
 }

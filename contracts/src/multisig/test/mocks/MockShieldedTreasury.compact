@@ -4,10 +4,6 @@ import CompactStandardLibrary;
 
 import "../../ShieldedTreasury" prefix Treasury_;
 
-export circuit UINT128_MAX(): Uint<128> {
-  return Treasury_UINT128_MAX();
-}
-
 export circuit _deposit(coin: ShieldedCoinInfo): [] {
   return Treasury__deposit(coin);
 }
