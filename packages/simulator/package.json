@@ -29,7 +29,7 @@
     "clean": "git clean -fXd"
   },
   "devDependencies": {
-    "@midnight-ntwrk/ledger-v7": "7.0.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "24.10.0",
@@ -38,6 +38,6 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.14.0"
+    "@midnight-ntwrk/compact-runtime": "0.15.0"
   }
 }

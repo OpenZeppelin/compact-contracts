@@ -9,7 +9,7 @@ pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
-import "../../Ownable" prefix Ownable_;
+import "../../src/access/Ownable" prefix Ownable_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 

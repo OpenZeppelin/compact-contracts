@@ -9,7 +9,7 @@ pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
-import "../../NonFungibleToken" prefix NonFungibleToken_;
+import "../../src/token/NonFungibleToken" prefix NonFungibleToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 

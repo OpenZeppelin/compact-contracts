@@ -1,21 +1,24 @@
-import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
 import {
   type NetworkId,
   setNetworkId,
 } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  TEST_MNEMONIC,
+  type EnvironmentConfiguration,
+} from '@midnight-ntwrk/testkit-js';
 
 /**
- * Genesis wallet seed for the local `undeployed` network.
- * Pre-funded at genesis; all integration tests use this as the default signer.
- * Mirrors the constant used in midnight-apps for consistency.
+ * Prefunded wallet mnemonic for the local `undeployed` network.
+ * Matches testkit-js' exported `TEST_MNEMONIC` — "abandon × 23 diesel",
+ * the canonical BIP39 test seed recognised by `midnight-node --preset=dev`
+ * as the genesis-funded account.
  */
-export const GENESIS_WALLET_SEED =
-  '0000000000000000000000000000000000000000000000000000000000000001';
+export const LOCAL_WALLET_MNEMONIC = TEST_MNEMONIC;
 
 /**
  * Default endpoints for the local stack brought up by `make env-up`.
- * Each is overridable via a MIDNIGHT_* env var so CI can point at a
- * relocated stack without code changes.
+ * Each is overridable via a MIDNIGHT_* env var so CI / other hosts
+ * can point the same harness at a relocated stack.
  */
 export function networkConfig(): EnvironmentConfiguration {
   return {
@@ -37,7 +40,7 @@ export function networkConfig(): EnvironmentConfiguration {
 
 /**
  * Set the process-wide network id. Must be called once before any provider
- * or wallet is constructed. Idempotent; safe to call from multiple suites.
+ * or wallet is constructed. Idempotent.
  */
 let networkIdSet = false;
 export function setupNetwork(): void {

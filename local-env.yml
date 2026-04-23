@@ -2,7 +2,6 @@
 services:
   proof-server:
     image: 'midnightntwrk/proof-server:latest'
-    container_name: proof-server_$TESTCONTAINERS_UID
     command: ['midnight-proof-server -v']
     ports:
       - '6300:6300'
@@ -17,7 +16,6 @@ services:
 
   indexer:
     image: 'midnightntwrk/indexer-standalone:latest'
-    container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '8088:8088'
     environment:
@@ -45,7 +43,6 @@ services:
 
   node:
     image: 'midnightntwrk/midnight-node:0.22.2'
-    container_name: node_$TESTCONTAINERS_UID
     ports:
       - '9944:9944'
     healthcheck:

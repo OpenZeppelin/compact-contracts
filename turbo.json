@@ -4,21 +4,21 @@
     "compact:security": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/security/**/*.compact"],
+      "inputs": ["src/security/**/*.compact", "mocks/security/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:utils": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/utils/**/*.compact"],
+      "inputs": ["src/utils/**/*.compact", "mocks/utils/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
     "compact:access": {
       "dependsOn": ["^build", "compact:security", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/access/**/*.compact"],
+      "inputs": ["src/access/**/*.compact", "mocks/access/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
@@ -32,7 +32,7 @@
     "compact:token": {
       "dependsOn": ["^build", "compact:security", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/token/**/*.compact"],
+      "inputs": ["src/token/**/*.compact", "mocks/token/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
@@ -44,7 +44,11 @@
         "compact:token"
       ],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/**/*.compact", "test/**/*.compact"],
+      "inputs": [
+        "src/**/*.compact",
+        "mocks/**/*.compact",
+        "test/**/*.compact"
+      ],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**"]
     },

@@ -1,112 +1,58 @@
+import { DustSecretKey, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
 import {
-  type CoinPublicKey,
-  DustSecretKey,
-  type EncPublicKey,
-  type FinalizedTransaction,
-  LedgerParameters,
-  ZswapSecretKeys,
-} from '@midnight-ntwrk/ledger-v8';
-import type {
-  MidnightProvider,
-  UnboundTransaction,
-  WalletProvider,
-} from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import {
-  type DustWalletOptions,
+  DEFAULT_DUST_OPTIONS,
   type EnvironmentConfiguration,
   FluentWalletBuilder,
+  MidnightWalletProvider,
+  type DustWalletOptions,
 } from '@midnight-ntwrk/testkit-js';
-import type { WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { GENESIS_WALLET_SEED } from './network.js';
+import pino, { type Logger } from 'pino';
+import { LOCAL_WALLET_MNEMONIC } from './network.js';
+
+let sharedLogger: Logger | undefined;
+function testLogger(): Logger {
+  if (!sharedLogger) {
+    sharedLogger = pino({ level: process.env.LOG_LEVEL ?? 'warn' });
+  }
+  return sharedLogger;
+}
 
 /**
- * Wallet adapter that satisfies both `WalletProvider` and `MidnightProvider`
- * interfaces expected by `@midnight-ntwrk/midnight-js-contracts`' `deployContract`.
+ * Build a wallet from a BIP39 mnemonic and wrap it as `MidnightWalletProvider`
+ * (which implements both `MidnightProvider` and `WalletProvider` expected by
+ * `@midnight-ntwrk/midnight-js-contracts#deployContract`).
  *
- * Ported from midnight-apps/packages/lunarswap-cli/src/midnight-wallet-provider.ts.
+ * Default mnemonic is the prefunded genesis account on `midnight-node --preset=dev`.
+ * Tests that need per-signer isolation pass their own BIP39 phrase.
  */
-export class TestWalletProvider implements MidnightProvider, WalletProvider {
-  readonly env: EnvironmentConfiguration;
-  readonly wallet: WalletFacade;
-  readonly zswapSecretKeys: ZswapSecretKeys;
-  readonly dustSecretKey: DustSecretKey;
+export async function buildWallet(
+  env: EnvironmentConfiguration,
+  mnemonic: string = LOCAL_WALLET_MNEMONIC,
+): Promise<MidnightWalletProvider> {
+  const dustOptions: DustWalletOptions = {
+    ...DEFAULT_DUST_OPTIONS,
+    // Local/undeployed needs a wide fee overhead to cover dust fees at genesis.
+    additionalFeeOverhead:
+      env.walletNetworkId === 'undeployed'
+        ? 500_000_000_000_000_000n
+        : DEFAULT_DUST_OPTIONS.additionalFeeOverhead,
+  };
 
-  private constructor(
-    env: EnvironmentConfiguration,
-    wallet: WalletFacade,
-    zswapSecretKeys: ZswapSecretKeys,
-    dustSecretKey: DustSecretKey,
-  ) {
-    this.env = env;
-    this.wallet = wallet;
-    this.zswapSecretKeys = zswapSecretKeys;
-    this.dustSecretKey = dustSecretKey;
-  }
+  const { wallet, seeds, keystore } = await FluentWalletBuilder.forEnvironment(
+    env,
+  )
+    .withDustOptions(dustOptions)
+    .withMnemonic(mnemonic)
+    .buildWithoutStarting();
 
-  getCoinPublicKey(): CoinPublicKey {
-    return this.zswapSecretKeys.coinPublicKey;
-  }
-
-  getEncryptionPublicKey(): EncPublicKey {
-    return this.zswapSecretKeys.encryptionPublicKey;
-  }
-
-  async balanceTx(
-    tx: UnboundTransaction,
-    ttl: Date = ttlOneHour(),
-  ): Promise<FinalizedTransaction> {
-    const recipe = await this.wallet.balanceUnboundTransaction(
-      tx,
-      {
-        shieldedSecretKeys: this.zswapSecretKeys,
-        dustSecretKey: this.dustSecretKey,
-      },
-      { ttl },
-    );
-    return await this.wallet.finalizeRecipe(recipe);
-  }
-
-  submitTx(tx: FinalizedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(tx);
-  }
-
-  async start(): Promise<void> {
-    await this.wallet.start(this.zswapSecretKeys, this.dustSecretKey);
-  }
-
-  async stop(): Promise<void> {
-    await this.wallet.stop();
-  }
-
-  static async build(
-    env: EnvironmentConfiguration,
-    seed: string = GENESIS_WALLET_SEED,
-  ): Promise<TestWalletProvider> {
-    const dustOptions: DustWalletOptions = {
-      ledgerParams: LedgerParameters.initialParameters(),
-      additionalFeeOverhead:
-        env.walletNetworkId === 'undeployed'
-          ? 500_000_000_000_000_000n
-          : 1_000n,
-      feeBlocksMargin: 5,
-    };
-
-    const buildResult = await FluentWalletBuilder.forEnvironment(env)
-      .withDustOptions(dustOptions)
-      .withSeed(seed)
-      .buildWithoutStarting();
-
-    const { wallet, seeds } = buildResult as {
-      wallet: WalletFacade;
-      seeds: { masterSeed: string; shielded: Uint8Array; dust: Uint8Array };
-    };
-
-    return new TestWalletProvider(
-      env,
-      wallet,
-      ZswapSecretKeys.fromSeed(seeds.shielded),
-      DustSecretKey.fromSeed(seeds.dust),
-    );
-  }
+  const provider = await MidnightWalletProvider.withWallet(
+    testLogger(),
+    env,
+    wallet,
+    ZswapSecretKeys.fromSeed(seeds.shielded),
+    DustSecretKey.fromSeed(seeds.dust),
+    keystore,
+  );
+  await provider.start(true);
+  return provider;
 }

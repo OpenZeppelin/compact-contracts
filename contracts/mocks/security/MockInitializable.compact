@@ -8,7 +8,7 @@
 pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
-import "../../Initializable" prefix Initializable_;
+import "../../src/security/Initializable" prefix Initializable_;
 
 export { Initializable__isInitialized };
 

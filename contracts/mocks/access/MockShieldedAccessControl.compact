@@ -9,7 +9,7 @@ pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
-import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+import "../../src/access/ShieldedAccessControl" prefix ShieldedAccessControl_;
 
 export { MerkleTreePath,
          ShieldedAccessControl__operatorRoles,
