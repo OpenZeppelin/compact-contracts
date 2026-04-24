@@ -164,13 +164,7 @@ describe('ShieldedMultiSigV2', () => {
         const to = makeRecipient(new Uint8Array(32).fill(7));
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
         expect(() => {
-          multisig.execute(
-            to,
-            100n,
-            coin,
-            [PK1, PK1],
-            [DUMMY_SIG, DUMMY_SIG],
-          );
+          multisig.execute(to, 100n, coin, [PK1, PK1], [DUMMY_SIG, DUMMY_SIG]);
         }).toThrow('Multisig: duplicate signer');
       });
 

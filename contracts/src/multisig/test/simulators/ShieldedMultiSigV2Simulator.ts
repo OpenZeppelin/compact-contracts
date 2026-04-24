@@ -64,7 +64,10 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     super([instanceSalt, signerCommitments, thresh], options);
   }
 
-  public static calculateSignerId(pk: Uint8Array, salt: Uint8Array): Uint8Array {
+  public static calculateSignerId(
+    pk: Uint8Array,
+    salt: Uint8Array,
+  ): Uint8Array {
     return pureCircuits._calculateSignerId(pk, salt);
   }
 
