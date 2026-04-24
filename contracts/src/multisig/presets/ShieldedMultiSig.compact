@@ -61,6 +61,12 @@ export circuit createShieldedProposal(
   const callerPK = getCaller();
   Signer_assertSigner(callerPK);
 
+  assert(
+    to.kind == Proposal_RecipientKind.ShieldedUser
+      || to.kind == Proposal_RecipientKind.Contract,
+    "ShieldedMultiSig: recipient must be a shielded user or contract"
+  );
+
   return Proposal__createProposal(to, color, amount);
 }
 

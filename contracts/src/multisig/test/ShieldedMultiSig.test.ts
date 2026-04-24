@@ -131,6 +131,34 @@ describe('ShieldedMultiSig', () => {
           multisig.as(SIGNER1).createShieldedProposal(to, COLOR, 0n);
         }).toThrow('ProposalManager: zero amount');
       });
+
+      it('should reject UnshieldedUser recipient kind', () => {
+        const to = {
+          kind: RecipientKind.UnshieldedUser,
+          address: Z_RECIPIENT_PK.bytes,
+        };
+        expect(() => {
+          multisig
+            .as(SIGNER1)
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+        }).toThrow(
+          'ShieldedMultiSig: recipient must be a shielded user or contract',
+        );
+      });
+
+      it('should accept Contract recipient kind', () => {
+        const to = {
+          kind: RecipientKind.Contract,
+          address: new Uint8Array(32).fill(7),
+        };
+        const id = multisig
+          .as(SIGNER1)
+          .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+        expect(id).toEqual(1n);
+        expect(multisig.getProposalRecipient(id).kind).toEqual(
+          RecipientKind.Contract,
+        );
+      });
     });
 
     describe('approveProposal', () => {
