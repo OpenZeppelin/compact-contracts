@@ -11,7 +11,11 @@ import CompactStandardLibrary;
 
 import "../../AccessControl" prefix AccessControl_;
 
-export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, AccessControl_DEFAULT_ADMIN_ROLE };
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+export pure circuit DEFAULT_ADMIN_ROLE(): Bytes<32> {
+  return AccessControl_DEFAULT_ADMIN_ROLE();
+}
 
 export circuit hasRole(roleId: Bytes<32>, account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
   return AccessControl_hasRole(roleId, account);

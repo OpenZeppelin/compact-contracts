@@ -4,7 +4,7 @@
 pragma language_version >= 0.21.0;
 
 /**
- * @module Shielded AccessControl
+ * @module ShieldedAccessControl
  * @description A Shielded AccessControl library.
  *
  * This module provides a shielded role-based access control (RBAC) mechanism, where roles can be used to
@@ -64,8 +64,10 @@ pragma language_version >= 0.21.0;
  *
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
- * constructor() {
+ * constructor(instanceSalt: Bytes<32>, defaultAdmin: ShieldedAccessControl_AccountIdentifier) {
  *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
+ *  ShieldedAccessControl_initialize(instanceSalt);
+ *  ShieldedAccessControl__grantRole(ShieldedAccessControl_DEFAULT_ADMIN_ROLE(), defaultAdmin);
  * }
  * ```
  *
