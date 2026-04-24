@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/UnshieldedTreasury.compact)
+
 pragma language_version >= 0.21.0;
 
 /**
@@ -16,16 +19,11 @@ pragma language_version >= 0.21.0;
  */
 module UnshieldedTreasury {
   import CompactStandardLibrary;
+  import { UINT128_MAX } from "../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 
-  ledger _balances: Map<Bytes<32>, Uint<128>>;
-
-  // ─── Constant ───────────────────────────────────────────────────
-
-  export circuit UINT128_MAX(): Uint<128> {
-    return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-  }
+  export ledger _balances: Map<Bytes<32>, Uint<128>>;
 
   // ─── Deposit ────────────────────────────────────────────────────
 
@@ -49,11 +47,12 @@ module UnshieldedTreasury {
    *
    * @param {Bytes<32>} color - The token type identifier.
    * @param {Uint<128>} amount - The amount to deposit.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
     assert(
-      unshieldedBalanceLte(disclose(color), UINT128_MAX() - disclose(amount)),
+      unshieldedBalanceLte(disclose(color), Utils_UINT128_MAX() - disclose(amount)),
       "UnshieldedTreasury: overflow"
     );
 
@@ -79,6 +78,7 @@ module UnshieldedTreasury {
    * @param {Either<ContractAddress, UserAddress>} recipient - The recipient address.
    * @param {Bytes<32>} color - The token type identifier.
    * @param {Uint<128>} amount - The amount to send.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _send(
@@ -102,6 +102,7 @@ module UnshieldedTreasury {
    * @description Returns the balance for a given token color.
    *
    * @param {Bytes<32>} color - The token type identifier.
+   *
    * @returns {Uint<128>} The current balance.
    */
   export circuit getTokenBalance(color: Bytes<32>): Uint<128> {

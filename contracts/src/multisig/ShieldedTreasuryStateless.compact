@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ShieldedTreasuryStateless.compact)
+
 pragma language_version >= 0.21.0;
 
 /**
@@ -17,6 +20,7 @@ pragma language_version >= 0.21.0;
  */
 module ShieldedTreasuryStateless {
   import CompactStandardLibrary;
+  import { selfAsRecipient } from "../utils/Utils" prefix Utils_;
 
   // ─── Deposit ────────────────────────────────────────────────────
 
@@ -30,11 +34,13 @@ module ShieldedTreasuryStateless {
   // ─── Send ───────────────────────────────────────────────────────
 
   /**
-   * @description Sends shielded tokens from the treasury.
+   * @description Sends shielded tokens using a caller-provided coin.
    *
-   * Looks up the stored coin by color, verifies sufficient value,
-   * and executes the shielded send. If the send produces change,
-   * it is sent back to the contract via `sendImmediateShielded`.
+   * The coin is supplied by the caller rather than looked up from
+   * on-chain state; the token color is derived from `coin.color`.
+   * Executes the shielded send and, if change is produced, returns it
+   * to the contract via `sendImmediateShielded`. No balance or
+   * received/sent accounting is tracked on the ledger.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -42,13 +48,12 @@ module ShieldedTreasuryStateless {
    *
    * Requirements:
    *
-   * - A coin of the given `color` must exist in the treasury.
-   * - The coin's value must be >= `amount`.
-   * - Send must not cause sent total overflow.
+   * - `coin.value` must be >= `amount`.
    *
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (provided by the caller).
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
-   * @param {Bytes<32>} color - The token color.
    * @param {Uint<128>} amount - The amount to send.
+   *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
    */
   export circuit _send(
@@ -61,22 +66,11 @@ module ShieldedTreasuryStateless {
     if (disclose(result.change.is_some)) {
       sendImmediateShielded(
         disclose(result.change.value),
-        selfAsRecipient(),
+        Utils_selfAsRecipient(),
         disclose(result.change.value.value)
       );
     }
 
     return result;
-  }
-
-  /**
-   * @description Returns the current contract's address as an
-   * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
-   * recipient in shielded send operations (deposits and receiving change).
-   *
-   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
-   */
-  circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
-    return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
   }
 }

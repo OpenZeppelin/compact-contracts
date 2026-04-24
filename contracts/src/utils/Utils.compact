@@ -95,4 +95,26 @@ module Utils {
       ? Either<T1, T2>{ is_left: true, left: value.left, right: default<T2> }
       : Either<T1, T2>{ is_left: false, left: default<T1>, right: value.right };
   }
+
+  /**
+   * @description Returns the current contract's address as an
+   * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
+   * recipient in shielded send operations (deposits and receiving change).
+   *
+   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
+   */
+  export circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
+  }
+
+  /**
+   * @description The maximum value representable by a `Uint<128>`.
+   *
+   * @notice TODO: Remove once a math module providing this constant is available.
+   *
+   * @returns {Uint<128>} `2^128 - 1`.
+   */
+  export pure circuit UINT128_MAX(): Uint<128> {
+    return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+  }
 }

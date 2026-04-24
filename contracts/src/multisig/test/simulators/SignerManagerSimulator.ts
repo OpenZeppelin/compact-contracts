@@ -15,12 +15,20 @@ import {
 } from '../../witnesses/SignerManagerWitnesses.js';
 
 /**
+ * A fixed set of exactly three signers, matching the
+ * `Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>` the underlying
+ * `MockSignerManager` constructor expects.
+ */
+export type SignerSet = readonly [
+  Either<ZswapCoinPublicKey, ContractAddress>,
+  Either<ZswapCoinPublicKey, ContractAddress>,
+  Either<ZswapCoinPublicKey, ContractAddress>,
+];
+
+/**
  * Type constructor args
  */
-type SignerManagerArgs = readonly [
-  signers: Either<ZswapCoinPublicKey, ContractAddress>[],
-  thresh: bigint,
-];
+type SignerManagerArgs = readonly [signers: SignerSet, thresh: bigint];
 
 const SignerManagerSimulatorBase = createSimulator<
   SignerManagerPrivateState,
@@ -42,7 +50,7 @@ const SignerManagerSimulatorBase = createSimulator<
  */
 export class SignerManagerSimulator extends SignerManagerSimulatorBase {
   constructor(
-    signers: Either<ZswapCoinPublicKey, ContractAddress>[],
+    signers: SignerSet,
     thresh: bigint,
     options: BaseSimulatorOptions<
       SignerManagerPrivateState,

@@ -111,4 +111,21 @@ export class UtilsSimulator extends UtilsSimulatorBase {
   ): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.circuits.pure.canonicalizeKeyOrAddress(keyOrAddress);
   }
+
+  /**
+   * @description Returns the current contract's address wrapped as a
+   * right-variant `Either<ZswapCoinPublicKey, ContractAddress>`.
+   * @returns The contract's own address as a recipient.
+   */
+  public selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return this.circuits.impure.selfAsRecipient();
+  }
+
+  /**
+   * @description The maximum value representable by a `Uint<128>`.
+   * @returns `2^128 - 1`.
+   */
+  public UINT128_MAX(): bigint {
+    return this.circuits.pure.UINT128_MAX();
+  }
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/SignerManager.compact)
+
 pragma language_version >= 0.21.0;
 
 /**
@@ -27,9 +30,9 @@ module SignerManager<T> {
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
-  ledger _signers: Map<T, Boolean>;
-  ledger _signerCount: Uint<8>;
-  ledger _threshold: Uint<8>;
+  export ledger _signers: Set<T>;
+  export ledger _signerCount: Uint<8>;
+  export ledger _threshold: Uint<8>;
 
   // ─── Initialization ─────────────────────────────────────────────────────────
 
@@ -45,6 +48,7 @@ module SignerManager<T> {
    *
    * @param {Vector<n, T>} signers - The initial signer set.
    * @param {Uint<8>} thresh - The minimum number of approvals required.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
@@ -71,6 +75,7 @@ module SignerManager<T> {
    * - `caller` must be a member of the signers registry.
    *
    * @param {T} caller - The identity to validate.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit assertSigner(caller: T): [] {
@@ -85,6 +90,7 @@ module SignerManager<T> {
    * - `approvalCount` must be >= threshold.
    *
    * @param {Uint<8>} approvalCount - The current number of approvals.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
@@ -115,6 +121,7 @@ module SignerManager<T> {
    * @description Returns whether the given account is an active signer.
    *
    * @param {T} account - The account to check.
+   *
    * @returns {Boolean} True if the account is an active signer.
    */
   export circuit isSigner(account: T): Boolean {
@@ -135,6 +142,7 @@ module SignerManager<T> {
    * - `signer` must not already be an active signer.
    *
    * @param {T} signer - The signer to add.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _addSigner(signer: T): [] {
@@ -143,7 +151,7 @@ module SignerManager<T> {
       "SignerManager: signer already active"
     );
 
-    _signers.insert(disclose(signer), true);
+    _signers.insert(disclose(signer));
     _signerCount = _signerCount + 1 as Uint<8>;
   }
 
@@ -160,6 +168,7 @@ module SignerManager<T> {
    * - Removal must not drop signer count below threshold.
    *
    * @param {T} signer - The signer to remove.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _removeSigner(signer: T): [] {
@@ -185,6 +194,7 @@ module SignerManager<T> {
    * - `newThreshold` must not exceed the current signer count.
    *
    * @param {Uint<8>} newThreshold - The new minimum number of approvals required.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _changeThreshold(newThreshold: Uint<8>): [] {

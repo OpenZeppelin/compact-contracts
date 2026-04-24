@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (access/ProposalManager.compact)
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ProposalManager.compact)
 
 pragma language_version >= 0.21.0;
 
@@ -45,8 +45,8 @@ module ProposalManager {
 
   // ─── State ──────────────────────────────────────────────────────
 
-  ledger _nextProposalId: Counter;
-  ledger _proposals: Map<Uint<64>, Proposal>;
+  export ledger _nextProposalId: Counter;
+  export ledger _proposals: Map<Uint<64>, Proposal>;
 
   // ─── Recipient Helpers ──────────────────────────────────────────
 
@@ -54,6 +54,7 @@ module ProposalManager {
    * @description Constructs a shielded user recipient.
    *
    * @param {ZswapCoinPublicKey} key - The shielded recipient's public key.
+   *
    * @returns {Recipient} The typed recipient.
    */
   export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Recipient {
@@ -64,6 +65,7 @@ module ProposalManager {
    * @description Constructs an unshielded user recipient.
    *
    * @param {UserAddress} addr - The unshielded recipient's address.
+   *
    * @returns {Recipient} The typed recipient.
    */
   export circuit unshieldedUserRecipient(addr: UserAddress): Recipient {
@@ -74,6 +76,7 @@ module ProposalManager {
    * @description Constructs a contract recipient.
    *
    * @param {ContractAddress} addr - The contract address.
+   *
    * @returns {Recipient} The typed recipient.
    */
   export circuit contractRecipient(addr: ContractAddress): Recipient {
@@ -89,6 +92,7 @@ module ProposalManager {
    * - Recipient kind must be ShieldedUser or Contract.
    *
    * @param {Recipient} r - The recipient.
+   *
    * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The shielded recipient.
    */
   export circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
@@ -112,6 +116,7 @@ module ProposalManager {
    * - Recipient kind must be UnshieldedUser or Contract.
    *
    * @param {Recipient} r - The recipient.
+   *
    * @returns {Either<ContractAddress, UserAddress>} The unshielded recipient.
    */
   export circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
@@ -136,6 +141,7 @@ module ProposalManager {
    * - Proposal with `id` must have been created.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit assertProposalExists(id: Uint<64>): [] {
@@ -154,6 +160,7 @@ module ProposalManager {
    * - Proposal status must be Active.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit assertProposalActive(id: Uint<64>): [] {
@@ -180,6 +187,7 @@ module ProposalManager {
    * @param {Recipient} to - The recipient (constructed via helper circuits).
    * @param {Bytes<32>} color - The token color.
    * @param {Uint<128>} amount - The amount to transfer.
+   *
    * @returns {Uint<64>} The new proposal ID.
    */
   export circuit _createProposal(
@@ -192,7 +200,7 @@ module ProposalManager {
     _nextProposalId.increment(1);
     const id = _nextProposalId;
 
-    _proposals.insert(disclose(id), disclose(Proposal {
+    _proposals.insert(id, disclose(Proposal {
       to: to,
       color: color,
       amount: amount,
@@ -214,18 +222,19 @@ module ProposalManager {
    * - Proposal must be active.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _cancelProposal(id: Uint<64>): [] {
     assertProposalActive(id);
 
     const proposal = _proposals.lookup(disclose(id));
-    _proposals.insert(disclose(id), disclose(Proposal {
+    _proposals.insert(disclose(id), Proposal {
       to: proposal.to,
       color: proposal.color,
       amount: proposal.amount,
       status: ProposalStatus.Cancelled
-    }));
+    });
   }
 
   /**
@@ -240,18 +249,19 @@ module ProposalManager {
    * - Proposal must be active.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _markExecuted(id: Uint<64>): [] {
     assertProposalActive(id);
 
     const proposal = _proposals.lookup(disclose(id));
-    _proposals.insert(disclose(id), disclose(Proposal {
+    _proposals.insert(disclose(id), Proposal {
       to: proposal.to,
       color: proposal.color,
       amount: proposal.amount,
       status: ProposalStatus.Executed
-    }));
+    });
   }
 
   // ─── View ───────────────────────────────────────────────────────
@@ -260,6 +270,7 @@ module ProposalManager {
    * @description Returns the full proposal data.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {Proposal} The proposal.
    */
   export circuit getProposal(id: Uint<64>): Proposal {
@@ -271,6 +282,7 @@ module ProposalManager {
    * @description Returns the recipient of a proposal.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {Recipient} The recipient.
    */
   export circuit getProposalRecipient(id: Uint<64>): Recipient {
@@ -282,6 +294,7 @@ module ProposalManager {
    * @description Returns the amount of a proposal.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {Uint<128>} The amount.
    */
   export circuit getProposalAmount(id: Uint<64>): Uint<128> {
@@ -293,6 +306,7 @@ module ProposalManager {
    * @description Returns the token color of a proposal.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {Bytes<32>} The token color.
    */
   export circuit getProposalColor(id: Uint<64>): Bytes<32> {
@@ -304,6 +318,7 @@ module ProposalManager {
    * @description Returns the status of a proposal.
    *
    * @param {Uint<64>} id - The proposal ID.
+   *
    * @returns {ProposalStatus} The proposal status.
    */
   export circuit getProposalStatus(id: Uint<64>): ProposalStatus {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ShieldedTreasury.compact)
+
 pragma language_version >= 0.21.0;
 
 /**
@@ -21,18 +24,13 @@ pragma language_version >= 0.21.0;
  */
 module ShieldedTreasury {
   import CompactStandardLibrary;
+  import { selfAsRecipient, UINT128_MAX } from "../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 
-  ledger _coins: Map<Bytes<32>, QualifiedShieldedCoinInfo>;
-  ledger _shieldedReceived: Map<Bytes<32>, Uint<128>>;
-  ledger _shieldedSent: Map<Bytes<32>, Uint<128>>;
-
-  // ─── Constant ───────────────────────────────────────────────────
-
-  export circuit UINT128_MAX(): Uint<128> {
-    return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-  }
+  export ledger _coins: Map<Bytes<32>, QualifiedShieldedCoinInfo>;
+  export ledger _received: Map<Bytes<32>, Uint<128>>;
+  export ledger _sent: Map<Bytes<32>, Uint<128>>;
 
   // ─── Deposit ────────────────────────────────────────────────────
 
@@ -57,11 +55,12 @@ module ShieldedTreasury {
    * - Deposit must not cause received total overflow.
    *
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin descriptor.
+   *
    * @returns {[]} Empty tuple.
    */
   export circuit _deposit(coin: ShieldedCoinInfo): [] {
     const currentReceived = getReceivedTotal(coin.color);
-    assert(currentReceived <= UINT128_MAX() - coin.value, "ShieldedTreasury: overflow");
+    assert(currentReceived <= Utils_UINT128_MAX() - coin.value, "ShieldedTreasury: overflow");
 
     receiveShielded(disclose(coin));
 
@@ -69,12 +68,12 @@ module ShieldedTreasury {
 
     if (_coins.member(coinColor)) {
       const merged = mergeCoinImmediate(_coins.lookup(coinColor), disclose(coin));
-      _coins.insertCoin(coinColor, disclose(merged), selfAsRecipient());
+      _coins.insertCoin(coinColor, merged, Utils_selfAsRecipient());
     } else {
-      _coins.insertCoin(coinColor, disclose(coin), selfAsRecipient());
+      _coins.insertCoin(coinColor, disclose(coin), Utils_selfAsRecipient());
     }
 
-    _shieldedReceived.insert(
+    _received.insert(
       coinColor,
       disclose(currentReceived + coin.value as Uint<128>)
     );
@@ -102,6 +101,7 @@ module ShieldedTreasury {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
    * @param {Bytes<32>} color - The token color.
    * @param {Uint<128>} amount - The amount to send.
+   *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
    */
   export circuit _send(
@@ -114,23 +114,24 @@ module ShieldedTreasury {
     const coin = _coins.lookup(disclose(color));
     assert(coin.value >= amount, "ShieldedTreasury: coin value insufficient");
 
-    const result = sendShielded(disclose(coin), disclose(recipient), disclose(amount));
+    const currentSent = getSentTotal(color);
+    assert(currentSent <= Utils_UINT128_MAX() - amount, "ShieldedTreasury: overflow");
+
+    const result = sendShielded(coin, disclose(recipient), disclose(amount));
 
     if (disclose(result.change.is_some)) {
+      const changeCoin = result.change.value;
       sendImmediateShielded(
-        disclose(result.change.value),
-        selfAsRecipient(),
-        disclose(result.change.value.value)
+        changeCoin,
+        Utils_selfAsRecipient(),
+        changeCoin.value
       );
-      _coins.insertCoin(disclose(color), result.change.value, selfAsRecipient());
+      _coins.insertCoin(disclose(color), changeCoin, Utils_selfAsRecipient());
     } else {
       _coins.remove(disclose(color));
     }
 
-    const currentSent = getSentTotal(color);
-    assert(currentSent <= UINT128_MAX() - amount, "ShieldedTreasury: overflow");
-
-    _shieldedSent.insert(
+    _sent.insert(
       disclose(color),
       disclose(currentSent + amount as Uint<128>)
     );
@@ -145,6 +146,7 @@ module ShieldedTreasury {
    * Reads the actual coin value from the UTXO map.
    *
    * @param {Bytes<32>} color - The token color.
+   *
    * @returns {Uint<128>} The current balance.
    */
   export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
@@ -160,26 +162,28 @@ module ShieldedTreasury {
    * @description Returns the cumulative received total for a color.
    *
    * @param {Bytes<32>} color - The token color.
+   *
    * @returns {Uint<128>} Total received.
    */
   export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
-    if (!_shieldedReceived.member(disclose(color))) {
+    if (!_received.member(disclose(color))) {
       return 0;
     }
-    return _shieldedReceived.lookup(disclose(color));
+    return _received.lookup(disclose(color));
   }
 
   /**
    * @description Returns the cumulative sent total for a color.
    *
    * @param {Bytes<32>} color - The token color.
+   *
    * @returns {Uint<128>} Total sent.
    */
   export circuit getSentTotal(color: Bytes<32>): Uint<128> {
-    if (!_shieldedSent.member(disclose(color))) {
+    if (!_sent.member(disclose(color))) {
       return 0;
     }
-    return _shieldedSent.lookup(disclose(color));
+    return _sent.lookup(disclose(color));
   }
 
   /**
@@ -188,20 +192,10 @@ module ShieldedTreasury {
    * `getTokenBalance` if accounting is consistent.
    *
    * @param {Bytes<32>} color - The token color.
+   *
    * @returns {Uint<128>} Received minus sent.
    */
   export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
     return getReceivedTotal(color) - getSentTotal(color) as Uint<128>;
-  }
-
-  /**
-   * @description Returns the current contract's address as an
-   * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
-   * recipient in shielded send operations (deposits and receiving change).
-   *
-   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
-   */
-  circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
-    return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
   }
 }

@@ -5,7 +5,6 @@ import {
 import {
   ledger,
   Contract as MockShieldedTreasury,
-  pureCircuits,
 } from '../../../../artifacts/MockShieldedTreasury/contract/index.js';
 import {
   ShieldedTreasuryPrivateState,
@@ -43,10 +42,6 @@ export class ShieldedTreasurySimulator extends ShieldedTreasurySimulatorBase {
     > = {},
   ) {
     super([], options);
-  }
-
-  public static UINT128_MAX(): bigint {
-    return pureCircuits.UINT128_MAX();
   }
 
   public _deposit(coin: ShieldedCoinInfo) {

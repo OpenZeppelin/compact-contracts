@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/ShieldedMultiSigV2.compact)
+
 pragma language_version >= 0.21.0;
 
 /**
@@ -30,7 +33,7 @@ import "../SignerManager"<Bytes<32>> prefix Signer_;
  * Threads the valid count, previous commitment (for duplicate
  * detection), and message hash through each iteration.
  */
-struct VerificationState {
+export struct VerificationState {
   validCount: Uint<8>,
   prevCommitment: Bytes<32>,
   msgHash: Bytes<32>
@@ -41,7 +44,7 @@ struct VerificationState {
  * Combines the ECDSA public key with an instance-specific salt and
  * domain separator to produce a unique, unlinkable commitment.
  */
-struct SignerCommitmentInput {
+export struct SignerCommitmentInput {
   pk: Bytes<64>,
   salt: Bytes<32>,
   domain: Bytes<32>
@@ -68,7 +71,7 @@ ledger _instanceSalt: Bytes<32>;
  *
  * Requirements:
  *
- * - `thresh` must be > 0 and <= 3.
+ * - `thresh` must be > 0 and <= 2 (matches the 2-signature `execute` surface).
  * - `signerCommitments` must not contain duplicates.
  * - `instanceSalt` should be cryptographically random.
  *
@@ -81,6 +84,10 @@ constructor(
   signerCommitments: Vector<3, Bytes<32>>,
   thresh: Uint<8>,
 ) {
+  assert(
+    thresh <= 2,
+    "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
+  );
   _instanceSalt = disclose(instanceSalt);
   Signer_initialize<3>(signerCommitments, thresh);
 }
@@ -139,6 +146,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
  * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
  * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the operation.
+ *
  * @returns {ShieldedSendResult} The send result including any change.
  */
 export circuit execute(
@@ -187,6 +195,7 @@ export circuit execute(
  * @param {VerificationState} state - Accumulator threaded through fold.
  * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
  * @param {Bytes<64>} signature - The signer's signature over msgHash.
+ *
  * @returns {VerificationState} Updated accumulator.
  */
 circuit verifySignature(
@@ -226,6 +235,7 @@ circuit verifySignature(
  *
  * @param {Bytes<64>} pk - The ECDSA public key.
  * @param {Bytes<32>} salt - The instance salt.
+ *
  * @returns {Bytes<32>} The signer commitment.
  */
 export pure circuit _calculateSignerId(
