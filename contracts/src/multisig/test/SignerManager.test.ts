@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
-import { SignerManagerSimulator } from './simulators/SignerManagerSimulator.js';
+import {
+  SignerManagerSimulator,
+  type SignerSet,
+} from './simulators/SignerManagerSimulator.js';
 
 const THRESHOLD = 2n;
 
 const [_SIGNER, Z_SIGNER] = utils.generateEitherPubKeyPair('SIGNER');
 const [_SIGNER2, Z_SIGNER2] = utils.generateEitherPubKeyPair('SIGNER2');
 const [_SIGNER3, Z_SIGNER3] = utils.generateEitherPubKeyPair('SIGNER3');
-const SIGNERS = [Z_SIGNER, Z_SIGNER2, Z_SIGNER3];
+const SIGNERS: SignerSet = [Z_SIGNER, Z_SIGNER2, Z_SIGNER3];
 const [_OTHER, Z_OTHER] = utils.generateEitherPubKeyPair('OTHER');
 const [_OTHER2, Z_OTHER2] = utils.generateEitherPubKeyPair('OTHER2');
 
@@ -22,7 +25,7 @@ describe('SigningManager', () => {
     });
 
     it('should fail with duplicate signers', () => {
-      const duplicateSigners = [Z_SIGNER, Z_SIGNER, Z_SIGNER2];
+      const duplicateSigners: SignerSet = [Z_SIGNER, Z_SIGNER, Z_SIGNER2];
       expect(() => {
         new SignerManagerSimulator(duplicateSigners, THRESHOLD);
       }).toThrow('SignerManager: signer already active');
