@@ -33,7 +33,7 @@ import "../SignerManager"<Bytes<32>> prefix Signer_;
  * Threads the valid count, previous commitment (for duplicate
  * detection), and message hash through each iteration.
  */
-struct VerificationState {
+export struct VerificationState {
   validCount: Uint<8>,
   prevCommitment: Bytes<32>,
   msgHash: Bytes<32>
@@ -44,7 +44,7 @@ struct VerificationState {
  * Combines the ECDSA public key with an instance-specific salt and
  * domain separator to produce a unique, unlinkable commitment.
  */
-struct SignerCommitmentInput {
+export struct SignerCommitmentInput {
   pk: Bytes<64>,
   salt: Bytes<32>,
   domain: Bytes<32>

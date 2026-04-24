@@ -3,6 +3,28 @@
 
 pragma language_version >= 0.21.0;
 
+/**
+ * @module ShieldedMultiSig
+ * @description A shielded multisig preset composing `SignerManager`,
+ * `ProposalManager`, and `ShieldedTreasury`. Signers approve proposals that
+ * transfer shielded tokens out of the treasury once the configured threshold
+ * is met.
+ *
+ * @notice Signer identity uses `Either<ZswapCoinPublicKey, ContractAddress>`
+ * in state for forward compatibility. In the current protocol, only
+ * `left(ZswapCoinPublicKey)` callers can authenticate — `getCaller()` resolves
+ * via `ownPublicKey()` and has no way to produce a right-variant today.
+ * Registering contract-address signers is permitted but those signers cannot
+ * exercise governance (create/approve/revoke) until contract-to-contract calls
+ * are supported. Choose your signer set accordingly.
+ *
+ * @notice The state shape is deliberately kept broad so that, once
+ * contract-to-contract calls are supported, `getCaller()` can be swapped via
+ * a CMA (Contract Maintenance Authorities) circuit upgrade without a state
+ * migration. Existing deployments would then gain working contract-signer
+ * authentication.
+ */
+
 import CompactStandardLibrary;
 
 import "../ProposalManager" prefix Proposal_;
@@ -115,6 +137,19 @@ circuit _revokeApproval(id: Uint<64>, signer: Either<ZswapCoinPublicKey, Contrac
   _approvalCount.insert(disclose(id), disclose(newCount));
 }
 
+/**
+ * @description Returns the caller identity used for signer authentication.
+ *
+ * @warning Currently resolves callers via `ownPublicKey()` only, so any signer
+ * registered as a `right(ContractAddress)` variant cannot authenticate through
+ * this circuit today. Ledger fields keep the `Either<ZswapCoinPublicKey, ContractAddress>`
+ * shape so that, once contract-to-contract calls are supported, `getCaller()`
+ * can be replaced via a CMA (Contract Maintenance Authorities) circuit upgrade
+ * to detect the contract-call context and return the appropriate variant —
+ * without a state migration.
+ *
+ * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The caller wrapped as a left-variant.
+ */
 circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
   return left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
 }
