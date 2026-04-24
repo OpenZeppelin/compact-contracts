@@ -44,7 +44,7 @@ module Utils {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
+   * @return {Boolean} - Returns true if `keyOrAddress` is equal to `other`.
    */
   export pure circuit isKeyOrAddressEqual(
                         keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -78,5 +78,21 @@ module Utils {
    */
   export pure circuit emptyString(): Opaque<"string"> {
     return default<Opaque<"string">>;
+  }
+
+  /**
+   * @description Zeroes out the unused side of an `Either` value. Prevents crafted
+   * inputs where both `left` and `right` fields carry data from bypassing checks that
+   * only inspect the active side.
+   *
+   * @param {Either<T1, T2>} value - The value to canonicalize.
+   * @return {Either<T1, T2>} - The canonicalized value.
+   */
+  export pure circuit canonicalize<T1, T2>(
+                        value: Either<T1, T2>
+                        ): Either<T1, T2> {
+    return value.is_left
+      ? Either<T1, T2>{ is_left: true, left: value.left, right: default<T2> }
+      : Either<T1, T2>{ is_left: false, left: default<T1>, right: value.right };
   }
 }

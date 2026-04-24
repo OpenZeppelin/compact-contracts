@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
 pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
@@ -27,4 +34,10 @@ export pure circuit isContractAddress(keyOrAddress: Either<ZswapCoinPublicKey, C
 
 export pure circuit emptyString(): Opaque<"string"> {
   return Utils_emptyString();
+}
+
+export pure circuit canonicalizeKeyOrAddress(
+    keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>
+): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(keyOrAddress);
 }

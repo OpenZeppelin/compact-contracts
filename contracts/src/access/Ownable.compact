@@ -24,9 +24,8 @@ pragma language_version >= 0.21.0;
  * @notice This module does offer experimental circuits that allow ownership to be granted
  * to contract addresses (`_unsafeTransferOwnership` and `_unsafeUncheckedTransferOwnership`).
  * Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
- * Until contract-to-contract calls are supported,
- * there is no direct way for a contract to call circuits of other contracts
- * or transfer ownership back to a user.
+ * Until contract-to-contract calls are supported, there is no direct way for a contract
+ * to authenticate as an owner.
  *
  * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
  * are supported.
@@ -128,7 +127,7 @@ module Ownable {
 
   /**
    * @description Leaves the contract without an owner.
-   * It will not be possible to call `assertOnlyOnwer` circuits anymore.
+   * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
    * @circuitInfo k=10, rows=124
@@ -161,8 +160,12 @@ module Ownable {
    */
   export circuit assertOnlyOwner(): [] {
     Initializable_assertInitialized();
-    const caller = ownPublicKey();
-    assert(caller == _owner.left, "Ownable: caller is not the owner");
+    if (_owner.is_left) {
+      const caller = ownPublicKey();
+      assert(caller == _owner.left, "Ownable: caller is not the owner");
+    } else {
+      assert(false, "Ownable: contract address owner authentication is not yet supported");
+    }
   }
 
   /**
@@ -210,6 +213,6 @@ module Ownable {
                    newOwner: Either<ZswapCoinPublicKey, ContractAddress>
                    ): [] {
     Initializable_assertInitialized();
-    _owner = disclose(newOwner);
+    _owner = disclose(Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(newOwner));
   }
 }
