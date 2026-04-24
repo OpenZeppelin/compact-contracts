@@ -34,11 +34,13 @@ module ShieldedTreasuryStateless {
   // ─── Send ───────────────────────────────────────────────────────
 
   /**
-   * @description Sends shielded tokens from the treasury.
+   * @description Sends shielded tokens using a caller-provided coin.
    *
-   * Looks up the stored coin by color, verifies sufficient value,
-   * and executes the shielded send. If the send produces change,
-   * it is sent back to the contract via `sendImmediateShielded`.
+   * The coin is supplied by the caller rather than looked up from
+   * on-chain state; the token color is derived from `coin.color`.
+   * Executes the shielded send and, if change is produced, returns it
+   * to the contract via `sendImmediateShielded`. No balance or
+   * received/sent accounting is tracked on the ledger.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -46,12 +48,10 @@ module ShieldedTreasuryStateless {
    *
    * Requirements:
    *
-   * - A coin of the given `color` must exist in the treasury.
-   * - The coin's value must be >= `amount`.
-   * - Send must not cause sent total overflow.
+   * - `coin.value` must be >= `amount`.
    *
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (provided by the caller).
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
-   * @param {Bytes<32>} color - The token color.
    * @param {Uint<128>} amount - The amount to send.
    *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
