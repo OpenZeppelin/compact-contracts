@@ -71,7 +71,7 @@ ledger _instanceSalt: Bytes<32>;
  *
  * Requirements:
  *
- * - `thresh` must be > 0 and <= 3.
+ * - `thresh` must be > 0 and <= 2 (matches the 2-signature `execute` surface).
  * - `signerCommitments` must not contain duplicates.
  * - `instanceSalt` should be cryptographically random.
  *
@@ -84,6 +84,10 @@ constructor(
   signerCommitments: Vector<3, Bytes<32>>,
   thresh: Uint<8>,
 ) {
+  assert(
+    thresh <= 2,
+    "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
+  );
   _instanceSalt = disclose(instanceSalt);
   Signer_initialize<3>(signerCommitments, thresh);
 }
