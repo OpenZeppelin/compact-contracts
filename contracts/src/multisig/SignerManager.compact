@@ -1,0 +1,195 @@
+pragma language_version >= 0.21.0;
+
+/**
+ * @module SignerManager<T>
+ * @description Manages signer registry, threshold enforcement, and signer
+ * validation for multisig governance contracts.
+ *
+ * Parameterized over the signer identity type `T`, allowing the consuming
+ * contract to choose the identity mechanism at import time. Common
+ * instantiations include:
+ *
+ * - `Either<ZswapCoinPublicKey, ContractAddress>` for ownPublicKey()-based identity
+ * - `Bytes<32>` for commitment-based identity (e.g., hash of ECDSA public key)
+ * - `NativePoint` for Schnorr/MuSig aggregated key
+ *
+ * SignerManager does not resolve caller identity. It receives a validated
+ * caller from the contract layer and checks it against the registry.
+ * This separation allows the identity mechanism to change without
+ * modifying the module.
+ *
+ * Underscore-prefixed circuits (_addSigner, _removeSigner,
+ * _changeThreshold) have no access control enforcement. The consuming
+ * contract must gate these behind its own authorization policy.
+ */
+module SignerManager<T> {
+  import CompactStandardLibrary;
+
+  // ─── State ──────────────────────────────────────────────────────────────────
+
+  ledger _signers: Map<T, Boolean>;
+  ledger _signerCount: Uint<8>;
+  ledger _threshold: Uint<8>;
+
+  // ─── Initialization ─────────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the signer manager with the given threshold
+   * and an initial set of signers.
+   * Must be called in the contract's constructor.
+   *
+   * Requirements:
+   *
+   * - `thresh` must be greater than 0.
+   * - `signers` must not contain duplicates.
+   *
+   * @param {Vector<n, T>} signers - The initial signer set.
+   * @param {Uint<8>} thresh - The minimum number of approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize<#n>(
+    signers: Vector<n, T>,
+    thresh: Uint<8>
+  ): [] {
+    assert(thresh > 0, "SignerManager: threshold must be > 0");
+    _threshold = disclose(thresh);
+
+    for (const signer of signers) {
+      _addSigner(signer);
+    }
+
+    assert(_signerCount >= thresh, "SignerManager: threshold exceeds signer count");
+  }
+
+  // ─── Guards ─────────────────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the given caller is an active signer.
+   *
+   * Requirements:
+   *
+   * - `caller` must be a member of the signers registry.
+   *
+   * @param {T} caller - The identity to validate.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertSigner(caller: T): [] {
+    assert(isSigner(caller), "SignerManager: not a signer");
+  }
+
+  /**
+   * @description Asserts that the given approval count meets the threshold.
+   *
+   * Requirements:
+   *
+   * - `approvalCount` must be >= threshold.
+   *
+   * @param {Uint<8>} approvalCount - The current number of approvals.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
+    assert(approvalCount >= _threshold, "SignerManager: threshold not met");
+  }
+
+  // ─── View ──────────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the current signer count.
+   *
+   * @returns {Uint<8>} The number of active signers.
+   */
+  export circuit getSignerCount(): Uint<8> {
+    return _signerCount;
+  }
+
+  /**
+   * @description Returns the approval threshold.
+   *
+   * @returns {Uint<8>} The threshold.
+   */
+  export circuit getThreshold(): Uint<8> {
+    return _threshold;
+  }
+
+  /**
+   * @description Returns whether the given account is an active signer.
+   *
+   * @param {T} account - The account to check.
+   * @returns {Boolean} True if the account is an active signer.
+   */
+  export circuit isSigner(account: T): Boolean {
+    return _signers.member(disclose(account));
+  }
+
+  // ─── Signer Management ─────────────────────────────────────────────────────
+
+  /**
+   * @description Adds a new signer to the registry.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - `signer` must not already be an active signer.
+   *
+   * @param {T} signer - The signer to add.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _addSigner(signer: T): [] {
+    assert(
+      !isSigner(signer),
+      "SignerManager: signer already active"
+    );
+
+    _signers.insert(disclose(signer), true);
+    _signerCount = _signerCount + 1 as Uint<8>;
+  }
+
+  /**
+   * @description Removes a signer from the registry.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - `signer` must be an active signer.
+   * - Removal must not drop signer count below threshold.
+   *
+   * @param {T} signer - The signer to remove.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _removeSigner(signer: T): [] {
+    assert(isSigner(signer), "SignerManager: not a signer");
+
+    const newCount = _signerCount - 1 as Uint<8>;
+    assert(newCount >= _threshold, "SignerManager: removal would breach threshold");
+
+    _signers.remove(disclose(signer));
+    _signerCount = newCount;
+  }
+
+  /**
+   * @description Updates the approval threshold.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - `newThreshold` must be greater than 0.
+   * - `newThreshold` must not exceed the current signer count.
+   *
+   * @param {Uint<8>} newThreshold - The new minimum number of approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _changeThreshold(newThreshold: Uint<8>): [] {
+    assert(newThreshold > 0, "SignerManager: threshold must be > 0");
+    assert(newThreshold <= _signerCount, "SignerManager: threshold exceeds signer count");
+    _threshold = disclose(newThreshold);
+  }
+}
