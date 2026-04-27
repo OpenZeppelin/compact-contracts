@@ -11,13 +11,14 @@ import {
   SampleZOwnableWitnesses,
 } from '../fixtures/sample-contracts/witnesses/SampleZOwnableWitnesses';
 
-/**
- * Type constructor args
- */
+/** Type constructor args */
 type SampleZOwnableArgs = readonly [
   owner: Uint8Array,
   instanceSalt: Uint8Array,
 ];
+
+/** Concrete ledger type extracted from the generated artifact */
+type SampleZOwnableLedger = ReturnType<typeof ledger>;
 
 /**
  * Base simulator
@@ -36,7 +37,7 @@ const SampleZOwnableSimulatorBase = createSimulator<
     return [owner, instanceSalt];
   },
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => SampleZOwnableWitnesses(),
+  witnessesFactory: () => SampleZOwnableWitnesses<SampleZOwnableLedger>(),
 });
 
 /**

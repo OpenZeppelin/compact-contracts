@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+
+export { MerkleTreePath,
+         ShieldedAccessControl__operatorRoles,
+         ShieldedAccessControl__roleCommitmentNullifiers,
+         ShieldedAccessControl__adminRoles };
+
+/**
+ * @description `isInit` is a param for testing.
+ *
+ * If `isInit` is false, the constructor will not initialize the contract.
+ * This behavior is to test that circuits are not callable unless the
+ * contract is initialized.
+*/
+constructor(instanceSalt: Bytes<32>, isInit: Boolean) {
+  if (disclose(isInit)) {
+    ShieldedAccessControl_initialize(instanceSalt);
+  }
+}
+
+export pure circuit DEFAULT_ADMIN_ROLE(): ShieldedAccessControl_RoleIdentifier {
+  return ShieldedAccessControl_DEFAULT_ADMIN_ROLE();
+}
+
+export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
+  ShieldedAccessControl_assertOnlyRole(role);
+}
+
+export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
+  return ShieldedAccessControl_canProveRole(role);
+}
+
+export circuit grantRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  ShieldedAccessControl_grantRole(role, accountId);
+}
+
+export circuit _grantRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  return ShieldedAccessControl__grantRole(role, accountId);
+}
+
+export circuit renounceRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountIdConfirmation: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  ShieldedAccessControl_renounceRole(role, accountIdConfirmation);
+}
+
+export circuit revokeRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  ShieldedAccessControl_revokeRole(role, accountId);
+}
+
+export circuit _revokeRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): [] {
+  return ShieldedAccessControl__revokeRole(role, accountId);
+}
+
+export circuit getRoleAdmin(
+                 role: ShieldedAccessControl_RoleIdentifier
+                 ): ShieldedAccessControl_RoleIdentifier {
+  return ShieldedAccessControl_getRoleAdmin(role);
+}
+
+export circuit _setRoleAdmin(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 adminRole: ShieldedAccessControl_RoleIdentifier
+                 ): [] {
+  ShieldedAccessControl__setRoleAdmin(role, adminRole);
+}
+
+export circuit computeRoleCommitment(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountId: ShieldedAccessControl_AccountIdentifier
+                 ): ShieldedAccessControl_RoleCommitment {
+
+  return ShieldedAccessControl_computeRoleCommitment(role, accountId);
+}
+
+export pure circuit computeNullifier(
+                      roleCommitment: ShieldedAccessControl_RoleCommitment
+                      ): ShieldedAccessControl_RoleNullifier {
+  return ShieldedAccessControl_computeNullifier(roleCommitment);
+}
+
+export pure circuit computeAccountId(
+                      secretKey: Bytes<32>,
+                      instanceSalt: Bytes<32>
+                      ): ShieldedAccessControl_AccountIdentifier {
+
+  return ShieldedAccessControl_computeAccountId(secretKey, instanceSalt);
+}

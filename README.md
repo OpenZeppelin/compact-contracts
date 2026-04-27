@@ -1,9 +1,12 @@
 [![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.29.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact/minokawa-0-18-26-0)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
+This project is built on the Midnight Network.
+
 # OpenZeppelin Contracts for Compact
 
 **A library for secure smart contract development** written in Compact for [Midnight](https://midnight.network/).
+
 
 > ## ⚠️ WARNING! ⚠️
 >

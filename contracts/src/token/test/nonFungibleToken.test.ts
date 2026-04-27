@@ -785,6 +785,16 @@ describe('NonFungibleToken', () => {
       expect(token._ownerOf(TOKENID_1)).toEqual(ZERO_KEY);
       expect(token._getApproved(TOKENID_1)).toEqual(ZERO_KEY);
     });
+
+    it('should clear tokenURI on burn', () => {
+      token._setTokenURI(TOKENID_1, SOME_URI);
+      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
+
+      token._burn(TOKENID_1);
+
+      token._mint(Z_OWNER, TOKENID_1);
+      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
+    });
   });
 
   describe('_transfer', () => {
