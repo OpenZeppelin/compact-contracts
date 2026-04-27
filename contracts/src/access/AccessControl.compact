@@ -9,13 +9,24 @@ pragma language_version >= 0.21.0;
  * This module provides a role-based access control mechanism, where roles can be used to
  * represent a set of permissions.
  *
+ * Authorization is based on a witness-derived identity scheme. Each caller proves knowledge
+ * of a secret key by injecting it via the `wit_AccessControlSK` witness. The module computes
+ * an account identifier as `persistentHash(secretKey)` which is a commitment that hides the key
+ * while providing a stable, pseudonymous on-chain identity.
+ *
+ * Because the account identifier is `H(secretKey)` with no per-deployment salt or domain
+ * separator, the same secret key produces the same identity across all contracts. This is
+ * intentional. It provides a linkable pseudonymous identity analogous to Solidity's
+ * `msg.sender`. Users who desire cross-contract unlinkability can use different secret keys
+ * per contract at the wallet layer.
+ *
  * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
  * in the top-level contract and be unique. One way to achieve this is by
  * using `export sealed ledger` hash digests that are initialized in the top-level contract:
  *
- * ```typescript
+ * ```compact
  * import CompactStandardLibrary;
- * import "./node_modules/@openzeppelin-compact/accessControl/src/AccessControl" prefix AccessControl_;
+ * import "./node_modules/@myProject/accessControl/src/AccessControl" prefix AccessControl_;
  *
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
@@ -26,10 +37,10 @@ pragma language_version >= 0.21.0;
  *
  * To restrict access to a circuit, use {assertOnlyRole}:
  *
- * ```typescript
+ * ```compact
  * circuit foo(): [] {
- *  assertOnlyRole(MY_ROLE);
- *  ...
+ *  AccessControl_assertOnlyRole(MY_ROLE);
+ *  // ... rest of circuit logic
  * }
  * ```
  *
@@ -46,7 +57,7 @@ pragma language_version >= 0.21.0;
  * grant and revoke this role. Extra precautions should be taken to secure
  * accounts that have been granted it.
  *
- * @notice Roles can only be granted to ZswapCoinPublicKeys
+ * @notice Roles can only be granted to Bytes<32> identifiers
  * through the main role approval circuits (`grantRole` and `_grantRole`).
  * In other words, role approvals to contract addresses are disallowed through these
  * circuits.
@@ -63,6 +74,16 @@ pragma language_version >= 0.21.0;
  * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
  * are supported.
  *
+ * @dev Security Considerations:
+ * - The `secretKey` must be kept private. Loss of the key prevents role holders
+ *   from proving access. Key exposure allows impersonation.
+ * - It is strongly recommended to use cryptographically secure random values for the secret key
+ *   (e.g., `crypto.getRandomValues()`). Weak or predictable keys can be brute-forced.
+ * - The `secretKey` is provided via the `wit_AccessControlSK` witness. As with all witnesses,
+ *   the contract must not assume that the witness implementation matches the developer's code.
+ *   Any DApp may provide any implementation. The ZK proof system constrains what values
+ *   can produce valid proofs.
+ *
  * @notice Missing Features and Improvements:
  *
  * - Role events
@@ -75,13 +96,13 @@ module AccessControl {
   /**
    * @description Mapping from a role identifier -> account -> its permissions.
    * @type {Bytes<32>} roleId - A hash representing a role identifier.
-   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>} hasRole - A mapping from an account to a
+   * @type {Map<Either<Bytes<32>, ContractAddress>, Boolean>} hasRole - A mapping from an account to a
    * Boolean determining if the account is approved for a role.
    * @type {Map<roleId, hasRole>}
-   * @type {Map<Bytes<32>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>} _operatorRoles
-   */
+   * @type {Map<Bytes<32>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorRoles
+   */
   export ledger _operatorRoles: Map<Bytes<32>,
-                                    Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+                                    Map<Either<Bytes<32>, ContractAddress>, Boolean>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -89,7 +110,7 @@ module AccessControl {
    * @type {Bytes<32>} adminId - A hash representing an admin identifier.
    * @type {Map<roleId, adminId>}
    * @type {Map<Bytes<32>, Bytes<32>>} _adminRoles
-   */
+   */
   export ledger _adminRoles: Map<Bytes<32>, Bytes<32>>;
 
   /**
@@ -103,16 +124,43 @@ module AccessControl {
   }
 
   /**
+   * @witness wit_AccessControlSK
+   * @description Returns the caller's secret key used in deriving the account identifier.
+   *
+   * The same key produces the same account identifier across all contracts. Users who
+   * desire cross-contract unlinkability should use different keys per contract.
+   *
+   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
+   */
+  witness wit_AccessControlSK(): Bytes<32>;
+
+  /**
    * @description Returns `true` if `account` has been granted `roleId`.
    *
-   * @circuitInfo k=10, rows=487
+   * @circuitInfo k=10, rows=1019
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
    * @return {Boolean} - Whether the account has the specified role.
-    */
+    */
   export circuit hasRole(roleId: Bytes<32>,
-                         account: Either<ZswapCoinPublicKey, ContractAddress>
+                         account: Either<Bytes<32>, ContractAddress>
+                         ): Boolean {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    return _hasRole(roleId, canonAcct);
+  }
+
+  /**
+   * @description Returns `true` if `account` has been granted `roleId`. Internal variant
+   * that assumes `account` has already been canonicalized by the caller. External consumers
+   * should use {hasRole} which canonicalizes the input automatically.
+   *
+   * @param {Bytes<32>} roleId - The role identifier.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The canonicalized account to query.
+   * @return {Boolean} - Whether the account has the specified role.
+   */
+  circuit _hasRole(roleId: Bytes<32>,
+                         account: Either<Bytes<32>, ContractAddress>
                          ): Boolean {
     if (_operatorRoles.member(disclose(roleId)) &&
         _operatorRoles.lookup(roleId).member(disclose(account))) {
@@ -123,38 +171,42 @@ module AccessControl {
   }
 
   /**
-   * @description Reverts if `ownPublicKey()` is missing `roleId`.
+   * @description Reverts if the caller cannot prove ownership of `roleId`.
+   * In the case of an external (non-contract) caller, the caller’s identity is
+   * derived from the `wit_AccessControlSK` witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=10, rows=345
+   * @circuitInfo k=13, rows=2669
    *
    * Requirements:
    *
    * - The caller must have `roleId`.
-   * - The caller must not be a ContractAddress
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-    _checkRole(roleId, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
+    // The account constructed via left<...>() is already canonical,
+    // but we route through _checkRole -> hasRole for consistency.
+    // The redundant canonicalization is negligible.
+    _checkRole(roleId, left<Bytes<32>, ContractAddress>(_computeAccountId()));
   }
 
   /**
    * @description Reverts if `account` is missing `roleId`.
    *
-   * @circuitInfo k=10, rows=467
+   * @circuitInfo k=10, rows=987
    *
    * Requirements:
    *
    * - `account` must have `roleId`.
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The account to query.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
    * @return {[]} - Empty tuple.
    */
   export circuit _checkRole(
                    roleId: Bytes<32>,
-                   account: Either<ZswapCoinPublicKey, ContractAddress>
+                   account: Either<Bytes<32>, ContractAddress>
                    ): [] {
     assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
@@ -163,9 +215,9 @@ module AccessControl {
    * @description Returns the admin role that controls `roleId` or
    * a byte array with all zero bytes if `roleId` doesn't exist. See {grantRole} and {revokeRole}.
    *
-   * To change a role’s admin use {_setRoleAdmin}.
+   * To change a role's admin use {_setRoleAdmin}.
    *
-   * @circuitInfo k=10, rows=207
+   * @circuitInfo k=9, rows=373
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
@@ -180,7 +232,7 @@ module AccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @circuitInfo k=10, rows=994
+   * @circuitInfo k=13, rows=3536
    *
    * Requirements:
    *
@@ -188,12 +240,12 @@ module AccessControl {
    * - The caller must have `roleId`'s admin role.
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {[]} - Empty tuple.
    */
   export circuit grantRole(
                    roleId: Bytes<32>,
-                   account: Either<ZswapCoinPublicKey, ContractAddress>
+                   account: Either<Bytes<32>, ContractAddress>
                    ): [] {
     assertOnlyRole(getRoleAdmin(roleId));
     _grantRole(roleId, account);
@@ -202,19 +254,19 @@ module AccessControl {
   /**
    * @description Revokes `roleId` from `account`.
    *
-   * @circuitInfo k=10, rows=827
+   * @circuitInfo k=13, rows=3466
    *
    * Requirements:
    *
    * - The caller must have `roleId`'s admin role.
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {[]} - Empty tuple.
    */
   export circuit revokeRole(
                    roleId: Bytes<32>,
-                   account: Either<ZswapCoinPublicKey, ContractAddress>
+                   account: Either<Bytes<32>, ContractAddress>
                    ): [] {
     assertOnlyRole(getRoleAdmin(roleId));
     _revokeRole(roleId, account);
@@ -227,22 +279,25 @@ module AccessControl {
    * purpose is to provide a mechanism for accounts to lose their privileges
    * if they are compromised (such as when a trusted device is misplaced).
    *
-   * @circuitInfo k=10, rows=640
+   * The caller's identity is derived from the `wit_AccessControlSK` witness as
+   * `persistentHash(secretKey)`. The `callerConfirmation` parameter must match
+   * the caller's computed account identifier to prevent accidental renunciation.
+   *
+   * @circuitInfo k=13, rows=3322
    *
    * Requirements:
    *
-   * - The caller must be `callerConfirmation`.
-   * - The caller must not be a `ContractAddress`.
+   * - The caller's computed account identifier must match `callerConfirmation`.
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} callerConfirmation - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Either<Bytes<32>, ContractAddress>} callerConfirmation - The caller's account identifier, must match the internally computed value.
    * @return {[]} - Empty tuple.
    */
   export circuit renounceRole(
                    roleId: Bytes<32>,
-                   callerConfirmation: Either<ZswapCoinPublicKey, ContractAddress>
+                   callerConfirmation: Either<Bytes<32>, ContractAddress>
                    ): [] {
-    assert(callerConfirmation == left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()),
+    assert(callerConfirmation == left<Bytes<32>, ContractAddress>(_computeAccountId()),
            "AccessControl: bad confirmation"
            );
 
@@ -252,7 +307,7 @@ module AccessControl {
   /**
    * @description Sets `adminRole` as `roleId`'s admin role.
    *
-   * @circuitInfo k=10, rows=209
+   * @circuitInfo k=10, rows=581
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
@@ -266,21 +321,22 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo k=10, rows=734
+   * @circuitInfo k=11, rows=1143
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
   export circuit _grantRole(
                    roleId: Bytes<32>,
-                   account: Either<ZswapCoinPublicKey, ContractAddress>
+                   account: Either<Bytes<32>, ContractAddress>
                    ): Boolean {
-    assert(!Utils_isContractAddress(account), "AccessControl: unsafe role approval");
+    const isCommitment = account.is_left;
+    assert(isCommitment, "AccessControl: unsafe role approval");
     return _unsafeGrantRole(roleId, account);
   }
 
@@ -288,31 +344,32 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
-   * @circuitInfo k=10, rows=733
+   * @circuitInfo k=11, rows=1142
    *
-   * @notice External smart contracts cannot call the token contract at this time, so granting a role to an ContractAddress may
+   * @notice External smart contracts cannot call the token contract at this time, so granting a role to a ContractAddress may
    * render a circuit permanently inaccessible.
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - A ZswapCoinPublicKey or ContractAddress.
+   * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
    */
   export circuit _unsafeGrantRole(
                    roleId: Bytes<32>,
-                   account: Either<ZswapCoinPublicKey, ContractAddress>
+                   account: Either<Bytes<32>, ContractAddress>
                    ): Boolean {
-    if (hasRole(roleId, account)) {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    if (_hasRole(roleId, canonAcct)) {
       return false;
     }
 
     if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
         disclose(roleId),
-        default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>
+        default<Map<Either<Bytes<32>, ContractAddress>, Boolean>>
         );
     }
 
-    _operatorRoles.lookup(roleId).insert(disclose(account), true);
+    _operatorRoles.lookup(roleId).insert(disclose(canonAcct), true);
     return true;
   }
 
@@ -320,21 +377,71 @@ module AccessControl {
    * @description Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo k=10, rows=563
+   * @circuitInfo k=11, rows=1073
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Bytes<32>} adminRole - The admin role identifier.
+   * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
   export circuit _revokeRole(
                    roleId: Bytes<32>,
-                   account: Either<ZswapCoinPublicKey, ContractAddress>
+                   account: Either<Bytes<32>, ContractAddress>
                    ): Boolean {
-    if (!hasRole(roleId, account)) {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+
+    if (!_hasRole(roleId, canonAcct)) {
       return false;
     }
 
-    _operatorRoles.lookup(roleId).insert(disclose(account), false);
+    _operatorRoles.lookup(roleId).insert(disclose(canonAcct), false);
     return true;
+  }
+
+  /**
+   * @description Computes the caller's account identifier from the `wit_AccessControlSK` witness.
+   *
+   * ## ID Derivation
+   * `accountId = persistentHash(secretKey)`
+   *
+   * The result is a 32-byte commitment that uniquely identifies the caller.
+   *
+   * @circuitInfo k=13, rows=2294
+   *
+   * @returns {Bytes<32>} accountId - The computed account identifier.
+   */
+  circuit _computeAccountId(): Bytes<32> {
+    return computeAccountId(wit_AccessControlSK());
+  }
+
+  /**
+   * @description Computes an account identifier without on-chain state, allowing a user to derive
+   * their identity commitment before submitting it in a grant or revoke operation.
+   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
+   * given the same inputs.
+   *
+   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
+   * permanently compromise the privacy guarantees of this system:
+   *
+   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
+   *   application logs, analytics pipelines, or any observable side-channel.
+   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
+   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
+   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
+   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
+   * - **Treat key loss as identity loss** — a lost key cannot be recovered. Back up
+   *   keys securely before using them in role commitments.
+   * - **Avoid calling this circuit in untrusted environments** — executing this in an
+   *   unverified browser extension, compromised runtime, or shared machine may expose
+   *   the key to a malicious observer.
+   *
+   * ## ID Derivation
+   * `accountId = persistentHash(secretKey)`
+   *
+   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
+   *
+   * @returns {Bytes<32>} accountId - The computed account identifier.
+   */
+  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
   }
 }
