@@ -1,0 +1,66 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../Signer"<Bytes<32>> prefix Signer_;
+import "../../Signer"<Bytes<32>>;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { _signers, _signerCount, _threshold };
+
+/**
+ * @description `isInit` is a param for testing.
+ *
+ * If `isInit` is false, the constructor will not initialize the contract.
+ * This behavior is to test that _setThreshold will work for custom deployments
+ * where contracts don't `initialize` the signer module and instead have some sort
+ * of gated access control prior to setting up the signers
+*/
+constructor(signers: Vector<3, Bytes<32>>, thresh: Uint<8>, isInit: Boolean) {
+  if (disclose(isInit)) {
+    Signer_initialize<3>(signers, thresh);
+  }
+}
+
+// Exposed in order to test that contracts cannot be reinitialized.
+// DO NOT EXPOSE in production
+export circuit initialize(signers: Vector<3, Bytes<32>>, thresh: Uint<8>): [] {
+  return Signer_initialize<3>(signers, thresh);
+}
+
+export circuit assertSigner(caller: Bytes<32>): [] {
+  return Signer_assertSigner(caller);
+}
+
+export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
+  return Signer_assertThresholdMet(approvalCount);
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(account: Bytes<32>): Boolean {
+  return Signer_isSigner(account);
+}
+
+export circuit _addSigner(signer: Bytes<32>): [] {
+  return Signer__addSigner(signer);
+}
+
+export circuit _removeSigner(signer: Bytes<32>): [] {
+  return Signer__removeSigner(signer);
+}
+
+export circuit _changeThreshold(newThreshold: Uint<8>): [] {
+  return Signer__changeThreshold(newThreshold);
+}
+
+export circuit _setThreshold(newThreshold: Uint<8>): [] {
+  return Signer__setThreshold(newThreshold);
+}
+
