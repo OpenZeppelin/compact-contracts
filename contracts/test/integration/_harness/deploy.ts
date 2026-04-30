@@ -1,7 +1,11 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import {
+  CompiledContract,
+  Contract as ContractNs,
+} from '@midnight-ntwrk/compact-js';
+import {
+  type DeployContractOptionsWithPrivateState,
   type DeployedContract,
   deployContract,
 } from '@midnight-ntwrk/midnight-js-contracts';
@@ -37,27 +41,44 @@ export function contractAssetsPath(moduleName: string): string {
 }
 
 /**
- * Minimal deployContract wrapper. Each per-module fixture builds its own
- * `CompiledContract` (because `witnesses` are module-specific) and passes it
- * here along with the providers and constructor args.
+ * Generic deploy wrapper.
  *
- * This indirection will grow a `signingKey` option in Milestone 2 when we add
- * deterministic CMA signers; for now the default signer is used.
+ * Each per-module fixture builds its own `CompiledContract` (because
+ * `witnesses` are module-specific) and passes it here along with providers,
+ * a private-state id, the initial private-state value, and the contract's
+ * constructor arguments — all properly typed via `Contract.*` helpers from
+ * `@midnight-ntwrk/compact-js`, so callers don't need any escape casts.
  */
-export async function deployModule<C, Args extends readonly unknown[]>(
-  providers: MidnightProviders<string, string, unknown>,
-  compiledContract: ReturnType<typeof CompiledContract.make<C>>,
-  privateStateId: string,
-  initialPrivateState: unknown,
-  args: Args,
-): Promise<DeployedContract<C>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (await deployContract<C>(providers as any, {
+export async function deployModule<C extends ContractNs.Any>(
+  providers: MidnightProviders<
+    ContractNs.ProvableCircuitId<C>,
+    string,
+    ContractNs.PrivateState<C>
+  >,
+  // The third generic of `CompiledContract` (the witnesses map) defaults to
+  // `never` for empty-witness contracts; accept `any` so both shapes pass.
+  compiledContract: CompiledContract.CompiledContract<
+    C,
+    ContractNs.PrivateState<C>,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    compiledContract: compiledContract as any,
+    any
+  >,
+  privateStateId: string,
+  initialPrivateState: ContractNs.PrivateState<C>,
+  args: ContractNs.InitializeParameters<C>,
+): Promise<DeployedContract<C>> {
+  // The deployContract options shape is conditional on whether
+  // `Contract.InitializeParameters<C>` is empty — TypeScript can't reduce
+  // that conditional under an unbounded `C extends Contract.Any`, so we
+  // shape the literal once and assert it matches `DeployContractOptionsWithPrivateState<C>`.
+  // Two-step cast (through `unknown`) because TS rejects the direct cast
+  // as "neither type sufficiently overlaps" — same conditional-resolution
+  // issue. Scoped to this single helper.
+  const options = {
+    compiledContract,
     privateStateId,
     initialPrivateState,
-    args: args as unknown as never[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any)) as DeployedContract<C>;
+    args,
+  } as unknown as DeployContractOptionsWithPrivateState<C>;
+  return deployContract<C>(providers, options);
 }

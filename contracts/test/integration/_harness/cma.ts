@@ -1,11 +1,18 @@
+import type { Contract as ContractNs } from '@midnight-ntwrk/compact-js';
 import {
   type ContractMaintenanceAuthority,
   type ContractState,
   sampleSigningKey,
   type SigningKey,
 } from '@midnight-ntwrk/compact-runtime';
-import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import type {
+  DeployedContract,
+  FoundContract,
+} from '@midnight-ntwrk/midnight-js-contracts';
+import type {
+  MidnightProviders,
+  VerifierKey,
+} from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Query helpers and upgrade-path wrappers around the CMA primitives exposed by
@@ -80,19 +87,20 @@ export async function readCmaCounter(
  * Each call causes the CMA counter to advance by exactly 2 (one SingleUpdate
  * for the remove, one for the insert).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function rotateCircuitVK(
+/** Either a freshly deployed contract or one rebound via `findDeployedContract`. */
+type AnyDeployed<C extends ContractNs.Any> =
+  | DeployedContract<C>
+  | FoundContract<C>;
+
+export async function rotateCircuitVK<C extends ContractNs.Any>(
   providers: AnyProviders,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  deployed: DeployedContract<any>,
-  circuitName: string,
-  newVk?: Uint8Array,
+  deployed: AnyDeployed<C>,
+  circuitName: ContractNs.ProvableCircuitId<C>,
+  newVk?: VerifierKey,
 ): Promise<void> {
   const vk =
-    newVk ??
-    (await providers.zkConfigProvider.getVerifierKey(circuitName));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tx = (deployed.circuitMaintenanceTx as any)[circuitName];
+    newVk ?? (await providers.zkConfigProvider.getVerifierKey(circuitName));
+  const tx = deployed.circuitMaintenanceTx[circuitName];
   if (!tx) {
     throw new Error(
       `rotateCircuitVK: deployed contract has no circuit named '${circuitName}'`,
@@ -109,10 +117,8 @@ export async function rotateCircuitVK(
  * @returns the `SigningKey` that was installed (so tests can re-sign with it
  *          or assert its bytes).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function rotateAuthority(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  deployed: DeployedContract<any>,
+export async function rotateAuthority<C extends ContractNs.Any>(
+  deployed: AnyDeployed<C>,
   newAuthority: SigningKey,
 ): Promise<SigningKey> {
   await deployed.contractMaintenanceTx.replaceAuthority(newAuthority);
@@ -133,8 +139,9 @@ export async function rotateAuthority(
  * ledger-level `MaintenanceUpdate` constructor becomes ergonomic in our
  * harness, swap this out for a real empty-authority call.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function freeze(deployed: DeployedContract<any>): Promise<void> {
+export async function freeze<C extends ContractNs.Any>(
+  deployed: AnyDeployed<C>,
+): Promise<void> {
   const abandoned = sampleSigningKey();
   await deployed.contractMaintenanceTx.replaceAuthority(abandoned);
   // Intentionally drop `abandoned` — no reference is retained anywhere.
