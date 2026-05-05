@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { deployTestToken, type TestTokenKit } from '../fixtures/testToken.js';
+import { deployTestTokenV1, type TestTokenV1Kit } from '../fixtures/testTokenV1.js';
 
 /**
  * Smoke spec — proves the integration harness works end-to-end against the
@@ -17,10 +17,10 @@ import { deployTestToken, type TestTokenKit } from '../fixtures/testToken.js';
  * harness is wired correctly.
  */
 describe('Smoke — TestToken (composite) deploy + initial ledger', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
 
   beforeAll(async () => {
-    kit = await deployTestToken({
+    kit = await deployTestTokenV1({
       name: 'TestToken',
       symbol: 'TT',
       decimals: 6,

@@ -9,13 +9,13 @@ import {
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import type { MidnightWalletProvider } from '@midnight-ntwrk/testkit-js';
 import {
-  Contract as TestToken,
+  Contract as TestTokenV1,
   type ContractAddress as ContractAddressT,
   type Either,
-  type Ledger as TestTokenLedger,
+  type Ledger as TestTokenV1Ledger,
   type ZswapCoinPublicKey,
   ledger as testTokenLedger,
-} from '../../../artifacts/TestToken/contract/index.js';
+} from '../../../artifacts/TestTokenV1/contract/index.js';
 import {
   contractAssetsPath,
   deployModule,
@@ -31,8 +31,8 @@ import { WalletPool } from '../_harness/walletPool.js';
  * Pausable, AccessControl, FungibleToken, Utils — declare empty private
  * states). A single empty record satisfies the runtime.
  */
-export type TestTokenPrivateState = Record<string, never>;
-export const TestTokenPrivateState: TestTokenPrivateState = {};
+export type TestTokenV1PrivateState = Record<string, never>;
+export const TestTokenV1PrivateState: TestTokenV1PrivateState = {};
 
 // TestToken declares no witnesses. Compact-js' `Contract.Witnesses<C>` for
 // an empty-witness contract resolves to `never`, so `withWitnesses` requires
@@ -40,37 +40,37 @@ export const TestTokenPrivateState: TestTokenPrivateState = {};
 // type system AND fulfil the Witnesses slot in the CompiledContract's
 // remaining-requirements union (which `findDeployedContract` validates).
 
-export const TestTokenPrivateStateId = 'testTokenPrivateState';
+export const TestTokenV1PrivateStateId = 'testTokenV1PrivateState';
 
-export type TestTokenContract = TestToken<TestTokenPrivateState>;
+export type TestTokenV1Contract = TestTokenV1<TestTokenV1PrivateState>;
 
 /**
  * Union of the contract's provable-circuit names, derived from the artifact —
  * gives `MidnightProviders` a precise PCK type so consumers (deployContract,
  * findDeployedContract) can narrow without casts.
  */
-export type TestTokenCircuitKeys = ContractNs.ProvableCircuitId<TestTokenContract>;
+export type TestTokenV1CircuitKeys = ContractNs.ProvableCircuitId<TestTokenV1Contract>;
 
-export type TestTokenProviders = MidnightProviders<
-  TestTokenCircuitKeys,
-  typeof TestTokenPrivateStateId,
-  TestTokenPrivateState
+export type TestTokenV1Providers = MidnightProviders<
+  TestTokenV1CircuitKeys,
+  typeof TestTokenV1PrivateStateId,
+  TestTokenV1PrivateState
 >;
 
-export type DeployedTestToken = DeployedContract<TestTokenContract>;
-export type TestTokenHandle =
-  | DeployedTestToken
-  | FoundContract<TestTokenContract>;
+export type DeployedTestTokenV1 = DeployedContract<TestTokenV1Contract>;
+export type TestTokenV1Handle =
+  | DeployedTestTokenV1
+  | FoundContract<TestTokenV1Contract>;
 
-export const compiledTestToken = CompiledContract.make(
-  'TestToken',
-  TestToken<TestTokenPrivateState>,
+export const compiledTestTokenV1 = CompiledContract.make(
+  'TestTokenV1',
+  TestTokenV1<TestTokenV1PrivateState>,
 ).pipe(
   CompiledContract.withWitnesses({} as never),
-  CompiledContract.withCompiledFileAssets(contractAssetsPath('TestToken')),
+  CompiledContract.withCompiledFileAssets(contractAssetsPath('TestTokenV1')),
 );
 
-export interface DeployTestTokenOpts {
+export interface DeployTestTokenV1Opts {
   /** ERC20-style name. Default: `'TestToken'`. */
   name?: string;
   /** ERC20-style symbol. Default: `'TT'`. */
@@ -85,11 +85,11 @@ export interface DeployTestTokenOpts {
   bootstrapAdmin?: boolean;
 }
 
-export interface TestTokenKit {
+export interface TestTokenV1Kit {
   /** Original `DeployedContract` handle bound to the genesis/deployer wallet. */
-  deployed: DeployedTestToken;
+  deployed: DeployedTestTokenV1;
   /** Genesis-wallet providers (the deployer's bundle). */
-  providers: TestTokenProviders;
+  providers: TestTokenV1Providers;
   /** Genesis-wallet (the deployer). */
   wallet: MidnightWalletProvider;
   /** Hex-encoded on-chain address of the deployed contract. */
@@ -98,14 +98,14 @@ export interface TestTokenKit {
   pool: WalletPool;
 
   /** Fetch the latest public ledger via the indexer. */
-  readLedger(): Promise<TestTokenLedger>;
+  readLedger(): Promise<TestTokenV1Ledger>;
 
   /**
    * Return a `FoundContract` handle bound to the wallet of `alias`. Subsequent
    * `.callTx.foo(...)` calls run as that alias and have its `coinPublicKey`
    * available to `ownPublicKey()` inside circuits. Cached per alias.
    */
-  as(alias: string): Promise<TestTokenHandle>;
+  as(alias: string): Promise<TestTokenV1Handle>;
 
   /**
    * Return the alias's coin public key wrapped as
@@ -129,35 +129,35 @@ const ZERO_CONTRACT_ADDRESS: ContractAddressT = { bytes: new Uint8Array(32) };
  * Single-signer for the deployer (TEST_MNEMONIC genesis wallet); multi-signer
  * for in-test calls via the `WalletPool` exposed on the kit.
  */
-export async function deployTestToken(
-  opts: DeployTestTokenOpts = {},
-): Promise<TestTokenKit> {
+export async function deployTestTokenV1(
+  opts: DeployTestTokenV1Opts = {},
+): Promise<TestTokenV1Kit> {
   setupNetwork();
   const env = networkConfig();
   const wallet = await buildWallet(env);
 
   // `buildProviders`'s `CircuitKey` generic is phantom — the narrow type
   // doesn't fully propagate through every internal provider construction —
-  // so cast at the site to the concrete `TestTokenProviders` we control.
+  // so cast at the site to the concrete `TestTokenV1Providers` we control.
   const providers = buildProviders<
-    TestTokenCircuitKeys,
-    typeof TestTokenPrivateStateId,
-    TestTokenPrivateState
+    TestTokenV1CircuitKeys,
+    typeof TestTokenV1PrivateStateId,
+    TestTokenV1PrivateState
   >(
     wallet,
-    moduleRootPath('TestToken'),
-    `testToken-${Date.now()}`,
-  ) as TestTokenProviders;
+    moduleRootPath('TestTokenV1'),
+    `testTokenV1-${Date.now()}`,
+  ) as TestTokenV1Providers;
 
   const name = opts.name ?? 'TestToken';
   const symbol = opts.symbol ?? 'TT';
   const decimals = BigInt(opts.decimals ?? 6);
 
-  const deployed = await deployModule<TestTokenContract>(
+  const deployed = await deployModule<TestTokenV1Contract>(
     providers,
-    compiledTestToken,
-    TestTokenPrivateStateId,
-    TestTokenPrivateState,
+    compiledTestTokenV1,
+    TestTokenV1PrivateStateId,
+    TestTokenV1PrivateState,
     [name, symbol, decimals],
   );
 
@@ -166,7 +166,7 @@ export async function deployTestToken(
 
   // Per-alias FoundContract handle cache. Keyed by alias; value is a Promise
   // so parallel `as(alias)` calls dedupe to a single findDeployedContract.
-  const handleCache = new Map<string, Promise<TestTokenHandle>>();
+  const handleCache = new Map<string, Promise<TestTokenV1Handle>>();
 
   async function eitherForWallet(
     w: MidnightWalletProvider,
@@ -178,33 +178,33 @@ export async function deployTestToken(
     };
   }
 
-  async function buildHandle(alias: string): Promise<TestTokenHandle> {
+  async function buildHandle(alias: string): Promise<TestTokenV1Handle> {
     const aliasWallet = await pool.signerFor(alias);
     const aliasProviders = buildProviders<
-      TestTokenCircuitKeys,
-      typeof TestTokenPrivateStateId,
-      TestTokenPrivateState
+      TestTokenV1CircuitKeys,
+      typeof TestTokenV1PrivateStateId,
+      TestTokenV1PrivateState
     >(
       aliasWallet,
-      moduleRootPath('TestToken'),
-      `testToken-${alias.toLowerCase()}-${Date.now()}`,
-    ) as TestTokenProviders;
-    return findDeployedContract<TestTokenContract>(aliasProviders, {
-      compiledContract: compiledTestToken,
+      moduleRootPath('TestTokenV1'),
+      `testTokenV1-${alias.toLowerCase()}-${Date.now()}`,
+    ) as TestTokenV1Providers;
+    return findDeployedContract<TestTokenV1Contract>(aliasProviders, {
+      compiledContract: compiledTestTokenV1,
       contractAddress,
-      privateStateId: TestTokenPrivateStateId,
-      initialPrivateState: TestTokenPrivateState,
+      privateStateId: TestTokenV1PrivateStateId,
+      initialPrivateState: TestTokenV1PrivateState,
     });
   }
 
-  const kit: TestTokenKit = {
+  const kit: TestTokenV1Kit = {
     deployed,
     providers,
     wallet,
     contractAddress,
     pool,
 
-    async readLedger(): Promise<TestTokenLedger> {
+    async readLedger(): Promise<TestTokenV1Ledger> {
       const state = await providers.publicDataProvider.queryContractState(
         contractAddress,
       );
@@ -216,7 +216,7 @@ export async function deployTestToken(
       return testTokenLedger(state.data);
     },
 
-    async as(alias: string): Promise<TestTokenHandle> {
+    async as(alias: string): Promise<TestTokenV1Handle> {
       let cached = handleCache.get(alias);
       if (!cached) {
         cached = buildHandle(alias);

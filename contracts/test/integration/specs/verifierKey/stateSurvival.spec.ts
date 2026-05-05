@@ -3,11 +3,11 @@ import type {
   ContractAddress,
   Either,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/TestToken/contract/index.js';
-import type { TestTokenContract } from '../../fixtures/testToken.js';
+} from '../../../../artifacts/TestTokenV1/contract/index.js';
+import type { TestTokenV1Contract } from '../../fixtures/testTokenV1.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readCmaCounter, rotateCircuitVK } from '../../_harness/cma.js';
-import { deployTestToken, type TestTokenKit } from '../../fixtures/testToken.js';
+import { deployTestTokenV1, type TestTokenV1Kit } from '../../fixtures/testTokenV1.js';
 
 /**
  * Spec: VK rotation preserves heterogeneous ledger state across modules.
@@ -43,7 +43,7 @@ interface Snapshot {
 }
 
 describe('TestToken — VK rotation preserves heterogeneous ledger state', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
   let alice: Either<ZswapCoinPublicKey, ContractAddress>;
   let bob: Either<ZswapCoinPublicKey, ContractAddress>;
 
@@ -66,7 +66,7 @@ describe('TestToken — VK rotation preserves heterogeneous ledger state', () =>
   }
 
   beforeAll(async () => {
-    kit = await deployTestToken();
+    kit = await deployTestTokenV1();
     alice = await kit.aliasFor('ALICE');
     bob = await kit.aliasFor('BOB');
 
@@ -94,7 +94,7 @@ describe('TestToken — VK rotation preserves heterogeneous ledger state', () =>
   });
 
   async function expectStatePreserved(
-    circuitName: ContractNs.ProvableCircuitId<TestTokenContract>,
+    circuitName: ContractNs.ProvableCircuitId<TestTokenV1Contract>,
   ) {
     const before = await snapshot();
     await rotateCircuitVK(kit.providers, kit.deployed, circuitName);

@@ -4,6 +4,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   TEST_MNEMONIC,
+  logger as testkitLogger,
   type EnvironmentConfiguration,
 } from '@midnight-ntwrk/testkit-js';
 
@@ -48,5 +49,9 @@ export function setupNetwork(): void {
   setNetworkId(
     (process.env.MIDNIGHT_NETWORK_ID ?? 'undeployed') as NetworkId,
   );
+  // testkit-js' module-level logger defaults to 'info' and emits a per-emission
+  // "Wallet synced state emission" line during sync. Mirror the harness'
+  // LOG_LEVEL default so it stays quiet unless explicitly opted in.
+  testkitLogger.level = process.env.LOG_LEVEL ?? 'warn';
   networkIdSet = true;
 }

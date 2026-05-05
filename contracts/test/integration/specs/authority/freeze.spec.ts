@@ -1,14 +1,17 @@
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import {
+  findDeployedContract,
+  RemoveVerifierKeyTxFailedError,
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { freeze, readCmaCounter } from '../../_harness/cma.js';
 import {
-  compiledTestToken,
-  deployTestToken,
-  TestTokenPrivateState,
-  TestTokenPrivateStateId,
-  type TestTokenKit,
-} from '../../fixtures/testToken.js';
+  compiledTestTokenV1,
+  deployTestTokenV1,
+  TestTokenV1PrivateState,
+  TestTokenV1PrivateStateId,
+  type TestTokenV1Kit,
+} from '../../fixtures/testTokenV1.js';
 
 /**
  * Spec: freezing the CMA terminates all further maintenance.
@@ -27,11 +30,11 @@ import {
  * has the key" semantic.
  */
 describe('TestToken — freezing the CMA blocks further maintenance', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
   let counterBeforeFreeze: bigint;
 
   beforeAll(async () => {
-    kit = await deployTestToken();
+    kit = await deployTestTokenV1();
   });
 
   afterAll(async () => {
@@ -57,14 +60,14 @@ describe('TestToken — freezing the CMA blocks further maintenance', () => {
   it('should reject every maintenance update signed by a wrong key after freeze', async () => {
     const wrongKey = sampleSigningKey();
     const reFound = await findDeployedContract(kit.providers, {
-      compiledContract: compiledTestToken,
+      compiledContract: compiledTestTokenV1,
       contractAddress: kit.contractAddress,
-      privateStateId: TestTokenPrivateStateId,
-      initialPrivateState: TestTokenPrivateState,
+      privateStateId: TestTokenV1PrivateStateId,
+      initialPrivateState: TestTokenV1PrivateState,
       signingKey: wrongKey,
     });
     await expect(
       reFound.circuitMaintenanceTx.pause.removeVerifierKey(),
-    ).rejects.toThrow();
+    ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
   });
 });
