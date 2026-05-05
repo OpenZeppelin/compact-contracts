@@ -37,8 +37,8 @@
     "compact:mocks:utils": "compact-compiler --src-root mocks --dir utils",
     "compact:integration-mocks": "compact-compiler --src-root test/integration/_mocks",
     "build": "compact-builder",
-    "test": "compact-compiler --skip-zk && compact-compiler --src-root mocks --skip-zk && vitest run",
-    "test:integration": "COMPACT_TOOLCHAIN_VERSION=0.30.0 yarn compact && COMPACT_TOOLCHAIN_VERSION=0.30.0 yarn compact:mocks && COMPACT_TOOLCHAIN_VERSION=0.30.0 yarn compact:integration-mocks && vitest run --config vitest.integration.config.ts",
+    "test": "compact-compiler --skip-zk && vitest run",
+    "test:integration": "COMPACT_TOOLCHAIN_VERSION=0.30.0 yarn compact && COMPACT_TOOLCHAIN_VERSION=0.30.0 yarn compact:integration-mocks && vitest run --config vitest.integration.config.ts",
     "test:integration:watch": "vitest --config vitest.integration.config.ts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
