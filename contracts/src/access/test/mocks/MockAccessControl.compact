@@ -9,7 +9,7 @@ pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
 
-import "../../src/access/AccessControl" prefix AccessControl_;
+import "../../AccessControl" prefix AccessControl_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
