@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { deployTestToken, type TestTokenKit } from '../../fixtures/testToken.js';
+import { deployTestTokenV1, type TestTokenV1Kit } from '../../fixtures/testTokenV1.js';
 
 /**
  * Spec: AccessControl gating across multiple signers.
@@ -31,10 +31,10 @@ MINTER_ROLE[4] = 0x45; // 'E'
 MINTER_ROLE[5] = 0x52; // 'R'
 
 describe('AccessControl — multi-signer role gating', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
 
   beforeAll(async () => {
-    kit = await deployTestToken();
+    kit = await deployTestTokenV1();
   });
 
   afterAll(async () => {
@@ -73,6 +73,6 @@ describe('AccessControl — multi-signer role gating', () => {
     const alice = await kit.aliasFor('ALICE');
     await expect(
       bobHandle.callTx.grantRole(MINTER_ROLE, alice),
-    ).rejects.toThrow();
+    ).rejects.toThrow('AccessControl: unauthorized account');
   });
 });

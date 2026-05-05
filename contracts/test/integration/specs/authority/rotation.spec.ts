@@ -1,14 +1,17 @@
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import {
+  findDeployedContract,
+  RemoveVerifierKeyTxFailedError,
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readCmaCounter, rotateAuthority } from '../../_harness/cma.js';
 import {
-  compiledTestToken,
-  deployTestToken,
-  TestTokenPrivateState,
-  TestTokenPrivateStateId,
-  type TestTokenKit,
-} from '../../fixtures/testToken.js';
+  compiledTestTokenV1,
+  deployTestTokenV1,
+  TestTokenV1PrivateState,
+  TestTokenV1PrivateStateId,
+  type TestTokenV1Kit,
+} from '../../fixtures/testTokenV1.js';
 
 /**
  * Spec: `replaceAuthority` rotates the on-chain CMA cleanly.
@@ -26,12 +29,12 @@ import {
  *      maintenance update — proving the new key works.
  */
 describe('TestToken — CMA rotation via replaceAuthority', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
   let originalKey: ReturnType<typeof sampleSigningKey>;
   let counterBeforeRotation: bigint;
 
   beforeAll(async () => {
-    kit = await deployTestToken();
+    kit = await deployTestTokenV1();
     originalKey = kit.deployed.deployTxData.private.signingKey;
     counterBeforeRotation = await readCmaCounter(
       kit.providers,
@@ -76,14 +79,14 @@ describe('TestToken — CMA rotation via replaceAuthority', () => {
     // this overwrites the per-address local key store, which is why this
     // test runs last.
     const reFound = await findDeployedContract(kit.providers, {
-      compiledContract: compiledTestToken,
+      compiledContract: compiledTestTokenV1,
       contractAddress: kit.contractAddress,
-      privateStateId: TestTokenPrivateStateId,
-      initialPrivateState: TestTokenPrivateState,
+      privateStateId: TestTokenV1PrivateStateId,
+      initialPrivateState: TestTokenV1PrivateState,
       signingKey: originalKey,
     });
     await expect(
       reFound.circuitMaintenanceTx.pause.removeVerifierKey(),
-    ).rejects.toThrow();
+    ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
   });
 });

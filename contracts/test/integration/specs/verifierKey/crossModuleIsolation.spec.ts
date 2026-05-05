@@ -2,10 +2,10 @@ import type {
   ContractAddress,
   Either,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/TestToken/contract/index.js';
+} from '../../../../artifacts/TestTokenV1/contract/index.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { rotateCircuitVK } from '../../_harness/cma.js';
-import { deployTestToken, type TestTokenKit } from '../../fixtures/testToken.js';
+import { deployTestTokenV1, type TestTokenV1Kit } from '../../fixtures/testTokenV1.js';
 
 /**
  * Spec: rotating module A's circuit VK does not disturb module B's state.
@@ -24,12 +24,12 @@ const MINTER_ROLE = new Uint8Array(32);
 });
 
 describe('TestToken — cross-module isolation under VK rotation', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
   let alice: Either<ZswapCoinPublicKey, ContractAddress>;
   let bob: Either<ZswapCoinPublicKey, ContractAddress>;
 
   beforeAll(async () => {
-    kit = await deployTestToken();
+    kit = await deployTestTokenV1();
     alice = await kit.aliasFor('ALICE');
     bob = await kit.aliasFor('BOB');
   });

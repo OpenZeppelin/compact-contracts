@@ -1,0 +1,160 @@
+// SPDX-License-Identifier: MIT
+//
+// WARNING: FOR TESTING PURPOSES ONLY.
+// V2 of TestToken — same composite-module layout as V1, with three changes:
+//   - `_mint(account, amount)` enforces a per-tx mint cap (assertion).
+//   - `pause()` requires DEFAULT_ADMIN_ROLE on the caller.
+//   - `unpause()` matches `pause()` for symmetry.
+//   - `mintBatch(account, amount)` is a NEW circuit not present in V1 — mints
+//     `3 × amount` to `account` in one tx (a fixed-arity unrolled batch).
+//
+// Used by the upgrade specs to prove that, after rotating the relevant VKs
+// from V1 to V2:
+//   - rotating `_mint`'s VK enforces the new per-tx cap on subsequent calls,
+//   - rotating `pause`'s VK adds the admin gate,
+//   - inserting `mintBatch`'s VK adds a brand-new operation NAME to the
+//     contract's VK table (open question per the upgradability research).
+//
+// Same constructor + ledger layout as V1 (Compact's CMA upgrade pathway only
+// supports VK changes, not state-shape changes).
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../../src/security/Initializable" prefix Initializable_;
+import "../../../src/security/Pausable"      prefix Pausable_;
+import "../../../src/utils/Utils"            prefix Utils_;
+import "../../../src/access/AccessControl"   prefix AccessControl_;
+import "../../../src/token/FungibleToken"    prefix FungibleToken_;
+
+export {
+  ZswapCoinPublicKey,
+  ContractAddress,
+  Either,
+  Maybe,
+  AccessControl_DEFAULT_ADMIN_ROLE,
+  AccessControl__operatorRoles,
+  Initializable__isInitialized,
+  Pausable__isPaused,
+  FungibleToken__totalSupply,
+  FungibleToken__name,
+  FungibleToken__symbol,
+  FungibleToken__decimals,
+  FungibleToken__balances,
+};
+
+constructor(
+  _name: Opaque<"string">,
+  _symbol: Opaque<"string">,
+  _decimals: Uint<8>,
+) {
+  Initializable_initialize();
+  FungibleToken_initialize(_name, _symbol, _decimals);
+}
+
+// ─── AccessControl public surface (unchanged from V1) ───
+
+export circuit hasRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Boolean {
+  return AccessControl_hasRole(roleId, account);
+}
+
+export circuit grantRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  AccessControl_grantRole(roleId, account);
+}
+
+export circuit revokeRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  AccessControl_revokeRole(roleId, account);
+}
+
+export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
+  return AccessControl_getRoleAdmin(roleId);
+}
+
+export circuit _grantRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Boolean {
+  return AccessControl__grantRole(roleId, account);
+}
+
+// ─── Pausable public surface — CHANGED: pause/unpause require admin ───
+
+export circuit isPaused(): Boolean {
+  return Pausable_isPaused();
+}
+
+export circuit pause(): [] {
+  AccessControl_assertOnlyRole(AccessControl_DEFAULT_ADMIN_ROLE);
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  AccessControl_assertOnlyRole(AccessControl_DEFAULT_ADMIN_ROLE);
+  Pausable__unpause();
+}
+
+// ─── FungibleToken read surface (unchanged) ───
+
+export circuit name(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return FungibleToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return FungibleToken_decimals();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return FungibleToken_totalSupply();
+}
+
+export circuit balanceOf(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
+
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
+  return FungibleToken_transfer(to, value);
+}
+
+// ─── FungibleToken unsafe surface — CHANGED: _mint enforces per-tx cap ───
+
+export circuit _mint(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): [] {
+  assert(value <= 1000000, "TestTokenV2: _mint amount over per-tx cap");
+  FungibleToken__mint(account, value);
+}
+
+// ─── NEW (V2 only): mintBatch — fixed batch of 3 mints in one tx ───
+// `mintBatch(account, value)` mints `3 × value` to `account`. Unrolled
+// because Compact circuits don't have unbounded loops. Per-mint cap still
+// applies — same constant as `_mint` above.
+
+export circuit mintBatch(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): [] {
+  assert(value <= 1000000, "TestTokenV2: mintBatch per-call amount over cap");
+  FungibleToken__mint(account, value);
+  FungibleToken__mint(account, value);
+  FungibleToken__mint(account, value);
+}

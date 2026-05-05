@@ -2,10 +2,10 @@ import type {
   ContractAddress,
   Either,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/TestToken/contract/index.js';
+} from '../../../../artifacts/TestTokenV1/contract/index.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { rotateCircuitVK } from '../../_harness/cma.js';
-import { deployTestToken, type TestTokenKit } from '../../fixtures/testToken.js';
+import { deployTestTokenV1, type TestTokenV1Kit } from '../../fixtures/testTokenV1.js';
 
 /**
  * Spec: post-rotation, every rotated circuit still verifies functionally.
@@ -25,12 +25,12 @@ const MINTER_ROLE = new Uint8Array(32);
 });
 
 describe('TestToken — functional re-verification after VK rotation', () => {
-  let kit: TestTokenKit;
+  let kit: TestTokenV1Kit;
   let alice: Either<ZswapCoinPublicKey, ContractAddress>;
   let bob: Either<ZswapCoinPublicKey, ContractAddress>;
 
   beforeAll(async () => {
-    kit = await deployTestToken();
+    kit = await deployTestTokenV1();
     alice = await kit.aliasFor('ALICE');
     bob = await kit.aliasFor('BOB');
   });
@@ -99,8 +99,8 @@ describe('TestToken — functional re-verification after VK rotation', () => {
 
     await rotateCircuitVK(kit.providers, kit.deployed, 'transfer');
 
-    const alice = await kit.as('ALICE');
-    await alice.callTx.transfer(bob, 25n);
+    const aliceHandle = await kit.as('ALICE');
+    await aliceHandle.callTx.transfer(bob, 25n);
 
     const ledgerAfter = await kit.readLedger();
     expect(ledgerAfter.FungibleToken__balances.lookup(alice)).toBe(
