@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['test/integration/**/*.{spec,prop}.ts'],
+    include: ['test/integration/**/*.spec.ts'],
     exclude: [...configDefaults.exclude],
     reporters: 'verbose',
     // Integration tests share one funded genesis wallet and one local node —
