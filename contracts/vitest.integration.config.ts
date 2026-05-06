@@ -13,5 +13,8 @@ export default defineConfig({
     sequence: { concurrent: false },
     testTimeout: 180_000,
     hookTimeout: 300_000,
+    // Stop the process-shared `WalletPool` once the suite finishes. See
+    // `_harness/globalTeardown.ts` and `fixtures/walletPool.ts`.
+    globalSetup: ['./test/integration/_harness/globalTeardown.ts'],
   },
 });

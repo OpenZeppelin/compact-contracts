@@ -108,22 +108,9 @@ export circuit unpause(): [] {
 }
 
 // ─── FungibleToken read surface (unchanged) ───
-
-export circuit name(): Opaque<"string"> {
-  return FungibleToken_name();
-}
-
-export circuit symbol(): Opaque<"string"> {
-  return FungibleToken_symbol();
-}
-
-export circuit decimals(): Uint<8> {
-  return FungibleToken_decimals();
-}
-
-export circuit totalSupply(): Uint<128> {
-  return FungibleToken_totalSupply();
-}
+// `name` / `symbol` / `decimals` / `totalSupply` wrappers dropped to mirror
+// V1 — keeping the wrapper sets identical preserves cross-binding. The
+// ledger fields are still on chain and readable via `readLedger()`.
 
 export circuit balanceOf(
   account: Either<ZswapCoinPublicKey, ContractAddress>,

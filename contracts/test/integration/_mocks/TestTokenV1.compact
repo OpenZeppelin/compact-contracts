@@ -116,22 +116,9 @@ export circuit unpause(): [] {
 }
 
 // ─── FungibleToken public surface ───
-
-export circuit name(): Opaque<"string"> {
-  return FungibleToken_name();
-}
-
-export circuit symbol(): Opaque<"string"> {
-  return FungibleToken_symbol();
-}
-
-export circuit decimals(): Uint<8> {
-  return FungibleToken_decimals();
-}
-
-export circuit totalSupply(): Uint<128> {
-  return FungibleToken_totalSupply();
-}
+// `name` / `symbol` / `decimals` / `totalSupply` wrappers omitted — no spec
+// calls them as circuits. The underlying ledger fields are still written by
+// `FungibleToken_initialize` and remain readable via `readLedger()`.
 
 export circuit balanceOf(
   account: Either<ZswapCoinPublicKey, ContractAddress>,
