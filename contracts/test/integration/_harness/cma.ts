@@ -3,16 +3,28 @@ import {
   type ContractMaintenanceAuthority,
   type ContractState,
   sampleSigningKey,
+  signData,
   type SigningKey,
 } from '@midnight-ntwrk/compact-runtime';
-import type {
-  DeployedContract,
-  FoundContract,
+import {
+  Intent,
+  MaintenanceUpdate,
+  type SingleUpdate,
+  Transaction,
+} from '@midnight-ntwrk/ledger-v8';
+import {
+  submitTx,
+  type DeployedContract,
+  type FoundContract,
 } from '@midnight-ntwrk/midnight-js-contracts';
-import type {
-  MidnightProviders,
-  VerifierKey,
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  asContractAddress,
+  type FinalizedTxData,
+  type MidnightProviders,
+  type VerifierKey,
 } from '@midnight-ntwrk/midnight-js-types';
+import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
 /**
  * Query helpers and upgrade-path wrappers around the CMA primitives exposed by
@@ -145,4 +157,86 @@ export async function freeze<C extends ContractNs.Any>(
   const abandoned = sampleSigningKey();
   await deployed.contractMaintenanceTx.replaceAuthority(abandoned);
   // Intentionally drop `abandoned` — no reference is retained anywhere.
+}
+
+/**
+ * Submit a `MaintenanceUpdate` carrying *N* `SingleUpdate`s in a single tx.
+ *
+ * The SDK's public maintenance API (`circuitMaintenanceTx.X.removeVerifierKey()`,
+ * `contractMaintenanceTx.replaceAuthority(...)`, etc.) wraps exactly one
+ * `SingleUpdate` per tx — there's no public path to bundle multiple changes.
+ * To probe protocol-level questions like "what does the chain do with two
+ * `ReplaceAuthority`s in one bundle?" or "would the chain accept two
+ * `VerifierKeyInsert`s on the same operation if we bypass the SDK guard?",
+ * we have to drop down to the raw ledger-v8 classes and submit by hand.
+ *
+ * The flow mirrors what the SDK's internal `unprovenTxFromContractUpdates`
+ * (at `node_modules/@midnight-ntwrk/midnight-js-contracts/dist/index.mjs`)
+ * does, with manual signing in place of the contract-executable's
+ * `addOrReplaceContractOperation` / `removeContractOperation` calls:
+ *
+ *   1. Read the current CMA counter (replay protection — must match
+ *      on-chain at submission time).
+ *   2. Construct `new MaintenanceUpdate(addr, singleUpdates, counter)`.
+ *   3. Sign `mu.dataToSign` with the contract's signing key (looked up
+ *      from `providers.privateStateProvider`).
+ *   4. Attach the signature at committee index 0n (single-signer CMA — every
+ *      contract this harness deploys has a one-key authority).
+ *   5. Wrap in `Intent.new(ttl).addMaintenanceUpdate(signed)`.
+ *   6. Wrap that in `Transaction.fromParts(networkId, undefined, undefined, intent)`.
+ *   7. Submit via `submitTx(providers, { unprovenTx })`.
+ *
+ * Counter caveat: a `MaintenanceUpdate` carrying *N* `SingleUpdate`s only
+ * occupies counter value *C*. Whether the chain advances the on-chain
+ * counter by 1 (one tx = one increment) or by N (one increment per
+ * SingleUpdate) is itself an open question — observe via `readCmaCounter`
+ * before/after to find out.
+ *
+ * @returns the `FinalizedTxData` from `submitTx`. Throws on submission
+ *          failure (`TxFailedError` from the SDK or wrapped variants — see
+ *          existing patterns in `specs/authority/`).
+ *
+ * @example
+ *   await submitRawMaintenanceUpdate(kit.providers, kit.contractAddress, [
+ *     new ReplaceAuthority(authA),
+ *     new ReplaceAuthority(authB),
+ *   ]);
+ */
+export async function submitRawMaintenanceUpdate(
+  providers: AnyProviders,
+  contractAddress: string,
+  updates: SingleUpdate[],
+): Promise<FinalizedTxData> {
+  const [signingKey, counter] = await Promise.all([
+    providers.privateStateProvider.getSigningKey(contractAddress),
+    readCmaCounter(providers, contractAddress),
+  ]);
+  if (!signingKey) {
+    throw new Error(
+      `submitRawMaintenanceUpdate: no signing key for contract ${contractAddress} in privateStateProvider`,
+    );
+  }
+
+  const mu = new MaintenanceUpdate(
+    asContractAddress(contractAddress),
+    updates,
+    counter,
+  );
+  const signature = signData(signingKey, mu.dataToSign);
+  const signed = mu.addSignature(0n, signature);
+
+  const intent = Intent.new(ttlOneHour()).addMaintenanceUpdate(signed);
+  const unprovenTx = Transaction.fromParts(
+    getNetworkId(),
+    undefined,
+    undefined,
+    intent,
+  );
+  // `submitTx`'s providers type is generic over a contract type, but the
+  // call only reads provider plumbing (publicData, wallet) that's identical
+  // for any contract. The cast just unifies the generic so `AnyProviders`
+  // satisfies the parameter.
+  return submitTx(providers as Parameters<typeof submitTx>[0], {
+    unprovenTx,
+  });
 }
