@@ -1,4 +1,3 @@
-import { CallTxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   deployTestTokenV1,
@@ -171,21 +170,18 @@ describe('TestToken upgrade — `_unsafeTransferOwnership` is decommissioned', (
   });
 
   it('should reject `_unsafeTransferOwnership` calls via the V1 handle once its VK is removed', async () => {
-    // V1's bound CompiledContract still exposes `_unsafeTransferOwnership` —
-    // proof generation succeeds locally (the prover key is intact), but the
-    // consensus node fails verification because the slot's VK was removed.
-    // submit-call-tx then throws `CallTxFailedError` (midnight-js-contracts/
-    // dist/index.mjs:698) with `finalizedTxData.status === 'FailEntirely'`
-    // and `circuitId === '_unsafeTransferOwnership'`.
+    // V1's bound CompiledContract still exposes `_unsafeTransferOwnership`,
+    // but after `removeVerifierKey()` the on-chain `ContractState` no longer
+    // lists the operation. The SDK aborts CLIENT-SIDE before submission with
+    // `Error("Operation '_unsafeTransferOwnership' is undefined for contract
+    // state ...")` — a plain Error wrapped by `scoped()`. The typed
+    // `CallTxFailedError` never gets thrown because the call doesn't reach
+    // the chain. Asserting on the operation name in the message is the
+    // honest contract: caller learns "this circuit is gone."
     const alice = await v1.signers.eitherFor('ALICE');
-    const call = v1.deployed.callTx._unsafeTransferOwnership(alice);
-
-    await expect(call).rejects.toBeInstanceOf(CallTxFailedError);
-    await expect(call).rejects.toMatchObject({
-      name: 'CallTxFailedError',
-      circuitId: '_unsafeTransferOwnership',
-      finalizedTxData: { status: 'FailEntirely' },
-    });
+    await expect(
+      v1.deployed.callTx._unsafeTransferOwnership(alice),
+    ).rejects.toThrow(/Operation '_unsafeTransferOwnership' is undefined/);
   });
 
   it('should not even surface `_unsafeTransferOwnership` on the V2 handle (circuit dropped from V2)', async () => {
