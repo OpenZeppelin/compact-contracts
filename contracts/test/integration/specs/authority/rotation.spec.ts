@@ -1,8 +1,5 @@
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import {
-  findDeployedContract,
-  RemoveVerifierKeyTxFailedError,
-} from '@midnight-ntwrk/midnight-js-contracts';
+import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readCmaCounter, rotateAuthority } from '../../_harness/cma.js';
 import {
@@ -85,8 +82,14 @@ describe('TestToken — CMA rotation via replaceAuthority', () => {
       initialPrivateState: TestTokenV1PrivateState,
       signingKey: originalKey,
     });
+    // The chain rejects the maintenance tx because the old key no longer
+    // authorises (substrate "Custom error: 135"). The SDK currently surfaces
+    // this as Effect's `(FiberFailure) SubmissionError: Transaction submission
+    // error`, NOT as the typed `RemoveVerifierKeyTxFailedError` — neither
+    // the outer wrapper nor any `.cause` link carries that class. Match on
+    // the message instead.
     await expect(
       reFound.circuitMaintenanceTx.pause.removeVerifierKey(),
-    ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
+    ).rejects.toThrow(/SubmissionError|Transaction submission error/);
   });
 });
