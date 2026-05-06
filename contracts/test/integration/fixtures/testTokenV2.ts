@@ -1,9 +1,10 @@
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import type { Contract as ContractNs } from '@midnight-ntwrk/compact-js';
 import {
-  type DeployedContract,
+  createCircuitCallTxInterface,
+  createCircuitMaintenanceTxInterfaces,
+  createContractMaintenanceTxInterface,
   type FoundContract,
-  findDeployedContract,
 } from '@midnight-ntwrk/midnight-js-contracts';
 import type {
   MidnightProviders,
@@ -33,13 +34,12 @@ import {
  * This file exposes:
  *
  *   - `compiledTestTokenV2`  — the V2 `CompiledContract`, used to look up
- *     V2-specific verifier keys.
+ *     V2-specific verifier keys and to type the V2 handle.
  *   - `v2VerifierKey(name)`  — async getter that returns the V2 VK for a
  *     given circuit name (so specs can pass it into `insertVerifierKey`).
- *   - `bindAsV2(kit)`        — re-finds the deployed V1 contract address
- *     using V2's compiled-contract + zk-config so subsequent `callTx.foo()`
- *     proves against V2's prover keys (the chain verifies against whatever
- *     VK is currently installed at that circuit slot).
+ *   - `bindAsV2(kit, alias)` — returns a V2-typed handle for the V1-deployed
+ *     contract WITHOUT running the SDK's strict whole-VK-set check (see
+ *     `bindAsV2`'s docstring for why and how).
  *
  * Same private-state shape as V1 (Compact CMA can't change ledger layout).
  */
@@ -51,9 +51,10 @@ export type TestTokenV2Providers = MidnightProviders<
   typeof TestTokenV1PrivateStateId,
   TestTokenV1PrivateState
 >;
-export type TestTokenV2Handle =
-  | DeployedContract<TestTokenV2Contract>
-  | FoundContract<TestTokenV2Contract>;
+// `bindAsV2` returns a manually-built handle that mirrors the shape of
+// `FoundContract<V2>` (callTx, circuitMaintenanceTx, contractMaintenanceTx).
+// We keep the type alias to make the spec signatures expressive.
+export type TestTokenV2Handle = FoundContract<TestTokenV2Contract>;
 
 export const compiledTestTokenV2 = CompiledContract.make(
   'TestTokenV2',
@@ -80,20 +81,36 @@ export async function v2VerifierKey(
 }
 
 /**
- * Re-find the (V1-deployed) contract using V2's compiled-contract bundle, so
- * subsequent `callTx.foo(...)` invocations prove against V2's prover keys.
+ * Build a V2-typed handle (`callTx` + `circuitMaintenanceTx` + `contractMaintenanceTx`)
+ * for the V1-deployed contract, WITHOUT running `findDeployedContract<V2>`'s
+ * strict whole-VK-set check.
  *
- * The on-chain authority verifies against whichever VK is installed at that
- * circuit slot — so this only succeeds if the spec has already rotated the
- * relevant V1 → V2 VK before calling.
+ * Why we skip the strict check: `findDeployedContract` walks every circuit
+ * in V2's compiled set and rejects the bind if any on-chain VK is missing
+ * or doesn't match V2's expected VK. That's the right safety net for
+ * production code, but it forces an upgrade spec to rotate EVERY V2-divergent
+ * circuit before binding — even ones the test doesn't care about — which
+ * obscures what each test actually changes on chain.
  *
- * Caller must pass an `alias` — V2's pause/unpause require admin role.
+ * Each describe rotates exactly the circuit(s) it tests via
+ * `kit.deployed.circuitMaintenanceTx.<name>.{remove,insert}VerifierKey(...)`
+ * (or `v2Handle.circuitMaintenanceTx.<name>.insertVerifierKey(...)` for
+ * V2-only circuits like `mintBatch`). The handle returned here is callable
+ * for ANY circuit V2 declares; whether a given call succeeds depends on
+ * whether the on-chain VK actually matches V2's prover key — which is
+ * exactly what the test is asserting.
+ *
+ * Caller must pass an `alias`. `'GENESIS'` resolves to the deployer wallet
+ * (built from the funded test mnemonic, lives on `kit.wallet`); every other
+ * alias comes from the shared signer pool.
  */
 export async function bindAsV2(
   kit: TestTokenV1Kit,
   alias: string,
 ): Promise<TestTokenV2Handle> {
-  const aliasWallet = await kit.signers.signerFor(alias);
+  const aliasWallet =
+    alias === 'GENESIS' ? kit.wallet : await kit.signers.signerFor(alias);
+
   const v2Providers = buildProviders<
     TestTokenV2CircuitKeys,
     typeof TestTokenV1PrivateStateId,
@@ -103,10 +120,56 @@ export async function bindAsV2(
     moduleRootPath('TestTokenV2'),
     `testTokenV2-${alias.toLowerCase()}-${Date.now()}`,
   ) as TestTokenV2Providers;
-  return findDeployedContract<TestTokenV2Contract>(v2Providers, {
-    compiledContract: compiledTestTokenV2,
-    contractAddress: kit.contractAddress,
-    privateStateId: TestTokenV1PrivateStateId,
-    initialPrivateState: TestTokenV1PrivateState,
-  });
+
+  // Replicate the privateStateProvider side-effects that `findDeployedContract`
+  // would have performed:
+  //   1. setContractAddress — many call/maintenance paths look up the
+  //      "current" contract address from the provider.
+  //   2. set(privateStateId, ...) — `createCircuitCallTxInterface` queries
+  //      the private state by ID before each call; a missing entry trips
+  //      the "No private state found at private state ID …" error. Empty
+  //      record is correct: V2's witnesses are `never`.
+  //   3. setSigningKey — maintenance txs (insert/remove VK) need the
+  //      contract's authority signing key.
+  v2Providers.privateStateProvider.setContractAddress(kit.contractAddress);
+  await v2Providers.privateStateProvider.set(
+    TestTokenV1PrivateStateId,
+    TestTokenV1PrivateState,
+  );
+  const signingKey = await kit.providers.privateStateProvider.getSigningKey(
+    kit.contractAddress,
+  );
+  if (signingKey) {
+    await v2Providers.privateStateProvider.setSigningKey(
+      kit.contractAddress,
+      signingKey,
+    );
+  }
+
+  // Build the same surface `findDeployedContract` would have returned,
+  // minus the strict VK-set validation. `deployTxData` is left empty
+  // because the upgrade specs don't read it.
+  const callTx = createCircuitCallTxInterface(
+    v2Providers,
+    compiledTestTokenV2,
+    kit.contractAddress,
+    TestTokenV1PrivateStateId,
+  );
+  const circuitMaintenanceTx = createCircuitMaintenanceTxInterfaces(
+    v2Providers,
+    compiledTestTokenV2,
+    kit.contractAddress,
+  );
+  const contractMaintenanceTx = createContractMaintenanceTxInterface(
+    v2Providers,
+    compiledTestTokenV2,
+    kit.contractAddress,
+  );
+
+  return {
+    deployTxData: {} as TestTokenV2Handle['deployTxData'],
+    callTx,
+    circuitMaintenanceTx,
+    contractMaintenanceTx,
+  };
 }

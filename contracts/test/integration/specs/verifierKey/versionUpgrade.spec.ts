@@ -12,19 +12,27 @@ import {
 /**
  * Spec: real-world version upgrade via VK rotation.
  *
- * V1 deploys cleanly. The spec then rotates one or more circuits' verifier
- * keys to V2's, which changes on-chain behaviour for those circuits. Three
- * stories are covered:
+ * V1 deploys cleanly. Each describe rotates EXACTLY the circuit(s) under
+ * test (remove + insert, or insert-only for new circuits) so the on-chain
+ * change is visible at the call site. Stories covered:
  *
  *   1. **Mint cap** — `_mint` rotates to V2's VK; over-cap mints reject,
  *      under-cap mints succeed.
  *   2. **Admin-gated pause** — `pause`/`unpause` rotate to V2's VKs; non-admin
  *      callers can no longer pause; admin still can.
- *   3. **New operation name** — V2 introduces `mintBatch`, a circuit that
- *      doesn't exist in V1's VK table. `insertVerifierKey('mintBatch', v2VK)`
- *      tests whether Compact's CMA permits adding a brand-new operation
- *      (open question per the upgradability research). The spec asserts the
- *      observable outcome regardless of which way it goes.
+ *   3. **`transferOwnership` post-C2C semantics** — `transferOwnership`
+ *      rotates to V2's VK (drops the ContractAddress guard); contract
+ *      destinations now succeed where V1 would have rejected.
+ *   4. **Decommissioning the unsafe circuit** — `_unsafeTransferOwnership`'s
+ *      VK is removed with no replacement. Calls reject; V2's typed surface
+ *      doesn't carry the symbol either.
+ *   5. **New operation name** — V2 introduces `mintBatch`. Its V2 VK is
+ *      inserted (no remove, since the slot was empty on V1).
+ *
+ * `bindAsV2` returns a permissive V2-typed handle that does NOT validate
+ * every V2 circuit's VK against on-chain (see the helper's docstring).
+ * Each describe is responsible for rotating only the circuits it calls
+ * via `v2.callTx.X` — anything else stays on V1's VK and is unaffected.
  */
 
 describe('TestToken upgrade — `_mint` rotation enforces V2 per-tx cap', () => {
@@ -65,6 +73,7 @@ describe('TestToken upgrade — `pause` rotation gates pause on admin role', () 
 
   beforeAll(async () => {
     v1 = await deployTestTokenV1();
+    // Rotate `pause` and `unpause` to V2's VKs — V2 adds an admin-role gate.
     const v2PauseVk = await v2VerifierKey('pause');
     const v2UnpauseVk = await v2VerifierKey('unpause');
     await v1.deployed.circuitMaintenanceTx.pause.removeVerifierKey();
@@ -100,7 +109,7 @@ describe('TestToken upgrade — `transferOwnership` rotation lifts the ContractA
     testTokenV1 = await deployTestTokenV1();
     // Rotate `transferOwnership` from V1's VK (rejects ContractAddress) to
     // V2's VK (delegates to Ownable._unsafeTransferOwnership — no
-    // ContractAddress guard, simulates post-C2C semantics).
+    // ContractAddress guard, simulating post-C2C semantics).
     const v2TransferOwnershipVk = await v2VerifierKey('transferOwnership');
     await testTokenV1.deployed.circuitMaintenanceTx.transferOwnership.removeVerifierKey();
     await testTokenV1.deployed.circuitMaintenanceTx.transferOwnership.insertVerifierKey(
@@ -237,16 +246,18 @@ describe('TestToken upgrade — inserting V2 `mintBatch` (a brand-new circuit)',
     expect(after).toBe(before + 3000n);
   });
 
-  it('should still let `_mint` run as the original V1 circuit (siblings unaffected)', async () => {
-    const v2 = await bindAsV2(v1, 'GENESIS');
+  it('should leave `_mint` undisturbed (siblings unaffected by the mintBatch insert)', async () => {
+    // `_mint`'s on-chain VK was never touched in this describe — only
+    // `mintBatch` was inserted. V1's prover key (still loaded by `v1.deployed`)
+    // produces a proof that matches V1's `_mint` VK on chain, so the call
+    // succeeds. NOTE: we deliberately use V1's handle, not V2's: V2's
+    // `_mint` body differs (adds a cap), so V2's prover key would generate
+    // a proof that does NOT match V1's on-chain VK.
     const bob = await v1.signers.eitherFor('BOB');
-    // `_mint`'s VK was never rotated in this describe block, so it still
-    // proves against V1's keys. We use the V2 handle for type access only —
-    // the `_mint` SLOT on chain still holds V1's VK.
     const before = (await v1.readLedger()).FungibleToken__balances.member(bob)
       ? (await v1.readLedger()).FungibleToken__balances.lookup(bob)
       : 0n;
-    await v2.callTx._mint(bob, 50n);
+    await v1.deployed.callTx._mint(bob, 50n);
     const after = (await v1.readLedger()).FungibleToken__balances.lookup(bob);
     expect(after).toBe(before + 50n);
   });
