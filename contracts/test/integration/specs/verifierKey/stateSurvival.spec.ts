@@ -43,13 +43,13 @@ interface Snapshot {
 }
 
 describe('TestToken — VK rotation preserves heterogeneous ledger state', () => {
-  let kit: TestTokenV1Kit;
+  let v1: TestTokenV1Kit;
   let alice: Either<ZswapCoinPublicKey, ContractAddress>;
   let bob: Either<ZswapCoinPublicKey, ContractAddress>;
 
   async function snapshot(): Promise<Snapshot> {
-    const ledger = await kit.readLedger();
-    const counter = await readCmaCounter(kit.providers, kit.contractAddress);
+    const ledger = await v1.readLedger();
+    const counter = await readCmaCounter(v1.providers, v1.contractAddress);
     const operatorRoles = ledger.AccessControl__operatorRoles;
     const balances = ledger.FungibleToken__balances;
     return {
@@ -66,15 +66,15 @@ describe('TestToken — VK rotation preserves heterogeneous ledger state', () =>
   }
 
   beforeAll(async () => {
-    kit = await deployTestTokenV1();
-    alice = await kit.aliasFor('ALICE');
-    bob = await kit.aliasFor('BOB');
+    v1 = await deployTestTokenV1();
+    alice = await v1.signers.eitherFor('ALICE');
+    bob = await v1.signers.eitherFor('BOB');
 
     // Build heterogeneous initial state.
-    const admin = await kit.as('ADMIN');
+    const admin = await v1.as('ADMIN');
     await admin.callTx.grantRole(MINTER_ROLE, alice);
-    await kit.deployed.callTx._mint(bob, 100n);
-    await kit.deployed.callTx.pause();
+    await v1.deployed.callTx._mint(bob, 100n);
+    await v1.deployed.callTx.pause();
 
     // Sanity — assert pre-rotation state matches expectations before we
     // start rotating. If these fail, something is wrong with setup, not
@@ -90,14 +90,14 @@ describe('TestToken — VK rotation preserves heterogeneous ledger state', () =>
   });
 
   afterAll(async () => {
-    await kit?.teardown();
+    await v1?.teardown();
   });
 
   async function expectStatePreserved(
     circuitName: ContractNs.ProvableCircuitId<TestTokenV1Contract>,
   ) {
     const before = await snapshot();
-    await rotateCircuitVK(kit.providers, kit.deployed, circuitName);
+    await rotateCircuitVK(v1.providers, v1.deployed, circuitName);
     const after = await snapshot();
     expect(after).toMatchObject({
       initialized: before.initialized,

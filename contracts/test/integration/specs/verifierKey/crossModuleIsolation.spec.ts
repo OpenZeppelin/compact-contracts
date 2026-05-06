@@ -24,41 +24,41 @@ const MINTER_ROLE = new Uint8Array(32);
 });
 
 describe('TestToken — cross-module isolation under VK rotation', () => {
-  let kit: TestTokenV1Kit;
+  let v1: TestTokenV1Kit;
   let alice: Either<ZswapCoinPublicKey, ContractAddress>;
   let bob: Either<ZswapCoinPublicKey, ContractAddress>;
 
   beforeAll(async () => {
-    kit = await deployTestTokenV1();
-    alice = await kit.aliasFor('ALICE');
-    bob = await kit.aliasFor('BOB');
+    v1 = await deployTestTokenV1();
+    alice = await v1.signers.eitherFor('ALICE');
+    bob = await v1.signers.eitherFor('BOB');
   });
 
   afterAll(async () => {
-    await kit?.teardown();
+    await v1?.teardown();
   });
 
   it("should preserve BOB's balance when rotating the AccessControl `grantRole` VK after a FungibleToken mint", async () => {
-    await kit.deployed.callTx._mint(bob, 50n);
-    const before = (await kit.readLedger()).FungibleToken__balances.lookup(
+    await v1.deployed.callTx._mint(bob, 50n);
+    const before = (await v1.readLedger()).FungibleToken__balances.lookup(
       bob,
     );
 
-    await rotateCircuitVK(kit.providers, kit.deployed, 'grantRole');
+    await rotateCircuitVK(v1.providers, v1.deployed, 'grantRole');
 
-    const after = (await kit.readLedger()).FungibleToken__balances.lookup(
+    const after = (await v1.readLedger()).FungibleToken__balances.lookup(
       bob,
     );
     expect(after).toBe(before);
   });
 
   it("should preserve ALICE's MINTER role when rotating the FungibleToken `_mint` VK after the role grant", async () => {
-    const admin = await kit.as('ADMIN');
+    const admin = await v1.as('ADMIN');
     await admin.callTx.grantRole(MINTER_ROLE, alice);
 
-    await rotateCircuitVK(kit.providers, kit.deployed, '_mint');
+    await rotateCircuitVK(v1.providers, v1.deployed, '_mint');
 
-    const ledger = await kit.readLedger();
+    const ledger = await v1.readLedger();
     const aliceHas =
       ledger.AccessControl__operatorRoles.member(MINTER_ROLE) &&
       ledger.AccessControl__operatorRoles.lookup(MINTER_ROLE).member(alice) &&
@@ -69,16 +69,16 @@ describe('TestToken — cross-module isolation under VK rotation', () => {
   });
 
   it('should keep the contract paused when rotating the FungibleToken `_mint` VK after a pause', async () => {
-    if (!(await kit.readLedger()).Pausable__isPaused) {
-      await kit.deployed.callTx.pause();
+    if (!(await v1.readLedger()).Pausable__isPaused) {
+      await v1.deployed.callTx.pause();
     }
-    await rotateCircuitVK(kit.providers, kit.deployed, '_mint');
-    expect((await kit.readLedger()).Pausable__isPaused).toBe(true);
+    await rotateCircuitVK(v1.providers, v1.deployed, '_mint');
+    expect((await v1.readLedger()).Pausable__isPaused).toBe(true);
   });
 
   it('should keep Initializable.isInitialized = true when rotating the Pausable `pause` VK', async () => {
-    expect((await kit.readLedger()).Initializable__isInitialized).toBe(true);
-    await rotateCircuitVK(kit.providers, kit.deployed, 'pause');
-    expect((await kit.readLedger()).Initializable__isInitialized).toBe(true);
+    expect((await v1.readLedger()).Initializable__isInitialized).toBe(true);
+    await rotateCircuitVK(v1.providers, v1.deployed, 'pause');
+    expect((await v1.readLedger()).Initializable__isInitialized).toBe(true);
   });
 });

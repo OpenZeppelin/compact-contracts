@@ -30,38 +30,38 @@ import {
  * has the key" semantic.
  */
 describe('TestToken — freezing the CMA blocks further maintenance', () => {
-  let kit: TestTokenV1Kit;
+  let v1: TestTokenV1Kit;
   let counterBeforeFreeze: bigint;
 
   beforeAll(async () => {
-    kit = await deployTestTokenV1();
+    v1 = await deployTestTokenV1();
   });
 
   afterAll(async () => {
-    await kit?.teardown();
+    await v1?.teardown();
   });
 
   it('should accept a maintenance update before freezing (sanity)', async () => {
-    const before = await readCmaCounter(kit.providers, kit.contractAddress);
-    const vk = await kit.providers.zkConfigProvider.getVerifierKey('pause');
-    await kit.deployed.circuitMaintenanceTx.pause.removeVerifierKey();
-    await kit.deployed.circuitMaintenanceTx.pause.insertVerifierKey(vk);
-    const after = await readCmaCounter(kit.providers, kit.contractAddress);
+    const before = await readCmaCounter(v1.providers, v1.contractAddress);
+    const vk = await v1.providers.zkConfigProvider.getVerifierKey('pause');
+    await v1.deployed.circuitMaintenanceTx.pause.removeVerifierKey();
+    await v1.deployed.circuitMaintenanceTx.pause.insertVerifierKey(vk);
+    const after = await readCmaCounter(v1.providers, v1.contractAddress);
     expect(after).toBe(before + 2n);
     counterBeforeFreeze = after;
   });
 
   it('should advance the CMA counter by 1 when freeze() succeeds', async () => {
-    await freeze(kit.deployed);
-    const after = await readCmaCounter(kit.providers, kit.contractAddress);
+    await freeze(v1.deployed);
+    const after = await readCmaCounter(v1.providers, v1.contractAddress);
     expect(after).toBe(counterBeforeFreeze + 1n);
   });
 
   it('should reject every maintenance update signed by a wrong key after freeze', async () => {
     const wrongKey = sampleSigningKey();
-    const reFound = await findDeployedContract(kit.providers, {
+    const reFound = await findDeployedContract(v1.providers, {
       compiledContract: compiledTestTokenV1,
-      contractAddress: kit.contractAddress,
+      contractAddress: v1.contractAddress,
       privateStateId: TestTokenV1PrivateStateId,
       initialPrivateState: TestTokenV1PrivateState,
       signingKey: wrongKey,

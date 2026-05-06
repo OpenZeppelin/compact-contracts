@@ -31,20 +31,20 @@ MINTER_ROLE[4] = 0x45; // 'E'
 MINTER_ROLE[5] = 0x52; // 'R'
 
 describe('AccessControl — multi-signer role gating', () => {
-  let kit: TestTokenV1Kit;
+  let v1: TestTokenV1Kit;
 
   beforeAll(async () => {
-    kit = await deployTestTokenV1();
+    v1 = await deployTestTokenV1();
   });
 
   afterAll(async () => {
-    await kit?.teardown();
+    await v1?.teardown();
   });
 
   it('should grant DEFAULT_ADMIN_ROLE to ADMIN during fixture bootstrap', async () => {
-    const ledger = await kit.readLedger();
-    const admin = await kit.aliasFor('ADMIN');
-    const adminHandle = await kit.as('ADMIN');
+    const ledger = await v1.readLedger();
+    const admin = await v1.signers.eitherFor('ADMIN');
+    const adminHandle = await v1.as('ADMIN');
     const has = await adminHandle.callTx.hasRole(
       ledger.AccessControl_DEFAULT_ADMIN_ROLE,
       admin,
@@ -53,24 +53,24 @@ describe('AccessControl — multi-signer role gating', () => {
   });
 
   it('should let ADMIN grant MINTER_ROLE to ALICE', async () => {
-    const adminHandle = await kit.as('ADMIN');
-    const alice = await kit.aliasFor('ALICE');
+    const adminHandle = await v1.as('ADMIN');
+    const alice = await v1.signers.eitherFor('ALICE');
     await adminHandle.callTx.grantRole(MINTER_ROLE, alice);
     const has = await adminHandle.callTx.hasRole(MINTER_ROLE, alice);
     expect(has.private.result).toBe(true);
   });
 
   it('should let ADMIN revoke MINTER_ROLE from ALICE', async () => {
-    const adminHandle = await kit.as('ADMIN');
-    const alice = await kit.aliasFor('ALICE');
+    const adminHandle = await v1.as('ADMIN');
+    const alice = await v1.signers.eitherFor('ALICE');
     await adminHandle.callTx.revokeRole(MINTER_ROLE, alice);
     const has = await adminHandle.callTx.hasRole(MINTER_ROLE, alice);
     expect(has.private.result).toBe(false);
   });
 
   it('should reject BOB attempting to grant a role (BOB lacks admin)', async () => {
-    const bobHandle = await kit.as('BOB');
-    const alice = await kit.aliasFor('ALICE');
+    const bobHandle = await v1.as('BOB');
+    const alice = await v1.signers.eitherFor('ALICE');
     await expect(
       bobHandle.callTx.grantRole(MINTER_ROLE, alice),
     ).rejects.toThrow('AccessControl: unauthorized account');

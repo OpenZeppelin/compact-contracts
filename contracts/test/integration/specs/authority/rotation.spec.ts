@@ -29,21 +29,21 @@ import {
  *      maintenance update — proving the new key works.
  */
 describe('TestToken — CMA rotation via replaceAuthority', () => {
-  let kit: TestTokenV1Kit;
+  let v1: TestTokenV1Kit;
   let originalKey: ReturnType<typeof sampleSigningKey>;
   let counterBeforeRotation: bigint;
 
   beforeAll(async () => {
-    kit = await deployTestTokenV1();
-    originalKey = kit.deployed.deployTxData.private.signingKey;
+    v1 = await deployTestTokenV1();
+    originalKey = v1.deployed.deployTxData.private.signingKey;
     counterBeforeRotation = await readCmaCounter(
-      kit.providers,
-      kit.contractAddress,
+      v1.providers,
+      v1.contractAddress,
     );
   });
 
   afterAll(async () => {
-    await kit?.teardown();
+    await v1?.teardown();
   });
 
   // Note on ordering:
@@ -56,20 +56,20 @@ describe('TestToken — CMA rotation via replaceAuthority', () => {
 
   it('should install a new signing key and advance the CMA counter by 1 when calling replaceAuthority', async () => {
     const newKey = sampleSigningKey();
-    await rotateAuthority(kit.deployed, newKey);
+    await rotateAuthority(v1.deployed, newKey);
     const counterAfter = await readCmaCounter(
-      kit.providers,
-      kit.contractAddress,
+      v1.providers,
+      v1.contractAddress,
     );
     expect(counterAfter).toBe(counterBeforeRotation + 1n);
   });
 
   it('should authorise further maintenance updates with the rotated key', async () => {
-    const before = await readCmaCounter(kit.providers, kit.contractAddress);
+    const before = await readCmaCounter(v1.providers, v1.contractAddress);
     // kit.deployed still holds the post-rotation key the SDK installed.
     const evenNewerKey = sampleSigningKey();
-    await rotateAuthority(kit.deployed, evenNewerKey);
-    const after = await readCmaCounter(kit.providers, kit.contractAddress);
+    await rotateAuthority(v1.deployed, evenNewerKey);
+    const after = await readCmaCounter(v1.providers, v1.contractAddress);
     expect(after).toBe(before + 1n);
   });
 
@@ -78,9 +78,9 @@ describe('TestToken — CMA rotation via replaceAuthority', () => {
     // no longer matches the on-chain CMA, so the chain rejects. Side effect:
     // this overwrites the per-address local key store, which is why this
     // test runs last.
-    const reFound = await findDeployedContract(kit.providers, {
+    const reFound = await findDeployedContract(v1.providers, {
       compiledContract: compiledTestTokenV1,
-      contractAddress: kit.contractAddress,
+      contractAddress: v1.contractAddress,
       privateStateId: TestTokenV1PrivateStateId,
       initialPrivateState: TestTokenV1PrivateState,
       signingKey: originalKey,
