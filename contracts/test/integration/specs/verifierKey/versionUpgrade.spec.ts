@@ -1,3 +1,4 @@
+import { CallTxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   deployTestTokenV1,
@@ -89,6 +90,109 @@ describe('TestToken upgrade — `pause` rotation gates pause on admin role', () 
     await expect(bobV2.callTx.pause()).rejects.toThrow(
       'AccessControl: unauthorized account',
     );
+  });
+});
+
+describe('TestToken upgrade — `transferOwnership` rotation lifts the ContractAddress guard (post-C2C)', () => {
+  let testTokenV1: TestTokenV1Kit;
+
+  beforeAll(async () => {
+    testTokenV1 = await deployTestTokenV1();
+    // Rotate `transferOwnership` from V1's VK (rejects ContractAddress) to
+    // V2's VK (delegates to Ownable._unsafeTransferOwnership — no
+    // ContractAddress guard, simulates post-C2C semantics).
+    const v2TransferOwnershipVk = await v2VerifierKey('transferOwnership');
+    await testTokenV1.deployed.circuitMaintenanceTx.transferOwnership.removeVerifierKey();
+    await testTokenV1.deployed.circuitMaintenanceTx.transferOwnership.insertVerifierKey(
+      v2TransferOwnershipVk,
+    );
+  });
+
+  afterAll(async () => {
+    await testTokenV1?.teardown();
+  });
+
+  it('should still let the owner transfer to an EOA after rotation', async () => {
+    // Genesis (the deployer) is the initial owner. After rotation, the V2
+    // body still owner-checks and zero-checks — EOA transfers must work.
+    const v2 = await bindAsV2(testTokenV1, 'GENESIS');
+    const alice = await testTokenV1.aliasFor('ALICE');
+    await v2.callTx.transferOwnership(alice);
+    expect((await testTokenV1.readLedger()).Ownable__owner.left.bytes).toEqual(
+      alice.left.bytes,
+    );
+  });
+
+  it('should accept a ContractAddress destination after rotation (V1 would have rejected)', async () => {
+    // Re-deploy so the owner is the deployer again (previous test moved it).
+    const fresh = await deployTestTokenV1();
+    try {
+      const v2Vk = await v2VerifierKey('transferOwnership');
+      await fresh.deployed.circuitMaintenanceTx.transferOwnership.removeVerifierKey();
+      await fresh.deployed.circuitMaintenanceTx.transferOwnership.insertVerifierKey(v2Vk);
+
+      const v2 = await bindAsV2(fresh, 'GENESIS');
+      const contractDest = fresh.contractAddressEither('upgrade-test-contract');
+
+      // V1 would have asserted "Ownable: unsafe ownership transfer" here.
+      await v2.callTx.transferOwnership(contractDest);
+
+      const ownerNow = (await fresh.readLedger()).Ownable__owner;
+      expect(ownerNow.is_left).toBe(false);
+      expect(ownerNow.right.bytes).toEqual(contractDest.right.bytes);
+    } finally {
+      await fresh.teardown();
+    }
+  });
+});
+
+describe('TestToken upgrade — `_unsafeTransferOwnership` is decommissioned', () => {
+  let testTokenV1: TestTokenV1Kit;
+
+  beforeAll(async () => {
+    testTokenV1 = await deployTestTokenV1();
+    // The unsafe escape hatch was deleted in V2 — there is no V2 VK to
+    // rotate to. The realistic upgrade is `removeVerifierKey()` with no
+    // replacement, leaving the slot dead.
+    await testTokenV1.deployed.circuitMaintenanceTx._unsafeTransferOwnership.removeVerifierKey();
+  });
+
+  afterAll(async () => {
+    await testTokenV1?.teardown();
+  });
+
+  it('should reject `_unsafeTransferOwnership` calls via the V1 handle once its VK is removed', async () => {
+    // V1's bound CompiledContract still exposes `_unsafeTransferOwnership` —
+    // proof generation succeeds locally (the prover key is intact), but the
+    // consensus node fails verification because the slot's VK was removed.
+    // submit-call-tx then throws `CallTxFailedError` (midnight-js-contracts/
+    // dist/index.mjs:698) with `finalizedTxData.status === 'FailEntirely'`
+    // and `circuitId === '_unsafeTransferOwnership'`.
+    const alice = await testTokenV1.aliasFor('ALICE');
+    const call = testTokenV1.deployed.callTx._unsafeTransferOwnership(alice);
+
+    await expect(call).rejects.toBeInstanceOf(CallTxFailedError);
+    await expect(call).rejects.toMatchObject({
+      name: 'CallTxFailedError',
+      circuitId: '_unsafeTransferOwnership',
+      finalizedTxData: { status: 'FailEntirely' },
+    });
+  });
+
+  it('should not even surface `_unsafeTransferOwnership` on the V2 handle (circuit dropped from V2)', async () => {
+    // V2's CompiledContract was built without a `_unsafeTransferOwnership`
+    // wrapper, so the bound handle's `callTx` has no such property.
+    // Calling the missing member is a synchronous TypeError — it never
+    // reaches the chain. Two assertions: the property is `undefined` and
+    // attempting to invoke it throws TypeError.
+    const v2 = await bindAsV2(testTokenV1, 'GENESIS');
+    const callTx = v2.callTx as Record<string, unknown>;
+    expect(callTx._unsafeTransferOwnership).toBeUndefined();
+    const alice = await testTokenV1.aliasFor('ALICE');
+    expect(() =>
+      (callTx as { _unsafeTransferOwnership: (a: unknown) => unknown })
+        ._unsafeTransferOwnership(alice),
+    ).toThrow(TypeError);
   });
 });
 

@@ -116,6 +116,17 @@ export interface TestTokenV1Kit {
     alias: string,
   ): Promise<Either<ZswapCoinPublicKey, ContractAddressT>>;
 
+  /**
+   * Build an `Either<ZswapCoinPublicKey, ContractAddress>` whose right side
+   * holds a deterministic 32-byte ContractAddress. Used by Ownable upgrade
+   * specs to prove that V2's `transferOwnership` (post-C2C semantics) accepts
+   * contract destinations that V1 would have rejected. The address is a
+   * stable test fixture — no contract is actually deployed there.
+   */
+  contractAddressEither(
+    label: string,
+  ): Either<ZswapCoinPublicKey, ContractAddressT>;
+
   teardown(): Promise<void>;
 }
 
@@ -153,12 +164,20 @@ export async function deployTestTokenV1(
   const symbol = opts.symbol ?? 'TT';
   const decimals = BigInt(opts.decimals ?? 6);
 
+  // Deployer is the initial Ownable owner. Ownable rejects ContractAddress
+  // and the zero address at init, so a real ZswapCoinPublicKey is required.
+  const deployerOwner: Either<ZswapCoinPublicKey, ContractAddressT> = {
+    is_left: true,
+    left: { bytes: encodeCoinPublicKey(wallet.getCoinPublicKey()) },
+    right: ZERO_CONTRACT_ADDRESS,
+  };
+
   const deployed = await deployModule<TestTokenV1Contract>(
     providers,
     compiledTestTokenV1,
     TestTokenV1PrivateStateId,
     TestTokenV1PrivateState,
-    [name, symbol, decimals],
+    [name, symbol, decimals, deployerOwner],
   );
 
   const contractAddress = deployed.deployTxData.public.contractAddress;
@@ -230,6 +249,23 @@ export async function deployTestTokenV1(
     ): Promise<Either<ZswapCoinPublicKey, ContractAddressT>> {
       const w = await pool.signerFor(alias);
       return eitherForWallet(w);
+    },
+
+    contractAddressEither(
+      label: string,
+    ): Either<ZswapCoinPublicKey, ContractAddressT> {
+      // Deterministic 32-byte ContractAddress derived from `label`. Stable
+      // across runs but unique per label so different specs don't collide.
+      const bytes = new Uint8Array(32);
+      const seed = new TextEncoder().encode(label);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = seed[i % seed.length] ?? 0;
+      }
+      return {
+        is_left: false,
+        left: { bytes: new Uint8Array(32) },
+        right: { bytes },
+      };
     },
 
     async teardown(): Promise<void> {

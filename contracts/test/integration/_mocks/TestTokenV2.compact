@@ -26,6 +26,7 @@ import "../../../src/security/Initializable" prefix Initializable_;
 import "../../../src/security/Pausable"      prefix Pausable_;
 import "../../../src/utils/Utils"            prefix Utils_;
 import "../../../src/access/AccessControl"   prefix AccessControl_;
+import "../../../src/access/Ownable"         prefix Ownable_;
 import "../../../src/token/FungibleToken"    prefix FungibleToken_;
 
 export {
@@ -36,6 +37,7 @@ export {
   AccessControl_DEFAULT_ADMIN_ROLE,
   AccessControl__operatorRoles,
   Initializable__isInitialized,
+  Ownable__owner,
   Pausable__isPaused,
   FungibleToken__totalSupply,
   FungibleToken__name,
@@ -48,9 +50,11 @@ constructor(
   _name: Opaque<"string">,
   _symbol: Opaque<"string">,
   _decimals: Uint<8>,
+  _initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
 ) {
   Initializable_initialize();
   FungibleToken_initialize(_name, _symbol, _decimals);
+  Ownable_initialize(_initialOwner);
 }
 
 // ─── AccessControl public surface (unchanged from V1) ───
@@ -157,4 +161,22 @@ export circuit mintBatch(
   FungibleToken__mint(account, value);
   FungibleToken__mint(account, value);
   FungibleToken__mint(account, value);
+}
+
+// ─── Ownable public surface — CHANGED: transferOwnership lifts the
+// ContractAddress guard (post-C2C semantics) and the `_unsafe…` wrapper
+// is intentionally OMITTED to simulate its deletion in the upgrade.
+// Specs that rotate `transferOwnership`'s VK V1→V2 will see calls with a
+// ContractAddress destination start succeeding; calls to V1's
+// `_unsafeTransferOwnership` slot are expected to fail after its VK is
+// removed on-chain (no replacement available because V2 dropped it).
+
+export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit transferOwnership(
+  newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  Ownable__unsafeTransferOwnership(newOwner);
 }
