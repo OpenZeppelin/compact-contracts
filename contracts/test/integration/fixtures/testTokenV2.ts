@@ -93,7 +93,7 @@ export async function bindAsV2(
   kit: TestTokenV1Kit,
   alias: string,
 ): Promise<TestTokenV2Handle> {
-  const aliasWallet = await kit.pool.signerFor(alias);
+  const aliasWallet = await kit.signers.signerFor(alias);
   const v2Providers = buildProviders<
     TestTokenV2CircuitKeys,
     typeof TestTokenV1PrivateStateId,

@@ -10,10 +10,7 @@ import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import type { MidnightWalletProvider } from '@midnight-ntwrk/testkit-js';
 import {
   Contract as TestTokenV1,
-  type ContractAddress as ContractAddressT,
-  type Either,
   type Ledger as TestTokenV1Ledger,
-  type ZswapCoinPublicKey,
   ledger as testTokenLedger,
 } from '../../../artifacts/TestTokenV1/contract/index.js';
 import {
@@ -24,7 +21,8 @@ import {
 import { networkConfig, setupNetwork } from '../_harness/network.js';
 import { buildProviders } from '../_harness/providers.js';
 import { buildWallet } from '../_harness/wallet.js';
-import { WalletPool } from '../_harness/walletPool.js';
+import type { WalletPool } from '../_harness/walletPool.js';
+import { getSharedSigners, Signers } from './walletPool.js';
 
 /**
  * TestToken has no witness needs (all five composed modules — Initializable,
@@ -83,6 +81,14 @@ export interface DeployTestTokenV1Opts {
    * Set to `false` for specs that want to assert "no admin yet" semantics.
    */
   bootstrapAdmin?: boolean;
+  /**
+   * Wallet pool to source alias signers from. Default: the process-shared
+   * pool from `fixtures/walletPool.ts` — alias wallets are built once per
+   * process and reused across specs. Pass a fresh `new WalletPool(env)` for
+   * specs that need wallet-state isolation; the kit's `teardown()` will
+   * stop the pool only when it owns it.
+   */
+  pool?: WalletPool;
 }
 
 export interface TestTokenV1Kit {
@@ -94,8 +100,14 @@ export interface TestTokenV1Kit {
   wallet: MidnightWalletProvider;
   /** Hex-encoded on-chain address of the deployed contract. */
   readonly contractAddress: string;
-  /** Multi-signer pool — `ADMIN`, `ALICE`, `BOB` aliases prefunded by genesis. */
-  pool: WalletPool;
+  /**
+   * Multi-signer helper — `signers.eitherFor('ADMIN' | 'ALICE' | 'BOB')` for
+   * AccessControl/Ownable args, `signers.signerFor(alias)` for raw wallets,
+   * `signers.contractAddressEither(label)` for ContractAddress destinations.
+   * Default is the process-shared instance; specs that opt into isolation
+   * pass `{ pool: new WalletPool(env) }` and own its lifecycle.
+   */
+  signers: Signers;
 
   /** Fetch the latest public ledger via the indexer. */
   readLedger(): Promise<TestTokenV1Ledger>;
@@ -107,38 +119,15 @@ export interface TestTokenV1Kit {
    */
   as(alias: string): Promise<TestTokenV1Handle>;
 
-  /**
-   * Return the alias's coin public key wrapped as
-   * `Either<ZswapCoinPublicKey, ContractAddress>`, ready to pass into
-   * AccessControl-style circuit args.
-   */
-  aliasFor(
-    alias: string,
-  ): Promise<Either<ZswapCoinPublicKey, ContractAddressT>>;
-
-  /**
-   * Build an `Either<ZswapCoinPublicKey, ContractAddress>` whose right side
-   * holds a deterministic 32-byte ContractAddress. Used by Ownable upgrade
-   * specs to prove that V2's `transferOwnership` (post-C2C semantics) accepts
-   * contract destinations that V1 would have rejected. The address is a
-   * stable test fixture — no contract is actually deployed there.
-   */
-  contractAddressEither(
-    label: string,
-  ): Either<ZswapCoinPublicKey, ContractAddressT>;
-
   teardown(): Promise<void>;
 }
-
-/** Zero ContractAddress used as the `right` side of a left-tagged Either. */
-const ZERO_CONTRACT_ADDRESS: ContractAddressT = { bytes: new Uint8Array(32) };
 
 /**
  * Deploy a fresh `TestToken` to the local node and return a kit object that
  * specs use for assertions, transactions, and teardown.
  *
  * Single-signer for the deployer (TEST_MNEMONIC genesis wallet); multi-signer
- * for in-test calls via the `WalletPool` exposed on the kit.
+ * for in-test calls via `kit.signers` (process-shared by default).
  */
 export async function deployTestTokenV1(
   opts: DeployTestTokenV1Opts = {},
@@ -164,12 +153,18 @@ export async function deployTestTokenV1(
   const symbol = opts.symbol ?? 'TT';
   const decimals = BigInt(opts.decimals ?? 6);
 
+  // Default to the process-shared signers/pool. A spec-supplied pool gets
+  // its own `Signers` so opt-in isolation also gets the EOA helpers.
+  const signers = opts.pool ? new Signers(opts.pool) : getSharedSigners(env);
+
   // Deployer is the initial Ownable owner. Ownable rejects ContractAddress
   // and the zero address at init, so a real ZswapCoinPublicKey is required.
-  const deployerOwner: Either<ZswapCoinPublicKey, ContractAddressT> = {
+  // The deployer wallet is built above, separate from the signer pool, so
+  // it has the same shape as `Caller` but isn't sourced from `signers`.
+  const deployerOwner = {
     is_left: true,
     left: { bytes: encodeCoinPublicKey(wallet.getCoinPublicKey()) },
-    right: ZERO_CONTRACT_ADDRESS,
+    right: { bytes: new Uint8Array(32) },
   };
 
   const deployed = await deployModule<TestTokenV1Contract>(
@@ -181,24 +176,13 @@ export async function deployTestTokenV1(
   );
 
   const contractAddress = deployed.deployTxData.public.contractAddress;
-  const pool = new WalletPool(env);
 
   // Per-alias FoundContract handle cache. Keyed by alias; value is a Promise
   // so parallel `as(alias)` calls dedupe to a single findDeployedContract.
   const handleCache = new Map<string, Promise<TestTokenV1Handle>>();
 
-  async function eitherForWallet(
-    w: MidnightWalletProvider,
-  ): Promise<Either<ZswapCoinPublicKey, ContractAddressT>> {
-    return {
-      is_left: true,
-      left: { bytes: encodeCoinPublicKey(w.getCoinPublicKey()) },
-      right: ZERO_CONTRACT_ADDRESS,
-    };
-  }
-
   async function buildHandle(alias: string): Promise<TestTokenV1Handle> {
-    const aliasWallet = await pool.signerFor(alias);
+    const aliasWallet = await signers.signerFor(alias);
     const aliasProviders = buildProviders<
       TestTokenV1CircuitKeys,
       typeof TestTokenV1PrivateStateId,
@@ -221,7 +205,7 @@ export async function deployTestTokenV1(
     providers,
     wallet,
     contractAddress,
-    pool,
+    signers,
 
     async readLedger(): Promise<TestTokenV1Ledger> {
       const state = await providers.publicDataProvider.queryContractState(
@@ -244,32 +228,10 @@ export async function deployTestTokenV1(
       return cached;
     },
 
-    async aliasFor(
-      alias: string,
-    ): Promise<Either<ZswapCoinPublicKey, ContractAddressT>> {
-      const w = await pool.signerFor(alias);
-      return eitherForWallet(w);
-    },
-
-    contractAddressEither(
-      label: string,
-    ): Either<ZswapCoinPublicKey, ContractAddressT> {
-      // Deterministic 32-byte ContractAddress derived from `label`. Stable
-      // across runs but unique per label so different specs don't collide.
-      const bytes = new Uint8Array(32);
-      const seed = new TextEncoder().encode(label);
-      for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = seed[i % seed.length] ?? 0;
-      }
-      return {
-        is_left: false,
-        left: { bytes: new Uint8Array(32) },
-        right: { bytes },
-      };
-    },
-
     async teardown(): Promise<void> {
-      await pool.reset();
+      // Pool lifecycle is managed externally — the shared pool is torn
+      // down in vitest's `globalTeardown`; a spec-supplied pool is the
+      // spec's responsibility. Only stop the deployer wallet here.
       await wallet.stop();
     },
   };
@@ -278,7 +240,7 @@ export async function deployTestTokenV1(
   // Done from the deployer (genesis wallet); uses the unsafe `_grantRole`
   // wrapper exposed on `MockComposite`/`TestToken` for test setup.
   if (opts.bootstrapAdmin !== false) {
-    const adminEither = await kit.aliasFor('ADMIN');
+    const adminEither = await signers.eitherFor('ADMIN');
     const ledger0 = await kit.readLedger();
     await deployed.callTx._grantRole(
       ledger0.AccessControl_DEFAULT_ADMIN_ROLE,

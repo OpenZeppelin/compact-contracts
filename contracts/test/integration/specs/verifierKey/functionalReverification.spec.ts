@@ -25,50 +25,50 @@ const MINTER_ROLE = new Uint8Array(32);
 });
 
 describe('TestToken — functional re-verification after VK rotation', () => {
-  let kit: TestTokenV1Kit;
+  let v1: TestTokenV1Kit;
   let alice: Either<ZswapCoinPublicKey, ContractAddress>;
   let bob: Either<ZswapCoinPublicKey, ContractAddress>;
 
   beforeAll(async () => {
-    kit = await deployTestTokenV1();
-    alice = await kit.aliasFor('ALICE');
-    bob = await kit.aliasFor('BOB');
+    v1 = await deployTestTokenV1();
+    alice = await v1.signers.eitherFor('ALICE');
+    bob = await v1.signers.eitherFor('BOB');
   });
 
   afterAll(async () => {
-    await kit?.teardown();
+    await v1?.teardown();
   });
 
   it("should mint successfully and increment the recipient's balance after rotating the `_mint` VK", async () => {
     const before =
-      (await kit.readLedger()).FungibleToken__balances.member(alice)
-        ? (await kit.readLedger()).FungibleToken__balances.lookup(alice)
+      (await v1.readLedger()).FungibleToken__balances.member(alice)
+        ? (await v1.readLedger()).FungibleToken__balances.lookup(alice)
         : 0n;
 
-    await rotateCircuitVK(kit.providers, kit.deployed, '_mint');
-    await kit.deployed.callTx._mint(alice, 75n);
+    await rotateCircuitVK(v1.providers, v1.deployed, '_mint');
+    await v1.deployed.callTx._mint(alice, 75n);
 
-    const after = (await kit.readLedger()).FungibleToken__balances.lookup(
+    const after = (await v1.readLedger()).FungibleToken__balances.lookup(
       alice,
     );
     expect(after).toBe(before + 75n);
   });
 
   it('should pause the contract after rotating the `pause` VK', async () => {
-    if ((await kit.readLedger()).Pausable__isPaused) {
-      await kit.deployed.callTx.unpause();
+    if ((await v1.readLedger()).Pausable__isPaused) {
+      await v1.deployed.callTx.unpause();
     }
-    await rotateCircuitVK(kit.providers, kit.deployed, 'pause');
-    await kit.deployed.callTx.pause();
-    expect((await kit.readLedger()).Pausable__isPaused).toBe(true);
+    await rotateCircuitVK(v1.providers, v1.deployed, 'pause');
+    await v1.deployed.callTx.pause();
+    expect((await v1.readLedger()).Pausable__isPaused).toBe(true);
   });
 
   it('should let ADMIN grant MINTER to ALICE after rotating the `grantRole` VK', async () => {
-    const admin = await kit.as('ADMIN');
-    await rotateCircuitVK(kit.providers, kit.deployed, 'grantRole');
+    const admin = await v1.as('ADMIN');
+    await rotateCircuitVK(v1.providers, v1.deployed, 'grantRole');
     await admin.callTx.grantRole(MINTER_ROLE, alice);
 
-    const ledger = await kit.readLedger();
+    const ledger = await v1.readLedger();
     const aliceHas =
       ledger.AccessControl__operatorRoles.member(MINTER_ROLE) &&
       ledger.AccessControl__operatorRoles.lookup(MINTER_ROLE).member(alice) &&
@@ -80,29 +80,29 @@ describe('TestToken — functional re-verification after VK rotation', () => {
 
   it('should transfer ALICE → BOB and update both balances after rotating the `transfer` VK', async () => {
     // Make sure ALICE has enough to transfer.
-    const aliceBalanceStart = (await kit.readLedger()).FungibleToken__balances
+    const aliceBalanceStart = (await v1.readLedger()).FungibleToken__balances
       .lookup(alice);
     if (aliceBalanceStart < 50n) {
-      await kit.deployed.callTx._mint(alice, 50n - aliceBalanceStart);
+      await v1.deployed.callTx._mint(alice, 50n - aliceBalanceStart);
     }
 
     // unpause if needed — transfer should succeed in normal state.
-    if ((await kit.readLedger()).Pausable__isPaused) {
-      await kit.deployed.callTx.unpause();
+    if ((await v1.readLedger()).Pausable__isPaused) {
+      await v1.deployed.callTx.unpause();
     }
 
-    const ledgerBefore = await kit.readLedger();
+    const ledgerBefore = await v1.readLedger();
     const aliceBefore = ledgerBefore.FungibleToken__balances.lookup(alice);
     const bobBefore = ledgerBefore.FungibleToken__balances.member(bob)
       ? ledgerBefore.FungibleToken__balances.lookup(bob)
       : 0n;
 
-    await rotateCircuitVK(kit.providers, kit.deployed, 'transfer');
+    await rotateCircuitVK(v1.providers, v1.deployed, 'transfer');
 
-    const aliceHandle = await kit.as('ALICE');
+    const aliceHandle = await v1.as('ALICE');
     await aliceHandle.callTx.transfer(bob, 25n);
 
-    const ledgerAfter = await kit.readLedger();
+    const ledgerAfter = await v1.readLedger();
     expect(ledgerAfter.FungibleToken__balances.lookup(alice)).toBe(
       aliceBefore - 25n,
     );
