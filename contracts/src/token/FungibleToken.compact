@@ -479,7 +479,7 @@ module FungibleToken {
    * Requirements:
    *
    * - Contract is initialized.
-   * - `to` is not a ContractAddress.
+   * - `account` is not a ContractAddress.
    * - `account` is not the zero address.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.

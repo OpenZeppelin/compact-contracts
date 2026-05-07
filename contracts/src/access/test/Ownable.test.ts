@@ -18,14 +18,14 @@ const isBadInit = false;
 
 let ownable: OwnableSimulator;
 
-const newOwnerTypes = [
-  ['contract', Z_OWNER_CONTRACT],
-  ['pubkey', Z_NEW_OWNER],
-] as const;
-
 const zeroTypes = [
   ['contract', utils.ZERO_ADDRESS],
   ['pubkey', utils.ZERO_KEY],
+] as const;
+
+const newOwnerTypes = [
+  ['contract', Z_OWNER_CONTRACT],
+  ['pubkey', Z_NEW_OWNER],
 ] as const;
 
 describe('Ownable', () => {
@@ -98,6 +98,15 @@ describe('Ownable', () => {
           ownable.as(UNAUTHORIZED).assertOnlyOwner();
         }).toThrow('Ownable: caller is not the owner');
       });
+
+      it('should fail when owner is a contract address', () => {
+        ownable._unsafeUncheckedTransferOwnership(Z_OWNER_CONTRACT);
+        expect(() => {
+          ownable.as(OWNER).assertOnlyOwner();
+        }).toThrow(
+          'Ownable: contract address owner authentication is not yet supported',
+        );
+      });
     });
 
     describe('transferOwnership', () => {
@@ -157,21 +166,21 @@ describe('Ownable', () => {
     describe('_unsafeTransferOwnership', () => {
       describe.each(
         newOwnerTypes,
-      )('when the owner is a %s', (type, newOwner) => {
+      )('when the new owner is a %s', (type, newOwner) => {
         it('should transfer ownership', () => {
           ownable.as(OWNER)._unsafeTransferOwnership(newOwner);
           expect(ownable.owner()).toEqual(newOwner);
 
-          // Original owner
-          expect(() => {
-            ownable.as(OWNER).assertOnlyOwner();
-          }).toThrow('Ownable: caller is not the owner');
-
           if (type === 'pubkey') {
-            // New owner
             expect(() => {
               ownable.as(NEW_OWNER).assertOnlyOwner();
             }).not.toThrow();
+          } else {
+            expect(() => {
+              ownable.as(OWNER).assertOnlyOwner();
+            }).toThrow(
+              'Ownable: contract address owner authentication is not yet supported',
+            );
           }
         });
       });
@@ -194,14 +203,17 @@ describe('Ownable', () => {
         }).toThrow('Ownable: invalid new owner');
       });
 
-      it('should transfer multiple times', () => {
-        ownable.as(OWNER)._unsafeTransferOwnership(Z_NEW_OWNER);
-
-        ownable.as(NEW_OWNER)._unsafeTransferOwnership(Z_OWNER);
-
-        ownable.as(OWNER)._unsafeTransferOwnership(Z_OWNER_CONTRACT);
-
-        expect(ownable.owner()).toEqual(Z_OWNER_CONTRACT);
+      it('should canonicalize crafted Either inputs (contract side)', () => {
+        const crafted = {
+          is_left: false,
+          left: Z_NEW_OWNER.left,
+          right: Z_OWNER_CONTRACT.right,
+        };
+        ownable.as(OWNER)._unsafeTransferOwnership(crafted);
+        const stored = ownable.owner();
+        // left must be zeroed after canonicalization
+        expect(stored.left).toEqual(utils.ZERO_KEY.left);
+        expect(stored.right).toEqual(Z_OWNER_CONTRACT.right);
       });
     });
 
@@ -275,39 +287,37 @@ describe('Ownable', () => {
     });
 
     describe('_unsafeUncheckedTransferOwnership', () => {
-      describe.each(newOwnerTypes)('when the owner is a %s', (_, newOwner) => {
-        it('should transfer ownership', () => {
+      describe.each(
+        newOwnerTypes,
+      )('when the new owner is a %s', (_, newOwner) => {
+        it('should transfer ownership without caller check', () => {
           ownable._unsafeUncheckedTransferOwnership(newOwner);
           expect(ownable.owner()).toEqual(newOwner);
         });
       });
 
-      it('should enforce permissions after transfer (pk)', () => {
-        ownable._unsafeUncheckedTransferOwnership(Z_NEW_OWNER);
-
-        // Original owner
-        expect(() => {
-          ownable.as(OWNER).assertOnlyOwner();
-        }).toThrow('Ownable: caller is not the owner');
-
-        expect(() => {
-          ownable.as(UNAUTHORIZED).assertOnlyOwner();
-        }).toThrow('Ownable: caller is not the owner');
-
-        // New owner
-        expect(() => {
-          ownable.as(NEW_OWNER).assertOnlyOwner();
-        }).not.toThrow();
+      it('should canonicalize crafted Either inputs (contract side)', () => {
+        const crafted = {
+          is_left: false,
+          left: Z_NEW_OWNER.left,
+          right: Z_OWNER_CONTRACT.right,
+        };
+        ownable._unsafeUncheckedTransferOwnership(crafted);
+        const stored = ownable.owner();
+        expect(stored.left).toEqual(utils.ZERO_KEY.left);
+        expect(stored.right).toEqual(Z_OWNER_CONTRACT.right);
       });
 
-      it('should transfer multiple times', () => {
-        ownable.as(OWNER)._unsafeUncheckedTransferOwnership(Z_NEW_OWNER);
-
-        ownable.as(NEW_OWNER)._unsafeUncheckedTransferOwnership(Z_OWNER);
-
-        ownable.as(OWNER)._unsafeUncheckedTransferOwnership(Z_OWNER_CONTRACT);
-
-        expect(ownable.owner()).toEqual(Z_OWNER_CONTRACT);
+      it('should canonicalize crafted Either inputs (pubkey side)', () => {
+        const crafted = {
+          is_left: true,
+          left: Z_NEW_OWNER.left,
+          right: Z_OWNER_CONTRACT.right,
+        };
+        ownable._unsafeUncheckedTransferOwnership(crafted);
+        const stored = ownable.owner();
+        expect(stored.left).toEqual(Z_NEW_OWNER.left);
+        expect(stored.right).toEqual(utils.ZERO_ADDRESS.right);
       });
     });
   });

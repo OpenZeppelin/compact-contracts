@@ -1,6 +1,5 @@
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../artifacts/Witness/contract/index.js';
 
 const randomBigInt = (bits: number): bigint => {
   const bytes = Math.ceil(bits / 8);
@@ -16,14 +15,14 @@ const randomBigInt = (bits: number): bigint => {
   return result % max;
 };
 
-export interface IWitnessWitnesses<P> {
-  wit_secretBytes(context: WitnessContext<Ledger, P>): [P, Uint8Array];
+export interface IWitnessWitnesses<L, P> {
+  wit_secretBytes(context: WitnessContext<L, P>): [P, Uint8Array];
   wit_secretFieldPlusArg(
-    context: WitnessContext<Ledger, P>,
+    context: WitnessContext<L, P>,
     arg: bigint,
   ): [P, bigint];
   wit_secretUintPlusArgs(
-    context: WitnessContext<Ledger, P>,
+    context: WitnessContext<L, P>,
     arg1: bigint,
     arg2: bigint,
   ): [P, bigint];
@@ -45,20 +44,23 @@ export const WitnessPrivateState = {
   },
 };
 
-export const WitnessWitnesses = (): IWitnessWitnesses<WitnessPrivateState> => ({
+export const WitnessWitnesses = <L>(): IWitnessWitnesses<
+  L,
+  WitnessPrivateState
+> => ({
   wit_secretBytes(
-    context: WitnessContext<Ledger, WitnessPrivateState>,
+    context: WitnessContext<L, WitnessPrivateState>,
   ): [WitnessPrivateState, Uint8Array] {
     return [context.privateState, context.privateState.secretBytes];
   },
   wit_secretFieldPlusArg(
-    context: WitnessContext<Ledger, WitnessPrivateState>,
+    context: WitnessContext<L, WitnessPrivateState>,
     arg: bigint,
   ): [WitnessPrivateState, bigint] {
     return [context.privateState, context.privateState.secretField + arg];
   },
   wit_secretUintPlusArgs(
-    context: WitnessContext<Ledger, WitnessPrivateState>,
+    context: WitnessContext<L, WitnessPrivateState>,
     arg1: bigint,
     arg2: bigint,
   ): [WitnessPrivateState, bigint] {

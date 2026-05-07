@@ -1,4 +1,15 @@
+<<<<<<< refactor/upgrade-contracts-to-0.30
 pragma language_version >= 0.22.0;
+=======
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+>>>>>>> main
 
 import CompactStandardLibrary;
 import "../../MultiToken" prefix MultiToken_;

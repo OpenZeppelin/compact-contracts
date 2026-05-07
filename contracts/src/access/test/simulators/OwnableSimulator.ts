@@ -70,7 +70,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
   }
 
   /**
-   * @description Unsafe variant of `transferOwnership`.
+   * @description Unsafe variant of `transferOwnership` that allows transferring
+   * ownership to a contract address.
    * @param newOwner - The new owner.
    */
   public _unsafeTransferOwnership(
@@ -108,7 +109,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
   }
 
   /**
-   * @description Unsafe variant of `_transferOwnership`.
+   * @description Unsafe variant of `_transferOwnership` without caller checks
+   * that allows transferring ownership to a contract address.
    * @param newOwner - The new owner.
    */
   public _unsafeUncheckedTransferOwnership(

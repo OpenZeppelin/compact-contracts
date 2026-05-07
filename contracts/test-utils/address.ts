@@ -56,7 +56,9 @@ export const encodeToAddress = (str: string): EncodedContractAddress => {
  * @param str String to hexify and encode.
  * @returns Defined Either object for ZswapCoinPublicKey.
  */
-export const createEitherTestUser = (str: string) => ({
+export const createEitherTestUser = (
+  str: string,
+): Either<ZswapCoinPublicKey, ContractAddress> => ({
   is_left: true,
   left: encodeToPK(str),
   right: encodeToAddress(''),

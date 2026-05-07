@@ -20,7 +20,10 @@ import { Contract, ledger } from './artifacts/MyContract/contract/index.js';
 // 1. Define your contract arguments type
 type MyContractArgs = readonly [owner: Uint8Array, value: bigint];
 
-// 2. Create the simulator
+// 2. Define the extracted ledger type
+type MyContractLedger = ReturnType<typeof ledger>;
+
+// 3. Create the simulator
 const MySimulator = createSimulator<
   MyPrivateState,
   ReturnType<typeof ledger>,
@@ -31,10 +34,10 @@ const MySimulator = createSimulator<
   defaultPrivateState: () => MyPrivateState.generate(),
   contractArgs: (owner, value) => [owner, value],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => MyWitnesses(),
+  witnessesFactory: () => MyWitnesses<MyContractLedger>(),
 });
 
-// 3. Use it!
+// 4. Use it!
 const sim = new MySimulator([ownerAddress, 100n], { coinPK: deployerPK });
 ```
 
@@ -52,6 +55,9 @@ import { MyContractWitnesses, MyContractPrivateState } from './MyContractWitness
 // Define contract constructor arguments as a tuple type
 type MyContractArgs = readonly [arg1: bigint, arg2: string];
 
+// Define the extracted ledger type
+type MyContractLedger = ReturnType<typeof ledger>;
+
 // Create the base simulator with full type information
 const MyContractSimulatorBase = createSimulator<
   MyContractPrivateState,                    // Private state type
@@ -63,7 +69,7 @@ const MyContractSimulatorBase = createSimulator<
   defaultPrivateState: () => MyContractPrivateState.generate(),
   contractArgs: (arg1, arg2) => [arg1, arg2],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => MyContractWitnesses(),  // Note: Must be a function!
+  witnessesFactory: () => MyContractWitnesses<MyContractLedger>(),  // Note: Must be a function!
 });
 ```
 
@@ -76,7 +82,7 @@ If the Compact contract has no witnesses:
 // Some Compact contract examples use:
 export const MyContractWitnesses = {};
 
-// But for the simulator, wrap it in a function:
+// But for the simulator, wrap it in a generic function:
 export const MyContractWitnesses = () => ({});
 ```
 

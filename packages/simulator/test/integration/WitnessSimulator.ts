@@ -8,10 +8,11 @@ import {
   WitnessWitnesses,
 } from '../fixtures/sample-contracts/witnesses/WitnessWitnesses';
 
-/**
- * Type constructor args
- */
+/** Type constructor args */
 type WitnessArgs = readonly [];
+
+/** Concrete ledger type extracted from the generated artifact */
+type WitnessLedger = ReturnType<typeof ledger>;
 
 /**
  * Base simulator
@@ -30,7 +31,7 @@ const WitnessSimulatorBase = createSimulator<
     return [];
   },
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => WitnessWitnesses(),
+  witnessesFactory: () => WitnessWitnesses<WitnessLedger>(),
 });
 
 /**

@@ -48,6 +48,14 @@ export class AccessControlSimulator extends AccessControlSimulatorBase {
   }
 
   /**
+   * @description Returns the default admin role identifier.
+   * @returns The default admin role identifier (zero bytes).
+   */
+  public DEFAULT_ADMIN_ROLE(): Uint8Array {
+    return this.circuits.pure.DEFAULT_ADMIN_ROLE();
+  }
+
+  /**
    * @description Retrieves an account's permission for `roleId`.
    * @param roleId - The role identifier.
    * @param account - A ZswapCoinPublicKey or a ContractAddress.
