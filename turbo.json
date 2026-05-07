@@ -60,6 +60,27 @@
       "outputs": [],
       "cache": false
     },
+    "test:integration": {
+      "dependsOn": ["^build", "compact"],
+      "env": [
+        "COMPACT_HOME",
+        "MIDNIGHT_NODE_URL",
+        "MIDNIGHT_INDEXER_URL",
+        "MIDNIGHT_INDEXER_WS_URL",
+        "MIDNIGHT_PROOF_SERVER_URL",
+        "MIDNIGHT_NETWORK_ID",
+        "MIDNIGHT_SIGNER_SEED"
+      ],
+      "inputs": [
+        "test/integration/**/*.ts",
+        "src/**/*.ts",
+        "src/**/*.compact",
+        "vitest.integration.config.ts",
+        "package.json"
+      ],
+      "outputs": [],
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME"],

@@ -156,8 +156,32 @@ turbo compact
 
 ### Run tests
 
+#### Unit tests
+
+In-memory simulator, no network. Completes in seconds:
+
 ```bash
 turbo test
+```
+
+#### Integration tests
+
+Drive the modules against a real local Midnight stack (proof-server + indexer + node). Contracts are deployed, transactions are proven and submitted, and assertions read live ledger state. Useful for exercising the contract-maintenance authority (CMA) upgrade pathway, multi-signer access control, and any behaviour the simulator can't model.
+
+Bring up the local stack, then run the suite:
+
+```bash
+make env-up
+yarn test:integration
+make env-down   # when finished
+```
+
+**Expect this to be slow.** Each `describe` typically deploys a fresh contract and the genesis-funded wallet syncs against the local indexer (~30s per fresh deploy) before transactions can be submitted. The full suite (15 spec files, ~50 tests) takes **~60–65 minutes** wall-clock end-to-end.
+
+The dominant cost is per-describe wallet sync; iterating on a single spec is much faster than running everything. Filter to one file via vitest's `--config` invocation directly if you're in `contracts/`:
+
+```bash
+cd contracts && yarn test:integration:watch -- specs/cma/freeze.spec.ts
 ```
 
 ### Check/apply Biome formatter

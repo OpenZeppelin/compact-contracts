@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: MIT
+//
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Composite mock used exclusively by the CMA integration test suite to
+// exercise the upgrade pathway against a realistic ERC20-shaped contract.
+// Combines AccessControl + FungibleToken + Pausable + Initializable + Utils
+// in a single compilation unit so that one deploy + one suite of CMA specs
+// can probe heterogeneous-ledger preservation, cross-module isolation, and
+// post-rotation functional re-verification.
+//
+// DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+// Path: from contracts/test/integration/_mocks/ up three levels to contracts/, then into src/<module>/<Module>.
+import "../../../src/security/Initializable" prefix Initializable_;
+import "../../../src/security/Pausable"      prefix Pausable_;
+import "../../../src/utils/Utils"            prefix Utils_;
+import "../../../src/access/AccessControl"   prefix AccessControl_;
+import "../../../src/access/Ownable"         prefix Ownable_;
+import "../../../src/token/FungibleToken"    prefix FungibleToken_;
+
+export {
+  ZswapCoinPublicKey,
+  ContractAddress,
+  Either,
+  Maybe,
+  AccessControl_DEFAULT_ADMIN_ROLE,
+  AccessControl__operatorRoles,
+  Initializable__isInitialized,
+  Ownable__owner,
+  Pausable__isPaused,
+  FungibleToken__totalSupply,
+  FungibleToken__name,
+  FungibleToken__symbol,
+  FungibleToken__decimals,
+  FungibleToken__balances,
+};
+
+/**
+ * @description Initializes the FungibleToken (name/symbol/decimals) and the
+ * Initializable module. Admin-role bootstrap intentionally happens post-deploy
+ * via `_grantRole(DEFAULT_ADMIN_ROLE, admin)` — keeps the constructor simple
+ * and avoids discarding the `_grantRole` Boolean return inside it.
+ */
+constructor(
+  _name: Opaque<"string">,
+  _symbol: Opaque<"string">,
+  _decimals: Uint<8>,
+  _initialOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+) {
+  Initializable_initialize();
+  FungibleToken_initialize(_name, _symbol, _decimals);
+  Ownable_initialize(_initialOwner);
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Surface deliberately pruned for block-limit fit on the local node:
+// asserts, renounceRole, _setRoleAdmin, allowance/approve/transferFrom,
+// and _burn are dropped from the wrapper layer. Specs assert state via
+// the exposed ledger fields (e.g. Pausable__isPaused) and read circuits
+// (hasRole, balanceOf, etc.). Add wrappers back as needed if a future
+// spec genuinely requires them and the deploy still fits.
+// ──────────────────────────────────────────────────────────────────────
+
+// ─── AccessControl public surface ───
+
+export circuit hasRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Boolean {
+  return AccessControl_hasRole(roleId, account);
+}
+
+export circuit grantRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  AccessControl_grantRole(roleId, account);
+}
+
+export circuit revokeRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  AccessControl_revokeRole(roleId, account);
+}
+
+export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
+  return AccessControl_getRoleAdmin(roleId);
+}
+
+// ─── AccessControl unsafe surface (for test setup) ───
+
+export circuit _grantRole(
+  roleId: Bytes<32>,
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Boolean {
+  return AccessControl__grantRole(roleId, account);
+}
+
+// ─── Pausable public surface ───
+
+export circuit isPaused(): Boolean {
+  return Pausable_isPaused();
+}
+
+export circuit pause(): [] {
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  Pausable__unpause();
+}
+
+// ─── FungibleToken public surface ───
+// `name` / `symbol` / `decimals` / `totalSupply` wrappers omitted — no spec
+// calls them as circuits. The underlying ledger fields are still written by
+// `FungibleToken_initialize` and remain readable via `readLedger()`.
+
+export circuit balanceOf(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
+
+export circuit transfer(
+  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): Boolean {
+  return FungibleToken_transfer(to, value);
+}
+
+// ─── FungibleToken unsafe surface (for test setup) ───
+// Unsafe `_mint` exposed directly — production contracts gate via MINTER_ROLE,
+// but the CMA test focus is VK rotation and authority, not role-gating mint.
+// Role-gating itself is exercised on grantRole / revokeRole.
+
+export circuit _mint(
+  account: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<128>,
+): [] {
+  FungibleToken__mint(account, value);
+}
+
+// ─── Ownable public surface ───
+// V1 mirrors today's Ownable: `transferOwnership` rejects ContractAddress,
+// and the unsafe escape hatch is a separate circuit. The upgrade specs
+// rotate `transferOwnership`'s VK to V2's (which lifts the ContractAddress
+// guard, simulating the post-C2C implementation) and `removeVerifierKey`
+// the unsafe slot (simulating its deletion).
+
+export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit transferOwnership(
+  newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  Ownable_transferOwnership(newOwner);
+}
+
+export circuit _unsafeTransferOwnership(
+  newOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+): [] {
+  Ownable__unsafeTransferOwnership(newOwner);
+}
