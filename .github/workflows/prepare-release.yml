@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
         with:
           egress-policy: audit
 
       - name: Get github app token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         id: gh-app-token
         with:
           app-id: ${{ vars.GH_APP_ID }}
@@ -34,7 +34,7 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: ".nvmrc"
           cache: "yarn"
@@ -113,7 +113,7 @@ jobs:
 
       # Uses GitHub API to create signed commits (requires creating blobs per file)
       - name: Commit version bump
-        uses: iarekylew00t/verified-bot-commit@934fa64df2191ab067d0c0d73f422239b6933392 # v2.2.1
+        uses: iarekylew00t/verified-bot-commit@126a6a11889ab05bcff72ec2403c326cd249b84c # v2.3.0
         with:
           message: Bump version to ${{ env.NEW_VERSION }}
           token: ${{ steps.gh-app-token.outputs.token }}
