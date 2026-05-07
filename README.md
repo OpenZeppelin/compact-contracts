@@ -181,7 +181,7 @@ make env-down   # when finished
 The dominant cost is per-describe wallet sync; iterating on a single spec is much faster than running everything. Filter to one file via vitest's `--config` invocation directly if you're in `contracts/`:
 
 ```bash
-cd contracts && yarn test:integration:watch -- specs/authority/freeze.spec.ts
+cd contracts && yarn test:integration:watch -- specs/cma/freeze.spec.ts
 ```
 
 ### Check/apply Biome formatter

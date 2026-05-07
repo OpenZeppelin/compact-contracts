@@ -4,7 +4,7 @@ End-to-end specs that drive the OpenZeppelin Compact modules against a real loca
 
 ## Structure
 
-- **`specs/`** — what runs in CI. Grouped by surface under test (`accessControl/`, `authority/`, `verifierKey/`, plus a top-level `smoke.spec.ts`).
+- **`specs/`** — what runs in CI. Grouped by surface under test (`accessControl/`, `cma/`, `upgrades/`, plus a top-level `smoke.spec.ts`).
 - **`fixtures/`** — per-contract deploy + handle factories. `testTokenV1.ts` returns a kit (deployer wallet, signer pool, ledger reader); `testTokenV2.ts` exposes `bindAsV2(kit, alias)` for the upgrade specs.
 - **`_harness/`** — cross-cutting helpers: CMA wrappers (`cma.ts`), provider builders, network config, the shared `WalletPool` (singleton across the suite).
 - **`_mocks/`** — test-only `.compact` contracts (the `TestToken` composite, V1 and V2).
@@ -26,5 +26,6 @@ Working record of what we've learned about Compact's CMA / VK upgrade pathway fr
 | Q7 | `ReplaceAuthority` mixed with other `SingleUpdate` kinds in one bundle? | ✅ | Chain rejects in both orderings (`Custom error: 117`). Together with Q2, suggests the rule "any bundle containing a `ReplaceAuthority` must contain *only* that one SU." Pinned in `mixedBundle.spec.ts`. |
 | Q8 | Cross-contract signature replay (sign for A, address to B)? | ✅ | Chain rejects — `dataToSign` is address-bound. Pinned in `crossContractReplay.spec.ts`. |
 | Q9 | Empty-committee `ReplaceAuthority(committee=[], threshold=1)` accepted by chain? | ✅ | No. Chain rejects at submission (`Custom error: 117`). The "abandoned-key" workaround in `freeze.spec.ts` is therefore the only viable freeze pattern. Pinned in `emptyCommitteeFreeze.spec.ts`. |
+| Q10 | VK-only multi-update bundles on **different** ops (Insert+Insert, Remove+Remove, Insert+Remove)? | (pending run) | Tested in `multiVkBundle.spec.ts`. Pinning policy: assertions assume entire success (chain accepts the realistic upgrade path). Update this row after first green run. |
 
 Status: ✅ Answered · ◐ Partial · ⏳ Open
