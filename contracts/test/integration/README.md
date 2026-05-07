@@ -22,5 +22,9 @@ Working record of what we've learned about Compact's CMA / VK upgrade pathway fr
 | Q3 | CMA state queryable via indexer without a tx? | ✅ | `_harness/cma.ts` readers (`readAuthority`, `readCmaCounter`) used by every CMA spec. |
 | Q4 | Multiple VK versions live on the same slot? | ✅ | Two layers: the SDK rejects client-side (`vkCoexistence.spec.ts`), and at the chain level a hand-built bundle with two `VerifierKeyInsert`s on the same op finalises `status: 'FailFallible'` and reverts the whole `MaintenanceUpdate` atomically — neither insert persists. Pinned in `multiUpdate.spec.ts`. |
 | Q5 | Events emitted on `MaintenanceUpdate`? | ⏳ | Not probed. |
+| Q6 | Stale-counter `MaintenanceUpdate` rejected? | ✅ | Yes. Replay protection works as documented — chain rejects at submission. Pinned in `staleCounter.spec.ts`. |
+| Q7 | `ReplaceAuthority` mixed with other `SingleUpdate` kinds in one bundle? | ✅ | Chain rejects in both orderings (`Custom error: 117`). Together with Q2, suggests the rule "any bundle containing a `ReplaceAuthority` must contain *only* that one SU." Pinned in `mixedBundle.spec.ts`. |
+| Q8 | Cross-contract signature replay (sign for A, address to B)? | ✅ | Chain rejects — `dataToSign` is address-bound. Pinned in `crossContractReplay.spec.ts`. |
+| Q9 | Empty-committee `ReplaceAuthority(committee=[], threshold=1)` accepted by chain? | ✅ | No. Chain rejects at submission (`Custom error: 117`). The "abandoned-key" workaround in `freeze.spec.ts` is therefore the only viable freeze pattern. Pinned in `emptyCommitteeFreeze.spec.ts`. |
 
 Status: ✅ Answered · ◐ Partial · ⏳ Open
