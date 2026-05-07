@@ -857,7 +857,6 @@ __metadata:
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
     effect: "npm:^3.20.0"
-    fast-check: "npm:^4.6.0"
     fetch-retry: "npm:^6.0.0"
     graphql: "npm:^16.8.1"
     graphql-ws: "npm:^5.16.0"
