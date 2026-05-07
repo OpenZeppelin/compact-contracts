@@ -192,6 +192,13 @@ export async function freeze<C extends ContractNs.Any>(
  * SingleUpdate) is itself an open question — observe via `readCmaCounter`
  * before/after to find out.
  *
+ * @param counterOverride — optional. By default the helper reads the current
+ *   on-chain counter and signs against it. Pass an explicit value here when
+ *   the test wants to *forge* a stale counter (e.g., the staleCounter spec
+ *   that asserts replay-protection rejection): the MU is built with the
+ *   given counter and signed accordingly, so the chain sees a
+ *   counter-mismatch.
+ *
  * @returns the `FinalizedTxData` from `submitTx`. Throws on submission
  *          failure (`TxFailedError` from the SDK or wrapped variants — see
  *          existing patterns in `specs/authority/`).
@@ -206,11 +213,13 @@ export async function submitRawMaintenanceUpdate(
   providers: AnyProviders,
   contractAddress: string,
   updates: SingleUpdate[],
+  counterOverride?: bigint,
 ): Promise<FinalizedTxData> {
-  const [signingKey, counter] = await Promise.all([
+  const [signingKey, freshCounter] = await Promise.all([
     providers.privateStateProvider.getSigningKey(contractAddress),
     readCmaCounter(providers, contractAddress),
   ]);
+  const counter = counterOverride ?? freshCounter;
   if (!signingKey) {
     throw new Error(
       `submitRawMaintenanceUpdate: no signing key for contract ${contractAddress} in privateStateProvider`,
