@@ -176,7 +176,7 @@ yarn test:integration
 make env-down   # when finished
 ```
 
-**Expect this to be slow.** Each `describe` typically deploys a fresh contract and the genesis-funded wallet syncs against the local indexer (~30s per fresh deploy) before transactions can be submitted. The full suite takes **~40–45 minutes** wall-clock end-to-end.
+**Expect this to be slow.** Each `describe` typically deploys a fresh contract and the genesis-funded wallet syncs against the local indexer (~30s per fresh deploy) before transactions can be submitted. The full suite (15 spec files, ~50 tests) takes **~60–65 minutes** wall-clock end-to-end.
 
 The dominant cost is per-describe wallet sync; iterating on a single spec is much faster than running everything. Filter to one file via vitest's `--config` invocation directly if you're in `contracts/`:
 
