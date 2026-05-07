@@ -190,7 +190,7 @@ __metadata:
   checksum: 10/12ac86a114a404386037547a6eb021694537c0636d24d281b101c5be75e3f5703bad9e0bbcc7ea2a39a96e167d200860049a9957dbb4dbdeb585c3fba696909c
   languageName: node
   linkType: hard
-https://github.com/OpenZeppelin/compact-contracts/pull/388/conflict?name=packages%252Fsimulator%252Fpackage.json&ancestor_oid=2d539ac5e4e1cd575f6bf23dbf8a42d4fd572a56&base_oid=ca37a51652b1393a9e35ef2b18c4b61cdb498911&head_oid=f81906ddae2350cea186a7577042fa1b8a1464fa
+
 "@midnight-ntwrk/ledger-v8@npm:8.0.2":
   version: 8.0.2
   resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.2"

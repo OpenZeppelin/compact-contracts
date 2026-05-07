@@ -1,6 +1,3 @@
-<<<<<<< refactor/upgrade-contracts-to-0.30
-pragma language_version >= 0.22.0;
-=======
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
@@ -8,8 +5,7 @@ pragma language_version >= 0.22.0;
 // corresponding production contract relies on. DO NOT deploy or use this
 // contract in any production application.
 
-pragma language_version >= 0.21.0;
->>>>>>> main
+pragma language_version >= 0.22.0;
 
 import CompactStandardLibrary;
 import "../../Initializable" prefix Initializable_;
