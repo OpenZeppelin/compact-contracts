@@ -201,7 +201,7 @@ export async function freeze<C extends ContractNs.Any>(
  *
  * @returns the `FinalizedTxData` from `submitTx`. Throws on submission
  *          failure (`TxFailedError` from the SDK or wrapped variants — see
- *          existing patterns in `specs/authority/`).
+ *          existing patterns in `specs/cma/`).
  *
  * @example
  *   await submitRawMaintenanceUpdate(kit.providers, kit.contractAddress, [
