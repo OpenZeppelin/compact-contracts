@@ -1,7 +1,8 @@
+import { constructJubjubPoint } from '@midnight-ntwrk/compact-runtime';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   jubjubKeypairFromSecret,
-  jubjubSign,
+  jubjubSignDeterministic,
   jubjubVerify,
 } from '../../../../src/crypto/utils/jubjubSchnorr.js';
 import {
@@ -45,13 +46,13 @@ describe('crypto/Schnorr — end-to-end Schnorr-on-Jubjub verify', () => {
 
   it('off-chain reference verifier accepts a fresh signature', () => {
     const kp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(kp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
     expect(jubjubVerify(kp.publicKey, MESSAGE, sig)).toBe(true);
   });
 
   it('off-chain reference verifier rejects a tampered sigma', () => {
     const kp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(kp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
     expect(
       jubjubVerify(kp.publicKey, MESSAGE, { R: sig.R, sigma: sig.sigma + 1n }),
     ).toBe(false);
@@ -59,7 +60,7 @@ describe('crypto/Schnorr — end-to-end Schnorr-on-Jubjub verify', () => {
 
   it('on-chain verify accepts a valid signature', async () => {
     const kp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(kp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
     await kit.deployed.callTx.testVerify(kp.publicKey, MESSAGE, sig);
     const ledger = await kit.readLedger();
     expect(ledger._lastVerifyResult).toBe(true);
@@ -68,7 +69,7 @@ describe('crypto/Schnorr — end-to-end Schnorr-on-Jubjub verify', () => {
 
   it('on-chain verify rejects a tampered sigma', async () => {
     const kp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(kp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
     const tampered = { R: sig.R, sigma: sig.sigma + 1n };
     await kit.deployed.callTx.testVerify(kp.publicKey, MESSAGE, tampered);
     const ledger = await kit.readLedger();
@@ -77,7 +78,7 @@ describe('crypto/Schnorr — end-to-end Schnorr-on-Jubjub verify', () => {
 
   it('on-chain verify rejects a wrong-message signature', async () => {
     const kp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(kp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
     const wrongMessage = new Uint8Array(32).fill(0x43);
     await kit.deployed.callTx.testVerify(kp.publicKey, wrongMessage, sig);
     const ledger = await kit.readLedger();
@@ -86,7 +87,7 @@ describe('crypto/Schnorr — end-to-end Schnorr-on-Jubjub verify', () => {
 
   it('on-chain verify rejects a signature under a different signer', async () => {
     const realKp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(realKp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(realKp.secret, MESSAGE, NONCE_SEED);
     const otherKp = jubjubKeypairFromSecret(SECRET + 1n);
     await kit.deployed.callTx.testVerify(otherKp.publicKey, MESSAGE, sig);
     const ledger = await kit.readLedger();
@@ -95,10 +96,31 @@ describe('crypto/Schnorr — end-to-end Schnorr-on-Jubjub verify', () => {
 
   it('on-chain assertValid reverts the tx on a tampered signature', async () => {
     const kp = jubjubKeypairFromSecret(SECRET);
-    const sig = jubjubSign(kp.secret, MESSAGE, NONCE_SEED);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
     const tampered = { R: sig.R, sigma: sig.sigma + 1n };
     await expect(
       kit.deployed.callTx.testAssertValid(kp.publicKey, MESSAGE, tampered),
     ).rejects.toThrow(/Schnorr: invalid signature/);
+  }, 180_000);
+
+  it('on-chain verify rejects a signature with identity public key', async () => {
+    const kp = jubjubKeypairFromSecret(SECRET);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
+    const identity = constructJubjubPoint(0n, 1n);
+    await kit.deployed.callTx.testVerify(identity, MESSAGE, sig);
+    const ledger = await kit.readLedger();
+    expect(ledger._lastVerifyResult).toBe(false);
+  }, 180_000);
+
+  it('on-chain verify rejects a signature with identity R', async () => {
+    const kp = jubjubKeypairFromSecret(SECRET);
+    const sig = jubjubSignDeterministic(kp.secret, MESSAGE, NONCE_SEED);
+    const identity = constructJubjubPoint(0n, 1n);
+    await kit.deployed.callTx.testVerify(kp.publicKey, MESSAGE, {
+      R: identity,
+      sigma: sig.sigma,
+    });
+    const ledger = await kit.readLedger();
+    expect(ledger._lastVerifyResult).toBe(false);
   }, 180_000);
 });

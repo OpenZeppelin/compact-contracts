@@ -23,6 +23,7 @@ Future modules (Pedersen commitments, FROST aggregator, ECDH, hash-to-curve null
 | J8  | `Jubjub`   | Can Compact build a `Bytes<32>` by spreading a `Bytes<31>` and appending a `Uint<8>`?               | ✅     | Yes — `[...(slice<31>(b, 0) as Bytes<31>), 0 as Uint<8>] as Bytes<32>` compiles cleanly in v0.31. |
 | S1  | `Schnorr`  | Can off-chain TS code reproduce on-chain `transientHash` bit-for-bit?                               | ✅     | Yes — both go through `@midnight-ntwrk/compact-runtime`'s `transientHash`. Pinned in [`Schnorr.test.ts`](test/Schnorr.test.ts) ("off-chain schnorrChallenge matches on-chain Schnorr_challenge bit-for-bit"). |
 | S2  | `Schnorr`  | Should `sigma` (the response scalar) also be truncated on-chain?                                    | ❌     | No. Off-chain `jubjubSign` already computes `sigma = (r + c·s) mod JUBJUB_SCALAR_ORDER`, so it's always in [0, Fr) and safe to pass to `ecMulGenerator` directly. Truncating it on-chain would be incorrect — values in (2^248, Fr) are valid sigmas and must not be altered. |
+| S3  | `Schnorr`  | What is the relative circuit cost of one `Schnorr.verify` call? Where is it spent?                 | ✅     | Measured via zkir instruction count and prover-key size (the v0.31 CLI doesn't expose exact `k`/rows). See [§ Circuit-cost measurements](#circuit-cost-measurements) below. **Headline: a single `Schnorr.verify` is dominated by `Jubjub.fitInJubjubScalar` (~75% of cost); the actual `ecMul`/`ecAdd`/`pointsEqual` are cheap.** |
 
 Status: ✅ Answered · ◐ Partial · ❌ Counterintuitive answer worth pinning
 
@@ -148,6 +149,56 @@ This is a generic Schnorr-implementation hazard, not specific to our truncation.
 - **`jubjubSignDeterministic(secret, message, nonceSeed)`** — test-only; takes a caller-supplied nonce. The function name is intentionally verbose to discourage accidental production use. Documented with a `WARNING — TEST/CEREMONY USE ONLY` block.
 
 Production callers MUST use `jubjubSign`. Test fixtures use `jubjubSignDeterministic` for reproducible vectors. Future protocol primitives that need pre-committed nonces (e.g. FROST round-1 commitments) should derive nonces via their own audited mechanism rather than reaching for `jubjubSignDeterministic`.
+
+---
+
+## Circuit-Cost Measurements
+
+The Compact v0.31 compiler CLI does not expose exact `k` / row counts. We use two indirect cost proxies that are precise enough for sizing decisions:
+
+- **zkir instruction count** — number of operations in the generated [Halo2 IR](https://github.com/zcash/halo2). Linear in circuit complexity.
+- **prover-key size** — bytes on disk for the proving key. Roughly `O(2^k)` where `k` is the PLONK SRS size selector.
+
+Numbers below were captured by inspecting `contracts/artifacts/MockJubjub/{zkir,keys}/*` and `contracts/artifacts/MockSchnorr/{zkir,keys}/*` after a clean `yarn compact --dir crypto` run.
+
+| Circuit                       | zkir instructions | prover-key bytes | Approx. `k` |
+| ----------------------------- | ----------------: | ---------------: | ----------- |
+| **Jubjub primitives**         |                   |                  |             |
+| `Jubjub.isIdentity`           |                36 |           22,716 | ~8          |
+| `Jubjub.assertNonIdentity`    |                21 |           39,239 | ~8          |
+| `Jubjub.pointsEqual`          |                36 |           39,435 | ~8          |
+| `Jubjub.fitInJubjubScalar`    |               188 |       16,894,078 | ~14-15      |
+| **Schnorr composition**       |                   |                  |             |
+| `Schnorr.challenge`           |               191 |       16,899,744 | ~14-15      |
+| `Schnorr.verify`              |               208 |       21,104,591 | ~14-15      |
+| `Schnorr.assertValid`         |               192 |       21,104,428 | ~14-15      |
+
+### What the numbers say
+
+- **`fitInJubjubScalar` is the dominant cost.** The `upgradeFromTransient` → `slice<31>` → spread → `degradeToTransient` round-trip is 188 zkir instructions and ~17 MB of prover key. The actual EC arithmetic (`ecMulGenerator`, `ecMul`, `ecAdd`) accounts for only 17 instructions and a small fraction of the prover key (compare `verify` 208 vs `challenge` 191).
+- **A single `Schnorr.verify` lives at `k ≈ 14-15`** based on the prover-key size scaling. That corresponds to roughly 16k–32k rows in the underlying PLONK arithmetisation.
+- **The tiny primitives (`isIdentity`, `pointsEqual`, `assertNonIdentity`) are essentially free.** A Compact circuit can sprinkle these over identity/equality checks without measurable cost.
+
+### Implications for `MAX_THRESHOLD` (consumer choice)
+
+Compact circuits compose linearly: a preset that performs `K` independent `Schnorr.verify` calls has roughly `K * verify_cost` rows. Per the project memory note, the Midnight local-node deploy ceiling sits around `k = 18-20` (≈ 250K–1M rows). Working backwards from the per-verify cost:
+
+| K | Estimated rows | Estimated `k` | Local-node fit |
+| - | -------------: | ------------- | -------------- |
+| 1 |          ~32K | ~15           | ✅ comfortable |
+| 2 |          ~64K | ~16           | ✅ comfortable |
+| 3 |          ~96K | ~17           | ✅ probable    |
+| 4 |         ~128K | ~17           | ✅ probable    |
+| 5 |         ~160K | ~18           | ◐ near edge    |
+| 7 |         ~224K | ~18           | ◐ at edge      |
+
+**Recommended default: `MAX_THRESHOLD = 4`** for first-cut presets. K=5-7 should be empirically validated by deploying the actual preset against a local node before committing — those are at the ceiling per project memory.
+
+### Cost-reduction options worth considering
+
+1. **Replace `fitInJubjubScalar` with conditional subtraction** (8 conditional `c -= Fr` iterations to reduce mod Fr). Removes the bytes round-trip but keeps the ~250 instruction cost. Probably similar total.
+2. **Aggregate to a single Schnorr verify via FROST/MuSig2** ([Scheme E](../../../.claude/plans/scheme-e-frost-musig2-aggregated.md)). On-chain becomes one `verify` regardless of K — the cleanest cost win.
+3. **Persistent-hash challenge instead of Poseidon truncation.** SHA-256 is more expensive in-circuit than Poseidon, so this is likely a regression.
 
 ---
 
