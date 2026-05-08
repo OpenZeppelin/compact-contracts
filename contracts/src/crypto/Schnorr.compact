@@ -1,0 +1,188 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/Schnorr.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module Schnorr
+ * @description In-circuit Schnorr signature verifier on the Jubjub
+ * embedded curve.
+ *
+ * Verifies signatures of the form `(R, sigma)` over a 32-byte message `m`
+ * against a public key `P`, where the signing relation is:
+ *
+ *   c = challenge(R, P, m)
+ *   sigma * G == R + c * P
+ *
+ * The challenge hash uses `transientHash` (Poseidon over the BLS12-381
+ * scalar field) followed by a 248-bit truncation — see `fitInJubjubScalar`.
+ * Off-chain signers reproduce the same Poseidon output and the same
+ * truncation via the matching primitives in `@midnight-ntwrk/compact-runtime`.
+ *
+ * Domain separation tag "Schnorr:Jubjub:v1" is folded into the challenge
+ * preimage. Other protocols using Schnorr-on-Jubjub (e.g. nullifier-deriving
+ * variants) MUST use distinct domain tags to prevent cross-protocol replay.
+ *
+ * @notice Field-size mismatch.
+ * Compact's `Field` type is BLS12-381's scalar field Fq (modulus
+ * 0x73eda753…00000001, ~2^254). Jubjub's scalar field Fr (modulus
+ * 0x0e7db4ea…6f72cb7, ~2^252) is roughly 8x smaller — `Fr` is what
+ * `ecMul` / `ecMulGenerator` accept as a scalar. Passing a `Field`
+ * value >= Fr to either of those builtins triggers a runtime error
+ * ("failed to decode for built-in type EmbeddedFr after successful
+ * typecheck") because the runtime calls `JubjubFr::from_bytes` which
+ * returns `None` for out-of-range integers and does NOT auto-reduce.
+ *
+ * The challenge `c` is the Poseidon hash output, uniformly distributed in Fq.
+ * Roughly 7/8 of random Fq values are >= Fr, so without an explicit reduction
+ * the verifier rejects most signatures with the WASM decode error rather than
+ * a clean "invalid signature" message.
+ *
+ * `fitInJubjubScalar` solves this by truncating `c` to 248 bits — strictly
+ * less than Fr's modulus — at the cost of ~4 bits of challenge entropy.
+ * Schnorr soundness is roughly half the challenge bit-length, so a 248-bit
+ * challenge gives ~124-bit forgery resistance, which is well above the
+ * 128-bit security target and consistent with industry practice (Zcash
+ * Sapling RedJubjub uses Blake2b-512 followed by reduction mod Fr; here we
+ * cap at 2^248 to avoid the reduce-mod-Fr operation, which Compact's `Field`
+ * arithmetic does not natively support).
+ *
+ * `sigma` is computed off-chain as `(r + c*s) mod Fr`, so it is always in
+ * [0, Fr) and safe to pass to `ecMulGenerator` directly — no on-chain
+ * reduction is required for `sigma`.
+ */
+module Schnorr {
+  import CompactStandardLibrary;
+
+  // ─── Types ──────────────────────────────────────────────────────
+
+  /**
+   * @description A Schnorr signature on Jubjub.
+   *
+   * @field {JubjubPoint} R - The signature commitment (= r * G off-chain).
+   * @field {Field} sigma - The signature scalar (= r + c*s mod Jubjub-order),
+   *   computed off-chain in [0, Jubjub scalar order). The verifier passes it
+   *   directly to `ecMulGenerator`.
+   */
+  export struct JubjubSchnorrSignature {
+    R: JubjubPoint,
+    sigma: Field
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────
+
+  /**
+   * @description Returns whether two Jubjub points are equal, by comparing
+   * their X and Y coordinates.
+   *
+   * @param {JubjubPoint} a - First point.
+   * @param {JubjubPoint} b - Second point.
+   * @returns {Boolean} True iff `a == b`.
+   */
+  export pure circuit pointsEqual(a: JubjubPoint, b: JubjubPoint): Boolean {
+    return jubjubPointX(a) == jubjubPointX(b)
+        && jubjubPointY(a) == jubjubPointY(b);
+  }
+
+  /**
+   * @description Truncates a `Field` value to `[0, 2^248)` so it can be safely
+   * passed to `ecMul` / `ecMulGenerator`, which require a Jubjub scalar (Fr).
+   *
+   * Reads the LE byte encoding (`upgradeFromTransient`), zeros the most
+   * significant byte (index 31 in LE), and re-decodes (`degradeToTransient`).
+   * The output is in [0, 2^248) ⊂ [0, Fr).
+   *
+   * Off-chain signers MUST apply the same truncation when computing the
+   * challenge passed to scalar multiplication, otherwise the signature
+   * equation `sigma*G == R + c*P` will not hold.
+   *
+   * See the module-level @notice for the field-size background.
+   *
+   * @param {Field} c - The unbounded Field value to truncate.
+   * @returns {Field} A value in [0, 2^248).
+   */
+  export pure circuit fitInJubjubScalar(c: Field): Field {
+    const cBytes: Bytes<32> = upgradeFromTransient(c);
+    // Compact byte spread + slice: take bytes 0..30 (LE-low) and append a
+    // zero in the MSB position. Result is a 32-byte LE encoding of a value
+    // strictly less than 2^248.
+    const truncated: Bytes<32> =
+      [...(slice<31>(cBytes, 0) as Bytes<31>), 0 as Uint<8>] as Bytes<32>;
+    return degradeToTransient(truncated);
+  }
+
+  // ─── Challenge ──────────────────────────────────────────────────
+
+  /**
+   * @description Computes the Fiat-Shamir challenge for a Schnorr-on-Jubjub
+   * signature.
+   *
+   * Hashes (domain || R.x || R.y || P.x || P.y || m) under `transientHash`
+   * (Poseidon), then truncates to 248 bits via `fitInJubjubScalar`. The
+   * domain tag prevents cross-protocol replay.
+   *
+   * @param {JubjubPoint} R - Signature commitment.
+   * @param {JubjubPoint} P - Signer public key.
+   * @param {Bytes<32>} m - Message digest.
+   * @returns {Field} The Poseidon-derived challenge, truncated to 248 bits.
+   */
+  export pure circuit challenge(
+    R: JubjubPoint,
+    P: JubjubPoint,
+    m: Bytes<32>
+  ): Field {
+    const cFull = transientHash<Vector<6, Field>>([
+      degradeToTransient(pad(32, "Schnorr:Jubjub:v1")),
+      jubjubPointX(R),
+      jubjubPointY(R),
+      jubjubPointX(P),
+      jubjubPointY(P),
+      degradeToTransient(m)
+    ]);
+    return fitInJubjubScalar(cFull);
+  }
+
+  // ─── Verify ─────────────────────────────────────────────────────
+
+  /**
+   * @description Verifies a Schnorr-on-Jubjub signature.
+   *
+   * Checks `sigma * G == R + challenge(R, P, m) * P`.
+   *
+   * @param {JubjubPoint} P - The signer's public key.
+   * @param {Bytes<32>} m - The message digest.
+   * @param {JubjubSchnorrSignature} sig - The signature.
+   * @returns {Boolean} True iff the signature verifies.
+   */
+  export pure circuit verify(
+    P: JubjubPoint,
+    m: Bytes<32>,
+    sig: JubjubSchnorrSignature
+  ): Boolean {
+    const c = challenge(sig.R, P, m);
+    const lhs = ecMulGenerator(sig.sigma);
+    const rhs = ecAdd(sig.R, ecMul(P, c));
+    return pointsEqual(lhs, rhs);
+  }
+
+  /**
+   * @description Asserts that a Schnorr-on-Jubjub signature is valid.
+   * Wrapper for the common verify-then-assert pattern.
+   *
+   * Requirements:
+   *
+   * - `sig` must satisfy `sigma * G == R + challenge(R, P, m) * P`.
+   *
+   * @param {JubjubPoint} P - The signer's public key.
+   * @param {Bytes<32>} m - The message digest.
+   * @param {JubjubSchnorrSignature} sig - The signature.
+   * @returns {[]} Empty tuple.
+   */
+  export pure circuit assertValid(
+    P: JubjubPoint,
+    m: Bytes<32>,
+    sig: JubjubSchnorrSignature
+  ): [] {
+    assert(verify(P, m, sig), "Schnorr: invalid signature");
+  }
+}

@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Top-level wrapper around the crypto/Schnorr verifier so its behaviour can be
+// exercised through the simulator. DO NOT deploy in production.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../Schnorr" prefix Schnorr_;
+
+export { Schnorr_JubjubSchnorrSignature };
+
+// Public ledger fields read by tests.
+export ledger _lastVerifyResult: Boolean;
+export ledger _lastChallenge: Field;
+export ledger _verifyCalls: Counter;
+
+/**
+ * @description Calls Schnorr.verify and stores the boolean on-chain.
+ */
+export circuit testVerify(
+  P: JubjubPoint,
+  m: Bytes<32>,
+  sig: Schnorr_JubjubSchnorrSignature
+): [] {
+  _lastVerifyResult = disclose(Schnorr_verify(P, m, sig));
+  _verifyCalls.increment(1);
+}
+
+/**
+ * @description Calls Schnorr.assertValid which reverts the call if the
+ * signature is invalid.
+ */
+export circuit testAssertValid(
+  P: JubjubPoint,
+  m: Bytes<32>,
+  sig: Schnorr_JubjubSchnorrSignature
+): [] {
+  Schnorr_assertValid(P, m, sig);
+  _verifyCalls.increment(1);
+}
+
+/**
+ * @description Exposes the challenge directly so tests can pin the cross-side
+ * Poseidon agreement explicitly. The result is stored on-chain so the test can
+ * read it back without round-tripping a return value.
+ */
+export circuit testChallenge(
+  R: JubjubPoint,
+  P: JubjubPoint,
+  m: Bytes<32>
+): [] {
+  _lastChallenge = disclose(Schnorr_challenge(R, P, m));
+  _verifyCalls.increment(1);
+}

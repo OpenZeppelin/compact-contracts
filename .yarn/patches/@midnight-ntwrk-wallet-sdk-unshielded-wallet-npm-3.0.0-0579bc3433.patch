@@ -1,0 +1,26 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 1f59ed0c5820b3d71f1ea3ab640417ae56c19dd4..88a91bb053007b2c46e6862fea1b819442735a73 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -1,3 +1,5 @@
+ export * from './UnshieldedWallet.js';
+ export { type UnshieldedTransactionHistoryEntry, UnshieldedSectionSchema } from './v1/TransactionHistory.js';
+ export * from './KeyStore.js';
++// TODO(remove-once-published): see dist/index.js for context.
++export { InMemoryTransactionHistoryStorage } from '@midnight-ntwrk/wallet-sdk-abstractions';
+diff --git a/dist/index.js b/dist/index.js
+index 308ce3f288804e7232ba80213c8978df0e55a3f5..738ec7c66b83e1d2460c4b2ec831b75928cee619 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -13,3 +13,11 @@
+ export * from './UnshieldedWallet.js';
+ export { UnshieldedSectionSchema } from './v1/TransactionHistory.js';
+ export * from './KeyStore.js';
++// TODO(remove-once-published): testkit-js@4.0.2 imports
++// `InMemoryTransactionHistoryStorage` from this package's root, but the 3.0.0
++// release moved it to `@midnight-ntwrk/wallet-sdk-abstractions` without
++// keeping a re-export. The yarn patch that wraps this file restores the
++// re-export so the integration harness loads. Drop the patch once the SDK
++// publishes a version that re-exports it natively (or testkit-js is upgraded
++// to import from `@midnight-ntwrk/wallet-sdk-abstractions`).
++export { InMemoryTransactionHistoryStorage } from '@midnight-ntwrk/wallet-sdk-abstractions';

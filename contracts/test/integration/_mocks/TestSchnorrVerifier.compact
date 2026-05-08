@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: MIT
+//
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Minimal contract that wraps the crypto/Schnorr verifier so its
+// behaviour can be probed end-to-end against a real local Midnight
+// node. The integration spec deploys this contract, generates a
+// Jubjub keypair off-chain, signs a message, and asserts that
+// `verify` returns the expected boolean for both happy and tampered
+// signatures.
+//
+// DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../../src/crypto/Schnorr" prefix Schnorr_;
+
+export {
+  Schnorr_JubjubSchnorrSignature
+};
+
+// ─── Public ledger ──────────────────────────────────────────────────────────
+
+// Latest verify result. Specs assert against this after `testVerify`.
+export ledger _lastVerifyResult: Boolean;
+
+// Cumulative count of `testVerify` calls — useful as a coarse smoke check
+// that the circuit was actually invoked.
+export ledger _verifyCalls: Counter;
+
+// ─── Circuits ───────────────────────────────────────────────────────────────
+
+/**
+ * @description Calls Schnorr.verify with the supplied inputs and stores the
+ * boolean result on the ledger. Always succeeds — both true and false are
+ * valid outcomes. Specs assert on `_lastVerifyResult` to determine pass/fail.
+ */
+export circuit testVerify(
+  P: JubjubPoint,
+  m: Bytes<32>,
+  sig: Schnorr_JubjubSchnorrSignature
+): [] {
+  _lastVerifyResult = disclose(Schnorr_verify(P, m, sig));
+  _verifyCalls.increment(1);
+}
+
+/**
+ * @description Calls Schnorr.assertValid with the supplied inputs. Reverts the
+ * transaction with "Schnorr: invalid signature" if verification fails.
+ * Used by negative-path specs that want a chain-level rejection rather than a
+ * boolean read-back.
+ */
+export circuit testAssertValid(
+  P: JubjubPoint,
+  m: Bytes<32>,
+  sig: Schnorr_JubjubSchnorrSignature
+): [] {
+  Schnorr_assertValid(P, m, sig);
+  _verifyCalls.increment(1);
+}
