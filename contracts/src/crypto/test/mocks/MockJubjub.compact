@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Top-level wrapper around the crypto/Jubjub primitive helpers so each one
+// can be exercised through the simulator independently of any consuming
+// scheme. DO NOT deploy in production.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../Jubjub" prefix Jubjub_;
+
+// Public ledger fields read by tests.
+export ledger _lastPointsEqual: Boolean;
+export ledger _lastIsIdentity: Boolean;
+export ledger _lastFitInJubjubScalar: Field;
+export ledger _calls: Counter;
+
+/**
+ * @description Calls Jubjub.pointsEqual and stores the boolean on-chain.
+ */
+export circuit testPointsEqual(a: JubjubPoint, b: JubjubPoint): [] {
+  _lastPointsEqual = disclose(Jubjub_pointsEqual(a, b));
+  _calls.increment(1);
+}
+
+/**
+ * @description Calls Jubjub.isIdentity and stores the boolean on-chain.
+ */
+export circuit testIsIdentity(p: JubjubPoint): [] {
+  _lastIsIdentity = disclose(Jubjub_isIdentity(p));
+  _calls.increment(1);
+}
+
+/**
+ * @description Calls Jubjub.assertNonIdentity which reverts the call if the
+ * point is the identity element.
+ */
+export circuit testAssertNonIdentity(p: JubjubPoint): [] {
+  Jubjub_assertNonIdentity(p);
+  _calls.increment(1);
+}
+
+/**
+ * @description Calls Jubjub.fitInJubjubScalar and stores the field result
+ * on-chain so cross-side tests can read it back.
+ */
+export circuit testFitInJubjubScalar(c: Field): [] {
+  _lastFitInJubjubScalar = disclose(Jubjub_fitInJubjubScalar(c));
+  _calls.increment(1);
+}

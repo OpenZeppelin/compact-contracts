@@ -2,18 +2,27 @@
 
 Working record of cryptographic-engineering findings for the `crypto/` package. Pin a row here when a non-obvious behaviour gets locked in by code or by a passing test, so future readers don't have to re-derive it. Mirror of the question-table style used by the integration test [README](../../test/integration/README.md).
 
+The package is layered as:
+
+- **[`Jubjub.compact`](Jubjub.compact)** — generic primitives shared across every Jubjub-touching module: `pointsEqual`, `isIdentity`, `assertNonIdentity`, `fitInJubjubScalar`. Off-chain mirror at [`utils/jubjub.ts`](utils/jubjub.ts). Question prefix `J*`.
+- **[`Schnorr.compact`](Schnorr.compact)** — Schnorr-on-Jubjub verifier built on top of `Jubjub`. Off-chain mirror at [`utils/jubjubSchnorr.ts`](utils/jubjubSchnorr.ts). Question prefix `S*`.
+
+Future modules (Pedersen commitments, FROST aggregator, ECDH, hash-to-curve nullifiers, …) sit alongside `Schnorr.compact` and reuse `Jubjub`.
+
 | #   | Question                                                                                            | Status | Where pinned                                                                                            |
 | --- | --------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
-| C1  | Is `JubjubPoint` hashable directly via `transientHash<JubjubPoint>`?                                | ◐      | Worked around — we hash via `jubjubPointX(p)` + `jubjubPointY(p)` decomposition. See `Schnorr.challenge`. Direct opaque-typed hashing not pursued. |
-| C2  | How is `JubjubPoint == JubjubPoint` expressed?                                                      | ✅     | Via coordinate decomposition: `jubjubPointX(a) == jubjubPointX(b) && jubjubPointY(a) == jubjubPointY(b)`. See [`Schnorr.pointsEqual`](Schnorr.compact). |
-| C3  | Does Compact v0.31 expose Jubjub coordinate accessors?                                              | ✅     | Yes — `jubjubPointX(p): Field`, `jubjubPointY(p): Field`, `constructJubjubPoint(x, y): JubjubPoint`. Source: [compactc-v0.31.0/examples/jubjubpoint/examples.compact](../../../compact-compactc-v0.31.0/examples/jubjubpoint/examples.compact). |
-| C4  | Can off-chain TS code reproduce on-chain `transientHash` bit-for-bit?                               | ✅     | Yes — both go through `@midnight-ntwrk/compact-runtime`'s `transientHash`. Pinned in [`Schnorr.test.ts`](test/Schnorr.test.ts) ("off-chain schnorrChallenge matches on-chain Schnorr_challenge bit-for-bit"). |
-| C5  | Does the runtime auto-reduce `Field` (Fq) inputs to `ecMul`/`ecMulGenerator` mod the Jubjub scalar order (Fr)? | ❌     | **No.** `JubjubFr::from_bytes` returns `None` for any Field value ≥ Fr's modulus, surfacing as a WASM "failed to decode for built-in type EmbeddedFr after successful typecheck" error. ~7/8 of random Field values fall in the bad range (Fq ≈ 8·Fr). See [§ Fq vs Fr](#fq-vs-fr-the-field-mismatch-trap) below. |
-| C6  | What's the safe-by-construction reduction strategy for an Fq value into Fr?                         | ✅     | Truncate to 248 bits by zeroing the top byte of the LE encoding. 2^248 < Fr ≈ 2^252, so the result is always valid as a Jubjub scalar. Loses ~4 bits of challenge entropy → ~124-bit Schnorr forgery resistance, well above 128-bit target. See [`Schnorr.fitInJubjubScalar`](Schnorr.compact). |
-| C7  | Should `sigma` (the Schnorr response scalar) also be truncated on-chain?                            | ❌     | No. Off-chain `jubjubSign` already computes `sigma = (r + c·s) mod JUBJUB_SCALAR_ORDER`, so it's always in [0, Fr) and safe to pass to `ecMulGenerator` directly. Truncating it on-chain would be incorrect — values in (2^248, Fr) are valid sigmas and must not be altered. |
-| C8  | What's the byte order of `upgradeFromTransient` / `degradeToTransient`?                             | ✅     | **Little-endian.** Byte 0 is the LSB; byte 31 is the MSB. Sourced from [midnight-ledger-ledger-8.0.3/zkir-v3/src/ir_vm.rs:193](../../../../midnight-ledger-ledger-8.0.3/zkir-v3/src/ir_vm.rs) (`to_bytes_le()`) and confirmed empirically via the bit-for-bit cross-side challenge test. |
-| C9  | Does `slice<n>(bytes, offset)` work in Compact circuits?                                            | ✅     | Yes — see [Compact reference §slice](../../../compact-compactc-v0.31.0/compiler/compact-reference-proto.mdx) (line 2380+). Result type is `Bytes<n>`. Used in `fitInJubjubScalar`. |
-| C10 | Can Compact build a `Bytes<32>` by spreading a `Bytes<31>` and appending a `Uint<8>`?               | ✅     | Yes — `[...(slice<31>(b, 0) as Bytes<31>), 0 as Uint<8>] as Bytes<32>` compiles cleanly in v0.31. |
+| #   | Module     | Question                                                                                            | Status | Where pinned                                                                                            |
+| --- | ---------- | --------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| J1  | `Jubjub`   | Is `JubjubPoint` hashable directly via `transientHash<JubjubPoint>`?                                | ◐      | Worked around — we hash via `jubjubPointX(p)` + `jubjubPointY(p)` decomposition. Direct opaque-typed hashing not pursued. |
+| J2  | `Jubjub`   | How is `JubjubPoint == JubjubPoint` expressed?                                                      | ✅     | Via coordinate decomposition: `jubjubPointX(a) == jubjubPointX(b) && jubjubPointY(a) == jubjubPointY(b)`. See [`Jubjub.pointsEqual`](Jubjub.compact). |
+| J3  | `Jubjub`   | Does Compact v0.31 expose Jubjub coordinate accessors?                                              | ✅     | Yes — `jubjubPointX(p): Field`, `jubjubPointY(p): Field`, `constructJubjubPoint(x, y): JubjubPoint`. Source: [compactc-v0.31.0/examples/jubjubpoint/examples.compact](../../../compact-compactc-v0.31.0/examples/jubjubpoint/examples.compact). |
+| J4  | `Jubjub`   | Does the runtime auto-reduce `Field` (Fq) inputs to `ecMul`/`ecMulGenerator` mod the Jubjub scalar order (Fr)? | ❌     | **No.** `JubjubFr::from_bytes` returns `None` for any Field value ≥ Fr's modulus, surfacing as a WASM "failed to decode for built-in type EmbeddedFr after successful typecheck" error. ~7/8 of random Field values fall in the bad range (Fq ≈ 8·Fr). See [§ Fq vs Fr](#fq-vs-fr-the-field-mismatch-trap) below. |
+| J5  | `Jubjub`   | What's the safe-by-construction reduction strategy for an Fq value into Fr?                         | ✅     | Truncate to 248 bits by zeroing the top byte of the LE encoding. 2^248 < Fr ≈ 2^252, so the result is always valid as a Jubjub scalar. Loses 4 bits of challenge entropy → ~124-bit security versus the ~126-bit DLP ceiling on Jubjub (2-bit measurable loss vs RedJubjub's full-Fr challenge). See [`Jubjub.fitInJubjubScalar`](Jubjub.compact) and the security-analysis section below. |
+| J6  | `Jubjub`   | What's the byte order of `upgradeFromTransient` / `degradeToTransient`?                             | ✅     | **Little-endian.** Byte 0 is the LSB; byte 31 is the MSB. Sourced from [midnight-ledger-ledger-8.0.3/zkir-v3/src/ir_vm.rs:193](../../../../midnight-ledger-ledger-8.0.3/zkir-v3/src/ir_vm.rs) (`to_bytes_le()`) and confirmed empirically via the bit-for-bit cross-side challenge test. |
+| J7  | `Jubjub`   | Does `slice<n>(bytes, offset)` work in Compact circuits?                                            | ✅     | Yes — see [Compact reference §slice](../../../compact-compactc-v0.31.0/compiler/compact-reference-proto.mdx) (line 2380+). Result type is `Bytes<n>`. Used in `fitInJubjubScalar`. |
+| J8  | `Jubjub`   | Can Compact build a `Bytes<32>` by spreading a `Bytes<31>` and appending a `Uint<8>`?               | ✅     | Yes — `[...(slice<31>(b, 0) as Bytes<31>), 0 as Uint<8>] as Bytes<32>` compiles cleanly in v0.31. |
+| S1  | `Schnorr`  | Can off-chain TS code reproduce on-chain `transientHash` bit-for-bit?                               | ✅     | Yes — both go through `@midnight-ntwrk/compact-runtime`'s `transientHash`. Pinned in [`Schnorr.test.ts`](test/Schnorr.test.ts) ("off-chain schnorrChallenge matches on-chain Schnorr_challenge bit-for-bit"). |
+| S2  | `Schnorr`  | Should `sigma` (the response scalar) also be truncated on-chain?                                    | ❌     | No. Off-chain `jubjubSign` already computes `sigma = (r + c·s) mod JUBJUB_SCALAR_ORDER`, so it's always in [0, Fr) and safe to pass to `ecMulGenerator` directly. Truncating it on-chain would be incorrect — values in (2^248, Fr) are valid sigmas and must not be altered. |
 
 Status: ✅ Answered · ◐ Partial · ❌ Counterintuitive answer worth pinning
 
@@ -51,7 +60,7 @@ Root cause: the WASM runtime calls `JubjubFr::from_bytes(&native.to_bytes_le())`
 
 Conceptually: zero the top byte of the LE encoding to guarantee `value < 2^248 < Fr`.
 
-In Compact:
+In Compact ([Jubjub.compact](Jubjub.compact)):
 
 ```compact
 export pure circuit fitInJubjubScalar(c: Field): Field {
@@ -62,7 +71,7 @@ export pure circuit fitInJubjubScalar(c: Field): Field {
 }
 ```
 
-Off-chain mirror in TS (`@midnight-ntwrk/compact-runtime` exposes the same primitives, but the bit-mask form is faster):
+Off-chain mirror in TS ([utils/jubjub.ts](utils/jubjub.ts)) — `@midnight-ntwrk/compact-runtime` exposes the same primitives, but the bit-mask form is faster:
 
 ```ts
 export const JUBJUB_TRUNCATION_BITS = 248;
@@ -77,14 +86,25 @@ Bit-mask `c & ((1n<<248n) - 1n)` is equivalent to zeroing the top byte of the LE
 
 ### Security analysis
 
-The truncation removes ~7 bits of challenge entropy (4 bits effectively, given Fr is ~252-bit and we cap at 248). Schnorr's forgery security in the random-oracle model is roughly half the challenge bit-length:
+Schnorr signatures over a curve of group order `n` provide at most `~log2(n) / 2` bits of security, capped by the discrete-log cost on that curve (Pollard rho ≈ `sqrt(n)`). For Jubjub, `Fr ≈ 2^252`, so the **DLP ceiling is ~2^126** regardless of any choice elsewhere in the scheme.
 
-- 252-bit challenge (full Fr): ~126-bit forgery resistance.
-- 248-bit challenge (our truncation): ~124-bit forgery resistance.
+The relevant question for our truncation is: **does shrinking the challenge from 252 bits to 248 bits reduce security below that 126-bit ceiling?**
 
-124-bit security is well above the 128-bit target for production use cases (∗) and consistent with industry practice (Zcash Sapling RedJubjub uses Blake2b-512 followed by reduction mod Fr; we cap at 2^248 to avoid the reduce-mod-Fr operation, which Compact's `Field` arithmetic does not natively support).
+Under the random-oracle model for Poseidon, Schnorr's tight ROM security bound is `min(challenge_bits / 2, log2(n) / 2)`. For us:
 
-(∗) Strictly, "128-bit security" usually refers to the cost of the cheapest known attack against the underlying primitives (DL on Jubjub, Poseidon as ROM, etc.). The challenge length only bounds Schnorr's tightness; the ECDLP cost on Jubjub remains the dominant attack vector at ~126-bit cost. Trimming the challenge to 248 bits does not reduce the ECDLP-bound security.
+- DLP cost on Jubjub: `2^126`.
+- Birthday-style attack on 248-bit challenge space: `2^124`.
+- Tight ROM security: `min(2^124, 2^126) = 2^124`.
+
+So the truncation does cost us 2 bits relative to a full-Fr challenge — but the gap is bounded *because the challenge space is still well above the curve security*. Were the challenge ever to drop below `2 * log2(n)` bits (i.e. ~252 bits), the curve security would no longer be the bottleneck, and the gap would be more meaningful. We are 4 bits below that comfort margin, which translates to a 2-bit measurable security loss in the worst case.
+
+For comparison:
+
+- **Zcash Sapling RedJubjub:** Blake2b-512 → `mod Fr` → 252-bit challenge → DLP-bound ~126-bit security.
+- **Bitcoin BIP-340:** SHA-256 → 256-bit challenge → secp256k1 DLP-bound ~128-bit security.
+- **Our scheme:** Poseidon → 248-bit truncated challenge → DLP-bound, but challenge-cost capped at ~124 bits.
+
+The 2-bit loss versus RedJubjub is the price of avoiding an in-circuit `mod Fr` reduction (which Compact's `Field` arithmetic doesn't natively support). Acceptable for an experiment-grade module; if a production audit later wants to close the gap, it can be done by replacing the byte-truncation with a bounded conditional-subtraction reduction (up to ⌈Fq/Fr⌉ ≈ 8 conditional subtracts). Cost in rows: ~50-100 per subtract, so ~400-800 added rows total.
 
 ### Why we didn't pursue alternatives
 
@@ -99,6 +119,35 @@ The truncation removes ~7 bits of challenge entropy (4 bits effectively, given F
 Anywhere a Field-typed hash output flows into `ecMul` / `ecMulGenerator`. So far in this package, only `Schnorr.challenge` has that shape. When future crypto modules (Pedersen, FROST aggregation, hash-to-curve nullifiers, …) land they should be reviewed against this trap and reuse `fitInJubjubScalar` where appropriate.
 
 The dual-form scalar `sigma` in `JubjubSchnorrSignature` is **not** truncated on-chain because it's already produced in [0, Fr) by the off-chain signer (`jubjubSign` reduces mod `JUBJUB_SCALAR_ORDER`). Truncating it would be incorrect: a sigma in (2^248, Fr) is valid and must round-trip exactly.
+
+---
+
+## Identity-Element Rejection
+
+`Schnorr.verify` rejects signatures where either the public key `P` or the commitment `R` is the curve identity (`(0, 1)` in twisted-Edwards form). Without this check, a degenerate `P = identity` would let any prover produce a signature trivially: `c * identity = identity` collapses the verify equation to `sigma * G == R`, which only requires knowing `r = log_G(R)` rather than the secret `s`. The off-chain `jubjubVerify` mirrors the same rejection so test vectors agree.
+
+This is defence-in-depth — production contracts that maintain a registry of allowed signer keys should also reject `identity` at registration time, the same way `Ownable` rejects the zero `ZswapCoinPublicKey` ([Ownable.compact](../access/Ownable.compact)).
+
+The `Jubjub.isIdentity(p)` pure circuit is exposed for that purpose and mirrored on the TS side as `isIdentity(p)` in [`utils/jubjub.ts`](utils/jubjub.ts). `Jubjub.assertNonIdentity(p)` is the assertion variant for callers that want a chain-level revert rather than a boolean.
+
+---
+
+## Nonce-Reuse Footgun
+
+Schnorr signatures leak the secret if the same nonce `r` is ever used to sign two different messages under the same secret:
+
+```
+sigma_1 = r + c_1 * s   (mod Fr)
+sigma_2 = r + c_2 * s   (mod Fr)
+⇒  s = (sigma_1 - sigma_2) * (c_1 - c_2)^{-1}   (mod Fr)
+```
+
+This is a generic Schnorr-implementation hazard, not specific to our truncation. The TS API in [`utils/jubjubSchnorr.ts`](utils/jubjubSchnorr.ts) is split into two entrypoints to make the safe path obvious:
+
+- **`jubjubSign(secret, message)`** — production-safe; samples a fresh CSPRNG nonce per call.
+- **`jubjubSignDeterministic(secret, message, nonceSeed)`** — test-only; takes a caller-supplied nonce. The function name is intentionally verbose to discourage accidental production use. Documented with a `WARNING — TEST/CEREMONY USE ONLY` block.
+
+Production callers MUST use `jubjubSign`. Test fixtures use `jubjubSignDeterministic` for reproducible vectors. Future protocol primitives that need pre-committed nonces (e.g. FROST round-1 commitments) should derive nonces via their own audited mechanism rather than reaching for `jubjubSignDeterministic`.
 
 ---
 

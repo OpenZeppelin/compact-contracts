@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/Jubjub.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module Jubjub
+ * @description General-purpose primitives for the Jubjub embedded curve.
+ *
+ * Reusable across every crypto module that touches Jubjub points or scalars
+ * (Schnorr, Pedersen, FROST/MuSig2 aggregation, ECDH-style derivations, BLS
+ * variants, hash-to-curve nullifiers, …). Pure-circuit only — no ledger state.
+ *
+ * @notice Field-size mismatch (Fq vs Fr).
+ * Compact's `Field` type is BLS12-381's scalar field Fq (modulus
+ * 0x73eda753…00000001, ~2^254). Jubjub's scalar field Fr (modulus
+ * 0x0e7db4ea…6f72cb7, ~2^252) is roughly 8x smaller — `Fr` is what
+ * `ecMul` / `ecMulGenerator` accept as a scalar. Passing a `Field`
+ * value >= Fr to either of those builtins triggers a runtime error
+ * ("failed to decode for built-in type EmbeddedFr after successful
+ * typecheck") because the runtime calls `JubjubFr::from_bytes` which
+ * returns `None` for out-of-range integers and does NOT auto-reduce.
+ *
+ * `fitInJubjubScalar` solves this by truncating any Field value to 248 bits
+ * (zeroing the most-significant byte of its LE encoding), guaranteeing the
+ * result is in [0, 2^248) ⊂ [0, Fr). Off-chain TS callers MUST apply the
+ * same truncation when they hash-then-multiply, otherwise on/off-chain
+ * scalar values will not agree.
+ *
+ * @notice Identity-element rejection.
+ * `isIdentity` and `assertNonIdentity` exist so consumers can refuse the
+ * curve identity (`(0, 1)` in twisted-Edwards form) wherever a non-trivial
+ * point is required (e.g. signer public keys, signature commitments,
+ * Diffie-Hellman shared secrets). Compact's `JubjubPoint` is constrained to
+ * the prime-order subgroup (per `midnight_curves::JubjubSubgroup`), so the
+ * identity is the only degenerate value a well-formed point can take.
+ */
+module Jubjub {
+  import CompactStandardLibrary;
+
+  // ─── Equality / Identity ────────────────────────────────────────
+
+  /**
+   * @description Returns whether two Jubjub points are equal, by comparing
+   * their X and Y coordinates.
+   *
+   * @param {JubjubPoint} a - First point.
+   * @param {JubjubPoint} b - Second point.
+   * @returns {Boolean} True iff `a == b`.
+   */
+  export pure circuit pointsEqual(a: JubjubPoint, b: JubjubPoint): Boolean {
+    return jubjubPointX(a) == jubjubPointX(b)
+        && jubjubPointY(a) == jubjubPointY(b);
+  }
+
+  /**
+   * @description Returns whether a Jubjub point is the curve identity.
+   *
+   * The identity element in twisted-Edwards form is `(0, 1)`. Since Compact's
+   * `JubjubPoint` is constrained to the prime-order subgroup, this is the
+   * only identity-shaped value a well-formed point can take.
+   *
+   * @param {JubjubPoint} p - The point to check.
+   * @returns {Boolean} True iff `p` is the identity.
+   */
+  export pure circuit isIdentity(p: JubjubPoint): Boolean {
+    return jubjubPointX(p) == 0 && jubjubPointY(p) == 1;
+  }
+
+  /**
+   * @description Asserts that a Jubjub point is not the curve identity.
+   * Wrapper for the common `assert(!isIdentity(p), ...)` pattern.
+   *
+   * Requirements:
+   *
+   * - `p` must not be the identity element `(0, 1)`.
+   *
+   * @param {JubjubPoint} p - The point to check.
+   * @returns {[]} Empty tuple.
+   */
+  export pure circuit assertNonIdentity(p: JubjubPoint): [] {
+    assert(!isIdentity(p), "Jubjub: identity point not allowed");
+  }
+
+  // ─── Scalar Reduction ───────────────────────────────────────────
+
+  /**
+   * @description Truncates a `Field` value to `[0, 2^248)` so it can be safely
+   * passed to `ecMul` / `ecMulGenerator`, which require a Jubjub scalar (Fr).
+   *
+   * Reads the LE byte encoding (`upgradeFromTransient`), zeros the most
+   * significant byte (index 31 in LE), and re-decodes (`degradeToTransient`).
+   * The output is in [0, 2^248) ⊂ [0, Fr).
+   *
+   * Off-chain callers MUST apply the same truncation when computing scalars
+   * passed to scalar multiplication, otherwise the resulting points will not
+   * match on/off-chain comparisons. See the module @notice for full background.
+   *
+   * @param {Field} c - The unbounded Field value to truncate.
+   * @returns {Field} A value in [0, 2^248).
+   */
+  export pure circuit fitInJubjubScalar(c: Field): Field {
+    const cBytes: Bytes<32> = upgradeFromTransient(c);
+    // Take bytes 0..30 (LE-low) and append a zero in the MSB position.
+    // Result is a 32-byte LE encoding of a value strictly less than 2^248.
+    const truncated: Bytes<32> =
+      [...(slice<31>(cBytes, 0) as Bytes<31>), 0 as Uint<8>] as Bytes<32>;
+    return degradeToTransient(truncated);
+  }
+}

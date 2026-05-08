@@ -3,12 +3,10 @@
 //
 // Off-chain Schnorr-on-Jubjub keygen, signer, and reference verifier.
 //
-// All elliptic-curve and hash operations route through @midnight-ntwrk/compact-runtime
-// so the off-chain output is bit-identical to the on-chain Schnorr.compact module.
-// The runtime exposes the same Poseidon `transientHash`, `ecAdd`, `ecMul`,
-// `ecMulGenerator`, `jubjubPointX`, `jubjubPointY`, and `degradeToTransient`
-// primitives the circuit calls — there is no second cryptographic implementation
-// to keep in sync.
+// Generic Jubjub primitives (isIdentity, fitInJubjubScalar, scalar order)
+// live in `./jubjub.js` and are imported here so the same constants and
+// helpers can be reused by other cryptographic schemes (Pedersen, FROST,
+// ECDH, …) without coupling to Schnorr.
 
 import {
   CompactTypeField,
@@ -22,30 +20,7 @@ import {
   jubjubPointY,
   transientHash,
 } from '@midnight-ntwrk/compact-runtime';
-
-/**
- * Jubjub scalar field order (Zcash Sapling parameters).
- *
- * Source: midnight-zk-main/curves/src/jubjub/fr.rs:76 and
- * midnight-zk-main/curves/README.md:104.
- *
- * r = 0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7
- */
-export const JUBJUB_SCALAR_ORDER: bigint =
-  0x0e7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7n;
-
-/**
- * Number of bits the on-chain `fitInJubjubScalar` keeps from a Field value
- * before passing it to `ecMul` / `ecMulGenerator`. The on-chain code zeroes
- * the most significant byte of the LE byte encoding, so the safe range is
- * [0, 2^248). This module reproduces that reduction exactly so off-chain
- * challenge values match on-chain ones bit-for-bit.
- *
- * See the @notice in contracts/src/crypto/Schnorr.compact for the
- * full background on why this truncation is required.
- */
-export const JUBJUB_TRUNCATION_BITS = 248;
-const JUBJUB_TRUNCATION_MASK = (1n << BigInt(JUBJUB_TRUNCATION_BITS)) - 1n;
+import { fitInJubjubScalar, isIdentity, modJubjubOrder } from './jubjub.js';
 
 /**
  * Domain tag baked into the Schnorr challenge preimage.
@@ -72,7 +47,7 @@ export interface JubjubSchnorrSignature {
  * zero are rejected.
  */
 export function jubjubKeypairFromSecret(secret: bigint): JubjubKeypair {
-  const reduced = modOrder(secret);
+  const reduced = modJubjubOrder(secret);
   if (reduced === 0n) {
     throw new Error('jubjubKeypairFromSecret: secret reduces to zero');
   }
@@ -86,8 +61,8 @@ export function jubjubKeypairFromSecret(secret: bigint): JubjubKeypair {
  * Compute the Fiat-Shamir challenge for a Schnorr-on-Jubjub signature.
  *
  * MUST byte-match the on-chain `Schnorr_challenge` circuit. That includes
- * the trailing `fitInJubjubScalar` truncation, which zeroes the top byte
- * of the LE encoding so the result fits in the Jubjub scalar field
+ * the trailing `Jubjub.fitInJubjubScalar` truncation, which zeroes the top
+ * byte of the LE encoding so the result fits in the Jubjub scalar field
  * (modulus ~2^252).
  */
 export function schnorrChallenge(
@@ -113,53 +88,75 @@ export function schnorrChallenge(
 }
 
 /**
- * Truncates a Field value to [0, 2^248) so it fits in the Jubjub scalar
- * field. Equivalent to zeroing the most-significant byte of the LE byte
- * encoding, which is what the on-chain `Schnorr.fitInJubjubScalar` circuit
- * does. See `JUBJUB_TRUNCATION_BITS` for the rationale.
- */
-export function fitInJubjubScalar(c: bigint): bigint {
-  return c & JUBJUB_TRUNCATION_MASK;
-}
-
-/**
  * Produce a Schnorr-on-Jubjub signature over `message` under `secret`.
  *
- * Pass `nonceSeed` for deterministic test vectors; otherwise a fresh
- * cryptographically-strong nonce is sampled.
+ * Always samples a fresh, cryptographically-strong nonce. This is the
+ * function production callers should use.
  *
  * The signature scalar is computed as `sigma = (r + c * s) mod n` where
- * `n = JUBJUB_SCALAR_ORDER`. The challenge `c` is the raw `transientHash`
- * output (a BLS12-381 scalar-field element); the on-chain `ecMul(P, c)`
- * reduces `c` modulo `n` automatically, so we apply the same reduction
- * here for the verify equation `sigma * G == R + c * P` to hold.
+ * `n = JUBJUB_SCALAR_ORDER` and `c` is the truncated challenge from
+ * `schnorrChallenge` (already in [0, 2^248)). The verify equation
+ * `sigma * G == R + c * P` holds with `c` reduced identically on both sides.
+ *
+ * For deterministic test vectors, use `jubjubSignDeterministic` instead.
  */
 export function jubjubSign(
   secret: bigint,
   message: Uint8Array,
-  nonceSeed?: bigint,
 ): JubjubSchnorrSignature {
-  const s = modOrder(secret);
+  return signWithNonce(secret, message, sampleScalar());
+}
+
+/**
+ * Produce a Schnorr-on-Jubjub signature with a CALLER-SUPPLIED nonce.
+ *
+ * **WARNING — TEST/CEREMONY USE ONLY.** Reusing the same nonce across two
+ * different messages under the same secret immediately leaks the secret:
+ *
+ *     sigma_1 - sigma_2 == (c_1 - c_2) * s   mod Fr
+ *     ⇒ s = (sigma_1 - sigma_2) * (c_1 - c_2)^{-1}   mod Fr
+ *
+ * Production code MUST use `jubjubSign`, which samples a fresh nonce per call.
+ * This entrypoint exists exclusively for deterministic test vectors and for
+ * orchestrated signing protocols (e.g. FROST) that derive nonces via a
+ * separate, audited mechanism.
+ */
+export function jubjubSignDeterministic(
+  secret: bigint,
+  message: Uint8Array,
+  nonceSeed: bigint,
+): JubjubSchnorrSignature {
+  return signWithNonce(secret, message, modJubjubOrder(nonceSeed));
+}
+
+function signWithNonce(
+  secret: bigint,
+  message: Uint8Array,
+  rRaw: bigint,
+): JubjubSchnorrSignature {
+  const s = modJubjubOrder(secret);
   if (s === 0n) throw new Error('jubjubSign: secret reduces to zero');
-  const r = nonceSeed !== undefined ? modOrder(nonceSeed) : sampleScalar();
+  const r = modJubjubOrder(rRaw);
   if (r === 0n) throw new Error('jubjubSign: nonce reduces to zero');
 
   const R = ecMulGenerator(r);
   const P = ecMulGenerator(s);
   const c = schnorrChallenge(R, P, message);
-  const sigma = modOrder(r + c * s);
+  const sigma = modJubjubOrder(r + c * s);
   return { R, sigma };
 }
 
 /**
  * Off-chain reference verifier — useful for unit tests that want a
- * deploy-free smoke check. Mirrors the on-chain `Schnorr.verify`.
+ * deploy-free smoke check. Mirrors the on-chain `Schnorr.verify`, including
+ * the rejection of identity-element inputs.
  */
 export function jubjubVerify(
   P: JubjubPoint,
   message: Uint8Array,
   sig: JubjubSchnorrSignature,
 ): boolean {
+  if (isIdentity(P) || isIdentity(sig.R)) return false;
   const c = schnorrChallenge(sig.R, P, message);
   const lhs = ecMulGenerator(sig.sigma);
   const rhs = ecAdd(sig.R, ecMul(P, c));
@@ -168,11 +165,6 @@ export function jubjubVerify(
 }
 
 // ─── Internals ──────────────────────────────────────────────────────────────
-
-function modOrder(x: bigint): bigint {
-  const m = x % JUBJUB_SCALAR_ORDER;
-  return m < 0n ? m + JUBJUB_SCALAR_ORDER : m;
-}
 
 function padRight32(s: string): Uint8Array {
   const enc = new TextEncoder().encode(s);
@@ -190,7 +182,7 @@ function sampleScalar(): bigint {
     crypto.getRandomValues(buf);
     let x = 0n;
     for (const b of buf) x = (x << 8n) | BigInt(b);
-    if (x !== 0n && x < JUBJUB_SCALAR_ORDER) return x;
+    if (x !== 0n && x < (1n << 252n)) return x;
   }
   throw new Error('sampleScalar: rejection sampling exhausted');
 }
