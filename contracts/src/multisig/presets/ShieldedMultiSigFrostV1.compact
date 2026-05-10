@@ -1,0 +1,168 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/ShieldedMultiSigFrostV1.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title ShieldedMultiSigFrostV1
+ * @description Threshold-multisig contract whose on-chain authentication is
+ * a single Schnorr-on-Jubjub signature produced off-chain via the FROST
+ * K-of-N protocol (Komlo-Goldberg 2020 / RFC 9591).
+ *
+ * @notice Why this is a "FROST" preset on-chain
+ *
+ * FROST's design is intentionally transparent at the chain level: any two of
+ * three (or K of N) participants who hold valid DKG-derived secret shares
+ * can collaborate off-chain to produce a single signature `(R, σ)` that
+ * verifies under their aggregated public key `P_agg` exactly as if a
+ * single-key holder had signed. The on-chain code therefore needs **no**
+ * threshold-specific machinery — no per-signer loop, no Merkle tree, no
+ * nullifier set. It just verifies one Schnorr signature.
+ *
+ * That minimality is the contract's whole value proposition versus Schemes
+ * C and D — strongest on-chain privacy (observer cannot count signers),
+ * smallest circuit cost (one verify regardless of K).
+ *
+ * The off-chain FROST implementation lives at
+ * `contracts/src/crypto/utils/frost/`:
+ *
+ *   - `dkg.ts`               — Pedersen DKG (no trusted dealer).
+ *   - `frostSign.ts`         — 3-round signing protocol primitives.
+ *   - `frostCoordinator.ts`  — in-process orchestrator for tests.
+ *   - `polynomial.ts`        — Lagrange interpolation, scalar sampling.
+ *
+ * @notice Aggregator-protocol agnosticism
+ *
+ * The on-chain verifier doesn't actually depend on FROST. Any aggregator
+ * that produces a valid Schnorr-on-Jubjub signature under the registered
+ * public key satisfies it: MuSig2 N-of-N would work too, as would a
+ * single-key holder. The "FROST" in the preset's name reflects the
+ * recommended off-chain protocol, not a chain-level requirement.
+ *
+ * @notice Treasury & message format
+ *
+ * Treasury is fully stateless (operator-supplied coins) — same as
+ * `ShieldedMultiSigSchnorrV1`. The signed message format is also identical:
+ *
+ *   `msgHash = persistentHash([nonce, to.address, coin.color, amount])`
+ *
+ * so off-chain message-construction tooling can be shared across Scheme C
+ * (`ShieldedMultiSigSchnorrV1`) and Scheme E.1 (`ShieldedMultiSigFrostV1`).
+ */
+
+import CompactStandardLibrary;
+
+import "../ProposalManager" prefix Proposal_;
+import "../ShieldedTreasuryStateless" prefix Treasury_;
+import "../../crypto/Jubjub" prefix Jubjub_;
+import "../../crypto/Schnorr" prefix Schnorr_;
+
+// ─── State ──────────────────────────────────────────────────────
+
+/**
+ * @description The aggregated FROST public key. Verifier compares
+ * `sigma * G == R + c * _aggregatedKey`. Sealed at construction.
+ *
+ * Rotation (e.g. after re-running DKG) is intentionally out of scope for V1
+ * to keep the audit surface minimal; redeploy if signer-set rotation is
+ * needed. A V2 with `rotateAggregatedKey` (old-key signs the new-key) is
+ * a natural follow-up.
+ */
+export sealed ledger _aggregatedKey: JubjubPoint;
+
+/**
+ * Replay-protection counter folded into every signed message. Increments on
+ * each `execute` call so re-submitting the same `(R, σ, payload)` always
+ * fails the on-chain Schnorr check at the new nonce.
+ */
+export ledger _nonce: Counter;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Deploys the multisig with one FROST-aggregated public key.
+ *
+ * The aggregated key is produced off-chain by running the Pedersen DKG
+ * ceremony (`crypto/utils/frost/dkg.ts`). All N participants must
+ * successfully complete DKG before this contract can be deployed; the
+ * resulting `aggregatedKey` is the constant term of the joint polynomial,
+ * multiplied by the curve generator.
+ *
+ * Requirements:
+ *
+ * - `aggregatedKey` must not be the curve identity.
+ *
+ * @param {JubjubPoint} aggregatedKey - The FROST aggregated public key.
+ */
+constructor(aggregatedKey: JubjubPoint) {
+  Jubjub_assertNonIdentity(aggregatedKey);
+  _aggregatedKey = disclose(aggregatedKey);
+}
+
+// ─── Deposit ────────────────────────────────────────────────────
+
+/**
+ * @description Receives a shielded coin into the multisig. No access
+ * control — anyone can deposit. Coin discovery via indexer events.
+ */
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  receiveShielded(disclose(coin));
+}
+
+// ─── Execute ────────────────────────────────────────────────────
+
+/**
+ * @description Executes a shielded send authorised by ONE FROST-aggregated
+ * Schnorr-on-Jubjub signature.
+ *
+ * Message hash:
+ *
+ *   `msgHash = persistentHash([nonce, to.address, coin.color, amount])`
+ *
+ * The K-of-N signers compute this hash off-chain and run the FROST signing
+ * protocol against it. The coordinator returns a single `(R, σ)` to be
+ * passed here.
+ *
+ * Requirements:
+ *
+ * - `sig` must be a valid Schnorr-on-Jubjub signature under
+ *   `_aggregatedKey` over the message hash. Reverts with
+ *   `"Schnorr: invalid signature"` if not.
+ * - Coin value must be >= amount.
+ */
+export circuit execute(
+  to: Proposal_Recipient,
+  amount: Uint<128>,
+  coin: QualifiedShieldedCoinInfo,
+  sig: Schnorr_JubjubSchnorrSignature
+): ShieldedSendResult {
+  const currentNonce = _nonce;
+  _nonce.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    currentNonce as Bytes<32>,
+    to.address,
+    coin.color,
+    amount as Bytes<32>
+  ]);
+
+  Schnorr_assertValid(_aggregatedKey, msgHash, sig);
+
+  const normalizedRecipient = Proposal_toShieldedRecipient(to);
+  return Treasury__send(coin, normalizedRecipient, amount);
+}
+
+// ─── Views ──────────────────────────────────────────────────────
+
+export circuit getNonce(): Uint<64> {
+  return _nonce;
+}
+
+export circuit getAggregatedKey(): JubjubPoint {
+  return _aggregatedKey;
+}
+
+/** Returns whether `pk` is the FROST aggregated key. Mirrors the V1/D-V1 API. */
+export circuit isSigner(pk: JubjubPoint): Boolean {
+  return Jubjub_pointsEqual(pk, _aggregatedKey);
+}

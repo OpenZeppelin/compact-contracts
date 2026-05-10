@@ -40,19 +40,21 @@ Each successful tx is signed against the current `counter` and the chain rejects
 ### On-chain shape an update mutates
 
 ```mermaid
-flowchart LR
+flowchart TB
+  SU(["SingleUpdate"])
   CS["ContractState (per address)"]
+
   CS --> CMA["maintenanceAuthority<br/>{ committee, threshold, counter }"]
   CS --> Slots["VK slots, one per circuit"]
-  Slots --> M["_mint → VK"]
-  Slots --> P["pause → VK"]
-  Slots --> G["grantRole → VK"]
-  Slots --> O["…other ops"]
+  Slots --> M["_mint: VK"]
+  Slots --> P["pause: VK"]
+  Slots --> G["grantRole: VK"]
+  Slots --> O["...other ops"]
 
-  SU["SingleUpdate"]
-  SU -->|VerifierKeyInsert / Remove| Slots
+  SU -->|VerifierKeyInsert| Slots
+  SU -->|VerifierKeyRemove| Slots
   SU -->|ReplaceAuthority| CMA
-  SU -.bumps.-> CMA
+  SU -.advances counter.-> CMA
 ```
 
 ### Read APIs (indexer-backed)
@@ -93,22 +95,47 @@ new MaintenanceUpdate(addr, SingleUpdate[], counter)
 ```mermaid
 sequenceDiagram
   participant Spec as Test spec
-  participant Harness as _harness/cma.ts
-  participant Idx as Indexer (publicData)
-  participant Ledger as ledger-v8
-  participant Node as Local Midnight node
+  participant H as Harness (cma.ts)
+  participant I as Indexer
+  participant L as ledger-v8
+  participant N as Midnight node
 
-  Spec->>Harness: submitRawMaintenanceUpdate(addr, [SU, ...])
-  Harness->>Idx: readCmaCounter(addr)
-  Idx-->>Harness: counter
-  Harness->>Ledger: new MaintenanceUpdate(addr, SU[], counter)
-  Ledger-->>Harness: mu (with dataToSign)
-  Harness->>Harness: signData(authorityKey, mu.dataToSign)
-  Harness->>Ledger: mu.addSignature(0n, sig)
-  Harness->>Ledger: Intent.new(ttl).addMaintenanceUpdate(signed)
-  Harness->>Ledger: Transaction.fromParts(networkId, _, _, intent)
-  Harness->>Node: submitTx({ unprovenTx })
-  Node-->>Spec: FinalizedTxData (SucceedEntirely | FailFallible | reject)
+  Spec->>+H: submitRawMaintenanceUpdate(addr, [SU...])
+
+  rect rgb(238, 245, 255)
+    Note over H,I: 1. Fetch on-chain replay counter
+    H->>+I: queryContractState(addr)
+    I-->>-H: counter
+  end
+
+  rect rgb(245, 245, 245)
+    Note over H,L: 2. Build and sign the MaintenanceUpdate
+    H->>L: new MaintenanceUpdate(addr, SU[], counter)
+    L-->>H: mu (with dataToSign)
+    H->>H: signData(authorityKey, mu.dataToSign)
+    H->>L: mu.addSignature(0n, sig)
+  end
+
+  rect rgb(243, 250, 240)
+    Note over H,L: 3. Wrap into a Transaction
+    H->>L: Intent.new(ttl).addMaintenanceUpdate(signed)
+    H->>L: Transaction.fromParts(network, _, _, intent)
+  end
+
+  rect rgb(255, 245, 245)
+    Note over H,N: 4. Submit and observe outcome
+    H->>+N: submitTx({ unprovenTx })
+    alt entire bundle applied
+      N-->>H: FinalizedTxData: SucceedEntirely
+    else atomic bundle revert
+      N-->>H: FinalizedTxData: FailFallible
+    else chain rejects at submission
+      N--xH: SubmissionError (e.g. Custom error: 117)
+    end
+    deactivate N
+  end
+
+  H-->>-Spec: result
 ```
 
 ### Harness wrappers
