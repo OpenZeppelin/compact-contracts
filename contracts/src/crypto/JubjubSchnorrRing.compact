@@ -1,0 +1,189 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (crypto/JubjubSchnorrRing.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module JubjubSchnorrRing
+ * @description Generic-arity Schnorr ring signature primitives on the Jubjub
+ * embedded curve. Cryptographic basis: Cramer-Damgård-Schoenmakers (1994)
+ * "Proofs of partial knowledge" — a witness-indistinguishable Σ-protocol over
+ * the OR-composition `{∃ sᵢ : Pᵢ = sᵢ·G}` for `i ∈ {0..N-1}`, generalised
+ * from 1-of-N to K-of-N via uniform challenge splitting. The verifier doesn't
+ * know (and cannot tell) what K was — the same artefact shape works for any
+ * K ∈ [1, N].
+ *
+ * Signature shape: three same-length vectors `R[N]`, `sigma[N]`, `c[N]`. Each
+ * slot `i` must satisfy `sigma[i] · G == R[i] + c[i] · ring[i]`, AND the
+ * per-slot challenges must sum to the global Fiat-Shamir challenge over
+ * `(R, msg)`.
+ *
+ * @notice Generic-N design.
+ *
+ * Compact v0.31 supports type-generic modules and `fold` over a single
+ * `Vector<N, T>`, but no `zip` / `map2` primitive over two vectors, and no
+ * runtime indexing into a vector with a `Field`. The per-slot Schnorr check
+ * requires parallel access to four vectors (`ring`, `sig.R`, `sig.sigma`,
+ * `sig.c`) at the same index, which cannot be expressed via `fold` alone.
+ *
+ * The compromise this module ships:
+ *
+ *   1. `JubjubRingSignature<#N>` — fully generic struct.
+ *   2. `challenge<#N>` — generic, fold-based chained Poseidon over R points.
+ *   3. `sumChallengesPoint<#N>` — generic, fold-based `Σ c[i] · G` for the
+ *      challenge-sum check (lifted to the Jubjub group; see the next notice).
+ *   4. `slotEquation` — single-slot check, called once per ring slot by the
+ *      caller. Presets that specialise to a fixed N just unroll this N times.
+ *
+ * Consumers (`ShieldedMultiSigRingV1` at N=3, future presets at any N)
+ * compose these helpers; the per-slot unroll lives at the call site. If
+ * Compact ever exposes a vector-zip primitive, this module can grow a
+ * single `verify<#N>` without breaking callers.
+ *
+ * @notice Sum-check in the curve, not the field.
+ *
+ * Compact's `Field` is BLS12-381 Fr (≈2^254). Jubjub's scalar field Fr is
+ * ≈2^252. The challenge-sum invariant `Σ c[i] ≡ cGlobal (mod r_jubjub)`
+ * cannot be checked with `Field` addition because that's mod r_BLS, not mod
+ * r_jubjub. Instead we lift to the curve: `Σ c[i] · G == cGlobal · G`. Two
+ * Jubjub points are equal iff the underlying scalars are congruent mod
+ * r_jubjub, so the check lives entirely in the Jubjub group and avoids any
+ * cross-field reduction in the circuit. Cost: one extra `ecMulGenerator(cGlobal)`
+ * on top of the N `ecMulGenerator(c[i])`s the fold already produces.
+ *
+ * @notice Identity-point rejection.
+ *
+ * `slotEquation` rejects both `pk == identity` and `R == identity`. Without
+ * this, a degenerate `pk = identity` would collapse the per-slot equation
+ * `σ·G == R + c·identity` to `σ·G == R`, satisfiable by anyone who knows
+ * `log_G(R)`. Presets owning the ring should also reject identity-shaped
+ * keys at construction time; the in-circuit rejection here is defence-in-depth.
+ *
+ * @notice Asymmetric reduction (matches `Schnorr.compact`).
+ *
+ * Only the global challenge `cGlobal` goes through `Jubjub.fitInJubjubScalar`.
+ * Per-slot `c[i]` and `sigma[i]` are prover-supplied and expected to already
+ * lie in `[0, Fr)`; if any do not, the on-chain `ecMul` / `ecMulGenerator`
+ * calls reject them at decode time. That is a sound failure path — the call
+ * aborts and no value is moved.
+ */
+module JubjubSchnorrRing {
+  import CompactStandardLibrary;
+  import "./Jubjub" prefix Jubjub_;
+
+  // ─── Types ──────────────────────────────────────────────────────
+
+  /**
+   * @description A Schnorr K-of-N ring signature on Jubjub, generic over the
+   * ring size N.
+   *
+   * @field {Vector<N, JubjubPoint>} R - Per-slot commitments. For honest
+   *   signers `R[i] = rᵢ·G`; simulated slots are back-computed via
+   *   `σⱼ·G − cⱼ·Pⱼ` so the equation still holds.
+   * @field {Vector<N, Field>} sigma - Per-slot responses, each in `[0, Fr)`.
+   * @field {Vector<N, Field>} c - Per-slot challenges, each in `[0, Fr)`.
+   *   `Σ c[i]` must reduce to the global Fiat-Shamir challenge mod r_jubjub.
+   */
+  export struct JubjubRingSignature<#N> {
+    R: Vector<N, JubjubPoint>,
+    sigma: Vector<N, Field>,
+    c: Vector<N, Field>
+  }
+
+  // ─── Challenge derivation (generic over N) ──────────────────────
+
+  /**
+   * One step of the fold-based chained Poseidon over ring R points.
+   * `acc` carries the running challenge state; each step folds in one
+   * commitment's (x, y) coordinates.
+   */
+  pure circuit hashRingStep(acc: Field, point: JubjubPoint): Field {
+    return transientHash<Vector<3, Field>>([
+      acc,
+      jubjubPointX(point),
+      jubjubPointY(point)
+    ]);
+  }
+
+  /**
+   * @description Computes the Fiat-Shamir global challenge for a ring
+   * signature of any size N.
+   *
+   * Chained Poseidon: seed = `domain_tag`, then for each `R[i]` fold
+   * `acc := Poseidon(acc, R[i].x, R[i].y)`. Finally `c = Poseidon(acc, msg)`
+   * then truncate to 248 bits via `Jubjub.fitInJubjubScalar`.
+   *
+   * Cryptographically equivalent to hashing the whole flattened preimage at
+   * once (collision-resistance of Poseidon transfers across the Merkle-
+   * Damgård extension); using `fold` keeps the implementation generic.
+   *
+   * The domain tag `"RingSig:Jubjub:v1"` prevents cross-protocol replay
+   * against the single-signer `Schnorr.compact` verifier.
+   *
+   * @param {Vector<N, JubjubPoint>} R - Per-slot commitments.
+   * @param {Bytes<32>} m - Message digest.
+   * @returns {Field} Truncated 248-bit Fiat-Shamir challenge.
+   */
+  export pure circuit challenge<#N>(R: Vector<N, JubjubPoint>, m: Bytes<32>): Field {
+    const domain: Field = degradeToTransient(pad(32, "RingSig:Jubjub:v1"));
+    const ringHash = fold(hashRingStep, domain, R);
+    const cFull = transientHash<Vector<2, Field>>([
+      ringHash,
+      degradeToTransient(m)
+    ]);
+    return Jubjub_fitInJubjubScalar(cFull);
+  }
+
+  // ─── Challenge-sum lifted to the curve (generic over N) ────────
+
+  /**
+   * One step of the fold-based accumulation `Σ c[i] · G` in the Jubjub group.
+   */
+  pure circuit cSumStep(acc: JubjubPoint, ci: Field): JubjubPoint {
+    return ecAdd(acc, ecMulGenerator(ci));
+  }
+
+  /**
+   * @description Computes `Σ c[i] · G` over all per-slot challenges in `c`.
+   * Used by callers to check `Σ c[i] · G == challenge(R, m) · G`, which is
+   * equivalent to `Σ c[i] ≡ challenge(R, m) (mod r_jubjub)` but stays
+   * entirely in the Jubjub group (no cross-field reduction needed).
+   *
+   * @param {Vector<N, Field>} c - Per-slot challenges.
+   * @returns {JubjubPoint} `Σ c[i] · G` on Jubjub.
+   */
+  export pure circuit sumChallengesPoint<#N>(c: Vector<N, Field>): JubjubPoint {
+    return fold(cSumStep, ecMulGenerator(0 as Field), c);
+  }
+
+  // ─── Per-slot equation (single slot) ────────────────────────────
+
+  /**
+   * @description Checks the per-slot Schnorr equation
+   * `sigma · G == R + c · pk` AND rejects identity-shaped `pk` or `R`.
+   *
+   * Callers fold this over their ring by calling it once per slot. A preset
+   * fixed to N=3 will assert this three times. A future preset at N=5 would
+   * assert five times. No iteration is hidden inside this circuit — it is
+   * the unit cell.
+   *
+   * @param {JubjubPoint} pk - The ring slot's public key.
+   * @param {JubjubPoint} R - The signature commitment for this slot.
+   * @param {Field} sigma - The response scalar for this slot, in `[0, Fr)`.
+   * @param {Field} c - The challenge for this slot, in `[0, Fr)`.
+   * @returns {Boolean} True iff the slot's equation holds and both points
+   *   are non-identity.
+   */
+  export pure circuit slotEquation(
+    pk: JubjubPoint,
+    R: JubjubPoint,
+    sigma: Field,
+    c: Field
+  ): Boolean {
+    if (Jubjub_isIdentity(pk)) return false;
+    if (Jubjub_isIdentity(R)) return false;
+    const lhs = ecMulGenerator(sigma);
+    const rhs = ecAdd(R, ecMul(pk, c));
+    return Jubjub_pointsEqual(lhs, rhs);
+  }
+}

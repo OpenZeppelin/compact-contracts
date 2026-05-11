@@ -252,6 +252,30 @@ sequenceDiagram
    Schnorr-on-Jubjub signature. The preset's "FROST" name reflects the
    recommended off-chain protocol, not an on-chain constraint.
 
+### How FROST fits in the MPC landscape
+
+FROST is a form of **Multi-Party Computation (MPC)**: the K signing
+participants jointly compute the Schnorr signing function on shared inputs
+(their secret shares from DKG), and no participant ever sees the aggregated
+secret. But it is **specialised** MPC — designed for exactly one function
+(Schnorr signing) — not a **general-purpose** MPC framework that can compute
+arbitrary functions.
+
+|                                | Specialised MPC                                                                                                | General-purpose MPC                                                                                                                |
+| ---                            | ---                                                                                                            | ---                                                                                                                                |
+| Examples                       | FROST, MuSig2, threshold ECDSA, threshold ElGamal                                                              | GMW, BGW, SPDZ, garbled circuits, **co-SNARKs**                                                                                    |
+| What it computes               | One fixed cryptographic operation (sign, decrypt, key-gen)                                                     | Any function expressible as a circuit                                                                                              |
+| Output                         | A normal single-party-shaped artifact (a signature / ciphertext / key)                                         | A normal single-party-shaped artifact (a SNARK proof, in the co-SNARK case)                                                        |
+| Status in this stack           | **FROST shipped here**; threshold ECDSA / BLS blocked by missing primitives in Compact (no foreign EC, no pairings) | **Not available** — Midnight's Halo2 prover is monolithic and Compact exposes no in-circuit Halo2 verifier                         |
+
+For multisig, FROST is the practical ceiling at the contracts-library layer
+today. A *general-purpose* MPC multisig — where K parties jointly produce the
+Halo2 transaction proof itself, with no party seeing the full witness — would
+be strictly stronger (the proof's instance carries no signature at all), but
+needs upstream proof-system work in midnight-zk. The trigger conditions for
+revisiting that direction, and the parked design notes, live in
+[`scheme-i-mpc-co-snark.md`](../../../.claude/plans/multisig/scheme-i-mpc-co-snark.md).
+
 ---
 
 ## See also

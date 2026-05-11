@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Top-level N=3 wrapper around the generic `JubjubSchnorrRing` module so its
+// behaviour can be exercised through the simulator. Composes the module's
+// generic helpers (`challenge`, `sumChallengesPoint`, `slotEquation`) into a
+// concrete 3-slot verifier and stores the boolean result on the ledger.
+// DO NOT deploy in production.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../Jubjub" prefix Jubjub_;
+import "../../JubjubSchnorrRing" prefix RingSig_;
+
+export { RingSig_JubjubRingSignature };
+
+// Public ledger fields read by tests.
+export ledger _lastVerifyResult: Boolean;
+export ledger _lastChallenge: Field;
+export ledger _verifyCalls: Counter;
+
+/**
+ * @description N=3 verify composed from the module's generic helpers.
+ * Returns true iff:
+ *   - every slot's `slotEquation` holds
+ *   - `Σ c[i] · G == challenge(R, m) · G`
+ */
+pure circuit verifyN3(
+  ring: Vector<3, JubjubPoint>,
+  m: Bytes<32>,
+  sig: RingSig_JubjubRingSignature<3>
+): Boolean {
+  const eq0 = RingSig_slotEquation(ring[0], sig.R[0], sig.sigma[0], sig.c[0]);
+  const eq1 = RingSig_slotEquation(ring[1], sig.R[1], sig.sigma[1], sig.c[1]);
+  const eq2 = RingSig_slotEquation(ring[2], sig.R[2], sig.sigma[2], sig.c[2]);
+
+  const cGlobal = RingSig_challenge<3>(sig.R, m);
+  const cSumPoint = RingSig_sumChallengesPoint<3>(sig.c);
+  const cGlobalPoint = ecMulGenerator(cGlobal);
+  const sumOk = Jubjub_pointsEqual(cSumPoint, cGlobalPoint);
+
+  return eq0 && eq1 && eq2 && sumOk;
+}
+
+/**
+ * @description Calls verifyN3 and stores the boolean on-chain.
+ */
+export circuit testRingVerify(
+  ring: Vector<3, JubjubPoint>,
+  m: Bytes<32>,
+  sig: RingSig_JubjubRingSignature<3>
+): [] {
+  _lastVerifyResult = disclose(verifyN3(ring, m, sig));
+  _verifyCalls.increment(1);
+}
+
+/**
+ * @description Reverts if the signature does not verify under N=3 ring.
+ * Uses the same composition as `testRingVerify`.
+ */
+export circuit testRingAssertValid(
+  ring: Vector<3, JubjubPoint>,
+  m: Bytes<32>,
+  sig: RingSig_JubjubRingSignature<3>
+): [] {
+  assert(verifyN3(ring, m, sig), "RingSig: invalid signature");
+  _verifyCalls.increment(1);
+}
+
+/**
+ * @description Exposes the global challenge directly so tests can pin the
+ * cross-side Poseidon agreement explicitly.
+ */
+export circuit testRingChallenge(
+  R: Vector<3, JubjubPoint>,
+  m: Bytes<32>
+): [] {
+  _lastChallenge = disclose(RingSig_challenge<3>(R, m));
+  _verifyCalls.increment(1);
+}

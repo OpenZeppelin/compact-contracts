@@ -68,3 +68,23 @@ export function modJubjubOrder(x: bigint): bigint {
   const m = x % JUBJUB_SCALAR_ORDER;
   return m < 0n ? m + JUBJUB_SCALAR_ORDER : m;
 }
+
+/** `(a + b) mod r_jubjub`. */
+export function modAdd(a: bigint, b: bigint): bigint {
+  return modJubjubOrder(a + b);
+}
+
+/** `(a - b) mod r_jubjub`. */
+export function modSub(a: bigint, b: bigint): bigint {
+  return modJubjubOrder(a - b);
+}
+
+/** `(a * b) mod r_jubjub`. */
+export function modMul(a: bigint, b: bigint): bigint {
+  return modJubjubOrder(a * b);
+}
+
+/** `(-a) mod r_jubjub`. */
+export function modNeg(a: bigint): bigint {
+  return modJubjubOrder(-a);
+}
