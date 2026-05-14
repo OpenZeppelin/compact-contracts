@@ -1,6 +1,4 @@
-import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockFungibleToken/contract/index.js';
 import {
   FungibleTokenPrivateState,
   FungibleTokenWitnesses,
@@ -10,23 +8,23 @@ const SECRET_KEY = new Uint8Array(32).fill(0x34);
 
 describe('FungibleTokenPrivateState', () => {
   describe('generate', () => {
-    it('should return a state with a 32-byte secretKey', () => {
+    it('should return a state with a 32-byte zswapCoinSecretKey', () => {
       const state = FungibleTokenPrivateState.generate();
-      expect(state.secretKey).toBeInstanceOf(Uint8Array);
-      expect(state.secretKey.length).toBe(32);
+      expect(state.zswapCoinSecretKey).toBeInstanceOf(Uint8Array);
+      expect(state.zswapCoinSecretKey.length).toBe(32);
     });
 
     it('should produce unique secret key on successive calls', () => {
       const a = FungibleTokenPrivateState.generate();
       const b = FungibleTokenPrivateState.generate();
-      expect(a.secretKey).not.toEqual(b.secretKey);
+      expect(a.zswapCoinSecretKey).not.toEqual(b.zswapCoinSecretKey);
     });
   });
 
   describe('withSecretKey', () => {
     it('should accept a valid 32-byte secret key', () => {
       const state = FungibleTokenPrivateState.withSecretKey(SECRET_KEY);
-      expect(state.secretKey).toEqual(SECRET_KEY);
+      expect(state.zswapCoinSecretKey).toEqual(SECRET_KEY);
     });
 
     it('should create a defensive copy of the input secret key', () => {
@@ -34,7 +32,7 @@ describe('FungibleTokenPrivateState', () => {
       const state = FungibleTokenPrivateState.withSecretKey(sk);
 
       sk.fill(0xff);
-      expect(state.secretKey).toEqual(new Uint8Array(32).fill(0xcc));
+      expect(state.zswapCoinSecretKey).toEqual(new Uint8Array(32).fill(0xcc));
     });
 
     it('should throw for a secret key shorter than 32 bytes', () => {
@@ -64,52 +62,8 @@ describe('FungibleTokenPrivateState', () => {
 describe('FungibleTokenWitnesses', () => {
   const witnesses = FungibleTokenWitnesses();
 
-  function makeContext(
-    privateState: FungibleTokenPrivateState,
-  ): WitnessContext<Ledger, FungibleTokenPrivateState> {
-    return { privateState } as WitnessContext<
-      Ledger,
-      FungibleTokenPrivateState
-    >;
-  }
-
-  describe('wit_FungibleTokenSK', () => {
-    it('should return a tuple of [privateState, secretKey]', () => {
-      const state = FungibleTokenPrivateState.withSecretKey(SECRET_KEY);
-      const ctx = makeContext(state);
-
-      const [returnedState, returnedSK] = witnesses.wit_FungibleTokenSK(ctx);
-
-      expect(returnedState).toBe(state);
-      expect(returnedSK).toEqual(SECRET_KEY);
-    });
-
-    it('should return the exact same privateState reference', () => {
-      const state = FungibleTokenPrivateState.generate();
-      const ctx = makeContext(state);
-
-      const [returnedState] = witnesses.wit_FungibleTokenSK(ctx);
-      expect(returnedState).toBe(state);
-    });
-
-    it('should return the secretKey as a Uint8Array', () => {
-      const state = FungibleTokenPrivateState.generate();
-      const ctx = makeContext(state);
-
-      const [, returnedSK] = witnesses.wit_FungibleTokenSK(ctx);
-      expect(returnedSK).toBeInstanceOf(Uint8Array);
-      expect(returnedSK.length).toBe(32);
-    });
-
-    it('should work with a randomly generated state', () => {
-      const state = FungibleTokenPrivateState.generate();
-      const ctx = makeContext(state);
-
-      const [returnedState, returnedSK] = witnesses.wit_FungibleTokenSK(ctx);
-
-      expect(returnedState).toBe(state);
-      expect(returnedSK).toEqual(state.secretKey);
-    });
+  it('should expose no caller-auth witnesses', () => {
+    expect(witnesses).toEqual({});
   });
 });
 
@@ -123,16 +77,6 @@ describe('FungibleTokenWitnesses factory', () => {
   it('should produce witnesses with identical behaviour', () => {
     const a = FungibleTokenWitnesses();
     const b = FungibleTokenWitnesses();
-    const state = FungibleTokenPrivateState.generate();
-    const ctx = { privateState: state } as WitnessContext<
-      Ledger,
-      FungibleTokenPrivateState
-    >;
-
-    const [stateA, skA] = a.wit_FungibleTokenSK(ctx);
-    const [stateB, skB] = b.wit_FungibleTokenSK(ctx);
-
-    expect(stateA).toBe(stateB);
-    expect(skA).toEqual(skB);
+    expect(a).toEqual(b);
   });
 });

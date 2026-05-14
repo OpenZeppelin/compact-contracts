@@ -2,27 +2,13 @@
 // OpenZeppelin Compact Contracts v0.0.1-alpha.1 (token/witnesses/FungibleTokenWitnesses.ts)
 
 import { getRandomValues } from 'node:crypto';
-import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 /**
- * @description Interface defining the witness methods for FungibleToken operations.
- * @template P - The private state type.
- */
-export interface IFungibleTokenWitnesses<L, P> {
-  /**
-   * Retrieves the secret key from the private state.
-   * @param context - The witness context containing the private state.
-   * @returns A tuple of the private state and the secret key as a Uint8Array.
-   */
-  wit_FungibleTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
-}
-
-/**
- * @description Represents the private state of a FungibleToken contract, storing a secret key.
+ * @description Represents the private state of a FungibleToken contract, storing a Zswap coin secret key.
  */
 export type FungibleTokenPrivateState = {
-  /** @description A 32-byte secret key used for creating a public user identifier. */
-  secretKey: Uint8Array;
+  /** @description A 32-byte secret key used for deriving a Zswap coin public key. */
+  zswapCoinSecretKey: Uint8Array;
 };
 
 /**
@@ -30,26 +16,26 @@ export type FungibleTokenPrivateState = {
  */
 export const FungibleTokenPrivateState = {
   /**
-   * @description Generates a new private state with a random secret key.
+   * @description Generates a new private state with a random Zswap coin secret key.
    * @returns A fresh FungibleTokenPrivateState instance.
    */
   generate: (): FungibleTokenPrivateState => {
-    return { secretKey: getRandomValues(new Uint8Array(32)) };
+    return { zswapCoinSecretKey: getRandomValues(new Uint8Array(32)) };
   },
 
   /**
-   * @description Generates a new private state with a user-defined secret key.
+   * @description Generates a new private state with a user-defined Zswap coin secret key.
    * Useful for deterministic key generation or advanced use cases.
    *
    * @param sk - The 32-byte secret key to use.
    * @returns A fresh FungibleTokenPrivateState instance with the provided key.
    *
-   * @example
-   * ```typescript
-   * // For deterministic keys (user-defined scheme)
-   * const deterministicKey = myDeterministicScheme(...);
-   * const privateState = FungibleTokenPrivateState.withSecretKey(deterministicKey);
-   * ```
+    * @example
+    * ```typescript
+    * // For deterministic keys (user-defined scheme)
+    * const deterministicKey = myDeterministicScheme(...);
+    * const privateState = FungibleTokenPrivateState.withSecretKey(deterministicKey);
+    * ```
    */
   withSecretKey: (sk: Uint8Array): FungibleTokenPrivateState => {
     if (sk.length !== 32) {
@@ -57,24 +43,14 @@ export const FungibleTokenPrivateState = {
         `withSecretKey: expected 32-byte secret key, received ${sk.length} bytes`,
       );
     }
-    return { secretKey: Uint8Array.from(sk) };
+    return { zswapCoinSecretKey: Uint8Array.from(sk) };
   },
 };
 
 /**
- * @description Factory function creating witness implementations for FungibleToken operations.
- * @returns An object implementing the Witnesses interface for FungibleTokenPrivateState.
+ * @description Factory function creating the witness object for FungibleToken simulation.
+ * Caller authorization is provided through explicit circuit inputs, so no token-specific
+ * witness methods are required.
+ * @returns An empty witness object for FungibleTokenPrivateState.
  */
-export const FungibleTokenWitnesses = <L>(): IFungibleTokenWitnesses<
-  L,
-  FungibleTokenPrivateState
-> => ({
-  wit_FungibleTokenSK(
-    context: WitnessContext<L, FungibleTokenPrivateState>,
-  ): [FungibleTokenPrivateState, Uint8Array] {
-    return [
-      context.privateState,
-      Uint8Array.from(context.privateState.secretKey),
-    ];
-  },
-});
+export const FungibleTokenWitnesses = () => ({});

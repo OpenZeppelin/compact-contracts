@@ -5,6 +5,7 @@ import {
 import {
   type ContractAddress,
   type Either,
+  type ZswapCoinPublicKey,
   ledger,
   Contract as MockFungibleToken,
 } from '../../../../artifacts/MockFungibleToken/contract/index.js';
@@ -60,12 +61,12 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
     super([name, symbol, decimals, init], options);
   }
   /**
-   * @description Returns a canonical zero Either value for Bytes<32> and ContractAddress.
-   * This circuit returns the left variant (Bytes<32>) to avoid misleading contract-to-contract
+   * @description Returns a canonical zero Either value for ZswapCoinPublicKey and ContractAddress.
+   * This circuit returns the left variant (ZswapCoinPublicKey) to avoid misleading contract-to-contract
    * error messages.
    * @returns The zero value.
    */
-  public ZERO(): Either<Uint8Array, ContractAddress> {
+  public ZERO(): Either<ZswapCoinPublicKey, ContractAddress> {
     return this.circuits.pure.ZERO();
   }
 
@@ -106,7 +107,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param account The public key or contract address to query.
    * @returns The account's token balance.
    */
-  public balanceOf(account: Either<Uint8Array, ContractAddress>): bigint {
+  public balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): bigint {
     return this.circuits.impure.balanceOf(account);
   }
 
@@ -118,8 +119,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns The `spender`'s allowance over `owner`'s tokens.
    */
   public allowance(
-    owner: Either<Uint8Array, ContractAddress>,
-    spender: Either<Uint8Array, ContractAddress>,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
   ): bigint {
     return this.circuits.impure.allowance(owner, spender);
   }
@@ -131,10 +132,14 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public transfer(
-    to: Either<Uint8Array, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ): boolean {
-    return this.circuits.impure.transfer(to, value);
+    return this.circuits.impure.transfer(
+      to,
+      value,
+      this.privateState.getCurrentZswapCoinSecretKey(),
+    );
   }
 
   /**
@@ -144,10 +149,14 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public _unsafeTransfer(
-    to: Either<Uint8Array, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ): boolean {
-    return this.circuits.impure._unsafeTransfer(to, value);
+    return this.circuits.impure._unsafeTransfer(
+      to,
+      value,
+      this.privateState.getCurrentZswapCoinSecretKey(),
+    );
   }
 
   /**
@@ -159,11 +168,16 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public transferFrom(
-    fromAddress: Either<Uint8Array, ContractAddress>,
-    to: Either<Uint8Array, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ): boolean {
-    return this.circuits.impure.transferFrom(fromAddress, to, value);
+    return this.circuits.impure.transferFrom(
+      fromAddress,
+      to,
+      value,
+      this.privateState.getCurrentZswapCoinSecretKey(),
+    );
   }
 
   /**
@@ -174,11 +188,16 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public _unsafeTransferFrom(
-    fromAddress: Either<Uint8Array, ContractAddress>,
-    to: Either<Uint8Array, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ): boolean {
-    return this.circuits.impure._unsafeTransferFrom(fromAddress, to, value);
+    return this.circuits.impure._unsafeTransferFrom(
+      fromAddress,
+      to,
+      value,
+      this.privateState.getCurrentZswapCoinSecretKey(),
+    );
   }
 
   /**
@@ -188,10 +207,14 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns Returns a boolean value indicating whether the operation succeeded.
    */
   public approve(
-    spender: Either<Uint8Array, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ): boolean {
-    return this.circuits.impure.approve(spender, value);
+    return this.circuits.impure.approve(
+      spender,
+      value,
+      this.privateState.getCurrentZswapCoinSecretKey(),
+    );
   }
 
   ///
@@ -207,8 +230,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens to transfer.
    */
   public _transfer(
-    fromAddress: Either<Uint8Array, ContractAddress>,
-    to: Either<Uint8Array, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
     this.circuits.impure._transfer(fromAddress, to, value);
@@ -221,8 +244,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens to transfer.
    */
   public _unsafeUncheckedTransfer(
-    fromAddress: Either<Uint8Array, ContractAddress>,
-    to: Either<Uint8Array, ContractAddress>,
+    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
     this.circuits.impure._unsafeUncheckedTransfer(fromAddress, to, value);
@@ -234,7 +257,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param account The recipient of tokens minted.
    * @param value The amount of tokens minted.
    */
-  public _mint(account: Either<Uint8Array, ContractAddress>, value: bigint) {
+  public _mint(account: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint) {
     this.circuits.impure._mint(account, value);
   }
 
@@ -244,7 +267,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens minted.
    */
   public _unsafeMint(
-    account: Either<Uint8Array, ContractAddress>,
+    account: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
     this.circuits.impure._unsafeMint(account, value);
@@ -256,7 +279,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param account The target owner of tokens to burn.
    * @param value The amount of tokens to burn.
    */
-  public _burn(account: Either<Uint8Array, ContractAddress>, value: bigint) {
+  public _burn(account: Either<ZswapCoinPublicKey, ContractAddress>, value: bigint) {
     this.circuits.impure._burn(account, value);
   }
 
@@ -269,8 +292,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens `spender` may spend on behalf of `owner`.
    */
   public _approve(
-    owner: Either<Uint8Array, ContractAddress>,
-    spender: Either<Uint8Array, ContractAddress>,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
     this.circuits.impure._approve(owner, spender, value);
@@ -284,44 +307,43 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of token allowance to spend.
    */
   public _spendAllowance(
-    owner: Either<Uint8Array, ContractAddress>,
-    spender: Either<Uint8Array, ContractAddress>,
+    owner: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<ZswapCoinPublicKey, ContractAddress>,
     value: bigint,
   ) {
     this.circuits.impure._spendAllowance(owner, spender, value);
   }
 
   /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a grant or revoke operation.
+   * @description Derives a Zswap coin public key from a Zswap coin secret key.
    * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   * @returns {Bytes<32>} accountId - The computed account identifier.
+   * @returns {ZswapCoinPublicKey} publicKey - The derived Zswap coin public key.
    */
-  public computeAccountId(secretKey: Uint8Array): Uint8Array {
-    return this.circuits.pure.computeAccountId(secretKey);
+  public deriveZswapCoinPublicKey(secretKey: Uint8Array): ZswapCoinPublicKey {
+    return this.circuits.pure.deriveZswapCoinPublicKey(secretKey);
   }
 
   public readonly privateState = {
     /**
-     * @description Replaces the secret key in the private state. Used in tests to
+     * @description Replaces the Zswap coin secret key in the private state. Used in tests to
      * simulate switching between different user identities or injecting incorrect
      * keys to test failure paths.
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): FungibleTokenPrivateState => {
+    injectZswapCoinSecretKey: (newSK: Uint8Array): FungibleTokenPrivateState => {
       const updatedState = FungibleTokenPrivateState.withSecretKey(newSK);
       this.circuitContextManager.updatePrivateState(updatedState);
       return updatedState;
     },
 
     /**
-     * @description Returns the current secret key from the private state.
+     * @description Returns the current Zswap coin secret key from the private state.
      * @returns The secret key.
      * @throws If the secret key is undefined.
      */
-    getCurrentSecretKey: (): Uint8Array => {
-      const sk = this.getPrivateState().secretKey;
+    getCurrentZswapCoinSecretKey: (): Uint8Array => {
+      const sk = this.getPrivateState().zswapCoinSecretKey;
       if (typeof sk === 'undefined') {
         throw new Error('Missing secret key');
       }

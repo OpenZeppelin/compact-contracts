@@ -180,14 +180,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.14.0":
-  version: 0.14.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.14.0"
+"@midnight-ntwrk/compact-runtime@npm:0.16.0":
+  version: 0.16.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.0"
   dependencies:
-    "@midnight-ntwrk/onchain-runtime-v2": "npm:^2.0.0"
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/bba44d09770b172b7a5ba193f59d2ec57ca0dff2e3fd538326942e102e8cbe0b0cc1cb736e1f469afc74258517e7d25fc4dfa7f89a299aed900efc89f1eed3a7
+  checksum: 10/ef0c68d53bba6a04f336094c82c26b781082d7ce4ee09f0539009fb108776b36ea24b9a774292d9bbf9722b8a78d47254b5f80a613d4010a7f7d108514243023
   languageName: node
   linkType: hard
 
@@ -198,10 +198,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/onchain-runtime-v2@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0"
-  checksum: 10/71b2b5e2270ce36fbdb63c0bd531f09f2de9151b286b6c7389966279750080b300893aef973621e438a934f9274277181cdf9bdc1350abc0e244fa892a145b19
+"@midnight-ntwrk/ledger-v8@npm:8.0.3":
+  version: 8.0.3
+  resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.3"
+  checksum: 10/93d24ddeff967a5f5d566a7e8fc0c5586f309e954adf56761fff4ab67874b846c2a4f3f2aede4f51a9e1445d01f52a7446da121473f0120793bc622feeeed207
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0"
+  checksum: 10/873aeb9e631c3678373c62b5aef847de454de94427028fb3d3f28bfdc8b2c02a3c770bd79d9bfef183eb9db6fb8c23e6826636f2e512ffd6eacbcf7cc0651c5d
   languageName: node
   linkType: hard
 
@@ -266,7 +273,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin-compact/contracts-simulator@workspace:packages/simulator"
   dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.3"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@tsconfig/node24": "npm:^24.0.4"
@@ -281,6 +288,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
+    "@midnight-ntwrk/ledger-v8": "npm:8.0.3"
     "@openzeppelin-compact/compact": "workspace:^"
     "@openzeppelin-compact/contracts-simulator": "workspace:^"
     "@tsconfig/node24": "npm:^24.0.4"
@@ -1449,7 +1457,7 @@ __metadata:
   resolution: "openzeppelin-compact@workspace:."
   dependencies:
     "@biomejs/biome": "npm:^2.4.15"
-    "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.3"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:25.7.0"
