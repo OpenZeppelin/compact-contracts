@@ -1,24 +1,46 @@
 import {
+  type CompactType,
   CompactTypeBytes,
-  CompactTypeVector,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
+import { ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import { FungibleTokenSimulator } from './simulators/FungibleTokenSimulator.js';
 
+type ZswapCoinPublicKey = { bytes: Uint8Array };
+
 // Helpers
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+const buildZswapCoinPublicKey = (sk: Uint8Array): ZswapCoinPublicKey => {
+  const compactType: CompactType<{ sep: Uint8Array; secretKey: { bytes: Uint8Array } }> = {
+    alignment() {
+      return new CompactTypeBytes(21)
+        .alignment()
+        .concat(new CompactTypeBytes(32).alignment());
+    },
+    toValue(value) {
+      return new CompactTypeBytes(21)
+        .toValue(value.sep)
+        .concat(new CompactTypeBytes(32).toValue(value.secretKey.bytes));
+    },
+    fromValue() {
+      throw new Error('fromValue not implemented for test helper');
+    },
+  };
+  return {
+    bytes: persistentHash(compactType, {
+      sep: new TextEncoder().encode('midnight:zswap-pk[v1]'),
+      secretKey: { bytes: sk },
+    }),
+  };
 };
 
 const zeroBytes = utils.zeroUint8Array();
 
-const eitherAccountId = (accountId: Uint8Array) => {
+const eitherPublicKey = (publicKey: ZswapCoinPublicKey) => {
   return {
     is_left: true,
-    left: accountId,
+    left: publicKey,
     right: { bytes: zeroBytes },
   };
 };
@@ -26,7 +48,7 @@ const eitherAccountId = (accountId: Uint8Array) => {
 const eitherContract = (address: string) => {
   return {
     is_left: false,
-    left: zeroBytes,
+    left: { bytes: zeroBytes },
     right: utils.encodeToAddress(address),
   };
 };
@@ -40,10 +62,16 @@ const createTestSK = (label: string): Uint8Array => {
 
 const makeUser = (label: string) => {
   const secretKey = createTestSK(label);
-  const accountId = buildAccountIdHash(secretKey);
-  const either = eitherAccountId(accountId);
-  return { secretKey, accountId, either };
+  const publicKey = buildZswapCoinPublicKey(secretKey);
+  const either = eitherPublicKey(publicKey);
+  return { secretKey, publicKey, either };
 };
+
+const canonicalSeedVectors = [
+  new Uint8Array(32).fill(0),
+  Uint8Array.from({ length: 32 }, (_, index) => index),
+  new Uint8Array(32).fill(0xff),
+];
 
 // Users
 const OWNER = makeUser('OWNER');
@@ -57,10 +85,10 @@ const OWNER_CONTRACT = eitherContract('OWNER_CONTRACT');
 const RECIPIENT_CONTRACT = eitherContract('RECIPIENT_CONTRACT');
 
 // Zero values
-const ZERO_ACCOUNT = eitherAccountId(zeroBytes);
+const ZERO_ACCOUNT = eitherPublicKey({ bytes: zeroBytes });
 const ZERO_CONTRACT = {
   is_left: false,
-  left: zeroBytes,
+  left: { bytes: zeroBytes },
   right: { bytes: zeroBytes },
 };
 
@@ -81,12 +109,12 @@ let token: FungibleTokenSimulator;
 
 const ownerTypes = [
   ['contract', OWNER_CONTRACT],
-  ['accountId', OWNER.either],
+  ['publicKey', OWNER.either],
 ] as const;
 
 const recipientTypes = [
   ['contract', RECIPIENT_CONTRACT],
-  ['accountId', RECIPIENT.either],
+  ['publicKey', RECIPIENT.either],
 ] as const;
 
 describe('FungibleToken', () => {
@@ -165,7 +193,7 @@ describe('FungibleToken', () => {
 
       it('should have zero left branch', () => {
         const zero = token.ZERO();
-        expect(zero.left).toEqual(zeroBytes);
+        expect(zero.left).toEqual({ bytes: zeroBytes });
       });
 
       it('should have zero right branch', () => {
@@ -212,7 +240,7 @@ describe('FungibleToken', () => {
 
         const nonCanonical = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -224,7 +252,7 @@ describe('FungibleToken', () => {
 
         const nonCanonical = {
           is_left: false,
-          left: new Uint8Array(32).fill(1),
+          left: { bytes: new Uint8Array(32).fill(1) },
           right: OWNER_CONTRACT.right,
         };
 
@@ -238,7 +266,7 @@ describe('FungibleToken', () => {
 
         const nonCanonicalOwner = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -252,7 +280,7 @@ describe('FungibleToken', () => {
 
         const nonCanonicalSpender = {
           is_left: true,
-          left: SPENDER.accountId,
+          left: SPENDER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -266,7 +294,7 @@ describe('FungibleToken', () => {
 
         const nonCanonicalOwner = {
           is_left: false,
-          left: new Uint8Array(32).fill(1),
+          left: { bytes: new Uint8Array(32).fill(1) },
           right: OWNER_CONTRACT.right,
         };
 
@@ -280,7 +308,7 @@ describe('FungibleToken', () => {
 
         const nonCanonicalSpender = {
           is_left: false,
-          left: new Uint8Array(32).fill(1),
+          left: { bytes: new Uint8Array(32).fill(1) },
           right: RECIPIENT_CONTRACT.right,
         };
 
@@ -302,7 +330,7 @@ describe('FungibleToken', () => {
       });
 
       it('should transfer partial', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         const partialAmt = AMOUNT - 1n;
         const txSuccess = token.transfer(RECIPIENT.either, partialAmt);
@@ -313,7 +341,7 @@ describe('FungibleToken', () => {
       });
 
       it('should transfer full', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         const txSuccess = token.transfer(RECIPIENT.either, AMOUNT);
 
@@ -323,7 +351,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail with insufficient balance', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         expect(() => {
           token.transfer(RECIPIENT.either, AMOUNT + 1n);
@@ -331,7 +359,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail with transfer from zero identity', () => {
-        // Inject a key that produces zero accountId — infeasible in practice,
+        // Inject a key that produces zero publicKey — infeasible in practice,
         // but we can test the zero check by using _unsafeUncheckedTransfer directly
         expect(() => {
           token._unsafeUncheckedTransfer(
@@ -343,7 +371,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail with transfer to zero', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         expect(() => {
           token.transfer(ZERO_ACCOUNT, AMOUNT);
@@ -351,7 +379,7 @@ describe('FungibleToken', () => {
       });
 
       it('should allow transfer of 0 tokens', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         const txSuccess = token.transfer(RECIPIENT.either, 0n);
 
@@ -361,7 +389,7 @@ describe('FungibleToken', () => {
       });
 
       it('should handle transfer with empty _balances', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         expect(() => {
           token.transfer(RECIPIENT.either, 1n);
@@ -369,7 +397,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail when transferring to a contract', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         expect(() => {
           token.transfer(OWNER_CONTRACT, AMOUNT);
@@ -392,7 +420,7 @@ describe('FungibleToken', () => {
         });
 
         it('should transfer partial', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
           const partialAmt = AMOUNT - 1n;
           const txSuccess = token._unsafeTransfer(recipient, partialAmt);
@@ -403,7 +431,7 @@ describe('FungibleToken', () => {
         });
 
         it('should transfer full', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
           const txSuccess = token._unsafeTransfer(recipient, AMOUNT);
 
@@ -413,7 +441,7 @@ describe('FungibleToken', () => {
         });
 
         it('should fail with insufficient balance', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
           expect(() => {
             token._unsafeTransfer(recipient, AMOUNT + 1n);
@@ -421,7 +449,7 @@ describe('FungibleToken', () => {
         });
 
         it('should allow transfer of 0 tokens', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
           const txSuccess = token._unsafeTransfer(recipient, 0n);
 
@@ -431,7 +459,7 @@ describe('FungibleToken', () => {
         });
 
         it('should handle transfer with empty _balances', () => {
-          token.privateState.injectSecretKey(SPENDER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
           expect(() => {
             token._unsafeTransfer(recipient, 1n);
@@ -439,9 +467,9 @@ describe('FungibleToken', () => {
         });
       });
 
-      it('should fail with transfer to zero (accountId)', () => {
+      it('should fail with transfer to zero (publicKey)', () => {
         token._mint(OWNER.either, AMOUNT);
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         expect(() => {
           token._unsafeTransfer(ZERO_ACCOUNT, AMOUNT);
@@ -450,7 +478,7 @@ describe('FungibleToken', () => {
 
       it('should fail with transfer to zero (contract)', () => {
         token._mint(OWNER.either, AMOUNT);
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         expect(() => {
           token._unsafeTransfer(ZERO_CONTRACT, AMOUNT);
@@ -464,14 +492,14 @@ describe('FungibleToken', () => {
       });
 
       it('should approve and update allowance', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         token.approve(SPENDER.either, AMOUNT);
         expect(token.allowance(OWNER.either, SPENDER.either)).toEqual(AMOUNT);
       });
 
       it('should approve and update allowance for multiple spenders', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         token.approve(SPENDER.either, AMOUNT);
         expect(token.allowance(OWNER.either, SPENDER.either)).toEqual(AMOUNT);
@@ -483,7 +511,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail when approve to zero', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         expect(() => {
           token.approve(ZERO_ACCOUNT, AMOUNT);
@@ -493,10 +521,10 @@ describe('FungibleToken', () => {
       it('should transfer exact allowance and fail subsequent transfer', () => {
         token._mint(OWNER.either, AMOUNT);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
         token.approve(SPENDER.either, AMOUNT);
 
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
         token.transferFrom(OWNER.either, RECIPIENT.either, AMOUNT);
         expect(token.allowance(OWNER.either, SPENDER.either)).toEqual(0n);
 
@@ -506,7 +534,7 @@ describe('FungibleToken', () => {
       });
 
       it('should allow approve of 0 tokens', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
 
         token.approve(SPENDER.either, 0n);
         expect(token.allowance(OWNER.either, SPENDER.either)).toEqual(0n);
@@ -519,7 +547,7 @@ describe('FungibleToken', () => {
 
     describe('transferFrom', () => {
       beforeEach(() => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
         token.approve(SPENDER.either, AMOUNT);
         token._mint(OWNER.either, AMOUNT);
       });
@@ -529,7 +557,7 @@ describe('FungibleToken', () => {
       });
 
       it('should transferFrom spender (partial)', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         const partialAmt = AMOUNT - 1n;
         const txSuccess = token.transferFrom(
@@ -545,7 +573,7 @@ describe('FungibleToken', () => {
       });
 
       it('should transferFrom spender (full)', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         const txSuccess = token.transferFrom(
           OWNER.either,
@@ -560,10 +588,10 @@ describe('FungibleToken', () => {
       });
 
       it('should transferFrom and not consume infinite allowance', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
         token.approve(SPENDER.either, MAX_UINT128);
 
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
         const txSuccess = token.transferFrom(
           OWNER.either,
           RECIPIENT.either,
@@ -579,7 +607,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail when transfer amount exceeds allowance', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         expect(() => {
           token.transferFrom(OWNER.either, RECIPIENT.either, AMOUNT + 1n);
@@ -587,17 +615,17 @@ describe('FungibleToken', () => {
       });
 
       it('should fail when transfer amount exceeds balance', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
         token.approve(SPENDER.either, AMOUNT + 1n);
 
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
         expect(() => {
           token.transferFrom(OWNER.either, RECIPIENT.either, AMOUNT + 1n);
         }).toThrow('FungibleToken: insufficient balance');
       });
 
       it('should fail when spender does not have allowance', () => {
-        token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        token.privateState.injectZswapCoinSecretKey(UNAUTHORIZED.secretKey);
 
         expect(() => {
           token.transferFrom(OWNER.either, RECIPIENT.either, AMOUNT);
@@ -605,7 +633,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail to transferFrom to the zero address', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         expect(() => {
           token.transferFrom(OWNER.either, ZERO_ACCOUNT, AMOUNT);
@@ -613,7 +641,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail when transferring to a contract', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         expect(() => {
           token.transferFrom(OWNER.either, OWNER_CONTRACT, AMOUNT);
@@ -623,7 +651,7 @@ describe('FungibleToken', () => {
 
     describe('_unsafeTransferFrom', () => {
       beforeEach(() => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
         token.approve(SPENDER.either, AMOUNT);
         token._mint(OWNER.either, AMOUNT);
       });
@@ -636,7 +664,7 @@ describe('FungibleToken', () => {
         recipientTypes,
       )('when the recipient is a %s', (_, recipient) => {
         it('should transferFrom spender (partial)', () => {
-          token.privateState.injectSecretKey(SPENDER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
           const partialAmt = AMOUNT - 1n;
           const txSuccess = token._unsafeTransferFrom(
@@ -652,7 +680,7 @@ describe('FungibleToken', () => {
         });
 
         it('should transferFrom spender (full)', () => {
-          token.privateState.injectSecretKey(SPENDER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
           const txSuccess = token._unsafeTransferFrom(
             OWNER.either,
@@ -667,10 +695,10 @@ describe('FungibleToken', () => {
         });
 
         it('should transferFrom and not consume infinite allowance', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
           token.approve(SPENDER.either, MAX_UINT128);
 
-          token.privateState.injectSecretKey(SPENDER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
           const txSuccess = token._unsafeTransferFrom(
             OWNER.either,
             recipient,
@@ -686,7 +714,7 @@ describe('FungibleToken', () => {
         });
 
         it('should fail when transfer amount exceeds allowance', () => {
-          token.privateState.injectSecretKey(SPENDER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
           expect(() => {
             token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT + 1n);
@@ -694,17 +722,17 @@ describe('FungibleToken', () => {
         });
 
         it('should fail when transfer amount exceeds balance', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
           token.approve(SPENDER.either, AMOUNT + 1n);
 
-          token.privateState.injectSecretKey(SPENDER.secretKey);
+          token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
           expect(() => {
             token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT + 1n);
           }).toThrow('FungibleToken: insufficient balance');
         });
 
         it('should fail when spender does not have allowance', () => {
-          token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+          token.privateState.injectZswapCoinSecretKey(UNAUTHORIZED.secretKey);
 
           expect(() => {
             token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT);
@@ -712,8 +740,8 @@ describe('FungibleToken', () => {
         });
       });
 
-      it('should fail to transfer to the zero address (accountId)', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+      it('should fail to transfer to the zero address (publicKey)', () => {
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         expect(() => {
           token._unsafeTransferFrom(OWNER.either, ZERO_ACCOUNT, AMOUNT);
@@ -721,7 +749,7 @@ describe('FungibleToken', () => {
       });
 
       it('should fail to transfer to the zero address (contract)', () => {
-        token.privateState.injectSecretKey(SPENDER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(SPENDER.secretKey);
 
         expect(() => {
           token._unsafeTransferFrom(OWNER.either, ZERO_CONTRACT, AMOUNT);
@@ -797,7 +825,7 @@ describe('FungibleToken', () => {
         });
       });
 
-      it('should fail when transfer to zero (accountId)', () => {
+      it('should fail when transfer to zero (publicKey)', () => {
         expect(() => {
           token._unsafeUncheckedTransfer(OWNER.either, ZERO_ACCOUNT, AMOUNT);
         }).toThrow('FungibleToken: invalid receiver');
@@ -815,7 +843,7 @@ describe('FungibleToken', () => {
 
         const nonCanonical = {
           is_left: true,
-          left: RECIPIENT.accountId,
+          left: RECIPIENT.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -826,7 +854,7 @@ describe('FungibleToken', () => {
       it('should canonicalize recipient contract address (zero out inactive left side)', () => {
         const nonCanonical = {
           is_left: false,
-          left: new Uint8Array(32).fill(1),
+          left: { bytes: new Uint8Array(32).fill(1) },
           right: RECIPIENT_CONTRACT.right,
         };
 
@@ -838,7 +866,7 @@ describe('FungibleToken', () => {
       it('should canonicalize fromAddress (zero out inactive right side)', () => {
         const nonCanonical = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -865,7 +893,7 @@ describe('FungibleToken', () => {
         }).toThrow('FungibleToken: arithmetic overflow');
       });
 
-      it('should not mint to zero (accountId)', () => {
+      it('should not mint to zero (publicKey)', () => {
         expect(() => {
           token._mint(ZERO_ACCOUNT, AMOUNT);
         }).toThrow('FungibleToken: invalid receiver');
@@ -918,7 +946,7 @@ describe('FungibleToken', () => {
         });
       });
 
-      it('should not mint to zero (accountId)', () => {
+      it('should not mint to zero (publicKey)', () => {
         expect(() => {
           token._unsafeMint(ZERO_ACCOUNT, AMOUNT);
         }).toThrow('FungibleToken: invalid receiver');
@@ -933,7 +961,7 @@ describe('FungibleToken', () => {
       it('should canonicalize sender (zero out inactive right side)', () => {
         const nonCanonical = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -955,7 +983,7 @@ describe('FungibleToken', () => {
         expect(token.totalSupply()).toEqual(afterBurn);
       });
 
-      it('should throw when burning from zero (accountId)', () => {
+      it('should throw when burning from zero (publicKey)', () => {
         expect(() => {
           token._burn(ZERO_ACCOUNT, AMOUNT);
         }).toThrow('FungibleToken: invalid sender');
@@ -982,7 +1010,7 @@ describe('FungibleToken', () => {
       it('should burn with non-canonical account (left)', () => {
         const nonCanonical = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -1012,7 +1040,7 @@ describe('FungibleToken', () => {
         expect(token.allowance(OWNER.either, RECIPIENT.either)).toEqual(0n);
       });
 
-      it('should fail when approve from zero (accountId)', () => {
+      it('should fail when approve from zero (publicKey)', () => {
         expect(() => {
           token._approve(ZERO_ACCOUNT, SPENDER.either, AMOUNT);
         }).toThrow('FungibleToken: invalid owner');
@@ -1024,7 +1052,7 @@ describe('FungibleToken', () => {
         }).toThrow('FungibleToken: invalid owner');
       });
 
-      it('should fail when approve to zero (accountId)', () => {
+      it('should fail when approve to zero (publicKey)', () => {
         expect(() => {
           token._approve(OWNER.either, ZERO_ACCOUNT, AMOUNT);
         }).toThrow('FungibleToken: invalid spender');
@@ -1044,7 +1072,7 @@ describe('FungibleToken', () => {
       it('should canonicalize owner in allowance (zero out inactive right side)', () => {
         const nonCanonicalOwner = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -1055,7 +1083,7 @@ describe('FungibleToken', () => {
       it('should canonicalize spender in allowance (zero out inactive right side)', () => {
         const nonCanonicalSpender = {
           is_left: true,
-          left: SPENDER.accountId,
+          left: SPENDER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -1066,7 +1094,7 @@ describe('FungibleToken', () => {
       it('should canonicalize contract address owner (zero out inactive left side)', () => {
         const nonCanonicalOwner = {
           is_left: false,
-          left: new Uint8Array(32).fill(1),
+          left: { bytes: new Uint8Array(32).fill(1) },
           right: OWNER_CONTRACT.right,
         };
 
@@ -1121,12 +1149,12 @@ describe('FungibleToken', () => {
 
         const nonCanonicalOwner = {
           is_left: true,
-          left: OWNER.accountId,
+          left: OWNER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
         const nonCanonicalSpender = {
           is_left: true,
-          left: SPENDER.accountId,
+          left: SPENDER.publicKey,
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
@@ -1141,7 +1169,7 @@ describe('FungibleToken', () => {
         expect(token.totalSupply()).toEqual(AMOUNT);
         expect(token.balanceOf(OWNER.either)).toEqual(AMOUNT);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        token.privateState.injectZswapCoinSecretKey(OWNER.secretKey);
         token.transfer(RECIPIENT.either, AMOUNT - 1n);
         expect(token.balanceOf(OWNER.either)).toEqual(1n);
         expect(token.balanceOf(RECIPIENT.either)).toEqual(AMOUNT - 1n);
@@ -1151,24 +1179,37 @@ describe('FungibleToken', () => {
         expect(token.balanceOf(OWNER.either)).toEqual(0n);
       });
     });
-    describe('computeAccountId', () => {
+    describe('deriveZswapCoinPublicKey', () => {
       const users = [OWNER, SPENDER, RECIPIENT, UNAUTHORIZED];
 
       it('should match the test helper derivation', () => {
         for (let i = 0; i < users.length; i++) {
-          expect(token.computeAccountId(users[i].secretKey)).toEqual(
-            users[i].accountId,
+          expect(token.deriveZswapCoinPublicKey(users[i].secretKey)).toEqual(
+            users[i].publicKey,
           );
         }
       });
 
       it('should produce distinct identifiers for distinct keys', () => {
-        const ids = users.map((u) => token.computeAccountId(u.secretKey));
+        const ids = users.map((u) => token.deriveZswapCoinPublicKey(u.secretKey));
 
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
             expect(ids[i]).not.toEqual(ids[j]);
           }
+        }
+      });
+
+      it('should match canonical Midnight ledger-v8 zswap derivation vectors', () => {
+        for (const seed of canonicalSeedVectors) {
+          const keys = ZswapSecretKeys.fromSeed(seed);
+          const secretKeyBytes = new Uint8Array(
+            keys.coinSecretKey.yesIKnowTheSecurityImplicationsOfThis_serialize().slice(-32),
+          );
+
+          expect(token.deriveZswapCoinPublicKey(secretKeyBytes)).toEqual({
+            bytes: new Uint8Array(Buffer.from(String(keys.coinPublicKey), 'hex')),
+          });
         }
       });
     });

@@ -11,7 +11,7 @@ Verify your Compact installation:
 
 ```bash
 $ compact compile --version
-Compactc version: 0.29.0
+Compactc version: 0.31.0
 ```
 
 ## Binaries
@@ -37,7 +37,7 @@ compact-compiler [options]
 |--------|-------------|---------|
 | `--dir <directory>` | Compile specific subdirectory within src | (all) |
 | `--skip-zk` | Skip zero-knowledge proof generation | `false` |
-| `+<version>` | Use specific toolchain version (e.g., `+0.29.0`) | (default) |
+| `+<version>` | Use specific toolchain version (e.g., `+0.31.0`) | (default) |
 
 ### Environment Variables
 
@@ -74,7 +74,7 @@ compact-compiler --dir security
 compact-compiler --skip-zk
 
 # Use specific toolchain version
-compact-compiler +0.29.0
+compact-compiler +0.31.0
 
 # Combine options
 compact-compiler --dir access --skip-zk
@@ -122,7 +122,7 @@ import { CompactCompiler } from '@openzeppelin-compact/compact';
 const compiler = new CompactCompiler(
   '--skip-zk',
   'security',
-  '0.29.0',
+  '0.31.0',
 );
 
 await compiler.compile();
@@ -131,7 +131,7 @@ await compiler.compile();
 const compiler = CompactCompiler.fromArgs([
   '--dir', 'security',
   '--skip-zk',
-  '+0.29.0'
+  '+0.31.0'
 ]);
 
 await compiler.compile();
@@ -187,12 +187,12 @@ yarn clean
 ```bash
 ℹ [COMPILE] Compact compiler started
 ℹ [COMPILE] Compact developer tools: compact 0.4.0
-ℹ [COMPILE] Compact toolchain: Compactc version: 0.29.0
+ℹ [COMPILE] Compact toolchain: Compactc version: 0.31.0
 ℹ [COMPILE] Found 2 .compact file(s) to compile
 ✔ [COMPILE] [1/2] Compiled AccessControl.compact
-    Compactc version: 0.29.0
+    Compactc version: 0.31.0
 ✔ [COMPILE] [2/2] Compiled Token.compact
-    Compactc version: 0.29.0
+    Compactc version: 0.31.0
 ```
 
 ## License
