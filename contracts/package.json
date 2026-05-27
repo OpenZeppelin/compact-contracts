@@ -33,6 +33,7 @@
     "compact:utils": "compact-compiler --dir utils",
     "build": "compact-builder",
     "test": "compact-compiler --skip-zk && vitest run",
+    "test:coverage": "compact-compiler --skip-zk && vitest run --coverage",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
@@ -46,6 +47,8 @@
     "@openzeppelin-compact/contracts-simulator": "workspace:^",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "24.10.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "fast-check": "^3.23.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
