@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/Forwarder.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module Forwarder
+ * @description Public-parent forwarder primitives. Provides an atomic
+ * forward pattern: receive a coin (shielded or unshielded) and
+ * immediately send it to a hard-coded parent address, while
+ * accumulating per-color cumulative receipt totals for audit.
+ *
+ * Presets (`ForwarderShielded`, `ForwarderUnshielded`) wrap individual
+ * deposit paths so each deployable contract is single-purpose. The
+ * overflow guard and `_received.insert` are factored into a shared
+ * internal `_recordReceived` helper.
+ *
+ * Underscore-prefixed circuits have no access control. The forwarder is
+ * intentionally permissionless — the recipient is hard-coded at deploy,
+ * so any caller may deposit without compromising the parent. State
+ * access is gated by the `Initializable` module: every circuit asserts
+ * the module has been initialized via `_init`.
+ */
+module Forwarder {
+  import CompactStandardLibrary;
+  import { initialize, assertInitialized } from "../security/Initializable" prefix Initializable_;
+  import { UINT128_MAX } from "../utils/Utils" prefix Utils_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export ledger _parent: Bytes<32>;
+  export ledger _received: Map<Bytes<32>, Uint<128>>;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent address.
+   * Called once from the preset constructor. The parent is the
+   * recipient of every forwarded coin and is immutable after init.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @param {Bytes<32>} parent - The parent address.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _init(parent: Bytes<32>): [] {
+    Initializable_initialize();
+    _parent = disclose(parent);
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin and atomically forwards it
+   * to `_parent`. The coin is claimed at the protocol level via
+   * `receiveShielded`, then immediately re-sent via
+   * `sendImmediateShielded`. The per-color cumulative total in
+   * `_received` is incremented by `coin.value`.
+   *
+   * @circuitInfo k=15, rows=24718
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   * - `_received[coin.color] + coin.value` must not overflow `Uint<128>`
+   *   (enforced by `_recordReceived`).
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _depositShielded(coin: ShieldedCoinInfo): [] {
+    Initializable_assertInitialized();
+    _recordReceived(coin.color, coin.value);
+    receiveShielded(disclose(coin));
+    sendImmediateShielded(
+      disclose(coin),
+      right<ZswapCoinPublicKey, ContractAddress>(ContractAddress { bytes: _parent }),
+      disclose(coin.value)
+    );
+  }
+
+  /**
+   * @description Receives an unshielded amount of `color` and
+   * atomically forwards it to `_parent`. The per-color cumulative
+   * total in `_received` is incremented by `amount`.
+   *
+   * @circuitInfo k=10, rows=813
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   * - `_received[color] + amount` must not overflow `Uint<128>`
+   *   (enforced by `_recordReceived`).
+   *
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to deposit.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+    _recordReceived(color, amount);
+    receiveUnshielded(disclose(color), disclose(amount));
+    sendUnshielded(
+      disclose(color),
+      disclose(amount),
+      left<ContractAddress, UserAddress>(ContractAddress { bytes: _parent })
+    );
+  }
+
+  // ─── View ───────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the cumulative received total for `color`,
+   * or zero if no deposit of that color has been recorded.
+   *
+   * @circuitInfo k=9, rows=343
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {Bytes<32>} color - The token color.
+   *
+   * @returns {Uint<128>} Cumulative received total for `color`.
+   */
+  export circuit _getReceived(color: Bytes<32>): Uint<128> {
+    Initializable_assertInitialized();
+    if (!_received.member(disclose(color))) {
+      return 0;
+    }
+    return _received.lookup(disclose(color));
+  }
+
+  // ─── Internal ───────────────────────────────────────────────────
+
+  /**
+   * @description Overflow-guarded accumulator. Factored from both
+   * deposit paths so the overflow assert and `_received.insert` happen
+   * exactly once per deposit regardless of coin kind.
+   *
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} value - The value to add to `_received[color]`.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit _recordReceived(color: Bytes<32>, value: Uint<128>): [] {
+    const current = _getReceived(color);
+    assert(current <= Utils_UINT128_MAX() - value, "Forwarder: received overflow");
+    _received.insert(disclose(color), disclose(current + value as Uint<128>));
+  }
+}
