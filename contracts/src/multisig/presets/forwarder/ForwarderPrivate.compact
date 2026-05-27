@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/forwarder/ForwarderPrivate.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title ForwarderPrivate
+ * @description Private-parent forwarder. The parent address is hidden
+ * behind a `persistentHash` commitment on the ledger. Coins dwell at
+ * the contract address after deposit; the operator drains them later
+ * by presenting the `(parentAddr, salt)` preimage at drain time.
+ *
+ * Knowledge of the preimage is the sole authorization gate. Salt is an
+ * operational secret held off-chain by the deployer; loss of the salt
+ * is equivalent to loss of a hot-wallet key. Two forwarders bound to
+ * the same parent with different salts produce different commitments
+ * and are unlinkable on-chain.
+ *
+ * @notice Each forwarder is bound to a single parent at deploy. To
+ * change the parent, deploy a new forwarder; the old one remains
+ * functional for outstanding coins until drained.
+ */
+
+import CompactStandardLibrary;
+import {
+  _init,
+  _deposit,
+  _drain,
+  _calculateParentCommitment,
+  _parentCommitment
+} from "../../ForwarderPrivate" prefix ForwarderPrivate_;
+
+/**
+ * @description Deploys the forwarder bound to a specific parent
+ * commitment. The deployer computes the commitment off-chain as
+ * `_calculateParentCommitment(parentAddr, salt)` and passes it here.
+ *
+ * @param {Bytes<32>} parentCommitment - The commitment to the
+ * `(parentAddr, salt)` pair that the operator will present at drain.
+ */
+constructor(parentCommitment: Bytes<32>) {
+  ForwarderPrivate__init(parentCommitment);
+}
+
+/**
+ * @description Receives a shielded coin into the forwarder's custody.
+ * No ledger write — the coin sits at the contract address until drained.
+ *
+ * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+ *
+ * @returns {[]} Empty tuple.
+ */
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  ForwarderPrivate__deposit(coin);
+}
+
+/**
+ * @description Spends a previously-deposited shielded coin to
+ * `parentAddr`. The caller proves knowledge of `(parentAddr, salt)`
+ * matching the stored commitment. If the input coin's value exceeds
+ * `value`, change is re-emitted back to the contract for future drains.
+ *
+ * Requirements:
+ *
+ * - `_calculateParentCommitment(parentAddr, salt)` must equal the stored
+ *   `_parentCommitment`.
+ * - `coin.value` must be >= `value` (enforced by `sendShielded`).
+ *
+ * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
+ * @param {Bytes<32>} parentAddr - The parent address. Preimage to the
+ * stored commitment.
+ * @param {Bytes<32>} salt - The salt. Operational secret; never appears
+ * on the public transcript.
+ * @param {Uint<128>} value - The amount to send.
+ *
+ * @returns {ShieldedSendResult} The result containing the sent coin and
+ * any change.
+ */
+export circuit drain(
+  coin: QualifiedShieldedCoinInfo,
+  parentAddr: Bytes<32>,
+  salt: Bytes<32>,
+  value: Uint<128>
+): ShieldedSendResult {
+  return ForwarderPrivate__drain(coin, parentAddr, salt, value);
+}
+
+/**
+ * @description Returns the stored parent commitment.
+ *
+ * @returns {Bytes<32>} The commitment set at deploy.
+ */
+export circuit getParentCommitment(): Bytes<32> {
+  return ForwarderPrivate__parentCommitment;
+}
+
+/**
+ * @description Computes the parent commitment from a `(parentAddr, salt)`
+ * pair. Pure circuit — used off-chain by the deployer to compute the
+ * constructor argument, and inside `drain` for the preimage check.
+ *
+ * @param {Bytes<32>} parentAddr - The parent address.
+ * @param {Bytes<32>} salt - The salt.
+ *
+ * @returns {Bytes<32>} The commitment `persistentHash([parentAddr, salt])`.
+ */
+export pure circuit _calculateParentCommitment(
+  parentAddr: Bytes<32>,
+  salt: Bytes<32>
+): Bytes<32> {
+  return ForwarderPrivate__calculateParentCommitment(parentAddr, salt);
+}

@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/forwarder/ForwarderShielded.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title ForwarderShielded
+ * @description Public-parent forwarder for shielded coins. Receives a
+ * shielded coin and atomically forwards it to the configured parent
+ * address, accumulating cumulative receipt totals per color.
+ *
+ * The parent address is hard-coded at deploy time and immutable. Anyone
+ * may call `deposit` — the recipient is fixed, so there is no need for
+ * access control. Per-color totals are observable from the indexer for
+ * audit / reconciliation.
+ */
+
+import CompactStandardLibrary;
+import {
+  _init,
+  _depositShielded,
+  _getReceived,
+  _parent
+} from "../../Forwarder" prefix Forwarder_;
+
+/**
+ * @description Deploys the forwarder bound to a specific parent address.
+ *
+ * @param {Bytes<32>} parent - The parent address that receives every
+ * forwarded coin. Wrapped as a `ContractAddress` at the send site.
+ */
+constructor(parent: Bytes<32>) {
+  Forwarder__init(parent);
+}
+
+/**
+ * @description Receives a shielded coin and atomically forwards it to
+ * the configured parent. The coin is claimed via `receiveShielded` and
+ * immediately re-sent via `sendImmediateShielded`. The per-color
+ * cumulative total in `_received` is incremented by `coin.value`.
+ *
+ * Requirements:
+ *
+ * - `_received[coin.color] + coin.value` must not overflow `Uint<128>`.
+ *
+ * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+ *
+ * @returns {[]} Empty tuple.
+ */
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Forwarder__depositShielded(coin);
+}
+
+/**
+ * @description Returns the configured parent address.
+ *
+ * @returns {Bytes<32>} The parent address set at deploy.
+ */
+export circuit getParent(): Bytes<32> {
+  return Forwarder__parent;
+}
+
+/**
+ * @description Returns the cumulative received total for a given color,
+ * or zero if no coin of that color has been deposited.
+ *
+ * @param {Bytes<32>} color - The token color.
+ *
+ * @returns {Uint<128>} Cumulative received total for `color`.
+ */
+export circuit getReceived(color: Bytes<32>): Uint<128> {
+  return Forwarder__getReceived(color);
+}
