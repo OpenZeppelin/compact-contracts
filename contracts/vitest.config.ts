@@ -20,14 +20,7 @@ export default defineConfig({
         ...(configDefaults.coverage?.exclude ?? []),
         'src/archive/**',
         'src/**/test/**/*.test.ts',
-        // Drop `.compact` after source-map remap: compactc emits
-        // function-entry-granularity maps, so branch / line attribution
-        // on `.compact` lines is unreliable even when both legs of an
-        // `if` are exercised. Tracking upstream:
-        // https://github.com/LFDT-Minokawa/compact/issues/465
-        'src/**/*.compact',
       ],
-      excludeAfterRemap: true,
       // 95 % per-file is the closing gate of the test stage. Leaves
       // room for unavoidable TS-plumbing gaps (simulator factory
       // callbacks, witness stub bodies) without contorting tests
