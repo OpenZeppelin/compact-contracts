@@ -43,13 +43,19 @@ module ForwarderPrivate {
    * Requirements:
    *
    * - Contract must not be initialized.
+   * - `parentCommitment` must not be the zero bytes. A zero commitment
+   *   is the sole drain gate and would leave every deposited coin
+   *   permanently unrecoverable (no preimage exists for `default<Bytes<32>>`
+   *   under the domain-tagged hash).
    *
-   * @param {Bytes<32>} parentCommitment - `persistentHash([parentAddr, salt])`
+   * @param {Bytes<32>} parentCommitment - Domain-tagged
+   * `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, salt])`
    * computed off-chain by the deployer (see `_calculateParentCommitment`).
    *
    * @returns {[]} Empty tuple.
    */
   export circuit _init(parentCommitment: Bytes<32>): [] {
+    assert(parentCommitment != default<Bytes<32>>, "ForwarderPrivate: zero commitment");
     Initializable_initialize();
     _parentCommitment = disclose(parentCommitment);
   }
@@ -83,7 +89,7 @@ module ForwarderPrivate {
    * matching the stored commitment. If `coin.value` exceeds `value`,
    * the change is re-emitted back to the contract for future drains.
    *
-   * @circuitInfo k=16, rows=47778
+   * @circuitInfo k=16, rows=47811
    *
    * Requirements:
    *
@@ -96,6 +102,15 @@ module ForwarderPrivate {
    * stored commitment.
    * @param {Bytes<32>} salt - The salt. Operational secret; never
    * appears on the public transcript.
+   *
+   * @warning **Salt loss is permanent fund loss.** The salt is the sole
+   * drain authorization. There is no rotation, revocation, or recovery
+   * path. If the operator misplaces the salt, every shielded coin
+   * accumulated at this contract is forever inaccessible — equivalent
+   * to losing a hot-wallet private key. Back the salt up offline before
+   * the first deposit and treat it with the same hygiene as a signing
+   * key.
+   *
    * @param {Uint<128>} value - The amount to send.
    *
    * @returns {ShieldedSendResult} The result containing the sent coin
@@ -138,15 +153,23 @@ module ForwarderPrivate {
    * constructor argument, and inside `_drain` for the preimage check.
    * Callable without initialization.
    *
+   * The first hash input is a fixed domain tag
+   * (`pad(32, "ForwarderPrivate:commitment")`). The tag prevents
+   * preimage collisions with other `persistentHash` users in the
+   * system that hash two `Bytes<32>` values — a colliding preimage
+   * crafted under a different domain cannot satisfy this commitment.
+   *
    * @param {Bytes<32>} parentAddr - The parent address.
    * @param {Bytes<32>} salt - The salt.
    *
-   * @returns {Bytes<32>} `persistentHash([parentAddr, salt])`.
+   * @returns {Bytes<32>} `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, salt])`.
    */
   export pure circuit _calculateParentCommitment(
     parentAddr: Bytes<32>,
     salt: Bytes<32>
   ): Bytes<32> {
-    return persistentHash<Vector<2, Bytes<32>>>([parentAddr, salt]);
+    return persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "ForwarderPrivate:commitment"), parentAddr, salt]
+    );
   }
 }

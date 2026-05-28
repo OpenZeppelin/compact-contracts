@@ -33,7 +33,7 @@ import {
 /**
  * @description Deploys the forwarder bound to a specific parent
  * commitment. The deployer computes the commitment off-chain as
- * `_calculateParentCommitment(parentAddr, salt)` and passes it here.
+ * `calculateParentCommitment(parentAddr, salt)` and passes it here.
  *
  * @param {Bytes<32>} parentCommitment - The commitment to the
  * `(parentAddr, salt)` pair that the operator will present at drain.
@@ -62,7 +62,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  *
  * Requirements:
  *
- * - `_calculateParentCommitment(parentAddr, salt)` must equal the stored
+ * - `calculateParentCommitment(parentAddr, salt)` must equal the stored
  *   `_parentCommitment`.
  * - `coin.value` must be >= `value` (enforced by `sendShielded`).
  *
@@ -71,6 +71,13 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * stored commitment.
  * @param {Bytes<32>} salt - The salt. Operational secret; never appears
  * on the public transcript.
+ *
+ * @warning **Salt loss is permanent fund loss.** Salt is the sole drain
+ * authorization. No rotation, revocation, or recovery path exists. If
+ * the operator loses the salt, every shielded coin accumulated at this
+ * contract becomes inaccessible. Back the salt up offline before the
+ * first deposit.
+ *
  * @param {Uint<128>} value - The amount to send.
  *
  * @returns {ShieldedSendResult} The result containing the sent coin and
@@ -99,12 +106,16 @@ export circuit getParentCommitment(): Bytes<32> {
  * pair. Pure circuit — used off-chain by the deployer to compute the
  * constructor argument, and inside `drain` for the preimage check.
  *
+ * The commitment is domain-tagged
+ * (`pad(32, "ForwarderPrivate:commitment")`) to prevent preimage
+ * collisions with other `persistentHash` users in the system.
+ *
  * @param {Bytes<32>} parentAddr - The parent address.
  * @param {Bytes<32>} salt - The salt.
  *
- * @returns {Bytes<32>} The commitment `persistentHash([parentAddr, salt])`.
+ * @returns {Bytes<32>} The commitment `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, salt])`.
  */
-export pure circuit _calculateParentCommitment(
+export pure circuit calculateParentCommitment(
   parentAddr: Bytes<32>,
   salt: Bytes<32>
 ): Bytes<32> {

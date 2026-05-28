@@ -41,12 +41,16 @@ module Forwarder {
    * Requirements:
    *
    * - Contract must not be initialized.
+   * - `parent` must not be the zero address. A zero parent would
+   *   forward every deposit to an unspendable address with no recovery
+   *   path.
    *
    * @param {Bytes<32>} parent - The parent address.
    *
    * @returns {[]} Empty tuple.
    */
   export circuit _init(parent: Bytes<32>): [] {
+    assert(parent != default<Bytes<32>>, "Forwarder: zero parent");
     Initializable_initialize();
     _parent = disclose(parent);
   }
