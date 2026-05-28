@@ -1173,4 +1173,33 @@ describe('FungibleToken', () => {
       });
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should expose an empty public ledger via getPublicState', () => {
+      const sim = new FungibleTokenSimulator(NAME, SYMBOL, DECIMALS, INIT);
+
+      expect(sim.getPublicState()).toStrictEqual({});
+    });
+  });
+
+  describe('privateState helpers', () => {
+    describe('getCurrentSecretKey', () => {
+      it('should return the injected secret key', () => {
+        const sim = new FungibleTokenSimulator(NAME, SYMBOL, DECIMALS, INIT);
+        sim.privateState.injectSecretKey(OWNER.secretKey);
+
+        expect(sim.privateState.getCurrentSecretKey()).toEqual(OWNER.secretKey);
+      });
+
+      it('should throw when the secret key is undefined', () => {
+        const sim = new FungibleTokenSimulator(NAME, SYMBOL, DECIMALS, INIT, {
+          privateState: { secretKey: undefined as unknown as Uint8Array },
+        });
+
+        expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+          'Missing secret key',
+        );
+      });
+    });
+  });
 });
