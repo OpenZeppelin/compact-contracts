@@ -21,18 +21,22 @@ export default defineConfig({
         'src/archive/**',
         'src/**/test/**/*.test.ts',
       ],
-      // 95 % per-file is the closing gate of the test stage. Leaves
-      // room for unavoidable TS-plumbing gaps (simulator factory
-      // callbacks, witness stub bodies) without contorting tests
-      // around test infrastructure. Subset runs (e.g.
-      // `vitest run <one.test.ts>`) fail this gate — pass
-      // `--coverage.thresholds.lines=0` etc. when iterating on one file.
+      // Only TS sources are gated (95 % perFile). `.compact` coverage
+      // is surfaced in the report for visibility but not gated:
+      // compactc source maps are too noisy for thresholds to be
+      // meaningful — pragmas count as uncovered functions, doc
+      // comments and ledger declarations count as uncovered statements
+      // / branches, and some files surface uncovered "line numbers"
+      // past EOF. Tracking upstream:
+      // https://github.com/LFDT-Minokawa/compact/issues/465
       thresholds: {
         perFile: true,
-        lines: 95,
-        branches: 95,
-        functions: 95,
-        statements: 95,
+        '**/*.ts': {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
+        },
       },
     },
   },
