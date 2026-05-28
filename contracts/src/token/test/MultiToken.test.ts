@@ -1379,4 +1379,36 @@ describe('MultiToken', () => {
       });
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should expose the balances map via getPublicState', () => {
+      const sim = new MultiTokenSimulator(initWithURI);
+
+      const ledgerState = sim.getPublicState();
+
+      expect(ledgerState.MultiToken__balances.isEmpty()).toBe(true);
+      expect(ledgerState.MultiToken__balances.size()).toBe(0n);
+    });
+  });
+
+  describe('privateState helpers', () => {
+    describe('getCurrentSecretKey', () => {
+      it('should return the injected secret key', () => {
+        const sim = new MultiTokenSimulator(initWithURI);
+        sim.privateState.injectSecretKey(OWNER.secretKey);
+
+        expect(sim.privateState.getCurrentSecretKey()).toEqual(OWNER.secretKey);
+      });
+
+      it('should throw when the secret key is undefined', () => {
+        const sim = new MultiTokenSimulator(initWithURI, {
+          privateState: { secretKey: undefined as unknown as Uint8Array },
+        });
+
+        expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+          'Missing secret key',
+        );
+      });
+    });
+  });
 });
