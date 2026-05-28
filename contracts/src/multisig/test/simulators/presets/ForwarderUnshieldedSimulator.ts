@@ -5,11 +5,11 @@ import {
 import {
   ledger,
   Contract as ForwarderUnshielded,
-} from '../../../../artifacts/ForwarderUnshielded/contract/index.js';
+} from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
 import {
   ForwarderUnshieldedPrivateState,
   ForwarderUnshieldedWitnesses,
-} from '../../witnesses/ForwarderUnshieldedWitnesses.js';
+} from '../../../witnesses/presets/ForwarderUnshieldedWitnesses.js';
 
 type ForwarderUnshieldedArgs = readonly [parent: Uint8Array];
 

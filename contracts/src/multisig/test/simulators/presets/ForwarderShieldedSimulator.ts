@@ -5,11 +5,11 @@ import {
 import {
   ledger,
   Contract as ForwarderShielded,
-} from '../../../../artifacts/ForwarderShielded/contract/index.js';
+} from '../../../../../artifacts/ForwarderShielded/contract/index.js';
 import {
   ForwarderShieldedPrivateState,
   ForwarderShieldedWitnesses,
-} from '../../witnesses/ForwarderShieldedWitnesses.js';
+} from '../../../witnesses/presets/ForwarderShieldedWitnesses.js';
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
 

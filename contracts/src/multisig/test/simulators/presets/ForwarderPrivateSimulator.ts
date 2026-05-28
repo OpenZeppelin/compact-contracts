@@ -6,11 +6,11 @@ import {
   ledger,
   pureCircuits,
   Contract as ForwarderPrivate,
-} from '../../../../artifacts/ForwarderPrivate/contract/index.js';
+} from '../../../../../artifacts/ForwarderPrivate/contract/index.js';
 import {
   ForwarderPrivatePrivateState,
   ForwarderPrivateWitnesses,
-} from '../../witnesses/ForwarderPrivateWitnesses.js';
+} from '../../../witnesses/presets/ForwarderPrivateWitnesses.js';
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
 type QualifiedShieldedCoinInfo = {
@@ -56,7 +56,7 @@ export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
     parentAddr: Uint8Array,
     salt: Uint8Array,
   ): Uint8Array {
-    return pureCircuits._calculateParentCommitment(parentAddr, salt);
+    return pureCircuits.calculateParentCommitment(parentAddr, salt);
   }
 
   public deposit(coin: ShieldedCoinInfo) {
