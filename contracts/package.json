@@ -32,6 +32,7 @@
     "compact:utils": "compact-compiler --dir utils",
     "build": "compact-builder --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "SKIP_ZK=true yarn run compact && vitest run",
+    "test:coverage": "SKIP_ZK=true yarn run compact && vitest run --coverage",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
@@ -45,8 +46,9 @@
     "@openzeppelin/compact-simulator": "^0.0.1",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "25.7.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   }
 }
