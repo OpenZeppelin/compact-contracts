@@ -14,6 +14,14 @@ This project is built on the Midnight Network.
 > Expect rapid iteration.
 > **Use at your own risk.**
 
+> ## ⚠️ Witnesses Are Test-Only Material ⚠️
+>
+> Every TypeScript witness in this repo lives under `contracts/src/<module>/test/witnesses/` and exists **solely to drive the Compact circuits during off-chain tests**. They are not part of the published package and are not maintained as a public API.
+>
+> **Witness implementations are security-critical.** A witness controls the private state a circuit reads from — a buggy or malicious witness can leak secrets, produce invalid proofs, or undermine the guarantees of the contract it pairs with. Consumers of this library **must author and audit their own witnesses** for production use; the ones shipped here are reference test doubles only.
+>
+> OpenZeppelin does not publish witnesses as a consumable artifact and takes no responsibility for any witness implementation reused outside its test context.
+
 ## Learn
 
 ### Documentation
