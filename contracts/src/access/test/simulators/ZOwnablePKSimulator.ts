@@ -12,7 +12,7 @@ import {
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,
-} from '../../witnesses/ZOwnablePKWitnesses.js';
+} from '../witnesses/ZOwnablePKWitnesses.js';
 
 /** Type constructor args */
 type ZOwnablePKArgs = readonly [

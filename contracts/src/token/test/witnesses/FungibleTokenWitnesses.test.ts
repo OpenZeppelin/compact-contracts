@@ -4,7 +4,7 @@ import type { Ledger } from '../../../../artifacts/MockFungibleToken/contract/in
 import {
   FungibleTokenPrivateState,
   FungibleTokenWitnesses,
-} from '../FungibleTokenWitnesses.js';
+} from './FungibleTokenWitnesses.js';
 
 const SECRET_KEY = new Uint8Array(32).fill(0x34);
 

@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "src/**/witnesses/**/*.ts"
+    "src/**/test/witnesses/**/*.ts"
   ],
   "exclude": ["src/archive/"],
   "compilerOptions": {

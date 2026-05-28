@@ -11,7 +11,7 @@ import {
 import {
   NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,
-} from '../../witnesses/NonFungibleTokenWitnesses.js';
+} from '../witnesses/NonFungibleTokenWitnesses.js';
 
 /**
  * Type constructor args

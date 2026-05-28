@@ -9,7 +9,7 @@ import {
 import {
   PausablePrivateState,
   PausableWitnesses,
-} from '../../witnesses/PausableWitnesses.js';
+} from '../witnesses/PausableWitnesses.js';
 
 /**
  * Type constructor args

@@ -12,7 +12,7 @@ import {
 import {
   UtilsPrivateState,
   UtilsWitnesses,
-} from '../../witnesses/UtilsWitnesses.js';
+} from '../witnesses/UtilsWitnesses.js';
 
 /**
  * Type constructor args

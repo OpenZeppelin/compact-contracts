@@ -9,7 +9,7 @@ import {
 import {
   InitializablePrivateState,
   InitializableWitnesses,
-} from '../../witnesses/InitializableWitnesses.js';
+} from '../witnesses/InitializableWitnesses.js';
 
 /**
  * Type constructor args

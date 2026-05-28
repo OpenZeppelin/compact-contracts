@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (token/witnesses/MultiTokenWitnesses.ts)
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (token/test/witnesses/FungibleTokenWitnesses.ts)
 
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 /**
- * @description Interface defining the witness methods for MultiToken operations.
+ * @description Interface defining the witness methods for FungibleToken operations.
  * @template P - The private state type.
  */
-export interface IMultiTokenWitnesses<L, P> {
+export interface IFungibleTokenWitnesses<L, P> {
   /**
    * Retrieves the secret key from the private state.
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_MultiTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_FungibleTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
- * @description Represents the private state of an MultiToken contract, storing a secret key.
+ * @description Represents the private state of a FungibleToken contract, storing a secret key.
  */
-export type MultiTokenPrivateState = {
+export type FungibleTokenPrivateState = {
   /** @description A 32-byte secret key used for creating a public user identifier. */
   secretKey: Uint8Array;
 };
 
 /**
- * @description Utility object for managing the private state of an MultiToken contract.
+ * @description Utility object for managing the private state of an FungibleToken contract.
  */
-export const MultiTokenPrivateState = {
+export const FungibleTokenPrivateState = {
   /**
    * @description Generates a new private state with a random secret key.
-   * @returns A fresh MultiTokenPrivateState instance.
+   * @returns A fresh FungibleTokenPrivateState instance.
    */
-  generate: (): MultiTokenPrivateState => {
+  generate: (): FungibleTokenPrivateState => {
     return { secretKey: getRandomValues(new Uint8Array(32)) };
   },
 
@@ -42,16 +42,16 @@ export const MultiTokenPrivateState = {
    * Useful for deterministic key generation or advanced use cases.
    *
    * @param sk - The 32-byte secret key to use.
-   * @returns A fresh MultiTokenPrivateState instance with the provided key.
+   * @returns A fresh FungibleTokenPrivateState instance with the provided key.
    *
    * @example
    * ```typescript
    * // For deterministic keys (user-defined scheme)
    * const deterministicKey = myDeterministicScheme(...);
-   * const privateState = MultiTokenPrivateState.withSecretKey(deterministicKey);
+   * const privateState = FungibleTokenPrivateState.withSecretKey(deterministicKey);
    * ```
    */
-  withSecretKey: (sk: Uint8Array): MultiTokenPrivateState => {
+  withSecretKey: (sk: Uint8Array): FungibleTokenPrivateState => {
     if (sk.length !== 32) {
       throw new Error(
         `withSecretKey: expected 32-byte secret key, received ${sk.length} bytes`,
@@ -62,16 +62,16 @@ export const MultiTokenPrivateState = {
 };
 
 /**
- * @description Factory function creating witness implementations for MultiToken operations.
- * @returns An object implementing the Witnesses interface for MultiTokenPrivateState.
+ * @description Factory function creating witness implementations for FungibleToken operations.
+ * @returns An object implementing the Witnesses interface for FungibleTokenPrivateState.
  */
-export const MultiTokenWitnesses = <L>(): IMultiTokenWitnesses<
+export const FungibleTokenWitnesses = <L>(): IFungibleTokenWitnesses<
   L,
-  MultiTokenPrivateState
+  FungibleTokenPrivateState
 > => ({
-  wit_MultiTokenSK(
-    context: WitnessContext<L, MultiTokenPrivateState>,
-  ): [MultiTokenPrivateState, Uint8Array] {
+  wit_FungibleTokenSK(
+    context: WitnessContext<L, FungibleTokenPrivateState>,
+  ): [FungibleTokenPrivateState, Uint8Array] {
     return [
       context.privateState,
       Uint8Array.from(context.privateState.secretKey),

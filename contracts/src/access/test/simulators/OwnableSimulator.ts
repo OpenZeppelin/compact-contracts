@@ -11,7 +11,7 @@ import {
 import {
   OwnablePrivateState,
   OwnableWitnesses,
-} from '../../witnesses/OwnableWitnesses.js';
+} from '../witnesses/OwnableWitnesses.js';
 
 /**
  * Type constructor args

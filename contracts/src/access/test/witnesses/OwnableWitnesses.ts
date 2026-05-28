@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (token/witnesses/FungibleTokenWitnesses.ts)
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (access/test/witnesses/OwnableWitnesses.ts)
 
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 /**
- * @description Interface defining the witness methods for FungibleToken operations.
+ * @description Interface defining the witness methods for Ownable operations.
  * @template P - The private state type.
  */
-export interface IFungibleTokenWitnesses<L, P> {
+export interface IOwnableWitnesses<L, P> {
   /**
    * Retrieves the secret key from the private state.
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_FungibleTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_OwnableSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
- * @description Represents the private state of a FungibleToken contract, storing a secret key.
+ * @description Represents the private state of an Ownable contract, storing a secret key.
  */
-export type FungibleTokenPrivateState = {
+export type OwnablePrivateState = {
   /** @description A 32-byte secret key used for creating a public user identifier. */
   secretKey: Uint8Array;
 };
 
 /**
- * @description Utility object for managing the private state of an FungibleToken contract.
+ * @description Utility object for managing the private state of an Ownable contract.
  */
-export const FungibleTokenPrivateState = {
+export const OwnablePrivateState = {
   /**
    * @description Generates a new private state with a random secret key.
-   * @returns A fresh FungibleTokenPrivateState instance.
+   * @returns A fresh OwnablePrivateState instance.
    */
-  generate: (): FungibleTokenPrivateState => {
+  generate: (): OwnablePrivateState => {
     return { secretKey: getRandomValues(new Uint8Array(32)) };
   },
 
@@ -42,16 +42,16 @@ export const FungibleTokenPrivateState = {
    * Useful for deterministic key generation or advanced use cases.
    *
    * @param sk - The 32-byte secret key to use.
-   * @returns A fresh FungibleTokenPrivateState instance with the provided key.
+   * @returns A fresh OwnablePrivateState instance with the provided key.
    *
    * @example
    * ```typescript
    * // For deterministic keys (user-defined scheme)
    * const deterministicKey = myDeterministicScheme(...);
-   * const privateState = FungibleTokenPrivateState.withSecretKey(deterministicKey);
+   * const privateState = OwnablePrivateState.withSecretKey(deterministicKey);
    * ```
    */
-  withSecretKey: (sk: Uint8Array): FungibleTokenPrivateState => {
+  withSecretKey: (sk: Uint8Array): OwnablePrivateState => {
     if (sk.length !== 32) {
       throw new Error(
         `withSecretKey: expected 32-byte secret key, received ${sk.length} bytes`,
@@ -62,16 +62,16 @@ export const FungibleTokenPrivateState = {
 };
 
 /**
- * @description Factory function creating witness implementations for FungibleToken operations.
- * @returns An object implementing the Witnesses interface for FungibleTokenPrivateState.
+ * @description Factory function creating witness implementations for Ownable operations.
+ * @returns An object implementing the Witnesses interface for OwnablePrivateState.
  */
-export const FungibleTokenWitnesses = <L>(): IFungibleTokenWitnesses<
+export const OwnableWitnesses = <L>(): IOwnableWitnesses<
   L,
-  FungibleTokenPrivateState
+  OwnablePrivateState
 > => ({
-  wit_FungibleTokenSK(
-    context: WitnessContext<L, FungibleTokenPrivateState>,
-  ): [FungibleTokenPrivateState, Uint8Array] {
+  wit_OwnableSK(
+    context: WitnessContext<L, OwnablePrivateState>,
+  ): [OwnablePrivateState, Uint8Array] {
     return [
       context.privateState,
       Uint8Array.from(context.privateState.secretKey),

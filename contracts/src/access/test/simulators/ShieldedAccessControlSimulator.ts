@@ -10,7 +10,7 @@ import {
 import {
   ShieldedAccessControlPrivateState,
   ShieldedAccessControlWitnesses,
-} from '../../witnesses/ShieldedAccessControlWitnesses.js';
+} from '../witnesses/ShieldedAccessControlWitnesses.js';
 
 type ShieldedAccessControlLedger = ReturnType<typeof ledger>;
 

@@ -11,7 +11,7 @@ import {
 import {
   AccessControlPrivateState,
   AccessControlWitnesses,
-} from '../../witnesses/AccessControlWitnesses.js';
+} from '../witnesses/AccessControlWitnesses.js';
 
 /**
  * Type constructor args

@@ -12,7 +12,7 @@ import {
 import {
   MultiTokenPrivateState,
   MultiTokenWitnesses,
-} from '../../witnesses/MultiTokenWitnesses.js';
+} from '../witnesses/MultiTokenWitnesses.js';
 
 /**
  * Type constructor args

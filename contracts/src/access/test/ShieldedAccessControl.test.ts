@@ -8,7 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
-import { ShieldedAccessControlPrivateState } from '../witnesses/ShieldedAccessControlWitnesses.js';
+import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);

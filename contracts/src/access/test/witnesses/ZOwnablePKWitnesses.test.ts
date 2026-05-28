@@ -4,7 +4,7 @@ import type { Ledger } from '../../../../artifacts/MockZOwnablePK/contract/index
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,
-} from '../ZOwnablePKWitnesses.js';
+} from './ZOwnablePKWitnesses.js';
 
 const NONCE = Buffer.alloc(32, 0x34);
 
