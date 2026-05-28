@@ -145,4 +145,10 @@ describe('Utils', () => {
       expect(canonical).toEqual(contractUtils.ZERO_ADDRESS);
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should expose an empty public ledger via getPublicState', () => {
+      expect(contract.getPublicState()).toStrictEqual({});
+    });
+  });
 });
