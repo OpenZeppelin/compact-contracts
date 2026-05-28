@@ -1473,3 +1473,30 @@ describe('Uninitialized NonFungibleToken', () => {
     }).toThrow('Initializable: contract not initialized');
   });
 });
+
+describe('NonFungibleTokenSimulator wiring', () => {
+  it('should expose an empty public ledger via getPublicState', () => {
+    const sim = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
+
+    expect(sim.getPublicState()).toStrictEqual({});
+  });
+
+  describe('privateState getCurrentSecretKey', () => {
+    it('should return the injected secret key', () => {
+      const sim = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
+      sim.privateState.injectSecretKey(OWNER.secretKey);
+
+      expect(sim.privateState.getCurrentSecretKey()).toEqual(OWNER.secretKey);
+    });
+
+    it('should throw when the secret key is undefined', () => {
+      const sim = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT, {
+        privateState: { secretKey: undefined as unknown as Uint8Array },
+      });
+
+      expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+        'Missing secret key',
+      );
+    });
+  });
+});
