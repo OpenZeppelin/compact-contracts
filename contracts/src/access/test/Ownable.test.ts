@@ -519,4 +519,47 @@ describe('Ownable', () => {
       });
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should construct with a generated private state when none is supplied', () => {
+      const sim = new OwnableSimulator(OWNER.either, isInit);
+      const sk = sim.privateState.getCurrentSecretKey();
+
+      expect(sk).toBeInstanceOf(Uint8Array);
+      expect(sk.length).toBe(32);
+    });
+
+    it('should expose an empty public ledger via getPublicState', () => {
+      const sim = new OwnableSimulator(OWNER.either, isInit, {
+        privateState: { secretKey: OWNER.secretKey },
+      });
+
+      expect(sim.getPublicState()).toStrictEqual({});
+    });
+  });
+
+  describe('privateState helpers', () => {
+    describe('getCurrentSecretKey', () => {
+      it('should return the injected secret key', () => {
+        ownable = new OwnableSimulator(OWNER.either, isInit, {
+          privateState: { secretKey: OWNER.secretKey },
+        });
+        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+
+        expect(ownable.privateState.getCurrentSecretKey()).toEqual(
+          NEW_OWNER.secretKey,
+        );
+      });
+
+      it('should throw when the secret key is undefined', () => {
+        const sim = new OwnableSimulator(OWNER.either, isInit, {
+          privateState: { secretKey: undefined as unknown as Uint8Array },
+        });
+
+        expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+          'Missing secret key',
+        );
+      });
+    });
+  });
 });
