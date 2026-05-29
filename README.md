@@ -216,3 +216,7 @@ rm -rf .turbo/
 This project is still in a very early and experimental phase. It has never been audited nor thoroughly reviewed for security vulnerabilities. DO NOT USE IT IN PRODUCTION.
 
 Please report any security issues you find to <security@openzeppelin.com>.
+
+### Provenance
+
+Releases are published from GitHub Actions with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) enabled. Each published version carries a signed attestation in the public Sigstore transparency log linking the package to its source commit and build workflow run. View the verified source commit, build, and transparency-log links in the **Provenance** panel on the [npm package page](https://www.npmjs.com/package/@openzeppelin/compact-contracts).
