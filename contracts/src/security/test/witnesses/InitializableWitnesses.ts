@@ -1,5 +1,7 @@
-// SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (security/test/witnesses/InitializableWitnesses.ts)
+// TEST-ONLY WITNESS. NOT FOR PRODUCTION USE.
+// Unaudited reference material that drives Compact circuits in
+// off-chain tests. Not shipped as a consumable artifact. Production
+// consumers must author and audit their own witnesses.
 
 export type InitializablePrivateState = Record<string, never>;
 export const InitializablePrivateState: InitializablePrivateState = {};
