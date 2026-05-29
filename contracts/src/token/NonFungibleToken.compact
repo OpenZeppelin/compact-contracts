@@ -24,22 +24,34 @@ pragma language_version >= 0.21.0;
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
  *
- * @notice At the moment Midnight does not support contract-to-contract communication, but
+ * @notice At the moment Midnight does not support contract-to-contract (C2C) communication, but
  * there are ongoing efforts to enable this in the future. Thus, the main circuits of this module
- * restrict developers from sending tokens to contracts; however, we provide developers
- * the ability to experiment with sending tokens to contracts using the `_unsafe`
- * transfer methods. Once contract-to-contract communication is available we will follow the
- * deprecation plan outlined below:
+ * (`transfer`, `transferFrom`, `_transfer`, `_mint`) reject `ContractAddress` recipients via an
+ * `isContract` guard, because a contract that receives a token currently cannot move it back out.
+ * Developers who need to experiment with contract recipients can use the `_unsafe` variants, which
+ * skip the guard (the caller accepts that such tokens are stranded until C2C lands).
  *
- * Initial Minor Version Change:
+ * @dev Migration plan (safe -> C2C-capable `transfer`)
  *
- * - Mark _unsafeTransfer as deprecated and emit a warning if possible.
- * - Keep its implementation intact so existing callers continue to work.
+ * The recipient type is the final `Either<Bytes<32>, ContractAddress>` from day one, in both
+ * circuit signatures and ledger maps. This is deliberate. Midnight's upgrade mechanism, the
+ * Contract Maintenance Authority (CMA), can rotate a circuit's verifier key but cannot migrate
+ * ledger state (there is no state-rewrite primitive; see the `updatability` tutorial). Fixing the
+ * types now makes the future migration a pure verifier-key rotation with zero ledger-state change,
+ * which is the only kind of upgrade the CMA supports. Widening the types later would instead force
+ * a ledger-layout rewrite, which the CMA cannot perform.
  *
- * Later Major Version Change:
+ * When C2C lands, an already-deployed token migrates without changing its address or ledger state:
  *
- * - Drop _unsafeTransfer and remove `isContract` guard from `transfer`.
- * - By this point, anyone using _unsafeTransfer should have migrated to the now C2C-capable `transfer`.
+ * - Minor release: mark `_unsafeTransfer` deprecated (and emit a warning if possible); keep its
+ *   implementation intact so existing callers continue to work.
+ * - Major release: ship `transfer` with the `isContract` guard removed and drop `_unsafeTransfer`.
+ *   Operators adopt the new logic by signing a CMA `MaintenanceUpdate` that rotates the affected
+ *   verifier keys (`VerifierKeyRemove` + `VerifierKeyInsert` for `transfer`, and a `VerifierKeyRemove`
+ *   for `_unsafeTransfer`). The contract address and all ledger state are preserved. Because the CMA
+ *   allows multiple active VK versions per operation, the old and new `transfer` keys can coexist
+ *   during a transition window so in-flight proofs still verify. By this point, anyone using
+ *   `_unsafeTransfer` should have migrated to the now C2C-capable `transfer`.
  *
  * @dev Canonicalization
  * All `Either<Bytes<32>, ContractAddress>` values are canonicalized before use as map keys
