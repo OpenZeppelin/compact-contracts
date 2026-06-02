@@ -330,7 +330,7 @@ __metadata:
     "@openzeppelin/compact-cli": "npm:^0.0.2"
     "@openzeppelin/compact-simulator": "npm:^0.0.1"
     "@tsconfig/node24": "npm:^24.0.4"
-    "@types/node": "npm:25.7.0"
+    "@types/node": "npm:25.9.1"
     "@vitest/coverage-v8": "npm:^4.1.7"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
@@ -592,12 +592,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:25.7.0":
-  version: 25.7.0
-  resolution: "@types/node@npm:25.7.0"
+"@types/node@npm:25.9.1":
+  version: 25.9.1
+  resolution: "@types/node@npm:25.9.1"
   dependencies:
-    undici-types: "npm:~7.21.0"
-  checksum: 10/1b11c865ea517ab90af870c2f58c100804e3dd8dc25a62b5e5af3aea12ad015f9faf513664babc7e0c755bb1c0744649b2ff19b7b434c1648ad8057f2dc6c71a
+    undici-types: "npm:>=7.24.0 <7.24.7"
+  checksum: 10/8a1ccf60f0c0ca856d3324a690ee35776f26dfc1d51c3763aecdf246a3246a7971a0156bf6eb3239aa22dfa940eb361d048212f5c3204264d31ef4c41d17416a
   languageName: node
   linkType: hard
 
@@ -1686,7 +1686,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.3"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@types/node": "npm:25.7.0"
+    "@types/node": "npm:25.9.1"
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.9.5"
     typescript: "npm:^5.9.3"
@@ -2196,10 +2196,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~7.21.0":
-  version: 7.21.0
-  resolution: "undici-types@npm:7.21.0"
-  checksum: 10/e38c0efbeaeabeb84f5d8a49d127fcae1626af09785b04fde4915e8312b47c5f81106c61e655cb63c59e429522460a313183168913e55b485a36e06d67689798
+"undici-types@npm:>=7.24.0 <7.24.7":
+  version: 7.24.6
+  resolution: "undici-types@npm:7.24.6"
+  checksum: 10/defc9538b952e3c15b8526596c591f7c1f0c7605ad27a2b7feddbea7ef2e3003f3eda2cdb051a3cb1a2185e3893100fd9cb925c799db99d48131ea63b5233d10
   languageName: node
   linkType: hard
 
