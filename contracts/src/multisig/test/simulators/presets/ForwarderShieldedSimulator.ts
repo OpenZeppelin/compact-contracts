@@ -5,15 +5,15 @@ import {
 import {
   ledger,
   Contract as ForwarderShielded,
+  type ShieldedCoinInfo,
+  type ZswapCoinPublicKey,
 } from '../../../../../artifacts/ForwarderShielded/contract/index.js';
 import {
   ForwarderShieldedPrivateState,
   ForwarderShieldedWitnesses,
 } from '../../../witnesses/presets/ForwarderShieldedWitnesses.js';
 
-type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
-
-type ForwarderShieldedArgs = readonly [parent: Uint8Array];
+type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 
 const ForwarderShieldedSimulatorBase = createSimulator<
   ForwarderShieldedPrivateState,
@@ -38,7 +38,7 @@ export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
       ReturnType<typeof ForwarderShieldedWitnesses>
     > = {},
   ) {
-    super([parent], options);
+    super([{ bytes: parent }], options);
   }
 
   public deposit(coin: ShieldedCoinInfo) {
@@ -46,6 +46,6 @@ export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
   }
 
   public getParent(): Uint8Array {
-    return this.circuits.impure.getParent();
+    return this.circuits.impure.getParent().bytes;
   }
 }

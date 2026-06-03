@@ -5,13 +5,14 @@ import {
 import {
   ledger,
   Contract as ForwarderUnshielded,
+  type UserAddress,
 } from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
 import {
   ForwarderUnshieldedPrivateState,
   ForwarderUnshieldedWitnesses,
 } from '../../../witnesses/presets/ForwarderUnshieldedWitnesses.js';
 
-type ForwarderUnshieldedArgs = readonly [parent: Uint8Array];
+type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
 
 const ForwarderUnshieldedSimulatorBase = createSimulator<
   ForwarderUnshieldedPrivateState,
@@ -36,7 +37,7 @@ export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBa
       ReturnType<typeof ForwarderUnshieldedWitnesses>
     > = {},
   ) {
-    super([parent], options);
+    super([{ bytes: parent }], options);
   }
 
   public depositUnshielded(color: Uint8Array, amount: bigint) {
@@ -44,6 +45,6 @@ export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBa
   }
 
   public getParent(): Uint8Array {
-    return this.circuits.impure.getParent();
+    return this.circuits.impure.getParent().bytes;
   }
 }

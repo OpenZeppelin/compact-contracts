@@ -9,8 +9,11 @@ pragma language_version >= 0.21.0;
  * forward pattern: receive a coin (shielded or unshielded) and
  * immediately send it to a hard-coded parent address.
  *
- * Presets (`ForwarderShielded`, `ForwarderUnshielded`) wrap individual
- * deposit paths so each deployable contract is single-purpose.
+ * The module is generic over the parent's address type `T`. Each preset
+ * specializes it to the address kind it forwards to: `ForwarderShielded`
+ * uses `ZswapCoinPublicKey`, `ForwarderUnshielded` uses `UserAddress`.
+ * Storing the parent as a typed value rather than raw `Bytes<32>` forces
+ * every deployer to supply the correct address kind for the coin type.
  *
  * Underscore-prefixed circuits have no access control. The forwarder is
  * intentionally permissionless — the recipient is hard-coded at deploy,
@@ -18,13 +21,13 @@ pragma language_version >= 0.21.0;
  * access is gated by the `Initializable` module: every circuit asserts
  * the module has been initialized via `initialize`.
  */
-module Forwarder {
+module Forwarder<T> {
   import CompactStandardLibrary;
   import { initialize, assertInitialized } from "../security/Initializable" prefix Initializable_;
 
   // ─── State ──────────────────────────────────────────────────────
 
-  export sealed ledger _parent: Bytes<32>;
+  export sealed ledger _parent: T;
 
   // ─── Init ───────────────────────────────────────────────────────
 
@@ -40,12 +43,14 @@ module Forwarder {
    *   forward every deposit to an unspendable address with no recovery
    *   path.
    *
-   * @param {Bytes<32>} parent - The parent address.
+   * @param {T} parent - The parent address. Typed per the specializing
+   * preset: `ZswapCoinPublicKey` for shielded, `UserAddress` for
+   * unshielded.
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit initialize(parent: Bytes<32>): [] {
-    assert(parent != default<Bytes<32>>, "Forwarder: zero parent");
+  export circuit initialize(parent: T): [] {
+    assert(parent != default<T>, "Forwarder: zero parent");
     Initializable_initialize();
     _parent = disclose(parent);
   }
@@ -56,9 +61,10 @@ module Forwarder {
    * @description Receives a shielded coin and atomically forwards it
    * to `_parent`. The coin is claimed at the protocol level via
    * `receiveShielded`, then immediately re-sent via
-   * `sendImmediateShielded`.
+   * `sendImmediateShielded`. The parent's bytes are wrapped as a
+   * `ZswapCoinPublicKey` recipient at the send site.
    *
-   * @circuitInfo k=15, rows=24434
+   * @circuitInfo k=15, rows=18573
    *
    * Requirements:
    *
@@ -73,16 +79,17 @@ module Forwarder {
     receiveShielded(disclose(coin));
     sendImmediateShielded(
       disclose(coin),
-      right<ZswapCoinPublicKey, ContractAddress>(ContractAddress { bytes: _parent }),
+      left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: _parent.bytes }),
       disclose(coin.value)
     );
   }
 
   /**
    * @description Receives an unshielded amount of `color` and
-   * atomically forwards it to `_parent`.
+   * atomically forwards it to `_parent`. The parent's bytes are
+   * wrapped as a `UserAddress` recipient at the send site.
    *
-   * @circuitInfo k=10, rows=529
+   * @circuitInfo k=9, rows=436
    *
    * Requirements:
    *
@@ -99,7 +106,7 @@ module Forwarder {
     sendUnshielded(
       disclose(color),
       disclose(amount),
-      left<ContractAddress, UserAddress>(ContractAddress { bytes: _parent })
+      right<ContractAddress, UserAddress>(UserAddress { bytes: _parent.bytes })
     );
   }
 }

@@ -15,15 +15,17 @@ pragma language_version >= 0.21.0;
  */
 
 import CompactStandardLibrary;
-import "../../Forwarder" prefix Forwarder_;
+import "../../Forwarder"<ZswapCoinPublicKey> prefix Forwarder_;
+
+export { ZswapCoinPublicKey, ShieldedCoinInfo };
 
 /**
  * @description Deploys the forwarder bound to a specific parent address.
  *
- * @param {Bytes<32>} parent - The parent address that receives every
- * forwarded coin. Wrapped as a `ContractAddress` at the send site.
+ * @param {ZswapCoinPublicKey} parent - The parent address that receives
+ * every forwarded coin.
  */
-constructor(parent: Bytes<32>) {
+constructor(parent: ZswapCoinPublicKey) {
   Forwarder_initialize(parent);
 }
 
@@ -43,8 +45,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 /**
  * @description Returns the configured parent address.
  *
- * @returns {Bytes<32>} The parent address set at deploy.
+ * @returns {ZswapCoinPublicKey} The parent address set at deploy.
  */
-export circuit getParent(): Bytes<32> {
+export circuit getParent(): ZswapCoinPublicKey {
   return Forwarder__parent;
 }

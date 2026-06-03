@@ -15,15 +15,17 @@ pragma language_version >= 0.21.0;
  */
 
 import CompactStandardLibrary;
-import "../../Forwarder" prefix Forwarder_;
+import "../../Forwarder"<UserAddress> prefix Forwarder_;
+
+export { UserAddress };
 
 /**
  * @description Deploys the forwarder bound to a specific parent address.
  *
- * @param {Bytes<32>} parent - The parent address that receives every
+ * @param {UserAddress} parent - The parent address that receives every
  * forwarded amount.
  */
-constructor(parent: Bytes<32>) {
+constructor(parent: UserAddress) {
   Forwarder_initialize(parent);
 }
 
@@ -43,8 +45,8 @@ export circuit depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
 /**
  * @description Returns the configured parent address.
  *
- * @returns {Bytes<32>} The parent address set at deploy.
+ * @returns {UserAddress} The parent address set at deploy.
  */
-export circuit getParent(): Bytes<32> {
+export circuit getParent(): UserAddress {
   return Forwarder__parent;
 }

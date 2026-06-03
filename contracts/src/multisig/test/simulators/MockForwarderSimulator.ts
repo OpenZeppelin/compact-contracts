@@ -5,15 +5,15 @@ import {
 import {
   ledger,
   Contract as MockForwarder,
+  type ShieldedCoinInfo,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockForwarder/contract/index.js';
 import {
   MockForwarderPrivateState,
   MockForwarderWitnesses,
 } from '../../witnesses/MockForwarderWitnesses.js';
 
-type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
-
-type MockForwarderArgs = readonly [parent: Uint8Array, isInit: boolean];
+type MockForwarderArgs = readonly [parent: ZswapCoinPublicKey, isInit: boolean];
 
 const MockForwarderSimulatorBase = createSimulator<
   MockForwarderPrivateState,
@@ -39,7 +39,7 @@ export class MockForwarderSimulator extends MockForwarderSimulatorBase {
       ReturnType<typeof MockForwarderWitnesses>
     > = {},
   ) {
-    super([parent, isInit], options);
+    super([{ bytes: parent }, isInit], options);
   }
 
   public depositShielded(coin: ShieldedCoinInfo) {
