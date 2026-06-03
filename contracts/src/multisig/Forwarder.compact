@@ -23,7 +23,7 @@ pragma language_version >= 0.21.0;
  */
 module Forwarder<T> {
   import CompactStandardLibrary;
-  import { initialize, assertInitialized } from "../security/Initializable" prefix Initializable_;
+  import "../security/Initializable" prefix Initializable_;
 
   // ─── State ──────────────────────────────────────────────────────
 

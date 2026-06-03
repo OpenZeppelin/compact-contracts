@@ -26,8 +26,8 @@ pragma language_version >= 0.21.0;
  */
 module ForwarderPrivate {
   import CompactStandardLibrary;
-  import { initialize, assertInitialized } from "../security/Initializable" prefix Initializable_;
-  import { selfAsRecipient } from "../utils/Utils" prefix Utils_;
+  import "../security/Initializable" prefix Initializable_;
+  import "../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 
