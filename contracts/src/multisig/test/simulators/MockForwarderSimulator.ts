@@ -42,10 +42,6 @@ export class MockForwarderSimulator extends MockForwarderSimulatorBase {
     super([parent, isInit], options);
   }
 
-  public initialize(parent: Uint8Array) {
-    return this.circuits.impure.initialize(parent);
-  }
-
   public depositShielded(coin: ShieldedCoinInfo) {
     return this.circuits.impure.depositShielded(coin);
   }

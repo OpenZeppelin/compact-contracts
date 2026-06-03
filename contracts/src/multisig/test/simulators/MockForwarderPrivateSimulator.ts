@@ -63,10 +63,6 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
     return pureCircuits.calculateParentCommitment(parentAddr, salt);
   }
 
-  public initialize(parentCommitment: Uint8Array) {
-    return this.circuits.impure.initialize(parentCommitment);
-  }
-
   public deposit(coin: ShieldedCoinInfo) {
     return this.circuits.impure.deposit(coin);
   }

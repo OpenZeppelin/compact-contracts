@@ -52,20 +52,6 @@ describe('ForwarderPrivate module', () => {
       );
     });
 
-    it('should fail when initialized twice', () => {
-      const c = commitment(PARENT, SALT);
-      const mock = new MockForwarderPrivateSimulator(c, true);
-      expect(() => mock.initialize(c)).toThrow(
-        'Initializable: contract already initialized',
-      );
-    });
-
-    it('should allow late initialize when isInit is false', () => {
-      const c = commitment(PARENT, SALT);
-      const mock = new MockForwarderPrivateSimulator(c, false);
-      expect(() => mock.initialize(c)).not.toThrow();
-    });
-
     it('should expose the public ledger state after initialization', () => {
       const c = commitment(PARENT, SALT);
       const mock = new MockForwarderPrivateSimulator(c, true);

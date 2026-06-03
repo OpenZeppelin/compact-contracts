@@ -4,30 +4,22 @@
 pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
-import {
-  _init,
-  _deposit,
-  _drain,
-  _calculateParentCommitment
-} from "../../ForwarderPrivate" prefix ForwarderPrivate_;
+import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
 /**
  * @description Test fixture exposing the private ForwarderPrivate
  * module's underscore-prefixed circuits directly. `isInit` controls
- * whether the constructor auto-initializes — set to `false` to test the
- * not-initialized path; set to `true` and re-call `initialize` to test
- * the double-initialization revert.
+ * whether the constructor initializes. Set it to `false` to leave the
+ * contract uninitialized and exercise the not-initialized guard. The
+ * parent commitment is a sealed ledger field, so it can only be set in
+ * the constructor.
  *
  * DO NOT USE IN PRODUCTION.
  */
 constructor(parentCommitment: Bytes<32>, isInit: Boolean) {
   if (disclose(isInit)) {
-    ForwarderPrivate__init(parentCommitment);
+    ForwarderPrivate_initialize(parentCommitment);
   }
-}
-
-export circuit initialize(parentCommitment: Bytes<32>): [] {
-  return ForwarderPrivate__init(parentCommitment);
 }
 
 export circuit deposit(coin: ShieldedCoinInfo): [] {

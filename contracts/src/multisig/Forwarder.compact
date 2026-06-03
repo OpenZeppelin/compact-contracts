@@ -19,7 +19,7 @@ pragma language_version >= 0.21.0;
  * intentionally permissionless — the recipient is hard-coded at deploy,
  * so any caller may deposit without compromising the parent. State
  * access is gated by the `Initializable` module: every circuit asserts
- * the module has been initialized via `_init`.
+ * the module has been initialized via `initialize`.
  */
 module Forwarder {
   import CompactStandardLibrary;
@@ -28,7 +28,7 @@ module Forwarder {
 
   // ─── State ──────────────────────────────────────────────────────
 
-  export ledger _parent: Bytes<32>;
+  export sealed ledger _parent: Bytes<32>;
   export ledger _received: Map<Bytes<32>, Uint<128>>;
 
   // ─── Init ───────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ module Forwarder {
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit _init(parent: Bytes<32>): [] {
+  export circuit initialize(parent: Bytes<32>): [] {
     assert(parent != default<Bytes<32>>, "Forwarder: zero parent");
     Initializable_initialize();
     _parent = disclose(parent);

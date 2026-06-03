@@ -33,19 +33,6 @@ describe('Forwarder module', () => {
       );
     });
 
-    it('should fail when initialized twice', () => {
-      const mock = new MockForwarderSimulator(PARENT, true);
-      expect(() => mock.initialize(PARENT)).toThrow(
-        'Initializable: contract already initialized',
-      );
-    });
-
-    it('should allow late initialize when isInit is false', () => {
-      const mock = new MockForwarderSimulator(PARENT, false);
-      expect(() => mock.initialize(PARENT)).not.toThrow();
-      expect(mock.getReceived(COLOR)).toEqual(0n);
-    });
-
     it('should expose the public ledger state after initialization', () => {
       const mock = new MockForwarderSimulator(PARENT, true);
       expect(mock.getPublicState()).toBeDefined();

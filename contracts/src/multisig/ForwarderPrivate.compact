@@ -20,7 +20,7 @@ pragma language_version >= 0.21.0;
  * Underscore-prefixed circuits have no access control beyond the
  * preimage check inside `_drain`. State access is gated by the
  * `Initializable` module: every state-touching circuit asserts the
- * module has been initialized via `_init`. The pure
+ * module has been initialized via `initialize`. The pure
  * `_calculateParentCommitment` helper does not access state and is
  * intentionally callable without initialization.
  */
@@ -31,7 +31,7 @@ module ForwarderPrivate {
 
   // ─── State ──────────────────────────────────────────────────────
 
-  export ledger _parentCommitment: Bytes<32>;
+  export sealed ledger _parentCommitment: Bytes<32>;
 
   // ─── Init ───────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ module ForwarderPrivate {
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit _init(parentCommitment: Bytes<32>): [] {
+  export circuit initialize(parentCommitment: Bytes<32>): [] {
     assert(parentCommitment != default<Bytes<32>>, "ForwarderPrivate: zero commitment");
     Initializable_initialize();
     _parentCommitment = disclose(parentCommitment);

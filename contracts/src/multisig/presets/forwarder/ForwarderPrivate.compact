@@ -22,13 +22,7 @@ pragma language_version >= 0.21.0;
  */
 
 import CompactStandardLibrary;
-import {
-  _init,
-  _deposit,
-  _drain,
-  _calculateParentCommitment,
-  _parentCommitment
-} from "../../ForwarderPrivate" prefix ForwarderPrivate_;
+import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
 /**
  * @description Deploys the forwarder bound to a specific parent
@@ -39,7 +33,7 @@ import {
  * `(parentAddr, salt)` pair that the operator will present at drain.
  */
 constructor(parentCommitment: Bytes<32>) {
-  ForwarderPrivate__init(parentCommitment);
+  ForwarderPrivate_initialize(parentCommitment);
 }
 
 /**

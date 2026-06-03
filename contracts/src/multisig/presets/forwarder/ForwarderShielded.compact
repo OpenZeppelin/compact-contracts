@@ -16,12 +16,7 @@ pragma language_version >= 0.21.0;
  */
 
 import CompactStandardLibrary;
-import {
-  _init,
-  _depositShielded,
-  _getReceived,
-  _parent
-} from "../../Forwarder" prefix Forwarder_;
+import "../../Forwarder" prefix Forwarder_;
 
 /**
  * @description Deploys the forwarder bound to a specific parent address.
@@ -30,7 +25,7 @@ import {
  * forwarded coin. Wrapped as a `ContractAddress` at the send site.
  */
 constructor(parent: Bytes<32>) {
-  Forwarder__init(parent);
+  Forwarder_initialize(parent);
 }
 
 /**
