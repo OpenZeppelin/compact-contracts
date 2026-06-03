@@ -5,24 +5,15 @@ import {
 import {
   ledger,
   pureCircuits,
+  type QualifiedShieldedCoinInfo,
+  type ShieldedCoinInfo,
+  type ShieldedSendResult,
   Contract as MockForwarderPrivate,
 } from '../../../../artifacts/MockForwarderPrivate/contract/index.js';
 import {
   MockForwarderPrivatePrivateState,
   MockForwarderPrivateWitnesses,
 } from '../../witnesses/MockForwarderPrivateWitnesses.js';
-
-type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
-type QualifiedShieldedCoinInfo = {
-  nonce: Uint8Array;
-  color: Uint8Array;
-  value: bigint;
-  mt_index: bigint;
-};
-type ShieldedSendResult = {
-  change: { is_some: boolean; value: ShieldedCoinInfo };
-  sent: ShieldedCoinInfo;
-};
 
 type MockForwarderPrivateArgs = readonly [
   parentCommitment: Uint8Array,

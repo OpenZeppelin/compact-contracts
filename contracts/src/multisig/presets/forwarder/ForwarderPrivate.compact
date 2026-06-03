@@ -24,6 +24,8 @@ pragma language_version >= 0.21.0;
 import CompactStandardLibrary;
 import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+
 /**
  * @description Deploys the forwarder bound to a specific parent
  * commitment. The deployer computes the commitment off-chain as

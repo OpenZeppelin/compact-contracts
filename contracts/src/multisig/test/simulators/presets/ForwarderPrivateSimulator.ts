@@ -5,24 +5,15 @@ import {
 import {
   ledger,
   pureCircuits,
+  type QualifiedShieldedCoinInfo,
+  type ShieldedCoinInfo,
+  type ShieldedSendResult,
   Contract as ForwarderPrivate,
 } from '../../../../../artifacts/ForwarderPrivate/contract/index.js';
 import {
   ForwarderPrivatePrivateState,
   ForwarderPrivateWitnesses,
 } from '../../../witnesses/presets/ForwarderPrivateWitnesses.js';
-
-type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
-type QualifiedShieldedCoinInfo = {
-  nonce: Uint8Array;
-  color: Uint8Array;
-  value: bigint;
-  mt_index: bigint;
-};
-type ShieldedSendResult = {
-  change: { is_some: boolean; value: ShieldedCoinInfo };
-  sent: ShieldedCoinInfo;
-};
 
 type ForwarderPrivateArgs = readonly [parentCommitment: Uint8Array];
 

@@ -6,6 +6,8 @@ pragma language_version >= 0.21.0;
 import CompactStandardLibrary;
 import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+
 /**
  * @description Test fixture exposing the private ForwarderPrivate
  * module's underscore-prefixed circuits directly. `isInit` controls
