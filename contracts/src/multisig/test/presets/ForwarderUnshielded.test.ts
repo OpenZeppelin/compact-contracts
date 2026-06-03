@@ -14,13 +14,7 @@ describe('ForwarderUnshielded preset', () => {
 
   it('should expose depositUnshielded and forward to _depositUnshielded', () => {
     const fwd = new ForwarderUnshieldedSimulator(PARENT);
-    fwd.depositUnshielded(COLOR, AMOUNT);
-    expect(fwd.getReceived(COLOR)).toEqual(AMOUNT);
-  });
-
-  it('should expose getReceived and return 0 for unknown color', () => {
-    const fwd = new ForwarderUnshieldedSimulator(PARENT);
-    expect(fwd.getReceived(COLOR)).toEqual(0n);
+    expect(() => fwd.depositUnshielded(COLOR, AMOUNT)).not.toThrow();
   });
 
   it('should propagate the zero-parent guard from the module', () => {

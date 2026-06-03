@@ -7,10 +7,9 @@ pragma language_version >= 0.21.0;
  * @title ForwarderUnshielded
  * @description Public-parent forwarder for unshielded coins. Receives
  * an unshielded amount of a given color and atomically forwards it to
- * the configured parent address, accumulating cumulative receipt totals
- * per color.
+ * the configured parent address.
  *
- * Unshielded transfers are publicly visible on the chain — depositor,
+ * Unshielded transfers are publicly visible on the chain: depositor,
  * recipient, color, and amount all appear on the public transcript.
  * Use `ForwarderShielded` instead when the deposit kind is shielded.
  */
@@ -30,12 +29,7 @@ constructor(parent: Bytes<32>) {
 
 /**
  * @description Receives an unshielded amount of `color` and atomically
- * forwards it to the configured parent. The per-color cumulative total
- * in `_received` is incremented by `amount`.
- *
- * Requirements:
- *
- * - `_received[color] + amount` must not overflow `Uint<128>`.
+ * forwards it to the configured parent.
  *
  * @param {Bytes<32>} color - The token color.
  * @param {Uint<128>} amount - The amount to deposit.
@@ -53,16 +47,4 @@ export circuit depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
  */
 export circuit getParent(): Bytes<32> {
   return Forwarder__parent;
-}
-
-/**
- * @description Returns the cumulative received total for a given color,
- * or zero if no amount of that color has been deposited.
- *
- * @param {Bytes<32>} color - The token color.
- *
- * @returns {Uint<128>} Cumulative received total for `color`.
- */
-export circuit getReceived(color: Bytes<32>): Uint<128> {
-  return Forwarder__getReceived(color);
 }

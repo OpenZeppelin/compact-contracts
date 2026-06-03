@@ -49,8 +49,4 @@ export class MockForwarderSimulator extends MockForwarderSimulatorBase {
   public depositUnshielded(color: Uint8Array, amount: bigint) {
     return this.circuits.impure.depositUnshielded(color, amount);
   }
-
-  public getReceived(color: Uint8Array): bigint {
-    return this.circuits.impure.getReceived(color);
-  }
 }

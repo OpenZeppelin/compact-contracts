@@ -18,13 +18,7 @@ describe('ForwarderShielded preset', () => {
 
   it('should expose deposit and forward to _depositShielded', () => {
     const fwd = new ForwarderShieldedSimulator(PARENT);
-    fwd.deposit(makeCoin(COLOR, AMOUNT));
-    expect(fwd.getReceived(COLOR)).toEqual(AMOUNT);
-  });
-
-  it('should expose getReceived and return 0 for unknown color', () => {
-    const fwd = new ForwarderShieldedSimulator(PARENT);
-    expect(fwd.getReceived(COLOR)).toEqual(0n);
+    expect(() => fwd.deposit(makeCoin(COLOR, AMOUNT))).not.toThrow();
   });
 
   it('should propagate the zero-parent guard from the module', () => {

@@ -46,8 +46,4 @@ export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBa
   public getParent(): Uint8Array {
     return this.circuits.impure.getParent();
   }
-
-  public getReceived(color: Uint8Array): bigint {
-    return this.circuits.impure.getReceived(color);
-  }
 }

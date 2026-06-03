@@ -28,7 +28,3 @@ export circuit depositShielded(coin: ShieldedCoinInfo): [] {
 export circuit depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
   return Forwarder__depositUnshielded(color, amount);
 }
-
-export circuit getReceived(color: Bytes<32>): Uint<128> {
-  return Forwarder__getReceived(color);
-}

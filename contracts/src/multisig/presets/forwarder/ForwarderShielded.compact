@@ -7,12 +7,11 @@ pragma language_version >= 0.21.0;
  * @title ForwarderShielded
  * @description Public-parent forwarder for shielded coins. Receives a
  * shielded coin and atomically forwards it to the configured parent
- * address, accumulating cumulative receipt totals per color.
+ * address.
  *
  * The parent address is hard-coded at deploy time and immutable. Anyone
- * may call `deposit` — the recipient is fixed, so there is no need for
- * access control. Per-color totals are observable from the indexer for
- * audit / reconciliation.
+ * may call `deposit`; the recipient is fixed, so there is no need for
+ * access control.
  */
 
 import CompactStandardLibrary;
@@ -31,12 +30,7 @@ constructor(parent: Bytes<32>) {
 /**
  * @description Receives a shielded coin and atomically forwards it to
  * the configured parent. The coin is claimed via `receiveShielded` and
- * immediately re-sent via `sendImmediateShielded`. The per-color
- * cumulative total in `_received` is incremented by `coin.value`.
- *
- * Requirements:
- *
- * - `_received[coin.color] + coin.value` must not overflow `Uint<128>`.
+ * immediately re-sent via `sendImmediateShielded`.
  *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  *
@@ -53,16 +47,4 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  */
 export circuit getParent(): Bytes<32> {
   return Forwarder__parent;
-}
-
-/**
- * @description Returns the cumulative received total for a given color,
- * or zero if no coin of that color has been deposited.
- *
- * @param {Bytes<32>} color - The token color.
- *
- * @returns {Uint<128>} Cumulative received total for `color`.
- */
-export circuit getReceived(color: Bytes<32>): Uint<128> {
-  return Forwarder__getReceived(color);
 }
