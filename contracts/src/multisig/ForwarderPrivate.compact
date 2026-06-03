@@ -8,14 +8,14 @@ pragma language_version >= 0.21.0;
  * @description Private-parent forwarder primitives. The parent address
  * is hidden behind a `persistentHash` commitment on the ledger.
  * Deposits accumulate at the contract (no atomic forward); the operator
- * drains coins by presenting the `(parentAddr, salt)` preimage at drain
+ * drains coins by presenting the `(parentAddr, opSecret)` preimage at drain
  * time.
  *
  * Knowledge of the preimage is the sole authorization gate — there is
- * no signer set and no nullifier scheme. Salt is held off-chain as an
- * operational secret; the contract never sees it except during a drain.
- * Two forwarders bound to the same parent with different salts produce
- * different commitments and are unlinkable on-chain.
+ * no signer set and no nullifier scheme. The operational secret is
+ * held off-chain; the contract never sees it except during a drain.
+ * Two forwarders bound to the same parent with different operational
+ * secrets produce different commitments and are unlinkable on-chain.
  *
  * Underscore-prefixed circuits have no access control beyond the
  * preimage check inside `_drain`. State access is gated by the
@@ -49,7 +49,7 @@ module ForwarderPrivate {
    *   under the domain-tagged hash).
    *
    * @param {Bytes<32>} parentCommitment - Domain-tagged
-   * `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, salt])`
+   * `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret])`
    * computed off-chain by the deployer (see `_calculateParentCommitment`).
    *
    * @returns {[]} Empty tuple.
@@ -85,7 +85,7 @@ module ForwarderPrivate {
 
   /**
    * @description Spends a previously-deposited shielded coin to
-   * `parentAddr`. The caller proves knowledge of `(parentAddr, salt)`
+   * `parentAddr`. The caller proves knowledge of `(parentAddr, opSecret)`
    * matching the stored commitment. If `coin.value` exceeds `value`,
    * the change is re-emitted back to the contract for future drains.
    *
@@ -94,22 +94,21 @@ module ForwarderPrivate {
    * Requirements:
    *
    * - Contract must be initialized.
-   * - `_calculateParentCommitment(parentAddr, salt) == _parentCommitment`.
+   * - `_calculateParentCommitment(parentAddr, opSecret) == _parentCommitment`.
    * - `coin.value` must be >= `value` (enforced by `sendShielded`).
    *
    * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
    * @param {Bytes<32>} parentAddr - The parent address. Preimage to the
    * stored commitment.
-   * @param {Bytes<32>} salt - The salt. Operational secret; never
-   * appears on the public transcript.
+   * @param {Bytes<32>} opSecret - The operational secret. Never appears
+   * on the public transcript.
    *
-   * @warning **Salt loss is permanent fund loss.** The salt is the sole
-   * drain authorization. There is no rotation, revocation, or recovery
-   * path. If the operator misplaces the salt, every shielded coin
-   * accumulated at this contract is forever inaccessible — equivalent
-   * to losing a hot-wallet private key. Back the salt up offline before
-   * the first deposit and treat it with the same hygiene as a signing
-   * key.
+   * @warning **Losing the operational secret is permanent fund loss.** It
+   * is the sole drain authorization, with no rotation, revocation, or
+   * recovery path. If the operator misplaces it, every shielded coin
+   * accumulated at this contract is forever inaccessible, equivalent to
+   * losing a hot-wallet private key. Back it up offline before the first
+   * deposit and treat it with the same hygiene as a signing key.
    *
    * @param {Uint<128>} value - The amount to send.
    *
@@ -119,12 +118,12 @@ module ForwarderPrivate {
   export circuit _drain(
     coin: QualifiedShieldedCoinInfo,
     parentAddr: Bytes<32>,
-    salt: Bytes<32>,
+    opSecret: Bytes<32>,
     value: Uint<128>
   ): ShieldedSendResult {
     Initializable_assertInitialized();
     assert(
-      _calculateParentCommitment(parentAddr, salt) == _parentCommitment,
+      _calculateParentCommitment(parentAddr, opSecret) == _parentCommitment,
       "ForwarderPrivate: invalid parent"
     );
 
@@ -148,7 +147,7 @@ module ForwarderPrivate {
   // ─── Pure helpers ───────────────────────────────────────────────
 
   /**
-   * @description Computes the parent commitment from `(parentAddr, salt)`.
+   * @description Computes the parent commitment from `(parentAddr, opSecret)`.
    * Pure circuit — used off-chain by the deployer to compute the
    * constructor argument, and inside `_drain` for the preimage check.
    * Callable without initialization.
@@ -160,16 +159,16 @@ module ForwarderPrivate {
    * crafted under a different domain cannot satisfy this commitment.
    *
    * @param {Bytes<32>} parentAddr - The parent address.
-   * @param {Bytes<32>} salt - The salt.
+   * @param {Bytes<32>} opSecret - The operational secret.
    *
-   * @returns {Bytes<32>} `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, salt])`.
+   * @returns {Bytes<32>} `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret])`.
    */
   export pure circuit _calculateParentCommitment(
     parentAddr: Bytes<32>,
-    salt: Bytes<32>
+    opSecret: Bytes<32>
   ): Bytes<32> {
     return persistentHash<Vector<3, Bytes<32>>>(
-      [pad(32, "ForwarderPrivate:commitment"), parentAddr, salt]
+      [pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret]
     );
   }
 }

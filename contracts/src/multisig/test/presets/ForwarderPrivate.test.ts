@@ -3,7 +3,7 @@ import * as utils from '#test-utils/address.js';
 import { ForwarderPrivateSimulator } from '../simulators/presets/ForwarderPrivateSimulator.js';
 
 const PARENT = utils.createEitherTestUser('PARENT').left.bytes;
-const SALT = new Uint8Array(32).fill(0xaa);
+const OP_SECRET = new Uint8Array(32).fill(0xaa);
 const COLOR = new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 
@@ -15,37 +15,37 @@ function makeQualifiedCoin(color: Uint8Array, value: bigint, mtIndex: bigint) {
   return { nonce: new Uint8Array(32), color, value, mt_index: mtIndex };
 }
 
-function commitment(parent: Uint8Array, salt: Uint8Array): Uint8Array {
-  return ForwarderPrivateSimulator.calculateParentCommitment(parent, salt);
+function commitment(parent: Uint8Array, opSecret: Uint8Array): Uint8Array {
+  return ForwarderPrivateSimulator.calculateParentCommitment(parent, opSecret);
 }
 
 describe('ForwarderPrivate preset', () => {
   it('should store the parentCommitment passed to the constructor', () => {
-    const c = commitment(PARENT, SALT);
+    const c = commitment(PARENT, OP_SECRET);
     const fwd = new ForwarderPrivateSimulator(c);
     expect(fwd.getParentCommitment()).toEqual(c);
   });
 
   it('should expose deposit and forward to _deposit', () => {
-    const fwd = new ForwarderPrivateSimulator(commitment(PARENT, SALT));
+    const fwd = new ForwarderPrivateSimulator(commitment(PARENT, OP_SECRET));
     expect(() => fwd.deposit(makeCoin(COLOR, AMOUNT))).not.toThrow();
   });
 
   it('should expose drain and forward to _drain', () => {
-    const fwd = new ForwarderPrivateSimulator(commitment(PARENT, SALT));
+    const fwd = new ForwarderPrivateSimulator(commitment(PARENT, OP_SECRET));
     fwd.deposit(makeCoin(COLOR, AMOUNT));
     const result = fwd.drain(
       makeQualifiedCoin(COLOR, AMOUNT, 0n),
       PARENT,
-      SALT,
+      OP_SECRET,
       AMOUNT,
     );
     expect(result.sent.value).toEqual(AMOUNT);
   });
 
   it('should expose calculateParentCommitment as a static pure helper', () => {
-    const c1 = commitment(PARENT, SALT);
-    const c2 = commitment(PARENT, SALT);
+    const c1 = commitment(PARENT, OP_SECRET);
+    const c2 = commitment(PARENT, OP_SECRET);
     expect(c1).toEqual(c2);
   });
 
@@ -56,7 +56,7 @@ describe('ForwarderPrivate preset', () => {
   });
 
   it('should expose the public ledger state', () => {
-    const fwd = new ForwarderPrivateSimulator(commitment(PARENT, SALT));
+    const fwd = new ForwarderPrivateSimulator(commitment(PARENT, OP_SECRET));
     expect(fwd.getPublicState()).toBeDefined();
   });
 });

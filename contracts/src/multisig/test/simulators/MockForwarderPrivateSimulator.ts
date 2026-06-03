@@ -49,9 +49,9 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
 
   public static calculateParentCommitment(
     parentAddr: Uint8Array,
-    salt: Uint8Array,
+    opSecret: Uint8Array,
   ): Uint8Array {
-    return pureCircuits.calculateParentCommitment(parentAddr, salt);
+    return pureCircuits.calculateParentCommitment(parentAddr, opSecret);
   }
 
   public deposit(coin: ShieldedCoinInfo) {
@@ -61,9 +61,9 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
   public drain(
     coin: QualifiedShieldedCoinInfo,
     parentAddr: Uint8Array,
-    salt: Uint8Array,
+    opSecret: Uint8Array,
     value: bigint,
   ): ShieldedSendResult {
-    return this.circuits.impure.drain(coin, parentAddr, salt, value);
+    return this.circuits.impure.drain(coin, parentAddr, opSecret, value);
   }
 }
