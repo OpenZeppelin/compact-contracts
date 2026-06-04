@@ -30,7 +30,7 @@
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
-    "build": "compact-builder --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
+    "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "SKIP_ZK=true yarn run compact && vitest run",
     "test:coverage": "SKIP_ZK=true yarn run compact && vitest run --coverage",
     "types": "tsc -p tsconfig.json --noEmit",
