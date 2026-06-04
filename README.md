@@ -50,62 +50,109 @@ mkdir my-project
 cd my-project
 ```
 
-Initialize git and add OpenZeppelin Contracts for Compact as a submodule.
+Install the package.
 
 ```bash
-git init && \
-git submodule add https://github.com/OpenZeppelin/compact-contracts.git
-```
-
-`cd` into it and then install dependencies and prepare the environment.
-
-```bash
-nvm install && \
-yarn && \
-SKIP_ZK=true yarn compact
+yarn add @openzeppelin/compact-contracts
 ```
 
 ### Write a custom contract using library modules
 
 In the root of `my-project`, create a custom contract using OpenZeppelin Compact modules.
-Import the modules through `compact-contracts/node_modules/@openzeppelin/compact-contracts/...`.
-Import modules through `node_modules` rather than directly to avoid state conflicts between shared dependencies.
-
-> NOTE: Installing the library will be easier once it's available as an NPM package.
+Import the modules through `./node_modules/@openzeppelin/compact-contracts/...`.
 
 ```typescript
 // MyContract.compact
 
-pragma language_version >= 0.18.0;
+pragma language_version >= 0.21.0;
 
 import CompactStandardLibrary;
-import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/access/Ownable"
+import "./node_modules/@openzeppelin/compact-contracts/access/Ownable"
   prefix Ownable_;
-import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/security/Pausable"
+import "./node_modules/@openzeppelin/compact-contracts/security/Pausable"
   prefix Pausable_;
-import "./compact-contracts/node_modules/@openzeppelin/compact-contracts/src/token/FungibleToken"
+import "./node_modules/@openzeppelin/compact-contracts/token/FungibleToken"
   prefix FungibleToken_;
 
 constructor(
   _name: Opaque<"string">,
   _symbol: Opaque<"string">,
   _decimals: Uint<8>,
-  _recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  _recipient: Either<Bytes<32>, ContractAddress>,
   _amount: Uint<128>,
-  _initOwner: Either<ZswapCoinPublicKey, ContractAddress>,
+  _initOwner: Either<Bytes<32>, ContractAddress>,
 ) {
   Ownable_initialize(_initOwner);
   FungibleToken_initialize(_name, _symbol, _decimals);
   FungibleToken__mint(_recipient, _amount);
 }
 
+/** IFungibleToken */
+
+export circuit name(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return FungibleToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return FungibleToken_decimals();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return FungibleToken_totalSupply();
+}
+
+export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
+
+export circuit allowance(
+  owner: Either<Bytes<32>, ContractAddress>,
+  spender: Either<Bytes<32>, ContractAddress>
+): Uint<128> {
+  return FungibleToken_allowance(owner, spender);
+}
+
 export circuit transfer(
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
   value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
   return FungibleToken_transfer(to, value);
 }
+
+export circuit transferFrom(
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_transferFrom(fromAddress, to, value);
+}
+
+export circuit approve(spender: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_approve(spender, value);
+}
+
+/** IOwnable */
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  return Ownable_transferOwnership(newOwner);
+}
+
+export circuit renounceOwnership(): [] {
+  return Ownable_renounceOwnership();
+}
+
+/** IPausable */
 
 export circuit pause(): [] {
   Ownable_assertOnlyOwner();
@@ -116,21 +163,30 @@ export circuit unpause(): [] {
   Ownable_assertOnlyOwner();
   Pausable__unpause();
 }
-
-(...)
 ```
 
 ### Compile the contract
 
-In the project root, compile the contract using Compact's dev tools.
+Compile the contract.
 
 ```bash
 % compact compile MyContract.compact artifacts/MyContract
-Compiling 3 circuits:
-  circuit "pause" (k=10, rows=125)
-  circuit "transfer" (k=11, rows=1180)
-  circuit "unpause" (k=10, rows=121)
-Overall progress [====================] 3/3
+Compiling 14 circuits:
+  circuit "allowance" (k=11, rows=1352)
+  circuit "approve" (k=13, rows=3080)
+  circuit "balanceOf" (k=10, rows=673)
+  circuit "decimals" (k=6, rows=28)
+  circuit "name" (k=6, rows=28)
+  circuit "owner" (k=7, rows=76)
+  circuit "pause" (k=13, rows=2365)
+  circuit "renounceOwnership" (k=13, rows=2364)
+  circuit "symbol" (k=6, rows=28)
+  circuit "totalSupply" (k=6, rows=28)
+  circuit "transfer" (k=13, rows=3990)
+  circuit "transferFrom" (k=13, rows=4977)
+  circuit "transferOwnership" (k=13, rows=2959)
+  circuit "unpause" (k=13, rows=2362)
+Overall progress [====================] 14/14
 ```
 
 ## Development
