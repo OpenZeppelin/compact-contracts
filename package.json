@@ -28,10 +28,10 @@
     "@biomejs/biome": "^2.4.15",
     "@midnight-ntwrk/ledger-v7": "7.0.3",
     "@midnight-ntwrk/zswap": "^4.0.0",
-    "@types/node": "25.7.0",
+    "@types/node": "25.9.1",
     "ts-node": "^10.9.2",
-    "turbo": "^2.9.5",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.6"
+    "turbo": "^2.9.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
   }
 }
