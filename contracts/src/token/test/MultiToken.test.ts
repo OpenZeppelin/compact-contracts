@@ -142,7 +142,7 @@ describe('MultiToken', () => {
 
       expect(() => {
         token.initialize(URI);
-      }).toThrow('Initializable: contract already initialized');
+      }).toThrow('MultiToken: contract already initialized');
     });
   });
 
@@ -171,7 +171,7 @@ describe('MultiToken', () => {
     it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
       expect(() => {
         (token[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('MultiToken: contract not initialized');
     });
 
     it('should allow initialization post deployment', () => {

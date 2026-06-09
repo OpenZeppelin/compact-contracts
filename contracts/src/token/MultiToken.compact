@@ -124,7 +124,6 @@ pragma language_version >= 0.21.0;
  */
 module MultiToken {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   /**
@@ -135,6 +134,13 @@ module MultiToken {
    * @type {Map<id, Map<account, balance>>}
    * @type {Map<Uint<128>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _balances
    */
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
   export ledger _balances: Map<Uint<128>,
                                Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>;
 
@@ -199,8 +205,35 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit initialize(uri_: Opaque<"string">): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _setURI(uri_);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "MultiToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "MultiToken: contract already initialized");
   }
 
   /**
@@ -220,7 +253,7 @@ module MultiToken {
    * @return {Opaque<"string">} - The base URI for all tokens.
    */
   export circuit uri(id: Uint<128>): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _uri;
   }
 
@@ -241,7 +274,7 @@ module MultiToken {
                    account: Either<Bytes<32>, ContractAddress>,
                    id: Uint<128>
                    ): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 
     if (!_balances.member(disclose(id)) || !_balances.lookup(id).member(disclose(canonAcct))) {
@@ -273,7 +306,7 @@ module MultiToken {
                    operator: Either<Bytes<32>, ContractAddress>,
                    approved: Boolean
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const caller = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _setApprovalForAll(caller, operator, approved);
   }
@@ -295,7 +328,7 @@ module MultiToken {
                    account: Either<Bytes<32>, ContractAddress>,
                    operator: Either<Bytes<32>, ContractAddress>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     const canonOp = Utils_canonicalize<Bytes<32>, ContractAddress>(operator);
 
@@ -404,7 +437,7 @@ module MultiToken {
                   id: Uint<128>,
                   value: Uint<128>
                   ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
 
@@ -464,7 +497,7 @@ module MultiToken {
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
 
     const caller = left<Bytes<32>, ContractAddress>(_computeAccountId());
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
@@ -505,7 +538,7 @@ module MultiToken {
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
 
     assert(!_isTargetZero(fromAddress), "MultiToken: invalid sender");
     assert(!_isTargetZero(to), "MultiToken: invalid receiver");
@@ -536,7 +569,7 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _setURI(newURI: Opaque<"string">): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     _uri = disclose(newURI);
   }
 
@@ -593,7 +626,7 @@ module MultiToken {
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(to), "MultiToken: invalid receiver");
     _update(ZERO(), to, id, value);
   }
@@ -618,7 +651,7 @@ module MultiToken {
                        id: Uint<128>,
                        value: Uint<128>
                        ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(fromAddress), "MultiToken: invalid sender");
     _update(fromAddress, ZERO(), id, value);
   }
@@ -649,7 +682,7 @@ module MultiToken {
                    operator: Either<Bytes<32>, ContractAddress>,
                    approved: Boolean
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     assert(!_isTargetZero(canonOwner), "MultiToken: invalid owner");
 

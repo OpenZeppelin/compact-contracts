@@ -64,7 +64,6 @@ pragma language_version >= 0.21.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   /**
@@ -74,6 +73,13 @@ module FungibleToken {
    * @type {Map<account, balance>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
    */
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
   export ledger _balances: Map<Either<Bytes<32>, ContractAddress>, Uint<128>>;
   /**
    * @description Mapping from owner accounts to spender accounts and their allowances.
@@ -134,10 +140,37 @@ module FungibleToken {
                    symbol_: Opaque<"string">,
                    decimals_: Uint<8>
                    ): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _name = disclose(name_);
     _symbol = disclose(symbol_);
     _decimals = disclose(decimals_);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "FungibleToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "FungibleToken: contract already initialized");
   }
 
   /**
@@ -152,7 +185,7 @@ module FungibleToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _name;
   }
 
@@ -168,7 +201,7 @@ module FungibleToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit symbol(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _symbol;
   }
 
@@ -184,7 +217,7 @@ module FungibleToken {
    * @return {Uint<8>} - The account's token balance.
    */
   export circuit decimals(): Uint<8> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _decimals;
   }
 
@@ -200,7 +233,7 @@ module FungibleToken {
    * @return {Uint<128>} - The total supply of tokens.
    */
   export circuit totalSupply(): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _totalSupply;
   }
 
@@ -219,7 +252,7 @@ module FungibleToken {
    * @return {Uint<128>} - The account's token balance.
    */
   export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 
     if (!_balances.member(disclose(canonAcct))) {
@@ -253,7 +286,7 @@ module FungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
 
@@ -283,7 +316,7 @@ module FungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _unsafeUncheckedTransfer(owner, to, value);
     return true;
@@ -309,7 +342,7 @@ module FungibleToken {
                    owner: Either<Bytes<32>, ContractAddress>,
                    spender: Either<Bytes<32>, ContractAddress>
                    ): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
@@ -337,7 +370,7 @@ module FungibleToken {
   export circuit approve(spender: Either<Bytes<32>, ContractAddress>,
                          value: Uint<128>
                          ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
 
     const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _approve(owner, spender, value);
@@ -373,7 +406,7 @@ module FungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
     return _unsafeTransferFrom(fromAddress, to, value);
@@ -406,7 +439,7 @@ module FungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
 
     const spender = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _spendAllowance(fromAddress, spender, value);
@@ -443,7 +476,7 @@ module FungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
     _unsafeUncheckedTransfer(fromAddress, to, value);
@@ -474,7 +507,7 @@ module FungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(fromAddress), "FungibleToken: invalid sender");
     assert(!_isTargetZero(to), "FungibleToken: invalid receiver");
 
@@ -501,7 +534,7 @@ module FungibleToken {
                   to: Either<Bytes<32>, ContractAddress>,
                   value: Uint<128>
                   ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
 
@@ -547,7 +580,7 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _mint(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !account.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
     _unsafeMint(account, value);
@@ -575,7 +608,7 @@ module FungibleToken {
                    account: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(account), "FungibleToken: invalid receiver");
     _update(ZERO(), account, value);
   }
@@ -597,7 +630,7 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _burn(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(account), "FungibleToken: invalid sender");
     _update(account, ZERO(), value);
   }
@@ -625,7 +658,7 @@ module FungibleToken {
                    spender: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
@@ -663,7 +696,7 @@ module FungibleToken {
                    spender: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 

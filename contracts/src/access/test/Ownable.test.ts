@@ -118,7 +118,7 @@ describe('Ownable', () => {
       });
       expect(() => {
         (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('Ownable: contract not initialized');
     });
 
     it('should canonicalize initial owner', () => {

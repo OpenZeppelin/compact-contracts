@@ -33,6 +33,8 @@
     "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "SKIP_ZK=true yarn run compact && vitest run",
     "test:coverage": "SKIP_ZK=true yarn run compact && vitest run --coverage",
+    "compact:integration": "SKIP_ZK=true compact compile test/integration/_mocks/SharedInitCollision.compact artifacts/SharedInitCollision && SKIP_ZK=true compact compile test/integration/_mocks/ComposedTokens.compact artifacts/ComposedTokens",
+    "test:integration": "yarn run compact:integration && vitest run --config vitest.integration.config.ts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },

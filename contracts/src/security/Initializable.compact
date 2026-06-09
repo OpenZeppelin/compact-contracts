@@ -6,6 +6,24 @@ pragma language_version >= 0.21.0;
 /**
  * @module Initializable
  * @description Initializable provides a simple mechanism that mimics the functionality of a constructor.
+ *
+ * @notice ⚠️ TECHNICAL WARNING — DO NOT import this module into other OpenZeppelin
+ * modules, and avoid importing it into more than one module of a single contract.
+ *
+ * The Compact compiler deduplicates a shared transitive dependency's ledger state
+ * inconsistently depending on directory layout
+ * (https://github.com/LFDT-Minokawa/compact/issues/270, reproduced on compiler
+ * 0.29.0–0.31.0). When two modules in the SAME directory both import this module,
+ * their `_isInitialized` flags collapse into a SINGLE shared ledger slot: calling
+ * `initialize()` on one marks the other as initialized, and the other can never be
+ * initialized independently. Modules in different directories get separate slots.
+ * The result is unpredictable and a security hazard for composed contracts.
+ *
+ * For this reason the OpenZeppelin modules no longer use this module: each tracks
+ * its own `_isInitialized` ledger flag inline. This module is kept for direct,
+ * single-import use and can be reintroduced across modules once #270 is resolved
+ * (note: CMA upgrades cannot add/remove ledger variables, so already-deployed
+ * contracts cannot migrate their initialization layout).
  */
 module Initializable {
   import CompactStandardLibrary;

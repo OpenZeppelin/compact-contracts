@@ -1,0 +1,17 @@
+// TEST-ONLY. Demonstrates the compiler#270 collision: a module that depends on
+// the shared, stateful `Initializable` module. Paired with ModuleB (same
+// directory) so a composing contract triggers the shared-ledger-slot bug.
+pragma language_version >= 0.21.0;
+
+module ModuleA {
+  import CompactStandardLibrary;
+  import "../../../../src/security/Initializable" prefix Initializable_;
+
+  export circuit initA(): [] {
+    Initializable_initialize();
+  }
+
+  export circuit checkA(): [] {
+    Initializable_assertInitialized();
+  }
+}

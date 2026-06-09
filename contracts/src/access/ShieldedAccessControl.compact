@@ -168,7 +168,6 @@ pragma language_version >= 0.21.0;
 module ShieldedAccessControl {
   import CompactStandardLibrary;
   import "../utils/Utils" prefix Utils_;
-  import "../security/Initializable" prefix Initializable_;
 
   export enum UpdateType {
     Grant,
@@ -180,6 +179,13 @@ module ShieldedAccessControl {
   export new type RoleIdentifier = Bytes<32>;
   export new type AccountIdentifier = Bytes<32>;
   export new type RoleNullifier = Bytes<32>;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
 
   /**
    * @ledger _operatorRoles
@@ -259,9 +265,36 @@ module ShieldedAccessControl {
    */
   export circuit initialize(instanceSalt: Bytes<32>): [] {
     assert(instanceSalt != default<Bytes<32>>, "ShieldedAccessControl: Instance salt must not be 0");
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
 
     _instanceSalt = disclose(instanceSalt);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ShieldedAccessControl: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ShieldedAccessControl: contract already initialized");
   }
 
   /**
@@ -295,7 +328,7 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit assertOnlyRole(role: RoleIdentifier): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(_uncheckedCanProveRole(role), "ShieldedAccessControl: unauthorized account");
   }
 
@@ -320,7 +353,7 @@ module ShieldedAccessControl {
    * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
   export circuit canProveRole(role: RoleIdentifier): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _uncheckedCanProveRole(role);
   }
 
@@ -417,7 +450,7 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _grantRole(role: RoleIdentifier, accountId: AccountIdentifier): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     _updateRole(role, accountId, UpdateType.Grant);
   }
 
@@ -449,7 +482,7 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit renounceRole(role: RoleIdentifier, accountIdConfirmation: AccountIdentifier): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
 
     assert(accountIdConfirmation == _computeAccountId(),
            "ShieldedAccessControl: bad confirmation"
@@ -515,7 +548,7 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _revokeRole(role: RoleIdentifier, accountId: AccountIdentifier): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     _updateRole(role, accountId, UpdateType.Revoke);
   }
 
@@ -599,7 +632,7 @@ module ShieldedAccessControl {
    * @return {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(role: RoleIdentifier, adminId: RoleIdentifier): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     _adminRoles.insert(disclose(role), disclose(adminId));
   }
 

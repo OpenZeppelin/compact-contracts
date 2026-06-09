@@ -1470,7 +1470,7 @@ describe('Uninitialized NonFungibleToken', () => {
       (uninitializedToken[circuitName] as (...args: unknown[]) => unknown)(
         ...args,
       );
-    }).toThrow('Initializable: contract not initialized');
+    }).toThrow('NonFungibleToken: contract not initialized');
   });
 });
 

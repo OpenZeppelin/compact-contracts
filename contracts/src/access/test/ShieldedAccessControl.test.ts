@@ -126,18 +126,18 @@ describe('ShieldedAccessControl', () => {
             ...a: unknown[]
           ) => unknown
         )(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('ShieldedAccessControl: contract not initialized');
     });
 
     it('_grantRole should independently check initialization', () => {
       expect(() => contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID)).toThrow(
-        'Initializable: contract not initialized',
+        'ShieldedAccessControl: contract not initialized',
       );
     });
 
     it('_revokeRole should independently check initialization', () => {
       expect(() => contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID)).toThrow(
-        'Initializable: contract not initialized',
+        'ShieldedAccessControl: contract not initialized',
       );
     });
 

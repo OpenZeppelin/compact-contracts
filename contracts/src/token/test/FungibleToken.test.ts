@@ -148,7 +148,7 @@ describe('FungibleToken', () => {
     it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
       expect(() => {
         (token[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('FungibleToken: contract not initialized');
     });
   });
 

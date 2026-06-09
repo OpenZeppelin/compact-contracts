@@ -83,7 +83,6 @@ pragma language_version >= 0.21.0;
 
 module NonFungibleToken {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   /// Public state
@@ -97,6 +96,13 @@ module NonFungibleToken {
    * @type {Map<tokenId, owner>}
    * @type {Map<Uint<128>, Either<Bytes<32>, ContractAddress>>} _owners
    */
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
   export ledger _owners: Map<Uint<128>, Either<Bytes<32>, ContractAddress>>;
 
   /**
@@ -177,9 +183,36 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit initialize(name_: Opaque<"string">, symbol_: Opaque<"string">): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _name = disclose(name_);
     _symbol = disclose(symbol_);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "NonFungibleToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "NonFungibleToken: contract already initialized");
   }
 
   /**
@@ -195,7 +228,7 @@ module NonFungibleToken {
    * @return {Uint<128>} - The number of tokens in `owner`'s account.
    */
   export circuit balanceOf(owner: Either<Bytes<32>, ContractAddress>): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
 
     if (!_balances.member(disclose(canonOwner))) {
@@ -219,7 +252,7 @@ module NonFungibleToken {
    * @return {Either<Bytes<32>, ContractAddress>} - The account that owns the token.
    */
   export circuit ownerOf(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _requireOwned(tokenId);
   }
 
@@ -235,7 +268,7 @@ module NonFungibleToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _name;
   }
 
@@ -251,7 +284,7 @@ module NonFungibleToken {
    * @return {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _symbol;
   }
 
@@ -275,7 +308,7 @@ module NonFungibleToken {
    * @return {Opaque<"string">} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     _requireOwned(tokenId);
 
     if (!_tokenURIs.member(disclose(tokenId))) {
@@ -302,7 +335,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     _requireOwned(tokenId);
 
     return _tokenURIs.insert(disclose(tokenId), disclose(tokenURI));
@@ -330,7 +363,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit approve(to: Either<Bytes<32>, ContractAddress>, tokenId: Uint<128>): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const auth = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _approve(to, tokenId, auth);
   }
@@ -349,7 +382,7 @@ module NonFungibleToken {
    * @return {Either<Bytes<32>, ContractAddress>} - The account approved to manage the token
    */
   export circuit getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
-    Initializable_assertInitialized();
+    assertInitialized();
     _requireOwned(tokenId);
 
     return _getApproved(tokenId);
@@ -377,7 +410,7 @@ module NonFungibleToken {
                    operator: Either<Bytes<32>, ContractAddress>,
                    approved: Boolean
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _setApprovalForAll(owner, operator, approved);
   }
@@ -399,7 +432,7 @@ module NonFungibleToken {
                    owner: Either<Bytes<32>, ContractAddress>,
                    operator: Either<Bytes<32>, ContractAddress>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonOp = Utils_canonicalize<Bytes<32>, ContractAddress>(operator);
 
@@ -439,7 +472,7 @@ module NonFungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "NonFungibleToken: unsafe transfer");
 
@@ -476,7 +509,7 @@ module NonFungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(to), "NonFungibleToken: invalid receiver");
     // Setting an "auth" argument enables the `_isAuthorized` check which verifies that the token exists
     // (fromAddress != 0). Therefore, it is not needed to verify that the return value is not 0 here.
@@ -500,7 +533,7 @@ module NonFungibleToken {
    * @return {Either<Bytes<32>, ContractAddress>} - The owner of the token
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
-    Initializable_assertInitialized();
+    assertInitialized();
     if (!_owners.member(disclose(tokenId))) {
       return ZERO();
     }
@@ -521,7 +554,7 @@ module NonFungibleToken {
    * @return {Either<Bytes<32>, ContractAddress>} - An account approved to spend `tokenId`
    */
   export circuit _getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
-    Initializable_assertInitialized();
+    assertInitialized();
     if (!_tokenApprovals.member(disclose(tokenId))) {
       return ZERO();
     }
@@ -551,7 +584,7 @@ module NonFungibleToken {
                    spender: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
@@ -584,7 +617,7 @@ module NonFungibleToken {
                    spender: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     if (!_isAuthorized(owner, spender, tokenId)) {
       assert(!_isTargetZero(owner), "NonFungibleToken: nonexistent token");
       assert(false, "NonFungibleToken: insufficient approval");
@@ -610,7 +643,7 @@ module NonFungibleToken {
                   tokenId: Uint<128>,
                   auth: Either<Bytes<32>, ContractAddress>
                   ): Either<Bytes<32>, ContractAddress> {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
     const canonAuth = Utils_canonicalize<Bytes<32>, ContractAddress>(auth);
     const fromAddress = _ownerOf(tokenId);
@@ -659,7 +692,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _mint(to: Either<Bytes<32>, ContractAddress>, tokenId: Uint<128>): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "NonFungibleToken: unsafe transfer");
 
@@ -689,7 +722,7 @@ module NonFungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(to), "NonFungibleToken: invalid receiver");
 
     const previousOwner = _update(to, tokenId, ZERO());
@@ -713,7 +746,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const previousOwner = _update(ZERO(), tokenId, ZERO());
     assert(!_isTargetZero(previousOwner), "NonFungibleToken: invalid sender");
     _tokenURIs.remove(disclose(tokenId));
@@ -746,7 +779,7 @@ module NonFungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "NonFungibleToken: unsafe transfer");
 
@@ -780,7 +813,7 @@ module NonFungibleToken {
                    to: Either<Bytes<32>, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!_isTargetZero(to), "NonFungibleToken: invalid receiver");
 
     const previousOwner = _update(to, tokenId, ZERO());
@@ -812,7 +845,7 @@ module NonFungibleToken {
                    tokenId: Uint<128>,
                    auth: Either<Bytes<32>, ContractAddress>
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     // Canonicalize + normalize `to`
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
     const normalizedTo = _isTargetZero(canonTo) ? ZERO() : canonTo;
@@ -853,7 +886,7 @@ module NonFungibleToken {
                    operator: Either<Bytes<32>, ContractAddress>,
                    approved: Boolean
                    ): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     assert(!_isTargetZero(canonOwner), "NonFungibleToken: invalid owner");
 
@@ -885,7 +918,7 @@ module NonFungibleToken {
    * @return {Either<Bytes<32>, ContractAddress>} - The owner of `tokenId`
    */
   export circuit _requireOwned(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
-    Initializable_assertInitialized();
+    assertInitialized();
     const owner = _ownerOf(tokenId);
 
     assert(!_isTargetZero(owner), "NonFungibleToken: nonexistent token");

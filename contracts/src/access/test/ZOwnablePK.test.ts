@@ -124,7 +124,7 @@ describe('ZOwnablePK', () => {
     it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
       expect(() => {
         (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('ZOwnablePK: contract not initialized');
     });
 
     it('should allow pure computeOwnerId', () => {
