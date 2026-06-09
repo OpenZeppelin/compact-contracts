@@ -4,16 +4,13 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
+  Contract as MockForwarderPrivate,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
-  Contract as MockForwarderPrivate,
 } from '../../../../artifacts/MockForwarderPrivate/contract/index.js';
-import {
-  MockForwarderPrivatePrivateState,
-  MockForwarderPrivateWitnesses,
-} from '../witnesses/MockForwarderPrivateWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type MockForwarderPrivateArgs = readonly [
   parentCommitment: Uint8Array,
@@ -21,18 +18,18 @@ type MockForwarderPrivateArgs = readonly [
 ];
 
 const MockForwarderPrivateSimulatorBase = createSimulator<
-  MockForwarderPrivatePrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof MockForwarderPrivateWitnesses>,
-  MockForwarderPrivate<MockForwarderPrivatePrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockForwarderPrivate<EmptyPrivateState>,
   MockForwarderPrivateArgs
 >({
   contractFactory: (witnesses) =>
-    new MockForwarderPrivate<MockForwarderPrivatePrivateState>(witnesses),
-  defaultPrivateState: () => MockForwarderPrivatePrivateState,
+    new MockForwarderPrivate<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parentCommitment, isInit) => [parentCommitment, isInit],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => MockForwarderPrivateWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
 });
 
 export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulatorBase {
@@ -40,8 +37,8 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
     parentCommitment: Uint8Array,
     isInit: boolean,
     options: BaseSimulatorOptions<
-      MockForwarderPrivatePrivateState,
-      ReturnType<typeof MockForwarderPrivateWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
     super([parentCommitment, isInit], options);

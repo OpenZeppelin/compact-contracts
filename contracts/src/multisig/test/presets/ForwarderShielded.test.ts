@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import { ForwarderShieldedSimulator } from '../simulators/presets/ForwarderShieldedSimulator.js';
 
-const PARENT = utils.createEitherTestUser('PARENT').left.bytes;
+const PARENT = utils.createEitherTestUser('PARENT');
 const COLOR = new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 
@@ -16,14 +16,14 @@ describe('ForwarderShielded preset', () => {
     expect(fwd.getParent()).toEqual(PARENT);
   });
 
-  it('should expose deposit and forward to _depositShielded', () => {
+  it('should expose deposit and forward to _deposit', () => {
     const fwd = new ForwarderShieldedSimulator(PARENT);
     expect(() => fwd.deposit(makeCoin(COLOR, AMOUNT))).not.toThrow();
   });
 
   it('should propagate the zero-parent guard from the module', () => {
-    expect(() => new ForwarderShieldedSimulator(new Uint8Array(32))).toThrow(
-      'Forwarder: zero parent',
+    expect(() => new ForwarderShieldedSimulator(utils.ZERO_KEY)).toThrow(
+      'ForwarderShielded: zero parent',
     );
   });
 

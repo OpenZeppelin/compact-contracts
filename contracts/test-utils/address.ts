@@ -10,6 +10,8 @@ type ZswapCoinPublicKey = { bytes: Uint8Array };
 
 type ContractAddress = { bytes: Uint8Array };
 
+type UserAddress = { bytes: Uint8Array };
+
 type Either<A, B> = { is_left: boolean; left: A; right: B };
 
 /**
@@ -109,5 +111,36 @@ export const ZERO_KEY = {
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
+  right: { bytes: zeroUint8Array() },
+};
+
+/**
+ * @description Generates a UserAddress from `str` for testing purposes.
+ *              UserAddress is the unshielded recipient form (a 32-byte value).
+ * @param str String to hexify into the address bytes.
+ * @returns Encoded `UserAddress`.
+ */
+export const encodeToUserAddress = (str: string): UserAddress => ({
+  bytes: Uint8Array.from(Buffer.from(toHexPadded(str), 'hex')),
+});
+
+/**
+ * @description Generates an Either object bound to a UserAddress for testing.
+ *              For use when an `Either<ContractAddress, UserAddress>` argument
+ *              (the unshielded recipient) is expected.
+ * @param str String to hexify and encode into the user address.
+ * @returns Defined Either object for UserAddress.
+ */
+export const createEitherTestUserAddress = (
+  str: string,
+): Either<ContractAddress, UserAddress> => ({
+  is_left: false,
+  left: encodeToAddress(''),
+  right: encodeToUserAddress(str),
+});
+
+export const ZERO_USER_ADDRESS: Either<ContractAddress, UserAddress> = {
+  is_left: false,
+  left: encodeToAddress(''),
   right: { bytes: zeroUint8Array() },
 };

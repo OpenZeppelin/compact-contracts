@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ForwarderUnshielded.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ForwarderUnshielded
+ * @description Public-parent forwarder for unshielded coins. Provides an
+ * atomic forward pattern: receive an unshielded amount of a given color
+ * and immediately send it to the configured parent recipient.
+ *
+ * The parent is stored as its real recipient type
+ * `Either<ContractAddress, UserAddress>` and passed straight to the send
+ * call. The deployer chooses the arm explicitly (a contract or a user),
+ * so there is no way to mis-encode the recipient.
+ *
+ * Unshielded transfers are publicly visible on the chain: depositor,
+ * recipient, color, and amount all appear on the public transcript.
+ *
+ * Underscore-prefixed circuits have no access control. The forwarder is
+ * intentionally permissionless — the recipient is fixed at init, so any
+ * caller may deposit without compromising the parent. State access is
+ * gated by the `Initializable` module: every circuit asserts the module
+ * has been initialized via `initialize`.
+ *
+ * The parent is set once at init and the module exposes no setter, so a
+ * preset that omits one keeps the parent fixed. A consuming contract
+ * that needs to change the parent may add its own setter circuit.
+ */
+module ForwarderUnshielded {
+  import CompactStandardLibrary;
+  import "../security/Initializable" prefix Initializable_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export ledger _parent: Either<ContractAddress, UserAddress>;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent recipient.
+   * Called once from the preset constructor.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   * - `parent` must not be the zero address. A zero parent would forward
+   *   every deposit to an unspendable address with no recovery path.
+   *
+   * @param {Either<ContractAddress, UserAddress>} parent - The parent
+   * recipient of every forwarded amount: a contract address (`left`) or
+   * a user address (`right`).
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(parent: Either<ContractAddress, UserAddress>): [] {
+    const isZero = parent.is_left
+      ? default<ContractAddress> == parent.left
+      : default<UserAddress> == parent.right;
+    assert(!isZero, "ForwarderUnshielded: zero parent");
+    Initializable_initialize();
+    _parent = disclose(parent);
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives an unshielded amount of `color` and atomically
+   * forwards it to `_parent` via `sendUnshielded`.
+   *
+   * @circuitInfo k=9, rows=436
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to deposit.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+    receiveUnshielded(disclose(color), disclose(amount));
+    sendUnshielded(disclose(color), disclose(amount), _parent);
+  }
+}

@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ForwarderShielded.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ForwarderShielded
+ * @description Public-parent forwarder for shielded coins. Provides an
+ * atomic forward pattern: receive a shielded coin and immediately send
+ * it to the configured parent recipient.
+ *
+ * The parent is stored as its real recipient type
+ * `Either<ZswapCoinPublicKey, ContractAddress>` and passed straight to
+ * the send call. The deployer chooses the arm explicitly (a coin public
+ * key or a contract), so there is no way to mis-encode the recipient.
+ *
+ * Underscore-prefixed circuits have no access control. The forwarder is
+ * intentionally permissionless — the recipient is fixed at init, so any
+ * caller may deposit without compromising the parent. State access is
+ * gated by the `Initializable` module: every circuit asserts the module
+ * has been initialized via `initialize`.
+ *
+ * The parent is set once at init and the module exposes no setter, so a
+ * preset that omits one keeps the parent fixed. A consuming contract
+ * that needs to change the parent may add its own setter circuit.
+ */
+module ForwarderShielded {
+  import CompactStandardLibrary;
+  import "../security/Initializable" prefix Initializable_;
+  import "../utils/Utils" prefix Utils_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export ledger _parent: Either<ZswapCoinPublicKey, ContractAddress>;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent recipient.
+   * Called once from the preset constructor.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   * - `parent` must not be the zero address. A zero parent would forward
+   *   every deposit to an unspendable address with no recovery path.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} parent - The
+   * parent recipient of every forwarded coin: a coin public key
+   * (`left`) or a contract address (`right`).
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(parent: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    assert(!Utils_isKeyOrAddressZero(parent), "ForwarderShielded: zero parent");
+    Initializable_initialize();
+    _parent = disclose(parent);
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin and atomically forwards it to
+   * `_parent`. The coin is claimed at the protocol level via
+   * `receiveShielded`, then immediately re-sent via
+   * `sendImmediateShielded` to the stored parent recipient.
+   *
+   * @circuitInfo k=15, rows=18573
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    Initializable_assertInitialized();
+    receiveShielded(disclose(coin));
+    sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
+  }
+}
