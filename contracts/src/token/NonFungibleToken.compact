@@ -90,19 +90,19 @@ module NonFungibleToken {
   export sealed ledger _symbol: Opaque<"string">;
 
   /**
-   * @description Mapping from token IDs to their owner addresses.
-   * @type {Uint<128>} tokenId - The unique identifier for a token.
-   * @type {Either<Bytes<32>, ContractAddress>} owner - The owner address (account ID or contract).
-   * @type {Map<tokenId, owner>}
-   * @type {Map<Uint<128>, Either<Bytes<32>, ContractAddress>>} _owners
-   */
-  /**
    * @description Initialization flag, tracked per-module to avoid the compiler's
    * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
    * Initializable module for rationale.
    */
   export ledger _isInitialized: Boolean;
 
+  /**
+   * @description Mapping from token IDs to their owner addresses.
+   * @type {Uint<128>} tokenId - The unique identifier for a token.
+   * @type {Either<Bytes<32>, ContractAddress>} owner - The owner address (account ID or contract).
+   * @type {Map<tokenId, owner>}
+   * @type {Map<Uint<128>, Either<Bytes<32>, ContractAddress>>} _owners
+   */
   export ledger _owners: Map<Uint<128>, Either<Bytes<32>, ContractAddress>>;
 
   /**

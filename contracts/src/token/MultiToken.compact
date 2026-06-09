@@ -127,6 +127,13 @@ module MultiToken {
   import "../utils/Utils" prefix Utils_;
 
   /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  /**
    * @description Mapping from token ID to account balances.
    * @type {Uint<128>} id - The token identifier.
    * @type {Either<Bytes<32>, ContractAddress>} account - The account address.
@@ -134,13 +141,6 @@ module MultiToken {
    * @type {Map<id, Map<account, balance>>}
    * @type {Map<Uint<128>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _balances
    */
-  /**
-   * @description Initialization flag, tracked per-module to avoid the compiler's
-   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
-   * Initializable module for rationale.
-   */
-  export ledger _isInitialized: Boolean;
-
   export ledger _balances: Map<Uint<128>,
                                Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>;
 

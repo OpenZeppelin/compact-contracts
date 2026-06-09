@@ -67,20 +67,21 @@ module FungibleToken {
   import "../utils/Utils" prefix Utils_;
 
   /**
-   * @description Mapping from account addresses to their token balances.
-   * @type {Either<Bytes<32>, ContractAddress>} account - The account address.
-   * @type {Uint<128>} balance - The balance of the account.
-   * @type {Map<account, balance>}
-   * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
-   */
-  /**
    * @description Initialization flag, tracked per-module to avoid the compiler's
    * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
    * Initializable module for rationale.
    */
   export ledger _isInitialized: Boolean;
 
+  /**
+   * @description Mapping from account addresses to their token balances.
+   * @type {Either<Bytes<32>, ContractAddress>} account - The account address.
+   * @type {Uint<128>} balance - The balance of the account.
+   * @type {Map<account, balance>}
+   * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
+   */
   export ledger _balances: Map<Either<Bytes<32>, ContractAddress>, Uint<128>>;
+
   /**
    * @description Mapping from owner accounts to spender accounts and their allowances.
    * @type {Either<Bytes<32>, ContractAddress>} account - The owner account address.

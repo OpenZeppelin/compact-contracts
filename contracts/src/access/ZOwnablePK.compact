@@ -47,6 +47,13 @@ module ZOwnablePK {
   import CompactStandardLibrary;
 
   /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  /**
    * @ledger _ownerCommitment
    * @description Stores the current hashed commitment representing the owner.
    * This commitment is derived from the public identifier (e.g., `SHA256(pk, nonce)`),
@@ -54,14 +61,8 @@ module ZOwnablePK {
    *
    * A commitment of `default<Bytes<32>>` (i.e., zero) indicates the contract is unowned.
    */
-  /**
-   * @description Initialization flag, tracked per-module to avoid the compiler's
-   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
-   * Initializable module for rationale.
-   */
-  export ledger _isInitialized: Boolean;
-
   export ledger _ownerCommitment: Bytes<32>;
+
   /**
    * @ledger _counter
    * @description Internal transfer counter used to prevent commitment reuse.
@@ -70,6 +71,7 @@ module ZOwnablePK {
    * `instanceSalt` to compute unique owner commitments over time.
    */
   export ledger _counter: Counter;
+
   /**
    * @sealed @ledger _instanceSalt
    * @description A per-instance value provided at initialization used to namespace
