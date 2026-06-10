@@ -164,6 +164,7 @@ describe('MultiToken', () => {
       ['_unsafeTransfer', transferArgs],
       ['_setURI', [URI]],
       ['_mint', [OWNER.either, TOKEN_ID, AMOUNT]],
+      ['_unsafeMint', [OWNER.either, TOKEN_ID, AMOUNT]],
       ['_burn', [OWNER.either, TOKEN_ID, AMOUNT]],
       ['_setApprovalForAll', [OWNER.either, SPENDER.either, true]],
     ];
