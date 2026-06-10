@@ -144,3 +144,24 @@ export const ZERO_USER_ADDRESS: Either<ContractAddress, UserAddress> = {
   left: encodeToAddress(''),
   right: { bytes: zeroUint8Array() },
 };
+
+/**
+ * @description Generates an Either bound to a ContractAddress for testing.
+ *              For use when an `Either<ContractAddress, UserAddress>` argument
+ *              (the unshielded recipient) is expected with the contract arm.
+ * @param str String to hexify and encode into the contract address.
+ * @returns Defined Either object for the contract arm.
+ */
+export const createEitherTestUnshieldedContract = (
+  str: string,
+): Either<ContractAddress, UserAddress> => ({
+  is_left: true,
+  left: encodeToAddress(str),
+  right: encodeToUserAddress(''),
+});
+
+export const ZERO_UNSHIELDED_CONTRACT: Either<ContractAddress, UserAddress> = {
+  is_left: true,
+  left: { bytes: zeroUint8Array() },
+  right: encodeToUserAddress(''),
+};
