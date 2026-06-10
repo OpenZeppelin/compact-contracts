@@ -40,7 +40,7 @@ describe('ForwarderShielded module', () => {
     it('should fail deposit when not initialized', () => {
       const mock = new MockForwarderShieldedSimulator(SHIELDED_PARENT, false);
       expect(() => mock.deposit(makeCoin(COLOR, AMOUNT))).toThrow(
-        'Initializable: contract not initialized',
+        'ForwarderShielded: contract not initialized',
       );
     });
   });
@@ -84,7 +84,7 @@ describe('ForwarderUnshielded module', () => {
         false,
       );
       expect(() => mock.deposit(COLOR, AMOUNT)).toThrow(
-        'Initializable: contract not initialized',
+        'ForwarderUnshielded: contract not initialized',
       );
     });
   });

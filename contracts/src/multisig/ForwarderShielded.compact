@@ -17,8 +17,8 @@ pragma language_version >= 0.23.0;
  * Underscore-prefixed circuits have no access control. The forwarder is
  * intentionally permissionless — the recipient is fixed at init, so any
  * caller may deposit without compromising the parent. State access is
- * gated by the `Initializable` module: every circuit asserts the module
- * has been initialized via `initialize`.
+ * gated by a per-module `_isInitialized` flag: every circuit asserts the
+ * contract has been initialized via `initialize`.
  *
  * The parent is set once at init and the module exposes no setter, so a
  * preset that omits one keeps the parent fixed. A consuming contract
@@ -26,12 +26,18 @@ pragma language_version >= 0.23.0;
  */
 module ForwarderShielded {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 
   export ledger _parent: Either<ZswapCoinPublicKey, ContractAddress>;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
 
   // ─── Init ───────────────────────────────────────────────────────
 
@@ -53,7 +59,8 @@ module ForwarderShielded {
    */
   export circuit initialize(parent: Either<ZswapCoinPublicKey, ContractAddress>): [] {
     assert(!Utils_isKeyOrAddressZero(parent), "ForwarderShielded: zero parent");
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _parent = disclose(parent);
   }
 
@@ -76,8 +83,36 @@ module ForwarderShielded {
    * @returns {[]} Empty tuple.
    */
   export circuit _deposit(coin: ShieldedCoinInfo): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     receiveShielded(disclose(coin));
     sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
+  }
+
+  // ─── Init guards ────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ForwarderShielded: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ForwarderShielded: contract already initialized");
   }
 }
