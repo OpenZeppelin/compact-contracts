@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeShieldedTokenFamily" prefix NativeShieldedTokenFamily_;
+import "../../NativeUnshieldedMultiToken" prefix NativeUnshieldedMultiToken_;
+import "../../extensions/NativeTokenConverter" prefix Converter_;
+
+export { ZswapCoinPublicKey, ContractAddress, UserAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// The Initializable state is shared across the composition: initialize
+// exactly one base module and expose metadata from it.
+constructor(
+  initNonce: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>
+) {
+  NativeShieldedTokenFamily_initialize(initNonce, name_, symbol_, decimals_);
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedTokenFamily_name();
+}
+
+export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
+  return NativeShieldedTokenFamily_tokenColor(domain);
+}
+
+export circuit shieldedTotalMinted(domain: Bytes<32>): Uint<128> {
+  return NativeShieldedTokenFamily_totalMinted(domain);
+}
+
+export circuit shieldedTotalBurned(domain: Bytes<32>): Uint<128> {
+  return NativeShieldedTokenFamily_totalBurned(domain);
+}
+
+export circuit shieldedTotalSupply(domain: Bytes<32>): Uint<128> {
+  return NativeShieldedTokenFamily_totalSupply(domain);
+}
+
+export circuit unshieldedTotalMinted(domain: Bytes<32>): Uint<128> {
+  return NativeUnshieldedMultiToken_totalMinted(domain);
+}
+
+export circuit unshieldedTotalBurned(domain: Bytes<32>): Uint<128> {
+  return NativeUnshieldedMultiToken_totalBurned(domain);
+}
+
+export circuit unshieldedTotalSupply(domain: Bytes<32>): Uint<128> {
+  return NativeUnshieldedMultiToken_totalSupply(domain);
+}
+
+export circuit _mint(
+  domain: Bytes<32>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenFamily__mint(domain, recipient, amount);
+}
+
+export circuit _unshield(
+  domain: Bytes<32>,
+  coin: ShieldedCoinInfo,
+  amount: Uint<64>,
+  recipient: Either<ContractAddress, UserAddress>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return Converter__unshield(domain, coin, amount, recipient, refundTo);
+}
+
+export circuit _shield(
+  domain: Bytes<32>,
+  amount: Uint<64>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>
+): ShieldedCoinInfo {
+  return Converter__shield(domain, amount, recipient);
+}
+
+export circuit _shieldWithNonce(
+  domain: Bytes<32>,
+  amount: Uint<64>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return Converter__shieldWithNonce(domain, amount, recipient, nonce);
+}

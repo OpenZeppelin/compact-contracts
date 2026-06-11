@@ -1,0 +1,182 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.1.0 (token/extensions/NativeTokenConverter.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module NativeTokenConverter
+ * @description Optional extension that converts a native token between its
+ * shielded and unshielded representations, composing the NativeShieldedTokenFamily
+ * and NativeUnshieldedMultiToken base modules.
+ *
+ * - `_unshield`: destroys shielded value (base shielded `_burn`) and mints
+ *   the unshielded equivalent (base unshielded `_mint`).
+ * - `_shield` / `_shieldWithNonce`: destroys unshielded value (base
+ *   unshielded `_burn`) and mints the shielded equivalent (base shielded
+ *   `_mint` / `_mintWithNonce`).
+ *
+ * # Design notes
+ *
+ * - This module holds NO ledger state. All checks (initialization, color,
+ *   zero targets) and all supply accounting are inherited from the two base
+ *   modules: a conversion is exactly one base burn plus one base mint, so
+ *
+ *     NativeShieldedTokenFamily_totalSupply(domain)
+ *       + NativeUnshieldedMultiToken_totalSupply(domain)
+ *
+ *   is invariant under conversion and is the upper bound on the logical
+ *   token's circulating supply.
+ *
+ * - Both representations of a domain share the same color bytes
+ *   (`tokenType(domain, kernel.self())`); the ledger distinguishes them
+ *   structurally (shielded vs unshielded token types).
+ *
+ * - Conversions are burn-and-mint, not lock-and-release. A vault model cannot
+ *   bootstrap (the token starts in one representation; the first conversion
+ *   out of it would have nothing locked to release) and would parade
+ *   destroyed value as a live contract balance.
+ *
+ * - Consumers MUST call exactly one base module's `initialize` (the
+ *   `Initializable` state is shared across the composition) and SHOULD expose
+ *   metadata getters from that module only.
+ *
+ * - This extension composes the token-family modules, not the single-domain
+ *   flavors:
+ *   the single flavors each store a load-bearing sealed `_domain` written by
+ *   their `initialize`, and the shared `Initializable` flag allows only one
+ *   `initialize` call per contract. A single-token dual-representation
+ *   consumer hardcodes one domain constant in its wrapper circuits.
+ *
+ * - Like the base modules, this extension includes NO access control.
+ *   Conversion is value-preserving, so consumers MAY leave it open to all
+ *   holders; issuers whose policy distinguishes the representations MUST gate
+ *   these circuits like the mint/burn circuits.
+ */
+module NativeTokenConverter {
+  import CompactStandardLibrary;
+  import "../NativeShieldedTokenFamily" prefix NativeShieldedTokenFamily_;
+  import "../NativeUnshieldedMultiToken" prefix NativeUnshieldedMultiToken_;
+
+  /**
+   * @description Converts `amount` from `coin` (shielded) into the unshielded
+   * representation, minted to `recipient`. Any unconverted remainder of
+   * `coin` is refunded as a shielded coin to `refundTo`.
+   *
+   * The shielded burn increments the shielded `totalBurned(domain)` and the
+   * unshielded mint increments the unshielded `totalMinted(domain)` by the
+   * same amount: the cross-representation supply sum is unchanged.
+   *
+   * @notice The returned refund coin info (if any) MUST be delivered to
+   * `refundTo` out of band; wallets cannot detect contract-sent shielded
+   * coins by scanning the chain. The unshielded output is publicly visible
+   * and needs no delivery.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `amount` is greater than 0.
+   * - `coin.color` is this contract's token type for `domain`.
+   * - `amount` is less than or equal to `coin.value`.
+   * - `recipient` is not the zero address or zero `UserAddress`.
+   * - `refundTo` is not zero.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {ShieldedCoinInfo} coin - The shielded coin to convert from,
+   * provided within the current transaction.
+   * @param {Uint<64>} amount - Value to convert. Capped at `Uint<64>` by the
+   * protocol's unshielded mint.
+   * @param {Either<ContractAddress, UserAddress>} recipient - Recipient of the
+   * unshielded representation.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
+   * route the unconverted shielded remainder (`coin.value - amount`).
+   * @return {Maybe<ShieldedCoinInfo>} - The shielded refund coin created for
+   * `refundTo`, or `none` if the coin was converted in full.
+   */
+  export circuit _unshield(
+                   domain: Bytes<32>,
+                   coin: ShieldedCoinInfo,
+                   amount: Uint<64>,
+                   recipient: Either<ContractAddress, UserAddress>,
+                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): Maybe<ShieldedCoinInfo> {
+    assert(amount > 0, "NativeTokenConverter: zero amount");
+
+    const refund = NativeShieldedTokenFamily__burn(domain, coin, amount, refundTo);
+    NativeUnshieldedMultiToken__mint(domain, recipient, amount);
+    return refund;
+  }
+
+  /**
+   * @description Converts `amount` of the unshielded representation, provided
+   * to the contract within the current transaction, into a shielded coin
+   * minted to `recipient` with an internally derived nonce.
+   *
+   * The unshielded burn increments the unshielded `totalBurned(domain)` and
+   * the shielded mint increments the shielded `totalMinted(domain)` by the
+   * same amount: the cross-representation supply sum is unchanged.
+   *
+   * @notice Like the base shielded `_mint`, the derived nonce makes this
+   * variant recipient-public. Use `_shieldWithNonce` with a secret random
+   * nonce for a recipient-private conversion. The returned coin info MUST be
+   * delivered to `recipient` out of band.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `amount` is greater than 0.
+   * - `recipient` is not zero.
+   * - The transaction provides `amount` of this domain's unshielded
+   *   representation to the contract.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<64>} amount - Value to convert. Capped at `Uint<64>` by the
+   * protocol's shielded mint.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - Recipient
+   * of the shielded representation.
+   * @return {ShieldedCoinInfo} - The newly created shielded coin's info.
+   */
+  export circuit _shield(
+                   domain: Bytes<32>,
+                   amount: Uint<64>,
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): ShieldedCoinInfo {
+    assert(amount > 0, "NativeTokenConverter: zero amount");
+
+    NativeUnshieldedMultiToken__burn(domain, amount);
+    return NativeShieldedTokenFamily__mint(domain, recipient, amount);
+  }
+
+  /**
+   * @description Variant of `_shield` using a caller-supplied nonce for the
+   * minted shielded coin. With a secret, cryptographically random nonce this
+   * is the recipient-private conversion. The caller is fully responsible for
+   * nonce uniqueness; see the base shielded `_mintWithNonce`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `amount` is greater than 0.
+   * - `recipient` is not zero.
+   * - The transaction provides `amount` of this domain's unshielded
+   *   representation to the contract.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<64>} amount - Value to convert.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - Recipient
+   * of the shielded representation.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per
+   * (domain, contract).
+   * @return {ShieldedCoinInfo} - The newly created shielded coin's info.
+   */
+  export circuit _shieldWithNonce(
+                   domain: Bytes<32>,
+                   amount: Uint<64>,
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    assert(amount > 0, "NativeTokenConverter: zero amount");
+
+    NativeUnshieldedMultiToken__burn(domain, amount);
+    return NativeShieldedTokenFamily__mintWithNonce(domain, recipient, amount, nonce);
+  }
+}

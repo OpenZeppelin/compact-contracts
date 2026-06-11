@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../FungibleToken" prefix FungibleToken_;
+import "../../extensions/FungibleTokenConverter" prefix Converter_;
+
+export { ZswapCoinPublicKey, ContractAddress, UserAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+constructor(
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  domainSep: Bytes<32>,
+  initNonce: Bytes<32>
+) {
+  FungibleToken_initialize(name_, symbol_, decimals_);
+  Converter_initialize(domainSep, initNonce);
+}
+
+export circuit name(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return FungibleToken_totalSupply();
+}
+
+export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return Converter_tokenColor();
+}
+
+export circuit utxoSupply(): Uint<128> {
+  return Converter_utxoSupply();
+}
+
+export circuit _mint(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+  FungibleToken__mint(account, value);
+}
+
+export circuit _shield(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<64>
+): ShieldedCoinInfo {
+  return Converter__shield(recipient, value);
+}
+
+export circuit _shieldWithNonce(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  value: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return Converter__shieldWithNonce(recipient, value, nonce);
+}
+
+export circuit _unshield(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  creditTo: Either<Bytes<32>, ContractAddress>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return Converter__unshield(coin, amount, creditTo, refundTo);
+}
+
+export circuit _toUnshielded(
+  recipient: Either<ContractAddress, UserAddress>,
+  value: Uint<64>
+): Bytes<32> {
+  return Converter__toUnshielded(recipient, value);
+}
+
+export circuit _fromUnshielded(
+  creditTo: Either<Bytes<32>, ContractAddress>,
+  amount: Uint<128>
+): [] {
+  Converter__fromUnshielded(creditTo, amount);
+}

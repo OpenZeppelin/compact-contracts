@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeShieldedToken" prefix NativeShieldedToken_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+constructor(
+  domainSep: Bytes<32>,
+  initNonce: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>
+) {
+  NativeShieldedToken_initialize(domainSep, initNonce, name_, symbol_, decimals_);
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedToken_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedToken_tokenColor();
+}
+
+export circuit totalMinted(): Uint<128> {
+  return NativeShieldedToken_totalMinted();
+}
+
+export circuit totalBurned(): Uint<128> {
+  return NativeShieldedToken_totalBurned();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return NativeShieldedToken_totalSupply();
+}
+
+export circuit _mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>
+): ShieldedCoinInfo {
+  return NativeShieldedToken__mint(recipient, amount);
+}
+
+export circuit _mintWithNonce(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return NativeShieldedToken__mintWithNonce(recipient, amount, nonce);
+}
+
+export circuit _burn(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedToken__burn(coin, amount, refundTo);
+}
+
+export circuit _burnFromContract(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedToken__burnFromContract(coin, amount);
+}

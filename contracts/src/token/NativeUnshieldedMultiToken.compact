@@ -1,0 +1,324 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.1.0 (token/NativeUnshieldedMultiToken.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module NativeUnshieldedMultiToken
+ * @description A module for issuing MULTIPLE native unshielded token types
+ * from one contract — the ERC-1155-shaped flavor of the native unshielded
+ * token standard. For a single-token (ERC-20-shaped) issuer, use
+ * `NativeUnshieldedToken` instead.
+ *
+ * Native unshielded tokens exist as protocol-level, publicly visible
+ * (Schnorr-signed) UTXOs rather than as balances in contract ledger state.
+ * This module exposes composable building blocks for minting and burning
+ * them. It does NOT include access control; consuming contracts SHOULD gate
+ * both mint and burn circuits.
+ *
+ * # Design notes
+ *
+ * - The `domain` parameter is passed explicitly per-call; the token type is
+ *   derived as `tokenType(domain, kernel.self())`, computed at call time.
+ *   Only this contract can ever mint tokens of its colors.
+ *
+ * - Metadata follows the MultiToken (ERC-1155) convention: a single `_uri`
+ *   template for all token types; clients substitute the domain off-chain.
+ *
+ * - Unshielded issuance is much simpler than shielded issuance: there are no
+ *   coin commitments, so no nonce machinery, no out-of-band coin delivery,
+ *   and no transient-vs-Merkle spend split. Minted value is publicly visible
+ *   and wallet-discoverable; transfers happen wallet-to-wallet at the
+ *   protocol level with no contract involvement.
+ *
+ * - There is no protocol-level unshielded burn helper. This module burns by
+ *   sending value to the all-zero `UserAddress` (`unshieldedBurnAddress()`),
+ *   for which no signing key is known — mirroring the shielded zero-key burn
+ *   address convention.
+ *
+ * # Supply accounting
+ *
+ * - `totalMinted(domain)` is EXACT: color derivation guarantees that every
+ *   unit of this contract's colors originates from this module's mint.
+ * - `totalBurned(domain)` is a LOWER BOUND: holders can send value directly
+ *   to the burn address without going through the contract.
+ * - `totalSupply(domain)` = minted - burned is therefore an UPPER BOUND on
+ *   circulating supply. Unlike shielded tokens, the unshielded UTXO set is
+ *   public, so indexers CAN compute exact circulating supply off-chain; the
+ *   on-chain bound exists for in-circuit use and parity with the shielded
+ *   standard.
+ *
+ * # Composition with NativeShieldedTokenFamily
+ *
+ * - A contract MAY import both this module and `NativeShieldedTokenFamily`
+ *   (e.g. via the `NativeTokenConverter` extension) to issue both
+ *   representations of one logical token. Both modules import
+ *   `Initializable`, whose state is SHARED in such a composition: the
+ *   consumer MUST call exactly one module's `initialize` (a second call
+ *   reverts) and SHOULD expose metadata getters from that module only.
+ */
+module NativeUnshieldedMultiToken {
+  import CompactStandardLibrary;
+  import "../security/Initializable" prefix Initializable_;
+
+  /**
+   * @description Exact amount minted per domain. See "Supply accounting".
+   * @type {Map<Bytes<32>, Uint<128>>} _totalMinted
+   */
+  export ledger _totalMinted: Map<Bytes<32>, Uint<128>>;
+  /**
+   * @description Contract-mediated amount burned per domain (lower bound).
+   * @type {Map<Bytes<32>, Uint<128>>} _totalBurned
+   */
+  export ledger _totalBurned: Map<Bytes<32>, Uint<128>>;
+  /**
+   * @description URI template shared by all token types of this contract.
+   * @type {Opaque<"string">} _uri
+   */
+  export ledger _uri: Opaque<"string">;
+
+  /**
+   * @description Initializes the module's metadata.
+   * @dev This MUST be called in the implementing contract's constructor.
+   * Failure to do so can lead to an irreparable contract. When composing
+   * with `NativeShieldedTokenFamily`, call exactly one module's `initialize`
+   * (the `Initializable` state is shared).
+   *
+   * @param {Opaque<"string">} uri_ - URI template for all token types.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(uri_: Opaque<"string">): [] {
+    Initializable_initialize();
+    _uri = disclose(uri_);
+  }
+
+  /**
+   * @description Returns the URI for the token type identified by `domain`.
+   * @dev Following the MultiToken (ERC-1155) convention, the same URI
+   * template is returned for all token types; clients substitute the domain
+   * off-chain.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Opaque<"string">} - The URI template.
+   */
+  export circuit uri(domain: Bytes<32>): Opaque<"string"> {
+    Initializable_assertInitialized();
+    return _uri;
+  }
+
+  /**
+   * @description Returns the token type (color) for `domain` under this
+   * contract's address, so integrators do not have to re-derive it by hand.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Bytes<32>} - The color: `tokenType(domain, kernel.self())`.
+   */
+  export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
+    Initializable_assertInitialized();
+    return tokenType(disclose(domain), kernel.self());
+  }
+
+  /**
+   * @description Returns the burn target: the all-zero `UserAddress`, for
+   * which no signing key is known.
+   *
+   * @return {Either<ContractAddress, UserAddress>} - The unshielded burn address.
+   */
+  export pure circuit unshieldedBurnAddress(): Either<ContractAddress, UserAddress> {
+    return right<ContractAddress, UserAddress>(default<UserAddress>);
+  }
+
+  /**
+   * @description Returns the exact amount ever minted for `domain`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Uint<128>} - The total amount minted.
+   */
+  export circuit totalMinted(domain: Bytes<32>): Uint<128> {
+    Initializable_assertInitialized();
+    if (!_totalMinted.member(disclose(domain))) {
+      return 0;
+    }
+    return _totalMinted.lookup(disclose(domain));
+  }
+
+  /**
+   * @description Returns the contract-mediated amount burned for `domain`.
+   * @notice This is a lower bound: value sent directly to the burn address
+   * without going through this contract is not counted.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Uint<128>} - The total amount burned through this contract.
+   */
+  export circuit totalBurned(domain: Bytes<32>): Uint<128> {
+    Initializable_assertInitialized();
+    if (!_totalBurned.member(disclose(domain))) {
+      return 0;
+    }
+    return _totalBurned.lookup(disclose(domain));
+  }
+
+  /**
+   * @description Returns `totalMinted(domain) - totalBurned(domain)`.
+   * @notice Upper bound on circulating supply: burns that bypass the contract
+   * are not counted on-chain. The unshielded UTXO set is public, so exact
+   * circulating supply is computable off-chain.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Uint<128>} - The upper bound on tokens in existence.
+   */
+  export circuit totalSupply(domain: Bytes<32>): Uint<128> {
+    Initializable_assertInitialized();
+    return (totalMinted(domain) - totalBurned(domain)) as Uint<128>;
+  }
+
+  /**
+   * @description Mints `amount` of the token identified by `domain` to
+   * `recipient` as unshielded value.
+   *
+   * @notice Unlike shielded mints, the output is publicly visible and
+   * discoverable by the recipient's wallet; no out-of-band delivery is
+   * needed.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `recipient` is not the zero address or zero `UserAddress` (the zero
+   *   `UserAddress` is the burn address).
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator. Same domain + same
+   * contract address produces the same color (i.e. same token type).
+   * @param {Either<ContractAddress, UserAddress>} recipient - The recipient.
+   * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
+   * @return {Bytes<32>} - The minted token's color.
+   */
+  export circuit _mint(
+                   domain: Bytes<32>,
+                   recipient: Either<ContractAddress, UserAddress>,
+                   amount: Uint<64>
+                   ): Bytes<32> {
+    Initializable_assertInitialized();
+    assert(!isTargetZero(recipient), "NativeUnshieldedMultiToken: invalid recipient");
+
+    _addMinted(domain, amount);
+    return mintUnshieldedToken(disclose(domain), disclose(amount), disclose(recipient));
+  }
+
+  /**
+   * @description Burns `amount` of the token identified by `domain`, provided
+   * to the contract within the current transaction (e.g. contributed by the
+   * caller's wallet), by sending it to the burn address.
+   *
+   * @dev The transaction must supply `amount` of the domain's token to the
+   * contract; the circuit absorbs it via `receiveUnshielded` and forwards it
+   * to the burn address. There is no remainder to refund: unshielded value is
+   * absorbed by amount, not by coin.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The transaction provides `amount` of this domain's token to the contract.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<128>} amount - Value to destroy.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _burn(domain: Bytes<32>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+
+    const color = tokenType(disclose(domain), kernel.self());
+    receiveUnshielded(color, disclose(amount));
+    sendUnshielded(color, disclose(amount), unshieldedBurnAddress());
+    _addBurned(domain, amount);
+  }
+
+  /**
+   * @description Burns `amount` of the token identified by `domain` from the
+   * contract's own unshielded balance.
+   *
+   * @dev The balance comparison reflects the contract's balance at the start
+   * of the current execution; it is not updated by sends, receives, or mints
+   * within the same call.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The contract's balance of this domain's token is at least `amount`.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<128>} amount - Value to destroy.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _burnFromContract(domain: Bytes<32>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+
+    const color = tokenType(disclose(domain), kernel.self());
+    assert(unshieldedBalanceGte(color, disclose(amount)), "NativeUnshieldedMultiToken: insufficient balance");
+    sendUnshielded(color, disclose(amount), unshieldedBurnAddress());
+    _addBurned(domain, amount);
+  }
+
+  /**
+   * @description Adds `amount` to the exact minted total for `domain`.
+   * @dev Checks for overflow in order to output a readable error message.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<64>} amount - The minted amount.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
+    const current = totalMinted(domain);
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - current >= amount, "NativeUnshieldedMultiToken: arithmetic overflow");
+    _totalMinted.insert(disclose(domain), disclose((current + amount) as Uint<128>));
+  }
+
+  /**
+   * @description Adds `amount` to the contract-mediated burned total for `domain`.
+   * @dev No overflow guard is needed: every unit of this contract's colors
+   * originates from `_addMinted`-tracked mints, so burned can never exceed
+   * the overflow-checked minted total.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<128>} amount - The burned amount.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
+    const current = totalBurned(domain);
+    _totalBurned.insert(disclose(domain), disclose((current + amount) as Uint<128>));
+  }
+
+  /**
+   * @description Returns `true` if `target`'s active branch holds the zero value.
+   *
+   * @param {Either<ContractAddress, UserAddress>} target - The value to check.
+   * @return {Boolean} - `true` if the active branch is zero, `false` otherwise.
+   */
+  circuit isTargetZero(target: Either<ContractAddress, UserAddress>): Boolean {
+    if (target.is_left) {
+      return target.left == default<ContractAddress>;
+    } else {
+      return target.right == default<UserAddress>;
+    }
+  }
+}
