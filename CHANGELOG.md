@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Multisig contract suite under `contracts/src/multisig/`: configurable M-of-N `Signer` / `SignerManager` registry, `ProposalManager`, stateful `ShieldedTreasury` and `ShieldedTreasuryStateless`, `UnshieldedTreasury`, `Forwarder` + `ForwarderPrivate` modules with per-recipient presets, and the `ShieldedMultiSig` / `ShieldedMultiSigV2` presets. Signature verification is stubbed pending ECDSA + Keccak primitives (#475). (#378, #424, #526)
 
+### Changed
+
+- Upgrade the Compact toolchain and Midnight dependencies: compiler `0.29.0` → `0.31.0`, `@midnight-ntwrk/compact-runtime` `0.14.0` → `0.16.0`, `@midnight-ntwrk/ledger-v7` `7.0.3` → `@midnight-ntwrk/ledger-v8` `8.1.0`, and `@openzeppelin/compact-simulator` `^0.0.1` → `^0.1.0`.
+
 ## 0.2.0 (2026-06-12)
 
 ### Changed

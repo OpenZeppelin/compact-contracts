@@ -93,7 +93,9 @@ body:
       label: Version
       description: What version of Compact are you running?
       options:
-        - 0.29.0 (Default)
+        - 0.31.0 (Default)
+        - 0.30.0
+        - 0.29.0
       default: 0
     validations:
       required: true
