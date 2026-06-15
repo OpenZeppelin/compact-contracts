@@ -1,7 +1,7 @@
 // TEST-ONLY. Demonstrates the compiler#270 collision: a module that depends on
 // the shared, stateful `Initializable` module. Paired with ModuleA (same
 // directory) so a composing contract triggers the shared-ledger-slot bug.
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 module ModuleB {
   import CompactStandardLibrary;

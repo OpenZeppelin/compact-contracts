@@ -9,7 +9,7 @@
 // so initializing one module also marks the other initialized. The
 // `initStateIsolation` spec asserts this collision (the bug), justifying why the
 // production modules now track their init flag per-module instead.
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 import "./sharedInit/ModuleA" prefix A_;

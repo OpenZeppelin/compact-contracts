@@ -5,7 +5,7 @@
 // corresponding production contract relies on. DO NOT deploy or use this
 // contract in any production application.
 
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 import "../../ShieldedToken" prefix ShieldedToken_;

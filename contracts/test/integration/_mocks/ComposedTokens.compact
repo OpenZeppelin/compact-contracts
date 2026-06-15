@@ -13,7 +13,7 @@
 // `initFT` / `initNFT` select which module is initialized at construction, so a
 // test can initialize one and assert the other is still uninitialized. (Both
 // initializers write `sealed` ledger fields, so they must run in the constructor.)
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 import "../../../src/token/FungibleToken" prefix FungibleToken_;
