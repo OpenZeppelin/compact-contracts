@@ -8,7 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
-import { ShieldedAccessControlPrivateState } from '../witnesses/ShieldedAccessControlWitnesses.js';
+import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
@@ -89,6 +89,7 @@ const OP1_ACCOUNT_ID = buildAccountIdHash(OPERATOR_1_SK);
 const OP2_ACCOUNT_ID = buildAccountIdHash(OPERATOR_2_SK);
 const OP3_ACCOUNT_ID = buildAccountIdHash(OPERATOR_3_SK);
 const BAD_ACCOUNT_ID = buildAccountIdHash(BAD_SK);
+const UNAUTHORIZED_ACCOUNT_ID = buildAccountIdHash(UNAUTHORIZED_SK);
 
 // Commitments and nullifiers for common (role, accountId) pairings
 const ADMIN_ROLE_COMMITMENT = buildRoleCommitmentHash(
@@ -125,7 +126,19 @@ describe('ShieldedAccessControl', () => {
             ...a: unknown[]
           ) => unknown
         )(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('ShieldedAccessControl: contract not initialized');
+    });
+
+    it('_grantRole should independently check initialization', () => {
+      expect(() => contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID)).toThrow(
+        'ShieldedAccessControl: contract not initialized',
+      );
+    });
+
+    it('_revokeRole should independently check initialization', () => {
+      expect(() => contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID)).toThrow(
+        'ShieldedAccessControl: contract not initialized',
+      );
     });
 
     const circuitsNotRequiringInit: [string, unknown[]][] = [
@@ -815,6 +828,16 @@ describe('ShieldedAccessControl', () => {
           expect(contract.canProveRole(ROLE_NONEXISTENT)).toBe(false);
         });
 
+        it('when revoking a role from an unauthorized accountId that was never granted', () => {
+          expect(() =>
+            contract.revokeRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID),
+          ).not.toThrow();
+
+          expect(() =>
+            contract._grantRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID),
+          ).toThrow('ShieldedAccessControl: role is already revoked');
+        });
+
         it('when revoking a never-granted role should permanently block future grants', () => {
           contract.revokeRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID);
 
@@ -1203,6 +1226,84 @@ describe('ShieldedAccessControl', () => {
         );
 
         expect(commitmentA).not.toEqual(commitmentB);
+      });
+    });
+  });
+
+  describe('privateState helpers', () => {
+    beforeEach(() => {
+      contract = new ShieldedAccessControlSimulator(INSTANCE_SALT, true, {
+        privateState: ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),
+      });
+    });
+
+    describe('getCurrentSecretKey', () => {
+      it('should return the secret key from private state', () => {
+        expect(contract.privateState.getCurrentSecretKey()).toEqual(ADMIN_SK);
+      });
+
+      it('should throw when the secret key is undefined', () => {
+        contract.privateState.injectSecretKey(undefined as never);
+
+        expect(() => contract.privateState.getCurrentSecretKey()).toThrow(
+          'Missing secret key',
+        );
+      });
+    });
+
+    describe('getCommitmentPathWithFindForLeaf', () => {
+      it('should return undefined when the commitment is not in the tree', () => {
+        const absentCommitment = buildRoleCommitmentHash(
+          ROLE_NONEXISTENT,
+          BAD_ACCOUNT_ID,
+        );
+
+        expect(
+          contract.privateState.getCommitmentPathWithFindForLeaf(
+            absentCommitment,
+          ),
+        ).toBeUndefined();
+      });
+
+      it('should return a path when the commitment is in the tree', () => {
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+
+        const path = contract.privateState.getCommitmentPathWithFindForLeaf(
+          OP1_ROLE_COMMITMENT,
+        );
+
+        expect(path).toBeDefined();
+        expect(path?.leaf).toEqual(OP1_ROLE_COMMITMENT);
+      });
+    });
+
+    describe('getCommitmentPathWithWitnessImpl', () => {
+      it('should return a default path when the commitment is not in the tree', () => {
+        const absentCommitment = buildRoleCommitmentHash(
+          ROLE_NONEXISTENT,
+          BAD_ACCOUNT_ID,
+        );
+
+        const path =
+          contract.privateState.getCommitmentPathWithWitnessImpl(
+            absentCommitment,
+          );
+
+        expect(path.leaf).toEqual(new Uint8Array(32));
+      });
+
+      it('should return a path matching findPathForLeaf when the commitment is in the tree', () => {
+        contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+
+        const witnessPath =
+          contract.privateState.getCommitmentPathWithWitnessImpl(
+            OP1_ROLE_COMMITMENT,
+          );
+        const findPath = contract.privateState.getCommitmentPathWithFindForLeaf(
+          OP1_ROLE_COMMITMENT,
+        );
+
+        expect(witnessPath.leaf).toEqual(findPath?.leaf);
       });
     });
   });

@@ -1,19 +1,18 @@
 import {
   type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+} from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
   type Either,
   ledger,
   type Maybe,
   Contract as MockMultiToken,
-  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockMultiToken/contract/index.js';
 import {
   MultiTokenPrivateState,
   MultiTokenWitnesses,
-} from '../../witnesses/MultiTokenWitnesses.js';
+} from '../witnesses/MultiTokenWitnesses.js';
 
 /**
  * Type constructor args
@@ -29,7 +28,7 @@ const MultiTokenSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockMultiToken<MultiTokenPrivateState>(witnesses),
-  defaultPrivateState: () => MultiTokenPrivateState,
+  defaultPrivateState: () => MultiTokenPrivateState.generate(),
   contractArgs: (_uri) => [_uri],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => MultiTokenWitnesses(),
@@ -47,6 +46,10 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     > = {},
   ) {
     super([_uri], options);
+  }
+
+  public ZERO(): Either<Uint8Array, ContractAddress> {
+    return this.circuits.pure.ZERO();
   }
 
   /**
@@ -74,7 +77,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @returns The quantity of `id` tokens that `account` owns.
    */
   public balanceOf(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    account: Either<Uint8Array, ContractAddress>,
     id: bigint,
   ): bigint {
     return this.circuits.impure.balanceOf(account, id);
@@ -82,12 +85,12 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
-   * @param operator The ZswapCoinPublicKey or ContractAddress whose approval is set for the caller's assets.
+   * @param operator The Uint8Array or ContractAddress whose approval is set for the caller's assets.
    * @param approved The boolean value determining if the operator may or may not handle the
    * caller's assets.
    */
   public setApprovalForAll(
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<Uint8Array, ContractAddress>,
     approved: boolean,
   ) {
     this.circuits.impure.setApprovalForAll(operator, approved);
@@ -100,8 +103,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @returns Whether or not `operator` has permission to handle `account`'s assets.
    */
   public isApprovedForAll(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    account: Either<Uint8Array, ContractAddress>,
+    operator: Either<Uint8Array, ContractAddress>,
   ): boolean {
     return this.circuits.impure.isApprovedForAll(account, operator);
   }
@@ -115,8 +118,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens to transfer.
    */
   public transferFrom(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -132,8 +135,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens to transfer.
    */
   public _unsafeTransferFrom(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -150,8 +153,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens to transfer.
    */
   public _transfer(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -168,8 +171,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens to transfer.
    */
   public _unsafeTransfer(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -191,7 +194,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens that are minted to `to`.
    */
   public _mint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -205,7 +208,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens that are minted to `to`.
    */
   public _unsafeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -219,7 +222,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param value The quantity of `id` tokens that will be destroyed from `fromAddress`
    */
   public _burn(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
   ) {
@@ -228,17 +231,55 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
 
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
-   * @param owner The ZswapCoinPublicKey or ContractAddress of the target owner.
-   * @param operator The ZswapCoinPublicKey or ContractAddress whose approval is set for the
+   * @param owner The Uint8Array or ContractAddress of the target owner.
+   * @param operator The Uint8Array or ContractAddress whose approval is set for the
    * `owner`'s assets.
    * @param approved The boolean value determining if the operator may or may not handle the
    * `owner`'s assets.
    */
   public _setApprovalForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: Either<Uint8Array, ContractAddress>,
+    operator: Either<Uint8Array, ContractAddress>,
     approved: boolean,
   ) {
     this.circuits.impure._setApprovalForAll(owner, operator, approved);
   }
+
+  /**
+   * @description Computes an account identifier without on-chain state, allowing a user to derive
+   * their identity commitment before submitting it in a grant or revoke operation.
+   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
+   * @returns {Bytes<32>} accountId - The computed account identifier.
+   */
+  public computeAccountId(secretKey: Uint8Array): Uint8Array {
+    return this.circuits.pure.computeAccountId(secretKey);
+  }
+
+  public readonly privateState = {
+    /**
+     * @description Replaces the secret key in the private state. Used in tests to
+     * simulate switching between different user identities or injecting incorrect
+     * keys to test failure paths.
+     * @param newSK - The new secret key to set.
+     * @returns The updated private state.
+     */
+    injectSecretKey: (newSK: Uint8Array): MultiTokenPrivateState => {
+      const updatedState = MultiTokenPrivateState.withSecretKey(newSK);
+      this.circuitContextManager.updatePrivateState(updatedState);
+      return updatedState;
+    },
+
+    /**
+     * @description Returns the current secret key from the private state.
+     * @returns The secret key.
+     * @throws If the secret key is undefined.
+     */
+    getCurrentSecretKey: (): Uint8Array => {
+      const sk = this.getPrivateState().secretKey;
+      if (typeof sk === 'undefined') {
+        throw new Error('Missing secret key');
+      }
+      return Uint8Array.from(sk);
+    },
+  };
 }

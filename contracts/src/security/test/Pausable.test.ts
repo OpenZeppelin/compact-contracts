@@ -74,4 +74,16 @@ describe('Pausable', () => {
       expect(pausable.isPaused()).toBe(true);
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should expose the public ledger via getPublicState', () => {
+      const sim = new PausableSimulator();
+
+      expect(sim.getPublicState().Pausable__isPaused).toBe(false);
+
+      sim.pause();
+
+      expect(sim.getPublicState().Pausable__isPaused).toBe(true);
+    });
+  });
 });

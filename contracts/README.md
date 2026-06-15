@@ -8,12 +8,12 @@ The `src/` directory is organized by module category. Each module follows the sa
 
 ```
 <module>/
-├── <Contract>.compact      # Contract source
-├── witnesses/              # TypeScript witness implementations
+├── <Contract>.compact          # Contract source
 └── test/
-    ├── <Contract>.test.ts  # Test suite
-    ├── mocks/              # Mock contracts (test-only — see warning below)
-    └── simulators/         # Simulator helpers for testing
+    ├── <Contract>.test.ts      # Test suite
+    ├── mocks/                  # Mock contracts (test-only — see warning below)
+    ├── simulators/             # Simulator helpers for testing
+    └── witnesses/              # TypeScript witness implementations (test-only)
 ```
 
 ## > ⚠️ Mock Contracts Are For Testing Only

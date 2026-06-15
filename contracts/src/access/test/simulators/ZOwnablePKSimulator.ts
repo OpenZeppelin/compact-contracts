@@ -1,7 +1,7 @@
 import {
   type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+} from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
   type Either,
@@ -12,7 +12,7 @@ import {
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,
-} from '../../witnesses/ZOwnablePKWitnesses.js';
+} from '../witnesses/ZOwnablePKWitnesses.js';
 
 /** Type constructor args */
 type ZOwnablePKArgs = readonly [

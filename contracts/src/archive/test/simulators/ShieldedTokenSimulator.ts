@@ -22,7 +22,7 @@ import {
 import {
   type ShieldedTokenPrivateState,
   ShieldedTokenWitnesses,
-} from '../../witnesses/ShieldedTokenWitnesses.js';
+} from '../witnesses/ShieldedTokenWitnesses.js';
 import type { IContractSimulator } from '../types/test.js';
 
 /**

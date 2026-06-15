@@ -10,7 +10,7 @@ pragma language_version >= 0.21.0;
 import CompactStandardLibrary;
 import "../../MultiToken" prefix MultiToken_;
 
-export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ContractAddress, Either, Maybe };
 export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
 
 /**
@@ -27,6 +27,10 @@ constructor(
   }
 }
 
+export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
+  return MultiToken_ZERO();
+}
+
 export circuit initialize(_uri: Opaque<"string">): [] {
   return MultiToken_initialize(_uri);
 }
@@ -35,24 +39,24 @@ export circuit uri(id: Uint<128>): Opaque<"string"> {
   return MultiToken_uri(id);
 }
 
-export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>): Uint<128> {
+export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>, id: Uint<128>): Uint<128> {
   return MultiToken_balanceOf(account, id);
 }
 
-export circuit setApprovalForAll(operator: Either<ZswapCoinPublicKey, ContractAddress>, approved: Boolean): [] {
+export circuit setApprovalForAll(operator: Either<Bytes<32>, ContractAddress>, approved: Boolean): [] {
   return MultiToken_setApprovalForAll(operator, approved);
 }
 
 export circuit isApprovedForAll(
-  account: Either<ZswapCoinPublicKey, ContractAddress>,
-  operator: Either<ZswapCoinPublicKey, ContractAddress>
+  account: Either<Bytes<32>, ContractAddress>,
+  operator: Either<Bytes<32>, ContractAddress>
 ): Boolean {
   return MultiToken_isApprovedForAll(account, operator);
 }
 
 export circuit transferFrom(
-  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
@@ -60,8 +64,8 @@ export circuit transferFrom(
 }
 
 export circuit _unsafeTransferFrom(
-  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
@@ -69,8 +73,8 @@ export circuit _unsafeTransferFrom(
 }
 
 export circuit _transfer(
-  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
@@ -78,8 +82,8 @@ export circuit _transfer(
 }
 
 export circuit _unsafeTransfer(
-  fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
   id: Uint<128>,
   value: Uint<128>
 ): [] {
@@ -90,22 +94,26 @@ export circuit _setURI(newURI: Opaque<"string">): [] {
   return MultiToken__setURI(newURI);
 }
 
-export circuit _mint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+export circuit _mint(to: Either<Bytes<32>, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
   return MultiToken__mint(to, id, value);
 }
 
-export circuit _unsafeMint(to: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+export circuit _unsafeMint(to: Either<Bytes<32>, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
   return MultiToken__unsafeMint(to, id, value);
 }
 
-export circuit _burn(fromAddress: Either<ZswapCoinPublicKey, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+export circuit _burn(fromAddress: Either<Bytes<32>, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
   return MultiToken__burn(fromAddress, id, value);
 }
 
 export circuit _setApprovalForAll(
-  owner: Either<ZswapCoinPublicKey, ContractAddress>,
-  operator: Either<ZswapCoinPublicKey, ContractAddress>,
+  owner: Either<Bytes<32>, ContractAddress>,
+  operator: Either<Bytes<32>, ContractAddress>,
   approved: Boolean
 ): [] {
   return MultiToken__setApprovalForAll(owner, operator, approved);
+}
+
+export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
+  return MultiToken_computeAccountId(secretKey);
 }

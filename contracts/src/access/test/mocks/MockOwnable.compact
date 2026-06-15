@@ -11,7 +11,7 @@ import CompactStandardLibrary;
 
 import "../../Ownable" prefix Ownable_;
 
-export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ContractAddress, Either, Maybe };
 
 /**
  * @description `isInit` is a param for testing.
@@ -20,21 +20,21 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
  * This behavior is to test that circuits are not callable unless the
  * contract is initialized.
 */
-constructor(initialOwner: Either<ZswapCoinPublicKey, ContractAddress>, isInit: Boolean) {
+constructor(initialOwner: Either<Bytes<32>, ContractAddress>, isInit: Boolean) {
   if (disclose(isInit)) {
     Ownable_initialize(initialOwner);
   }
 }
 
-export circuit owner(): Either<ZswapCoinPublicKey, ContractAddress> {
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
   return Ownable_owner();
 }
 
-export circuit transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
   return Ownable_transferOwnership(newOwner);
 }
 
-export circuit _unsafeTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit _unsafeTransferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
   return Ownable__unsafeTransferOwnership(newOwner);
 }
 
@@ -46,11 +46,14 @@ export circuit assertOnlyOwner(): [] {
   return Ownable_assertOnlyOwner();
 }
 
-export circuit _transferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit _transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
   return Ownable__transferOwnership(newOwner);
 }
 
-export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
   return Ownable__unsafeUncheckedTransferOwnership(newOwner);
 }
 
+export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
+  return Ownable_computeAccountId(secretKey);
+}

@@ -20,6 +20,3 @@ RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compa
 
 # Add Compact CLI to the PATH
 ENV PATH="/root/.compact/bin:$PATH"
-
-# Install turbo for monorepo management
-RUN npm install --location=global turbo
