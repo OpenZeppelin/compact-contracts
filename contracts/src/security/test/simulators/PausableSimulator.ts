@@ -1,7 +1,7 @@
 import {
   type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+} from '@openzeppelin/compact-simulator';
 import {
   ledger,
   Contract as MockPausable,
@@ -9,7 +9,7 @@ import {
 import {
   PausablePrivateState,
   PausableWitnesses,
-} from '../../witnesses/PausableWitnesses.js';
+} from '../witnesses/PausableWitnesses.js';
 
 /**
  * Type constructor args

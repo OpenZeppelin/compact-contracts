@@ -2,7 +2,7 @@ import type { MerkleTreePath } from '@midnight-ntwrk/compact-runtime';
 import {
   type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+} from '@openzeppelin/compact-simulator';
 import {
   ledger,
   Contract as MockShieldedAccessControl,
@@ -10,7 +10,7 @@ import {
 import {
   ShieldedAccessControlPrivateState,
   ShieldedAccessControlWitnesses,
-} from '../../witnesses/ShieldedAccessControlWitnesses.js';
+} from '../witnesses/ShieldedAccessControlWitnesses.js';
 
 type ShieldedAccessControlLedger = ReturnType<typeof ledger>;
 

@@ -1,6 +1,6 @@
 {
   "name": "@openzeppelin/compact-contracts",
-  "version": "0.0.1-alpha.1",
+  "version": "0.2.0",
   "description": "OpenZeppelin Compact contract library",
   "keywords": [
     "openzeppelin",
@@ -24,16 +24,18 @@
     "#test-utils/address.js": "./test-utils/address.js"
   },
   "scripts": {
-    "compact": "compact-compiler",
+    "compact": "compact-compiler --exclude '*/archive/*'",
     "compact:access": "compact-compiler --dir access",
     "compact:archive": "compact-compiler --dir archive",
     "compact:multisig": "compact-compiler --dir multisig",
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
-    "build": "compact-builder",
-    "test": "compact-compiler --skip-zk && vitest run",
-    "test:coverage": "compact-compiler --skip-zk && vitest run --coverage",
+    "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
+    "test": "SKIP_ZK=true yarn run compact && vitest run",
+    "test:coverage": "SKIP_ZK=true yarn run compact && vitest run --coverage",
+    "compact:integration": "SKIP_ZK=true compact compile test/integration/_mocks/SharedInitCollision.compact artifacts/SharedInitCollision && SKIP_ZK=true compact compile test/integration/_mocks/ComposedTokens.compact artifacts/ComposedTokens",
+    "test:integration": "yarn run compact:integration && vitest run --config vitest.integration.config.ts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
@@ -41,16 +43,16 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@openzeppelin-compact/compact": "workspace:^"
+    "@openzeppelin/compact-cli": "^0.0.2"
   },
   "devDependencies": {
-    "@openzeppelin-compact/contracts-simulator": "workspace:^",
+    "@openzeppelin/compact-simulator": "^0.0.1",
     "@tsconfig/node24": "^24.0.4",
-    "@types/node": "24.10.0",
-    "@vitest/coverage-v8": "^4.1.6",
-    "fast-check": "^3.23.2",
+    "@types/node": "25.9.3",
+    "@vitest/coverage-v8": "^4.1.8",
+    "fast-check": "^4.8.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.2"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
   }
 }

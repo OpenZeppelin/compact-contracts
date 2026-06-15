@@ -16,7 +16,7 @@
       "outputs": ["artifacts/**/"]
     },
     "compact:access": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/access/**/*.compact"],
       "outputLogs": "new-only",
@@ -37,7 +37,7 @@
       "outputs": ["artifacts/**/"]
     },
     "compact:token": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/token/**/*.compact"],
       "outputLogs": "new-only",
@@ -81,10 +81,7 @@
       "outputs": ["dist/**"]
     },
     "types": {
-      "dependsOn": [
-        "@openzeppelin-compact/compact#build",
-        "@openzeppelin/compact-contracts#compact"
-      ],
+      "dependsOn": ["@openzeppelin/compact-contracts#compact"],
       "outputs": [],
       "cache": false
     },

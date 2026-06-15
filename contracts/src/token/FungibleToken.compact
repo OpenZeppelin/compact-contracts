@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (token/FungibleToken.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (token/FungibleToken.compact)
 
 pragma language_version >= 0.21.0;
 
@@ -13,22 +13,45 @@ pragma language_version >= 0.21.0;
  * This is due to encoding limits on the midnight circuit backend:
  * https://github.com/midnightntwrk/compactc/issues/929
  *
- * @notice At the moment Midnight does not support contract-to-contract communication, but
+ * @dev Canonicalization
+ * All `Either<Bytes<32>, ContractAddress>` values are canonicalized before use as map keys
+ * or in ledger writes. Canonicalization zeroes out the inactive branch of the Either,
+ * ensuring that two values with the same active branch always resolve to the same map key
+ * regardless of what data the inactive branch carries. Write paths are canonicalized in
+ * `_update` (for `_balances`) and `_approve` (for `_allowances`). Read paths are
+ * canonicalized in `balanceOf` and `allowance`. `_spendAllowance` canonicalizes
+ * independently to ensure consistent lookups before delegating to `_approve`.
+ *
+ * @notice At the moment Midnight does not support contract-to-contract (C2C) communication, but
  * there are ongoing efforts to enable this in the future. Thus, the main circuits of this module
- * restrict developers from sending tokens to contracts; however, we provide developers
- * the ability to experiment with sending tokens to contracts using the `_unsafe`
- * transfer methods. Once contract-to-contract communication is available we will follow the
- * deprecation plan outlined below:
+ * (`transfer`, `transferFrom`, `_transfer`, `_mint`) reject `ContractAddress` recipients via an
+ * `isContract` guard, because a contract that receives tokens currently cannot move them back out.
+ * Developers who need to experiment with contract recipients can use the `_unsafe` variants, which
+ * skip the guard (the caller accepts that such tokens are stranded until C2C lands).
  *
- * Initial Minor Version Change:
+ * @dev Migration plan (safe -> C2C-capable transfers)
  *
- * - Mark _unsafeFN as deprecated and emit a warning if possible.
- * - Keep its implementation intact so existing callers continue to work.
+ * The recipient type is the final `Either<Bytes<32>, ContractAddress>` from day one, in both
+ * circuit signatures and ledger maps. This is deliberate. Midnight's upgrade mechanism, the
+ * Contract Maintenance Authority (CMA), can rotate a circuit's verifier key but cannot migrate
+ * ledger state (there is no state-rewrite primitive; see the `updatability` tutorial). Fixing the
+ * types now makes the future migration a pure verifier-key rotation with zero ledger-state change,
+ * which is the only kind of upgrade the CMA supports. Widening the types later would instead force
+ * a ledger-layout rewrite, which the CMA cannot perform.
  *
- * Later Major Version Change:
+ * When C2C lands, an already-deployed token migrates without changing its address or ledger state.
+ * Below, `FN` stands for each guarded circuit (`transfer`, `transferFrom`, `_transfer`, `_mint`)
+ * and `_unsafeFN` for its unsafe counterpart:
  *
- * - Drop _unsafeFN and remove `isContract` guard from `FN`.
- * - By this point, anyone using _unsafeFN should have migrated to the now C2C-capable `FN`.
+ * - Minor release: mark `_unsafeFN` deprecated (and emit a warning if possible); keep its
+ *   implementation intact so existing callers continue to work.
+ * - Major release: ship `FN` with the `isContract` guard removed and drop `_unsafeFN`. Operators
+ *   adopt the new logic by signing a CMA `MaintenanceUpdate` that rotates the affected verifier
+ *   keys (`VerifierKeyRemove` + `VerifierKeyInsert` for each `FN`, and a `VerifierKeyRemove` for
+ *   each `_unsafeFN`). The contract address and all ledger state are preserved. Because the CMA
+ *   allows multiple active VK versions per operation, old and new `FN` keys can coexist during a
+ *   transition window so in-flight proofs still verify. By this point, anyone using `_unsafeFN`
+ *   should have migrated to the now C2C-capable `FN`.
  *
  * Due to the vast incompatibilities with the EIP20 spec, it is our
  * opinion that this implementation should not be called ERC20 at this time
@@ -41,33 +64,65 @@ pragma language_version >= 0.21.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
 
   /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  /**
    * @description Mapping from account addresses to their token balances.
-   * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The account address.
+   * @type {Either<Bytes<32>, ContractAddress>} account - The account address.
    * @type {Uint<128>} balance - The balance of the account.
    * @type {Map<account, balance>}
-   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>} _balances
+   * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
    */
-  export ledger _balances: Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>;
+  export ledger _balances: Map<Either<Bytes<32>, ContractAddress>, Uint<128>>;
+
   /**
    * @description Mapping from owner accounts to spender accounts and their allowances.
-   * @type {Either<ZswapCoinPublicKey, ContractAddress>} account - The owner account address.
-   * @type {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender account address.
+   * @type {Either<Bytes<32>, ContractAddress>} account - The owner account address.
+   * @type {Either<Bytes<32>, ContractAddress>} spender - The spender account address.
    * @type {Uint<128>} allowance - The amount allowed to be spent by the spender.
    * @type {Map<account, Map<spender, allowance>>}
-   * @type {Map<Either<ZswapCoinPublicKey, ContractAddress>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>} _allowances
+   * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _allowances
    */
-  export ledger _allowances: Map<Either<ZswapCoinPublicKey, ContractAddress>,
-                                 Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>;
+  export ledger _allowances: Map<Either<Bytes<32>, ContractAddress>,
+                                 Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>;
 
   export ledger _totalSupply: Uint<128>;
 
   export sealed ledger _name: Opaque<"string">;
   export sealed ledger _symbol: Opaque<"string">;
   export sealed ledger _decimals: Uint<8>;
+
+
+  /**
+   * @witness wit_FungibleTokenSK
+   * @description Returns the caller's secret key used in deriving the account identifier.
+   *
+   * The same key produces the same account identifier across all contracts. Users who
+   * desire cross-contract unlinkability should use different keys per contract.
+   *
+   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
+   */
+  witness wit_FungibleTokenSK(): Bytes<32>;
+
+  /**
+   * @description Returns a canonical zero Either value for Bytes<32> and ContractAddress.
+   * This circuit returns the left variant (Bytes<32>) to avoid misleading contract-to-contract
+   * error messages.
+   *
+   * @return {Either<Bytes<32>, ContractAddress>} - The zero value.
+   */
+  export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
+    return Either<Bytes<32>, ContractAddress> {
+      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
+    };
+  }
 
   /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
@@ -86,16 +141,43 @@ module FungibleToken {
                    symbol_: Opaque<"string">,
                    decimals_: Uint<8>
                    ): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _name = disclose(name_);
     _symbol = disclose(symbol_);
     _decimals = disclose(decimals_);
   }
 
   /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "FungibleToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "FungibleToken: contract already initialized");
+  }
+
+  /**
    * @description Returns the token name.
    *
-   * @circuitInfo k=10, rows=37
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -104,14 +186,14 @@ module FungibleToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _name;
   }
 
   /**
    * @description Returns the symbol of the token.
    *
-   * @circuitInfo k=10, rows=37
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -120,14 +202,14 @@ module FungibleToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit symbol(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _symbol;
   }
 
   /**
    * @description Returns the number of decimals used to get its user representation.
    *
-   * @circuitInfo k=10, rows=36
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -136,14 +218,14 @@ module FungibleToken {
    * @return {Uint<8>} - The account's token balance.
    */
   export circuit decimals(): Uint<8> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _decimals;
   }
 
   /**
    * @description Returns the value of tokens in existence.
    *
-   * @circuitInfo k=10, rows=36
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -152,14 +234,14 @@ module FungibleToken {
    * @return {Uint<128>} - The total supply of tokens.
    */
   export circuit totalSupply(): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _totalSupply;
   }
 
   /**
    * @description Returns the value of tokens owned by `account`.
    *
-   * @circuitInfo k=10, rows=310
+   * @circuitInfo k=10, rows=673
    *
    * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
    *
@@ -167,22 +249,24 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The public key or contract address to query.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account id or contract address to query.
    * @return {Uint<128>} - The account's token balance.
    */
-  export circuit balanceOf(account: Either<ZswapCoinPublicKey, ContractAddress>): Uint<128> {
-    Initializable_assertInitialized();
-    if (!_balances.member(disclose(account))) {
+  export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+    assertInitialized();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+
+    if (!_balances.member(disclose(canonAcct))) {
       return 0;
     }
 
-    return _balances.lookup(disclose(account));
+    return _balances.lookup(disclose(canonAcct));
   }
 
   /**
    * @description Moves a `value` amount of tokens from the caller's account to `to`.
    *
-   * @circuitInfo k=11, rows=1173
+   * @circuitInfo k=13, rows=3985
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -195,23 +279,25 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has a balance of at least `value`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transfer(
-                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
-    assert(!Utils_isContractAddress(to), "FungibleToken: Unsafe Transfer");
+    assertInitialized();
+    const isContractAddr = !to.is_left;
+    assert(!isContractAddr, "FungibleToken: unsafe transfer");
+
     return _unsafeTransfer(to, value);
   }
 
   /**
    * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
    *
-   * @circuitInfo k=11, rows=1170
+   * @circuitInfo k=13, rows=3982
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -223,16 +309,16 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has a balance of at least `value`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransfer(
-                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
-    const owner = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    assertInitialized();
+    const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _unsafeUncheckedTransfer(owner, to, value);
     return true;
   }
@@ -241,7 +327,7 @@ module FungibleToken {
    * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
    * through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
    *
-   * @circuitInfo k=10, rows=624
+   * @circuitInfo k=11, rows=1346
    *
    * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
    *
@@ -249,42 +335,45 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The public key or contract address of approver.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The public key or contract address of spender.
+   * @param {Either<Bytes<32>, ContractAddress>} owner - The account id or contract address of approver.
+   * @param {Either<Bytes<32>, ContractAddress>} spender - The account id or contract address of spender.
    * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
    */
   export circuit allowance(
-                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
-                   spender: Either<ZswapCoinPublicKey, ContractAddress>
+                   owner: Either<Bytes<32>, ContractAddress>,
+                   spender: Either<Bytes<32>, ContractAddress>
                    ): Uint<128> {
-    Initializable_assertInitialized();
-    if (!_allowances.member(disclose(owner)) || !_allowances.lookup(owner).member(disclose(spender))) {
+    assertInitialized();
+    const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
+    const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
+
+    if (!_allowances.member(disclose(canonOwner)) || !_allowances.lookup(canonOwner).member(disclose(canonSpender))) {
       return 0;
     }
 
-    return _allowances.lookup(owner).lookup(disclose(spender));
+    return _allowances.lookup(canonOwner).lookup(disclose(canonSpender));
   }
 
   /**
    * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
    *
-   * @circuitInfo k=10, rows=452
+   * @circuitInfo k=13, rows=3072
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `spender` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The Zswap key or ContractAddress that may spend on behalf of the caller.
+   * @param {Either<Bytes<32>, ContractAddress>} spender - The account id or ContractAddress that may spend on behalf of the caller.
    * @param {Uint<128>} value - The amount of tokens the `spender` may spend.
    * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
    */
-  export circuit approve(spender: Either<ZswapCoinPublicKey, ContractAddress>,
+  export circuit approve(spender: Either<Bytes<32>, ContractAddress>,
                          value: Uint<128>
                          ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
 
-    const owner = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _approve(owner, spender, value);
     return true;
   }
@@ -293,7 +382,7 @@ module FungibleToken {
    * @description Moves `value` tokens from `fromAddress` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
    *
-   * @circuitInfo k=11, rows=1821
+   * @circuitInfo k=13, rows=4960
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -308,25 +397,26 @@ module FungibleToken {
    * - `to` is not a ContractAddress.
    * - The caller has an allowance of `fromAddress`'s tokens of at least `value`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transferFrom(
-                   fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   fromAddress: Either<Bytes<32>, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
-    assert(!Utils_isContractAddress(to), "FungibleToken: Unsafe Transfer");
+    assertInitialized();
+    const isContractAddr = !to.is_left;
+    assert(!isContractAddr, "FungibleToken: unsafe transfer");
     return _unsafeTransferFrom(fromAddress, to, value);
   }
 
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    *
-   * @circuitInfo k=11, rows=1818
+   * @circuitInfo k=13, rows=4957
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -340,19 +430,19 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has an allowance of `fromAddress`'s tokens of at least `value`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
+   * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransferFrom(
-                   fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   fromAddress: Either<Bytes<32>, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): Boolean {
-    Initializable_assertInitialized();
+    assertInitialized();
 
-    const spender = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+    const spender = left<Bytes<32>, ContractAddress>(_computeAccountId());
     _spendAllowance(fromAddress, spender, value);
     _unsafeUncheckedTransfer(fromAddress, to, value);
     return true;
@@ -363,7 +453,7 @@ module FungibleToken {
    * This circuit is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
    *
-   * @circuitInfo k=11, rows=1312
+   * @circuitInfo k=12, rows=2345
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -377,25 +467,26 @@ module FungibleToken {
    * - `to` must not be the zero address.
    * - `to` must not be a ContractAddress.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The owner of the tokens to transfer.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The receipient of the transferred tokens.
+   * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The owner of the tokens to transfer.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The receipient of the transferred tokens.
    * @param {Uint<128>} value - The amount of tokens to transfer.
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-                   fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   fromAddress: Either<Bytes<32>, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
-    assert(!Utils_isContractAddress(to), "FungibleToken: Unsafe Transfer");
+    assertInitialized();
+    const isContractAddr = !to.is_left;
+    assert(!isContractAddr, "FungibleToken: unsafe transfer");
     _unsafeUncheckedTransfer(fromAddress, to, value);
   }
 
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    *
-   * @circuitInfo k=11, rows=1309
+   * @circuitInfo k=12, rows=2342
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -407,19 +498,19 @@ module FungibleToken {
    * - `fromAddress` is not the zero address.
    * - `to` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The owner of the tokens to transfer.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The receipient of the transferred tokens.
+   * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The owner of the tokens to transfer.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The receipient of the transferred tokens.
    * @param {Uint<128>} value - The amount of tokens to transfer.
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeUncheckedTransfer(
-                   fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-                   to: Either<ZswapCoinPublicKey, ContractAddress>,
+                   fromAddress: Either<Bytes<32>, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
-    assert(!Utils_isKeyOrAddressZero(fromAddress), "FungibleToken: invalid sender");
-    assert(!Utils_isKeyOrAddressZero(to), "FungibleToken: invalid receiver");
+    assertInitialized();
+    assert(!_isTargetZero(fromAddress), "FungibleToken: invalid sender");
+    assert(!_isTargetZero(to), "FungibleToken: invalid receiver");
 
     _update(fromAddress, to, value);
   }
@@ -435,34 +526,37 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The original owner of the tokens moved (which is 0 if tokens are minted).
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The recipient of the tokens moved (which is 0 if tokens are burned).
+   * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The original owner of the tokens moved (which is 0 if tokens are minted).
+   * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the tokens moved (which is 0 if tokens are burned).
    * @param {Uint<128>} value - The amount of tokens moved from `fromAddress` to `to`.
    * @return {[]} - Empty tuple.
    */
-  circuit _update(fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-                  to: Either<ZswapCoinPublicKey, ContractAddress>,
+  circuit _update(fromAddress: Either<Bytes<32>, ContractAddress>,
+                  to: Either<Bytes<32>, ContractAddress>,
                   value: Uint<128>
                   ): [] {
-    Initializable_assertInitialized();
-    if (Utils_isKeyOrAddressZero(disclose(fromAddress))) {
+    assertInitialized();
+    const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
+    const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
+
+    if (_isTargetZero(disclose(canonFrom))) {
       // Mint
       const MAX_UINT128 = 340282366920938463463374607431768211455;
       assert(MAX_UINT128 - _totalSupply >= value, "FungibleToken: arithmetic overflow");
 
       _totalSupply = disclose(_totalSupply + value as Uint<128>);
     } else {
-      const fromBal = balanceOf(fromAddress);
+      const fromBal = balanceOf(canonFrom);
       assert(fromBal >= value, "FungibleToken: insufficient balance");
-      _balances.insert(disclose(fromAddress), disclose(fromBal - value as Uint<128>));
+      _balances.insert(disclose(canonFrom), disclose(fromBal - value as Uint<128>));
     }
 
-    if (Utils_isKeyOrAddressZero(disclose(to))) {
+    if (_isTargetZero(disclose(canonTo))) {
       // Burn
       _totalSupply = disclose(_totalSupply - value as Uint<128>);
     } else {
-      const toBal = balanceOf(to);
-      _balances.insert(disclose(to), disclose(toBal + value as Uint<128>));
+      const toBal = balanceOf(canonTo);
+      _balances.insert(disclose(canonTo), disclose(toBal + value as Uint<128>));
     }
   }
 
@@ -470,7 +564,7 @@ module FungibleToken {
    * @description Creates a `value` amount of tokens and assigns them to `account`,
    * by transferring it from the zero address. Relies on the `update` mechanism.
    *
-   * @circuitInfo k=10, rows=752
+   * @circuitInfo k=11, rows=1437
    *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
@@ -482,20 +576,21 @@ module FungibleToken {
    * - `account` is not a ContractAddress.
    * - `account` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The recipient of tokens minted.
    * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - Empty tuple.
    */
-  export circuit _mint(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
-    Initializable_assertInitialized();
-    assert(!Utils_isContractAddress(account), "FungibleToken: Unsafe Transfer");
+  export circuit _mint(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+    assertInitialized();
+    const isContractAddr = !account.is_left;
+    assert(!isContractAddr, "FungibleToken: unsafe transfer");
     _unsafeMint(account, value);
   }
 
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
    *
-   * @circuitInfo k=10, rows=749
+   * @circuitInfo k=11, rows=1434
    *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
@@ -506,24 +601,24 @@ module FungibleToken {
    * - Contract is initialized.
    * - `account` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The recipient of tokens minted.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The recipient of tokens minted.
    * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
-                   account: Either<ZswapCoinPublicKey, ContractAddress>,
+                   account: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
-    assert(!Utils_isKeyOrAddressZero(account), "FungibleToken: invalid receiver");
-    _update(shieldedBurnAddress(), account, value);
+    assertInitialized();
+    assert(!_isTargetZero(account), "FungibleToken: invalid receiver");
+    _update(ZERO(), account, value);
   }
 
   /**
    * @description Destroys a `value` amount of tokens from `account`, lowering the total supply.
    * Relies on the `_update` mechanism.
    *
-   * @circuitInfo k=10, rows=773
+   * @circuitInfo k=11, rows=1377
    *
    * Requirements:
    *
@@ -531,23 +626,22 @@ module FungibleToken {
    * - `account` is not the zero address.
    * - `account` must have at least a balance of `value`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} account - The target owner of tokens to burn.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The target owner of tokens to burn.
    * @param {Uint<128>} value - The amount of tokens to burn.
    * @return {[]} - Empty tuple.
    */
-  export circuit _burn(account: Either<ZswapCoinPublicKey, ContractAddress>, value: Uint<128>): [] {
-    Initializable_assertInitialized();
-    assert(!Utils_isKeyOrAddressZero(account), "FungibleToken: invalid sender");
-    _update(account, shieldedBurnAddress(), value);
+  export circuit _burn(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+    assertInitialized();
+    assert(!_isTargetZero(account), "FungibleToken: invalid sender");
+    _update(account, ZERO(), value);
   }
 
   /**
    * @description Sets `value` as the allowance of `spender` over the `owner`'s tokens.
    * This circuit is equivalent to `approve`, and can be used to
-   *
-   * @circuitInfo k=10, rows=583
-   *
    * e.g. set automatic allowances for certain subsystems, etc.
+   *
+   * @circuitInfo k=11, rows=1406
    *
    * Requirements:
    *
@@ -555,61 +649,128 @@ module FungibleToken {
    * - `owner` is not the zero address.
    * - `spender` is not the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of the tokens.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender of the tokens.
+   * @param {Either<Bytes<32>, ContractAddress>} owner - The owner of the tokens.
+   * @param {Either<Bytes<32>, ContractAddress>} spender - The spender of the tokens.
    * @param {Uint<128>} value - The amount of tokens `spender` may spend on behalf of `owner`.
    * @return {[]} - Empty tuple.
    */
   export circuit _approve(
-                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
-                   spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                   owner: Either<Bytes<32>, ContractAddress>,
+                   spender: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
-    assert(!Utils_isKeyOrAddressZero(owner), "FungibleToken: invalid owner");
-    assert(!Utils_isKeyOrAddressZero(spender), "FungibleToken: invalid spender");
-    if (!_allowances.member(disclose(owner))) {
+    assertInitialized();
+    const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
+    const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
+
+    assert(!_isTargetZero(canonOwner), "FungibleToken: invalid owner");
+    assert(!_isTargetZero(canonSpender), "FungibleToken: invalid spender");
+
+    if (!_allowances.member(disclose(canonOwner))) {
       // If owner doesn't exist, create and insert a new sub-map directly
       _allowances.insert(
-        disclose(owner),
-        default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Uint<128>>>
+        disclose(canonOwner),
+        default<Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>
         );
     }
-    _allowances.lookup(owner).insert(disclose(spender), disclose(value));
+    _allowances.lookup(canonOwner).insert(disclose(canonSpender), disclose(value));
   }
 
   /**
    * @description Updates `owner`'s allowance for `spender` based on spent `value`.
    * Does not update the allowance value in case of infinite allowance.
    *
-   * @circuitInfo k=10, rows=931
+   * @circuitInfo k=11, rows=1729
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `spender` must have at least an allowance of `value` from `owner`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} owner - The owner of the tokens.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} spender - The spender of the tokens.
+   * @param {Either<Bytes<32>, ContractAddress>} owner - The owner of the tokens.
+   * @param {Either<Bytes<32>, ContractAddress>} spender - The spender of the tokens.
    * @param {Uint<128>} value - The amount of token allowance to spend.
    * @return {[]} - Empty tuple.
    */
   export circuit _spendAllowance(
-                   owner: Either<ZswapCoinPublicKey, ContractAddress>,
-                   spender: Either<ZswapCoinPublicKey, ContractAddress>,
+                   owner: Either<Bytes<32>, ContractAddress>,
+                   spender: Either<Bytes<32>, ContractAddress>,
                    value: Uint<128>
                    ): [] {
-    Initializable_assertInitialized();
-    assert((_allowances.member(disclose(owner)) &&
-            _allowances.lookup(owner).member(disclose(spender))),
+    assertInitialized();
+    const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
+    const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
+
+    assert((_allowances.member(disclose(canonOwner)) &&
+            _allowances.lookup(canonOwner).member(disclose(canonSpender))),
            "FungibleToken: insufficient allowance"
            );
 
-    const currentAllowance = _allowances.lookup(owner).lookup(disclose(spender));
+    const currentAllowance = _allowances.lookup(canonOwner).lookup(disclose(canonSpender));
     const MAX_UINT128 = 340282366920938463463374607431768211455;
     if (currentAllowance < MAX_UINT128) {
       assert(currentAllowance >= value, "FungibleToken: insufficient allowance");
-      _approve(owner, spender, currentAllowance - value as Uint<128>);
+      _approve(canonOwner, canonSpender, currentAllowance - value as Uint<128>);
+    }
+  }
+
+  /**
+   * @description Computes the caller's account identifier from the `wit_FungibleTokenSK` witness.
+   *
+   * ## ID Derivation
+   * `accountId = persistentHash(secretKey)`
+   *
+   * The result is a 32-byte commitment that uniquely identifies the caller.
+   *
+   * @returns {Bytes<32>} accountId - The computed account identifier.
+   */
+  circuit _computeAccountId(): Bytes<32> {
+    return computeAccountId(wit_FungibleTokenSK());
+  }
+
+  /**
+   * @description Computes an account identifier without on-chain state, allowing a user to derive
+   * their identity commitment before submitting a token operation.
+   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
+   * given the same inputs.
+   *
+   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
+   * permanently compromise the security of this system:
+   *
+   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
+   *   application logs, analytics pipelines, or any observable side-channel.
+   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
+   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
+   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
+   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
+   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
+   * - **Avoid calling this circuit in untrusted environments** — executing this in an
+   *   unverified browser extension, compromised runtime, or shared machine may expose
+   *   the key to a malicious observer.
+   *
+   * ## ID Derivation
+   * `accountId = persistentHash(secretKey)`
+   *
+   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
+   *
+   * @returns {Bytes<32>} accountId - The computed account identifier.
+   */
+  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
+  }
+
+  /**
+   * @description Returns `true` if `target`'s active branch (as indicated by `is_left`)
+   * holds the zero value.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
+   * @returns {Boolean} - `true` if the active branch is zero, `false` otherwise.
+   */
+  circuit _isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
+    if (target.is_left) {
+      return target.left == default<Bytes<32>>;
+    } else {
+      return target.right == default<ContractAddress>;
     }
   }
 }

@@ -9,7 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Signer module in multisig directory (#424)
+- Multisig contract suite under `contracts/src/multisig/`: configurable M-of-N `Signer` / `SignerManager` registry, `ProposalManager`, stateful `ShieldedTreasury` and `ShieldedTreasuryStateless`, `UnshieldedTreasury`, `Forwarder` + `ForwarderPrivate` modules with per-recipient presets, and the `ShieldedMultiSig` / `ShieldedMultiSigV2` presets. Signature verification is stubbed pending ECDSA + Keccak primitives (#475). (#378, #424, #526)
+
+## 0.2.0 (2026-06-12)
+
+### Changed
+
+- **Breaking:** Each module now owns its `_isInitialized` ledger flag. The shared `Initializable__isInitialized` public ledger key is replaced by per-module keys (`Ownable__isInitialized`, `ZOwnablePK__isInitialized`, `ShieldedAccessControl__isInitialized`, `FungibleToken__isInitialized`, `NonFungibleToken__isInitialized`, `MultiToken__isInitialized`), fixing a state collision when two modules import the shared `Initializable` from the same directory (compiler [LFDT-Minokawa/compact#270](https://github.com/LFDT-Minokawa/compact/issues/270)). Fixes #556. (#562)
+- Replace the Turbo task runner with Yarn-based commands across the docs, CI workflows, and devcontainer. Fixes #572. (#576)
+- Batch Dependabot bumps for GitHub Actions and dev dependencies. (#553)
+
+## 0.1.0 (2026-06-05)
 
 ### Changes
 

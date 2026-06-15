@@ -171,4 +171,10 @@ describe('Utils', () => {
       expect(contract.UINT128_MAX()).toBe((1n << 128n) - 1n);
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should expose an empty public ledger via getPublicState', () => {
+      expect(contract.getPublicState()).toStrictEqual({});
+    });
+  });
 });
