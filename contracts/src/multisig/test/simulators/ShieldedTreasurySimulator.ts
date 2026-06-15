@@ -9,7 +9,7 @@ import {
 import {
   ShieldedTreasuryPrivateState,
   ShieldedTreasuryWitnesses,
-} from '../../witnesses/ShieldedTreasuryWitnesses.js';
+} from '../witnesses/ShieldedTreasuryWitnesses.js';
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
 type ShieldedSendResult = {

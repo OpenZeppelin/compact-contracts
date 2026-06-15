@@ -10,7 +10,7 @@ import {
 import {
   ForwarderUnshieldedPrivateState,
   ForwarderUnshieldedWitnesses,
-} from '../../../witnesses/presets/ForwarderUnshieldedWitnesses.js';
+} from '../../witnesses/presets/ForwarderUnshieldedWitnesses.js';
 
 type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
 

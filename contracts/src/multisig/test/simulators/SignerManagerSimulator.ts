@@ -12,7 +12,7 @@ import {
 import {
   SignerManagerPrivateState,
   SignerManagerWitnesses,
-} from '../../witnesses/SignerManagerWitnesses.js';
+} from '../witnesses/SignerManagerWitnesses.js';
 
 /**
  * A fixed set of exactly three signers, matching the

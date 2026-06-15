@@ -13,7 +13,7 @@ import {
 import {
   MockForwarderPrivatePrivateState,
   MockForwarderPrivateWitnesses,
-} from '../../witnesses/MockForwarderPrivateWitnesses.js';
+} from '../witnesses/MockForwarderPrivateWitnesses.js';
 
 type MockForwarderPrivateArgs = readonly [
   parentCommitment: Uint8Array,

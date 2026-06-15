@@ -11,7 +11,7 @@ import {
 import {
   MockForwarderPrivateState,
   MockForwarderWitnesses,
-} from '../../witnesses/MockForwarderWitnesses.js';
+} from '../witnesses/MockForwarderWitnesses.js';
 
 type MockForwarderArgs = readonly [parent: ZswapCoinPublicKey, isInit: boolean];
 

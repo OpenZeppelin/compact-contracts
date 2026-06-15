@@ -10,7 +10,7 @@ import {
 import {
   ShieldedMultiSigPrivateState,
   ShieldedMultiSigWitnesses,
-} from '../../witnesses/ShieldedMultiSigWitnesses.js';
+} from '../witnesses/ShieldedMultiSigWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;

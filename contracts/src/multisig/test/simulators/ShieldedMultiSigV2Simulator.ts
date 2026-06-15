@@ -11,7 +11,7 @@ import {
 import {
   ShieldedMultiSigV2PrivateState,
   ShieldedMultiSigV2Witnesses,
-} from '../../witnesses/ShieldedMultiSigV2Witnesses.js';
+} from '../witnesses/ShieldedMultiSigV2Witnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };

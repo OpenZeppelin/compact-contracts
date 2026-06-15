@@ -11,7 +11,7 @@ import {
 import {
   ForwarderShieldedPrivateState,
   ForwarderShieldedWitnesses,
-} from '../../../witnesses/presets/ForwarderShieldedWitnesses.js';
+} from '../../witnesses/presets/ForwarderShieldedWitnesses.js';
 
 type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 

@@ -13,7 +13,7 @@ import {
 import {
   ForwarderPrivatePrivateState,
   ForwarderPrivateWitnesses,
-} from '../../../witnesses/presets/ForwarderPrivateWitnesses.js';
+} from '../../witnesses/presets/ForwarderPrivateWitnesses.js';
 
 type ForwarderPrivateArgs = readonly [parentCommitment: Uint8Array];
 

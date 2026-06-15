@@ -9,7 +9,7 @@ import {
 import {
   SignerPrivateState,
   SignerWitnesses,
-} from '../../witnesses/SignerWitnesses.js';
+} from '../witnesses/SignerWitnesses.js';
 
 /**
  * Type constructor args
