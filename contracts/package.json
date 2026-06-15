@@ -27,6 +27,7 @@
     "compact": "compact-compiler --exclude '*/archive/*'",
     "compact:access": "compact-compiler --dir access",
     "compact:archive": "compact-compiler --dir archive",
+    "compact:multisig": "compact-compiler --dir multisig",
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
@@ -49,6 +50,7 @@
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "25.9.3",
     "@vitest/coverage-v8": "^4.1.8",
+    "fast-check": "^4.8.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"

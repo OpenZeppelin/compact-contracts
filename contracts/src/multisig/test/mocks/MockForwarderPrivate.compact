@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/test/mocks/MockForwarderPrivate.compact)
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+import "../../ForwarderPrivate" prefix ForwarderPrivate_;
+
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+
+/**
+ * @description Test fixture exposing the private ForwarderPrivate
+ * module's underscore-prefixed circuits directly. `isInit` controls
+ * whether the constructor initializes. Set it to `false` to leave the
+ * contract uninitialized and exercise the not-initialized guard. The
+ * parent commitment is a sealed ledger field, so it can only be set in
+ * the constructor.
+ *
+ * DO NOT USE IN PRODUCTION.
+ */
+constructor(parentCommitment: Bytes<32>, isInit: Boolean) {
+  if (disclose(isInit)) {
+    ForwarderPrivate_initialize(parentCommitment);
+  }
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return ForwarderPrivate__deposit(coin);
+}
+
+export circuit drain(
+  coin: QualifiedShieldedCoinInfo,
+  parentAddr: Bytes<32>,
+  opSecret: Bytes<32>,
+  value: Uint<128>
+): ShieldedSendResult {
+  return ForwarderPrivate__drain(coin, parentAddr, opSecret, value);
+}
+
+export pure circuit calculateParentCommitment(
+  parentAddr: Bytes<32>,
+  opSecret: Bytes<32>
+): Bytes<32> {
+  return ForwarderPrivate__calculateParentCommitment(parentAddr, opSecret);
+}

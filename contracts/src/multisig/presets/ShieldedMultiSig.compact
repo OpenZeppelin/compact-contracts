@@ -1,0 +1,236 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/ShieldedMultiSig.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module ShieldedMultiSig
+ * @description A shielded multisig preset composing `SignerManager`,
+ * `ProposalManager`, and `ShieldedTreasury`. Signers approve proposals that
+ * transfer shielded tokens out of the treasury once the configured threshold
+ * is met.
+ *
+ * @notice Signer identity uses `Either<ZswapCoinPublicKey, ContractAddress>`
+ * in state for forward compatibility. In the current protocol, only
+ * `left(ZswapCoinPublicKey)` callers can authenticate — `getCaller()` resolves
+ * via `ownPublicKey()` and has no way to produce a right-variant today.
+ * Registering contract-address signers is permitted but those signers cannot
+ * exercise governance (create/approve/revoke) until contract-to-contract calls
+ * are supported. Choose your signer set accordingly.
+ *
+ * @notice The state shape is deliberately kept broad so that, once
+ * contract-to-contract calls are supported, `getCaller()` can be swapped via
+ * a CMA (Contract Maintenance Authorities) circuit upgrade without a state
+ * migration. Existing deployments would then gain working contract-signer
+ * authentication.
+ */
+
+import CompactStandardLibrary;
+
+import "../ProposalManager" prefix Proposal_;
+import "../ShieldedTreasury" prefix Treasury_;
+import "../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
+
+// ─── State ───────────────────────────────────────────────────────────────
+
+export ledger _proposalApprovals: Map<Uint<64>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+export ledger _approvalCount: Map<Uint<64>, Uint<8>>;
+
+// ─── Constructor ─────────────────────────────────────────────────────────
+
+constructor(
+  signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
+  thresh: Uint<8>
+) {
+  Signer_initialize<3>(signers, thresh);
+}
+
+// ─── Deposit ─────────────────────────────────────────────────────────────
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Treasury__deposit(coin);
+}
+
+// ─── Proposals ───────────────────────────────────────────────────────────
+
+export circuit createShieldedProposal(
+  to: Proposal_Recipient,
+  color: Bytes<32>,
+  amount: Uint<128>
+): Uint<64> {
+  const callerPK = getCaller();
+  Signer_assertSigner(callerPK);
+
+  assert(
+    to.kind == Proposal_RecipientKind.ShieldedUser
+      || to.kind == Proposal_RecipientKind.Contract,
+    "ShieldedMultiSig: recipient must be a shielded user or contract"
+  );
+
+  return Proposal__createProposal(to, color, amount);
+}
+
+export circuit approveProposal(id: Uint<64>): [] {
+  // Check if active
+  Proposal_assertProposalActive(id);
+
+  // Check signer
+  const callerPK = getCaller();
+  Signer_assertSigner(callerPK);
+
+  // Check if already approved
+  assert(!isProposalApprovedBySigner(id, callerPK), "Multisig: already approved");
+
+  // Approve
+  _approveProposal(id, callerPK);
+}
+
+export circuit revokeApproval(id: Uint<64>): [] {
+  // Check if active
+  Proposal_assertProposalActive(id);
+
+  // Check signer
+  const callerPK = getCaller();
+  Signer_assertSigner(callerPK);
+
+  // Check has approved
+  assert(isProposalApprovedBySigner(id, callerPK), "Multisig: not approved");
+
+  // Revoke
+  _revokeApproval(id, callerPK);
+}
+
+export circuit executeShieldedProposal(
+  id: Uint<64>,
+): ShieldedSendResult {
+  // Check if active
+  Proposal_assertProposalActive(id);
+
+  // Check threshold
+  const approvalCount = getApprovalCount(id);
+  Signer_assertThresholdMet(approvalCount);
+
+  // Transfer
+  const { to, color, amount } = Proposal_getProposal(id);
+  const result = Treasury__send(
+    Proposal_toShieldedRecipient(to),
+    color,
+    amount,
+  );
+
+  // Finish lifecycle
+  Proposal__markExecuted(id);
+  return result;
+}
+
+// ─── Internal ───────────────────────────────────────────────────────────
+
+circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  if (!_proposalApprovals.member(disclose(id))) {
+    _proposalApprovals.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+  }
+
+  _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
+
+  const newCount = getApprovalCount(id) + 1 as Uint<8>;
+  _approvalCount.insert(disclose(id), disclose(newCount));
+}
+
+circuit _revokeApproval(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+  _proposalApprovals.lookup(disclose(id)).remove(disclose(signer));
+
+  const newCount = getApprovalCount(id) - 1 as Uint<8>;
+  _approvalCount.insert(disclose(id), disclose(newCount));
+}
+
+/**
+ * @description Returns the caller identity used for signer authentication.
+ *
+ * @warning Currently resolves callers via `ownPublicKey()` only, so any signer
+ * registered as a `right(ContractAddress)` variant cannot authenticate through
+ * this circuit today. Ledger fields keep the `Either<ZswapCoinPublicKey, ContractAddress>`
+ * shape so that, once contract-to-contract calls are supported, `getCaller()`
+ * can be replaced via a CMA (Contract Maintenance Authorities) circuit upgrade
+ * to detect the contract-call context and return the appropriate variant —
+ * without a state migration.
+ *
+ * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The caller wrapped as a left-variant.
+ */
+circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+}
+
+// ─── View ───────────────────────────────────────────────────────────────
+
+export circuit isProposalApprovedBySigner(
+  id: Uint<64>,
+  signer: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
+  if (!_proposalApprovals.member(disclose(id)) || !_proposalApprovals.lookup(disclose(id)).member(disclose(signer))) {
+    return false;
+  }
+
+  return _proposalApprovals.lookup(disclose(id)).lookup(disclose(signer));
+}
+
+export circuit getApprovalCount(id: Uint<64>): Uint<8> {
+  if (!_approvalCount.member(disclose(id))) {
+    return 0;
+  }
+
+  return _approvalCount.lookup(disclose(id));
+}
+
+// IProposalManager
+
+export circuit getProposal(id: Uint<64>): Proposal_Proposal {
+  return Proposal_getProposal(id);
+}
+
+export circuit getProposalRecipient(id: Uint<64>): Proposal_Recipient {
+  return Proposal_getProposalRecipient(id);
+}
+
+export circuit getProposalAmount(id: Uint<64>): Uint<128> {
+  return Proposal_getProposalAmount(id);
+}
+
+export circuit getProposalColor(id: Uint<64>): Bytes<32> {
+  return Proposal_getProposalColor(id);
+}
+
+export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
+  return Proposal_getProposalStatus(id);
+}
+
+// IShieldedTreasury
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return Treasury_getTokenBalance(color);
+}
+
+export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedTotal(color);
+}
+
+export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getSentTotal(color);
+}
+
+export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedMinusSent(color);
+}
+
+// ISignerManager
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return Signer_isSigner(account);
+}

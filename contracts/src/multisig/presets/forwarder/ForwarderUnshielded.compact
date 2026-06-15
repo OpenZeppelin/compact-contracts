@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/forwarder/ForwarderUnshielded.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title ForwarderUnshielded
+ * @description Public-parent forwarder for unshielded coins. Receives
+ * an unshielded amount of a given color and atomically forwards it to
+ * the configured parent address.
+ *
+ * Unshielded transfers are publicly visible on the chain: depositor,
+ * recipient, color, and amount all appear on the public transcript.
+ * Use `ForwarderShielded` instead when the deposit kind is shielded.
+ */
+
+import CompactStandardLibrary;
+import "../../Forwarder"<UserAddress> prefix Forwarder_;
+
+export { UserAddress };
+
+/**
+ * @description Deploys the forwarder bound to a specific parent address.
+ *
+ * @param {UserAddress} parent - The parent address that receives every
+ * forwarded amount.
+ */
+constructor(parent: UserAddress) {
+  Forwarder_initialize(parent);
+}
+
+/**
+ * @description Receives an unshielded amount of `color` and atomically
+ * forwards it to the configured parent.
+ *
+ * @param {Bytes<32>} color - The token color.
+ * @param {Uint<128>} amount - The amount to deposit.
+ *
+ * @returns {[]} Empty tuple.
+ */
+export circuit depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
+  Forwarder__depositUnshielded(color, amount);
+}
+
+/**
+ * @description Returns the configured parent address.
+ *
+ * @returns {UserAddress} The parent address set at deploy.
+ */
+export circuit getParent(): UserAddress {
+  return Forwarder__parent;
+}

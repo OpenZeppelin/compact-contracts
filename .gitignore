@@ -49,3 +49,5 @@ coverage
 *temp
 
 .claude/
+
+.states

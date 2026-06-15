@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/forwarder/ForwarderShielded.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @title ForwarderShielded
+ * @description Public-parent forwarder for shielded coins. Receives a
+ * shielded coin and atomically forwards it to the configured parent
+ * address.
+ *
+ * The parent address is hard-coded at deploy time and immutable. Anyone
+ * may call `deposit`; the recipient is fixed, so there is no need for
+ * access control.
+ */
+
+import CompactStandardLibrary;
+import "../../Forwarder"<ZswapCoinPublicKey> prefix Forwarder_;
+
+export { ZswapCoinPublicKey, ShieldedCoinInfo };
+
+/**
+ * @description Deploys the forwarder bound to a specific parent address.
+ *
+ * @param {ZswapCoinPublicKey} parent - The parent address that receives
+ * every forwarded coin.
+ */
+constructor(parent: ZswapCoinPublicKey) {
+  Forwarder_initialize(parent);
+}
+
+/**
+ * @description Receives a shielded coin and atomically forwards it to
+ * the configured parent. The coin is claimed via `receiveShielded` and
+ * immediately re-sent via `sendImmediateShielded`.
+ *
+ * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+ *
+ * @returns {[]} Empty tuple.
+ */
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Forwarder__depositShielded(coin);
+}
+
+/**
+ * @description Returns the configured parent address.
+ *
+ * @returns {ZswapCoinPublicKey} The parent address set at deploy.
+ */
+export circuit getParent(): ZswapCoinPublicKey {
+  return Forwarder__parent;
+}

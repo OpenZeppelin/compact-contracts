@@ -1,0 +1,201 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ShieldedTreasury.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module ShieldedTreasury
+ * @description Manages shielded (private) token deposits, accounting,
+ * and transfers for multisig governance contracts.
+ *
+ * Coins are stored on the contract ledger in a map keyed by token color,
+ * with one UTXO per color. Deposits are merged with existing coins of
+ * the same color via `mergeCoinImmediate`. This simplifies coin selection
+ * at spend time — the executor doesn't need to choose between multiple
+ * UTXOs of the same color.
+ *
+ * Cumulative received and sent totals are tracked per color for audit
+ * purposes. The canonical balance query is `getTokenBalance`, which
+ * reads the actual coin value from the UTXO map.
+ *
+ * Underscore-prefixed circuits (_deposit, _send) have no access control
+ * enforcement. The consuming contract must gate these behind its own
+ * authorization policy.
+ */
+module ShieldedTreasury {
+  import CompactStandardLibrary;
+  import { selfAsRecipient, UINT128_MAX } from "../utils/Utils" prefix Utils_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export ledger _coins: Map<Bytes<32>, QualifiedShieldedCoinInfo>;
+  export ledger _received: Map<Bytes<32>, Uint<128>>;
+  export ledger _sent: Map<Bytes<32>, Uint<128>>;
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin into the treasury.
+   *
+   * The coin is first claimed at the protocol level via `receiveShielded`,
+   * which allocates the Merkle tree index required by `insertCoin`.
+   * The coin is then merged with any existing coin of the same color,
+   * or inserted as a new entry if no coin of that color exists.
+   *
+   * Zero-value deposits are permitted. While currently a no-op
+   * economically, they may serve as signaling mechanisms when events
+   * are supported, or as decoy transactions for privacy.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - Deposit must not cause received total overflow.
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin descriptor.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    const currentReceived = getReceivedTotal(coin.color);
+    assert(currentReceived <= Utils_UINT128_MAX() - coin.value, "ShieldedTreasury: overflow");
+
+    receiveShielded(disclose(coin));
+
+    const coinColor = disclose(coin.color);
+
+    if (_coins.member(coinColor)) {
+      const merged = mergeCoinImmediate(_coins.lookup(coinColor), disclose(coin));
+      _coins.insertCoin(coinColor, merged, Utils_selfAsRecipient());
+    } else {
+      _coins.insertCoin(coinColor, disclose(coin), Utils_selfAsRecipient());
+    }
+
+    _received.insert(
+      coinColor,
+      disclose(currentReceived + coin.value as Uint<128>)
+    );
+  }
+
+  // ─── Send ───────────────────────────────────────────────────────
+
+  /**
+   * @description Sends shielded tokens from the treasury.
+   *
+   * Looks up the stored coin by color, verifies sufficient value,
+   * and executes the shielded send. If the send produces change,
+   * it is sent back to the contract via `sendImmediateShielded`.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - A coin of the given `color` must exist in the treasury.
+   * - The coin's value must be >= `amount`.
+   * - Send must not cause sent total overflow.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to send.
+   *
+   * @returns {ShieldedSendResult} The result containing sent coin and any change.
+   */
+  export circuit _send(
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    color: Bytes<32>,
+    amount: Uint<128>
+  ): ShieldedSendResult {
+    assert(_coins.member(disclose(color)), "ShieldedTreasury: no balance");
+
+    const coin = _coins.lookup(disclose(color));
+    assert(coin.value >= amount, "ShieldedTreasury: coin value insufficient");
+
+    const currentSent = getSentTotal(color);
+    assert(currentSent <= Utils_UINT128_MAX() - amount, "ShieldedTreasury: overflow");
+
+    const result = sendShielded(coin, disclose(recipient), disclose(amount));
+
+    if (disclose(result.change.is_some)) {
+      const changeCoin = result.change.value;
+      sendImmediateShielded(
+        changeCoin,
+        Utils_selfAsRecipient(),
+        changeCoin.value
+      );
+      _coins.insertCoin(disclose(color), changeCoin, Utils_selfAsRecipient());
+    } else {
+      _coins.remove(disclose(color));
+    }
+
+    _sent.insert(
+      disclose(color),
+      disclose(currentSent + amount as Uint<128>)
+    );
+
+    return result;
+  }
+
+  // ─── View ───────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the current token balance for a color.
+   * Reads the actual coin value from the UTXO map.
+   *
+   * @param {Bytes<32>} color - The token color.
+   *
+   * @returns {Uint<128>} The current balance.
+   */
+  export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+    if (!_coins.member(disclose(color))) {
+      return 0;
+    }
+    return _coins.lookup(disclose(color)).value;
+  }
+
+  // ─── Accounting ─────────────────────────────────────────────────
+
+  /**
+   * @description Returns the cumulative received total for a color.
+   *
+   * @param {Bytes<32>} color - The token color.
+   *
+   * @returns {Uint<128>} Total received.
+   */
+  export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+    if (!_received.member(disclose(color))) {
+      return 0;
+    }
+    return _received.lookup(disclose(color));
+  }
+
+  /**
+   * @description Returns the cumulative sent total for a color.
+   *
+   * @param {Bytes<32>} color - The token color.
+   *
+   * @returns {Uint<128>} Total sent.
+   */
+  export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+    if (!_sent.member(disclose(color))) {
+      return 0;
+    }
+    return _sent.lookup(disclose(color));
+  }
+
+  /**
+   * @description Returns the difference between cumulative received
+   * and cumulative sent totals for a color. Should equal
+   * `getTokenBalance` if accounting is consistent.
+   *
+   * @param {Bytes<32>} color - The token color.
+   *
+   * @returns {Uint<128>} Received minus sent.
+   */
+  export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
+    return getReceivedTotal(color) - getSentTotal(color) as Uint<128>;
+  }
+}

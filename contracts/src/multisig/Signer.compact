@@ -1,0 +1,277 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/Signer.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module Signer<T>
+ * @description Manages signer registry, threshold enforcement, and signer
+ * validation for multisig governance contracts.
+ *
+ * Parameterized over the signer identity type `T`, allowing the consuming
+ * contract to choose the identity mechanism at import time. Common
+ * instantiations include:
+ *
+ * - `Bytes<32>` for commitment-based identity (e.g., hash of ECDSA public key)
+ * - `JubjubPoint` for Schnorr/MuSig aggregated key
+ *
+ * The Signer module does not resolve caller identity. It receives a validated
+ * caller from the contract layer and checks it against the registry.
+ * This separation allows the identity mechanism to change without
+ * modifying the module.
+ *
+ * The signer count and threshold are of type `Uint<8>`, limiting the
+ * maximum number of signers and threshold to 255. This is sufficient
+ * for any practical multisig use case. For large-scale governance
+ * requiring more signers, consider a Merkle tree-based variant.
+ *
+ * Multi-step signer reconfigurations (e.g., removing a signer and
+ * lowering the threshold) may produce intermediate states where the
+ * module's invariants temporarily hold but the contract's intended
+ * configuration is incomplete. This is a contract-layer concern.
+ * Contracts should either perform reconfigurations atomically in a
+ * single circuit or use a configuration nonce to invalidate proposals
+ * created under a stale signer set.
+ *
+ * Underscore-prefixed circuits (_addSigner, _removeSigner,
+ * _changeThreshold) have no access control enforcement. The consuming
+ * contract must gate these behind its own authorization policy.
+ *
+ * Contracts may handle their own initialization and this module
+ * supports custom flows. Thus, contracts may choose to not
+ * call `initialize` in the contract's constructor. Contracts MUST NOT
+ * call `initialize` outside of the constructor context because
+ * this could corrupt the signer set and threshold configuration.
+ */
+module Signer<T> {
+  import CompactStandardLibrary;
+  import "../security/Initializable" prefix Initializable_;
+
+  // ─── State ──────────────────────────────────────────────────────────────────
+
+  export ledger _signers: Set<T>;
+  export ledger _signerCount: Uint<8>;
+  export ledger _threshold: Uint<8>;
+
+  // ─── Initialization ─────────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the signer module with the given threshold
+   * and an initial set of signers.
+   * If used, it should only be called in the contract's constructor.
+   *
+   * @circuitInfo k=11, rows=1815
+   *
+   * Requirements:
+   *
+   * - If used, can only be called once (in the constructor).
+   * - `thresh` must not be zero.
+   * - `thresh` must not exceed the number of `signers`.
+   * - `signers` must not contain duplicates.
+   *
+   * @param {Vector<n, T>} signers - The initial signer set.
+   * @param {Uint<8>} thresh - The minimum number of approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize<#n>(
+    signers: Vector<n, T>,
+    thresh: Uint<8>
+  ): [] {
+    Initializable_initialize();
+
+    for (const signer of signers) {
+      _addSigner(signer);
+    }
+
+    _changeThreshold(thresh);
+  }
+
+  // ─── Guards ─────────────────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the given caller is an active signer.
+   *
+   * @circuitInfo k=10, rows=585
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   * - `caller` must be a member of the signers registry.
+   *
+   * @param {T} caller - The identity to validate.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertSigner(caller: T): [] {
+    Initializable_assertInitialized();
+    assert(isSigner(caller), "Signer: not a signer");
+  }
+
+  /**
+   * @description Asserts that the given approval count meets the threshold.
+   *
+   * @circuitInfo k=9, rows=54
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   * - Ledger threshold must be set (not be zero).
+   * - `approvalCount` must be >= threshold.
+   *
+   * @param {Uint<8>} approvalCount - The current number of approvals.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
+    Initializable_assertInitialized();
+    assert(_threshold != 0, "Signer: threshold not set");
+    assert(approvalCount >= _threshold, "Signer: threshold not met");
+  }
+
+  // ─── View ──────────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the current signer count.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @returns {Uint<8>} The number of active signers.
+   */
+  export circuit getSignerCount(): Uint<8> {
+    Initializable_assertInitialized();
+    return _signerCount;
+  }
+
+  /**
+   * @description Returns the approval threshold.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @returns {Uint<8>} The threshold.
+   */
+  export circuit getThreshold(): Uint<8> {
+    Initializable_assertInitialized();
+    return _threshold;
+  }
+
+  /**
+   * @description Returns whether the given account is an active signer.
+   *
+   * @circuitInfo k=10, rows=605
+   *
+   * @param {T} account - The account to check.
+   * @returns {Boolean} True if the account is an active signer.
+   */
+  export circuit isSigner(account: T): Boolean {
+    return _signers.member(disclose(account));
+  }
+
+  // ─── Signer Management ─────────────────────────────────────────────────────
+
+  /**
+   * @description Adds a new signer to the registry.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * @circuitInfo k=10, rows=598
+   *
+   * Requirements:
+   *
+   * - `signer` must not already be an active signer.
+   *
+   * @param {T} signer - The signer to add.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _addSigner(signer: T): [] {
+    assert(
+      !isSigner(signer),
+      "Signer: signer already active"
+    );
+
+    _signers.insert(disclose(signer));
+    _signerCount = _signerCount + 1 as Uint<8>;
+  }
+
+  /**
+   * @description Removes a signer from the registry.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * @circuitInfo k=10, rows=612
+   *
+   * Requirements:
+   *
+   * - `signer` must be an active signer.
+   * - Removal must not drop signer count below threshold.
+   *
+   * @param {T} signer - The signer to remove.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _removeSigner(signer: T): [] {
+    assert(isSigner(signer), "Signer: not a signer");
+
+    const newCount = _signerCount - 1 as Uint<8>;
+    assert(newCount >= _threshold, "Signer: removal would breach threshold");
+
+    _signers.remove(disclose(signer));
+    _signerCount = newCount;
+  }
+
+  /**
+   * @description Updates the approval threshold.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * @circuitInfo k=9, rows=53
+   *
+   * Requirements:
+   *
+   * - `newThreshold` must not be zero.
+   * - `newThreshold` must not exceed the current signer count.
+   *
+   * @param {Uint<8>} newThreshold - The new minimum number of approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _changeThreshold(newThreshold: Uint<8>): [] {
+    assert(newThreshold <= _signerCount, "Signer: threshold exceeds signer count");
+    _setThreshold(newThreshold);
+  }
+
+  /**
+   * @description Sets the approval threshold without checking
+   * against the current signer count.
+   *
+   * @warning This is intended for use during contract construction
+   * or custom setup flows where signers may not yet be registered.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy. Use `_changeThreshold` for
+   * operational threshold changes with signer count validation.
+   *
+   * @circuitInfo k=6, rows=40
+   *
+   * Requirements:
+   *
+   * - `newThreshold` must not be zero.
+   *
+   * @param {Uint<8>} newThreshold - The minimum number of approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _setThreshold(newThreshold: Uint<8>): [] {
+    assert(newThreshold != 0, "Signer: threshold must not be zero");
+    _threshold = disclose(newThreshold);
+  }
+}

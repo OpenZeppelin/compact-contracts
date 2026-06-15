@@ -41,3 +41,11 @@ export pure circuit canonicalizeKeyOrAddress(
 ): Either<ZswapCoinPublicKey, ContractAddress> {
   return Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(keyOrAddress);
 }
+
+export circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Utils_selfAsRecipient();
+}
+
+export pure circuit UINT128_MAX(): Uint<128> {
+  return Utils_UINT128_MAX();
+}

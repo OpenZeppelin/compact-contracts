@@ -1,0 +1,70 @@
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../ProposalManager" prefix Proposal_;
+
+export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Proposal_Recipient {
+  return Proposal_shieldedUserRecipient(key);
+}
+
+export circuit unshieldedUserRecipient(addr: UserAddress): Proposal_Recipient {
+  return Proposal_unshieldedUserRecipient(addr);
+}
+
+export circuit contractRecipient(addr: ContractAddress): Proposal_Recipient {
+  return Proposal_contractRecipient(addr);
+}
+
+export circuit assertProposalExists(id: Uint<64>): [] {
+  return Proposal_assertProposalExists(id);
+}
+
+export circuit assertProposalActive(id: Uint<64>): [] {
+  return Proposal_assertProposalActive(id);
+}
+
+export circuit _createProposal(
+  to: Proposal_Recipient,
+  color: Bytes<32>,
+  amount: Uint<128>
+): Uint<64> {
+  return Proposal__createProposal(to, color, amount);
+}
+
+export circuit _cancelProposal(id: Uint<64>): [] {
+  return Proposal__cancelProposal(id);
+}
+
+export circuit _markExecuted(id: Uint<64>): [] {
+  return Proposal__markExecuted(id);
+}
+
+export circuit getProposal(id: Uint<64>): Proposal_Proposal {
+  return Proposal_getProposal(id);
+}
+
+export circuit getProposalRecipient(id: Uint<64>): Proposal_Recipient {
+  return Proposal_getProposalRecipient(id);
+}
+
+export circuit getProposalAmount(id: Uint<64>): Uint<128> {
+  return Proposal_getProposalAmount(id);
+}
+
+export circuit getProposalColor(id: Uint<64>): Bytes<32> {
+  return Proposal_getProposalColor(id);
+}
+
+export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
+  return Proposal_getProposalStatus(id);
+}
+
+export circuit toShieldedRecipient(r: Proposal_Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Proposal_toShieldedRecipient(r);
+}
+
+export circuit toUnshieldedRecipient(r: Proposal_Recipient): Either<ContractAddress, UserAddress> {
+  return Proposal_toUnshieldedRecipient(r);
+}
+

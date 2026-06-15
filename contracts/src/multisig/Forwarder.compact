@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/Forwarder.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module Forwarder
+ * @description Public-parent forwarder primitives. Provides an atomic
+ * forward pattern: receive a coin (shielded or unshielded) and
+ * immediately send it to a hard-coded parent address.
+ *
+ * The module is generic over the parent's address type `T`. Each preset
+ * specializes it to the address kind it forwards to: `ForwarderShielded`
+ * uses `ZswapCoinPublicKey`, `ForwarderUnshielded` uses `UserAddress`.
+ * Storing the parent as a typed value rather than raw `Bytes<32>` forces
+ * every deployer to supply the correct address kind for the coin type.
+ *
+ * Underscore-prefixed circuits have no access control. The forwarder is
+ * intentionally permissionless — the recipient is hard-coded at deploy,
+ * so any caller may deposit without compromising the parent. State
+ * access is gated by the `Initializable` module: every circuit asserts
+ * the module has been initialized via `initialize`.
+ */
+module Forwarder<T> {
+  import CompactStandardLibrary;
+  import "../security/Initializable" prefix Initializable_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export sealed ledger _parent: T;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent address.
+   * Called once from the preset constructor. The parent is the
+   * recipient of every forwarded coin and is immutable after init.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   * - `parent` must not be the zero address. A zero parent would
+   *   forward every deposit to an unspendable address with no recovery
+   *   path.
+   *
+   * @param {T} parent - The parent address. Typed per the specializing
+   * preset: `ZswapCoinPublicKey` for shielded, `UserAddress` for
+   * unshielded.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(parent: T): [] {
+    assert(parent != default<T>, "Forwarder: zero parent");
+    Initializable_initialize();
+    _parent = disclose(parent);
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin and atomically forwards it
+   * to `_parent`. The coin is claimed at the protocol level via
+   * `receiveShielded`, then immediately re-sent via
+   * `sendImmediateShielded`. The parent's bytes are wrapped as a
+   * `ZswapCoinPublicKey` recipient at the send site.
+   *
+   * @circuitInfo k=15, rows=18573
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _depositShielded(coin: ShieldedCoinInfo): [] {
+    Initializable_assertInitialized();
+    receiveShielded(disclose(coin));
+    sendImmediateShielded(
+      disclose(coin),
+      left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: _parent.bytes }),
+      disclose(coin.value)
+    );
+  }
+
+  /**
+   * @description Receives an unshielded amount of `color` and
+   * atomically forwards it to `_parent`. The parent's bytes are
+   * wrapped as a `UserAddress` recipient at the send site.
+   *
+   * @circuitInfo k=9, rows=436
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to deposit.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+    receiveUnshielded(disclose(color), disclose(amount));
+    sendUnshielded(
+      disclose(color),
+      disclose(amount),
+      right<ContractAddress, UserAddress>(UserAddress { bytes: _parent.bytes })
+    );
+  }
+}

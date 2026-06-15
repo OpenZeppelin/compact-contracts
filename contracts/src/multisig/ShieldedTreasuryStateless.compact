@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ShieldedTreasuryStateless.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module ShieldedTreasury
+ * @description Manages shielded (private) token deposits, accounting,
+ * and transfers for multisig governance contracts.
+ *
+ * Coins are stored on the contract ledger in a map keyed by token color,
+ * with one UTXO per color. Deposits are merged with existing coins of
+ * the same color via `mergeCoinImmediate`. This simplifies coin selection
+ * at spend time — the executor doesn't need to choose between multiple
+ * UTXOs of the same color.
+ *
+ * Cumulative received and sent totals are tracked per color for audit
+ * purposes. The canonical balance query is `getTokenBalance`, which
+ * reads the actual coin value from the UTXO map.
+ */
+module ShieldedTreasuryStateless {
+  import CompactStandardLibrary;
+  import { selfAsRecipient } from "../utils/Utils" prefix Utils_;
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin into the treasury.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    receiveShielded(disclose(coin));
+  }
+
+  // ─── Send ───────────────────────────────────────────────────────
+
+  /**
+   * @description Sends shielded tokens using a caller-provided coin.
+   *
+   * The coin is supplied by the caller rather than looked up from
+   * on-chain state; the token color is derived from `coin.color`.
+   * Executes the shielded send and, if change is produced, returns it
+   * to the contract via `sendImmediateShielded`. No balance or
+   * received/sent accounting is tracked on the ledger.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - `coin.value` must be >= `amount`.
+   *
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (provided by the caller).
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
+   * @param {Uint<128>} amount - The amount to send.
+   *
+   * @returns {ShieldedSendResult} The result containing sent coin and any change.
+   */
+  export circuit _send(
+    coin: QualifiedShieldedCoinInfo,
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    amount: Uint<128>
+  ): ShieldedSendResult {
+    const result = sendShielded(disclose(coin), disclose(recipient), disclose(amount));
+
+    if (disclose(result.change.is_some)) {
+      sendImmediateShielded(
+        disclose(result.change.value),
+        Utils_selfAsRecipient(),
+        disclose(result.change.value.value)
+      );
+    }
+
+    return result;
+  }
+}
