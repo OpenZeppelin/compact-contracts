@@ -3,12 +3,12 @@ import {
   createSimulator,
 } from '@openzeppelin/compact-simulator';
 import {
+  Contract as ForwarderPrivate,
   ledger,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
-  Contract as ForwarderPrivate,
 } from '../../../../../artifacts/ForwarderPrivate/contract/index.js';
 import {
   ForwarderPrivatePrivateState,

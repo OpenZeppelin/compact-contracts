@@ -4,11 +4,11 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
+  Contract as MockForwarderPrivate,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
-  Contract as MockForwarderPrivate,
 } from '../../../../artifacts/MockForwarderPrivate/contract/index.js';
 import {
   MockForwarderPrivatePrivateState,

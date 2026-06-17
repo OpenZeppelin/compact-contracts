@@ -61,9 +61,7 @@ describe('Forwarder module', () => {
     });
 
     it('should accept a shielded deposit and forward it', () => {
-      expect(() =>
-        mock.depositShielded(makeCoin(COLOR, AMOUNT)),
-      ).not.toThrow();
+      expect(() => mock.depositShielded(makeCoin(COLOR, AMOUNT))).not.toThrow();
     });
 
     it('should accept an unshielded deposit and forward it', () => {

@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (security/ComplianceRegistry.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ComplianceRegistry
+ * @description A reusable freeze + KYC-allowlist registry for regulated assets.
+ *
+ * This module holds compliance STATE and the checks over it; it holds no
+ * authority policy. The mutators (`_freeze`, `_unfreeze`, `_setKycRequired`,
+ * `_setKycApproved`) are deliberately UNGATED composable primitives — a
+ * composing contract gates them behind its access-control module (issuer /
+ * freezer roles), the same way a token gates `_mint` / `_burn`.
+ *
+ * Identity is an abstract `Bytes<32>` account identifier, matching the
+ * convention used by `ConfidentialFungibleToken` and `Ownable`
+ * (`accountId = persistentHash(secretKey)`). The registry never derives or
+ * authenticates an identity itself — callers pass the account to check.
+ *
+ * @dev Composition pattern. Enforcement lives in the WRAPPER, not here and not
+ * in the token. Gate explicit-argument identities (a recipient) up front; gate
+ * the token's returned caller identity (a sender) after the call — an assert
+ * failing anywhere in a Compact circuit reverts the whole transaction. See
+ * `ConfidentialFungibleToken`'s caller-identity gating note.
+ */
+module ComplianceRegistry {
+  import CompactStandardLibrary;
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+
+  /** @description Accounts explicitly frozen. Absent ⇒ not frozen. */
+  export ledger _frozen: Map<Bytes<32>, Boolean>;
+
+  /** @description When true, `assertKycApproved` enforces the allowlist. */
+  export ledger _kycRequired: Boolean;
+
+  /** @description KYC-approved accounts. */
+  export ledger _kycApproved: Map<Bytes<32>, Boolean>;
+
+  // ---------------------------------------------------------------------------
+  // Views
+  // ---------------------------------------------------------------------------
+
+  export circuit isFrozen(account: Bytes<32>): Boolean {
+    return _frozen.member(disclose(account)) && _frozen.lookup(disclose(account));
+  }
+
+  export circuit isKycRequired(): Boolean {
+    return _kycRequired;
+  }
+
+  export circuit isKycApproved(account: Bytes<32>): Boolean {
+    return _kycApproved.member(disclose(account)) &&
+           _kycApproved.lookup(disclose(account));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Checks
+  // ---------------------------------------------------------------------------
+
+  /** @description Asserts `account` is not frozen. */
+  export circuit assertNotFrozen(account: Bytes<32>): [] {
+    assert(!isFrozen(account), "ComplianceRegistry: account frozen");
+  }
+
+  /**
+   * @description Asserts `account` is KYC-approved when KYC is required. A
+   * no-op while `_kycRequired` is false (the default), so a composing token is
+   * permissionless until a deployment opts in.
+   */
+  export circuit assertKycApproved(account: Bytes<32>): [] {
+    assert(!_kycRequired || isKycApproved(account),
+           "ComplianceRegistry: account not KYC-approved");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mutators (UNGATED — the composing contract is responsible for gating these)
+  // ---------------------------------------------------------------------------
+
+  export circuit _freeze(account: Bytes<32>): [] {
+    _frozen.insert(disclose(account), true);
+  }
+
+  export circuit _unfreeze(account: Bytes<32>): [] {
+    _frozen.insert(disclose(account), false);
+  }
+
+  export circuit _setKycRequired(required: Boolean): [] {
+    _kycRequired = disclose(required);
+  }
+
+  export circuit _setKycApproved(account: Bytes<32>, approved: Boolean): [] {
+    _kycApproved.insert(disclose(account), disclose(approved));
+  }
+}

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivateSimulator.js';
 
@@ -35,7 +35,10 @@ function makeQualifiedCoin(
 }
 
 function commitment(parent: Uint8Array, opSecret: Uint8Array): Uint8Array {
-  return MockForwarderPrivateSimulator.calculateParentCommitment(parent, opSecret);
+  return MockForwarderPrivateSimulator.calculateParentCommitment(
+    parent,
+    opSecret,
+  );
 }
 
 describe('ForwarderPrivate module', () => {
@@ -63,7 +66,10 @@ describe('ForwarderPrivate module', () => {
     let mock: MockForwarderPrivateSimulator;
 
     beforeEach(() => {
-      mock = new MockForwarderPrivateSimulator(commitment(PARENT, OP_SECRET), false);
+      mock = new MockForwarderPrivateSimulator(
+        commitment(PARENT, OP_SECRET),
+        false,
+      );
     });
 
     it('should fail deposit when not initialized', () => {
@@ -74,7 +80,12 @@ describe('ForwarderPrivate module', () => {
 
     it('should fail drain when not initialized', () => {
       expect(() =>
-        mock.drain(makeQualifiedCoin(COLOR, AMOUNT, 0n), PARENT, OP_SECRET, AMOUNT),
+        mock.drain(
+          makeQualifiedCoin(COLOR, AMOUNT, 0n),
+          PARENT,
+          OP_SECRET,
+          AMOUNT,
+        ),
       ).toThrow('Initializable: contract not initialized');
     });
   });
@@ -94,14 +105,8 @@ describe('ForwarderPrivate module', () => {
           fc.uint8Array({ minLength: 32, maxLength: 32 }),
           (parent, s1, s2) => {
             fc.pre(s1.some((b, i) => b !== s2[i]));
-            const c1 = commitment(
-              Uint8Array.from(parent),
-              Uint8Array.from(s1),
-            );
-            const c2 = commitment(
-              Uint8Array.from(parent),
-              Uint8Array.from(s2),
-            );
+            const c1 = commitment(Uint8Array.from(parent), Uint8Array.from(s1));
+            const c2 = commitment(Uint8Array.from(parent), Uint8Array.from(s2));
             expect(c1).not.toEqual(c2);
           },
         ),
@@ -114,7 +119,10 @@ describe('ForwarderPrivate module', () => {
     let mock: MockForwarderPrivateSimulator;
 
     beforeEach(() => {
-      mock = new MockForwarderPrivateSimulator(commitment(PARENT, OP_SECRET), true);
+      mock = new MockForwarderPrivateSimulator(
+        commitment(PARENT, OP_SECRET),
+        true,
+      );
       mock.deposit(makeCoin(COLOR, AMOUNT));
     });
 

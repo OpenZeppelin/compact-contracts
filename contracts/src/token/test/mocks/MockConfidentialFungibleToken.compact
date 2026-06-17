@@ -1,0 +1,93 @@
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+import "../../ConfidentialFungibleToken" prefix CFT_;
+import "../../../crypto/ElGamal" prefix ElGamal_;
+
+export { CFT_EscrowEntry, ElGamal_Ciphertext };
+
+export {
+  CFT__balances,
+  CFT__encryptionKeys,
+  CFT__memos,
+  CFT__escrow,
+  CFT__totalSupply,
+  CFT__name,
+  CFT__symbol,
+  CFT__decimals
+};
+
+constructor(
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
+) {
+  CFT_initialize(name_, symbol_, decimals_);
+}
+
+export circuit name(): Opaque<"string"> {
+  return CFT_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return CFT_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return CFT_decimals();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return CFT_totalSupply();
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_balanceOf(account);
+}
+
+export circuit allowance(account: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
+  return CFT_allowance(account, spender);
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return CFT_isRegistered(account);
+}
+
+export circuit register(): Bytes<32> {
+  return CFT_register();
+}
+
+export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT_transfer(to, value);
+}
+
+export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT_approve(spender, value);
+}
+
+export circuit transferFrom(
+    fromAddress: Bytes<32>,
+    to: Bytes<32>,
+    value: Uint<128>
+): Bytes<32> {
+  return CFT_transferFrom(fromAddress, to, value);
+}
+
+export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+  return CFT__mint(account, value);
+}
+
+export circuit _burn(value: Uint<128>): Bytes<32> {
+  return CFT__burn(value);
+}
+
+export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT__burnFrom(fromAddress, value);
+}
+
+export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+  return CFT_computeAccountId(sk);
+}
+
+export circuit clearMemos(): [] {
+  return CFT_clearMemos();
+}

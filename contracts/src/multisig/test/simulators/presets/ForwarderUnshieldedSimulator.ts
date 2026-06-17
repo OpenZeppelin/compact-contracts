@@ -3,8 +3,8 @@ import {
   createSimulator,
 } from '@openzeppelin/compact-simulator';
 import {
-  ledger,
   Contract as ForwarderUnshielded,
+  ledger,
   type UserAddress,
 } from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
 import {

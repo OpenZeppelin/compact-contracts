@@ -1,0 +1,236 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (crypto/ElGamal.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ElGamal
+ * @description Stateless, single-receiver ElGamal primitives over the Jubjub
+ * curve, exponential (lifted) variant.
+ *
+ * A value `v` is encrypted as a point `g^v`, so the scheme is additively
+ * homomorphic in the exponent: ciphertexts of `a` and `b` combine into a
+ * ciphertext of `a + b`. Recovering `v` from `g^v` requires a discrete-log
+ * search, so this variant is only usable when `v` is bounded (the caller is
+ * responsible for that bound; see e.g. the per-transfer value cap in
+ * `ConfidentialFungibleToken`).
+ *
+ * @notice This module holds NO ledger state and declares NO witnesses. Every
+ * circuit takes its keys, plaintexts, and randomness as explicit arguments so
+ * the same primitives can back multiple confidential modules (single-receiver
+ * token today; multi-receiver / auditor variants later) without each importer
+ * inheriting a witness interface it may not need. Secrets and cached
+ * plaintexts are supplied by the importing module's own witnesses and verified
+ * there.
+ *
+ * @dev Hash-to-scalar discipline. Both `secretToScalar` and `expandRandomness`
+ * map bytes to a Jubjub scalar via `degradeToTransient(persistentHash(...))`.
+ * `persistentHash` is used because the derived public key is stored on-chain
+ * and compared against on every later verification; `degradeToTransient`
+ * truncates the Field to 31 bytes so the result is ALWAYS a valid Jubjub
+ * scalar. Feeding a raw `persistentHash` output into `ecMulGenerator` would
+ * occasionally exceed the Jubjub scalar field order and fault at runtime.
+ */
+module ElGamal {
+  import CompactStandardLibrary;
+
+  // ---------------------------------------------------------------------------
+  // Types
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Single-receiver ElGamal ciphertext over Jubjub.
+   *   c1 = g^r
+   *   c2 = pk^r * g^v
+   */
+  export struct Ciphertext {
+    c1: JubjubPoint;
+    c2: JubjubPoint;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Key / scalar derivation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Maps a 32-byte secret to a valid Jubjub scalar. See the
+   * module-level hash-to-scalar note for why `degradeToTransient` is required.
+   *
+   * @param secret - The 32-byte secret to map.
+   * @return A Field guaranteed to be a valid Jubjub scalar.
+   */
+  export pure circuit secretToScalar(secret: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<1, Bytes<32>>>([secret]));
+  }
+
+  /**
+   * @description Derives the ElGamal public key `pk = g^secretToScalar(ek)`
+   * from a secret `ek`.
+   *
+   * @param ek - The 32-byte encryption secret.
+   * @return The corresponding public key point.
+   */
+  export pure circuit derivePk(ek: Bytes<32>): JubjubPoint {
+    return ecMulGenerator(secretToScalar(ek));
+  }
+
+  /**
+   * @description Deterministically expands a 32-byte seed into a Jubjub scalar
+   * tagged by a distinguishing string, so a single witness seed can yield many
+   * distinct randomness values within one circuit invocation. Distinct tags
+   * always produce distinct outputs (collision resistance of the hash); the
+   * caller is responsible for using distinct tags.
+   *
+   * @param seed - The seed to expand.
+   * @param tag - A 32-byte tag distinguishing this expansion from its siblings.
+   * @return A Field suitable for use as encryption randomness.
+   */
+  export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<2, Bytes<32>>>([seed, tag]));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Curve helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description The order of the Jubjub prime-order subgroup, minus one. Used
+   * as the scalar for point negation: for any `P` in the subgroup,
+   * `(ORDER - 1) * P = ORDER*P - P = O - P = -P`.
+   *
+   * @notice This is the modulus of the Jubjub scalar field (`EmbeddedFr`) minus
+   * one. The value is verified against the runtime in the ElGamal tests:
+   * `ORDER - 1` is the largest valid scalar (`ORDER` itself faults `ecMul`),
+   * and `P + (ORDER-1)*P` equals the curve identity `(0, 1)`.
+   *
+   * Compact has no module-level constants, so it is exposed as a pure circuit
+   * returning the literal (same pattern as `MAX_TRANSFER_VALUE` in the token).
+   */
+  pure circuit JUBJUB_SUBGROUP_ORDER_MINUS_ONE(): Field {
+    return 6554484396890773809930967563523245729705921265872317281365359162392183254198 as Field;
+  }
+
+  /**
+   * @description Negates a Jubjub point.
+   *
+   * @notice Implemented as scalar multiplication by `ORDER - 1` rather than the
+   * obvious `ecMul(p, -1)`: the scalar `-1` computed in the `Field` type is
+   * `BLS_modulus - 1`, which exceeds the Jubjub scalar field order and faults
+   * `ecMul` ("failed to decode for built-in type EmbeddedFr"). `JubjubPoint`
+   * is opaque (no coordinate access), so coordinate negation is unavailable.
+   * Every point produced by this module derives from `ecMulGenerator`/`ecAdd`
+   * and is therefore in the prime-order subgroup, where this identity holds.
+   */
+  pure circuit ecNeg(p: JubjubPoint): JubjubPoint {
+    return ecMul(p, JUBJUB_SUBGROUP_ORDER_MINUS_ONE());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Encryption & homomorphic operations
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description The identity ciphertext `Enc(0)` (both components are the
+   * curve identity). Useful for initializing a fresh balance.
+   */
+  export pure circuit encryptZero(): Ciphertext {
+    const id = ecMulGenerator(0 as Field);
+    return Ciphertext { c1: id, c2: id };
+  }
+
+  /**
+   * @description Produces a fresh ciphertext of `value` under `pk` with
+   * randomness `r`. Randomness is taken as a `Field` directly to avoid a
+   * redundant `Bytes<32> -> Field` conversion at every call site;
+   * `expandRandomness` produces `Field` for the same reason.
+   *
+   * @param pk - The recipient public key.
+   * @param value - The plaintext value to encrypt.
+   * @param r - The encryption randomness.
+   * @return The ciphertext `(g^r, pk^r * g^value)`.
+   */
+  export pure circuit encrypt(pk: JubjubPoint, value: Uint<128>, r: Field): Ciphertext {
+    const c1 = ecMulGenerator(r);
+    const mask = ecMul(pk, r);
+    const valuePoint = ecMulGenerator(value as Field);
+    const c2 = ecAdd(mask, valuePoint);
+    return Ciphertext { c1: c1, c2: c2 };
+  }
+
+  /**
+   * @description Homomorphically adds `value` to the plaintext encrypted by
+   * `old`, producing a fresh ciphertext under `pk` with new randomness `r`,
+   * componentwise summed with `old`.
+   */
+  export pure circuit addEncrypted(
+                        old: Ciphertext,
+                        pk: JubjubPoint,
+                        value: Uint<128>,
+                        r: Field
+                        ): Ciphertext {
+    const fresh = encrypt(pk, value, r);
+    return Ciphertext {
+      c1: ecAdd(old.c1, fresh.c1),
+      c2: ecAdd(old.c2, fresh.c2)
+    };
+  }
+
+  /**
+   * @description Homomorphically subtracts `value` from the plaintext encrypted
+   * by `old`. Builds a fresh ciphertext of `value` under `pk` with randomness
+   * `r`, negates it componentwise via `ecNeg`, and adds to `old`.
+   *
+   * @notice The caller MUST ensure the underlying plaintext subtraction does
+   * not underflow; this circuit cannot check it. Callers verify sufficiency by
+   * reading the plaintext via their own witness and asserting it with
+   * `assertDecryptsTo` before calling.
+   */
+  export pure circuit subEncrypted(
+                        old: Ciphertext,
+                        pk: JubjubPoint,
+                        value: Uint<128>,
+                        r: Field
+                        ): Ciphertext {
+    const fresh = encrypt(pk, value, r);
+    return Ciphertext {
+      c1: ecAdd(old.c1, ecNeg(fresh.c1)),
+      c2: ecAdd(old.c2, ecNeg(fresh.c2))
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Verification
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Asserts that `ct` decrypts under `(pk, ek)` to `claimedValue`,
+   * and that `ek` is the secret for `pk`. This is the in-circuit verification
+   * path an importing module uses to bind its witness-supplied `ek` and cached
+   * plaintext to publicly stored state: a wrong `ek` fails the key check, a
+   * wrong plaintext fails the decryption check.
+   *
+   * @param ct - The ciphertext to verify.
+   * @param pk - The public key `ct` is expected to be encrypted under.
+   * @param ek - The secret claimed to correspond to `pk`.
+   * @param claimedValue - The plaintext `ct` is claimed to encrypt.
+   */
+  export circuit assertDecryptsTo(
+                   ct: Ciphertext,
+                   pk: JubjubPoint,
+                   ek: Bytes<32>,
+                   claimedValue: Uint<128>
+                   ): [] {
+    const ekField = secretToScalar(ek);
+    assert(ecMulGenerator(ekField) == pk,
+           "ElGamal: ek/pk mismatch");
+
+    // m = c2 - ek*c1. ek*c1 is negated via ecNeg (coordinate negation) rather
+    // than ecMul by a negative scalar, which would exceed the Jubjub scalar
+    // field. ekField < r, so ecMul(ct.c1, ekField) is a valid scalar mul.
+    const ekC1 = ecMul(ct.c1, ekField);
+    const mPoint = ecAdd(ct.c2, ecNeg(ekC1));
+    const expected = ecMulGenerator(claimedValue as Field);
+    assert(mPoint == expected,
+           "ElGamal: plaintext mismatch");
+  }
+}

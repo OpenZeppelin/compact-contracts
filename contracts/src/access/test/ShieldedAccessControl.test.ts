@@ -8,8 +8,8 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
-import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
+import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
 const COMMITMENT_DOMAIN = 'ShieldedAccessControl:commitment';
@@ -1268,9 +1268,10 @@ describe('ShieldedAccessControl', () => {
       it('should return a path when the commitment is in the tree', () => {
         contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
-        const path = contract.privateState.getCommitmentPathWithFindForLeaf(
-          OP1_ROLE_COMMITMENT,
-        );
+        const path =
+          contract.privateState.getCommitmentPathWithFindForLeaf(
+            OP1_ROLE_COMMITMENT,
+          );
 
         expect(path).toBeDefined();
         expect(path?.leaf).toEqual(OP1_ROLE_COMMITMENT);
@@ -1299,9 +1300,10 @@ describe('ShieldedAccessControl', () => {
           contract.privateState.getCommitmentPathWithWitnessImpl(
             OP1_ROLE_COMMITMENT,
           );
-        const findPath = contract.privateState.getCommitmentPathWithFindForLeaf(
-          OP1_ROLE_COMMITMENT,
-        );
+        const findPath =
+          contract.privateState.getCommitmentPathWithFindForLeaf(
+            OP1_ROLE_COMMITMENT,
+          );
 
         expect(witnessPath.leaf).toEqual(findPath?.leaf);
       });

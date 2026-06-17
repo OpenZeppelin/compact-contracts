@@ -1,0 +1,960 @@
+pragma language_version >= 0.23.0;
+/**
+ * @module ConfidentialFungibleToken
+ * @description An account-based confidential fungible token module.
+ *
+ * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity
+ * follows the same pattern as `FungibleToken`: a witness-derived
+ * `accountId = persistentHash(secretKey)`. Encryption uses a separate witness
+ * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
+ * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
+ *
+ * @notice Single-receiver layout. Auditor support, freeze, and admin-style
+ * seize are deliberately left to companion modules or to a future
+ * multi-receiver variant. The escrow-based `_burnFrom` here covers user-
+ * consenting redemption flows; admin-style seize against a non-cooperating
+ * owner requires authority visibility into balances and is therefore out
+ * of scope for the single-receiver base.
+ *
+ * @notice Concurrency: two transfers to the same recipient in the same block
+ * conflict. Documented limitation; acceptable for the v1 target use case
+ * (tokenized deposits).
+ *
+ * @dev Trust model for witnesses.
+ *
+ * Witness implementations live in the user's wallet (TypeScript frontend) and
+ * must NEVER be trusted to behave correctly. Every witness in this module is
+ * either bound to publicly verifiable state (and the binding is checked by the
+ * circuit) or used in a way where a hostile value cannot break the security
+ * property the module claims.
+ *
+ * Witness audit:
+ *
+ *  - `wit_ConfidentialTokenSK`: verified by binding
+ *    `accountId = persistentHash(SK)` to the on-chain account identifier used
+ *    elsewhere in the circuit. A wrong SK produces a different accountId and
+ *    the transaction fails at lookup.
+ *
+ *  - `wit_ConfidentialTokenEK`: verified by `ElGamal_assertDecryptsTo`,
+ *    which re-derives `pk` and asserts it equals the on-chain stored pk.
+ *
+ *  - `wit_PlaintextBalance(ct)`: verified by `ElGamal_assertDecryptsTo`,
+ *    which asserts `Dec(ct, EK) == claimedValue`. The ciphertext is passed
+ *    as an argument so the wallet can look up the right cached plaintext
+ *    for the specific ciphertext being verified, rather than relying on
+ *    call-order conventions.
+ *
+ *  - `wit_RandomnessSeed`: the wallet supplies a single 32-byte seed per
+ *    circuit invocation. The circuit derives all per-operation randomness
+ *    from this seed via in-circuit expansion (`ElGamal_expandRandomness`), so the
+ *    wallet CANNOT cause randomness reuse across the multiple ciphertexts
+ *    produced in one circuit. A low-entropy or predictable seed cannot break
+ *    that property, but it harms confidentiality: the seed -> randomness
+ *    expansion is deterministic and public, so a predictable seed lets
+ *    observers recover the bounded amounts of the value-bearing operations
+ *    that wallet initiates (which are also the recipients' incoming amounts).
+ *
+ * @dev Plaintext disclosures (what reaches the public ledger):
+ *  - mint reveals the minted amount via totalSupply delta.
+ *  - burn / burnFrom reveal the burned amount via totalSupply delta.
+ *  - transfer / transferFrom reveal no amounts.
+ *  - approve does not disclose the cap (private-cap escrow design).
+ *  - Counterparty graph (sender_id, recipient_id) is public on every
+ *    transfer.
+ *
+ * @dev Per-transfer value bound. All value-bearing circuits assert
+ * `value <= MAX_TRANSFER_VALUE()` (`2^48 - 1`, i.e. amounts occupy `[0, 2^48)`).
+ * This bound is what makes wallet-side discrete-log recovery on memo ciphertexts
+ * tractable, and matches the range the wallet's table covers. Balances
+ * themselves remain Uint<128>.
+ *
+ * @dev Value delivery via memo channel. Every credit made through `_credit`
+ * (mint / transfer / transferFrom) pushes an encrypted memo to the recipient's
+ * per-account memo list. The recipient's wallet scans only its own list,
+ * decrypts each new entry, brute-forces the bounded value with discrete-log
+ * recovery, and updates its local plaintext balance cache.
+ *
+ * Two caveats. (1) Memos record CREDITS only: debits (sends, approvals, burns)
+ * move value with no memo and a hidden amount, so summing memos OVERCOUNTS a
+ * balance that has ever been spent from. The wallet's running plaintext cache,
+ * not memo replay, is the authoritative balance; replay-from-chain alone only
+ * reconstructs a never-spent account. (2) The owner self-refund in
+ * `_refundPriorEscrow` (re-approve) credits the owner with no memo; the owner
+ * observes it by initiating that transaction.
+ *
+ * @dev Hash function discipline. Every hash in this design is built on
+ * `persistentHash` (there is no direct use of `transientHash`). `accountId`
+ * is a raw `persistentHash` used as a Bytes<32> map key. The `EK -> scalar`
+ * mapping for pk derivation and the decryption check, and the randomness
+ * expansion in `ElGamal_expandRandomness`, additionally apply
+ * `degradeToTransient` to land in the Jubjub scalar field. Midnight's roadmap
+ * includes a more efficient persistent hasher; adopting it will reduce row
+ * counts here without source changes.
+ *
+ * @dev Caller-identity gating (composability). This module is unopinionated
+ * about compliance policy (freeze, KYC, pause); a composing contract layers
+ * that on top. Gating a circuit on an EXPLICIT argument (e.g. the recipient
+ * `to`) is straightforward — the wrapper and this module see the same value.
+ * Gating on the CALLER, however, is not: the caller is derived from
+ * `wit_ConfidentialTokenSK`, and a separate witness call in the wrapper could
+ * return a different secret than the one this module authenticates with,
+ * letting a frozen account slip a clean id past the gate. To make caller-side
+ * gates sound, every caller-authenticating circuit (`register`, `_debit`,
+ * `transfer`, `approve`, `transferFrom`, `_burn`, `_burnFrom`) RETURNS the
+ * caller's `accountId` — the principal it authenticated from the witness. A
+ * wrapper gates on that returned value; since an assert failing anywhere in a
+ * Compact circuit invalidates the whole transaction, a post-call check still
+ * prevents the operation.
+ *
+ * Invariant: the returned id is ALWAYS the caller (the sender / approver /
+ * spender / registrant, depending on the circuit) — it is never the recipient
+ * `to` nor the `fromAddress` argument. Those are explicit arguments a wrapper
+ * gates directly. `_mint` is not caller-authenticating (its recipient is an
+ * explicit argument), so it returns nothing.
+ *
+ * @dev EOA-only; contract-to-contract (c2c) is out of scope. Accounts here are
+ * externally-owned: identity is `accountId = persistentHash(SK)` and spending
+ * requires the holder to prove a balance plaintext under a secret encryption
+ * key (`EK`) supplied via witness. A contract has no private state, so it
+ * cannot custody such a key — it could be blindly credited (the homomorphic
+ * add needs no key) but could never spend, decrypt its balance, or scan memos.
+ * This is a cryptographic limitation, NOT a missing interface: adding a
+ * `ContractAddress` account variant would not make a contract able to hold a
+ * confidential balance, and clear contract addresses would also leak into the
+ * otherwise-pseudonymous counterparty graph.
+ *
+ * Importantly, the value layer (balances / escrow / supply, all keyed by an
+ * abstract `Bytes<32>` accountId) is already account-model-agnostic: it does
+ * not assume EOAs. If a contract key-custody scheme ever lands alongside c2c
+ * (e.g. a designated operator, threshold/MPC decryption, or a viewing-key
+ * arrangement), a contract obtains a `Bytes<32>` accountId via that scheme and
+ * the value logic is unchanged — only registration/authentication would. Until
+ * c2c exists AND such a custody design is defined, c2c is intentionally
+ * deferred. Interim: a protocol that needs to "hold" these tokens uses an
+ * EOA-custodied account it controls (supported today via `approve` /
+ * `transferFrom`), not the contract itself.
+ */
+module ConfidentialFungibleToken {
+  import CompactStandardLibrary;
+  import "../crypto/ElGamal" prefix ElGamal_;
+
+  // ---------------------------------------------------------------------------
+  // Types
+  //
+  // The single-receiver ElGamal ciphertext (`ElGamal_Ciphertext`) and all the
+  // crypto operating on it live in the `crypto/ElGamal` module. This module
+  // owns only the token-domain composition: ledger layout, witnesses, and the
+  // balance/escrow/supply business logic.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Per-(owner, spender) encrypted escrow. Stored as two
+   * ciphertexts of the same value: one to the spender, one to the owner.
+   * No public cap.
+   */
+  export struct EscrowEntry {
+    spenderCt: ElGamal_Ciphertext;
+    ownerCt:   ElGamal_Ciphertext;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ledger state
+  // ---------------------------------------------------------------------------
+
+  export ledger _balances: Map<Bytes<32>, ElGamal_Ciphertext>;
+  export ledger _encryptionKeys: Map<Bytes<32>, JubjubPoint>;
+  export ledger _memos: Map<Bytes<32>, List<ElGamal_Ciphertext>>;
+  export ledger _escrow: Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>;
+
+  export ledger _totalSupply: Uint<128>;
+
+  export ledger _isInitialized: Boolean;
+
+  export sealed ledger _name: Opaque<"string">;
+  export sealed ledger _symbol: Opaque<"string">;
+  export sealed ledger _decimals: Uint<8>;
+
+
+  // ---------------------------------------------------------------------------
+  // Constants (Compact does not support module-level constants, so these are
+  // exposed as pure circuits returning a literal.)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Maximum allowed value per single transfer / mint / burn /
+   * approve: `2^48 - 1`. Amounts therefore occupy `[0, 2^48)`, which is exactly
+   * the range the wallet's discrete-log table covers (an amount of `2^48` would
+   * pass on-chain checks but be undecodable by the recipient). See module header.
+   */
+  export pure circuit MAX_TRANSFER_VALUE(): Uint<128> {
+    return 281474976710655; // 2^48 - 1
+  }
+
+  // ---------------------------------------------------------------------------
+  // Witnesses
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @witness wit_ConfidentialTokenSK
+   * @description Returns the caller's account secret. Verified in-circuit by
+   * matching `persistentHash(SK)` against the public accountId.
+   */
+  witness wit_ConfidentialTokenSK(): Bytes<32>;
+
+  /**
+   * @witness wit_ConfidentialTokenEK
+   * @description Returns the caller's ElGamal secret. Verified in-circuit by
+   * `ElGamal_assertDecryptsTo`, which re-derives the pk and compares
+   * against the stored pk.
+   */
+  witness wit_ConfidentialTokenEK(): Bytes<32>;
+
+  /**
+   * @witness wit_PlaintextBalance
+   * @description Returns the wallet's cached plaintext for the given
+   * ciphertext. Called whenever the circuit needs to verify a ciphertext's
+   * plaintext value (sender's main balance, escrow ciphertext during spend,
+   * prior escrow during refund, etc.).
+   *
+   * The ciphertext is passed explicitly so the wallet can route to the right
+   * cached plaintext by ciphertext identity. This avoids call-order
+   * conventions (which would be brittle to circuit refactors) and lets the
+   * wallet maintain a `Map<ElGamal_Ciphertext, Uint128>` lookup.
+   *
+   * Verified in-circuit by `ElGamal_assertDecryptsTo`: a wrong plaintext
+   * fails the assertion `Dec(ct, EK) == claimedValue`.
+   *
+   * @param ct - The ciphertext whose plaintext is being requested.
+   * @returns The wallet's cached plaintext for `ct`.
+   */
+  witness wit_PlaintextBalance(ct: ElGamal_Ciphertext): Uint<128>;
+
+  /**
+   * @witness wit_RandomnessSeed
+   * @description Returns a single 32-byte seed used to derive all per-
+   * operation randomness in the circuit. The circuit expands the seed
+   * in-circuit via `ElGamal_expandRandomness(seed, tag)` to produce as many
+   * distinct randomness values as needed.
+   *
+   * Trust model: the wallet cannot cause randomness reuse across ciphertexts,
+   * because expansion is deterministic in-circuit. A low-entropy or
+   * predictable seed does not affect that property, but it harms
+   * confidentiality by exposing the amounts of the value-bearing operations
+   * that wallet initiates (the recipients' incoming amounts).
+   */
+  witness wit_RandomnessSeed(): Bytes<32>;
+
+  // ---------------------------------------------------------------------------
+  // Initialization & metadata
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Initializes the token's name, symbol, and decimals. Intended to
+   * be called once, from the deploying contract's constructor.
+   *
+   * Requirements:
+   *
+   * - Contract is not already initialized.
+   *
+   * @param {Opaque<"string">} name_ - The token name.
+   * @param {Opaque<"string">} symbol_ - The token symbol.
+   * @param {Uint<8>} decimals_ - The number of display decimals.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>
+                   ): [] {
+    assertNotInitialized();
+    _isInitialized = true;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
+    _decimals = disclose(decimals_);
+  }
+
+  /**
+   * @description Returns the token name.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Opaque<"string">} - The token name.
+   */
+  export circuit name(): Opaque<"string"> {
+    return _name;
+  }
+
+  /**
+   * @description Returns the token symbol.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Opaque<"string">} - The token symbol.
+   */
+  export circuit symbol(): Opaque<"string"> {
+    return _symbol;
+  }
+
+  /**
+   * @description Returns the number of display decimals.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Uint<8>} - The display decimals.
+   */
+  export circuit decimals(): Uint<8> {
+    return _decimals;
+  }
+
+  /**
+   * @description Returns the total token supply. Mint and burn disclose their
+   * amounts through this value.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Uint<128>} - The total supply.
+   */
+  export circuit totalSupply(): Uint<128> {
+    return _totalSupply;
+  }
+
+  // ---------------------------------------------------------------------------
+  // View circuits
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Returns `account`'s balance ciphertext, or the default (zero)
+   * ciphertext if the account is unregistered. The amount is encrypted; only the
+   * account (or an authorized viewer) can decrypt it.
+   *
+   * @circuitInfo k=9, rows=437
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {ElGamal_Ciphertext} - The encrypted balance.
+   */
+  export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+    assertInitialized();
+    if (!_balances.member(disclose(account))) {
+      return default<ElGamal_Ciphertext>;
+    }
+    return _balances.lookup(disclose(account));
+  }
+
+  /**
+   * @description Returns the escrow entry (the encrypted allowance) that `owner`
+   * granted `spender`, or the default entry if none exists. The cap is
+   * encrypted, not public.
+   *
+   * @circuitInfo k=10, rows=873
+   *
+   * @param {Bytes<32>} owner - The account that granted the allowance.
+   * @param {Bytes<32>} spender - The approved spender.
+   * @return {EscrowEntry} - The encrypted escrow entry.
+   */
+  export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
+    if (!_escrow.member(disclose(owner)) ||
+        !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
+      return default<EscrowEntry>;
+    }
+    return _escrow.lookup(disclose(owner)).lookup(disclose(spender));
+  }
+
+  /**
+   * @description Returns whether `account` has registered an encryption key.
+   *
+   * @circuitInfo k=9, rows=305
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {Boolean} - True if `account` is registered.
+   */
+  export circuit isRegistered(account: Bytes<32>): Boolean {
+    return _encryptionKeys.member(disclose(account));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Registration
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Registers the caller: derives their encryption public key from
+   * `wit_ConfidentialTokenEK` and initializes their balance to an encryption of
+   * zero. Registration is a prerequisite for sending or receiving.
+   *
+   * @circuitInfo k=13, rows=5651
+   *
+   * @notice Returns the caller's `accountId`. A composing contract can gate on
+   * the returned value (e.g. assert it is KYC-approved) to restrict who may
+   * register. See the module header note on caller-identity gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is not already registered.
+   *
+   * @return {Bytes<32>} - The registered (caller's) accountId.
+   */
+  export circuit register(): Bytes<32> {
+    assertInitialized();
+    const accountId = _computeAccountId();
+    assert(!_encryptionKeys.member(disclose(accountId)),
+           "ConfidentialFungibleToken: already registered");
+
+    const ek = wit_ConfidentialTokenEK();
+    const pk = ElGamal_derivePk(ek);
+
+    _encryptionKeys.insert(disclose(accountId), disclose(pk));
+    _balances.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
+    return disclose(accountId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal value primitives: _debit and _credit
+  //
+  // These are INTERNAL (not exported). Exposing the asymmetric halves cannot
+  // preserve `sum(balances) == totalSupply`: a composer could `_credit` without
+  // a matching `_debit`/mint (inflation), and the module has no way to compel
+  // the pairing (Compact has no end-of-transaction settlement hook). The planned
+  // external surface for custom value flows is instead a CONSERVING primitive (a
+  // `_move` that always pairs a debit with an equal credit), which holds the
+  // invariant by construction; supply changes stay isolated in `_mint`/`_burn`.
+  //
+  // WARNING: neither `_debit` nor `_credit` touches `_totalSupply`. They only
+  // move value into/out of a single account's balance ciphertext. Internal
+  // callers pair them with supply accounting where required (`_mint` increments
+  // `_totalSupply` before crediting; `_burn` decrements it after debiting).
+  //
+  // Randomness: `_credit` takes its encryption randomness as explicit arguments
+  // (`rBalance`, `rMemo`) rather than expanding fixed tags internally, so a
+  // future circuit that credits more than one party in a single invocation can
+  // pass independently-derived randomness to each call (a shared seed would
+  // otherwise produce colliding ciphertexts).
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Debits `value` from the caller's own balance. A low-level
+   * internal primitive; the external path for custom value flows will be a
+   * conserving `_move` (see the section note above).
+   *
+   * @warning Does not adjust `_totalSupply`. Called outside a supply-accounted
+   * flow, `_debit` destroys the caller's value with no corresponding burn,
+   * breaking the `sum(balances) == totalSupply` invariant. Pair it with a burn
+   * or a matching credit (as `_burn` and `transfer` do).
+   *
+   * @notice Returns the caller's `accountId` (the account debited), so a
+   * composing contract can gate on it (e.g. assert the sender is not frozen).
+   * See the module header note on caller-identity gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered and has a balance of at least `value`.
+   *
+   * @param {Uint<128>} value - The amount to debit.
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  circuit _debit(value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+
+    const accountId = _computeAccountId();
+    assert(_encryptionKeys.member(disclose(accountId)),
+           "ConfidentialFungibleToken: sender not registered");
+
+    const ek = wit_ConfidentialTokenEK();
+    const pk = _encryptionKeys.lookup(disclose(accountId));
+
+    const ct = _balances.lookup(disclose(accountId));
+    const plaintextBalance = wit_PlaintextBalance(ct);
+    ElGamal_assertDecryptsTo(ct, pk, ek, plaintextBalance);
+
+    assert(plaintextBalance >= value,
+           "ConfidentialFungibleToken: insufficient balance");
+
+    const seed = wit_RandomnessSeed();
+    const r = ElGamal_expandRandomness(seed, pad(32, "debit_balance"));
+    const newCt = ElGamal_subEncrypted(ct, pk, value, r);
+    _balances.insert(disclose(accountId), disclose(newCt));
+    return disclose(accountId);
+  }
+
+  /**
+   * @description Credits `value` to `account`: homomorphically adds it to the
+   * account's balance ciphertext and pushes an encrypted memo to the account's
+   * memo list.
+   *
+   * @warning Does not adjust `_totalSupply`. Called outside a supply-accounted
+   * flow, `_credit` mints unbacked value (inflation) and breaks the
+   * `sum(balances) == totalSupply` invariant. Pair it with a debit or a supply
+   * increase (as `transfer` and `_mint` do).
+   *
+   * @param account - The recipient account id.
+   * @param value - The amount to credit (must be within MAX_TRANSFER_VALUE()).
+   * @param rBalance - Randomness for the balance-update ciphertext.
+   * @param rMemo - Randomness for the memo ciphertext. MUST be independent of
+   *                `rBalance` and of any other randomness used in the same
+   *                circuit invocation (see the section warning above).
+   */
+  circuit _credit(
+                   account: Bytes<32>,
+                   value: Uint<128>,
+                   rBalance: Field,
+                   rMemo: Field
+                   ): [] {
+    assertInitialized();
+    _assertValueInBound(value);
+    assert(account != default<Bytes<32>>,
+           "ConfidentialFungibleToken: invalid receiver");
+    assert(_encryptionKeys.member(disclose(account)),
+           "ConfidentialFungibleToken: receiver not registered");
+
+    const recipientPk = _encryptionKeys.lookup(disclose(account));
+
+    // Update balance ciphertext.
+    const oldCt = _balances.lookup(disclose(account));
+    const newCt = ElGamal_addEncrypted(oldCt, recipientPk, value, rBalance);
+    _balances.insert(disclose(account), disclose(newCt));
+
+    // Push memo to the recipient.
+    const memoCt = ElGamal_encrypt(recipientPk, value, rMemo);
+    if (!_memos.member(disclose(account))) {
+      _memos.insert(disclose(account), default<List<ElGamal_Ciphertext>>);
+    }
+    _memos.lookup(disclose(account)).pushFront(disclose(memoCt));
+  }
+
+  // ---------------------------------------------------------------------------
+  // transfer / approve / transferFrom
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Transfers `value` from the caller to `to`: debits the caller,
+   * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
+   * the (sender, recipient) pair is public.
+   *
+   * @circuitInfo k=15, rows=25858
+   *
+   * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
+   * The sender is derived from the same authentication `_debit` performs, so the
+   * returned id is exactly the account whose funds moved.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered with a balance of at least `value`.
+   * - `to` is registered and is not the caller (no self-transfer).
+   *
+   * @param {Bytes<32>} to - The recipient account.
+   * @param {Uint<128>} value - The amount to transfer.
+   * @return {Bytes<32>} - The caller's (sender's) accountId.
+   */
+  export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    // Derive the sender from the same authentication `_debit` uses, so the
+    // returned id is exactly the account whose funds moved.
+    const senderId = _debit(value);
+    assert(senderId != to, "ConfidentialFungibleToken: self-transfer");
+
+    const seed = wit_RandomnessSeed();
+    const rBalance = ElGamal_expandRandomness(seed, pad(32, "transfer_credit_balance"));
+    const rMemo    = ElGamal_expandRandomness(seed, pad(32, "transfer_credit_memo"));
+    _credit(to, value, rBalance, rMemo);
+    return senderId;
+  }
+
+  /**
+   * @description Sets `spender`'s allowance over the caller's balance to `value`
+   * via an escrow: the caller's main balance is debited by `value`, and matching
+   * encryptions are stored for the spender and the owner. Re-approving first
+   * refunds any prior escrow, so allowances replace rather than stack. The cap
+   * is not public.
+   *
+   * @circuitInfo k=16, rows=36115
+   *
+   * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `spender` is registered, is not the zero account, and is not the caller.
+   * - The caller is registered with a balance of at least `value`.
+   *
+   * @param {Bytes<32>} spender - The account being approved.
+   * @param {Uint<128>} value - The allowance amount.
+   * @return {Bytes<32>} - The caller's (approver's) accountId.
+   */
+  export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+    assert(spender != default<Bytes<32>>,
+           "ConfidentialFungibleToken: invalid spender");
+
+    const ownerId = _computeAccountId();
+    assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
+    assert(_encryptionKeys.member(disclose(spender)),
+           "ConfidentialFungibleToken: spender not registered");
+    assert(_encryptionKeys.member(disclose(ownerId)),
+           "ConfidentialFungibleToken: owner not registered");
+
+    const ek = wit_ConfidentialTokenEK();
+    const ownerPk = _encryptionKeys.lookup(disclose(ownerId));
+
+    // Refund any prior escrow back to owner's main balance first.
+    _refundPriorEscrow(ownerId, spender, ownerPk, ek);
+
+    // Debit the owner's main balance by `value`.
+    const ownerCt = _balances.lookup(disclose(ownerId));
+    const plaintextBalance = wit_PlaintextBalance(ownerCt);
+    ElGamal_assertDecryptsTo(ownerCt, ownerPk, ek, plaintextBalance);
+
+    assert(plaintextBalance >= value,
+           "ConfidentialFungibleToken: insufficient balance");
+
+    const seed = wit_RandomnessSeed();
+    const rDebit   = ElGamal_expandRandomness(seed, pad(32, "approve_debit"));
+    const rSpender = ElGamal_expandRandomness(seed, pad(32, "approve_spender_ct"));
+    const rOwner   = ElGamal_expandRandomness(seed, pad(32, "approve_owner_ct"));
+
+    const newOwnerCt = ElGamal_subEncrypted(ownerCt, ownerPk, value, rDebit);
+    _balances.insert(disclose(ownerId), disclose(newOwnerCt));
+
+    const spenderPk = _encryptionKeys.lookup(disclose(spender));
+    const spenderCt        = ElGamal_encrypt(spenderPk, value, rSpender);
+    const ownerCtForRefund = ElGamal_encrypt(ownerPk,   value, rOwner);
+
+    if (!_escrow.member(disclose(ownerId))) {
+      _escrow.insert(disclose(ownerId),
+                     default<Map<Bytes<32>, EscrowEntry>>);
+    }
+    _escrow.lookup(disclose(ownerId)).insert(
+      disclose(spender),
+      disclose(EscrowEntry { spenderCt: spenderCt, ownerCt: ownerCtForRefund })
+    );
+    return disclose(ownerId);
+  }
+
+  /**
+   * @description Spends `value` from `fromAddress`'s escrow (granted to the
+   * caller via `approve`) and credits it to `to`, reducing both escrow copies by
+   * `value`. The amount is hidden.
+   *
+   * @circuitInfo k=15, rows=32736
+   *
+   * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `to` is registered and is not the zero account.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   *
+   * @param {Bytes<32>} fromAddress - The owner whose escrow is drawn on.
+   * @param {Bytes<32>} to - The recipient account.
+   * @param {Uint<128>} value - The amount to transfer.
+   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   */
+  export circuit transferFrom(
+                   fromAddress: Bytes<32>,
+                   to: Bytes<32>,
+                   value: Uint<128>
+                   ): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+    assert(to != default<Bytes<32>>,
+           "ConfidentialFungibleToken: invalid receiver");
+
+    const spenderId = _spendEscrow(fromAddress, value);
+
+    const seed = wit_RandomnessSeed();
+    const rBalance = ElGamal_expandRandomness(seed, pad(32, "tf_credit_balance"));
+    const rMemo    = ElGamal_expandRandomness(seed, pad(32, "tf_credit_memo"));
+    _credit(to, value, rBalance, rMemo);
+    return spenderId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mint / burn / burnFrom
+  //
+  // _mint and _burn act on the caller's own balance (or credit to an explicit
+  // recipient for _mint). _burnFrom acts on an account the caller has been
+  // pre-approved by, via the same escrow used by transferFrom. All three
+  // disclose the value via the totalSupply delta.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Creates `value` tokens, credits them to `account`, and
+   * increases `totalSupply` by `value`. The minted amount is disclosed via the
+   * supply delta; intended to be gated to an issuer by the composing contract.
+   *
+   * @circuitInfo k=14, rows=12185
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `totalSupply + value` does not overflow `Uint<128>`.
+   * - `account` is registered.
+   *
+   * @param {Bytes<32>} account - The recipient of the minted tokens.
+   * @param {Uint<128>} value - The amount to mint.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+    assertInitialized();
+    _assertValueInBound(value);
+
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - _totalSupply >= value,
+           "ConfidentialFungibleToken: overflow");
+    _totalSupply = disclose(_totalSupply + value as Uint<128>);
+
+    const seed = wit_RandomnessSeed();
+    const rBalance = ElGamal_expandRandomness(seed, pad(32, "mint_credit_balance"));
+    const rMemo    = ElGamal_expandRandomness(seed, pad(32, "mint_credit_memo"));
+    _credit(account, value, rBalance, rMemo);
+  }
+
+  /**
+   * @description Burns `value` from the caller's own balance and decreases
+   * `totalSupply` by `value`. The burned amount is disclosed via the supply delta.
+   *
+   * @circuitInfo k=14, rows=14150
+   *
+   * @notice Returns the caller's `accountId` (the account burned from).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered with a balance of at least `value`.
+   *
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  export circuit _burn(value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+
+    const accountId = _debit(value);
+    _totalSupply = disclose(_totalSupply - value as Uint<128>);
+    return accountId;
+  }
+
+  /**
+   * @description Burns `value` tokens from `fromAddress`'s balance, consuming an
+   * existing escrow that `fromAddress` previously granted to the caller via
+   * `approve`. Mirrors `transferFrom` exactly, except the spent value is removed
+   * from `totalSupply` instead of credited to a recipient.
+   *
+   * @circuitInfo k=15, rows=21174
+   *
+   * @notice Use case: redemption flows where a user pre-authorizes an issuer to
+   * burn from their account in exchange for off-chain settlement. Returns the
+   * caller's (spender's) `accountId` for caller-side gating.
+   *
+   * Admin-style burn against a non-cooperating owner is intentionally not
+   * provided: it would require authority visibility into the owner's balance to
+   * avoid corrupting the ciphertext, which is the multi-receiver extension.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   *
+   * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   */
+  export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+
+    const spenderId = _spendEscrow(fromAddress, value);
+    _totalSupply = disclose(_totalSupply - value as Uint<128>);
+    return spenderId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Memo housekeeping
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Clears the caller's memo list, letting a wallet that has folded
+   * its memos into its local balance cache prune on-chain memo storage.
+   *
+   * @circuitInfo k=13, rows=2316
+   *
+   * @warning Clearing memos is destructive and can permanently lock funds. The
+   * on-chain balance ciphertext is not directly decryptable (discrete-log
+   * bound), so a wallet reconstructs its balance by replaying memos. Clearing
+   * them without a durable off-chain record of the balance loses the ability to
+   * recover it; and because spending requires proving the balance plaintext, the
+   * funds become unspendable, not merely undisplayable. Clear only memos already
+   * folded into a durable cache/backup (see §7 of the design doc).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  export circuit clearMemos(): [] {
+    assertInitialized();
+    const accountId = _computeAccountId();
+    if (_memos.member(disclose(accountId))) {
+      _memos.insert(disclose(accountId), default<List<ElGamal_Ciphertext>>);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  //
+  // Token-domain helpers only; the ElGamal crypto lives in `crypto/ElGamal`.
+  // The escrow-spend / refund helpers are placed last alongside the
+  // higher-level circuits they compose.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Asserts `value` is within the per-operation bound. Centralizes
+   * the bound check shared by every value-bearing circuit.
+   */
+  circuit _assertValueInBound(value: Uint<128>): [] {
+    assert(value <= MAX_TRANSFER_VALUE(),
+           "ConfidentialFungibleToken: value exceeds bound");
+  }
+
+  /**
+   * @description Derives the on-chain accountId from the witness-supplied SK.
+   * Uses `persistentHash` because `accountId` is used as a Map key
+   * throughout the ledger state.
+   */
+  circuit _computeAccountId(): Bytes<32> {
+    return computeAccountId(wit_ConfidentialTokenSK());
+  }
+
+  /**
+   * @description Derives the public `accountId` from a secret key, as
+   * `persistentHash(sk)`. Pure, so a wallet can compute its own account
+   * identifier off-chain (no proof) before transacting.
+   *
+   * @param {Bytes<32>} sk - The account secret key.
+   * @return {Bytes<32>} - The derived accountId.
+   */
+  export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<1, Bytes<32>>>([sk]);
+  }
+
+  /**
+   * @description Validates and consumes `value` from the escrow that
+   * `fromAddress` granted to the caller, reducing both the spender's and the
+   * owner's escrow ciphertexts by `value`. Shared by `transferFrom` and
+   * `_burnFrom`; the caller supplies the post-spend disposition (credit a
+   * recipient, or decrement total supply).
+   *
+   * @notice Only the spender's escrow copy is decrypted and checked
+   * `>= value`. The owner's copy is reduced by the same `value`, preserving the
+   * approve-time invariant that both copies encrypt the same amount, so the
+   * owner's copy needs no separate bound check.
+   *
+   * @param fromAddress - The owner whose escrow the caller (spender) draws on.
+   * @param value - The amount to consume from the allowance.
+   */
+  circuit _spendEscrow(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+    const spenderId = _computeAccountId();
+    assert(_escrow.member(disclose(fromAddress)) &&
+           _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
+           "ConfidentialFungibleToken: no escrow");
+
+    const entry = _escrow.lookup(disclose(fromAddress)).lookup(disclose(spenderId));
+
+    const ek = wit_ConfidentialTokenEK();
+    const spenderPk = _encryptionKeys.lookup(disclose(spenderId));
+    const escrowPlaintext = wit_PlaintextBalance(entry.spenderCt);
+    ElGamal_assertDecryptsTo(entry.spenderCt, spenderPk, ek, escrowPlaintext);
+    assert(escrowPlaintext >= value,
+           "ConfidentialFungibleToken: insufficient allowance");
+
+    const seed = wit_RandomnessSeed();
+    const rSpender = ElGamal_expandRandomness(seed, pad(32, "spend_escrow_spender"));
+    const rOwner   = ElGamal_expandRandomness(seed, pad(32, "spend_escrow_owner"));
+
+    const ownerPk = _encryptionKeys.lookup(disclose(fromAddress));
+    const newSpenderCt = ElGamal_subEncrypted(entry.spenderCt, spenderPk, value, rSpender);
+    const newOwnerCt   = ElGamal_subEncrypted(entry.ownerCt,   ownerPk,   value, rOwner);
+
+    _escrow.lookup(disclose(fromAddress)).insert(
+      disclose(spenderId),
+      disclose(EscrowEntry { spenderCt: newSpenderCt, ownerCt: newOwnerCt })
+    );
+    return disclose(spenderId);
+  }
+
+  /**
+   * @description If an escrow exists for (ownerId, spender), refunds the
+   * full prior escrow amount back to owner's main balance and removes the
+   * escrow entry. Called at the start of `approve` so that re-approving
+   * replaces rather than stacks the escrow.
+   *
+   * @notice The owner's plaintext balance is not checked for overflow on
+   * the refund because the prior escrow was, by construction, a value the
+   * owner previously held. The maximum refundable amount is bounded by
+   * MAX_TRANSFER_VALUE() (since approve enforces this bound).
+   */
+  circuit _refundPriorEscrow(
+            ownerId: Bytes<32>,
+            spender: Bytes<32>,
+            ownerPk: JubjubPoint,
+            ek: Bytes<32>
+            ): [] {
+    if (!_escrow.member(disclose(ownerId)) ||
+        !_escrow.lookup(disclose(ownerId)).member(disclose(spender))) {
+      return [];
+    }
+    const entry = _escrow.lookup(disclose(ownerId)).lookup(disclose(spender));
+
+    const priorCap = wit_PlaintextBalance(entry.ownerCt);
+    ElGamal_assertDecryptsTo(entry.ownerCt, ownerPk, ek, priorCap);
+
+    const seed = wit_RandomnessSeed();
+    const r = ElGamal_expandRandomness(seed, pad(32, "refund_balance"));
+    const ownerCt = _balances.lookup(disclose(ownerId));
+    const refunded = ElGamal_addEncrypted(ownerCt, ownerPk, priorCap, r);
+    _balances.insert(disclose(ownerId), disclose(refunded));
+
+    _escrow.lookup(disclose(ownerId)).remove(disclose(spender));
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialFungibleToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ConfidentialFungibleToken: contract already initialized");
+  }
+}

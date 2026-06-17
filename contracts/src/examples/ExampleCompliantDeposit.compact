@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (examples/ExampleCompliantDeposit.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @description EXAMPLE: a regulated confidential deposit token, composed from
+ * unopinionated building blocks. This is reference material showing how to
+ * layer compliance onto `ConfidentialFungibleToken` — not an audited,
+ * production contract.
+ *
+ * Composition:
+ *  - `ConfidentialFungibleToken` (CFT_) — confidential balances + escrow.
+ *  - `ComplianceRegistry` (Compliance_) — freeze + KYC state and checks.
+ *  - `Ownable` (Ownable_) — single issuer authority gating admin operations.
+ *
+ * @dev Gating pattern. Compliance is enforced HERE, in the wrapper, never in
+ * the base token. Two cases:
+ *  - Explicit-argument identities (a recipient `to`, an `owner` whose escrow is
+ *    drawn on) are gated UP FRONT — the wrapper and CFT see the same value.
+ *  - The CALLER identity (sender / approver / spender / registrant) is gated on
+ *    the `accountId` that the CFT circuit RETURNS, AFTER the call. A separate
+ *    witness call here could authenticate a different account than CFT does, so
+ *    gating the returned id is the only sound option. Because an assert failing
+ *    anywhere in a Compact circuit reverts the whole transaction, the post-call
+ *    check still prevents the operation.
+ *
+ * @dev Authority. `Ownable` gates only operations that are NOT caller-
+ * authenticated by CFT (mint and the compliance mutators); those take their
+ * target as an explicit argument, so there is no witness clash between
+ * `wit_OwnableSK` (the issuer) and `wit_ConfidentialTokenSK` (a holder). A
+ * production deployment wanting segregation of duties (separate MINTER /
+ * FREEZER authorities) swaps `Ownable` for `ShieldedAccessControl` behind the
+ * same `assertOnly*` seams.
+ */
+import CompactStandardLibrary;
+import "../token/ConfidentialFungibleToken" prefix CFT_;
+import "../security/ComplianceRegistry" prefix Compliance_;
+import "../access/Ownable" prefix Ownable_;
+import "../crypto/ElGamal" prefix ElGamal_;
+
+export { CFT_EscrowEntry, ElGamal_Ciphertext };
+
+/**
+ * @description Initializes the token metadata and sets the issuer (owner).
+ * @param initialOwner - The issuer's `accountId` (`persistentHash(SK)`).
+ */
+constructor(
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  initialOwner: Bytes<32>
+) {
+  CFT_initialize(name_, symbol_, decimals_);
+  Ownable_initialize(
+    Either<Bytes<32>, ContractAddress> {
+      is_left: true,
+      left: initialOwner,
+      right: default<ContractAddress>
+    }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Holder operations (compliance-gated, permissionless otherwise)
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Registers the caller. When KYC is required, the caller must be
+ * on the allowlist. Gated on the returned (caller) registrant id.
+ */
+export circuit register(): Bytes<32> {
+  const registrant = CFT_register();
+  Compliance_assertKycApproved(registrant);
+  return registrant;
+}
+
+/**
+ * @description Transfers `value` to `to`. Blocks frozen recipients (up front)
+ * and frozen senders (on the returned caller id).
+ */
+export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  Compliance_assertNotFrozen(to);
+  const sender = CFT_transfer(to, value);
+  Compliance_assertNotFrozen(sender);
+  return sender;
+}
+
+/**
+ * @description Spends from `fromAddress`'s escrow to `to`. Blocks frozen owner
+ * and recipient (up front) and frozen spender (on the returned caller id).
+ */
+export circuit transferFrom(
+  fromAddress: Bytes<32>,
+  to: Bytes<32>,
+  value: Uint<128>
+): Bytes<32> {
+  Compliance_assertNotFrozen(fromAddress);
+  Compliance_assertNotFrozen(to);
+  const spender = CFT_transferFrom(fromAddress, to, value);
+  Compliance_assertNotFrozen(spender);
+  return spender;
+}
+
+/**
+ * @description Approves `spender` for `value`. Blocks a frozen spender (up
+ * front) and a frozen approver (on the returned caller id).
+ */
+export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  Compliance_assertNotFrozen(spender);
+  const owner = CFT_approve(spender, value);
+  Compliance_assertNotFrozen(owner);
+  return owner;
+}
+
+/**
+ * @description Redeems (burns) the caller's own balance. Blocks a frozen
+ * caller on the returned id.
+ */
+export circuit burn(value: Uint<128>): Bytes<32> {
+  const burner = CFT__burn(value);
+  Compliance_assertNotFrozen(burner);
+  return burner;
+}
+
+/**
+ * @description Burns from `fromAddress`'s escrow (caller must be pre-approved).
+ * The escrow itself is the authorization; freeze checks still apply.
+ */
+export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  Compliance_assertNotFrozen(fromAddress);
+  const spender = CFT__burnFrom(fromAddress, value);
+  Compliance_assertNotFrozen(spender);
+  return spender;
+}
+
+// ---------------------------------------------------------------------------
+// Issuer operations (Ownable-gated)
+// ---------------------------------------------------------------------------
+
+/** @description Mints `value` to `account`. Issuer-only; recipient not frozen. */
+export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
+  Ownable_assertOnlyOwner();
+  Compliance_assertNotFrozen(account);
+  CFT__mint(account, value);
+}
+
+export circuit freeze(account: Bytes<32>): [] {
+  Ownable_assertOnlyOwner();
+  Compliance__freeze(account);
+}
+
+export circuit unfreeze(account: Bytes<32>): [] {
+  Ownable_assertOnlyOwner();
+  Compliance__unfreeze(account);
+}
+
+export circuit setKycRequired(required: Boolean): [] {
+  Ownable_assertOnlyOwner();
+  Compliance__setKycRequired(required);
+}
+
+export circuit setKycApproved(account: Bytes<32>, approved: Boolean): [] {
+  Ownable_assertOnlyOwner();
+  Compliance__setKycApproved(account, approved);
+}
+
+// ---------------------------------------------------------------------------
+// Views (delegated; add CFT_balanceOf / CFT_allowance as your UI needs)
+// ---------------------------------------------------------------------------
+
+export circuit totalSupply(): Uint<128> {
+  return CFT_totalSupply();
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return CFT_isRegistered(account);
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_balanceOf(account);
+}
+
+export circuit isFrozen(account: Bytes<32>): Boolean {
+  return Compliance_isFrozen(account);
+}
+
+export circuit isKycApproved(account: Bytes<32>): Boolean {
+  return Compliance_isKycApproved(account);
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}

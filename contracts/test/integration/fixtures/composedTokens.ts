@@ -1,7 +1,7 @@
 import { createSimulator } from '@openzeppelin/compact-simulator';
 import {
-  ledger,
   Contract as ComposedTokens,
+  ledger,
 } from '../../../artifacts/ComposedTokens/contract/index.js';
 
 type EmptyPrivateState = Record<string, never>;
@@ -27,7 +27,7 @@ const ComposedTokensSimulatorBase = createSimulator<
   contractFactory: (witnesses) =>
     new ComposedTokens<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => ({}),
-  contractArgs: (ftName, ftSymbol, ftDecimals, nftName, nftSymbol, initFT, initNFT) => [
+  contractArgs: (
     ftName,
     ftSymbol,
     ftDecimals,
@@ -35,7 +35,7 @@ const ComposedTokensSimulatorBase = createSimulator<
     nftSymbol,
     initFT,
     initNFT,
-  ],
+  ) => [ftName, ftSymbol, ftDecimals, nftName, nftSymbol, initFT, initNFT],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ({}),
 });
