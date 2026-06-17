@@ -9,7 +9,9 @@ pragma language_version >= 0.23.0;
  * is hidden behind a `persistentHash` commitment on the ledger.
  * Deposits accumulate at the contract (no atomic forward); the operator
  * drains coins by presenting the `(parentAddr, opSecret)` preimage at drain
- * time.
+ * time and choosing the recipient arm (a coin public key or a contract
+ * address) via the `Either` parent. The commitment binds the parent bytes,
+ * not the recipient type.
  *
  * Knowledge of the preimage is the sole authorization gate — there is
  * no signer set and no nullifier scheme. The operational secret is
