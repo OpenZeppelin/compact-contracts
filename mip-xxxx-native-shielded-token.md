@@ -31,7 +31,7 @@ License: Apache-2.0
 
 ## Abstract
 
-This MIP defines a standard contract interface for **native shielded tokens** on Midnight: tokens that exist exclusively as [Zswap](https://docs.midnight.network/concepts/zswap) shielded [UTXOs](https://docs.midnight.network/concepts/utxo) rather than as balances in contract ledger state. Under this model the issuing contract is not a balance keeper — once minted, coins move wallet-to-wallet at the protocol level with no contract involvement. The contract's role is reduced to four concerns, and this standard specifies all of them: token metadata (`name`, `symbol`, `decimals`, `tokenColor`), issuance (`_mint`, `_mintWithNonce`), destruction (`_burn`, `_burnFromContract`), and honest supply accounting (`totalMinted` — exact, `totalBurned` — a lower bound, `totalSupply` — an upper bound on circulating supply). The interface supports multiple token types per contract via per-call domain separators, distinguishes recipient-public from recipient-private minting, and mandates the correct Zswap spend path for each burn flow (transient spends for coins provided within the transaction, Merkle-tree spends for contract-held coins). A reference implementation is provided as the `NativeShieldedToken` module in the [OpenZeppelin Compact Contracts library](https://github.com/OpenZeppelin/compact-contracts). This standard is complementary to [MIP-0004](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0004-fungible-token-standard-with-utxo.md), which standardizes account-based tokens with UTXO conversion.
+This MIP defines a standard contract interface for **native shielded tokens** on Midnight: tokens that exist exclusively as [Zswap](https://docs.midnight.network/concepts/zswap) shielded [UTXOs](https://docs.midnight.network/concepts/utxo) rather than as balances in contract ledger state. Under this model the issuing contract is not a balance keeper — once minted, coins move wallet-to-wallet at the protocol level with no contract involvement. The contract's role is reduced to four concerns, and this standard specifies all of them: token metadata (`name`, `symbol`, `decimals`, `tokenColor`), issuance (`_mint`, plus an optional derived-nonce extension), destruction (`_burn`, `_burnFromContract`), and honest supply accounting (`totalMinted` — exact, `totalBurned` — a lower bound, `totalSupply` — an upper bound on circulating supply). The interface supports multiple token types per contract via per-call domain separators, distinguishes recipient-public from recipient-private minting, and mandates the correct Zswap spend path for each burn flow (transient spends for coins provided within the transaction, Merkle-tree spends for contract-held coins). A reference implementation is provided as the `NativeShieldedToken` module in the [OpenZeppelin Compact Contracts library](https://github.com/OpenZeppelin/compact-contracts). This standard is complementary to [MIP-0004](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0004-fungible-token-standard-with-utxo.md), which standardizes account-based tokens with UTXO conversion.
 
 ## Motivation
 
@@ -41,7 +41,7 @@ There is currently no standard for *issuing* them. Every project that mints nati
 
 - **Wrong spend path.** A coin received by the contract within the current transaction is not yet in the global Zswap commitment tree; spending it requires the transient path (`sendImmediateShielded`), not a Merkle-proof spend (`sendShielded`). Conflating the two produces circuits that cannot be satisfied or that trust a caller-supplied Merkle index.
 - **Lost coins.** Contract-initiated sends do not create coin ciphertexts, so recipient wallets cannot discover minted or refunded coins by scanning the chain. Interfaces that discard the protocol's returned coin info strand value.
-- **Dishonest supply.** Holders can destroy coins by sending them to the burn address without touching the contract, so a contract-tracked "total supply" silently over-reports. Standards that present it as exact mislead indexers and integrators.
+- **Dishonest supply.** Holders can destroy coins without touching the contract, by sending them to the burn address or by submitting an imbalanced Zswap offer, so a contract-tracked "total supply" silently over-reports. Standards that present it as exact mislead indexers and integrators.
 - **Commitment collisions.** Coin nonces derived from public ledger state are predictable; without care, caller-supplied and contract-derived nonces share one namespace and can be made to collide, causing mint transactions to be rejected.
 
 Existing standards do not cover this asset class. The [OpenZeppelin FungibleToken](https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/src/token/FungibleToken.compact) is account-based, and [MIP-0004](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0004-fungible-token-standard-with-utxo.md) extends it with conversions between Map balances and UTXOs — the account model remains the source of truth. For tokens that should exist *only* in native shielded form, no interface exists. This MIP fills that gap with a minimal, composable mint/burn standard that encodes the correct protocol usage and states its privacy and accounting guarantees honestly.
@@ -73,8 +73,6 @@ The remaining sections are written domain-parametrically for the Family profile.
 Family profile (names per the reference implementation):
 
 ```typescript
-export ledger _counter: Counter;
-export ledger _nonce: Bytes<32>;
 export ledger _totalMinted: Map<Bytes<32>, Uint<128>>;
 export ledger _totalBurned: Map<Bytes<32>, Uint<128>>;
 
@@ -87,8 +85,6 @@ Fungible profile:
 
 ```typescript
 export sealed ledger _domain: Bytes<32>;
-export ledger _counter: Counter;
-export ledger _nonce: Bytes<32>;
 export ledger _totalMinted: Uint<128>;
 export ledger _totalBurned: Uint<128>;
 
@@ -97,18 +93,17 @@ export sealed ledger _symbol: Opaque<"string">;
 export sealed ledger _decimals: Uint<8>;
 ```
 
-- `_counter` / `_nonce`: a monotonically increasing index and an evolving nonce chain seeding internally derived coin nonces. Note that *all* Compact ledger state is public on-chain regardless of `export`; omitting `export` does not hide the nonce. The privacy implications of public nonce derivation are addressed in [Security Considerations](#security-considerations).
 - `_totalMinted` / `_totalBurned`: supply accounting (per domain in the Family profile). See [Supply Accounting](#supply-accounting).
 - Sealed fields are immutable after construction. In the Fungible profile, the sealed `_domain` write forces token setup into the constructor by the sealed-write rule.
+- Note that *all* Compact ledger state is public on-chain regardless of `export`; omitting `export` does not hide a field.
 
 ### Construction
 
 This standard does not prescribe an initialization mechanism. How a contract sets up its own state is an implementation concern; only the resulting properties are normative:
 
-1. `name`, `symbol`, and `decimals` (and, in the Fungible profile, the domain separator) MUST be set at construction and immutable thereafter.
-2. The internal nonce chain MUST be seeded at construction, and the seed SHOULD be chosen unpredictably (e.g. 32 random bytes).
+`name`, `symbol`, and `decimals` (and, in the Fungible profile, the domain separator) MUST be set at construction and immutable thereafter.
 
-The reference implementation satisfies both via an `initialize` module circuit invoked once from the consuming contract's constructor.
+The reference implementation satisfies this via an `initialize` module circuit invoked once from the consuming contract's constructor.
 
 ### Metadata Circuits
 
@@ -135,7 +130,7 @@ export circuit totalBurned(domain: Bytes<32>): Uint<128>
 export circuit totalSupply(domain: Bytes<32>): Uint<128>
 ```
 
-Exact circulating supply is not knowable for native shielded tokens: any holder can send coins directly to the burn address without contract involvement. This standard therefore commits to the strongest guarantees available and names them honestly:
+Exact circulating supply is not knowable for native shielded tokens: coins can be destroyed without contract involvement (see the bypass paths below). This standard therefore commits to the strongest guarantees available and names them honestly:
 
 - `totalMinted(domain)` is **exact**. Color derivation guarantees every coin of this contract's colors originates from this contract's mint circuits, all of which MUST increment it.
 - `totalBurned(domain)` is a **lower bound**: it counts only contract-mediated burns.
@@ -145,24 +140,25 @@ Exact circulating supply is not knowable for native shielded tokens: any holder 
 \texttt{circulating}(d) \le \texttt{totalSupply}(d) = \texttt{totalMinted}(d) - \texttt{totalBurned}(d)
 ```
 
-Good point and fair challenge , but I'd keep it in the base, because the counters don't reveal anything an indexer can't already compute. I built a reproducer to prove this empirically: https://github.com/0xisk/exploring-native-shielded-token-indexing. One command deploys a shielded token on a local v8 stack, mints, burns part of it, and decodes the raw tx bytes into exactly what a public observer sees (a sample decoded report is committed as SAMPLE-OUTPUT.md if you don't want to run it). Result: the mint amount is public in the transcript's shieldedMints effect at the protocol level, and the burn flow discloses the coin value and change, so the burned amount is derivable too. totalMinted/totalBurned are therefore already reconstructable from chain data; the counters just standardize where to read them.
+Two destruction paths bypass the contract:
 
-The other half is the one-way trap: Compact ledger layouts are fixed at deploy. A token that ships without the counters can never add them, so "opt in later" doesn't exist on Midnight. I'd rather pay three cheap fields in the base than make supply auditability unrecoverable for every conforming token.
+- **Burn-address sends**: wallet transfer to `shieldedBurnAddress()`. Amount stays inside a Pedersen commitment, hidden from everyone.
+- **Protocol burns**: a Zswap offer with a positive value imbalance, no contract call. Amount is public in the value deltas, invisible to contract state.
 
-On the title: I'd avoid "auditable". totalSupply is only an upper bound (out-of-band burns to the burn address are invisible to the contract), and the spec is deliberately honest about that. "Auditable" would oversell exactly what we're being careful not to promise.
+Who can know what ([verified empirically](https://github.com/0xisk/exploring-native-shielded-token-indexing)):
+
+- **Contract**: only its own mints and burns. Protocol-level activity never invokes it, so no contract-side accounting can beat these counters.
+- **Indexer**: exact totals for mints (`shieldedMints` effects), contract burns (disclosed transcript values), protocol burns (value deltas), and per-color pool value (negated delta sum). MAY tighten the bound to `totalSupply(domain)` minus protocol burns.
+- **No one**: the spendable share of the pool. Burn-address coins stay in the pool, indistinguishable from live coins, so exact circulating supply is unknowable on-chain and off.
+
+The counters disclose nothing new: mint amounts are public at the protocol level, and burns must `disclose` coin value and change regardless (the compiler forces it on every shielded receive/spend primitive). They standardize what indexers can already reconstruct; dropping them hides nothing.
 
 Implementations MUST maintain: every mint of `amount` under `domain` adds `amount` to `_totalMinted[domain]` (reverting on `Uint<128>` overflow), and every contract-mediated burn of `amount` adds `amount` to `_totalBurned[domain]`. Burned can never exceed minted for the same domain, so the difference cannot underflow. Integrators SHOULD present `totalSupply` as an upper bound, not as exact circulating supply.
 
-### Mint Circuits
+### Mint Circuit
 
 ```typescript
 export circuit _mint(
-  domain: Bytes<32>,
-  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<64>
-): ShieldedCoinInfo
-
-export circuit _mintWithNonce(
   domain: Bytes<32>,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
   amount: Uint<64>,
@@ -170,31 +166,38 @@ export circuit _mintWithNonce(
 ): ShieldedCoinInfo
 ```
 
-**Common behavior:**
-
 1. MUST revert if `recipient` is the zero key or zero address.
 2. MUST add `amount` to `_totalMinted[domain]`, reverting on overflow.
 3. MUST call `mintShieldedToken(domain, amount, nonce, recipient)` and return the resulting `ShieldedCoinInfo`.
-4. The caller (DApp) MUST deliver the returned coin info to the recipient out of band; wallets cannot detect contract-minted coins by scanning the chain (contract-initiated outputs carry no coin ciphertext).
-
-**`_mint` (derived nonce — recipient-public):**
-
-5. MUST increment `_counter`, evolve the chain (`_nonce = evolveNonce(_counter, _nonce)`), and derive the coin nonce in a domain-separated namespace:
-
-```typescript
-coinNonce = persistentHash<Vector<2, Bytes<32>>>(
-  [pad(32, "NativeShieldedToken:nonce"), _nonce]
-);
-```
-
-6. Because every derivation input is public, the resulting coin commitment is recomputable by enumerating candidate recipient keys: `_mint` MUST be documented as **recipient-public**.
-
-**`_mintWithNonce` (caller nonce — recipient-private):**
-
-7. The caller is responsible for nonce uniqueness; reusing a nonce for the same `(domain, value, recipient)` produces a duplicate commitment, which the ledger rejects.
-8. With a secret, cryptographically random nonce, the commitment cannot be linked to a recipient: this is the recipient-private mint. It is also the variant for operator-driven flows where the commitment must be computed off-chain before submission.
+4. Contract-initiated outputs carry no coin ciphertext, so wallets cannot currently detect contract-minted coins by scanning the chain: the returned coin info is the only copy available to the recipient. Callers SHOULD deliver it to the recipient out of band.
+5. The caller is responsible for nonce uniqueness; reusing a nonce for the same `(domain, value, recipient)` produces a duplicate commitment, which the ledger rejects.
+6. With a secret, cryptographically random nonce, the commitment cannot be linked to a recipient: this is the recipient-private mint. For operator-driven flows, the commitment can be computed off-chain before submission.
 
 The `Uint<64>` amount cap is imposed by the ledger: contract shielded mints are recorded as a `Map<[u8; 32], u64>` in the transaction effects. Larger issuance requires multiple mints.
+
+### Extension: Derived-Nonce Minting
+
+An OPTIONAL extension for issuers that want a mint requiring no caller-managed nonce. It adds the nonce-chain state and one circuit:
+
+```typescript
+export ledger _counter: Counter;
+export ledger _nonce: Bytes<32>;
+
+export circuit _mintWithDerivedNonce(
+  domain: Bytes<32>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>
+): ShieldedCoinInfo
+```
+
+`_mintWithDerivedNonce` MUST behave exactly as `_mint` called with a nonce derived from contract state. The derivation is not prescribed; it MUST satisfy these properties:
+
+1. The chain MUST be seeded at construction, and the seed SHOULD be chosen unpredictably (e.g. 32 random bytes).
+2. Derived nonces MUST never repeat for the lifetime of the contract.
+3. Derived nonces MUST be domain-separated from values an honest `_mint` caller could produce by reading public ledger state (e.g. hashed under a fixed tag), so internal and caller nonces cannot accidentally collide.
+4. The derivation inputs are public ledger state, so the resulting commitment is recomputable by enumerating candidate recipient keys: implementations SHOULD document this circuit as **recipient-public**. Issuers needing recipient privacy at mint time use the base `_mint` with a secret nonce.
+
+The reference implementation (`extensions/NativeShieldedTokenDerivedNonce.compact`) evolves a counter-indexed chain and derives the coin nonce as `persistentHash([pad(32, "NativeShieldedToken:nonce"), chainValue])`.
 
 ### Burn Circuits
 
@@ -223,7 +226,7 @@ export circuit _burnFromContract(
 
 4. For coins provided within the current transaction (e.g. paid in by the caller's wallet). MUST call `receiveShielded(coin)` and spend via `sendImmediateShielded` — the transient path. The signature takes an unqualified `ShieldedCoinInfo` deliberately: a same-tx coin has no meaningful `mt_index`, and accepting one would let the caller supply an arbitrary value.
 5. MUST revert if `refundTo` is the zero key or zero address (the zero key *is* the burn address; a zeroed `refundTo` would silently burn the change too).
-6. If `amount < coin.value`, the change MUST be forwarded to `refundTo` via a second `sendImmediateShielded`, and the circuit MUST return `some(refundCoin)` — the actual coin info created for `refundTo`. The caller MUST deliver it to `refundTo` out of band. If `amount == coin.value`, the circuit returns `none`.
+6. If `amount < coin.value`, the change MUST be forwarded to `refundTo` via a second `sendImmediateShielded`, and the circuit MUST return `some(refundCoin)` — the actual coin info created for `refundTo`. The caller SHOULD deliver it to `refundTo` out of band. If `amount == coin.value`, the circuit returns `none`.
 
 **`_burnFromContract` (contract-held coin):**
 
@@ -270,9 +273,9 @@ This interface is designed to be C2C-ready without changes:
 - `tokenColor(domain)` exists so C2C callers can query the color instead of re-deriving it.
 - Fixing the ledger layout now (including the supply maps) means phase-two circuits can later be added to a deployed token via a CMA verifier-key rotation with zero ledger-state migration — the only kind of upgrade the CMA supports. This mirrors the migration plan documented in the OpenZeppelin `FungibleToken` module.
 
-### Why two mint variants?
+### Why one mint primitive plus an extension?
 
-There is a genuine trade-off between operational simplicity and recipient privacy. Derived nonces (`_mint`) cannot collide and require nothing from the caller, but every derivation input is public, so commitments are linkable to recipients by enumeration. Caller nonces (`_mintWithNonce`) restore recipient privacy and enable off-chain commitment precomputation, at the cost of making the caller responsible for uniqueness. Hiding this trade-off behind a single circuit would mean either silently recipient-public mints or silently fragile ones.
+The core `_mint` matches the protocol primitive one-to-one: the caller supplies the nonce, owns its uniqueness, and obtains recipient privacy with a secret uniform nonce. Derived-nonce minting is convenience layered on top, and it carries a genuine trade-off: it requires nothing from the caller and cannot accidentally collide, but every derivation input is public, so commitments are linkable to recipients by enumeration. Keeping it a separately named, optional extension keeps the conforming core minimal and makes the privacy trade-off visible at the call site, rather than hiding two behaviors behind one circuit.
 
 ### Why two burn variants?
 
@@ -284,11 +287,11 @@ Contract-initiated sends create no coin ciphertexts, so the only copy of a refun
 
 ### Why supply bounds instead of exact supply?
 
-The alternative — an exact-looking `totalSupply` counter — is strictly worse: it reports the same number while implying a guarantee the protocol cannot provide (out-of-band burns are invisible to contract state). Naming the quantities `totalMinted` / `totalBurned` / upper-bound `totalSupply` gives indexers correct semantics. Supply tracking is included in the base standard rather than an optional extension because Compact ledger layouts are fixed at deployment: a consumer that deploys without it can never add it.
+The alternative — an exact-looking `totalSupply` counter — is strictly worse: it reports the same number while implying a guarantee the protocol cannot provide (out-of-band burns are invisible to contract state). Naming the quantities `totalMinted` / `totalBurned` / upper-bound `totalSupply` gives indexers correct semantics. Supply tracking is included in the base standard rather than an optional extension because Compact ledger layouts are fixed at deployment: a consumer that deploys without it can never add it. The counters also cost no privacy: mint and burn disclosures are forced by the coin primitives, not the supply state. A counter-free burn fails to compile with the same disclosure errors (see [Supply Accounting](#supply-accounting)).
 
 ### Why domain-separate the internal nonce chain?
 
-The evolved chain values are public. If coin nonces equaled chain values, the most natural misuse of `_mintWithNonce` — reading the public `_nonce` field and passing it back — would collide with an internal mint. Hashing chain values under a fixed tag (`"NativeShieldedToken:nonce"`) puts internal nonces in a namespace honest callers will not produce. It does not prevent deliberate collision-griefing (see Security Considerations); it removes the accidental case.
+The evolved chain values are public. If coin nonces equaled chain values, the most natural misuse of `_mint` — reading the public `_nonce` field and passing it back as the nonce — would collide with an internal mint. Hashing chain values under a fixed tag (`"NativeShieldedToken:nonce"`) puts internal nonces in a namespace honest callers will not produce. It does not prevent deliberate collision-griefing (see Security Considerations); it removes the accidental case.
 
 ### Naming
 
@@ -301,7 +304,7 @@ For the profiles, the short name `NativeShieldedToken` goes to the Fungible prof
 ### Acceptance Criteria
 
 - Reference implementation merged into the [OpenZeppelin Compact Contracts library](https://github.com/OpenZeppelin/compact-contracts) with a full simulator-based test suite.
-- At least one deployment on Midnight testnet exercising all six mutating circuits (`initialize`, both mints, both burns, supply getters), including the partial-burn refund path.
+- At least one deployment on Midnight testnet exercising the full circuit surface (construction, both mint paths, both burns, supply getters), including the partial-burn refund path.
 - Demonstrated wallet round-trip: mint → out-of-band coin delivery → wallet-to-wallet transfer → contract burn.
 - Review and endorsement through the [MIP process](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0001-mip-process.md) workshops.
 - Security audit of the reference implementation.
@@ -327,15 +330,15 @@ The module-level circuits carry no authorization. A consumer that exposes `_mint
 
 ### Commitment collisions and mint denial-of-service
 
-Internally derived nonces are predictable from public state. An actor with access to `_mintWithNonce` can precompute a future internal nonce, pre-mint a coin with the identical `(nonce, domain, value, recipient)` tuple, and cause that specific future `_mint` to fail on duplicate-commitment rejection. The namespace separation removes accidental collisions; the deliberate vector is mitigated operationally: gate both mint variants, and prefer not exposing both for the same domain to distinct trust levels. A failed mint is recoverable (any subsequent mint with a different tuple advances the chain past the collision).
+Internally derived nonces (Derived-Nonce Minting extension) are predictable from public state. An actor with access to `_mint` can precompute a future internal nonce, pre-mint a coin with the identical `(nonce, domain, value, recipient)` tuple, and cause that specific future `_mintWithDerivedNonce` to fail on duplicate-commitment rejection. The namespace separation removes accidental collisions; the deliberate vector is mitigated operationally: gate both mint circuits, and prefer not exposing both for the same domain to distinct trust levels. A failed mint is recoverable (any subsequent mint with a different tuple advances the chain past the collision).
 
 ### Recipient linkability of derived-nonce mints
 
-For `_mint`, the coin commitment is recomputable from public state for any candidate recipient key, so mint recipients are effectively public (the later *spend* of the coin remains unlinkable — nullifier derivation requires the holder's secret key). Issuers needing recipient privacy at mint time MUST use `_mintWithNonce` with a secret uniform nonce. Note that declining to `export` the nonce ledger fields does not change this: ledger state is public on-chain regardless.
+For `_mintWithDerivedNonce`, the coin commitment is recomputable from public state for any candidate recipient key, so mint recipients are effectively public (the later *spend* of the coin remains unlinkable — nullifier derivation requires the holder's secret key). Issuers needing recipient privacy at mint time MUST use `_mint` with a secret uniform nonce. Note that declining to `export` the nonce ledger fields does not change this: ledger state is public on-chain regardless.
 
 ### Coin delivery and value loss
 
-The returned `ShieldedCoinInfo` from mints and the `Maybe<ShieldedCoinInfo>` from burns are the only copies of the corresponding coins' info available to recipients (no ciphertexts are emitted for contract-initiated outputs). DApps integrating this standard MUST capture and deliver them; dropping them strands value irrecoverably. Test suites SHOULD assert on returned coin info, not only on ledger state.
+The returned `ShieldedCoinInfo` from mints and the `Maybe<ShieldedCoinInfo>` from burns are the only copies of the corresponding coins' info available to recipients (no ciphertexts are emitted for contract-initiated outputs). DApps integrating this standard SHOULD capture and deliver them; dropping them strands value irrecoverably. Test suites SHOULD assert on returned coin info, not only on ledger state.
 
 ### Wrong-color burns
 
@@ -347,7 +350,7 @@ The returned `ShieldedCoinInfo` from mints and the `Maybe<ShieldedCoinInfo>` fro
 
 ### Supply interpretation
 
-`totalSupply` is an upper bound. Integrators SHOULD present it as such rather than as exact circulating supply; the spec names `totalMinted`/`totalBurned` so UIs can disclose the bound semantics.
+`totalSupply` is an upper bound. Integrators SHOULD present it as such rather than as exact circulating supply; the spec names `totalMinted`/`totalBurned` so UIs can disclose the bound semantics. `totalMinted` is independently verifiable from public `shieldedMints` effects, so indexers can flag non-conforming implementations.
 
 ### No post-issuance control
 
@@ -357,7 +360,7 @@ Once minted, coins are unconditionally transferable bearer instruments: no pause
 
 ### Components
 
-1. **New Compact modules**: [`NativeShieldedToken.compact` (Fungible profile) and `NativeShieldedTokenFamily.compact` (Family profile)](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token) in the OpenZeppelin Compact Contracts library — all state and circuits specified above, composed with the library's `Initializable` and `Utils` modules.
+1. **New Compact modules**: [`NativeShieldedToken.compact` (Fungible profile) and `NativeShieldedTokenFamily.compact` (Family profile)](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token) in the OpenZeppelin Compact Contracts library — all state and circuits specified above, composed with the library's `Initializable` and `Utils` modules — plus the optional `extensions/NativeShieldedTokenDerivedNonce.compact` extension module.
 2. **Mocks + simulators + tests**: `MockNativeShieldedToken.compact` and `MockNativeShieldedTokenFamily.compact` exposing the module circuits, with TypeScript simulators and Vitest suites.
 3. **No protocol changes required.**
 
@@ -372,8 +375,8 @@ Once minted, coins are unconditionally transferable bearer instruments: no pause
 ### Unit Tests
 
 - `initialize`: all circuits revert before initialization; double-initialize reverts; metadata getters return constructor values.
-- `_mint`: returns coin info with `color == tokenColor(domain)` and correct value; `_counter`/`_nonce` evolve per spec; `_totalMinted[domain]` incremented; revert on zero recipient; overflow guard.
-- `_mintWithNonce`: identical accounting; coin nonce equals caller's nonce; distinct domains accumulate independent supplies.
+- `_mint`: returns coin info with `color == tokenColor(domain)` and correct value; coin nonce equals the caller's nonce; `_totalMinted[domain]` incremented; revert on zero recipient; overflow guard; distinct domains accumulate independent supplies.
+- `_mintWithDerivedNonce` (extension): identical accounting; `_counter`/`_nonce` evolve per the extension's properties; derived nonces never repeat.
 - `_burn`: revert on wrong color, on `amount > coin.value`, on zero `refundTo`; full burn returns `none`; partial burn returns `some(refund)` with `refund.value == coin.value - amount`; `_totalBurned[domain]` incremented.
 - `_burnFromContract`: revert on wrong color and on `amount > coin.value`; change returned and owned by the contract; no receive claim emitted.
 - Supply getters: `totalSupply == totalMinted - totalBurned` after arbitrary mint/burn sequences; unknown domains return 0.
@@ -383,7 +386,7 @@ Once minted, coins are unconditionally transferable bearer instruments: no pause
 - Round-trip on network: mint to user wallet → out-of-band delivery → user pays coin into `_burn` → refund coin spendable by `refundTo`.
 - Treasury flow: mint to `kernel.self()` → `_burnFromContract` partial burn → persisted change burnable again.
 - Multi-domain isolation: mints/burns under domain A do not affect domain B's supply or color checks.
-- Invariant fuzzing: for random operation sequences, `totalMinted` exact vs simulator-observed mints; `circulating <= totalSupply` after including direct-to-burn-address sends that bypass the contract.
+- Invariant fuzzing: for random operation sequences, `totalMinted` exact vs simulator-observed mints; `circulating <= totalSupply` after including contract-bypassing burns (direct-to-burn-address sends and imbalanced-offer protocol burns).
 
 ## References (Optional)
 
@@ -394,6 +397,7 @@ Once minted, coins are unconditionally transferable bearer instruments: no pause
 - [OpenZeppelin Compact Contracts — Repository](https://github.com/OpenZeppelin/compact-contracts)
 - [OpenZeppelin Compact Contracts — Issue #544: Add Shielded Native Token standard](https://github.com/OpenZeppelin/compact-contracts/issues/544)
 - [OpenZeppelin Compact Contracts — PR #559: Add shielded token](https://github.com/OpenZeppelin/compact-contracts/pull/559)
+- [Native shielded token indexing study — empirical decode of mint/burn visibility and supply reconstruction](https://github.com/0xisk/exploring-native-shielded-token-indexing)
 - [Midnight Zswap Documentation](https://docs.midnight.network/concepts/zswap)
 - [Midnight UTXO Model Documentation](https://docs.midnight.network/concepts/utxo)
 - [The Compact Language](https://docs.midnight.network/compact)

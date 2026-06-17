@@ -14,8 +14,8 @@ pragma language_version >= 0.21.0;
  * This module exposes composable building blocks for minting and burning
  * native shielded coins. It does NOT include access control. Consuming
  * contracts compose that through the module/contract pattern (Ownable,
- * AccessControl, etc.). Both mint variants and both burn variants SHOULD
- * be gated by the consumer; they are unrestricted at the module level.
+ * AccessControl, etc.). The mint and burn circuits SHOULD be gated by the
+ * consumer; they are unrestricted at the module level.
  *
  * # Design notes
  *
@@ -35,30 +35,21 @@ pragma language_version >= 0.21.0;
  *   is imposed by the protocol primitives (`mintShieldedToken` caps at 64;
  *   `sendShielded` accepts 128) and is not a choice the module makes.
  *
- * # Mint variants and recipient privacy
+ * # Minting and recipient privacy
  *
- * - `_mint` derives the coin nonce from public ledger state (`_counter`,
- *   `_nonce`). Because the nonce, color, value, and counter are all public,
- *   anyone can recompute the coin commitment for candidate recipient keys:
- *   `_mint` is effectively recipient-public. This matches the established
- *   ecosystem pattern and is the safe default for nonce uniqueness.
+ * - `_mint` accepts a caller-supplied nonce, mirroring the protocol's
+ *   `mintShieldedToken` one-to-one. The caller is fully responsible for
+ *   nonce uniqueness: reusing a nonce for the same (value, recipient)
+ *   produces a duplicate commitment, which the ledger rejects.
  *
- * - `_mintWithNonce` accepts a caller-supplied nonce. With a secret,
- *   cryptographically random nonce this is the recipient-private mint: the
- *   commitment cannot be linked to a recipient without the nonce. It is also
- *   required for operator-driven flows where the commitment must be computed
- *   off-chain before submission. The caller is fully responsible for nonce
- *   uniqueness.
+ * - With a secret, cryptographically random nonce the mint is
+ *   recipient-private: the commitment cannot be linked to a recipient
+ *   without the nonce. This also supports operator-driven flows where the
+ *   commitment must be computed off-chain before submission.
  *
- * - Internal nonces are domain-separated from the stored evolution chain:
- *   the coin nonce is `persistentHash([pad(32, "NativeShieldedToken:nonce"), chainValue])`,
- *   not the chain value itself. Reusing a value read from the public `_nonce`
- *   field in `_mintWithNonce` therefore cannot collide with an internal mint.
- *   Note that internal nonces remain predictable from public state; an actor
- *   with access to `_mintWithNonce` can still deliberately pre-mint a
- *   commitment that collides with a future `_mint` of the same
- *   (value, recipient), making that mint fail on duplicate-commitment
- *   rejection. Gate both variants behind access control.
+ * - For mints that require no caller-managed nonce, compose the standalone
+ *   `NativeShieldedTokenDerivedNonce` extension and pass its `_deriveNonce()`
+ *   output as the nonce, at the cost of making those mints recipient-public.
  *
  * # Burn variants
  *
@@ -87,8 +78,9 @@ pragma language_version >= 0.21.0;
  *
  * - Contract-initiated sends do not create coin ciphertexts, so recipient
  *   wallets cannot detect coins minted or refunded to them by scanning the
- *   chain. DApps MUST capture the `ShieldedCoinInfo` values returned by the
- *   mint and burn circuits and deliver them to the recipient out of band.
+ *   chain. The returned `ShieldedCoinInfo` values are the only copies of the
+ *   corresponding coins' info: DApps SHOULD capture and deliver them out of
+ *   band; dropping them strands value irrecoverably.
  *
  * # Composition
  *
@@ -117,15 +109,6 @@ module NativeShieldedToken {
    */
   export sealed ledger _domain: Bytes<32>;
   /**
-   * @description Monotonic index feeding the internal nonce evolution chain.
-   */
-  export ledger _counter: Counter;
-  /**
-   * @description Latest value of the internal nonce evolution chain. Coin
-   * nonces are derived from (not equal to) this value; see the module notes.
-   */
-  export ledger _nonce: Bytes<32>;
-  /**
    * @description Exact amount minted. See "Supply accounting".
    */
   export ledger _totalMinted: Uint<128>;
@@ -139,13 +122,13 @@ module NativeShieldedToken {
   export sealed ledger _decimals: Uint<8>;
 
   /**
-   * @description Initializes the module's domain, metadata, and nonce seed.
+   * @description Initializes the module's domain and metadata.
    * @dev This MUST be called in the implementing contract's constructor.
    * Failure to do so can lead to an irreparable contract.
    *
+   * @circuitInfo k=9, rows=339
+   *
    * @param {Bytes<32>} domainSep - Domain separator for this token's color.
-   * @param {Bytes<32>} initNonce - Nonce chain seed; subsequent values evolve
-   * from it via the internal counter. Choose unpredictably (e.g. random bytes).
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
@@ -153,14 +136,12 @@ module NativeShieldedToken {
    */
   export circuit initialize(
                    domainSep: Bytes<32>,
-                   initNonce: Bytes<32>,
                    name_: Opaque<"string">,
                    symbol_: Opaque<"string">,
                    decimals_: Uint<8>
                    ): [] {
     Initializable_initialize();
     _domain = disclose(domainSep);
-    _nonce = disclose(initNonce);
     _name = disclose(name_);
     _symbol = disclose(symbol_);
     _decimals = disclose(decimals_);
@@ -168,6 +149,8 @@ module NativeShieldedToken {
 
   /**
    * @description Returns the token name.
+   *
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -182,6 +165,8 @@ module NativeShieldedToken {
 
   /**
    * @description Returns the symbol of the token.
+   *
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -199,6 +184,8 @@ module NativeShieldedToken {
    * @dev This is a display convention only. The protocol stores and operates
    * on integer values without reference to decimals.
    *
+   * @circuitInfo k=6, rows=28
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -214,6 +201,8 @@ module NativeShieldedToken {
    * @description Returns this token's coin color:
    * `tokenType(_domain, kernel.self())`, computed at call time.
    *
+   * @circuitInfo k=13, rows=3971
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -227,6 +216,8 @@ module NativeShieldedToken {
 
   /**
    * @description Returns the exact amount ever minted.
+   *
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -243,6 +234,8 @@ module NativeShieldedToken {
    * @description Returns the contract-mediated amount burned.
    * @notice This is a lower bound: coins sent directly to the burn address
    * without going through this contract are not counted.
+   *
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -261,6 +254,8 @@ module NativeShieldedToken {
    * burns that bypass the contract are invisible. See "Supply accounting" in
    * the module notes.
    *
+   * @circuitInfo k=9, rows=88
+   *
    * Requirements:
    *
    * - Contract is initialized.
@@ -273,51 +268,21 @@ module NativeShieldedToken {
   }
 
   /**
-   * @description Mints `amount` of the token to `recipient`, using a nonce
-   * derived from the module's internal chain.
-   *
-   * Use this when the caller does not need to predict the coin's commitment
-   * ahead of submission and recipient privacy is not required (the derivation
-   * inputs are public; see "Mint variants and recipient privacy"). For
-   * recipient-private or operator-driven flows, use `_mintWithNonce`.
-   *
-   * @notice The returned coin info MUST be delivered to the recipient out of
-   * band; wallets cannot detect contract-minted coins by scanning the chain.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - `recipient` is not zero.
-   *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
-   * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
-   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
-   */
-  export circuit _mint(
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-                   amount: Uint<64>
-                   ): ShieldedCoinInfo {
-    _counter.increment(1);
-    const chainValue = evolveNonce(_counter, _nonce);
-    _nonce = chainValue;
-    const coinNonce = persistentHash<Vector<2, Bytes<32>>>(
-      [pad(32, "NativeShieldedToken:nonce"), chainValue]
-    );
-    return _mintWithNonce(recipient, amount, coinNonce);
-  }
-
-  /**
    * @description Mints `amount` of the token to `recipient`, using a
    * caller-supplied nonce.
    *
    * @dev The caller is fully responsible for nonce uniqueness. Reusing a
    * nonce for the same (value, recipient) produces a duplicate commitment,
    * which the protocol rejects. With a secret random nonce this is the
-   * recipient-private mint variant. If unsure whether this variant is
-   * needed, use `_mint` instead.
+   * recipient-private mint. For mints that require no caller-managed nonce,
+   * compose the `NativeShieldedTokenDerivedNonce` extension and pass its
+   * `_deriveNonce()` output.
    *
-   * @notice The returned coin info MUST be delivered to the recipient out of
-   * band; wallets cannot detect contract-minted coins by scanning the chain.
+   * @notice The returned coin info is the only copy available to the
+   * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
+   * contract-minted coins by scanning the chain.
+   *
+   * @circuitInfo k=14, rows=11090
    *
    * Requirements:
    *
@@ -328,9 +293,9 @@ module NativeShieldedToken {
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
    * contract's color.
-   * @return {ShieldedCoinInfo} - The newly created coin's info.
+   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
-  export circuit _mintWithNonce(
+  export circuit _mint(
                    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
                    amount: Uint<64>,
                    nonce: Bytes<32>
@@ -356,8 +321,11 @@ module NativeShieldedToken {
    * transient path). For coins the contract already holds, use
    * `_burnFromContract` instead.
    *
-   * @notice The returned refund coin info MUST be delivered to `refundTo` out
-   * of band; wallets cannot detect contract-sent coins by scanning the chain.
+   * @notice The returned refund coin info is the only copy available to
+   * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
+   * contract-sent coins by scanning the chain.
+   *
+   * @circuitInfo k=16, rows=47786
    *
    * Requirements:
    *
@@ -407,6 +375,8 @@ module NativeShieldedToken {
    * @dev The consumer SHOULD persist the returned change coin info in its own
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
+   *
+   * @circuitInfo k=15, rows=23437
    *
    * Requirements:
    *

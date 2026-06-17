@@ -10,6 +10,7 @@ pragma language_version >= 0.21.0;
 import CompactStandardLibrary;
 
 import "../../NativeShieldedToken" prefix NativeShieldedToken_;
+import "../../extensions/NativeShieldedTokenDerivedNonce" prefix NativeShieldedTokenDerivedNonce_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
@@ -21,7 +22,8 @@ constructor(
   symbol_: Opaque<"string">,
   decimals_: Uint<8>
 ) {
-  NativeShieldedToken_initialize(domainSep, initNonce, name_, symbol_, decimals_);
+  NativeShieldedToken_initialize(domainSep, name_, symbol_, decimals_);
+  NativeShieldedTokenDerivedNonce_initialize(initNonce);
 }
 
 export circuit name(): Opaque<"string"> {
@@ -54,17 +56,23 @@ export circuit totalSupply(): Uint<128> {
 
 export circuit _mint(
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<64>
-): ShieldedCoinInfo {
-  return NativeShieldedToken__mint(recipient, amount);
-}
-
-export circuit _mintWithNonce(
-  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
   amount: Uint<64>,
   nonce: Bytes<32>
 ): ShieldedCoinInfo {
-  return NativeShieldedToken__mintWithNonce(recipient, amount, nonce);
+  return NativeShieldedToken__mint(recipient, amount, nonce);
+}
+
+export circuit _deriveNonce(): Bytes<32> {
+  return NativeShieldedTokenDerivedNonce__deriveNonce();
+}
+
+// Demonstrates the documented composition: base _mint with the extension's
+// _deriveNonce building block as the nonce source.
+export circuit _mintWithDerivedNonce(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>
+): ShieldedCoinInfo {
+  return NativeShieldedToken__mint(recipient, amount, NativeShieldedTokenDerivedNonce__deriveNonce());
 }
 
 export circuit _burn(

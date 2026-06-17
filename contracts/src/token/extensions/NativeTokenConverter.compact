@@ -11,9 +11,11 @@ pragma language_version >= 0.21.0;
  *
  * - `_unshield`: destroys shielded value (base shielded `_burn`) and mints
  *   the unshielded equivalent (base unshielded `_mint`).
- * - `_shield` / `_shieldWithNonce`: destroys unshielded value (base
- *   unshielded `_burn`) and mints the shielded equivalent (base shielded
- *   `_mint` / `_mintWithNonce`).
+ * - `_shield`: destroys unshielded value (base unshielded `_burn`) and mints
+ *   the shielded equivalent (base shielded `_mint`) with a caller-supplied
+ *   nonce. For derived-nonce shielding, compose the standalone
+ *   `NativeShieldedTokenDerivedNonce` extension and pass its
+ *   `_deriveNonce()` output.
  *
  * # Design notes
  *
@@ -66,10 +68,10 @@ module NativeTokenConverter {
    * unshielded mint increments the unshielded `totalMinted(domain)` by the
    * same amount: the cross-representation supply sum is unchanged.
    *
-   * @notice The returned refund coin info (if any) MUST be delivered to
-   * `refundTo` out of band; wallets cannot detect contract-sent shielded
-   * coins by scanning the chain. The unshielded output is publicly visible
-   * and needs no delivery.
+   * @notice The returned refund coin info (if any) is the only copy
+   * available to `refundTo`; callers SHOULD deliver it out of band. Wallets
+   * cannot detect contract-sent shielded coins by scanning the chain. The
+   * unshielded output is publicly visible and needs no delivery.
    *
    * Requirements:
    *
@@ -109,16 +111,20 @@ module NativeTokenConverter {
   /**
    * @description Converts `amount` of the unshielded representation, provided
    * to the contract within the current transaction, into a shielded coin
-   * minted to `recipient` with an internally derived nonce.
+   * minted to `recipient` with a caller-supplied nonce.
    *
    * The unshielded burn increments the unshielded `totalBurned(domain)` and
    * the shielded mint increments the shielded `totalMinted(domain)` by the
    * same amount: the cross-representation supply sum is unchanged.
    *
-   * @notice Like the base shielded `_mint`, the derived nonce makes this
-   * variant recipient-public. Use `_shieldWithNonce` with a secret random
-   * nonce for a recipient-private conversion. The returned coin info MUST be
-   * delivered to `recipient` out of band.
+   * @dev The caller is fully responsible for nonce uniqueness; see the base
+   * shielded `_mint`. With a secret, cryptographically random nonce this is
+   * the recipient-private conversion. For derived-nonce shielding, compose
+   * the `NativeShieldedTokenDerivedNonce` extension and pass its
+   * `_deriveNonce()` output (which makes the conversion recipient-public).
+   *
+   * @notice The returned coin info is the only copy available to the
+   * recipient; callers SHOULD deliver it out of band.
    *
    * Requirements:
    *
@@ -133,42 +139,11 @@ module NativeTokenConverter {
    * protocol's shielded mint.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - Recipient
    * of the shielded representation.
-   * @return {ShieldedCoinInfo} - The newly created shielded coin's info.
-   */
-  export circuit _shield(
-                   domain: Bytes<32>,
-                   amount: Uint<64>,
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>
-                   ): ShieldedCoinInfo {
-    assert(amount > 0, "NativeTokenConverter: zero amount");
-
-    NativeUnshieldedMultiToken__burn(domain, amount);
-    return NativeShieldedTokenFamily__mint(domain, recipient, amount);
-  }
-
-  /**
-   * @description Variant of `_shield` using a caller-supplied nonce for the
-   * minted shielded coin. With a secret, cryptographically random nonce this
-   * is the recipient-private conversion. The caller is fully responsible for
-   * nonce uniqueness; see the base shielded `_mintWithNonce`.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   * - `amount` is greater than 0.
-   * - `recipient` is not zero.
-   * - The transaction provides `amount` of this domain's unshielded
-   *   representation to the contract.
-   *
-   * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @param {Uint<64>} amount - Value to convert.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - Recipient
-   * of the shielded representation.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per
    * (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created shielded coin's info.
    */
-  export circuit _shieldWithNonce(
+  export circuit _shield(
                    domain: Bytes<32>,
                    amount: Uint<64>,
                    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -177,6 +152,6 @@ module NativeTokenConverter {
     assert(amount > 0, "NativeTokenConverter: zero amount");
 
     NativeUnshieldedMultiToken__burn(domain, amount);
-    return NativeShieldedTokenFamily__mintWithNonce(domain, recipient, amount, nonce);
+    return NativeShieldedTokenFamily__mint(domain, recipient, amount, nonce);
   }
 }

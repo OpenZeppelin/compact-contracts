@@ -1,0 +1,454 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.1.0 (token/extensions/NativeShieldedTokenCustody.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module NativeShieldedTokenCustody
+ * @description Optional extension that adds a policy-enforceable CUSTODIAL
+ * representation to a native shielded token, composing the
+ * `NativeShieldedToken` base module. While value is custodied, it exists as
+ * contract-ledger account balances and every movement is a circuit call, so
+ * issuer policy (freeze, pause, administrative burn) is enforceable. Exiting
+ * custody mints a native shielded coin, which is irrevocably policy-free.
+ *
+ * This is the strongest post-issuance control available on Midnight today:
+ * the protocol attaches no spend logic to native shielded UTXOs (a spend
+ * proves only key knowledge, commitment membership, and nullifier
+ * correctness), so policy can live only in contract state. Issuers with
+ * compliance requirements (regulated deposits, RWA issuance) keep value
+ * custodied by default and treat `_withdraw` as the deliberate, irrevocable
+ * policy boundary.
+ *
+ * # Custody is burn-and-mint, not lock-and-hold
+ *
+ * - `_deposit`: destroys the incoming native coin (base `_burn`, transient
+ *   spend to the burn address) and credits the custodial balance.
+ * - `_withdraw`: debits the custodial balance and mints a fresh native coin
+ *   (base `_mint`).
+ *
+ * Holding deposited coins as a contract-owned pile is deliberately avoided:
+ * a future CMA verifier-key rotation could add a spend circuit for held
+ * coins, re-monetizing value already credited to custodial balances — an
+ * issuer-controlled double-spend. Burned value is unspendable under any
+ * future verifier key. Color derivation guarantees withdrawal mints are the
+ * same token: only this contract can ever mint its color.
+ *
+ * # Policy semantics
+ *
+ * - Pause is composed from the library `Pausable` module: `_transfer`,
+ *   `_deposit`, `_withdraw`, `_mint`, and `_burn` all revert while paused.
+ *   The consumer exposes gated `Pausable__pause` / `Pausable__unpause`.
+ * - Freeze is per-account state in this module: `_transfer` requires both
+ *   parties unfrozen; `_deposit` requires the credited account unfrozen;
+ *   `_withdraw` and `_mint` require the target account unfrozen.
+ * - `_freeze` / `_unfreeze` work while paused: compliance operations must
+ *   not be blocked by incident response.
+ * - `_burn` deliberately does NOT check freeze: it is the administrative
+ *   redemption/seizure path, usable against frozen accounts by the gated
+ *   admin. Consumers whose policy forbids seizure must add the check.
+ *
+ * # The exit boundary
+ *
+ * A coin minted by `_withdraw` is an unconditional bearer instrument: no
+ * pause, freeze, or clawback can ever apply to it again. Issuers requiring
+ * perpetual policy MUST NOT expose `_withdraw` (the module then degenerates
+ * to a pure account-based token); issuers exposing it accept exits as
+ * irrevocable, typically gating them behind their compliance process.
+ *
+ * # Supply accounting
+ *
+ * - `custodySupply()` is EXACT: it equals the sum of custodial balances by
+ *   construction.
+ * - The base module's totals govern the native side unchanged: `_deposit`
+ *   increments base `totalBurned`, `_withdraw` increments base `totalMinted`,
+ *   so base `totalSupply()` remains the upper bound on NATIVE circulating
+ *   supply.
+ * - The logical token's circulating supply is therefore bounded by
+ *   `custodySupply() + NativeShieldedToken_totalSupply()`, with the custodial
+ *   term exact and the native term an upper bound.
+ *
+ * # Accounts and identity
+ *
+ * Accounts are `Either<Bytes<32>, ContractAddress>` as in `FungibleToken`;
+ * the left branch is an opaque 32-byte account identifier (e.g. a hash
+ * commitment to a secret key per MIP-0004). This module is identity-agnostic:
+ * like the rest of the library it ships NO access control, and binding `from`
+ * / `account` parameters to an authenticated caller is the consumer's job.
+ * Callers MUST NOT be authenticated via `ownPublicKey()`. All custodial
+ * balances and freeze flags are public ledger state.
+ *
+ * # Composition
+ *
+ * The consuming contract's constructor MUST call
+ * `NativeShieldedToken_initialize` (which owns the shared `Initializable`
+ * flag); this module has no initializer and no sealed state. ALL circuits of
+ * this module are building blocks and MUST be gated by the consumer:
+ * `_freeze`, `_unfreeze`, `_mint`, `_burn` are administrative; `_transfer`,
+ * `_deposit`, `_withdraw` must bind their account arguments to the caller.
+ */
+module NativeShieldedTokenCustody {
+  import CompactStandardLibrary;
+  import "../../security/Initializable" prefix Initializable_;
+  import "../../security/Pausable" prefix Pausable_;
+  import "../../utils/Utils" prefix Utils_;
+  import "../NativeShieldedToken" prefix NativeShieldedToken_;
+
+  /**
+   * @description Custodial account balances. The sum of all entries equals
+   * `_custodySupply` at all times.
+   */
+  export ledger _custodyBalances: Map<Either<Bytes<32>, ContractAddress>, Uint<128>>;
+  /**
+   * @description Exact total value held in custody (sum of custodial
+   * balances).
+   */
+  export ledger _custodySupply: Uint<128>;
+  /**
+   * @description Per-account freeze flags. Missing entries mean unfrozen.
+   */
+  export ledger _frozen: Map<Either<Bytes<32>, ContractAddress>, Boolean>;
+
+  /**
+   * @description Returns the custodial balance of `account`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
+   * @return {Uint<128>} - The custodial balance.
+   */
+  export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+    Initializable_assertInitialized();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+
+    if (!_custodyBalances.member(disclose(canonAcct))) {
+      return 0;
+    }
+
+    return _custodyBalances.lookup(disclose(canonAcct));
+  }
+
+  /**
+   * @description Returns the exact total value held in custody.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Uint<128>} - The custodial supply.
+   */
+  export circuit custodySupply(): Uint<128> {
+    Initializable_assertInitialized();
+    return _custodySupply;
+  }
+
+  /**
+   * @description Returns whether `account` is frozen.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
+   * @return {Boolean} - `true` if the account is frozen.
+   */
+  export circuit isFrozen(account: Either<Bytes<32>, ContractAddress>): Boolean {
+    Initializable_assertInitialized();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+
+    if (!_frozen.member(disclose(canonAcct))) {
+      return false;
+    }
+
+    return _frozen.lookup(disclose(canonAcct));
+  }
+
+  /**
+   * @description Freezes `account`: it can no longer send or receive
+   * custodial value, deposit, or withdraw. The administrative `_burn`
+   * (seizure path) remains available against it.
+   *
+   * @dev Deliberately NOT pause-gated: compliance operations must work
+   * during incident response.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `account` is not zero.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to freeze.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _freeze(account: Either<Bytes<32>, ContractAddress>): [] {
+    Initializable_assertInitialized();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!_isAccountZero(disclose(canonAcct)), "NativeShieldedTokenCustody: invalid account");
+
+    _frozen.insert(disclose(canonAcct), true);
+  }
+
+  /**
+   * @description Unfreezes `account`.
+   *
+   * @dev Deliberately NOT pause-gated; see `_freeze`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `account` is not zero.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to unfreeze.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _unfreeze(account: Either<Bytes<32>, ContractAddress>): [] {
+    Initializable_assertInitialized();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!_isAccountZero(disclose(canonAcct)), "NativeShieldedTokenCustody: invalid account");
+
+    _frozen.insert(disclose(canonAcct), false);
+  }
+
+  /**
+   * @description Creates `amount` of custodial value for `account`. This is
+   * the issuance path for tokens that should be policy-governed from birth:
+   * no native coin exists until (and unless) the value is withdrawn.
+   *
+   * @dev Does not touch the base module's native supply counters: custodial
+   * value is accounted by `custodySupply()` alone.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `account` is not zero and not frozen.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to credit.
+   * @param {Uint<128>} amount - The amount of custodial value to create.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _mint(account: Either<Bytes<32>, ContractAddress>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!_isAccountZero(disclose(canonAcct)), "NativeShieldedTokenCustody: invalid account");
+    assert(!isFrozen(canonAcct), "NativeShieldedTokenCustody: frozen account");
+
+    _credit(canonAcct, amount);
+  }
+
+  /**
+   * @description Destroys `amount` of custodial value from `account`. This is
+   * the administrative redemption/seizure path.
+   *
+   * @dev Deliberately does NOT check freeze: a gated admin can burn from a
+   * frozen account (seizure). Consumers whose policy forbids seizure must add
+   * an `isFrozen` check in their wrapper.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `account` is not zero.
+   * - `account` has a custodial balance of at least `amount`.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to debit.
+   * @param {Uint<128>} amount - The amount of custodial value to destroy.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _burn(account: Either<Bytes<32>, ContractAddress>, amount: Uint<128>): [] {
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!_isAccountZero(disclose(canonAcct)), "NativeShieldedTokenCustody: invalid account");
+
+    _debit(canonAcct, amount);
+  }
+
+  /**
+   * @description Moves `amount` of custodial value from `fromAccount` to
+   * `to`. This is the policy-checked internal transfer: no Zswap interaction
+   * occurs.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `fromAccount` and `to` are not zero.
+   * - Neither `fromAccount` nor `to` is frozen.
+   * - `fromAccount` has a custodial balance of at least `amount`.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} fromAccount - The account to debit.
+   * @param {Either<Bytes<32>, ContractAddress>} to - The account to credit.
+   * @param {Uint<128>} amount - The amount of custodial value to move.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _transfer(
+                   fromAccount: Either<Bytes<32>, ContractAddress>,
+                   to: Either<Bytes<32>, ContractAddress>,
+                   amount: Uint<128>
+                   ): [] {
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAccount);
+    const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
+    assert(!_isAccountZero(disclose(canonFrom)), "NativeShieldedTokenCustody: invalid sender");
+    assert(!_isAccountZero(disclose(canonTo)), "NativeShieldedTokenCustody: invalid receiver");
+    assert(!isFrozen(canonFrom), "NativeShieldedTokenCustody: frozen account");
+    assert(!isFrozen(canonTo), "NativeShieldedTokenCustody: frozen account");
+
+    _debit(canonFrom, amount);
+    _credit(canonTo, amount);
+  }
+
+  /**
+   * @description Brings `amount` from `coin`, a native shielded coin provided
+   * within the current transaction, into custody for `creditTo`. The absorbed
+   * native value is destroyed via the base `_burn` (transient spend to the
+   * burn address; increments base `totalBurned`); any unconverted remainder
+   * of `coin` is refunded as a native coin to `refundTo`.
+   *
+   * @notice The returned refund coin info (if any) is the only copy available
+   * to `refundTo`; callers SHOULD deliver it out of band.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `amount` is greater than 0.
+   * - `creditTo` is not zero and not frozen.
+   * - `coin.color` is this contract's token color.
+   * - `amount` is less than or equal to `coin.value`.
+   * - `refundTo` is not zero.
+   *
+   * @param {ShieldedCoinInfo} coin - The native coin to deposit from.
+   * @param {Uint<128>} amount - Value to bring into custody. Must be <= `coin.value`.
+   * @param {Either<Bytes<32>, ContractAddress>} creditTo - Custodial account to credit.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
+   * route the undeposited native remainder (`coin.value - amount`).
+   * @return {Maybe<ShieldedCoinInfo>} - The native refund coin created for
+   * `refundTo`, or `none` if the coin was deposited in full.
+   */
+  export circuit _deposit(
+                   coin: ShieldedCoinInfo,
+                   amount: Uint<128>,
+                   creditTo: Either<Bytes<32>, ContractAddress>,
+                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): Maybe<ShieldedCoinInfo> {
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    assert(amount > 0, "NativeShieldedTokenCustody: zero amount");
+    const canonCredit = Utils_canonicalize<Bytes<32>, ContractAddress>(creditTo);
+    assert(!_isAccountZero(disclose(canonCredit)), "NativeShieldedTokenCustody: invalid account");
+    assert(!isFrozen(canonCredit), "NativeShieldedTokenCustody: frozen account");
+
+    const refund = NativeShieldedToken__burn(coin, amount, refundTo);
+    _credit(canonCredit, amount);
+    return refund;
+  }
+
+  /**
+   * @description Exits `amount` of `account`'s custodial value to a native
+   * shielded coin minted to `recipient` with a caller-supplied nonce
+   * (increments base `totalMinted`).
+   *
+   * THIS IS THE POLICY BOUNDARY: the minted coin is an unconditional bearer
+   * instrument — no pause, freeze, or clawback can ever apply to it again.
+   * Issuers requiring perpetual policy MUST NOT expose this circuit.
+   *
+   * @dev The caller is fully responsible for nonce uniqueness; see the base
+   * `_mint`. With a secret, cryptographically random nonce the exit is
+   * recipient-private. For derived-nonce exits, compose the
+   * `NativeShieldedTokenDerivedNonce` extension and pass its `_deriveNonce()`
+   * output (which makes the exit recipient-public).
+   *
+   * @notice The returned coin info is the only copy available to the
+   * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
+   * contract-minted coins by scanning the chain.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `amount` is greater than 0.
+   * - `account` is not zero and not frozen.
+   * - `account` has a custodial balance of at least `amount`.
+   * - `recipient` is not zero.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - Custodial account to debit.
+   * @param {Uint<64>} amount - Value to exit. Capped at `Uint<64>` by the
+   * protocol's shielded mint.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
+   * contract's color.
+   * @return {ShieldedCoinInfo} - The newly created native coin's info.
+   */
+  export circuit _withdraw(
+                   account: Either<Bytes<32>, ContractAddress>,
+                   amount: Uint<64>,
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    assert(amount > 0, "NativeShieldedTokenCustody: zero amount");
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!_isAccountZero(disclose(canonAcct)), "NativeShieldedTokenCustody: invalid account");
+    assert(!isFrozen(canonAcct), "NativeShieldedTokenCustody: frozen account");
+
+    _debit(canonAcct, amount);
+    return NativeShieldedToken__mint(recipient, amount, nonce);
+  }
+
+  /**
+   * @description Adds `amount` to `account`'s custodial balance and to the
+   * custodial supply.
+   * @dev Expects an already-canonicalized account. Checks supply overflow in
+   * order to output a readable error message; the supply bound implies no
+   * individual balance can overflow.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - Canonicalized account to credit.
+   * @param {Uint<128>} amount - The amount to credit.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _credit(account: Either<Bytes<32>, ContractAddress>, amount: Uint<128>): [] {
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - _custodySupply >= amount, "NativeShieldedTokenCustody: arithmetic overflow");
+
+    _custodySupply = disclose((_custodySupply + amount) as Uint<128>);
+    _custodyBalances.insert(disclose(account), disclose((balanceOf(account) + amount) as Uint<128>));
+  }
+
+  /**
+   * @description Removes `amount` from `account`'s custodial balance and from
+   * the custodial supply.
+   * @dev Expects an already-canonicalized account. The balance check implies
+   * the supply subtraction cannot underflow (supply is the sum of balances).
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - Canonicalized account to debit.
+   * @param {Uint<128>} amount - The amount to debit.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _debit(account: Either<Bytes<32>, ContractAddress>, amount: Uint<128>): [] {
+    const bal = balanceOf(account);
+    assert(bal >= amount, "NativeShieldedTokenCustody: insufficient balance");
+
+    _custodySupply = disclose((_custodySupply - amount) as Uint<128>);
+    _custodyBalances.insert(disclose(account), disclose((bal - amount) as Uint<128>));
+  }
+
+  /**
+   * @description Returns `true` if `target`'s active branch holds the zero value.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
+   * @return {Boolean} - `true` if the active branch is zero, `false` otherwise.
+   */
+  circuit _isAccountZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
+    if (target.is_left) {
+      return target.left == default<Bytes<32>>;
+    } else {
+      return target.right == default<ContractAddress>;
+    }
+  }
+}
