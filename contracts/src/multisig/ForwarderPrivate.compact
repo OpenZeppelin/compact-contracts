@@ -30,7 +30,7 @@ module ForwarderPrivate {
 
   // ─── State ──────────────────────────────────────────────────────
 
-  export sealed ledger _parentCommitment: Bytes<32>;
+  export ledger _parentCommitment: Bytes<32>;
 
   /**
    * @description Initialization flag, tracked per-module to avoid the compiler's
@@ -91,22 +91,29 @@ module ForwarderPrivate {
   // ─── Drain ──────────────────────────────────────────────────────
 
   /**
-   * @description Spends a previously-deposited shielded coin to
-   * `parentAddr`. The caller proves knowledge of `(parentAddr, opSecret)`
-   * matching the stored commitment. If `coin.value` exceeds `value`,
-   * the change is re-emitted back to the contract for future drains.
+   * @description Spends a previously-deposited shielded coin to the parent
+   * recipient. The operator chooses the recipient type at drain time by
+   * presenting `parent` as either a coin public key (`left`) or a contract
+   * address (`right`); the commitment gate validates only the active arm's
+   * 32 address bytes, so the same `(parentAddr, opSecret)` preimage
+   * authorizes either type. If `coin.value` exceeds `value`, the change is
+   * re-emitted back to the contract for future drains.
    *
-   * @circuitInfo k=16, rows=47811
+   * @circuitInfo k=16, rows=48133
    *
    * Requirements:
    *
    * - Contract must be initialized.
-   * - `_calculateParentCommitment(parentAddr, opSecret) == _parentCommitment`.
+   * - `parent` (after canonicalization) must not be the zero key/address.
+   * - `_calculateParentCommitment(parentAddr, opSecret) == _parentCommitment`,
+   *   where `parentAddr` is the active arm's bytes.
    * - `coin.value` must be >= `value` (enforced by `sendShielded`).
    *
    * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
-   * @param {Bytes<32>} parentAddr - The parent address. Preimage to the
-   * stored commitment.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} parent - The parent
+   * recipient. The active arm's 32 bytes are the preimage to the stored
+   * commitment; the arm selects whether the drain lands at a coin public key
+   * or a contract address.
    * @param {Bytes<32>} opSecret - The operational secret. Never appears
    * on the public transcript.
    *
@@ -117,6 +124,11 @@ module ForwarderPrivate {
    * losing a hot-wallet private key. Back it up offline before the first
    * deposit and treat it with the same hygiene as a signing key.
    *
+   * @warning The commitment binds the parent **bytes**, not the recipient
+   * **type**. Operator tooling MUST present the arm matching the intended
+   * recipient — a wrong arm with correct bytes drains to a different
+   * recipient kind, and succeeds silently.
+   *
    * @param {Uint<128>} value - The amount to send.
    *
    * @returns {ShieldedSendResult} The result containing the sent coin
@@ -124,21 +136,29 @@ module ForwarderPrivate {
    */
   export circuit _drain(
     coin: QualifiedShieldedCoinInfo,
-    parentAddr: Bytes<32>,
+    parent: Either<ZswapCoinPublicKey, ContractAddress>,
     opSecret: Bytes<32>,
     value: Uint<128>
   ): ShieldedSendResult {
     assertInitialized();
+
+    // Zero the inactive arm so a crafted dual-arm input cannot desync the
+    // committed-bytes check from the recipient that is actually sent to.
+    const p = Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(parent);
+    assert(!Utils_isKeyOrAddressZero(p), "ForwarderPrivate: zero parent");
+
+    // Commitment gate — unchanged check; the preimage bytes are taken from
+    // the active arm, so one commitment authorizes either recipient type.
+    const parentAddr = Utils_isContractAddress(p) ? p.right.bytes : p.left.bytes;
     assert(
       _calculateParentCommitment(parentAddr, opSecret) == _parentCommitment,
       "ForwarderPrivate: invalid parent"
     );
 
-    const result = sendShielded(
-      disclose(coin),
-      right<ZswapCoinPublicKey, ContractAddress>(ContractAddress { bytes: disclose(parentAddr) }),
-      disclose(value)
-    );
+    // Send to the operator-chosen recipient. `disclose(p)` reveals nothing:
+    // both the address bytes and the arm selector are encrypted in the Zswap
+    // output (the recipient parameter is a `(discloses nothing)` sink).
+    const result = sendShielded(disclose(coin), disclose(p), disclose(value));
 
     if (disclose(result.change.is_some)) {
       sendImmediateShielded(

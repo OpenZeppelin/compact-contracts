@@ -51,20 +51,25 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 }
 
 /**
- * @description Spends a previously-deposited shielded coin to
- * `parentAddr`. The caller proves knowledge of `(parentAddr, opSecret)`
- * matching the stored commitment. If the input coin's value exceeds
- * `value`, change is re-emitted back to the contract for future drains.
+ * @description Spends a previously-deposited shielded coin to the parent
+ * recipient. The operator chooses the recipient type at drain time by
+ * presenting `parent` as either a coin public key (`left`) or a contract
+ * address (`right`). The caller proves knowledge of `(parentAddr, opSecret)`
+ * matching the stored commitment, where `parentAddr` is the active arm's 32
+ * bytes. If the input coin's value exceeds `value`, change is re-emitted back
+ * to the contract for future drains.
  *
  * Requirements:
  *
+ * - `parent` (after canonicalization) must not be the zero key/address.
  * - `calculateParentCommitment(parentAddr, opSecret)` must equal the stored
- *   `_parentCommitment`.
+ *   `_parentCommitment`, where `parentAddr` is the active arm's bytes.
  * - `coin.value` must be >= `value` (enforced by `sendShielded`).
  *
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
- * @param {Bytes<32>} parentAddr - The parent address. Preimage to the
- * stored commitment.
+ * @param {Either<ZswapCoinPublicKey, ContractAddress>} parent - The parent
+ * recipient. The active arm's 32 bytes are the preimage to the stored
+ * commitment; the arm selects a coin public key or a contract address.
  * @param {Bytes<32>} opSecret - The operational secret. Never appears
  * on the public transcript.
  *
@@ -74,6 +79,11 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * at this contract becomes inaccessible. Back it up offline before the
  * first deposit.
  *
+ * @warning The commitment binds the parent **bytes**, not the recipient
+ * **type**. Operator tooling MUST present the arm matching the intended
+ * recipient — a wrong arm with correct bytes drains to a different recipient
+ * kind, and succeeds silently.
+ *
  * @param {Uint<128>} value - The amount to send.
  *
  * @returns {ShieldedSendResult} The result containing the sent coin and
@@ -81,11 +91,11 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  */
 export circuit drain(
   coin: QualifiedShieldedCoinInfo,
-  parentAddr: Bytes<32>,
+  parent: Either<ZswapCoinPublicKey, ContractAddress>,
   opSecret: Bytes<32>,
   value: Uint<128>
 ): ShieldedSendResult {
-  return ForwarderPrivate__drain(coin, parentAddr, opSecret, value);
+  return ForwarderPrivate__drain(coin, parent, opSecret, value);
 }
 
 /**

@@ -3,12 +3,15 @@ import {
   createSimulator,
 } from '@openzeppelin/compact-simulator';
 import {
+  type ContractAddress,
+  type Either,
   ledger,
   Contract as MockForwarderPrivate,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockForwarderPrivate/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
@@ -57,10 +60,14 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
 
   public drain(
     coin: QualifiedShieldedCoinInfo,
-    parentAddr: Uint8Array,
+    parent: Either<ZswapCoinPublicKey, ContractAddress>,
     opSecret: Uint8Array,
     value: bigint,
   ): ShieldedSendResult {
-    return this.circuits.impure.drain(coin, parentAddr, opSecret, value);
+    return this.circuits.impure.drain(coin, parent, opSecret, value);
+  }
+
+  public getParentCommitment(): Uint8Array {
+    return this.circuits.impure.getParentCommitment();
   }
 }
