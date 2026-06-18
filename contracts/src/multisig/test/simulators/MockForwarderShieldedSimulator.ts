@@ -13,7 +13,7 @@ import {
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type MockForwarderShieldedArgs = readonly [
-  parent: Either<ZswapCoinPublicKey, ContractAddress>,
+  parent: ZswapCoinPublicKey,
   isInit: boolean,
 ];
 
@@ -34,7 +34,7 @@ const MockForwarderShieldedSimulatorBase = createSimulator<
 
 export class MockForwarderShieldedSimulator extends MockForwarderShieldedSimulatorBase {
   constructor(
-    parent: Either<ZswapCoinPublicKey, ContractAddress>,
+    parent: ZswapCoinPublicKey,
     isInit: boolean,
     options: BaseSimulatorOptions<
       EmptyPrivateState,

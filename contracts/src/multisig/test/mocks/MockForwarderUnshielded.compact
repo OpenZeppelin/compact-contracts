@@ -16,7 +16,7 @@ export { ContractAddress, UserAddress, Either };
  *
  * DO NOT USE IN PRODUCTION.
  */
-constructor(parent: Either<ContractAddress, UserAddress>, isInit: Boolean) {
+constructor(parent: UserAddress, isInit: Boolean) {
   if (disclose(isInit)) {
     Forwarder_initialize(parent);
   }

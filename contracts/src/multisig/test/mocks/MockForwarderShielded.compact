@@ -16,7 +16,7 @@ export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, Either };
  *
  * DO NOT USE IN PRODUCTION.
  */
-constructor(parent: Either<ZswapCoinPublicKey, ContractAddress>, isInit: Boolean) {
+constructor(parent: ZswapCoinPublicKey, isInit: Boolean) {
   if (disclose(isInit)) {
     Forwarder_initialize(parent);
   }

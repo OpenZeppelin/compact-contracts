@@ -3,12 +3,18 @@ import * as utils from '#test-utils/address.js';
 import { MockForwarderShieldedSimulator } from './simulators/MockForwarderShieldedSimulator.js';
 import { MockForwarderUnshieldedSimulator } from './simulators/MockForwarderUnshieldedSimulator.js';
 
-const SHIELDED_PARENT = utils.createEitherTestUser('PARENT');
-const SHIELDED_PARENT_CONTRACT =
-  utils.createEitherTestContractAddress('PARENT');
-const UNSHIELDED_PARENT = utils.createEitherTestUserAddress('PARENT');
-const UNSHIELDED_PARENT_CONTRACT =
-  utils.createEitherTestUnshieldedContract('PARENT');
+// The constructors take the narrow, supported arm only: a `ZswapCoinPublicKey`
+// for the shielded forwarder and a `UserAddress` for the unshielded one. A
+// contract-address parent is intentionally not expressible today — an atomic
+// forward to a non-participating contract is rejected on-chain (the output is
+// never claimed). The `_parent` ledger field stays a generic `Either` so a
+// future CMA circuit upgrade can add contract support without a state
+// migration; `initialize` stores the supported arm (shielded → `left`,
+// unshielded → `right`), which is what `getParent` reads back.
+const SHIELDED_PARENT = utils.createEitherTestUser('PARENT').left;
+const SHIELDED_ZERO = utils.ZERO_KEY.left;
+const UNSHIELDED_PARENT = utils.createEitherTestUserAddress('PARENT').right;
+const UNSHIELDED_ZERO = utils.ZERO_USER_ADDRESS.right;
 const COLOR = new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 
@@ -28,36 +34,17 @@ describe('ForwarderShielded module', () => {
       ).not.toThrow();
     });
 
-    it('should initialize with a contract-address parent', () => {
-      expect(
-        () =>
-          new MockForwarderShieldedSimulator(SHIELDED_PARENT_CONTRACT, true),
-      ).not.toThrow();
-    });
-
     it('should fail initialization with a zero parent', () => {
       expect(
-        () => new MockForwarderShieldedSimulator(utils.ZERO_KEY, true),
+        () => new MockForwarderShieldedSimulator(SHIELDED_ZERO, true),
       ).toThrow('ForwarderShielded: zero parent');
     });
 
-    it('should fail initialization with a zero contract-address parent', () => {
-      expect(
-        () => new MockForwarderShieldedSimulator(utils.ZERO_ADDRESS, true),
-      ).toThrow('ForwarderShielded: zero parent');
-    });
-
-    it('should expose the configured parent after initialization', () => {
+    it('should store the coin-public-key parent in the left arm', () => {
       const mock = new MockForwarderShieldedSimulator(SHIELDED_PARENT, true);
-      expect(mock.getParent()).toEqual(SHIELDED_PARENT);
-    });
-
-    it('should expose a configured contract-address parent', () => {
-      const mock = new MockForwarderShieldedSimulator(
-        SHIELDED_PARENT_CONTRACT,
-        true,
-      );
-      expect(mock.getParent()).toEqual(SHIELDED_PARENT_CONTRACT);
+      const parent = mock.getParent();
+      expect(parent.is_left).toBe(true);
+      expect(parent.left).toEqual(SHIELDED_PARENT);
     });
   });
 
@@ -86,47 +73,20 @@ describe('ForwarderUnshielded module', () => {
       ).not.toThrow();
     });
 
-    it('should initialize with a contract-address parent', () => {
-      expect(
-        () =>
-          new MockForwarderUnshieldedSimulator(
-            UNSHIELDED_PARENT_CONTRACT,
-            true,
-          ),
-      ).not.toThrow();
-    });
-
     it('should fail initialization with a zero parent', () => {
       expect(
-        () =>
-          new MockForwarderUnshieldedSimulator(utils.ZERO_USER_ADDRESS, true),
+        () => new MockForwarderUnshieldedSimulator(UNSHIELDED_ZERO, true),
       ).toThrow('ForwarderUnshielded: zero parent');
     });
 
-    it('should fail initialization with a zero contract-address parent', () => {
-      expect(
-        () =>
-          new MockForwarderUnshieldedSimulator(
-            utils.ZERO_UNSHIELDED_CONTRACT,
-            true,
-          ),
-      ).toThrow('ForwarderUnshielded: zero parent');
-    });
-
-    it('should expose the configured parent after initialization', () => {
+    it('should store the user-address parent in the right arm', () => {
       const mock = new MockForwarderUnshieldedSimulator(
         UNSHIELDED_PARENT,
         true,
       );
-      expect(mock.getParent()).toEqual(UNSHIELDED_PARENT);
-    });
-
-    it('should expose a configured contract-address parent', () => {
-      const mock = new MockForwarderUnshieldedSimulator(
-        UNSHIELDED_PARENT_CONTRACT,
-        true,
-      );
-      expect(mock.getParent()).toEqual(UNSHIELDED_PARENT_CONTRACT);
+      const parent = mock.getParent();
+      expect(parent.is_left).toBe(false);
+      expect(parent.right).toEqual(UNSHIELDED_PARENT);
     });
   });
 

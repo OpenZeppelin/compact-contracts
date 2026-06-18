@@ -9,10 +9,24 @@ pragma language_version >= 0.23.0;
  * atomic forward pattern: receive an unshielded amount of a given color
  * and immediately send it to the configured parent recipient.
  *
- * The parent is stored as its real recipient type
- * `Either<ContractAddress, UserAddress>` and passed straight to the send
- * call. The deployer chooses the arm explicitly (a contract or a user),
- * so there is no way to mis-encode the recipient.
+ * The parent is stored generically as
+ * `Either<ContractAddress, UserAddress>` so the ledger layout is
+ * forward-compatible, but `initialize` accepts only a `UserAddress`
+ * today and stores it in the `right` arm. A contract address is the
+ * unsupported arm: an atomic forward delivers the amount in the same
+ * transaction as the deposit, and an unshielded send to a contract is
+ * only valid if that contract claims the amount in the same transaction
+ * (the same `receiveUnshielded` step this forwarder runs to accept the
+ * deposit). The only contract executing in `_deposit` is this forwarder,
+ * so a third-party contract parent would never claim the output and the
+ * deposit would be rejected by the node. A user address needs no in-tx
+ * claim, so it is the only recipient an atomic forward can reach.
+ *
+ * Contract-address support is reserved for a future circuit upgrade (via
+ * the Contract Maintenance Authority) once cross-contract UTXO delivery
+ * exists. Because the ledger already stores the generic `Either`, that
+ * upgrade changes only the circuits (verifier keys), not the state
+ * layout — no state migration is required.
  *
  * Unshielded transfers are publicly visible on the chain: depositor,
  * recipient, color, and amount all appear on the public transcript.
@@ -32,6 +46,12 @@ module ForwarderUnshielded {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description The parent recipient, stored generically as
+   * `Either<ContractAddress, UserAddress>` for forward compatibility.
+   * `initialize` only ever writes the `right` (user address) arm today. See
+   * the module header.
+   */
   export ledger _parent: Either<ContractAddress, UserAddress>;
 
   /**
@@ -45,7 +65,8 @@ module ForwarderUnshielded {
 
   /**
    * @description Initializes the forwarder with a parent recipient.
-   * Called once from the preset constructor.
+   * Called once from the preset constructor. The user address is stored
+   * in the `right` arm of the generic `_parent` ledger field.
    *
    * Requirements:
    *
@@ -53,27 +74,27 @@ module ForwarderUnshielded {
    * - `parent` must not be the zero address. A zero parent would forward
    *   every deposit to an unspendable address with no recovery path.
    *
-   * @param {Either<ContractAddress, UserAddress>} parent - The parent
-   * recipient of every forwarded amount: a contract address (`left`) or
-   * a user address (`right`).
+   * @param {UserAddress} parent - The user address that receives every
+   * forwarded amount. The parameter is deliberately narrower than the
+   * `_parent` ledger type: only a user address can be delivered to by an
+   * atomic forward today (see the module header).
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit initialize(parent: Either<ContractAddress, UserAddress>): [] {
-    const isZero = parent.is_left
-      ? default<ContractAddress> == parent.left
-      : default<UserAddress> == parent.right;
+  export circuit initialize(parent: UserAddress): [] {
+    const isZero = default<UserAddress> == parent;
     assert(!isZero, "ForwarderUnshielded: zero parent");
     assertNotInitialized();
     _isInitialized = true;
-    _parent = disclose(parent);
+    _parent = right<ContractAddress, UserAddress>(disclose(parent));
   }
 
   // ─── Deposit ────────────────────────────────────────────────────
 
   /**
    * @description Receives an unshielded amount of `color` and atomically
-   * forwards it to `_parent` via `sendUnshielded`.
+   * forwards it to `_parent` via `sendUnshielded` (always the `right` /
+   * user-address arm today).
    *
    * @circuitInfo k=9, rows=436
    *

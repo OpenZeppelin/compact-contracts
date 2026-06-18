@@ -7,12 +7,18 @@ pragma language_version >= 0.23.0;
  * @title ForwarderShielded
  * @description Public-parent forwarder for shielded coins. Receives a
  * shielded coin and atomically forwards it to the configured parent
- * recipient.
+ * recipient, a coin public key.
  *
  * The parent recipient is set at deploy time. This preset exposes no
  * setter, so the parent is fixed for the life of the contract. Anyone
  * may call `deposit`; the recipient is fixed, so there is no need for
  * access control.
+ *
+ * The constructor accepts a `ZswapCoinPublicKey`: an atomic forward can
+ * only deliver to a recipient that needs no in-tx claim, and a shielded
+ * send to a non-participating contract is rejected. The parent is stored
+ * generically (`Either`) on the ledger so a future circuit upgrade can
+ * add contract-address support without a state migration.
  */
 
 import CompactStandardLibrary;
@@ -24,11 +30,10 @@ export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, Either };
  * @description Deploys the forwarder bound to a specific parent
  * recipient.
  *
- * @param {Either<ZswapCoinPublicKey, ContractAddress>} parent - The
- * parent recipient that receives every forwarded coin: a coin public
- * key (`left`) or a contract address (`right`).
+ * @param {ZswapCoinPublicKey} parent - The coin public key that receives
+ * every forwarded coin.
  */
-constructor(parent: Either<ZswapCoinPublicKey, ContractAddress>) {
+constructor(parent: ZswapCoinPublicKey) {
   Forwarder_initialize(parent);
 }
 
@@ -46,7 +51,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 }
 
 /**
- * @description Returns the configured parent recipient.
+ * @description Returns the configured parent recipient as stored on the
+ * ledger (the generic `Either`; the `left` arm holds the coin public key).
  *
  * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The parent
  * recipient set at deploy.

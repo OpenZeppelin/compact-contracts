@@ -9,10 +9,23 @@ pragma language_version >= 0.23.0;
  * atomic forward pattern: receive a shielded coin and immediately send
  * it to the configured parent recipient.
  *
- * The parent is stored as its real recipient type
- * `Either<ZswapCoinPublicKey, ContractAddress>` and passed straight to
- * the send call. The deployer chooses the arm explicitly (a coin public
- * key or a contract), so there is no way to mis-encode the recipient.
+ * The parent is stored generically as
+ * `Either<ZswapCoinPublicKey, ContractAddress>` so the ledger layout is
+ * forward-compatible, but `initialize` accepts only a `ZswapCoinPublicKey`
+ * today and stores it in the `left` arm. A contract address is the
+ * unsupported arm: an atomic forward delivers the coin in the same
+ * transaction as the deposit, and a shielded send to a contract is only
+ * valid if that contract claims the output in the same transaction. The
+ * only contract executing in `_deposit` is this forwarder, so a
+ * third-party contract parent would never claim the output and the
+ * deposit would be rejected by the node. A coin public key needs no
+ * in-tx claim, so it is the only recipient an atomic forward can reach.
+ *
+ * Contract-address support is reserved for a future circuit upgrade (via
+ * the Contract Maintenance Authority) once cross-contract UTXO delivery
+ * exists. Because the ledger already stores the generic `Either`, that
+ * upgrade changes only the circuits (verifier keys), not the state
+ * layout — no state migration is required.
  *
  * Underscore-prefixed circuits have no access control. The forwarder is
  * intentionally permissionless — the recipient is fixed at init, so any
@@ -30,6 +43,12 @@ module ForwarderShielded {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description The parent recipient, stored generically as
+   * `Either<ZswapCoinPublicKey, ContractAddress>` for forward compatibility.
+   * `initialize` only ever writes the `left` (coin public key) arm today. See
+   * the module header.
+   */
   export ledger _parent: Either<ZswapCoinPublicKey, ContractAddress>;
 
   /**
@@ -43,25 +62,27 @@ module ForwarderShielded {
 
   /**
    * @description Initializes the forwarder with a parent recipient.
-   * Called once from the preset constructor.
+   * Called once from the preset constructor. The coin public key is
+   * stored in the `left` arm of the generic `_parent` ledger field.
    *
    * Requirements:
    *
    * - Contract must not be initialized.
-   * - `parent` must not be the zero address. A zero parent would forward
-   *   every deposit to an unspendable address with no recovery path.
+   * - `parent` must not be the zero key. A zero parent would forward
+   *   every deposit to an unspendable key with no recovery path.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} parent - The
-   * parent recipient of every forwarded coin: a coin public key
-   * (`left`) or a contract address (`right`).
+   * @param {ZswapCoinPublicKey} parent - The coin public key that
+   * receives every forwarded coin. The parameter is deliberately narrower
+   * than the `_parent` ledger type: only a coin public key can be
+   * delivered to by an atomic forward today (see the module header).
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit initialize(parent: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    assert(!Utils_isKeyOrAddressZero(parent), "ForwarderShielded: zero parent");
+  export circuit initialize(parent: ZswapCoinPublicKey): [] {
+    assert(!Utils_isKeyZero(parent), "ForwarderShielded: zero parent");
     assertNotInitialized();
     _isInitialized = true;
-    _parent = disclose(parent);
+    _parent = left<ZswapCoinPublicKey, ContractAddress>(disclose(parent));
   }
 
   // ─── Deposit ────────────────────────────────────────────────────
@@ -70,7 +91,8 @@ module ForwarderShielded {
    * @description Receives a shielded coin and atomically forwards it to
    * `_parent`. The coin is claimed at the protocol level via
    * `receiveShielded`, then immediately re-sent via
-   * `sendImmediateShielded` to the stored parent recipient.
+   * `sendImmediateShielded` to the stored parent recipient (always the
+   * `left` / coin-public-key arm today).
    *
    * @circuitInfo k=15, rows=18573
    *

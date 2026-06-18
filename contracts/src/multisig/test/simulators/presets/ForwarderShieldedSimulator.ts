@@ -12,9 +12,7 @@ import {
 } from '../../../../../artifacts/ForwarderShielded/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
-type ForwarderShieldedArgs = readonly [
-  parent: Either<ZswapCoinPublicKey, ContractAddress>,
-];
+type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 
 const ForwarderShieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
@@ -33,7 +31,7 @@ const ForwarderShieldedSimulatorBase = createSimulator<
 
 export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
   constructor(
-    parent: Either<ZswapCoinPublicKey, ContractAddress>,
+    parent: ZswapCoinPublicKey,
     options: BaseSimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>

@@ -12,7 +12,7 @@ import {
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type MockForwarderUnshieldedArgs = readonly [
-  parent: Either<ContractAddress, UserAddress>,
+  parent: UserAddress,
   isInit: boolean,
 ];
 
@@ -33,7 +33,7 @@ const MockForwarderUnshieldedSimulatorBase = createSimulator<
 
 export class MockForwarderUnshieldedSimulator extends MockForwarderUnshieldedSimulatorBase {
   constructor(
-    parent: Either<ContractAddress, UserAddress>,
+    parent: UserAddress,
     isInit: boolean,
     options: BaseSimulatorOptions<
       EmptyPrivateState,

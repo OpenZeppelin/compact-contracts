@@ -11,9 +11,7 @@ import {
 } from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
-type ForwarderUnshieldedArgs = readonly [
-  parent: Either<ContractAddress, UserAddress>,
-];
+type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
 
 const ForwarderUnshieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
@@ -32,7 +30,7 @@ const ForwarderUnshieldedSimulatorBase = createSimulator<
 
 export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBase {
   constructor(
-    parent: Either<ContractAddress, UserAddress>,
+    parent: UserAddress,
     options: BaseSimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
