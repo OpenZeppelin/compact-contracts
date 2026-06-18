@@ -1,0 +1,496 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/presets/ShieldedCustodyMultiSig.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @title ShieldedCustodyMultiSig
+ * @description The MGBP (Monument tokenised-GBP deposit) preset: a regulated
+ * shielded-custody token whose administrative and seize operations are gated
+ * behind a privacy-preserving 2-of-3 ECDSA multisig, while holder-style
+ * operations self-authenticate by knowledge of an escrowed account key.
+ *
+ * It composes:
+ * - `NativeShieldedToken`        — the base shielded token (owns the shared
+ *                                  `Initializable` flag and the token color).
+ * - `EscrowedShieldedCustody`    — the note-based custody profile WITH issuer
+ *                                  seize via key escrow.
+ * - `Pausable`                   — emergency stop for value movement.
+ * - `SignerManager<Bytes<32>>`   — commitment-based signer registry + threshold.
+ *
+ * # Authorization split
+ *
+ * - 2-of-3 multisig-gated: `mint`, `seizeTo`, `seizeBurn`, `freeze`, `unfreeze`,
+ *   `authorizeAccount`, `pause`, `unpause`. No single party can seize (INV-28).
+ * - Bank-operated (self-authenticate by the escrowed key, intentionally NOT
+ *   multisig-gated): `burn`, `transfer`, `deposit` (INV-32).
+ * - NOT exposed: `_withdraw`. There is no policy-free exit to a bearer coin;
+ *   redemption is `burn` / `seizeBurn` against off-ledger settlement (INV-33).
+ *
+ * # Per-operation message binding (INV-29)
+ *
+ * Each gated entry point reconstructs the message the signers approved as
+ * `H(nonce, opSelector, paramsHash)`, where `paramsHash` binds EVERY
+ * consequential parameter of that operation. A signature for one op or one
+ * parameter set cannot authorize a different op or different parameters. The
+ * monotonic `_nonce` (INV-30) prevents cross-transaction replay.
+ *
+ * # ⚠ Authorization is NOT YET ENFORCED (INV-28 gap)
+ *
+ * `stubVerifySignature` returns `true`: the threshold check passes for ANY
+ * supplied signatures, so anyone able to construct a proof (i.e. the
+ * witness-holder) can drive a gated op unilaterally. Real authorization
+ * arrives only when the ECDSA + Keccak (secp256k1) primitive lands and
+ * `stubVerifySignature` is swapped for `ecdsaVerify` — the single change that
+ * makes INV-28/INV-29 real. UNTIL THEN THIS CONTRACT MUST NOT HOLD REAL VALUE.
+ *
+ * # Privacy
+ *
+ * Privacy is from the public AND from the co-signer, NOT from the
+ * witness-holder. `seizeTo` is byte-shape-identical to `transfer` and
+ * `seizeBurn` to `burn` (INV-19): an observer cannot tell a seizure from
+ * ordinary activity, so there is no on-chain seize/freeze audit log — the
+ * 2-of-3 multisig tx + monotonic nonce are the verifiable admin-action trail.
+ */
+
+import CompactStandardLibrary;
+
+import "../extensions/EscrowedShieldedCustody" prefix EscrowedShieldedCustody_;
+import "../NativeShieldedToken" prefix NativeShieldedToken_;
+import "../../security/Pausable" prefix Pausable_;
+// PR #602 dependency. ShieldedMultiSigV2 hard-wires `execute` to a single
+// treasury send, so it cannot bind each custody op's parameter set (INV-29);
+// this preset composes the registry directly and owns its own nonce +
+// per-op message hashing. The module currently lives in `contracts/dist/multisig/`
+// and must be present under `contracts/src/multisig/` (PR #602) to compile.
+import "../../multisig/SignerManager"<Bytes<32>> prefix Signer_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// ─── Types ──────────────────────────────────────────────────────
+
+/**
+ * @description Accumulator threaded through fold-based signature verification:
+ * valid count, previous commitment (duplicate detection), and the message hash.
+ */
+export struct VerificationState {
+  validCount: Uint<8>,
+  prevCommitment: Bytes<32>,
+  msgHash: Bytes<32>
+}
+
+/**
+ * @description Input to `persistentHash` for a signer commitment: the ECDSA
+ * public key combined with an instance salt and a domain separator.
+ */
+export struct SignerCommitmentInput {
+  pk: Bytes<64>,
+  salt: Bytes<32>,
+  domain: Bytes<32>
+}
+
+// ─── State ──────────────────────────────────────────────────────
+
+/**
+ * @description Monotonic operation nonce. Read into every gated op's message
+ * hash and incremented per call — a signature valid at nonce N is invalid at
+ * N+1 (INV-30).
+ */
+ledger _nonce: Counter;
+
+/**
+ * @description Salt for signer-commitment derivation, isolated from the custody
+ * module's note/nullifier salt (`EscrowedShieldedCustody._instanceSalt`). Sealed:
+ * set once at deploy, never rewritten.
+ */
+export sealed ledger _signerSalt: Bytes<32>;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Deploys MGBP: initializes the base token, the custody salt, the
+ * signer salt, and the 3-signer registry with a threshold.
+ *
+ * Each signer commitment is computed off-chain as
+ * `calculateSignerId(pk, signerSalt)`.
+ *
+ * Requirements:
+ *
+ * - `threshold` is in `[1, 2]` (the `execute`-style path verifies at most 2
+ *   signatures; `SignerManager` enforces `> 0` and `<= signerCount`).
+ * - `signerCommitments` contains no duplicates.
+ * - `custodySalt`, `signerSalt` are cryptographically random and distinct.
+ *
+ * @param {Bytes<32>} domainSep - Native-token domain separator.
+ * @param {Bytes<32>} custodySalt - Salt for note commitments / nullifiers.
+ * @param {Bytes<32>} signerSalt - Salt for signer commitments.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - The 3 hashed signer ids.
+ * @param {Uint<8>} threshold - Minimum approvals (2 for MGBP).
+ * @param {Opaque<"string">} name_ - Token name.
+ * @param {Opaque<"string">} symbol_ - Token symbol.
+ * @param {Uint<8>} decimals_ - Token decimals.
+ */
+constructor(
+  domainSep: Bytes<32>,
+  custodySalt: Bytes<32>,
+  signerSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  threshold: Uint<8>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>
+) {
+  assert(
+    threshold <= 2,
+    "ShieldedCustodyMultiSig: threshold cannot exceed 2 (verifies at most 2 signatures)"
+  );
+  // Initializable is owned by the base token. The custody module only writes
+  // its sealed salt; SignerManager does not touch Initializable.
+  NativeShieldedToken_initialize(domainSep, name_, symbol_, decimals_);
+  EscrowedShieldedCustody_initialize(custodySalt);
+  _signerSalt = disclose(signerSalt);
+  Signer_initialize<3>(signerCommitments, threshold);
+}
+
+// ─── Gated admin operations (2-of-3) ────────────────────────────
+
+/**
+ * @description Multisig-gated custodial issuance. Binds `(ownerId, amount, rho)`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit mint(
+  ownerId: Bytes<32>,
+  amount: Uint<128>,
+  rho: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  // INV-29: bind every consequential parameter into the signed message.
+  const paramsHash = persistentHash<Vector<3, Bytes<32>>>(
+    [ownerId, amount as Bytes<32>, rho]
+  );
+  _authorizeOp(pad(32, "SCMS:mint"), paramsHash, pubkeys, signatures);
+  EscrowedShieldedCustody__mint(ownerId, amount, rho);
+}
+
+/**
+ * @description Multisig-gated SEIZE-AND-MOVE. Binds the victim note `(value,
+ * rho)`, `amount`, `recipientId`, and both output randomnesses (INV-29,
+ * INV-35). Shape-identical to `transfer` (INV-19).
+ * @return {[]} - Empty tuple.
+ */
+export circuit seizeTo(
+  value: Uint<128>,
+  rho: Bytes<32>,
+  amount: Uint<128>,
+  recipientId: Bytes<32>,
+  rhoOut: Bytes<32>,
+  rhoChange: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const paramsHash = persistentHash<Vector<6, Bytes<32>>>(
+    [value as Bytes<32>, rho, amount as Bytes<32>, recipientId, rhoOut, rhoChange]
+  );
+  _authorizeOp(pad(32, "SCMS:seizeTo"), paramsHash, pubkeys, signatures);
+  EscrowedShieldedCustody__seizeTo(value, rho, amount, recipientId, rhoOut, rhoChange);
+}
+
+/**
+ * @description Multisig-gated SEIZE-AND-DESTROY. Binds the victim note `(value,
+ * rho)`, `amount`, and change randomness (INV-29, INV-35). Shape-identical to
+ * `burn` (INV-19).
+ * @return {[]} - Empty tuple.
+ */
+export circuit seizeBurn(
+  value: Uint<128>,
+  rho: Bytes<32>,
+  amount: Uint<128>,
+  rhoChange: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const paramsHash = persistentHash<Vector<4, Bytes<32>>>(
+    [value as Bytes<32>, rho, amount as Bytes<32>, rhoChange]
+  );
+  _authorizeOp(pad(32, "SCMS:seizeBurn"), paramsHash, pubkeys, signatures);
+  EscrowedShieldedCustody__seizeBurn(value, rho, amount, rhoChange);
+}
+
+/**
+ * @description Multisig-gated freeze (allowlist leaf tombstone at `index`).
+ * @return {[]} - Empty tuple.
+ */
+export circuit freeze(
+  index: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const paramsHash = persistentHash<Vector<1, Bytes<32>>>([index as Bytes<32>]);
+  _authorizeOp(pad(32, "SCMS:freeze"), paramsHash, pubkeys, signatures);
+  EscrowedShieldedCustody__freeze(index);
+}
+
+/**
+ * @description Multisig-gated unfreeze (restore `ownerId` at `index`).
+ * @return {[]} - Empty tuple.
+ */
+export circuit unfreeze(
+  ownerId: Bytes<32>,
+  index: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const paramsHash = persistentHash<Vector<2, Bytes<32>>>([ownerId, index as Bytes<32>]);
+  _authorizeOp(pad(32, "SCMS:unfreeze"), paramsHash, pubkeys, signatures);
+  EscrowedShieldedCustody__unfreeze(ownerId, index);
+}
+
+/**
+ * @description Multisig-gated allowlist onboarding of `ownerId`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit authorizeAccount(
+  ownerId: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const paramsHash = persistentHash<Vector<1, Bytes<32>>>([ownerId]);
+  _authorizeOp(pad(32, "SCMS:authorize"), paramsHash, pubkeys, signatures);
+  EscrowedShieldedCustody__authorizeAccount(ownerId);
+}
+
+/**
+ * @description Multisig-gated emergency stop. Gates `mint`/`burn`/`transfer`/
+ * `deposit`; seize remains available during a pause (INV-12).
+ * @return {[]} - Empty tuple.
+ */
+export circuit pause(
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  // No value parameters; the op selector + nonce alone bind the approval.
+  _authorizeOp(pad(32, "SCMS:pause"), pad(32, ""), pubkeys, signatures);
+  Pausable__pause();
+}
+
+/**
+ * @description Multisig-gated resume.
+ * @return {[]} - Empty tuple.
+ */
+export circuit unpause(
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  _authorizeOp(pad(32, "SCMS:unpause"), pad(32, ""), pubkeys, signatures);
+  Pausable__unpause();
+}
+
+// ─── Bank-operated operations (key-knowledge self-authentication) ───
+
+/**
+ * @description Holder-style redemption burn. Self-authenticated by the escrowed
+ * key (INV-32); intentionally NOT multisig-gated. Pause-gated (INV-12).
+ * @return {[]} - Empty tuple.
+ */
+export circuit burn(
+  value: Uint<128>,
+  rho: Bytes<32>,
+  amount: Uint<128>,
+  rhoChange: Bytes<32>
+): [] {
+  EscrowedShieldedCustody__burn(value, rho, amount, rhoChange);
+}
+
+/**
+ * @description Holder-style internal transfer. Self-authenticated by the
+ * escrowed key (INV-32); pause-gated; shape-uniform (INV-19).
+ * @return {[]} - Empty tuple.
+ */
+export circuit transfer(
+  value: Uint<128>,
+  rho: Bytes<32>,
+  sendValue: Uint<128>,
+  recipientId: Bytes<32>,
+  rhoOut: Bytes<32>,
+  rhoChange: Bytes<32>
+): [] {
+  EscrowedShieldedCustody__transfer(value, rho, sendValue, recipientId, rhoOut, rhoChange);
+}
+
+/**
+ * @description Brings a native shielded coin into custody for an authorized
+ * account. Self-authenticated; pause-gated.
+ * @return {Maybe<ShieldedCoinInfo>} - Native refund coin, or `none`.
+ */
+export circuit deposit(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  creditId: Bytes<32>,
+  rho: Bytes<32>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return EscrowedShieldedCustody__deposit(coin, amount, creditId, rho, refundTo);
+}
+
+// `_withdraw` is deliberately NOT exposed (INV-33): no policy-free exit to a
+// bearer coin. Redemption is `burn` / `seizeBurn` against off-ledger settlement.
+
+// ─── Views ──────────────────────────────────────────────────────
+
+export circuit custodySupply(): Uint<128> {
+  return EscrowedShieldedCustody_custodySupply();
+}
+
+export circuit computeNoteCommitment(
+  ownerId: Bytes<32>,
+  value: Uint<128>,
+  rho: Bytes<32>
+): Bytes<32> {
+  return EscrowedShieldedCustody_computeNoteCommitment(ownerId, value, rho);
+}
+
+export pure circuit computeOwnerId(secretKey: Bytes<32>): Bytes<32> {
+  return EscrowedShieldedCustody_computeOwnerId(secretKey);
+}
+
+export circuit isPaused(): Boolean {
+  return Pausable_isPaused();
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedToken_name();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedToken_tokenColor();
+}
+
+export circuit getNonce(): Uint<64> {
+  return _nonce;
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Signer_isSigner(commitment);
+}
+
+/**
+ * @description Computes a signer commitment from an ECDSA public key and salt.
+ * Pure — the deployer calls it off-chain to build `signerCommitments`.
+ * @return {Bytes<32>} - The signer commitment.
+ */
+export pure circuit calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return _calculateSignerId(pk, salt);
+}
+
+// ─── Internal: authorization ────────────────────────────────────
+
+/**
+ * @description Reconstructs the approved message `H(nonce, opSelector,
+ * paramsHash)`, increments the nonce, verifies the signatures via fold, and
+ * asserts the threshold is met. The nonce binding gives replay protection
+ * (INV-30); `opSelector` + `paramsHash` give per-op binding (INV-29).
+ *
+ * @param {Bytes<32>} opSelector - Domain-separating operation tag.
+ * @param {Bytes<32>} paramsHash - Hash of the op's consequential parameters.
+ * @param {Vector<2, Bytes<64>>} pubkeys - Approving signers' ECDSA public keys.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the message hash.
+ * @return {[]} - Empty tuple.
+ */
+circuit _authorizeOp(
+  opSelector: Bytes<32>,
+  paramsHash: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  // INV-30: read-then-increment makes a nonce-N signature invalid at N+1.
+  const currentNonce = _nonce;
+  _nonce.increment(1);
+
+  const msgHash = persistentHash<Vector<3, Bytes<32>>>(
+    [currentNonce as Bytes<32>, opSelector, paramsHash]
+  );
+
+  const initialState = VerificationState {
+    validCount: 0 as Uint<8>,
+    prevCommitment: pad(32, ""),
+    msgHash: msgHash
+  };
+
+  // INV-2: fold over the fixed 2-element signer/signature vectors.
+  const finalState = fold(verifySignature, initialState, pubkeys, signatures);
+  // INV-28: threshold gate (currently a no-op authorization — stub below).
+  Signer_assertThresholdMet(finalState.validCount);
+}
+
+/**
+ * @description Fold callback. Verifies one signer's approval: derives the
+ * commitment from the public key + salt, rejects a duplicate adjacent signer
+ * (INV-31, sound for exactly 2 signers), checks registry membership, and
+ * verifies the signature over the message hash.
+ *
+ * @param {VerificationState} state - The fold accumulator.
+ * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
+ * @param {Bytes<64>} signature - The signer's signature over `state.msgHash`.
+ * @return {VerificationState} - The updated accumulator.
+ */
+circuit verifySignature(
+  state: VerificationState,
+  pubkey: Bytes<64>,
+  signature: Bytes<64>
+): VerificationState {
+  const commitment = _calculateSignerId(pubkey, _signerSalt);
+
+  // INV-31: distinct signers (sound for the 2-signature surface).
+  assert(commitment != state.prevCommitment, "ShieldedCustodyMultiSig: duplicate signer");
+
+  // Registry membership.
+  Signer_assertSigner(commitment);
+
+  // INV-28 GAP: stubbed. Swap for `ecdsaVerify(pubkey, state.msgHash, signature)`
+  // once the secp256k1 primitive lands — until then this passes for ANY signature.
+  assert(stubVerifySignature(pubkey, state.msgHash, signature),
+         "ShieldedCustodyMultiSig: invalid signature");
+
+  return VerificationState {
+    validCount: state.validCount + 1 as Uint<8>,
+    prevCommitment: commitment,
+    msgHash: state.msgHash
+  };
+}
+
+/**
+ * @description Computes `persistentHash(pk, salt, "SCMS:signer")` (SCMS =
+ * ShieldedCustodyMultiSig; short enough for the 32-byte `pad` limit).
+ * @return {Bytes<32>} - The signer commitment.
+ */
+pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+    pk: pk,
+    salt: salt,
+    domain: pad(32, "SCMS:signer")
+  });
+}
+
+/**
+ * @description ⚠ STUB. Always returns `true`. MUST be replaced with a real
+ * ECDSA (secp256k1) verification before any non-test deployment — this is the
+ * INV-28 enforcement gap.
+ * @return {Boolean} - Always `true`.
+ */
+circuit stubVerifySignature(
+  pubkey: Bytes<64>,
+  msgHash: Bytes<32>,
+  signature: Bytes<64>
+): Boolean {
+  return true;
+}

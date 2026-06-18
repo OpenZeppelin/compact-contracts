@@ -213,6 +213,50 @@ Every circuit in this extension is an ungated building block. Consumers MUST gat
 
 Consistent with MIP-0004 and the base standard, implementations MUST NOT authenticate callers via `ownPublicKey()`.
 
+## Policy Coverage and Seizability
+
+This section answers a cross-cutting question directly: **can the full issuer policy set — including hard policies such as seize — be expressed in Compact under the custodial model, with no protocol-level custom spend logic and without leaving Zswap?** Every soft policy is expressible in both profiles. Seize is expressible in the Transparent profile only. Seize and per-holder privacy are mutually exclusive in a contract-custodial model without key escrow: the custodial model does not escape that tension, it relocates where the choice is made.
+
+### Coverage matrix
+
+| Policy | Transparent | Shielded | Mechanism |
+|---|---|---|---|
+| mint (custodial issuance) | ✔ | ✔ | credit balance / insert note; amount disclosed |
+| burn (holder redemption) | ✔ | ✔ | debit balance / holder spends note |
+| pause | ✔ | ✔ | composed `Pausable`; gates all value movement |
+| freeze / unfreeze | ✔ | ✔ | balance-keyed flag / allowlist-leaf tombstone (immediate) |
+| allow / blocklist / KYC | ✔ | ✔ | gate on account / `_authorizeAccount` membership |
+| transfer restriction | ✔ | ✔ | wrapper gates on `_transfer` |
+| **seize** (forced move/burn) | ✔ | ✘ | admin `_burn` rewrites a contract-controlled balance / **not representable** |
+| per-account auditor visibility | ✔ (all public) | partial (aggregate public; per-account hidden) | viewing key / escrow needed for Shielded |
+| amount privacy | ✘ | ✔ | — |
+| holder + graph privacy | ✘ | ✔ | — |
+
+Each soft policy is a guard or a state write the contract performs inside a circuit it controls, so it holds in both profiles. This matches the per-circuit obligations in [Policy Matrix](#policy-matrix). Only seize splits the profiles.
+
+### Why seize works in Transparent and not in Shielded
+
+Seize is the one policy that moves value out of an account against the holder's will. Whether that is possible is decided entirely by who controls the custodial representation:
+
+- **Transparent.** Custodial value is a plaintext balance in a `Map` the contract owns. A gated circuit can overwrite any entry. `_burn` (the seizure path) deliberately skips the freeze check (see [Why does `_burn` skip the freeze check?](#why-does-_burn-skip-the-freeze-check)) so a frozen account stays reachable by the authority that froze it. Seize is a trivial state rewrite, identical in power to an account-based token. The cost: balances, pseudonymous identities, and the full transfer graph are public.
+- **Shielded.** Custodial value is a note spendable only by disclosing a nullifier derived from the holder's secret key. The issuer holds no such key and cannot see which notes an account owns, so it cannot construct the spend. This is the same wall that makes seize impossible on native shielded coins: a Zswap spend requires the holder's secret, and no contract can spend a user's coin (the protocol Self-determination property). Private custody re-imports that wall. Freeze (permanent immobilization via the allowlist tombstone) is the strongest sanction; it immobilizes but never recovers value. Confiscation needs the Transparent profile or key escrow outside this standard.
+
+### "Bank custody of the UTXOs" does not recover seize
+
+A tempting intuition: if the bank holds the backing UTXOs inside the contract (the contract is the Zswap owner) while users hold notes as claims, that custody is enough to recover seize without leaving Zswap. It is not, for two compounding reasons:
+
+1. **It is unsound.** Holding deposited coins as a contract-owned pile while crediting users is a latent issuer-controlled double-spend: a CMA verifier-key rotation can later add a spend circuit for the held pool, re-monetizing value already credited. This standard therefore mandates burn-and-mint, not lock-and-hold (see [Why burn-and-mint instead of lock-and-hold?](#why-burn-and-mint-instead-of-lock-and-hold)). In the sound design the bank holds no user-backing UTXOs; custody is pure ledger state.
+2. **Even granting lock-and-hold, custody of the UTXOs is not the lever.** The thing seized is never the UTXO, it is the user's *claim*. A public ledger claim, the contract rewrites (and you have rebuilt the Transparent profile, public graph and all). A private note, the contract cannot touch (Shielded profile, no seize). Who owns the backing coins is orthogonal: seizability is decided by whether the claim is contract-controlled or holder-controlled.
+
+Seize is recovered by moving the source of truth into contract-controlled ledger state, not by custodying UTXOs. The moment that state is made private to the holder, seize is lost again for the same reason it is lost on native coins.
+
+### Migration when custom spend logic lands
+
+If protocol-level programmable spend conditions ship ([MPS-0013](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mps/mps-0013-zswap-business-logic.md) / [MPS-0021](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mps/mps-0021-phase2-contract-to-contract.md), see [Future protocol work](#future-protocol-work)):
+
+- **Soft policies migrate cleanly.** Freeze, pause, KYC, and transfer restriction are enforceable at a contract-mediated spend hook on native coins, so they carry to a native (holder-controlled) world without the custodial detour. The custodial control surface is expected to survive; the conversion boundary softens.
+- **Seize does not migrate for free.** Seize works in Transparent only because the value sits in contract-controlled plaintext state, which is exactly the holder-control that a native model restores. A native-coin world recovers seize only if the protocol itself grants an authority a spend path (authority-spend predicate, viewing-key escrow, or similar). That is a protocol-design decision, not a gift of the custodial shortcut. Soft policies are portable; seize is the one that is load-bearing on the shortcut and must be re-earned at the protocol layer.
+
 ## Rationale
 
 ### Why burn-and-mint instead of lock-and-hold?

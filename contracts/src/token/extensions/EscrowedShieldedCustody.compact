@@ -1,0 +1,720 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/EscrowedShieldedCustody.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module EscrowedShieldedCustody
+ * @description A SHIELDED custodial profile that ADDS issuer seize to the
+ * note-based custody model — the capability the base `ShieldedCustody`
+ * profile explicitly cannot offer. It is the third point on the custody
+ * trade-off the custody-extension MIP maps: Transparent (seize, no privacy),
+ * Shielded (privacy, no seize), and now Escrowed (privacy from the public,
+ * seize via key custody, no privacy from the issuer).
+ *
+ * # How seize is recovered
+ *
+ * Notes are spendable only with the owner's secret key. The base profile
+ * cannot burn what it cannot see. This profile recovers seize ONLY by having
+ * the issuer ESCROW every account's secret key off-chain (the "key escrow
+ * outside this standard" path the MIP names). With the victim's key in hand
+ * the issuer can recompute the victim's note commitment and nullifier and
+ * spend the note like its owner would — so it can confiscate value, not just
+ * freeze it. Nothing about the escrow touches the ledger: there is no on-chain
+ * key registry and no recovery account.
+ *
+ * # Self-contained re-declaration (NOT an import of ShieldedCustody)
+ *
+ * Compact only exposes a module's `export` circuits to importers. Seize needs
+ * the base's PRIVATE helpers (`_spendNote`, `_commitment`, `_insertNote`,
+ * nullifier derivation, `_subSupply`). Re-deriving that security-critical
+ * crypto in a wrapper against only the exported ledger would duplicate it
+ * fragilely. So this module owns the full note machinery, byte-for-byte
+ * faithful to the base in behavior, and the base stays pristine. The two are
+ * never composed in one contract — a consumer picks exactly one profile.
+ *
+ * # The seize primitives
+ *
+ * - `_spendNoteUnchecked` — identical to the base spend EXCEPT it omits the
+ *   `_assertAuthorized(selfId)` check on the acting (victim) account, so a
+ *   frozen / de-authorized account's note remains spendable by the authority.
+ *   Every other check (ownership, membership, consume-once nullifier) is kept.
+ * - `_seizeTo` — seize-and-move: spend the victim's note, credit an authorized
+ *   recipient, return change to the victim. Byte-shape-identical to `_transfer`.
+ * - `_seizeBurn` — seize-and-destroy: spend the victim's note, decrement
+ *   `_custodySupply`, return change to the victim. Byte-shape-identical to `_burn`.
+ *
+ * Both seize circuits ALWAYS create the change note even when its value is zero
+ * (full seizure), so a public observer — and the multisig co-signer — cannot
+ * distinguish a seizure from ordinary activity, nor learn that a seize happened.
+ * Both are deliberately NOT pause-gated: compliance must work during an incident.
+ *
+ * # Trust boundary, stated honestly
+ *
+ * Privacy is from the public AND from a co-signer, NOT from the issuer. The
+ * issuer holds every account key and opening and therefore sees all balances
+ * and flows by construction. This is inherent to the escrow model, the basis
+ * for per-customer disclosure, and MUST be disclosed to holders.
+ *
+ * # Composition
+ *
+ * The consuming contract's constructor MUST call `NativeShieldedToken_initialize`
+ * (owner of the shared `Initializable` flag) and this module's `initialize`
+ * (sealed-salt write, constructor-only). All circuits are ungated building
+ * blocks; the consumer (e.g. `ShieldedCustodyMultiSig`) gates the admin and
+ * seize circuits behind its own authorization policy.
+ */
+module EscrowedShieldedCustody {
+  import CompactStandardLibrary;
+  import "../../security/Initializable" prefix Initializable_;
+  import "../../security/Pausable" prefix Pausable_;
+  import "../NativeShieldedToken" prefix NativeShieldedToken_;
+
+  /**
+   * @description A custodial note opening. Only its hash (inside the
+   * commitment) ever reaches the ledger.
+   */
+  struct Note {
+    ownerId: Bytes<32>;
+    value: Uint<128>;
+    rho: Bytes<32>;
+  }
+
+  /**
+   * @description Salt binding commitments and nullifiers to this contract
+   * instance, preventing cross-contract linkability of identical notes.
+   */
+  export sealed ledger _instanceSalt: Bytes<32>;
+  /**
+   * @description Note commitments. Historic so spend proofs survive
+   * concurrent inserts; double-spends are prevented by nullifiers, not roots.
+   */
+  export ledger _notes: HistoricMerkleTree<20, Bytes<32>>;
+  /**
+   * @description Disclosed nullifiers of spent (or seized) notes.
+   */
+  export ledger _nullifiers: Set<Bytes<32>>;
+  /**
+   * @description Allowlist of authorized account ids. Deliberately
+   * non-historic: membership is checked against the CURRENT root only, so a
+   * freeze (leaf overwrite) takes effect immediately — and so seize, which
+   * omits the victim membership check, can still reach a frozen account.
+   */
+  export ledger _authorizedAccounts: MerkleTree<20, Bytes<32>>;
+  /**
+   * @description Exact total value held in shielded custody. Public by
+   * design: aggregate issuance stays auditable while its distribution over
+   * accounts is hidden.
+   */
+  export ledger _custodySupply: Uint<128>;
+
+  /**
+   * @witness wit_secretKey
+   * @description The ACTING account's secret key. For a holder operation this
+   * is the holder's key; for a seize the issuer's backend loads the VICTIM's
+   * escrowed key into the private state before proving. Never disclosed.
+   * @return {Bytes<32>} - The 32-byte secret key.
+   */
+  witness wit_secretKey(): Bytes<32>;
+
+  /**
+   * @witness wit_notePath
+   * @description Merkle path to `commitment` in the `_notes` tree. The path is
+   * never disclosed; only the root it hashes to. For seize, the backend
+   * returns the victim note's path.
+   * @param {Bytes<32>} commitment - The note commitment to locate.
+   * @return {MerkleTreePath<20, Bytes<32>>} - The path.
+   */
+  witness wit_notePath(commitment: Bytes<32>): MerkleTreePath<20, Bytes<32>>;
+
+  /**
+   * @witness wit_authPath
+   * @description Merkle path to `ownerId` in the `_authorizedAccounts` tree.
+   * The path is never disclosed; only the root it hashes to.
+   * @param {Bytes<32>} ownerId - The account id to locate.
+   * @return {MerkleTreePath<20, Bytes<32>>} - The path.
+   */
+  witness wit_authPath(ownerId: Bytes<32>): MerkleTreePath<20, Bytes<32>>;
+
+  /**
+   * @description Initializes the instance salt.
+   * @dev MUST be called in the consuming contract's constructor, alongside
+   * `NativeShieldedToken_initialize`. Writing the sealed `_instanceSalt`
+   * makes this circuit constructor-only.
+   *
+   * INV-3 / INV-17: sealed-write rule fixes the salt at deploy.
+   *
+   * @param {Bytes<32>} instanceSalt - Per-instance salt. Choose unpredictably.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(instanceSalt: Bytes<32>): [] {
+    _instanceSalt = disclose(instanceSalt);
+  }
+
+  /**
+   * @description Returns the exact total value held in shielded custody.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Uint<128>} - The custodial supply.
+   */
+  export circuit custodySupply(): Uint<128> {
+    // INV-5: init gate (read-only).
+    Initializable_assertInitialized();
+    return _custodySupply;
+  }
+
+  /**
+   * @description Computes the account id for `secretKey`:
+   * `H(ownerDomain, secretKey)`. Off-chain helper for onboarding (the issuer
+   * authorizes the RESULT; the key itself never leaves the escrow store).
+   *
+   * @warning Local use only; never expose `secretKey` to untrusted environments.
+   *
+   * @param {Bytes<32>} secretKey - The account secret key.
+   * @return {Bytes<32>} - The account id.
+   */
+  export pure circuit computeOwnerId(secretKey: Bytes<32>): Bytes<32> {
+    // INV-4: pure (no ledger / witness) — safe to evaluate client-side.
+    // Crypto domain tags match the base profile: the per-instance salt (in the
+    // commitment/nullifier) gives cross-contract separation, and "ShieldedCustody:*"
+    // keeps the re-declaration byte-for-byte faithful to the base. (ownerId is
+    // unsalted in both profiles by design.) Also fits the 32-byte `pad` limit.
+    return persistentHash<Vector<2, Bytes<32>>>(
+      [pad(32, "ShieldedCustody:owner"), secretKey]
+    );
+  }
+
+  /**
+   * @description Computes the on-ledger commitment for a note opening.
+   * Off-chain helper for deposit verification and bookkeeping.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} ownerId - The note owner's account id.
+   * @param {Uint<128>} value - The note value.
+   * @param {Bytes<32>} rho - The note randomness.
+   * @return {Bytes<32>} - The note commitment.
+   */
+  export circuit computeNoteCommitment(
+                   ownerId: Bytes<32>,
+                   value: Uint<128>,
+                   rho: Bytes<32>
+                   ): Bytes<32> {
+    // INV-5.
+    Initializable_assertInitialized();
+    // INV-21: commitment hides owner, value, rho.
+    return _commitment(Note { ownerId: ownerId, value: value, rho: rho });
+  }
+
+  /**
+   * @description Authorizes `ownerId`: inserts it as the next leaf of the
+   * allowlist tree. The issuer SHOULD record the consumed leaf index for later
+   * freeze operations.
+   *
+   * @dev Deliberately NOT pause-gated (administrative operation).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The allowlist tree is not full.
+   *
+   * @param {Bytes<32>} ownerId - The account id to authorize.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _authorizeAccount(ownerId: Bytes<32>): [] {
+    // INV-5.
+    Initializable_assertInitialized();
+    // INV-14: capacity bound.
+    assert(!_authorizedAccounts.isFull(), "EscrowedShieldedCustody: allowlist full");
+
+    _authorizedAccounts.insert(disclose(ownerId));
+  }
+
+  /**
+   * @description Freezes the account authorized at `index` by overwriting its
+   * allowlist leaf with a tombstone. The current root changes, so every note
+   * owned by that account becomes unspendable BY THE HOLDER immediately —
+   * without the issuer knowing which notes those are. Seize is unaffected.
+   *
+   * @dev Deliberately NOT pause-gated: compliance must work during incident
+   * response. The circuit cannot verify which account occupies `index`; the
+   * issuer's off-chain `ownerId -> index` bookkeeping is trusted.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Uint<64>} index - The allowlist leaf index to tombstone.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _freeze(index: Uint<64>): [] {
+    // INV-5, INV-12 (not pause-gated), INV-16 (immediate, current-root-only).
+    Initializable_assertInitialized();
+
+    _authorizedAccounts.insertIndex(pad(32, "ShieldedCustody:frozen"), disclose(index));
+  }
+
+  /**
+   * @description Unfreezes an account by restoring `ownerId` at `index`.
+   *
+   * @dev Deliberately NOT pause-gated; see `_freeze`. The circuit cannot
+   * verify that `ownerId` originally occupied `index`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} ownerId - The account id to restore.
+   * @param {Uint<64>} index - The allowlist leaf index it occupied.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _unfreeze(ownerId: Bytes<32>, index: Uint<64>): [] {
+    // INV-5, INV-12, INV-16.
+    Initializable_assertInitialized();
+
+    _authorizedAccounts.insertIndex(disclose(ownerId), disclose(index));
+  }
+
+  /**
+   * @description Creates a note of `amount` for `ownerId` — custodial issuance.
+   * The amount is DISCLOSED (aggregate supply auditability); the recipient
+   * stays hidden inside the commitment.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `ownerId` is authorized (proven via allowlist membership).
+   * - The notes tree is not full.
+   *
+   * @param {Bytes<32>} ownerId - The account id to credit.
+   * @param {Uint<128>} amount - The issued value. Disclosed.
+   * @param {Bytes<32>} rho - Note randomness. Choose unpredictably.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _mint(ownerId: Bytes<32>, amount: Uint<128>, rho: Bytes<32>): [] {
+    // INV-5, INV-12 (pause-gated), INV-10 (recipient authorized).
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    _assertAuthorized(ownerId);
+
+    // INV-9, INV-15 (supply add), INV-14 (insert capacity).
+    _addSupply(amount);
+    _insertNote(Note { ownerId: ownerId, value: amount, rho: rho });
+  }
+
+  /**
+   * @description Destroys `amount` from the caller's note — holder-driven
+   * redemption. The amount is DISCLOSED (supply accounting); the acting account
+   * is not. A change note for the remainder is always created, even when zero.
+   *
+   * @dev There is no administrative burn here; the issuer uses `_seizeBurn`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - The caller (secret-key witness) owns the note `(value, rho)`, it is
+   *   unspent, and the owner is authorized.
+   * - `amount` is greater than 0 and at most `value`.
+   * - The notes tree is not full.
+   *
+   * @param {Uint<128>} value - The spent note's value.
+   * @param {Bytes<32>} rho - The spent note's randomness.
+   * @param {Uint<128>} amount - The value to destroy. Disclosed.
+   * @param {Bytes<32>} rhoChange - Randomness for the change note.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _burn(
+                   value: Uint<128>,
+                   rho: Bytes<32>,
+                   amount: Uint<128>,
+                   rhoChange: Bytes<32>
+                   ): [] {
+    // INV-5, INV-12.
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    // INV-8: amount bounds.
+    assert(amount > 0, "EscrowedShieldedCustody: zero amount");
+    assert(value >= amount, "EscrowedShieldedCustody: insufficient note value");
+
+    // INV-6, INV-7, INV-13 (spend with full holder checks).
+    const selfId = _spendNote(value, rho);
+    // INV-15: supply debit.
+    _subSupply(amount);
+    _insertNote(Note { ownerId: selfId, value: (value - amount) as Uint<128>, rho: rhoChange });
+  }
+
+  /**
+   * @description Moves value from the caller's note to `recipientId` inside
+   * custody. Discloses ONE nullifier, TWO fresh commitments, and tree roots —
+   * no amounts, no identities. A change note is always created (possibly
+   * zero-value), so exact-amount transfers are indistinguishable from partial.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - The caller (secret-key witness) owns the note `(value, rho)`, it is
+   *   unspent, and the owner is authorized.
+   * - `recipientId` is authorized.
+   * - `sendValue` is at most `value`.
+   * - The notes tree has at least two free slots.
+   *
+   * @param {Uint<128>} value - The spent note's value.
+   * @param {Bytes<32>} rho - The spent note's randomness.
+   * @param {Uint<128>} sendValue - The value to move. NOT disclosed.
+   * @param {Bytes<32>} recipientId - The recipient's account id. NOT disclosed.
+   * @param {Bytes<32>} rhoOut - Randomness for the recipient's note.
+   * @param {Bytes<32>} rhoChange - Randomness for the change note.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _transfer(
+                   value: Uint<128>,
+                   rho: Bytes<32>,
+                   sendValue: Uint<128>,
+                   recipientId: Bytes<32>,
+                   rhoOut: Bytes<32>,
+                   rhoChange: Bytes<32>
+                   ): [] {
+    // INV-5, INV-12.
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    // INV-8.
+    assert(value >= sendValue, "EscrowedShieldedCustody: insufficient note value");
+
+    // INV-6, INV-7, INV-13: spend with full holder checks (incl. self auth).
+    const selfId = _spendNote(value, rho);
+    // INV-10: recipient must be authorized.
+    _assertAuthorized(recipientId);
+
+    // INV-19: always two commitments (recipient + change), even zero-value change.
+    _insertNote(Note { ownerId: recipientId, value: sendValue, rho: rhoOut });
+    _insertNote(Note { ownerId: selfId, value: (value - sendValue) as Uint<128>, rho: rhoChange });
+  }
+
+  /**
+   * @description Brings `amount` from `coin` (a native shielded coin provided
+   * within the current transaction) into custody as a note for `creditId`. The
+   * absorbed native value is destroyed via the base `_burn`; any remainder is
+   * refunded to `refundTo`. Boundary disclosure: the coin and `amount` are
+   * public; WHO was credited is not.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `amount` is greater than 0.
+   * - `creditId` is authorized.
+   * - `coin.color` is this contract's token color.
+   * - `amount` is at most `coin.value`.
+   * - `refundTo` is not zero.
+   * - The notes tree is not full.
+   *
+   * @param {ShieldedCoinInfo} coin - The native coin to deposit from.
+   * @param {Uint<128>} amount - Value to bring into custody. Disclosed.
+   * @param {Bytes<32>} creditId - The account id to credit. NOT disclosed.
+   * @param {Bytes<32>} rho - Randomness for the created note.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
+   * route the undeposited native remainder.
+   * @return {Maybe<ShieldedCoinInfo>} - The native refund coin, or `none`.
+   */
+  export circuit _deposit(
+                   coin: ShieldedCoinInfo,
+                   amount: Uint<128>,
+                   creditId: Bytes<32>,
+                   rho: Bytes<32>,
+                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): Maybe<ShieldedCoinInfo> {
+    // INV-5, INV-12.
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    // INV-8.
+    assert(amount > 0, "EscrowedShieldedCustody: zero amount");
+    // INV-10.
+    _assertAuthorized(creditId);
+
+    // INV-18: burn-and-mint boundary (destroy incoming coin, hold no coin pile).
+    const refund = NativeShieldedToken__burn(coin, amount, refundTo);
+    // INV-15.
+    _addSupply(amount);
+    _insertNote(Note { ownerId: creditId, value: amount, rho: rho });
+    return refund;
+  }
+
+  /**
+   * @description Exits `amount` from the caller's note to a native shielded
+   * coin minted to `recipient`. A change note for the remainder is always
+   * created.
+   *
+   * THIS IS THE POLICY BOUNDARY: the minted coin is an unconditional bearer
+   * instrument — no pause or freeze can apply to it again. Consumers requiring
+   * perpetual policy MUST NOT expose this circuit. (The `ShieldedCustodyMultiSig`
+   * preset deliberately does not — INV-33.)
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Contract is not paused.
+   * - `amount` is greater than 0.
+   * - The caller owns the note `(value, rho)`, it is unspent and authorized.
+   * - `amount` is at most `value`.
+   * - `recipient` is not zero.
+   * - The notes tree is not full.
+   *
+   * @param {Uint<128>} value - The spent note's value.
+   * @param {Bytes<32>} rho - The spent note's randomness.
+   * @param {Uint<64>} amount - Value to exit. Capped at `Uint<64>` by the
+   * protocol's shielded mint. Disclosed.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {Bytes<32>} nonce - Caller-supplied coin nonce. Must be unique for
+   * this contract's color.
+   * @param {Bytes<32>} rhoChange - Randomness for the change note.
+   * @return {ShieldedCoinInfo} - The newly created native coin's info.
+   */
+  export circuit _withdraw(
+                   value: Uint<128>,
+                   rho: Bytes<32>,
+                   amount: Uint<64>,
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   nonce: Bytes<32>,
+                   rhoChange: Bytes<32>
+                   ): ShieldedCoinInfo {
+    // INV-5, INV-12.
+    Initializable_assertInitialized();
+    Pausable_assertNotPaused();
+    // INV-8.
+    assert(amount > 0, "EscrowedShieldedCustody: zero amount");
+    assert(value >= amount, "EscrowedShieldedCustody: insufficient note value");
+
+    // INV-6, INV-7, INV-13.
+    const selfId = _spendNote(value, rho);
+    // INV-15, INV-18.
+    _subSupply(amount);
+    _insertNote(Note { ownerId: selfId, value: (value - amount) as Uint<128>, rho: rhoChange });
+    return NativeShieldedToken__mint(recipient, amount, nonce);
+  }
+
+  /**
+   * @description SEIZE-AND-MOVE. Spends the VICTIM's note `(value, rho)` using
+   * `_spendNoteUnchecked` (so a frozen/de-authorized victim is still reachable),
+   * credits `amount` to an AUTHORIZED `recipientId`, and returns the remainder
+   * to the victim as an always-created change note. Byte-shape-identical to
+   * `_transfer`: one nullifier, two commitments, tree roots, NO amounts. A
+   * public observer and the co-signer cannot tell this from an ordinary transfer.
+   *
+   * @dev Deliberately NOT pause-gated (INV-12). MUST be gated 2-of-3 by the
+   * consuming preset (INV-28); `amount`/`recipientId` etc. MUST be bound into
+   * the signed message (INV-29, INV-35).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The victim (escrowed secret-key witness) owns the note `(value, rho)` and
+   *   it is unspent. The victim's authorization status is NOT checked (INV-16).
+   * - `recipientId` is authorized — seized value stays in the KYC perimeter (INV-10).
+   * - `amount` is at most `value` (INV-8). A zero `amount` is a valid no-op kept
+   *   for shape uniformity (no `amount > 0` assert, matching `_transfer`).
+   * - The notes tree has at least two free slots.
+   *
+   * @param {Uint<128>} value - The victim note's value.
+   * @param {Bytes<32>} rho - The victim note's randomness.
+   * @param {Uint<128>} amount - The value to confiscate. NOT disclosed.
+   * @param {Bytes<32>} recipientId - The authorized recipient. NOT disclosed.
+   * @param {Bytes<32>} rhoOut - Randomness for the recipient's note.
+   * @param {Bytes<32>} rhoChange - Randomness for the victim's change note.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _seizeTo(
+                   value: Uint<128>,
+                   rho: Bytes<32>,
+                   amount: Uint<128>,
+                   recipientId: Bytes<32>,
+                   rhoOut: Bytes<32>,
+                   rhoChange: Bytes<32>
+                   ): [] {
+    // INV-5. INV-12: NOT pause-gated (no Pausable_assertNotPaused).
+    Initializable_assertInitialized();
+    // INV-8, INV-35: confiscate at most the note's value.
+    assert(value >= amount, "EscrowedShieldedCustody: insufficient note value");
+
+    // INV-6, INV-7, INV-11, INV-13, INV-16: spend the victim note WITHOUT the
+    // victim authorization check.
+    const victimId = _spendNoteUnchecked(value, rho);
+    // INV-10: the recipient must be authorized.
+    _assertAuthorized(recipientId);
+
+    // INV-19: identical to `_transfer` — two commitments, change always written.
+    _insertNote(Note { ownerId: recipientId, value: amount, rho: rhoOut });
+    _insertNote(Note { ownerId: victimId, value: (value - amount) as Uint<128>, rho: rhoChange });
+  }
+
+  /**
+   * @description SEIZE-AND-DESTROY. Spends the VICTIM's note `(value, rho)` via
+   * `_spendNoteUnchecked`, decrements `_custodySupply` by `amount`, and returns
+   * the remainder to the victim as an always-created change note.
+   * Byte-shape-identical to `_burn`: one nullifier, one commitment, root, and a
+   * disclosed supply delta.
+   *
+   * @dev Deliberately NOT pause-gated (INV-12). MUST be gated 2-of-3 by the
+   * consuming preset (INV-28, INV-29, INV-35).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The victim owns the note `(value, rho)` and it is unspent. Authorization
+   *   status is NOT checked (INV-16).
+   * - `amount` is greater than 0 and at most `value` (INV-8).
+   * - The notes tree is not full.
+   *
+   * @param {Uint<128>} value - The victim note's value.
+   * @param {Bytes<32>} rho - The victim note's randomness.
+   * @param {Uint<128>} amount - The value to destroy. Disclosed (supply delta).
+   * @param {Bytes<32>} rhoChange - Randomness for the victim's change note.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _seizeBurn(
+                   value: Uint<128>,
+                   rho: Bytes<32>,
+                   amount: Uint<128>,
+                   rhoChange: Bytes<32>
+                   ): [] {
+    // INV-5. INV-12: NOT pause-gated.
+    Initializable_assertInitialized();
+    // INV-8, INV-35.
+    assert(amount > 0, "EscrowedShieldedCustody: zero amount");
+    assert(value >= amount, "EscrowedShieldedCustody: insufficient note value");
+
+    // INV-6, INV-7, INV-11, INV-13, INV-16: spend victim note, no victim auth check.
+    const victimId = _spendNoteUnchecked(value, rho);
+    // INV-9, INV-15: supply debit (matches `_burn`).
+    _subSupply(amount);
+    _insertNote(Note { ownerId: victimId, value: (value - amount) as Uint<128>, rho: rhoChange });
+  }
+
+  /**
+   * @description Spends the caller's note `(value, rho)`: binds ownership to the
+   * secret-key witness, proves unspent tree membership (private path, disclosed
+   * root), discloses and records the nullifier, AND proves the owner is
+   * currently authorized (freeze check). Returns the caller's account id.
+   *
+   * @param {Uint<128>} value - The note's value.
+   * @param {Bytes<32>} rho - The note's randomness.
+   * @return {Bytes<32>} - The caller's account id.
+   */
+  circuit _spendNote(value: Uint<128>, rho: Bytes<32>): Bytes<32> {
+    const selfId = _spendNoteUnchecked(value, rho);
+    // INV-16: holder spends require the acting account to be currently authorized.
+    _assertAuthorized(selfId);
+    return selfId;
+  }
+
+  /**
+   * @description Spends a note `(value, rho)` owned by the acting account
+   * EXACTLY as `_spendNote` does — ownership binding (INV-6), unspent tree
+   * membership (INV-7), and consume-once nullifier (INV-13) — with ONE
+   * deliberate omission: it does NOT call `_assertAuthorized(selfId)` on the
+   * acting account. This is the single difference that lets the seize path
+   * reach a frozen / de-authorized victim (INV-11, INV-16). No other check may
+   * ever be dropped from this circuit.
+   *
+   * @param {Uint<128>} value - The note's value.
+   * @param {Bytes<32>} rho - The note's randomness.
+   * @return {Bytes<32>} - The acting account's id.
+   */
+  circuit _spendNoteUnchecked(value: Uint<128>, rho: Bytes<32>): Bytes<32> {
+    // INV-6: ownership is bound to the secret-key witness.
+    const selfId = computeOwnerId(wit_secretKey());
+    const note = Note { ownerId: selfId, value: value, rho: rho };
+    const commitment = _commitment(note);
+
+    // INV-7: prove unspent tree membership against a recognized historic root.
+    const path = wit_notePath(commitment);
+    assert(path.leaf == commitment, "EscrowedShieldedCustody: path leaf mismatch");
+    assert(_notes.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+           "EscrowedShieldedCustody: invalid note");
+
+    // INV-13, INV-22: consume-once, rho-bound, salted nullifier.
+    const nullifier = persistentHash<Vector<4, Bytes<32>>>(
+      [pad(32, "ShieldedCustody:nullifier"), _instanceSalt, wit_secretKey(), rho]
+    );
+    assert(!_nullifiers.member(disclose(nullifier)), "EscrowedShieldedCustody: note already spent");
+    _nullifiers.insert(disclose(nullifier));
+
+    // INV-11/INV-16: intentionally NO _assertAuthorized(selfId) here. `_spendNote`
+    // adds it back for holder operations; the seize path does not, so a frozen
+    // account remains seizable.
+    return selfId;
+  }
+
+  /**
+   * @description Proves `ownerId` is a member of the allowlist tree against its
+   * CURRENT root (private path, disclosed root). Reverts for frozen
+   * (tombstoned) and never-authorized accounts.
+   *
+   * @param {Bytes<32>} ownerId - The account id to check.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _assertAuthorized(ownerId: Bytes<32>): [] {
+    const path = wit_authPath(ownerId);
+    assert(path.leaf == ownerId, "EscrowedShieldedCustody: path leaf mismatch");
+    // INV-16: current-root-only membership (non-historic) — load-bearing for freeze.
+    assert(_authorizedAccounts.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+           "EscrowedShieldedCustody: unauthorized account");
+  }
+
+  /**
+   * @description Computes the on-ledger commitment for `note`.
+   *
+   * @param {Note} note - The note opening.
+   * @return {Bytes<32>} - The commitment.
+   */
+  circuit _commitment(note: Note): Bytes<32> {
+    // INV-21: salted, persistent-hash commitment hides owner/value/rho.
+    return persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "ShieldedCustody:note"), _instanceSalt, persistentHash<Note>(note)]
+    );
+  }
+
+  /**
+   * @description Inserts `note`'s commitment into the notes tree.
+   *
+   * @param {Note} note - The note to record.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _insertNote(note: Note): [] {
+    // INV-14: append-only, capacity-bounded.
+    assert(!_notes.isFull(), "EscrowedShieldedCustody: notes tree full");
+    _notes.insert(disclose(_commitment(note)));
+  }
+
+  /**
+   * @description Adds `amount` to the custodial supply.
+   *
+   * @param {Uint<128>} amount - The amount to add.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _addSupply(amount: Uint<128>): [] {
+    // INV-9: overflow guard.
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - _custodySupply >= amount, "EscrowedShieldedCustody: arithmetic overflow");
+    _custodySupply = disclose((_custodySupply + amount) as Uint<128>);
+  }
+
+  /**
+   * @description Removes `amount` from the custodial supply.
+   *
+   * @param {Uint<128>} amount - The amount to remove.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _subSupply(amount: Uint<128>): [] {
+    // INV-9: underflow guard.
+    assert(_custodySupply >= amount, "EscrowedShieldedCustody: supply underflow");
+    _custodySupply = disclose((_custodySupply - amount) as Uint<128>);
+  }
+}
