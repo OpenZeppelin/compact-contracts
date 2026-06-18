@@ -120,9 +120,13 @@ export const ZERO_ADDRESS = {
  * @param str String to hexify into the address bytes.
  * @returns Encoded `UserAddress`.
  */
-export const encodeToUserAddress = (str: string): UserAddress => ({
-  bytes: Uint8Array.from(Buffer.from(toHexPadded(str), 'hex')),
-});
+export const encodeToUserAddress = (str: string): UserAddress => {
+  const bytes = Uint8Array.from(Buffer.from(toHexPadded(str), 'hex'));
+  if (bytes.length !== 32) {
+    throw new Error('Invalid Input: `UserAddress` must be exactly 32 bytes');
+  }
+  return { bytes };
+};
 
 /**
  * @description Generates an Either object bound to a UserAddress for testing.
