@@ -24,7 +24,7 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
-export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
 
 /**
  * @description Deploys the forwarder bound to a specific parent
@@ -51,25 +51,26 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 }
 
 /**
- * @description Spends a previously-deposited shielded coin to the parent
- * recipient. The operator chooses the recipient type at drain time by
- * presenting `parent` as either a coin public key (`left`) or a contract
- * address (`right`). The caller proves knowledge of `(parentAddr, opSecret)`
- * matching the stored commitment, where `parentAddr` is the active arm's 32
- * bytes. If the input coin's value exceeds `value`, change is re-emitted back
- * to the contract for future drains.
+ * @description Spends a previously-deposited shielded coin to the parent,
+ * a coin public key. The caller proves knowledge of `(parent, opSecret)`
+ * matching the stored commitment; the coin is sent as a shielded note, so the
+ * parent stays hidden on-chain. If the input coin's value exceeds `value`,
+ * change is re-emitted back to the contract for future drains.
+ *
+ * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
+ * send to a contract publishes that contract's address in cleartext, which
+ * would defeat the private-parent guarantee.
  *
  * Requirements:
  *
- * - `parent` (after canonicalization) must not be the zero key/address.
- * - `calculateParentCommitment(parentAddr, opSecret)` must equal the stored
- *   `_parentCommitment`, where `parentAddr` is the active arm's bytes.
+ * - `parent` must not be the zero key.
+ * - `calculateParentCommitment(parent.bytes, opSecret)` must equal the stored
+ *   `_parentCommitment`.
  * - `coin.value` must be >= `value` (enforced by `sendShielded`).
  *
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
- * @param {Either<ZswapCoinPublicKey, ContractAddress>} parent - The parent
- * recipient. The active arm's 32 bytes are the preimage to the stored
- * commitment; the arm selects a coin public key or a contract address.
+ * @param {ZswapCoinPublicKey} parent - The parent coin public key. Its 32
+ * bytes are the preimage to the stored commitment.
  * @param {Bytes<32>} opSecret - The operational secret. Never appears
  * on the public transcript.
  *
@@ -79,11 +80,6 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * at this contract becomes inaccessible. Back it up offline before the
  * first deposit.
  *
- * @warning The commitment binds the parent **bytes**, not the recipient
- * **type**. Operator tooling MUST present the arm matching the intended
- * recipient — a wrong arm with correct bytes drains to a different recipient
- * kind, and succeeds silently.
- *
  * @param {Uint<128>} value - The amount to send.
  *
  * @returns {ShieldedSendResult} The result containing the sent coin and
@@ -91,7 +87,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  */
 export circuit drain(
   coin: QualifiedShieldedCoinInfo,
-  parent: Either<ZswapCoinPublicKey, ContractAddress>,
+  parent: ZswapCoinPublicKey,
   opSecret: Bytes<32>,
   value: Uint<128>
 ): ShieldedSendResult {

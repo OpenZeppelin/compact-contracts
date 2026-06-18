@@ -6,7 +6,7 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
-export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
 
 /**
  * @description Test fixture exposing the private ForwarderPrivate
@@ -29,7 +29,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 
 export circuit drain(
   coin: QualifiedShieldedCoinInfo,
-  parent: Either<ZswapCoinPublicKey, ContractAddress>,
+  parent: ZswapCoinPublicKey,
   opSecret: Bytes<32>,
   value: Uint<128>
 ): ShieldedSendResult {

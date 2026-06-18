@@ -3,8 +3,6 @@ import {
   createSimulator,
 } from '@openzeppelin/compact-simulator';
 import {
-  type ContractAddress,
-  type Either,
   Contract as ForwarderPrivate,
   ledger,
   pureCircuits,
@@ -56,7 +54,7 @@ export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
 
   public drain(
     coin: QualifiedShieldedCoinInfo,
-    parent: Either<ZswapCoinPublicKey, ContractAddress>,
+    parent: ZswapCoinPublicKey,
     opSecret: Uint8Array,
     value: bigint,
   ): ShieldedSendResult {

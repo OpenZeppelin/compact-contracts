@@ -7,14 +7,10 @@ const OP_SECRET = new Uint8Array(32).fill(0xaa);
 const COLOR = new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 
-// The drain parent is an `Either`; the commitment is still over the active
-// arm's raw 32 bytes (`calculateParentCommitment(parentAddr: Bytes<32>, ...)`).
-function leftParent(bytes: Uint8Array) {
-  return {
-    is_left: true,
-    left: { bytes },
-    right: { bytes: new Uint8Array(32) },
-  };
+// The drain parent is a `ZswapCoinPublicKey` (`{ bytes }`); the commitment is
+// over its raw 32 bytes (`calculateParentCommitment(parent.bytes, opSecret)`).
+function key(bytes: Uint8Array) {
+  return { bytes };
 }
 
 function makeCoin(color: Uint8Array, value: bigint) {
@@ -50,7 +46,7 @@ describe('ForwarderPrivate preset', () => {
     fwd.deposit(makeCoin(COLOR, AMOUNT));
     const result = fwd.drain(
       makeQualifiedCoin(COLOR, AMOUNT, 0n),
-      leftParent(PARENT_BYTES),
+      key(PARENT_BYTES),
       OP_SECRET,
       AMOUNT,
     );
