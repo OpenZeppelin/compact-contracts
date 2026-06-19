@@ -1,0 +1,144 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.1.0 (token/presets/NativeShieldedTokenOwnable.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @description Ready-to-deploy single native shielded token, owner-gated.
+ *
+ * Composes:
+ * - `NativeShieldedToken` (Fungible profile): metadata, mint, burn, supply.
+ * - `NativeShieldedTokenDerivedNonce`: derives coin nonces so `mint` needs no
+ *   caller-supplied nonce. This makes mints recipient-public; for a
+ *   recipient-private issuer, call the base module's `_mint` with a secret
+ *   nonce instead of using this preset.
+ * - `Ownable`: a single owner authorized to mint and burn.
+ *
+ * # Initialization
+ *
+ * The base module owns the shared `Initializable` flag (its `initialize`
+ * calls `Initializable_initialize`). `Ownable_initialize` would call it a
+ * second time and revert, so the owner is set here via Ownable's internal
+ * `_unsafeUncheckedTransferOwnership`, guarded by the same not-zero /
+ * not-contract checks `Ownable_initialize` performs. The derived-nonce chain
+ * uses its own seed guard, not `Initializable`, so it composes freely.
+ *
+ * # Authorization
+ *
+ * `mint`, `burn`, and `burnFromContract` are gated by `assertOnlyOwner`.
+ * Caller identity is derived from the `wit_OwnableSK` witness; the deployer
+ * provides it like any Ownable consumer.
+ */
+import CompactStandardLibrary;
+
+import "../NativeShieldedToken" prefix NativeShieldedToken_;
+import "../extensions/NativeShieldedTokenDerivedNonce" prefix Derived_;
+import "../../access/Ownable" prefix Ownable_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+/**
+ * @description Initializes metadata, the nonce chain, and the owner.
+ *
+ * @param {Bytes<32>} domainSep - Domain separator fixing this token's color.
+ * @param {Bytes<32>} initNonce - Unpredictable seed for the nonce chain.
+ * @param {Opaque<"string">} name_ - Token name.
+ * @param {Opaque<"string">} symbol_ - Token symbol.
+ * @param {Uint<8>} decimals_ - Display decimals.
+ * @param {Either<Bytes<32>, ContractAddress>} initialOwner - Initial owner
+ * (a user account key; contract owners are unsupported until C2C lands).
+ */
+constructor(
+  domainSep: Bytes<32>,
+  initNonce: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  initialOwner: Either<Bytes<32>, ContractAddress>
+) {
+  NativeShieldedToken_initialize(domainSep, name_, symbol_, decimals_);
+  Derived_initialize(initNonce);
+
+  assert(initialOwner.is_left, "NativeShieldedTokenOwnable: owner must be a user key");
+  assert(!(initialOwner.left == default<Bytes<32>>), "NativeShieldedTokenOwnable: invalid initial owner");
+  Ownable__unsafeUncheckedTransferOwnership(initialOwner);
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedToken_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedToken_tokenColor();
+}
+
+export circuit totalMinted(): Uint<128> {
+  return NativeShieldedToken_totalMinted();
+}
+
+export circuit totalBurned(): Uint<128> {
+  return NativeShieldedToken_totalBurned();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return NativeShieldedToken_totalSupply();
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  Ownable_transferOwnership(newOwner);
+}
+
+export circuit renounceOwnership(): [] {
+  Ownable_renounceOwnership();
+}
+
+/**
+ * @description Mints `amount` to `recipient` with an internally derived
+ * nonce (recipient-public). Owner only. The returned coin info is the only
+ * copy available to the recipient; deliver it out of band.
+ */
+export circuit mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>
+): ShieldedCoinInfo {
+  Ownable_assertOnlyOwner();
+  return NativeShieldedToken__mint(recipient, amount, Derived__deriveNonce());
+}
+
+/**
+ * @description Burns `amount` from a coin provided within the current
+ * transaction, refunding any change to `refundTo`. Owner only.
+ */
+export circuit burn(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  Ownable_assertOnlyOwner();
+  return NativeShieldedToken__burn(coin, amount, refundTo);
+}
+
+/**
+ * @description Burns `amount` from a coin the contract already holds. Owner
+ * only. Returns the change retained by the contract.
+ */
+export circuit burnFromContract(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>
+): Maybe<ShieldedCoinInfo> {
+  Ownable_assertOnlyOwner();
+  return NativeShieldedToken__burnFromContract(coin, amount);
+}
