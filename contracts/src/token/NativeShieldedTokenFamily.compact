@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.1.0 (token/NativeShieldedTokenFamily.compact)
 
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 /**
  * @module NativeShieldedTokenFamily
@@ -100,8 +100,14 @@ pragma language_version >= 0.21.0;
  */
 module NativeShieldedTokenFamily {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
 
   /**
    * @description Exact amount minted per domain. See "Supply accounting".
@@ -133,10 +139,39 @@ module NativeShieldedTokenFamily {
                    symbol_: Opaque<"string">,
                    decimals_: Uint<8>
                    ): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _name = disclose(name_);
     _symbol = disclose(symbol_);
     _decimals = disclose(decimals_);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an
+   * error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "NativeShieldedTokenFamily: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing
+   * an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "NativeShieldedTokenFamily: contract already initialized");
   }
 
   /**
@@ -151,7 +186,7 @@ module NativeShieldedTokenFamily {
    * @return {Opaque<"string">} - The family name.
    */
   export circuit name(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _name;
   }
 
@@ -166,7 +201,7 @@ module NativeShieldedTokenFamily {
    * @return {Opaque<"string">} - The family symbol.
    */
   export circuit symbol(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _symbol;
   }
 
@@ -183,7 +218,7 @@ module NativeShieldedTokenFamily {
    * @return {Uint<8>} - The decimals value.
    */
   export circuit decimals(): Uint<8> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _decimals;
   }
 
@@ -199,7 +234,7 @@ module NativeShieldedTokenFamily {
    * @return {Bytes<32>} - The coin color: `tokenType(domain, kernel.self())`.
    */
   export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return tokenType(disclose(domain), kernel.self());
   }
 
@@ -214,7 +249,7 @@ module NativeShieldedTokenFamily {
    * @return {Uint<128>} - The total amount minted.
    */
   export circuit totalMinted(domain: Bytes<32>): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     if (!_totalMinted.member(disclose(domain))) {
       return 0;
     }
@@ -234,7 +269,7 @@ module NativeShieldedTokenFamily {
    * @return {Uint<128>} - The total amount burned through this contract.
    */
   export circuit totalBurned(domain: Bytes<32>): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     if (!_totalBurned.member(disclose(domain))) {
       return 0;
     }
@@ -255,7 +290,7 @@ module NativeShieldedTokenFamily {
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(domain: Bytes<32>): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return (totalMinted(domain) - totalBurned(domain)) as Uint<128>;
   }
 
@@ -292,7 +327,7 @@ module NativeShieldedTokenFamily {
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedTokenFamily: invalid recipient");
 
     _addMinted(domain, amount);
@@ -339,7 +374,7 @@ module NativeShieldedTokenFamily {
                    amount: Uint<128>,
                    refundTo: Either<ZswapCoinPublicKey, ContractAddress>
                    ): Maybe<ShieldedCoinInfo> {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedTokenFamily: wrong token");
     assert(coin.value >= amount, "NativeShieldedTokenFamily: insufficient coin value");
     assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedTokenFamily: invalid refund target");
@@ -385,7 +420,7 @@ module NativeShieldedTokenFamily {
                    coin: QualifiedShieldedCoinInfo,
                    amount: Uint<128>
                    ): Maybe<ShieldedCoinInfo> {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedTokenFamily: wrong token");
     assert(coin.value >= amount, "NativeShieldedTokenFamily: insufficient coin value");
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.1.0 (token/NativeShieldedToken.compact)
 
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 /**
  * @module NativeShieldedToken
@@ -86,10 +86,11 @@ pragma language_version >= 0.21.0;
  *
  * - Dual-representation tokens (shielded + unshielded with conversion) MUST
  *   build on the token-family modules and the `NativeTokenConverter`
- *   extension, not on this module: this module and `NativeUnshieldedToken` each store a
- *   load-bearing sealed `_domain` written by their `initialize`, but the
- *   shared `Initializable` flag allows only one `initialize` call per
- *   contract.
+ *   extension, not on this module: this module stores a single load-bearing
+ *   sealed `_domain` (one token type), and the converter composes both bases'
+ *   Family profiles. (Initialization is tracked per-module inline now, so the
+ *   former shared-`Initializable`-flag "one `initialize` per contract" limit
+ *   no longer applies.)
  *
  * # Out of scope (phase two, pending contract-to-contract support)
  *
@@ -100,8 +101,14 @@ pragma language_version >= 0.21.0;
  */
 module NativeShieldedToken {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
   import "../utils/Utils" prefix Utils_;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
 
   /**
    * @description Domain separator fixed at construction; with the contract
@@ -140,11 +147,40 @@ module NativeShieldedToken {
                    symbol_: Opaque<"string">,
                    decimals_: Uint<8>
                    ): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
     _domain = disclose(domainSep);
     _name = disclose(name_);
     _symbol = disclose(symbol_);
     _decimals = disclose(decimals_);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an
+   * error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "NativeShieldedToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing
+   * an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "NativeShieldedToken: contract already initialized");
   }
 
   /**
@@ -159,7 +195,7 @@ module NativeShieldedToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _name;
   }
 
@@ -175,7 +211,7 @@ module NativeShieldedToken {
    * @return {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _symbol;
   }
 
@@ -193,7 +229,7 @@ module NativeShieldedToken {
    * @return {Uint<8>} - The decimals value.
    */
   export circuit decimals(): Uint<8> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _decimals;
   }
 
@@ -210,7 +246,7 @@ module NativeShieldedToken {
    * @return {Bytes<32>} - The coin color.
    */
   export circuit tokenColor(): Bytes<32> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return tokenType(_domain, kernel.self());
   }
 
@@ -226,7 +262,7 @@ module NativeShieldedToken {
    * @return {Uint<128>} - The total amount minted.
    */
   export circuit totalMinted(): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _totalMinted;
   }
 
@@ -244,7 +280,7 @@ module NativeShieldedToken {
    * @return {Uint<128>} - The total amount burned through this contract.
    */
   export circuit totalBurned(): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _totalBurned;
   }
 
@@ -263,7 +299,7 @@ module NativeShieldedToken {
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(): Uint<128> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return (_totalMinted - _totalBurned) as Uint<128>;
   }
 
@@ -300,7 +336,7 @@ module NativeShieldedToken {
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
 
     _addMinted(amount);
@@ -347,7 +383,7 @@ module NativeShieldedToken {
                    amount: Uint<128>,
                    refundTo: Either<ZswapCoinPublicKey, ContractAddress>
                    ): Maybe<ShieldedCoinInfo> {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(coin.color == tokenType(_domain, kernel.self()), "NativeShieldedToken: wrong token");
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
     assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
@@ -393,7 +429,7 @@ module NativeShieldedToken {
                    coin: QualifiedShieldedCoinInfo,
                    amount: Uint<128>
                    ): Maybe<ShieldedCoinInfo> {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(coin.color == tokenType(_domain, kernel.self()), "NativeShieldedToken: wrong token");
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
 

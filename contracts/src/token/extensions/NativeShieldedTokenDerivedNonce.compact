@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.1.0 (token/extensions/NativeShieldedTokenDerivedNonce.compact)
 
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 /**
  * @module NativeShieldedTokenDerivedNonce
@@ -20,7 +20,7 @@ pragma language_version >= 0.21.0;
  * # Design notes
  *
  * - Coin nonces are derived from (not equal to) the chain value:
- *   `persistentHash([pad(32, "NativeShieldedTokenDerivedNonce:nonce"), chainValue])`.
+ *   `persistentHash([pad(32, "NativeShieldedToken:nonce"), chainValue])`.
  *   The fixed tag puts derived nonces in a namespace an honest caller of the
  *   base `_mint` will not produce, so a value read from the public `_nonce`
  *   field and passed as a mint nonce cannot collide with a derived mint.
@@ -103,7 +103,7 @@ module NativeShieldedTokenDerivedNonce {
     const chainValue = evolveNonce(_counter, _nonce);
     _nonce = chainValue;
     return persistentHash<Vector<2, Bytes<32>>>(
-      [pad(32, "NativeShieldedTokenDerivedNonce:nonce"), chainValue]
+      [pad(32, "NativeShieldedToken:nonce"), chainValue]
     );
   }
 }
