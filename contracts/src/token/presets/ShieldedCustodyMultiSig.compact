@@ -157,6 +157,9 @@ constructor(
 
 /**
  * @description Multisig-gated custodial issuance. Binds `(ownerId, amount, rho)`.
+ *
+ * @circuitInfo k=16, rows=36090
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit mint(
@@ -178,6 +181,9 @@ export circuit mint(
  * @description Multisig-gated SEIZE-AND-MOVE. Binds the victim note `(value,
  * rho)`, `amount`, `recipientId`, and both output randomnesses (INV-29,
  * INV-35). Shape-identical to `transfer` (INV-19).
+ *
+ * @circuitInfo k=17, rows=71550
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit seizeTo(
@@ -201,6 +207,9 @@ export circuit seizeTo(
  * @description Multisig-gated SEIZE-AND-DESTROY. Binds the victim note `(value,
  * rho)`, `amount`, and change randomness (INV-29, INV-35). Shape-identical to
  * `burn` (INV-19).
+ *
+ * @circuitInfo k=16, rows=56462
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit seizeBurn(
@@ -220,6 +229,9 @@ export circuit seizeBurn(
 
 /**
  * @description Multisig-gated freeze (allowlist leaf tombstone at `index`).
+ *
+ * @circuitInfo k=15, rows=22574
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit freeze(
@@ -234,6 +246,9 @@ export circuit freeze(
 
 /**
  * @description Multisig-gated unfreeze (restore `ownerId` at `index`).
+ *
+ * @circuitInfo k=15, rows=24748
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit unfreeze(
@@ -249,6 +264,9 @@ export circuit unfreeze(
 
 /**
  * @description Multisig-gated allowlist onboarding of `ownerId`.
+ *
+ * @circuitInfo k=15, rows=22431
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit authorizeAccount(
@@ -264,6 +282,9 @@ export circuit authorizeAccount(
 /**
  * @description Multisig-gated emergency stop. Gates `mint`/`burn`/`transfer`/
  * `deposit`; seize remains available during a pause (INV-12).
+ *
+ * @circuitInfo k=15, rows=18166
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit pause(
@@ -277,6 +298,9 @@ export circuit pause(
 
 /**
  * @description Multisig-gated resume.
+ *
+ * @circuitInfo k=15, rows=18163
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit unpause(
@@ -292,6 +316,9 @@ export circuit unpause(
 /**
  * @description Holder-style redemption burn. Self-authenticated by the escrowed
  * key (INV-32); intentionally NOT multisig-gated. Pause-gated (INV-12).
+ *
+ * @circuitInfo k=16, rows=34693
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit burn(
@@ -306,6 +333,9 @@ export circuit burn(
 /**
  * @description Holder-style internal transfer. Self-authenticated by the
  * escrowed key (INV-32); pause-gated; shape-uniform (INV-19).
+ *
+ * @circuitInfo k=16, rows=47834
+ *
  * @return {[]} - Empty tuple.
  */
 export circuit transfer(
@@ -322,6 +352,9 @@ export circuit transfer(
 /**
  * @description Brings a native shielded coin into custody for an authorized
  * account. Self-authenticated; pause-gated.
+ *
+ * @circuitInfo k=16, rows=61327
+ *
  * @return {Maybe<ShieldedCoinInfo>} - Native refund coin, or `none`.
  */
 export circuit deposit(
