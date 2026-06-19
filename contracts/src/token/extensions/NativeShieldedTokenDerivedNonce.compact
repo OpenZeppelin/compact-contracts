@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.1.0 (token/extensions/NativeShieldedTokenDerivedNonce.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module NativeShieldedTokenDerivedNonce
+ * @description Optional standalone extension providing derived coin nonces
+ * for native shielded token mints, so callers need not manage nonces
+ * themselves. It owns a nonce evolution chain (`_counter`, `_nonce`) and
+ * exposes `_deriveNonce` as a building block; it imports no token module.
+ *
+ * Pairs with `NativeShieldedToken`, `NativeShieldedTokenFamily`, and
+ * `NativeTokenConverter`. The consuming contract composes the pieces:
+ *
+ *   export circuit mint(recipient: ..., amount: Uint<64>): ShieldedCoinInfo {
+ *     return Token__mint(recipient, amount, Derived__deriveNonce());
+ *   }
+ *
+ * # Design notes
+ *
+ * - Coin nonces are derived from (not equal to) the chain value:
+ *   `persistentHash([pad(32, "NativeShieldedTokenDerivedNonce:nonce"), chainValue])`.
+ *   The fixed tag puts derived nonces in a namespace an honest caller of the
+ *   base `_mint` will not produce, so a value read from the public `_nonce`
+ *   field and passed as a mint nonce cannot collide with a derived mint.
+ *
+ * - One chain serves the whole contract: uniqueness is per chain value, so
+ *   derived nonces never repeat across token types (domains) or across the
+ *   shielded/converter mint paths of one contract.
+ *
+ * - Derived nonces are predictable from public state: anyone can recompute
+ *   the coin commitment for candidate recipient keys, so derived-nonce mints
+ *   are recipient-public. For recipient privacy, call the base `_mint` with
+ *   a secret, cryptographically random nonce instead.
+ *
+ * - The predictability also enables deliberate collision-griefing: an actor
+ *   with access to a caller-nonce mint can pre-mint a commitment that
+ *   collides with a future derived-nonce mint of the same tuple, making that
+ *   mint fail on duplicate-commitment rejection. Gate both mint paths behind
+ *   access control, and prefer not exposing both to distinct trust levels. A
+ *   failed mint is recoverable: any subsequent derived mint with a different
+ *   tuple advances the chain past the collision.
+ *
+ * - `initialize` cannot use the library's `Initializable` flag (the paired
+ *   token module's `initialize` owns it; the flag is shared per contract),
+ *   so the seed write is guarded by an unseeded-chain assertion instead.
+ *   Call it once from the consuming contract's constructor, alongside the
+ *   token module's `initialize`.
+ */
+module NativeShieldedTokenDerivedNonce {
+  import CompactStandardLibrary;
+
+  /**
+   * @description Monotonic index feeding the nonce evolution chain.
+   */
+  export ledger _counter: Counter;
+  /**
+   * @description Latest value of the nonce evolution chain. Coin nonces are
+   * derived from (not equal to) this value; see the module notes.
+   */
+  export ledger _nonce: Bytes<32>;
+
+  /**
+   * @description Seeds the nonce evolution chain.
+   * @dev This MUST be called in the implementing contract's constructor,
+   * alongside the token module's `initialize`. A second call reverts on the
+   * unseeded-chain assertion, making this constructor-only in practice.
+   *
+   * Requirements:
+   *
+   * - The chain is not already seeded.
+   * - `initNonce` is not zero (a zero seed is indistinguishable from an
+   *   unseeded chain).
+   *
+   * @param {Bytes<32>} initNonce - Nonce chain seed; subsequent values evolve
+   * from it via the internal counter. Choose unpredictably (e.g. random bytes).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(initNonce: Bytes<32>): [] {
+    assert(_nonce == default<Bytes<32>>, "NativeShieldedTokenDerivedNonce: already seeded");
+    assert(initNonce != default<Bytes<32>>, "NativeShieldedTokenDerivedNonce: invalid nonce seed");
+    _nonce = disclose(initNonce);
+  }
+
+  /**
+   * @description Advances the nonce chain and returns the next derived coin
+   * nonce, for use as the `nonce` argument of a native token mint or a
+   * converter shield.
+   *
+   * @notice Derivation inputs are public ledger state, so mints using this
+   * nonce are recipient-public; see the module notes.
+   *
+   * Requirements:
+   *
+   * - The chain is seeded.
+   *
+   * @return {Bytes<32>} - The next derived coin nonce.
+   */
+  export circuit _deriveNonce(): Bytes<32> {
+    assert(_nonce != default<Bytes<32>>, "NativeShieldedTokenDerivedNonce: chain not seeded");
+    _counter.increment(1);
+    const chainValue = evolveNonce(_counter, _nonce);
+    _nonce = chainValue;
+    return persistentHash<Vector<2, Bytes<32>>>(
+      [pad(32, "NativeShieldedTokenDerivedNonce:nonce"), chainValue]
+    );
+  }
+}
