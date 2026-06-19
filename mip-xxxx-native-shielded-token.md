@@ -337,9 +337,10 @@ These depend on protocol capabilities under separate discussion ([MPS-0013](http
 
 Two companion MIPs complete the native-token family: the [Native Unshielded Token Standard](./mip-xxxx-native-unshielded-token.md), the transparent sibling of this standard with the same two profiles, and the [Native Token Conversion Extension](./mip-xxxx-native-shielded-token-conversion-extension.md), a stateless module that converts between the two representations by composing both base standards' Family profiles.
 Dual-representation tokens MUST build on the Family profiles.
-Each Fungible profile stores a load-bearing sealed `_domain` written by its `initialize`, but the shared `Initializable` flag allows only one `initialize` call per contract.
+Each Fungible profile stores a single load-bearing sealed `_domain` written by its `initialize`.
+The reference modules track initialization per-module via an inline `_isInitialized` flag, not the shared `Initializable` module (which collapses that flag across same-directory modules; see [LFDT-Minokawa/compact#270](https://github.com/OpenZeppelin/compact-contracts/blob/main/contracts/src/security/Initializable.compact)), so each composed base is initialized independently.
 Compact ledger layouts are fixed at deploy, so an issuer that may ever need a transparent representation SHOULD deploy on the Family profiles with the extension compiled in, hardcoding one domain constant for a single-token product.
-When both bases are composed in one contract, the consumer MUST call exactly one base's `initialize` and SHOULD expose metadata getters from that base only.
+When both bases are composed in one contract, the consumer initializes each base and SHOULD expose metadata getters from a single base only, since the two carry independent `name`/`symbol`/`decimals`.
 
 ## Rationale
 
@@ -539,14 +540,14 @@ An issuer with compliance requirements (for example, a regulated stablecoin) sho
 
 ### Components
 
-1. **New Compact modules.** [`NativeShieldedToken.compact` (Fungible profile) and `NativeShieldedTokenFamily.compact` (Family profile)](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token) in the OpenZeppelin Compact Contracts library: all state and circuits specified above, composed with the library's `Initializable` and `Utils` modules, plus the optional `extensions/NativeShieldedTokenDerivedNonce.compact` extension module.
+1. **New Compact modules.** [`NativeShieldedToken.compact` (Fungible profile) and `NativeShieldedTokenFamily.compact` (Family profile)](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token) in the OpenZeppelin Compact Contracts library: all state and circuits specified above, composed with the library's `Utils` module (initialization is tracked inline per-module, not via the shared `Initializable` module), plus the optional `extensions/NativeShieldedTokenDerivedNonce.compact` extension module.
 2. **Mocks, simulators, and tests.** `MockNativeShieldedToken.compact` and `MockNativeShieldedTokenFamily.compact` exposing the module circuits, with TypeScript simulators and Vitest suites.
 3. **No protocol changes required.**
 
 ### Dependencies
 
 - [Compact Standard Library](https://docs.midnight.network/compact): `mintShieldedToken`, `receiveShielded`, `sendShielded`, `sendImmediateShielded`, `evolveNonce`, `tokenType`, `shieldedBurnAddress`, `Counter`, `ShieldedCoinInfo`, `QualifiedShieldedCoinInfo`, `Maybe`.
-- [OpenZeppelin Compact Contracts](https://github.com/OpenZeppelin/compact-contracts): `Initializable` and `Utils` modules.
+- [OpenZeppelin Compact Contracts](https://github.com/OpenZeppelin/compact-contracts): the `Utils` module. Initialization is tracked inline per-module rather than via the shared `Initializable` module.
 - Compact language version >= 0.21.0.
   The reference implementation compiles against this toolchain.
 
