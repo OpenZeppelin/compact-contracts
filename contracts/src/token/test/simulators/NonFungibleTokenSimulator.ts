@@ -54,14 +54,6 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
   }
 
   /**
-   * @description Returns a canonical zero Either value (left variant with zero Bytes<32>).
-   * @return The zero value.
-   */
-  public ZERO(): Either<Uint8Array, ContractAddress> {
-    return this.circuits.pure.ZERO();
-  }
-
-  /**
    * @description Returns the token name.
    * @returns The token name.
    */
@@ -434,16 +426,6 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    */
   public _unsafeMint(to: Either<Uint8Array, ContractAddress>, tokenId: bigint) {
     this.circuits.impure._unsafeMint(to, tokenId);
-  }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a grant or revoke operation.
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  public computeAccountId(secretKey: Uint8Array): Uint8Array {
-    return this.circuits.pure.computeAccountId(secretKey);
   }
 
   public readonly privateState = {

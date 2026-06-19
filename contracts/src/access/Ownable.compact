@@ -125,7 +125,7 @@ module Ownable {
   export circuit initialize(initialOwner: Either<Bytes<32>, ContractAddress>): [] {
     assertNotInitialized();
     _isInitialized = true;
-    assert(!_isTargetZero(initialOwner), "Ownable: invalid initial owner");
+    assert(!Utils_isTargetZero(initialOwner), "Ownable: invalid initial owner");
     _transferOwnership(initialOwner);
   }
 
@@ -219,7 +219,7 @@ module Ownable {
   export circuit _unsafeTransferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
     assertInitialized();
     assertOnlyOwner();
-    assert(!_isTargetZero(newOwner), "Ownable: invalid new owner");
+    assert(!Utils_isTargetZero(newOwner), "Ownable: invalid new owner");
     _unsafeUncheckedTransferOwnership(newOwner);
   }
 
@@ -335,52 +335,6 @@ module Ownable {
    * @returns {Bytes<32>} accountId - The computed account identifier.
    */
   circuit _computeAccountId(): Bytes<32> {
-    return computeAccountId(wit_OwnableSK());
-  }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in an ownership transfer.
-   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
-   * given the same inputs.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the security of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
-  }
-
-  /**
-   * @description Returns `true` if `target`'s active branch (as indicated by `is_left`)
-   * holds the zero value.
-   *
-   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
-   * @returns {Boolean} - `true` if the active branch is zero, `false` otherwise.
-   */
-  circuit _isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
-    if (target.is_left) {
-      return target.left == default<Bytes<32>>;
-    } else {
-      return target.right == default<ContractAddress>;
-    }
+    return Utils_computeAccountId(wit_OwnableSK());
   }
 }

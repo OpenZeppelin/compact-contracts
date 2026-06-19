@@ -128,4 +128,32 @@ export class UtilsSimulator extends UtilsSimulatorBase {
   public UINT128_MAX(): bigint {
     return this.circuits.pure.UINT128_MAX();
   }
+
+  /**
+   * @description Returns the canonical zero `Either<Bytes<32>, ContractAddress>` value
+   * (left variant with zero `Bytes<32>`).
+   * @returns The canonical zero value.
+   */
+  public zeroAccount(): Either<Uint8Array, ContractAddress> {
+    return this.circuits.pure.zeroAccount();
+  }
+
+  /**
+   * @description Returns whether `target`'s active branch holds the zero value.
+   * @param target The value to check.
+   * @returns Returns true if the active branch is zero.
+   */
+  public isTargetZero(target: Either<Uint8Array, ContractAddress>): boolean {
+    return this.circuits.pure.isTargetZero(target);
+  }
+
+  /**
+   * @description Computes an account identifier without on-chain state, allowing a user to
+   * derive their identity commitment before submitting an operation.
+   * @param secretKey A 32-byte cryptographically secure random value.
+   * @returns The computed account identifier.
+   */
+  public computeAccountId(secretKey: Uint8Array): Uint8Array {
+    return this.circuits.pure.computeAccountId(secretKey);
+  }
 }

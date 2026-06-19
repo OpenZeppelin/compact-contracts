@@ -120,52 +120,6 @@ describe('NonFungibleToken', () => {
     token = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
   });
 
-  describe('computeAccountId', () => {
-    const users = [OWNER, SPENDER, RECIPIENT, UNAUTHORIZED];
-
-    it('should match the test helper derivation', () => {
-      for (const user of users) {
-        expect(token.computeAccountId(user.secretKey)).toEqual(user.accountId);
-      }
-    });
-
-    it('should produce distinct identifiers for distinct keys', () => {
-      const ids = users.map((u) => token.computeAccountId(u.secretKey));
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          expect(ids[i]).not.toEqual(ids[j]);
-        }
-      }
-    });
-  });
-
-  describe('ZERO', () => {
-    it('should return a left variant', () => {
-      const zero = token.ZERO();
-      expect(zero.is_left).toBe(true);
-    });
-
-    it('should have zero left branch', () => {
-      const zero = token.ZERO();
-      expect(zero.left).toEqual(zeroBytes);
-    });
-
-    it('should have zero right branch', () => {
-      const zero = token.ZERO();
-      expect(zero.right).toEqual({ bytes: zeroBytes });
-    });
-
-    it('should be canonical', () => {
-      const zero = token.ZERO();
-      expect(zero).toEqual(ZERO_ACCOUNT);
-    });
-
-    it('should not equal a right-variant zero', () => {
-      const zero = token.ZERO();
-      expect(zero).not.toEqual(ZERO_CONTRACT);
-    });
-  });
-
   describe('balanceOf', () => {
     it('should return zero when requested account has no balance', () => {
       expect(token.balanceOf(OWNER.either)).toEqual(0n);
@@ -723,7 +677,7 @@ describe('NonFungibleToken', () => {
 
       token.transferFrom(OWNER.either, RECIPIENT.either, TOKENID_1);
 
-      // _update calls _approve(ZERO(), tokenId, ZERO()) internally,
+      // _update calls _approve(zeroAccount(), tokenId, zeroAccount()) internally,
       // which should store the left-variant zero
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
@@ -803,17 +757,17 @@ describe('NonFungibleToken', () => {
       expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should normalize right-variant zero to ZERO()', () => {
+    it('should normalize right-variant zero to zeroAccount()', () => {
       token._mint(OWNER.either, TOKENID_1);
 
       // Approve with a right-variant zero (contract address zero)
       token._approve(ZERO_CONTRACT, TOKENID_1, OWNER.either);
 
-      // getApproved should return the left-variant ZERO, not the right-variant
+      // getApproved should return the left-variant zeroAccount, not the right-variant
       expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should normalize left-variant zero to ZERO()', () => {
+    it('should normalize left-variant zero to zeroAccount()', () => {
       token._mint(OWNER.either, TOKENID_1);
 
       // First set a real approval

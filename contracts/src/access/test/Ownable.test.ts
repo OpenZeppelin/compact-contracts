@@ -157,26 +157,6 @@ describe('Ownable', () => {
       });
     });
 
-    describe('computeAccountId', () => {
-      it('should match pre-computed accountId', () => {
-        expect(ownable.computeAccountId(OWNER.secretKey)).toEqual(
-          OWNER.accountId,
-        );
-      });
-
-      it('should produce different accountId with different key', () => {
-        expect(ownable.computeAccountId(UNAUTHORIZED.secretKey)).not.toEqual(
-          OWNER.accountId,
-        );
-      });
-
-      it('should match test helper derivation', () => {
-        expect(ownable.computeAccountId(OWNER.secretKey)).toEqual(
-          buildAccountIdHash(OWNER.secretKey),
-        );
-      });
-    });
-
     describe('assertOnlyOwner', () => {
       it('should allow owner to call', () => {
         expect(() => ownable.assertOnlyOwner()).not.toThrow();

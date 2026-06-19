@@ -174,25 +174,6 @@ module MultiToken {
   witness wit_MultiTokenSK(): Bytes<32>;
 
   /**
-   * @description Returns a canonical zero Either value (left variant with zero Bytes<32>).
-   * Used as the zero value for mint/burn operations in `_update`, where a zero
-   * `fromAddress` signals a mint and a zero `to` signals a burn.
-   *
-   * The left variant is chosen so that `_isTargetZero` checks against `default<Bytes<32>>`,
-   * which is consistent with how `_update` dispatches on the zero check. A right variant
-   * with `default<ContractAddress>` would also pass `_isTargetZero`, but using the left
-   * variant avoids triggering contract address guards in circuits like `_mint` that check
-   * `!to.is_left` before delegating to `_unsafeMint`.
-   *
-   * @return {Either<Bytes<32>, ContractAddress>} - The zero value.
-   */
-  export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
-    return Either<Bytes<32>, ContractAddress> {
-      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
-    };
-  }
-
-  /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
    * @circuitInfo k=6, rows=33
@@ -441,14 +422,14 @@ module MultiToken {
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
 
-    if (!_isTargetZero(disclose(canonFrom))) {
+    if (!Utils_isTargetZero(disclose(canonFrom))) {
       const fromBalance = balanceOf(canonFrom, id);
       assert(fromBalance >= value, "MultiToken: insufficient balance");
       const newBalance = fromBalance - value;
       _balances.lookup(id).insert(disclose(canonFrom), disclose(newBalance));
     }
 
-    if (!_isTargetZero(disclose(canonTo))) {
+    if (!Utils_isTargetZero(disclose(canonTo))) {
       if (!_balances.member(disclose(id))) {
         _balances.insert(
           disclose(id),
@@ -540,8 +521,8 @@ module MultiToken {
                    ): [] {
     assertInitialized();
 
-    assert(!_isTargetZero(fromAddress), "MultiToken: invalid sender");
-    assert(!_isTargetZero(to), "MultiToken: invalid receiver");
+    assert(!Utils_isTargetZero(fromAddress), "MultiToken: invalid sender");
+    assert(!Utils_isTargetZero(to), "MultiToken: invalid receiver");
     _update(fromAddress, to, id, value);
   }
 
@@ -627,8 +608,8 @@ module MultiToken {
                    value: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!_isTargetZero(to), "MultiToken: invalid receiver");
-    _update(ZERO(), to, id, value);
+    assert(!Utils_isTargetZero(to), "MultiToken: invalid receiver");
+    _update(Utils_zeroAccount(), to, id, value);
   }
 
   /**
@@ -652,8 +633,8 @@ module MultiToken {
                        value: Uint<128>
                        ): [] {
     assertInitialized();
-    assert(!_isTargetZero(fromAddress), "MultiToken: invalid sender");
-    _update(fromAddress, ZERO(), id, value);
+    assert(!Utils_isTargetZero(fromAddress), "MultiToken: invalid sender");
+    _update(fromAddress, Utils_zeroAccount(), id, value);
   }
 
   /**
@@ -684,10 +665,10 @@ module MultiToken {
                    ): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
-    assert(!_isTargetZero(canonOwner), "MultiToken: invalid owner");
+    assert(!Utils_isTargetZero(canonOwner), "MultiToken: invalid owner");
 
     const canonOp = Utils_canonicalize<Bytes<32>, ContractAddress>(operator);
-    assert(!_isTargetZero(canonOp), "MultiToken: invalid operator");
+    assert(!Utils_isTargetZero(canonOp), "MultiToken: invalid operator");
 
     if (!_operatorApprovals.member(disclose(canonOwner))) {
       _operatorApprovals.insert(
@@ -710,52 +691,6 @@ module MultiToken {
    * @returns {Bytes<32>} accountId - The computed account identifier.
    */
   circuit _computeAccountId(): Bytes<32> {
-    return computeAccountId(wit_MultiTokenSK());
-  }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a token operation.
-   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
-   * given the same inputs.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the security of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
-  }
-
-  /**
-   * @description Returns `true` if `target`'s active branch (as indicated by `is_left`)
-   * holds the zero value.
-   *
-   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
-   * @returns {Boolean} - `true` if the active branch is zero, `false` otherwise.
-   */
-  circuit _isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
-    if (target.is_left) {
-      return target.left == default<Bytes<32>>;
-    } else {
-      return target.right == default<ContractAddress>;
-    }
+    return Utils_computeAccountId(wit_MultiTokenSK());
   }
 }

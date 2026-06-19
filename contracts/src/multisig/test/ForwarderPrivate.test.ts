@@ -1,16 +1,26 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivateSimulator.js';
 
-const PARENT = utils.createEitherTestUser('PARENT').left.bytes;
-const WRONG_PARENT = utils.createEitherTestUser('WRONG').left.bytes;
+// The drain parent is a `ZswapCoinPublicKey` (coin public key only). A contract
+// recipient is intentionally unsupported: a shielded send to a contract
+// publishes the contract address in cleartext, which would defeat the
+// private-parent guarantee (confirmed on preprod). The commitment is over the
+// parent key's raw 32 bytes (`_calculateParentCommitment(parent.bytes, opSecret)`).
+const PARENT_BYTES = utils.createEitherTestUser('PARENT').left.bytes;
+const WRONG_BYTES = utils.createEitherTestUser('WRONG').left.bytes;
 const OP_SECRET = new Uint8Array(32).fill(0xaa);
 const WRONG_OP_SECRET = new Uint8Array(32).fill(0xbb);
 const ZERO = new Uint8Array(32);
 const COLOR = new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 const MAX_U64 = (1n << 64n) - 1n;
+
+/** A coin-public-key parent: `ZswapCoinPublicKey` is `{ bytes }`. */
+function key(bytes: Uint8Array): { bytes: Uint8Array } {
+  return { bytes };
+}
 
 function makeCoin(color: Uint8Array, value: bigint, nonce?: Uint8Array) {
   return {
@@ -35,13 +45,29 @@ function makeQualifiedCoin(
 }
 
 function commitment(parent: Uint8Array, opSecret: Uint8Array): Uint8Array {
-  return MockForwarderPrivateSimulator.calculateParentCommitment(parent, opSecret);
+  return MockForwarderPrivateSimulator.calculateParentCommitment(
+    parent,
+    opSecret,
+  );
+}
+
+/** Initialized forwarder committed to `committedBytes`, with one coin deposited. */
+function freshMock(
+  committedBytes: Uint8Array,
+  opSecret: Uint8Array = OP_SECRET,
+): MockForwarderPrivateSimulator {
+  const mock = new MockForwarderPrivateSimulator(
+    commitment(committedBytes, opSecret),
+    true,
+  );
+  mock.deposit(makeCoin(COLOR, AMOUNT));
+  return mock;
 }
 
 describe('ForwarderPrivate module', () => {
   describe('initialization', () => {
     it('should initialize on construction when isInit is true', () => {
-      const c = commitment(PARENT, OP_SECRET);
+      const c = commitment(PARENT_BYTES, OP_SECRET);
       const mock = new MockForwarderPrivateSimulator(c, true);
       expect(() => mock.deposit(makeCoin(COLOR, AMOUNT))).not.toThrow();
     });
@@ -52,10 +78,12 @@ describe('ForwarderPrivate module', () => {
       );
     });
 
-    it('should expose the public ledger state after initialization', () => {
-      const c = commitment(PARENT, OP_SECRET);
+    it('should store the parent commitment after initialization', () => {
+      const c = commitment(PARENT_BYTES, OP_SECRET);
       const mock = new MockForwarderPrivateSimulator(c, true);
-      expect(mock.getPublicState()).toBeDefined();
+      // The module is imported with a prefix only, so `_parentCommitment` is
+      // not in the public ledger reader; read it via the getter circuit.
+      expect(mock.getParentCommitment()).toStrictEqual(c);
     });
   });
 
@@ -63,26 +91,34 @@ describe('ForwarderPrivate module', () => {
     let mock: MockForwarderPrivateSimulator;
 
     beforeEach(() => {
-      mock = new MockForwarderPrivateSimulator(commitment(PARENT, OP_SECRET), false);
+      mock = new MockForwarderPrivateSimulator(
+        commitment(PARENT_BYTES, OP_SECRET),
+        false,
+      );
     });
 
     it('should fail deposit when not initialized', () => {
       expect(() => mock.deposit(makeCoin(COLOR, AMOUNT))).toThrow(
-        'Initializable: contract not initialized',
+        'ForwarderPrivate: contract not initialized',
       );
     });
 
     it('should fail drain when not initialized', () => {
       expect(() =>
-        mock.drain(makeQualifiedCoin(COLOR, AMOUNT, 0n), PARENT, OP_SECRET, AMOUNT),
-      ).toThrow('Initializable: contract not initialized');
+        mock.drain(
+          makeQualifiedCoin(COLOR, AMOUNT, 0n),
+          key(PARENT_BYTES),
+          OP_SECRET,
+          AMOUNT,
+        ),
+      ).toThrow('ForwarderPrivate: contract not initialized');
     });
   });
 
   describe('calculateParentCommitment', () => {
     it('should produce the same commitment for the same (parent, opSecret)', () => {
-      const c1 = commitment(PARENT, OP_SECRET);
-      const c2 = commitment(PARENT, OP_SECRET);
+      const c1 = commitment(PARENT_BYTES, OP_SECRET);
+      const c2 = commitment(PARENT_BYTES, OP_SECRET);
       expect(c1).toEqual(c2);
     });
 
@@ -94,14 +130,8 @@ describe('ForwarderPrivate module', () => {
           fc.uint8Array({ minLength: 32, maxLength: 32 }),
           (parent, s1, s2) => {
             fc.pre(s1.some((b, i) => b !== s2[i]));
-            const c1 = commitment(
-              Uint8Array.from(parent),
-              Uint8Array.from(s1),
-            );
-            const c2 = commitment(
-              Uint8Array.from(parent),
-              Uint8Array.from(s2),
-            );
+            const c1 = commitment(Uint8Array.from(parent), Uint8Array.from(s1));
+            const c2 = commitment(Uint8Array.from(parent), Uint8Array.from(s2));
             expect(c1).not.toEqual(c2);
           },
         ),
@@ -110,29 +140,30 @@ describe('ForwarderPrivate module', () => {
     });
   });
 
+  // Drain authorization + change behavior. Verifies the commitment gate
+  // (INV-6/27), value sufficiency (INV-7), and the change-coin pattern (INV-22).
   describe('drain', () => {
     let mock: MockForwarderPrivateSimulator;
 
     beforeEach(() => {
-      mock = new MockForwarderPrivateSimulator(commitment(PARENT, OP_SECRET), true);
-      mock.deposit(makeCoin(COLOR, AMOUNT));
+      mock = freshMock(PARENT_BYTES);
     });
 
-    it('should succeed drain with correct (parentAddr, opSecret)', () => {
+    it('should succeed drain with correct (parent, opSecret)', () => {
       const result = mock.drain(
         makeQualifiedCoin(COLOR, AMOUNT, 0n),
-        PARENT,
+        key(PARENT_BYTES),
         OP_SECRET,
         AMOUNT,
       );
       expect(result.sent.value).toEqual(AMOUNT);
     });
 
-    it('should fail drain with wrong parentAddr', () => {
+    it('should fail drain with wrong parent key', () => {
       expect(() =>
         mock.drain(
           makeQualifiedCoin(COLOR, AMOUNT, 0n),
-          WRONG_PARENT,
+          key(WRONG_BYTES),
           OP_SECRET,
           AMOUNT,
         ),
@@ -143,7 +174,7 @@ describe('ForwarderPrivate module', () => {
       expect(() =>
         mock.drain(
           makeQualifiedCoin(COLOR, AMOUNT, 0n),
-          PARENT,
+          key(PARENT_BYTES),
           WRONG_OP_SECRET,
           AMOUNT,
         ),
@@ -154,7 +185,7 @@ describe('ForwarderPrivate module', () => {
       expect(() =>
         mock.drain(
           makeQualifiedCoin(COLOR, AMOUNT, 0n),
-          WRONG_PARENT,
+          key(WRONG_BYTES),
           WRONG_OP_SECRET,
           AMOUNT,
         ),
@@ -165,7 +196,7 @@ describe('ForwarderPrivate module', () => {
       expect(() =>
         mock.drain(
           makeQualifiedCoin(COLOR, AMOUNT, 0n),
-          PARENT,
+          key(PARENT_BYTES),
           OP_SECRET,
           AMOUNT + 1n,
         ),
@@ -175,7 +206,7 @@ describe('ForwarderPrivate module', () => {
     it('should produce no change when drain value equals coin value', () => {
       const result = mock.drain(
         makeQualifiedCoin(COLOR, AMOUNT, 0n),
-        PARENT,
+        key(PARENT_BYTES),
         OP_SECRET,
         AMOUNT,
       );
@@ -185,7 +216,7 @@ describe('ForwarderPrivate module', () => {
     it('should produce a change coin when drain value is less than coin value', () => {
       const result = mock.drain(
         makeQualifiedCoin(COLOR, AMOUNT, 0n),
-        PARENT,
+        key(PARENT_BYTES),
         OP_SECRET,
         400n,
       );
@@ -197,12 +228,57 @@ describe('ForwarderPrivate module', () => {
     it('should produce a sent coin of exactly value on partial drain', () => {
       const result = mock.drain(
         makeQualifiedCoin(COLOR, AMOUNT, 0n),
-        PARENT,
+        key(PARENT_BYTES),
         OP_SECRET,
         400n,
       );
       expect(result.sent.value).toEqual(400n);
       expect(result.sent.color).toEqual(COLOR);
+    });
+  });
+
+  // INV-34: a zero parent key is rejected before the commitment gate.
+  describe('drain — rejects a zero parent', () => {
+    it('should reject a zero parent key', () => {
+      const mock = freshMock(PARENT_BYTES);
+      expect(() =>
+        mock.drain(
+          makeQualifiedCoin(COLOR, AMOUNT, 0n),
+          key(ZERO),
+          OP_SECRET,
+          AMOUNT,
+        ),
+      ).toThrow('ForwarderPrivate: zero parent');
+    });
+  });
+
+  // INV-12 / INV-25: a drain performs no ledger write. `_parentCommitment` is
+  // written only at init; it is unchanged after a drain and no recipient field
+  // is added. (Read via the getter circuit — the module is imported with a
+  // prefix only, so it is not in the public ledger reader.)
+  //
+  // INV-17 (recipient privacy): the parent coin public key flows only into the
+  // `sendShielded` recipient, where it is encrypted inside the Zswap output and
+  // never appears on the public transcript. Confirmed end-to-end on preprod (a
+  // coin-public-key recipient occurs 0 times in the published tx); not
+  // simulator-observable, so it is asserted by the residual-surface check here.
+  describe('drain — residual public surface (INV-12 / INV-17 / INV-25)', () => {
+    it('should not mutate the parent commitment on a successful drain', () => {
+      const c = commitment(PARENT_BYTES, OP_SECRET);
+      const mock = new MockForwarderPrivateSimulator(c, true);
+      mock.deposit(makeCoin(COLOR, AMOUNT));
+
+      const before = mock.getParentCommitment();
+      mock.drain(
+        makeQualifiedCoin(COLOR, AMOUNT, 0n),
+        key(PARENT_BYTES),
+        OP_SECRET,
+        AMOUNT,
+      );
+      const after = mock.getParentCommitment();
+
+      expect(after).toStrictEqual(before);
+      expect(after).toStrictEqual(c);
     });
   });
 
@@ -215,13 +291,13 @@ describe('ForwarderPrivate module', () => {
           (coinVal, drainVal) => {
             fc.pre(drainVal < coinVal);
             const mock = new MockForwarderPrivateSimulator(
-              commitment(PARENT, OP_SECRET),
+              commitment(PARENT_BYTES, OP_SECRET),
               true,
             );
             mock.deposit(makeCoin(COLOR, coinVal));
             const result = mock.drain(
               makeQualifiedCoin(COLOR, coinVal, 0n),
-              PARENT,
+              key(PARENT_BYTES),
               OP_SECRET,
               drainVal,
             );

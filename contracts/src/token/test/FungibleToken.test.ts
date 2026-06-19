@@ -158,33 +158,6 @@ describe('FungibleToken', () => {
       token = new FungibleTokenSimulator(NAME, SYMBOL, DECIMALS, INIT);
     });
 
-    describe('ZERO', () => {
-      it('should return a left variant', () => {
-        const zero = token.ZERO();
-        expect(zero.is_left).toBe(true);
-      });
-
-      it('should have zero left branch', () => {
-        const zero = token.ZERO();
-        expect(zero.left).toEqual(zeroBytes);
-      });
-
-      it('should have zero right branch', () => {
-        const zero = token.ZERO();
-        expect(zero.right).toEqual({ bytes: zeroBytes });
-      });
-
-      it('should be canonical', () => {
-        const zero = token.ZERO();
-        expect(zero).toEqual(ZERO_ACCOUNT);
-      });
-
-      it('should not equal a right-variant zero', () => {
-        const zero = token.ZERO();
-        expect(zero).not.toEqual(ZERO_CONTRACT);
-      });
-    });
-
     describe('totalSupply', () => {
       it('returns 0 when there is no supply', () => {
         expect(token.totalSupply()).toEqual(0n);
@@ -1150,27 +1123,6 @@ describe('FungibleToken', () => {
         token._burn(OWNER.either, 1n);
         expect(token.totalSupply()).toEqual(AMOUNT - 1n);
         expect(token.balanceOf(OWNER.either)).toEqual(0n);
-      });
-    });
-    describe('computeAccountId', () => {
-      const users = [OWNER, SPENDER, RECIPIENT, UNAUTHORIZED];
-
-      it('should match the test helper derivation', () => {
-        for (let i = 0; i < users.length; i++) {
-          expect(token.computeAccountId(users[i].secretKey)).toEqual(
-            users[i].accountId,
-          );
-        }
-      });
-
-      it('should produce distinct identifiers for distinct keys', () => {
-        const ids = users.map((u) => token.computeAccountId(u.secretKey));
-
-        for (let i = 0; i < ids.length; i++) {
-          for (let j = i + 1; j < ids.length; j++) {
-            expect(ids[i]).not.toEqual(ids[j]);
-          }
-        }
       });
     });
   });

@@ -6,15 +6,14 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
-export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
 
 /**
  * @description Test fixture exposing the private ForwarderPrivate
  * module's underscore-prefixed circuits directly. `isInit` controls
  * whether the constructor initializes. Set it to `false` to leave the
  * contract uninitialized and exercise the not-initialized guard. The
- * parent commitment is a sealed ledger field, so it can only be set in
- * the constructor.
+ * parent commitment is set once at construction via `initialize`.
  *
  * DO NOT USE IN PRODUCTION.
  */
@@ -30,11 +29,11 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 
 export circuit drain(
   coin: QualifiedShieldedCoinInfo,
-  parentAddr: Bytes<32>,
+  parent: ZswapCoinPublicKey,
   opSecret: Bytes<32>,
   value: Uint<128>
 ): ShieldedSendResult {
-  return ForwarderPrivate__drain(coin, parentAddr, opSecret, value);
+  return ForwarderPrivate__drain(coin, parent, opSecret, value);
 }
 
 export pure circuit calculateParentCommitment(
@@ -42,4 +41,11 @@ export pure circuit calculateParentCommitment(
   opSecret: Bytes<32>
 ): Bytes<32> {
   return ForwarderPrivate__calculateParentCommitment(parentAddr, opSecret);
+}
+
+// The module is imported with a prefix only, so `_parentCommitment` is not
+// surfaced by the generated `ledger()` reader (`getPublicState()` is empty).
+// Expose it via a getter, mirroring `MockForwarderShielded.getParent`.
+export circuit getParentCommitment(): Bytes<32> {
+  return ForwarderPrivate__parentCommitment;
 }

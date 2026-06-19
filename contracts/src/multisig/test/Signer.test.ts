@@ -35,7 +35,7 @@ describe('Signer', () => {
             ...a: unknown[]
           ) => unknown
         )(...args);
-      }).toThrow('Initializable: contract not initialized');
+      }).toThrow('Signer: contract not initialized');
     });
 
     it('isSigner should succeed (no init guard)', () => {
@@ -90,7 +90,7 @@ describe('Signer', () => {
       contract = new SignerSimulator(SIGNERS, THRESHOLD, IS_INIT);
       expect(() => {
         contract.initialize(SIGNERS, THRESHOLD);
-      }).toThrow('Initializable: contract already initialized');
+      }).toThrow('Signer: contract already initialized');
     });
   });
 

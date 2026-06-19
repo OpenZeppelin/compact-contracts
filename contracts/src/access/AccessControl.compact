@@ -442,38 +442,6 @@ module AccessControl {
    * @returns {Bytes<32>} accountId - The computed account identifier.
    */
   circuit _computeAccountId(): Bytes<32> {
-    return computeAccountId(wit_AccessControlSK());
-  }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a grant or revoke operation.
-   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
-   * given the same inputs.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the privacy guarantees of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered. Back up
-   *   keys securely before using them in role commitments.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
+    return Utils_computeAccountId(wit_AccessControlSK());
   }
 }

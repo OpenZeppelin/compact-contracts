@@ -752,29 +752,6 @@ describe('AccessControl', () => {
     });
   });
 
-  describe('computeAccountId', () => {
-    it('should match the test helper derivation', () => {
-      const users = [OP1, OP2, OP3];
-
-      for (let i = 0; i < users.length; i++) {
-        expect(accessControl.computeAccountId(users[i].secretKey)).toEqual(
-          users[i].accountId,
-        );
-      }
-    });
-
-    it('should produce distinct identifiers for distinct keys', () => {
-      const users = [ADMIN, CUSTOM_ADMIN, OP1, OP2, OP3, UNAUTHORIZED];
-      const ids = users.map((u) => accessControl.computeAccountId(u.secretKey));
-
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          expect(ids[i]).not.toEqual(ids[j]);
-        }
-      }
-    });
-  });
-
   describe('privateState helpers', () => {
     describe('getCurrentSecretKey', () => {
       it('should return the injected secret key', () => {

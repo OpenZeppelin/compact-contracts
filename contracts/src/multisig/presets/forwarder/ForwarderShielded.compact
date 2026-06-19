@@ -7,22 +7,30 @@ pragma language_version >= 0.23.0;
  * @title ForwarderShielded
  * @description Public-parent forwarder for shielded coins. Receives a
  * shielded coin and atomically forwards it to the configured parent
- * address.
+ * recipient, a coin public key.
  *
- * The parent address is hard-coded at deploy time and immutable. Anyone
+ * The parent recipient is set at deploy time. This preset exposes no
+ * setter, so the parent is fixed for the life of the contract. Anyone
  * may call `deposit`; the recipient is fixed, so there is no need for
  * access control.
+ *
+ * The constructor accepts a `ZswapCoinPublicKey`: an atomic forward can
+ * only deliver to a recipient that needs no in-tx claim, and a shielded
+ * send to a non-participating contract is rejected. The parent is stored
+ * generically (`Either`) on the ledger so a future circuit upgrade can
+ * add contract-address support without a state migration.
  */
 
 import CompactStandardLibrary;
-import "../../Forwarder"<ZswapCoinPublicKey> prefix Forwarder_;
+import "../../ForwarderShielded" prefix Forwarder_;
 
-export { ZswapCoinPublicKey, ShieldedCoinInfo };
+export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, Either };
 
 /**
- * @description Deploys the forwarder bound to a specific parent address.
+ * @description Deploys the forwarder bound to a specific parent
+ * recipient.
  *
- * @param {ZswapCoinPublicKey} parent - The parent address that receives
+ * @param {ZswapCoinPublicKey} parent - The coin public key that receives
  * every forwarded coin.
  */
 constructor(parent: ZswapCoinPublicKey) {
@@ -39,14 +47,16 @@ constructor(parent: ZswapCoinPublicKey) {
  * @returns {[]} Empty tuple.
  */
 export circuit deposit(coin: ShieldedCoinInfo): [] {
-  Forwarder__depositShielded(coin);
+  Forwarder__deposit(coin);
 }
 
 /**
- * @description Returns the configured parent address.
+ * @description Returns the configured parent recipient as stored on the
+ * ledger (the generic `Either`; the `left` arm holds the coin public key).
  *
- * @returns {ZswapCoinPublicKey} The parent address set at deploy.
+ * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The parent
+ * recipient set at deploy.
  */
-export circuit getParent(): ZswapCoinPublicKey {
+export circuit getParent(): Either<ZswapCoinPublicKey, ContractAddress> {
   return Forwarder__parent;
 }

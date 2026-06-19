@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ForwarderUnshielded.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ForwarderUnshielded
+ * @description Public-parent forwarder for unshielded coins. Provides an
+ * atomic forward pattern: receive an unshielded amount of a given color
+ * and immediately send it to the configured parent recipient.
+ *
+ * The parent is stored generically as
+ * `Either<ContractAddress, UserAddress>` so the ledger layout is
+ * forward-compatible, but `initialize` accepts only a `UserAddress`
+ * today and stores it in the `right` arm. A contract address is the
+ * unsupported arm: an atomic forward delivers the amount in the same
+ * transaction as the deposit, and an unshielded send to a contract is
+ * only valid if that contract claims the amount in the same transaction
+ * (the same `receiveUnshielded` step this forwarder runs to accept the
+ * deposit). The only contract executing in `_deposit` is this forwarder,
+ * so a third-party contract parent would never claim the output and the
+ * deposit would be rejected by the node. A user address needs no in-tx
+ * claim, so it is the only recipient an atomic forward can reach.
+ *
+ * Contract-address support is reserved for a future circuit upgrade (via
+ * the Contract Maintenance Authority) once cross-contract UTXO delivery
+ * exists. Because the ledger already stores the generic `Either`, that
+ * upgrade changes only the circuits (verifier keys), not the state
+ * layout — no state migration is required.
+ *
+ * Unshielded transfers are publicly visible on the chain: depositor,
+ * recipient, color, and amount all appear on the public transcript.
+ *
+ * Underscore-prefixed circuits have no access control. The forwarder is
+ * intentionally permissionless — the recipient is fixed at init, so any
+ * caller may deposit without compromising the parent. State access is
+ * gated by a per-module `_isInitialized` flag: every circuit asserts the
+ * contract has been initialized via `initialize`.
+ *
+ * The parent is set once at init and the module exposes no setter, so a
+ * preset that omits one keeps the parent fixed. A consuming contract
+ * that needs to change the parent may add its own setter circuit.
+ *
+ * @notice The deployer must set a parent that can spend the forwarded
+ * amounts. Forwarding to an address no one controls strands every deposit
+ * permanently. The zero-address guard rejects only the all-zero address,
+ * not an otherwise-unspendable one.
+ */
+module ForwarderUnshielded {
+  import CompactStandardLibrary;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  /**
+   * @description The parent recipient, stored generically as
+   * `Either<ContractAddress, UserAddress>` for forward compatibility.
+   * `initialize` only ever writes the `right` (user address) arm today. See
+   * the module header.
+   */
+  export ledger _parent: Either<ContractAddress, UserAddress>;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent recipient.
+   * Called once from the preset constructor. The user address is stored
+   * in the `right` arm of the generic `_parent` ledger field.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   * - `parent` must not be the zero address. A zero parent would forward
+   *   every deposit to an unspendable address with no recovery path.
+   *
+   * @param {UserAddress} parent - The user address that receives every
+   * forwarded amount. The parameter is deliberately narrower than the
+   * `_parent` ledger type: only a user address can be delivered to by an
+   * atomic forward today (see the module header).
+   *
+   * @notice Beyond the zero-address check, the caller must ensure `parent`
+   * can spend forwarded amounts. An unspendable parent strands every
+   * deposit with no recovery path.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(parent: UserAddress): [] {
+    const isZero = default<UserAddress> == parent;
+    assert(!isZero, "ForwarderUnshielded: zero parent");
+    assertNotInitialized();
+    _isInitialized = true;
+    _parent = right<ContractAddress, UserAddress>(disclose(parent));
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives an unshielded amount of `color` and atomically
+   * forwards it to `_parent` via `sendUnshielded` (always the `right` /
+   * user-address arm today).
+   *
+   * @circuitInfo k=9, rows=436
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {Bytes<32>} color - The token color.
+   * @param {Uint<128>} amount - The amount to deposit.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
+    assertInitialized();
+    receiveUnshielded(disclose(color), disclose(amount));
+    sendUnshielded(disclose(color), disclose(amount), _parent);
+  }
+
+  // ─── Init guards ────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ForwarderUnshielded: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ForwarderUnshielded: contract already initialized");
+  }
+}

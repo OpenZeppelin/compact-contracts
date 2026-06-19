@@ -112,19 +112,6 @@ module FungibleToken {
   witness wit_FungibleTokenSK(): Bytes<32>;
 
   /**
-   * @description Returns a canonical zero Either value for Bytes<32> and ContractAddress.
-   * This circuit returns the left variant (Bytes<32>) to avoid misleading contract-to-contract
-   * error messages.
-   *
-   * @return {Either<Bytes<32>, ContractAddress>} - The zero value.
-   */
-  export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
-    return Either<Bytes<32>, ContractAddress> {
-      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
-    };
-  }
-
-  /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
    * @dev This MUST be called in the implementing contract's constructor. Failure to do so
    * can lead to an irreparable contract.
@@ -509,8 +496,8 @@ module FungibleToken {
                    value: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!_isTargetZero(fromAddress), "FungibleToken: invalid sender");
-    assert(!_isTargetZero(to), "FungibleToken: invalid receiver");
+    assert(!Utils_isTargetZero(fromAddress), "FungibleToken: invalid sender");
+    assert(!Utils_isTargetZero(to), "FungibleToken: invalid receiver");
 
     _update(fromAddress, to, value);
   }
@@ -539,7 +526,7 @@ module FungibleToken {
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
 
-    if (_isTargetZero(disclose(canonFrom))) {
+    if (Utils_isTargetZero(disclose(canonFrom))) {
       // Mint
       const MAX_UINT128 = 340282366920938463463374607431768211455;
       assert(MAX_UINT128 - _totalSupply >= value, "FungibleToken: arithmetic overflow");
@@ -551,7 +538,7 @@ module FungibleToken {
       _balances.insert(disclose(canonFrom), disclose(fromBal - value as Uint<128>));
     }
 
-    if (_isTargetZero(disclose(canonTo))) {
+    if (Utils_isTargetZero(disclose(canonTo))) {
       // Burn
       _totalSupply = disclose(_totalSupply - value as Uint<128>);
     } else {
@@ -610,8 +597,8 @@ module FungibleToken {
                    value: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!_isTargetZero(account), "FungibleToken: invalid receiver");
-    _update(ZERO(), account, value);
+    assert(!Utils_isTargetZero(account), "FungibleToken: invalid receiver");
+    _update(Utils_zeroAccount(), account, value);
   }
 
   /**
@@ -632,8 +619,8 @@ module FungibleToken {
    */
   export circuit _burn(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
     assertInitialized();
-    assert(!_isTargetZero(account), "FungibleToken: invalid sender");
-    _update(account, ZERO(), value);
+    assert(!Utils_isTargetZero(account), "FungibleToken: invalid sender");
+    _update(account, Utils_zeroAccount(), value);
   }
 
   /**
@@ -663,8 +650,8 @@ module FungibleToken {
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
-    assert(!_isTargetZero(canonOwner), "FungibleToken: invalid owner");
-    assert(!_isTargetZero(canonSpender), "FungibleToken: invalid spender");
+    assert(!Utils_isTargetZero(canonOwner), "FungibleToken: invalid owner");
+    assert(!Utils_isTargetZero(canonSpender), "FungibleToken: invalid spender");
 
     if (!_allowances.member(disclose(canonOwner))) {
       // If owner doesn't exist, create and insert a new sub-map directly
@@ -725,52 +712,6 @@ module FungibleToken {
    * @returns {Bytes<32>} accountId - The computed account identifier.
    */
   circuit _computeAccountId(): Bytes<32> {
-    return computeAccountId(wit_FungibleTokenSK());
-  }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting a token operation.
-   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
-   * given the same inputs.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the security of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
-  }
-
-  /**
-   * @description Returns `true` if `target`'s active branch (as indicated by `is_left`)
-   * holds the zero value.
-   *
-   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
-   * @returns {Boolean} - `true` if the active branch is zero, `false` otherwise.
-   */
-  circuit _isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
-    if (target.is_left) {
-      return target.left == default<Bytes<32>>;
-    } else {
-      return target.right == default<ContractAddress>;
-    }
+    return Utils_computeAccountId(wit_FungibleTokenSK());
   }
 }

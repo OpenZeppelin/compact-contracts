@@ -5,39 +5,43 @@ import {
 import {
   type ContractAddress,
   type Either,
-  Contract as ForwarderShielded,
   ledger,
+  Contract as MockForwarderShielded,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/ForwarderShielded/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
+} from '../../../../artifacts/MockForwarderShielded/contract/index.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
+type MockForwarderShieldedArgs = readonly [
+  parent: ZswapCoinPublicKey,
+  isInit: boolean,
+];
 
-const ForwarderShieldedSimulatorBase = createSimulator<
+const MockForwarderShieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ForwarderShielded<EmptyPrivateState>,
-  ForwarderShieldedArgs
+  MockForwarderShielded<EmptyPrivateState>,
+  MockForwarderShieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderShielded<EmptyPrivateState>(witnesses),
+    new MockForwarderShielded<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (parent) => [parent],
+  contractArgs: (parent, isInit) => [parent, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
 });
 
-export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
+export class MockForwarderShieldedSimulator extends MockForwarderShieldedSimulatorBase {
   constructor(
     parent: ZswapCoinPublicKey,
+    isInit: boolean,
     options: BaseSimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
-    super([parent], options);
+    super([parent, isInit], options);
   }
 
   public deposit(coin: ShieldedCoinInfo) {

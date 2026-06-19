@@ -112,16 +112,6 @@ export class OwnableSimulator extends OwnableSimulatorBase {
     this.circuits.impure._unsafeUncheckedTransferOwnership(newOwner);
   }
 
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a grant or revoke operation.
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  public computeAccountId(secretKey: Uint8Array): Uint8Array {
-    return this.circuits.pure.computeAccountId(secretKey);
-  }
-
   public readonly privateState = {
     /**
      * @description Replaces the secret key in the private state. Used in tests to

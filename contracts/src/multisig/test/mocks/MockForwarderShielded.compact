@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/test/mocks/MockForwarderShielded.compact)
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../ForwarderShielded" prefix Forwarder_;
+
+export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, Either };
+
+/**
+ * @description Test fixture exposing the `ForwarderShielded` module's
+ * underscore-prefixed circuit directly. `isInit` controls whether the
+ * constructor initializes. Set it to `false` to leave the contract
+ * uninitialized and exercise the not-initialized guard.
+ *
+ * DO NOT USE IN PRODUCTION.
+ */
+constructor(parent: ZswapCoinPublicKey, isInit: Boolean) {
+  if (disclose(isInit)) {
+    Forwarder_initialize(parent);
+  }
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return Forwarder__deposit(coin);
+}
+
+export circuit getParent(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Forwarder__parent;
+}

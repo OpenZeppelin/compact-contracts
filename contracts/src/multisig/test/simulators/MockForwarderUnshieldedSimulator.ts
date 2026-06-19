@@ -5,38 +5,42 @@ import {
 import {
   type ContractAddress,
   type Either,
-  Contract as ForwarderUnshielded,
   ledger,
+  Contract as MockForwarderUnshielded,
   type UserAddress,
-} from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
+} from '../../../../artifacts/MockForwarderUnshielded/contract/index.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
+type MockForwarderUnshieldedArgs = readonly [
+  parent: UserAddress,
+  isInit: boolean,
+];
 
-const ForwarderUnshieldedSimulatorBase = createSimulator<
+const MockForwarderUnshieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ForwarderUnshielded<EmptyPrivateState>,
-  ForwarderUnshieldedArgs
+  MockForwarderUnshielded<EmptyPrivateState>,
+  MockForwarderUnshieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderUnshielded<EmptyPrivateState>(witnesses),
+    new MockForwarderUnshielded<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (parent) => [parent],
+  contractArgs: (parent, isInit) => [parent, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
 });
 
-export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBase {
+export class MockForwarderUnshieldedSimulator extends MockForwarderUnshieldedSimulatorBase {
   constructor(
     parent: UserAddress,
+    isInit: boolean,
     options: BaseSimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
-    super([parent], options);
+    super([parent, isInit], options);
   }
 
   public deposit(color: Uint8Array, amount: bigint) {

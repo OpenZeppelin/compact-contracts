@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/ForwarderShielded.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ForwarderShielded
+ * @description Public-parent forwarder for shielded coins. Provides an
+ * atomic forward pattern: receive a shielded coin and immediately send
+ * it to the configured parent recipient.
+ *
+ * The parent is stored generically as
+ * `Either<ZswapCoinPublicKey, ContractAddress>` so the ledger layout is
+ * forward-compatible, but `initialize` accepts only a `ZswapCoinPublicKey`
+ * today and stores it in the `left` arm. A contract address is the
+ * unsupported arm: an atomic forward delivers the coin in the same
+ * transaction as the deposit, and a shielded send to a contract is only
+ * valid if that contract claims the output in the same transaction. The
+ * only contract executing in `_deposit` is this forwarder, so a
+ * third-party contract parent would never claim the output and the
+ * deposit would be rejected by the node. A coin public key needs no
+ * in-tx claim, so it is the only recipient an atomic forward can reach.
+ *
+ * Contract-address support is reserved for a future circuit upgrade (via
+ * the Contract Maintenance Authority) once cross-contract UTXO delivery
+ * exists. Because the ledger already stores the generic `Either`, that
+ * upgrade changes only the circuits (verifier keys), not the state
+ * layout — no state migration is required.
+ *
+ * Underscore-prefixed circuits have no access control. The forwarder is
+ * intentionally permissionless — the recipient is fixed at init, so any
+ * caller may deposit without compromising the parent. State access is
+ * gated by a per-module `_isInitialized` flag: every circuit asserts the
+ * contract has been initialized via `initialize`.
+ *
+ * The parent is set once at init and the module exposes no setter, so a
+ * preset that omits one keeps the parent fixed. A consuming contract
+ * that needs to change the parent may add its own setter circuit.
+ *
+ * @notice The deployer must set a parent that can spend the forwarded
+ * coins. Forwarding to a key no one controls strands every deposit
+ * permanently. The zero-key guard rejects only the all-zero key, not an
+ * otherwise-unspendable one.
+ */
+module ForwarderShielded {
+  import CompactStandardLibrary;
+  import "../utils/Utils" prefix Utils_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  /**
+   * @description The parent recipient, stored generically as
+   * `Either<ZswapCoinPublicKey, ContractAddress>` for forward compatibility.
+   * `initialize` only ever writes the `left` (coin public key) arm today. See
+   * the module header.
+   */
+  export ledger _parent: Either<ZswapCoinPublicKey, ContractAddress>;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent recipient.
+   * Called once from the preset constructor. The coin public key is
+   * stored in the `left` arm of the generic `_parent` ledger field.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   * - `parent` must not be the zero key. A zero parent would forward
+   *   every deposit to an unspendable key with no recovery path.
+   *
+   * @param {ZswapCoinPublicKey} parent - The coin public key that
+   * receives every forwarded coin. The parameter is deliberately narrower
+   * than the `_parent` ledger type: only a coin public key can be
+   * delivered to by an atomic forward today (see the module header).
+   *
+   * @notice Beyond the zero-key check, the caller must ensure `parent` can
+   * spend forwarded coins. An unspendable parent strands every deposit with
+   * no recovery path.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(parent: ZswapCoinPublicKey): [] {
+    assert(!Utils_isKeyZero(parent), "ForwarderShielded: zero parent");
+    assertNotInitialized();
+    _isInitialized = true;
+    _parent = left<ZswapCoinPublicKey, ContractAddress>(disclose(parent));
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin and atomically forwards it to
+   * `_parent`. The coin is claimed at the protocol level via
+   * `receiveShielded`, then immediately re-sent via
+   * `sendImmediateShielded` to the stored parent recipient (always the
+   * `left` / coin-public-key arm today).
+   *
+   * @circuitInfo k=15, rows=18573
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    assertInitialized();
+    receiveShielded(disclose(coin));
+    sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
+  }
+
+  // ─── Init guards ────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ForwarderShielded: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ForwarderShielded: contract already initialized");
+  }
+}

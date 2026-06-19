@@ -4,16 +4,14 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
+  Contract as MockForwarderPrivate,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
-  Contract as MockForwarderPrivate,
+  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockForwarderPrivate/contract/index.js';
-import {
-  MockForwarderPrivatePrivateState,
-  MockForwarderPrivateWitnesses,
-} from '../witnesses/MockForwarderPrivateWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type MockForwarderPrivateArgs = readonly [
   parentCommitment: Uint8Array,
@@ -21,18 +19,18 @@ type MockForwarderPrivateArgs = readonly [
 ];
 
 const MockForwarderPrivateSimulatorBase = createSimulator<
-  MockForwarderPrivatePrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof MockForwarderPrivateWitnesses>,
-  MockForwarderPrivate<MockForwarderPrivatePrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockForwarderPrivate<EmptyPrivateState>,
   MockForwarderPrivateArgs
 >({
   contractFactory: (witnesses) =>
-    new MockForwarderPrivate<MockForwarderPrivatePrivateState>(witnesses),
-  defaultPrivateState: () => MockForwarderPrivatePrivateState,
+    new MockForwarderPrivate<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parentCommitment, isInit) => [parentCommitment, isInit],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => MockForwarderPrivateWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
 });
 
 export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulatorBase {
@@ -40,8 +38,8 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
     parentCommitment: Uint8Array,
     isInit: boolean,
     options: BaseSimulatorOptions<
-      MockForwarderPrivatePrivateState,
-      ReturnType<typeof MockForwarderPrivateWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
     super([parentCommitment, isInit], options);
@@ -60,10 +58,14 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
 
   public drain(
     coin: QualifiedShieldedCoinInfo,
-    parentAddr: Uint8Array,
+    parent: ZswapCoinPublicKey,
     opSecret: Uint8Array,
     value: bigint,
   ): ShieldedSendResult {
-    return this.circuits.impure.drain(coin, parentAddr, opSecret, value);
+    return this.circuits.impure.drain(coin, parent, opSecret, value);
+  }
+
+  public getParentCommitment(): Uint8Array {
+    return this.circuits.impure.getParentCommitment();
   }
 }

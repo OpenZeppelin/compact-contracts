@@ -31,10 +31,6 @@ constructor(
   }
 }
 
-export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
-  return FungibleToken_ZERO();
-}
-
 export circuit name(): Opaque<"string"> {
   return FungibleToken_name();
 }
@@ -143,6 +139,3 @@ export circuit _spendAllowance(
   return FungibleToken__spendAllowance(owner, spender, value);
 }
 
-export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-  return FungibleToken_computeAccountId(secretKey);
-}

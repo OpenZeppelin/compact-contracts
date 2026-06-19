@@ -45,13 +45,19 @@ pragma language_version >= 0.23.0;
  */
 module Signer<T> {
   import CompactStandardLibrary;
-  import "../security/Initializable" prefix Initializable_;
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
   export ledger _signers: Set<T>;
   export ledger _signerCount: Uint<8>;
   export ledger _threshold: Uint<8>;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
 
   // ─── Initialization ─────────────────────────────────────────────────────────
 
@@ -77,7 +83,8 @@ module Signer<T> {
     signers: Vector<n, T>,
     thresh: Uint<8>
   ): [] {
-    Initializable_initialize();
+    assertNotInitialized();
+    _isInitialized = true;
 
     for (const signer of signers) {
       _addSigner(signer);
@@ -102,7 +109,7 @@ module Signer<T> {
    * @returns {[]} Empty tuple.
    */
   export circuit assertSigner(caller: T): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(isSigner(caller), "Signer: not a signer");
   }
 
@@ -121,7 +128,7 @@ module Signer<T> {
    * @returns {[]} Empty tuple.
    */
   export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
-    Initializable_assertInitialized();
+    assertInitialized();
     assert(_threshold != 0, "Signer: threshold not set");
     assert(approvalCount >= _threshold, "Signer: threshold not met");
   }
@@ -140,7 +147,7 @@ module Signer<T> {
    * @returns {Uint<8>} The number of active signers.
    */
   export circuit getSignerCount(): Uint<8> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _signerCount;
   }
 
@@ -156,7 +163,7 @@ module Signer<T> {
    * @returns {Uint<8>} The threshold.
    */
   export circuit getThreshold(): Uint<8> {
-    Initializable_assertInitialized();
+    assertInitialized();
     return _threshold;
   }
 
@@ -273,5 +280,33 @@ module Signer<T> {
   export circuit _setThreshold(newThreshold: Uint<8>): [] {
     assert(newThreshold != 0, "Signer: threshold must not be zero");
     _threshold = disclose(newThreshold);
+  }
+
+  // ─── Init guards ─────────────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "Signer: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "Signer: contract already initialized");
   }
 }

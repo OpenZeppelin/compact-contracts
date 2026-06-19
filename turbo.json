@@ -30,7 +30,7 @@
       "outputs": ["artifacts/**/"]
     },
     "compact:multisig": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/multisig/**/*.compact"],
       "outputLogs": "new-only",

@@ -1,3 +1,8 @@
+import {
+  CompactTypeBytes,
+  CompactTypeVector,
+  persistentHash,
+} from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
 import * as contractUtils from '#test-utils/address.js';
 import { UtilsSimulator } from './simulators/UtilsSimulator.js';
@@ -10,6 +15,32 @@ const OTHER_CONTRACT =
   contractUtils.createEitherTestContractAddress('OTHER_CONTRACT');
 
 const EMPTY_STRING = '';
+
+// Helpers for the `Either<Bytes<32>, ContractAddress>` account-identifier domain.
+const zeroBytes = contractUtils.zeroUint8Array();
+
+const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
+  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
+  return persistentHash(rt_type, [sk]);
+};
+
+const createTestSK = (label: string): Uint8Array => {
+  const sk = new Uint8Array(32);
+  sk.set(new TextEncoder().encode(label).slice(0, 32));
+  return sk;
+};
+
+const eitherAccount = (accountId: Uint8Array) => ({
+  is_left: true,
+  left: accountId,
+  right: { bytes: zeroBytes },
+});
+
+const eitherContract = (str: string) => ({
+  is_left: false,
+  left: zeroBytes,
+  right: contractUtils.encodeToAddress(str),
+});
 
 let contract: UtilsSimulator;
 
@@ -169,6 +200,63 @@ describe('Utils', () => {
   describe('UINT128_MAX', () => {
     it('should return 2^128 - 1', () => {
       expect(contract.UINT128_MAX()).toBe((1n << 128n) - 1n);
+    });
+  });
+
+  describe('zeroAccount', () => {
+    it('should return a left variant', () => {
+      expect(contract.zeroAccount().is_left).toBe(true);
+    });
+
+    it('should have zero left and right branches', () => {
+      const zero = contract.zeroAccount();
+      expect(zero.left).toEqual(zeroBytes);
+      expect(zero.right).toEqual({ bytes: zeroBytes });
+    });
+  });
+
+  describe('isTargetZero', () => {
+    it('should return true for the canonical zero account', () => {
+      expect(contract.isTargetZero(contract.zeroAccount())).toBe(true);
+    });
+
+    it('should return true for a zero right-variant (contract)', () => {
+      expect(
+        contract.isTargetZero({
+          is_left: false,
+          left: zeroBytes,
+          right: { bytes: zeroBytes },
+        }),
+      ).toBe(true);
+    });
+
+    it('should return false for a nonzero account (left variant)', () => {
+      const account = eitherAccount(buildAccountIdHash(createTestSK('ACCT')));
+      expect(contract.isTargetZero(account)).toBe(false);
+    });
+
+    it('should return false for a nonzero contract (right variant)', () => {
+      expect(contract.isTargetZero(eitherContract('SOME_CONTRACT'))).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('computeAccountId', () => {
+    it('should match the persistentHash derivation', () => {
+      const sk = createTestSK('SOME_SK');
+      expect(contract.computeAccountId(sk)).toEqual(buildAccountIdHash(sk));
+    });
+
+    it('should produce distinct identifiers for distinct keys', () => {
+      const ids = ['A', 'B', 'C'].map((label) =>
+        contract.computeAccountId(createTestSK(label)),
+      );
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          expect(ids[i]).not.toEqual(ids[j]);
+        }
+      }
     });
   });
 

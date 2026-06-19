@@ -3,41 +3,39 @@ import {
   createSimulator,
 } from '@openzeppelin/compact-simulator';
 import {
+  Contract as ForwarderPrivate,
   ledger,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
-  Contract as ForwarderPrivate,
+  type ZswapCoinPublicKey,
 } from '../../../../../artifacts/ForwarderPrivate/contract/index.js';
-import {
-  ForwarderPrivatePrivateState,
-  ForwarderPrivateWitnesses,
-} from '../../witnesses/presets/ForwarderPrivateWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderPrivateArgs = readonly [parentCommitment: Uint8Array];
 
 const ForwarderPrivateSimulatorBase = createSimulator<
-  ForwarderPrivatePrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ForwarderPrivateWitnesses>,
-  ForwarderPrivate<ForwarderPrivatePrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ForwarderPrivate<EmptyPrivateState>,
   ForwarderPrivateArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderPrivate<ForwarderPrivatePrivateState>(witnesses),
-  defaultPrivateState: () => ForwarderPrivatePrivateState,
+    new ForwarderPrivate<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parentCommitment) => [parentCommitment],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ForwarderPrivateWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
 });
 
 export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
   constructor(
     parentCommitment: Uint8Array,
     options: BaseSimulatorOptions<
-      ForwarderPrivatePrivateState,
-      ReturnType<typeof ForwarderPrivateWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
     super([parentCommitment], options);
@@ -56,11 +54,11 @@ export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
 
   public drain(
     coin: QualifiedShieldedCoinInfo,
-    parentAddr: Uint8Array,
+    parent: ZswapCoinPublicKey,
     opSecret: Uint8Array,
     value: bigint,
   ): ShieldedSendResult {
-    return this.circuits.impure.drain(coin, parentAddr, opSecret, value);
+    return this.circuits.impure.drain(coin, parent, opSecret, value);
   }
 
   public getParentCommitment(): Uint8Array {
