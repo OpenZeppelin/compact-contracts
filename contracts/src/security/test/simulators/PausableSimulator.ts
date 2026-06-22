@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
@@ -29,54 +29,56 @@ const PausableSimulatorBase = createSimulator<
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => PausableWitnesses(),
+  artifactName: 'MockPausable',
 });
 
 /**
  * Pausable Simulator
  */
 export class PausableSimulator extends PausableSimulatorBase {
-  constructor(
-    options: BaseSimulatorOptions<
+  static async create(
+    options: SimulatorOptions<
       PausablePrivateState,
       ReturnType<typeof PausableWitnesses>
     > = {},
-  ) {
-    super([], options);
+  ): Promise<PausableSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create([], options) as Promise<PausableSimulator>;
   }
 
   /**
    * @description Returns true if the contract is paused, and false otherwise.
    * @returns True if paused.
    */
-  public isPaused(): boolean {
+  public isPaused(): Promise<boolean> {
     return this.circuits.impure.isPaused();
   }
 
   /**
    * @description Makes a circuit only callable when the contract is paused.
    */
-  public assertPaused() {
-    this.circuits.impure.assertPaused();
+  public assertPaused(): Promise<[]> {
+    return this.circuits.impure.assertPaused();
   }
 
   /**
    * @description Makes a circuit only callable when the contract is not paused.
    */
-  public assertNotPaused() {
-    this.circuits.impure.assertNotPaused();
+  public assertNotPaused(): Promise<[]> {
+    return this.circuits.impure.assertNotPaused();
   }
 
   /**
    * @description Triggers a stopped state.
    */
-  public pause() {
-    this.circuits.impure.pause();
+  public pause(): Promise<[]> {
+    return this.circuits.impure.pause();
   }
 
   /**
    * @description Lifts the pause on the contract.
    */
-  public unpause() {
-    this.circuits.impure.unpause();
+  public unpause(): Promise<[]> {
+    return this.circuits.impure.unpause();
   }
 }

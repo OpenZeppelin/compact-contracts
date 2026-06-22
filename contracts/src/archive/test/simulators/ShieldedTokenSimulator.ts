@@ -19,14 +19,24 @@ import {
   type SendResult,
   type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockShieldedToken/contract/index.js'; // Combined imports
+import type { IContractSimulator } from '../types/test.js';
 import {
   type ShieldedTokenPrivateState,
   ShieldedTokenWitnesses,
 } from '../witnesses/ShieldedTokenWitnesses.js';
-import type { IContractSimulator } from '../types/test.js';
 
 /**
  * @description A simulator implementation of a shielded token contract for testing purposes.
+ *
+ * @remarks
+ * The `archive` module predates the backend-aware `@openzeppelin/compact-simulator`
+ * factory (`createSimulator`). Its tests inspect the raw `CircuitResults`
+ * (`res.context.currentZswapLocalState` inputs/outputs) and override the Zswap
+ * sender per call, neither of which the async circuit proxy surfaces. The
+ * simulator therefore keeps its hand-rolled `IContractSimulator` shape, but its
+ * lifecycle is aligned with the async API: construction goes through
+ * `await ShieldedTokenSimulator.create(...)` and every circuit method is awaited.
+ *
  * @template P - The private state type, fixed to ShieldedTokenPrivateState.
  * @template L - The ledger type, fixed to Contract.Ledger.
  */
@@ -45,27 +55,40 @@ export class ShieldedTokenSimulator
   /**
    * @description Initializes the mock contract.
    */
-  constructor(
+  private constructor(
+    contract: MockShielded<ShieldedTokenPrivateState>,
+    circuitContext: CircuitContext<ShieldedTokenPrivateState>,
+  ) {
+    this.contract = contract;
+    this.circuitContext = circuitContext;
+    this.contractAddress = this.circuitContext.transactionContext.address;
+  }
+
+  /**
+   * @description Constructs a simulator, deploying the mock contract to fresh
+   * in-memory state.
+   */
+  static async create(
     nonce: Uint8Array,
     name: Maybe<string>,
     symbol: Maybe<string>,
     decimals: bigint,
-  ) {
-    this.contract = new MockShielded<ShieldedTokenPrivateState>(
+  ): Promise<ShieldedTokenSimulator> {
+    const contract = new MockShielded<ShieldedTokenPrivateState>(
       ShieldedTokenWitnesses,
     );
     const {
       currentPrivateState,
       currentContractState,
       currentZswapLocalState,
-    } = this.contract.initialState(
+    } = contract.initialState(
       createConstructorContext({}, '0'.repeat(64)),
       nonce,
       name,
       symbol,
       decimals,
     );
-    this.circuitContext = {
+    const circuitContext: CircuitContext<ShieldedTokenPrivateState> = {
       currentPrivateState,
       currentZswapLocalState,
       originalState: currentContractState,
@@ -74,7 +97,7 @@ export class ShieldedTokenSimulator
         sampleContractAddress(),
       ),
     };
-    this.contractAddress = this.circuitContext.transactionContext.address;
+    return new ShieldedTokenSimulator(contract, circuitContext);
   }
 
   /**
@@ -105,7 +128,7 @@ export class ShieldedTokenSimulator
    * @description Returns the token name.
    * @returns The token name.
    */
-  public name(): Maybe<string> {
+  public async name(): Promise<Maybe<string>> {
     return this.contract.impureCircuits.name(this.circuitContext).result;
   }
 
@@ -113,7 +136,7 @@ export class ShieldedTokenSimulator
    * @description Returns the symbol of the token.
    * @returns The token name.
    */
-  public symbol(): Maybe<string> {
+  public async symbol(): Promise<Maybe<string>> {
     return this.contract.impureCircuits.symbol(this.circuitContext).result;
   }
 
@@ -121,7 +144,7 @@ export class ShieldedTokenSimulator
    * @description Returns the number of decimals used to get its user representation.
    * @returns The account's token balance.
    */
-  public decimals(): bigint {
+  public async decimals(): Promise<bigint> {
     return this.contract.impureCircuits.decimals(this.circuitContext).result;
   }
 
@@ -129,15 +152,15 @@ export class ShieldedTokenSimulator
    * @description Returns the value of tokens in existence.
    * @returns The total supply of tokens.
    */
-  public totalSupply(): bigint {
+  public async totalSupply(): Promise<bigint> {
     return this.contract.impureCircuits.totalSupply(this.circuitContext).result;
   }
 
-  public mint(
+  public async mint(
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
     amount: bigint,
     sender?: CoinPublicKey,
-  ): CircuitResults<ShieldedTokenPrivateState, CoinInfo> {
+  ): Promise<CircuitResults<ShieldedTokenPrivateState, CoinInfo>> {
     const res = this.contract.impureCircuits.mint(
       {
         ...this.circuitContext,
@@ -153,11 +176,11 @@ export class ShieldedTokenSimulator
     return res;
   }
 
-  public burn(
+  public async burn(
     coin: CoinInfo,
     amount: bigint,
     sender?: CoinPublicKey,
-  ): CircuitResults<ShieldedTokenPrivateState, SendResult> {
+  ): Promise<CircuitResults<ShieldedTokenPrivateState, SendResult>> {
     const res = this.contract.impureCircuits.burn(
       {
         ...this.circuitContext,

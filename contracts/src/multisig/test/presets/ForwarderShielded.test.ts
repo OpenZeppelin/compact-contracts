@@ -16,26 +16,26 @@ function makeCoin(color: Uint8Array, value: bigint) {
 }
 
 describe('ForwarderShielded preset', () => {
-  it('should store the parent passed to the constructor in the left arm', () => {
-    const fwd = new ForwarderShieldedSimulator(PARENT);
-    const parent = fwd.getParent();
+  it('should store the parent passed to the constructor in the left arm', async () => {
+    const fwd = await ForwarderShieldedSimulator.create(PARENT);
+    const parent = await fwd.getParent();
     expect(parent.is_left).toBe(true);
     expect(parent.left).toEqual(PARENT);
   });
 
-  it('should expose deposit and forward to _deposit', () => {
-    const fwd = new ForwarderShieldedSimulator(PARENT);
-    expect(() => fwd.deposit(makeCoin(COLOR, AMOUNT))).not.toThrow();
+  it('should expose deposit and forward to _deposit', async () => {
+    const fwd = await ForwarderShieldedSimulator.create(PARENT);
+    await fwd.deposit(makeCoin(COLOR, AMOUNT));
   });
 
-  it('should propagate the zero-parent guard from the module', () => {
-    expect(() => new ForwarderShieldedSimulator(ZERO_KEY)).toThrow(
+  it('should propagate the zero-parent guard from the module', async () => {
+    await expect(ForwarderShieldedSimulator.create(ZERO_KEY)).rejects.toThrow(
       'ForwarderShielded: zero parent',
     );
   });
 
-  it('should expose the public ledger state', () => {
-    const fwd = new ForwarderShieldedSimulator(PARENT);
-    expect(fwd.getPublicState()).toBeDefined();
+  it('should expose the public ledger state', async () => {
+    const fwd = await ForwarderShieldedSimulator.create(PARENT);
+    expect(await fwd.getPublicState()).toBeDefined();
   });
 });

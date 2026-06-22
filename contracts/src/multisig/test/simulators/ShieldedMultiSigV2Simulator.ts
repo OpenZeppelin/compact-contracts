@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type Ledger,
@@ -49,19 +49,24 @@ const ShieldedMultiSigV2SimulatorBase = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ShieldedMultiSigV2Witnesses(),
+  artifactName: 'ShieldedMultiSigV2',
 });
 
 export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
-  constructor(
+  static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
     thresh: bigint,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       ShieldedMultiSigV2PrivateState,
       ReturnType<typeof ShieldedMultiSigV2Witnesses>
     > = {},
-  ) {
-    super([instanceSalt, signerCommitments, thresh], options);
+  ): Promise<ShieldedMultiSigV2Simulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [instanceSalt, signerCommitments, thresh],
+      options,
+    ) as Promise<ShieldedMultiSigV2Simulator>;
   }
 
   public static calculateSignerId(
@@ -71,7 +76,7 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     return pureCircuits._calculateSignerId(pk, salt);
   }
 
-  public deposit(coin: ShieldedCoinInfo) {
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
   }
 
@@ -81,27 +86,27 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     coin: QualifiedShieldedCoinInfo,
     pubkeys: Uint8Array[],
     signatures: Uint8Array[],
-  ): ShieldedSendResult {
+  ): Promise<ShieldedSendResult> {
     return this.circuits.impure.execute(to, amount, coin, pubkeys, signatures);
   }
 
-  public getNonce(): bigint {
+  public getNonce(): Promise<bigint> {
     return this.circuits.impure.getNonce();
   }
 
-  public getSignerCount(): bigint {
+  public getSignerCount(): Promise<bigint> {
     return this.circuits.impure.getSignerCount();
   }
 
-  public getThreshold(): bigint {
+  public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(commitment: Uint8Array): boolean {
+  public isSigner(commitment: Uint8Array): Promise<boolean> {
     return this.circuits.impure.isSigner(commitment);
   }
 
-  public getLedger(): Ledger {
+  public getLedger(): Promise<Ledger> {
     return this.getPublicState();
   }
 }

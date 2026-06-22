@@ -1,0 +1,91 @@
+name: Compact Contracts Live Test Suite
+
+# Runs the unit specs against a real local Midnight stack (node + indexer +
+# proof-server) via the simulator's live backend (`MIDNIGHT_BACKEND=live`).
+# This is the full prove -> submit -> index -> read loop, so it is slow and
+# heavy: gated to manual runs and PRs explicitly labeled `live-tests` rather
+# than every push.
+#
+# DRAFT: this depends on `@openzeppelin/compact-simulator`'s live backend, which
+# is consumed here via a `portal:` dependency on the sibling `compact-tools`
+# checkout below. Once the simulator is published with the live backend, the
+# "Check out simulator" + "Build simulator" steps can be dropped and the
+# dependency pinned to the published version.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+jobs:
+  run-live-suite:
+    name: Run Live Test Suite
+    # Only on manual dispatch or when the PR carries the `live-tests` label.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'live-tests')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 60
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Check out compact-contracts
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          path: compact-contracts
+
+      # Sibling checkout so the `portal:../../compact-tools/packages/simulator`
+      # dependency in contracts/package.json resolves.
+      - name: Check out compact-tools (simulator source)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: OpenZeppelin/compact-tools
+          ref: main
+          path: compact-tools
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Build simulator (live backend)
+        working-directory: compact-tools
+        run: |
+          yarn install --immutable
+          yarn workspace @openzeppelin/compact-simulator build
+
+      - name: Install contracts dependencies
+        working-directory: compact-contracts
+        run: yarn install --no-immutable
+
+      - name: Start local Midnight stack
+        working-directory: compact-contracts
+        run: make env-up
+
+      - name: Wait for stack to be healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:6300/version >/dev/null \
+               && curl -fsS http://127.0.0.1:9944/health >/dev/null; then
+              echo "stack healthy"; exit 0
+            fi
+            echo "waiting for stack... ($i)"; sleep 5
+          done
+          echo "stack did not become healthy in time"; exit 1
+
+      - name: Run live tests
+        working-directory: compact-contracts
+        run: yarn test:live
+
+      - name: Stop local Midnight stack
+        if: always()
+        working-directory: compact-contracts
+        run: make env-down

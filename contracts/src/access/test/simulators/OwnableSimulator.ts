@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
@@ -34,27 +34,32 @@ const OwnableSimulatorBase = createSimulator<
   contractArgs: (initialOwner, isInit) => [initialOwner, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => OwnableWitnesses(),
+  artifactName: 'MockOwnable',
 });
 
 /**
  * Ownable Simulator
  */
 export class OwnableSimulator extends OwnableSimulatorBase {
-  constructor(
+  static async create(
     initialOwner: Either<Uint8Array, ContractAddress>,
     isInit: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       OwnablePrivateState,
       ReturnType<typeof OwnableWitnesses>
     > = {},
-  ) {
-    super([initialOwner, isInit], options);
+  ): Promise<OwnableSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [initialOwner, isInit],
+      options,
+    ) as Promise<OwnableSimulator>;
   }
   /**
    * @description Returns the current contract owner.
    * @returns The contract owner.
    */
-  public owner(): Either<Uint8Array, ContractAddress> {
+  public owner(): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.impure.owner();
   }
 
@@ -62,8 +67,10 @@ export class OwnableSimulator extends OwnableSimulatorBase {
    * @description Transfers ownership of the contract to `newOwner`.
    * @param newOwner - The new owner.
    */
-  public transferOwnership(newOwner: Either<Uint8Array, ContractAddress>) {
-    this.circuits.impure.transferOwnership(newOwner);
+  public transferOwnership(
+    newOwner: Either<Uint8Array, ContractAddress>,
+  ): Promise<[]> {
+    return this.circuits.impure.transferOwnership(newOwner);
   }
 
   /**
@@ -72,8 +79,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
    */
   public _unsafeTransferOwnership(
     newOwner: Either<Uint8Array, ContractAddress>,
-  ) {
-    this.circuits.impure._unsafeTransferOwnership(newOwner);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeTransferOwnership(newOwner);
   }
 
   /**
@@ -81,16 +88,16 @@ export class OwnableSimulator extends OwnableSimulatorBase {
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    */
-  public renounceOwnership() {
-    this.circuits.impure.renounceOwnership();
+  public renounceOwnership(): Promise<[]> {
+    return this.circuits.impure.renounceOwnership();
   }
 
   /**
    * @description Throws if called by any account other than the owner.
    * Use this to restrict access of specific circuits to the owner.
    */
-  public assertOnlyOwner() {
-    this.circuits.impure.assertOnlyOwner();
+  public assertOnlyOwner(): Promise<[]> {
+    return this.circuits.impure.assertOnlyOwner();
   }
 
   /**
@@ -98,8 +105,10 @@ export class OwnableSimulator extends OwnableSimulatorBase {
    * enforcing permission checks on the caller.
    * @param newOwner - The new owner.
    */
-  public _transferOwnership(newOwner: Either<Uint8Array, ContractAddress>) {
-    this.circuits.impure._transferOwnership(newOwner);
+  public _transferOwnership(
+    newOwner: Either<Uint8Array, ContractAddress>,
+  ): Promise<[]> {
+    return this.circuits.impure._transferOwnership(newOwner);
   }
 
   /**
@@ -108,8 +117,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
    */
   public _unsafeUncheckedTransferOwnership(
     newOwner: Either<Uint8Array, ContractAddress>,
-  ) {
-    this.circuits.impure._unsafeUncheckedTransferOwnership(newOwner);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeUncheckedTransferOwnership(newOwner);
   }
 
   public readonly privateState = {
@@ -120,10 +129,12 @@ export class OwnableSimulator extends OwnableSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): OwnablePrivateState => {
-      const updatedState = OwnablePrivateState.withSecretKey(newSK);
-      this.circuitContextManager.updatePrivateState(updatedState);
-      return updatedState;
+    injectSecretKey: async (
+      newSK: Uint8Array,
+    ): Promise<OwnablePrivateState> => {
+      const updated = OwnablePrivateState.withSecretKey(newSK);
+      this.setPrivateState(updated);
+      return updated;
     },
 
     /**
@@ -131,8 +142,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
      * @returns The secret key.
      * @throws If the secret key is undefined.
      */
-    getCurrentSecretKey: (): Uint8Array => {
-      const sk = this.getPrivateState().secretKey;
+    getCurrentSecretKey: async (): Promise<Uint8Array> => {
+      const sk = (await this.getPrivateState()).secretKey;
       if (typeof sk === 'undefined') {
         throw new Error('Missing secret key');
       }

@@ -3,7 +3,7 @@ import {
   CompactTypeVector,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import * as contractUtils from '#test-utils/address.js';
 import { UtilsSimulator } from './simulators/UtilsSimulator.js';
 
@@ -45,55 +45,63 @@ const eitherContract = (str: string) => ({
 let contract: UtilsSimulator;
 
 describe('Utils', () => {
-  contract = new UtilsSimulator();
+  beforeEach(async () => {
+    contract = await UtilsSimulator.create();
+  });
 
   describe('isKeyOrAddressZero', () => {
-    it('should return zero for the zero address', () => {
-      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBe(true);
-    });
-
-    it('should not return zero for nonzero addresses', () => {
-      expect(contract.isKeyOrAddressZero(Z_SOME_KEY)).toBe(false);
-      expect(contract.isKeyOrAddressZero(SOME_CONTRACT)).toBe(false);
-    });
-
-    it('should not return zero for a zero contract address', () => {
-      expect(contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS)).toBe(
+    it('should return zero for the zero address', async () => {
+      expect(await contract.isKeyOrAddressZero(contractUtils.ZERO_KEY)).toBe(
         true,
       );
+    });
+
+    it('should not return zero for nonzero addresses', async () => {
+      expect(await contract.isKeyOrAddressZero(Z_SOME_KEY)).toBe(false);
+      expect(await contract.isKeyOrAddressZero(SOME_CONTRACT)).toBe(false);
+    });
+
+    it('should not return zero for a zero contract address', async () => {
+      expect(
+        await contract.isKeyOrAddressZero(contractUtils.ZERO_ADDRESS),
+      ).toBe(true);
     });
   });
 
   describe('isKeyOrAddressEqual', () => {
-    it('should return true for two matching pubkeys', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_SOME_KEY)).toBe(true);
-    });
-
-    it('should return true for two matching contract addresses', () => {
-      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT)).toBe(
+    it('should return true for two matching pubkeys', async () => {
+      expect(await contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_SOME_KEY)).toBe(
         true,
       );
     });
 
-    it('should return false for two different pubkeys', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_OTHER_KEY)).toBe(false);
-    });
-
-    it('should return false for two different contract addresses', () => {
-      expect(contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT)).toBe(
-        false,
-      );
-    });
-
-    it('should return false for two different address types', () => {
-      expect(contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT)).toBe(
-        false,
-      );
-    });
-
-    it('should return false for two different address types of equal value', () => {
+    it('should return true for two matching contract addresses', async () => {
       expect(
-        contract.isKeyOrAddressEqual(
+        await contract.isKeyOrAddressEqual(SOME_CONTRACT, SOME_CONTRACT),
+      ).toBe(true);
+    });
+
+    it('should return false for two different pubkeys', async () => {
+      expect(await contract.isKeyOrAddressEqual(Z_SOME_KEY, Z_OTHER_KEY)).toBe(
+        false,
+      );
+    });
+
+    it('should return false for two different contract addresses', async () => {
+      expect(
+        await contract.isKeyOrAddressEqual(SOME_CONTRACT, OTHER_CONTRACT),
+      ).toBe(false);
+    });
+
+    it('should return false for two different address types', async () => {
+      expect(
+        await contract.isKeyOrAddressEqual(Z_SOME_KEY, SOME_CONTRACT),
+      ).toBe(false);
+    });
+
+    it('should return false for two different address types of equal value', async () => {
+      expect(
+        await contract.isKeyOrAddressEqual(
           contractUtils.ZERO_KEY,
           contractUtils.ZERO_ADDRESS,
         ),
@@ -102,75 +110,75 @@ describe('Utils', () => {
   });
 
   describe('isKeyZero', () => {
-    it('should return zero for the zero address', () => {
-      expect(contract.isKeyZero(contractUtils.ZERO_KEY.left)).toBe(true);
+    it('should return zero for the zero address', async () => {
+      expect(await contract.isKeyZero(contractUtils.ZERO_KEY.left)).toBe(true);
     });
 
-    it('should not return zero for nonzero addresses', () => {
-      expect(contract.isKeyZero(Z_SOME_KEY.left)).toBe(false);
+    it('should not return zero for nonzero addresses', async () => {
+      expect(await contract.isKeyZero(Z_SOME_KEY.left)).toBe(false);
     });
   });
 
   describe('isContractAddress', () => {
-    it('should return true if ContractAddress', () => {
-      expect(contract.isContractAddress(SOME_CONTRACT)).toBe(true);
+    it('should return true if ContractAddress', async () => {
+      expect(await contract.isContractAddress(SOME_CONTRACT)).toBe(true);
     });
 
-    it('should return false ZswapCoinPublicKey', () => {
-      expect(contract.isContractAddress(Z_SOME_KEY)).toBe(false);
+    it('should return false ZswapCoinPublicKey', async () => {
+      expect(await contract.isContractAddress(Z_SOME_KEY)).toBe(false);
     });
   });
 
   describe('emptyString', () => {
-    it('should return the empty string', () => {
-      expect(contract.emptyString()).toBe(EMPTY_STRING);
+    it('should return the empty string', async () => {
+      expect(await contract.emptyString()).toBe(EMPTY_STRING);
     });
   });
 
   describe('canonicalizeKeyOrAddress', () => {
-    it('should zero the right side when is_left is true', () => {
+    it('should zero the right side when is_left is true', async () => {
       const crafted = {
         is_left: true,
         left: Z_SOME_KEY.left,
         right: SOME_CONTRACT.right,
       };
-      const canonical = contract.canonicalizeKeyOrAddress(crafted);
+      const canonical = await contract.canonicalizeKeyOrAddress(crafted);
       expect(canonical.is_left).toBe(true);
       expect(canonical.left).toEqual(Z_SOME_KEY.left);
       expect(canonical.right).toEqual(contractUtils.ZERO_ADDRESS.right);
     });
 
-    it('should zero the left side when is_left is false', () => {
+    it('should zero the left side when is_left is false', async () => {
       const crafted = {
         is_left: false,
         left: Z_SOME_KEY.left,
         right: SOME_CONTRACT.right,
       };
-      const canonical = contract.canonicalizeKeyOrAddress(crafted);
+      const canonical = await contract.canonicalizeKeyOrAddress(crafted);
       expect(canonical.is_left).toBe(false);
       expect(canonical.left).toEqual(contractUtils.ZERO_KEY.left);
       expect(canonical.right).toEqual(SOME_CONTRACT.right);
     });
 
-    it('should be idempotent for canonical pubkey', () => {
-      const canonical = contract.canonicalizeKeyOrAddress(Z_SOME_KEY);
+    it('should be idempotent for canonical pubkey', async () => {
+      const canonical = await contract.canonicalizeKeyOrAddress(Z_SOME_KEY);
       expect(canonical).toEqual(Z_SOME_KEY);
     });
 
-    it('should be idempotent for canonical contract address', () => {
-      const canonical = contract.canonicalizeKeyOrAddress(SOME_CONTRACT);
+    it('should be idempotent for canonical contract address', async () => {
+      const canonical = await contract.canonicalizeKeyOrAddress(SOME_CONTRACT);
       expect(canonical).toEqual(SOME_CONTRACT);
     });
 
-    it('should be idempotent for already-zero pubkey', () => {
-      const canonical = contract.canonicalizeKeyOrAddress(
+    it('should be idempotent for already-zero pubkey', async () => {
+      const canonical = await contract.canonicalizeKeyOrAddress(
         contractUtils.ZERO_KEY,
       );
       expect(canonical).toEqual(contractUtils.ZERO_KEY);
     });
 
-    it('should be idempotent for already-zero contract address', () => {
-      const canonical = contract.canonicalizeKeyOrAddress(
+    it('should be idempotent for already-zero contract address', async () => {
+      const canonical = await contract.canonicalizeKeyOrAddress(
         contractUtils.ZERO_ADDRESS,
       );
       expect(canonical).toEqual(contractUtils.ZERO_ADDRESS);
@@ -178,51 +186,53 @@ describe('Utils', () => {
   });
 
   describe('selfAsRecipient', () => {
-    it('should return the contract address as a right-variant recipient', () => {
-      const result = contract.selfAsRecipient();
+    it('should return the contract address as a right-variant recipient', async () => {
+      const result = await contract.selfAsRecipient();
       expect(result.is_left).toBe(false);
-      expect(contract.isContractAddress(result)).toBe(true);
+      expect(await contract.isContractAddress(result)).toBe(true);
     });
 
-    it('should return a 32-byte contract address', () => {
-      const result = contract.selfAsRecipient();
+    it('should return a 32-byte contract address', async () => {
+      const result = await contract.selfAsRecipient();
       expect(result.right.bytes).toBeInstanceOf(Uint8Array);
       expect(result.right.bytes.length).toBe(32);
     });
 
-    it('should return the same address on repeated calls', () => {
-      const first = contract.selfAsRecipient();
-      const second = contract.selfAsRecipient();
+    it('should return the same address on repeated calls', async () => {
+      const first = await contract.selfAsRecipient();
+      const second = await contract.selfAsRecipient();
       expect(first.right.bytes).toEqual(second.right.bytes);
     });
   });
 
   describe('UINT128_MAX', () => {
-    it('should return 2^128 - 1', () => {
-      expect(contract.UINT128_MAX()).toBe((1n << 128n) - 1n);
+    it('should return 2^128 - 1', async () => {
+      expect(await contract.UINT128_MAX()).toBe((1n << 128n) - 1n);
     });
   });
 
   describe('zeroAccount', () => {
-    it('should return a left variant', () => {
-      expect(contract.zeroAccount().is_left).toBe(true);
+    it('should return a left variant', async () => {
+      expect((await contract.zeroAccount()).is_left).toBe(true);
     });
 
-    it('should have zero left and right branches', () => {
-      const zero = contract.zeroAccount();
+    it('should have zero left and right branches', async () => {
+      const zero = await contract.zeroAccount();
       expect(zero.left).toEqual(zeroBytes);
       expect(zero.right).toEqual({ bytes: zeroBytes });
     });
   });
 
   describe('isTargetZero', () => {
-    it('should return true for the canonical zero account', () => {
-      expect(contract.isTargetZero(contract.zeroAccount())).toBe(true);
+    it('should return true for the canonical zero account', async () => {
+      expect(await contract.isTargetZero(await contract.zeroAccount())).toBe(
+        true,
+      );
     });
 
-    it('should return true for a zero right-variant (contract)', () => {
+    it('should return true for a zero right-variant (contract)', async () => {
       expect(
-        contract.isTargetZero({
+        await contract.isTargetZero({
           is_left: false,
           left: zeroBytes,
           right: { bytes: zeroBytes },
@@ -230,27 +240,31 @@ describe('Utils', () => {
       ).toBe(true);
     });
 
-    it('should return false for a nonzero account (left variant)', () => {
+    it('should return false for a nonzero account (left variant)', async () => {
       const account = eitherAccount(buildAccountIdHash(createTestSK('ACCT')));
-      expect(contract.isTargetZero(account)).toBe(false);
+      expect(await contract.isTargetZero(account)).toBe(false);
     });
 
-    it('should return false for a nonzero contract (right variant)', () => {
-      expect(contract.isTargetZero(eitherContract('SOME_CONTRACT'))).toBe(
+    it('should return false for a nonzero contract (right variant)', async () => {
+      expect(await contract.isTargetZero(eitherContract('SOME_CONTRACT'))).toBe(
         false,
       );
     });
   });
 
   describe('computeAccountId', () => {
-    it('should match the persistentHash derivation', () => {
+    it('should match the persistentHash derivation', async () => {
       const sk = createTestSK('SOME_SK');
-      expect(contract.computeAccountId(sk)).toEqual(buildAccountIdHash(sk));
+      expect(await contract.computeAccountId(sk)).toEqual(
+        buildAccountIdHash(sk),
+      );
     });
 
-    it('should produce distinct identifiers for distinct keys', () => {
-      const ids = ['A', 'B', 'C'].map((label) =>
-        contract.computeAccountId(createTestSK(label)),
+    it('should produce distinct identifiers for distinct keys', async () => {
+      const ids = await Promise.all(
+        ['A', 'B', 'C'].map((label) =>
+          contract.computeAccountId(createTestSK(label)),
+        ),
       );
       for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
@@ -261,8 +275,8 @@ describe('Utils', () => {
   });
 
   describe('simulator wiring', () => {
-    it('should expose an empty public ledger via getPublicState', () => {
-      expect(contract.getPublicState()).toStrictEqual({});
+    it('should expose an empty public ledger via getPublicState', async () => {
+      expect(await contract.getPublicState()).toStrictEqual({});
     });
   });
 });

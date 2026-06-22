@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
@@ -32,20 +32,22 @@ const MultiTokenSimulatorBase = createSimulator<
   contractArgs: (_uri) => [_uri],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => MultiTokenWitnesses(),
+  artifactName: 'MockMultiToken',
 });
 
 /**
  * MultiToken Simulator
  */
 export class MultiTokenSimulator extends MultiTokenSimulatorBase {
-  constructor(
+  static async create(
     _uri: Maybe<string>,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       MultiTokenPrivateState,
       ReturnType<typeof MultiTokenWitnesses>
     > = {},
-  ) {
-    super([_uri], options);
+  ): Promise<MultiTokenSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create([_uri], options) as Promise<MultiTokenSimulator>;
   }
 
   /**
@@ -53,8 +55,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * however, this method enables the tests to assert it cannot be called again.
    * @param uri The base URI for all token URIs.
    */
-  public initialize(uri: string) {
-    this.circuits.impure.initialize(uri);
+  public initialize(uri: string): Promise<[]> {
+    return this.circuits.impure.initialize(uri);
   }
 
   /**
@@ -62,7 +64,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
    * @param id The token identifier to query.
    * @returns The token URI.
    */
-  public uri(id: bigint): string {
+  public uri(id: bigint): Promise<string> {
     return this.circuits.impure.uri(id);
   }
 
@@ -75,7 +77,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
   public balanceOf(
     account: Either<Uint8Array, ContractAddress>,
     id: bigint,
-  ): bigint {
+  ): Promise<bigint> {
     return this.circuits.impure.balanceOf(account, id);
   }
 
@@ -88,8 +90,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
   public setApprovalForAll(
     operator: Either<Uint8Array, ContractAddress>,
     approved: boolean,
-  ) {
-    this.circuits.impure.setApprovalForAll(operator, approved);
+  ): Promise<[]> {
+    return this.circuits.impure.setApprovalForAll(operator, approved);
   }
 
   /**
@@ -101,7 +103,7 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
   public isApprovedForAll(
     account: Either<Uint8Array, ContractAddress>,
     operator: Either<Uint8Array, ContractAddress>,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure.isApprovedForAll(account, operator);
   }
 
@@ -118,8 +120,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure.transferFrom(fromAddress, to, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure.transferFrom(fromAddress, to, id, value);
   }
 
   /**
@@ -135,8 +137,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure._unsafeTransferFrom(fromAddress, to, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeTransferFrom(fromAddress, to, id, value);
   }
 
   /**
@@ -153,8 +155,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure._transfer(fromAddress, to, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure._transfer(fromAddress, to, id, value);
   }
 
   /**
@@ -171,16 +173,16 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure._unsafeTransfer(fromAddress, to, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeTransfer(fromAddress, to, id, value);
   }
 
   /**
    * @description Sets a new URI for all token types.
    * @param newURI The new base URI for all tokens.
    */
-  public _setURI(newURI: string) {
-    this.circuits.impure._setURI(newURI);
+  public _setURI(newURI: string): Promise<[]> {
+    return this.circuits.impure._setURI(newURI);
   }
 
   /**
@@ -193,8 +195,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure._mint(to, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure._mint(to, id, value);
   }
 
   /**
@@ -207,8 +209,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     to: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure._unsafeMint(to, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeMint(to, id, value);
   }
 
   /**
@@ -221,8 +223,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     fromAddress: Either<Uint8Array, ContractAddress>,
     id: bigint,
     value: bigint,
-  ) {
-    this.circuits.impure._burn(fromAddress, id, value);
+  ): Promise<[]> {
+    return this.circuits.impure._burn(fromAddress, id, value);
   }
 
   /**
@@ -237,8 +239,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
     owner: Either<Uint8Array, ContractAddress>,
     operator: Either<Uint8Array, ContractAddress>,
     approved: boolean,
-  ) {
-    this.circuits.impure._setApprovalForAll(owner, operator, approved);
+  ): Promise<[]> {
+    return this.circuits.impure._setApprovalForAll(owner, operator, approved);
   }
 
   public readonly privateState = {
@@ -249,9 +251,11 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): MultiTokenPrivateState => {
+    injectSecretKey: async (
+      newSK: Uint8Array,
+    ): Promise<MultiTokenPrivateState> => {
       const updatedState = MultiTokenPrivateState.withSecretKey(newSK);
-      this.circuitContextManager.updatePrivateState(updatedState);
+      this.setPrivateState(updatedState);
       return updatedState;
     },
 
@@ -260,8 +264,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
      * @returns The secret key.
      * @throws If the secret key is undefined.
      */
-    getCurrentSecretKey: (): Uint8Array => {
-      const sk = this.getPrivateState().secretKey;
+    getCurrentSecretKey: async (): Promise<Uint8Array> => {
+      const sk = (await this.getPrivateState()).secretKey;
       if (typeof sk === 'undefined') {
         throw new Error('Missing secret key');
       }

@@ -1,8 +1,10 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
+  type ContractAddress,
+  type Either,
   ledger,
   pureCircuits,
   Contract as ShieldedMultiSigV3Contract,
@@ -38,26 +40,31 @@ const ShieldedMultiSigV3SimulatorBase = createSimulator<
   ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ShieldedMultiSigV3Witnesses(),
+  artifactName: 'ShieldedMultiSigV3',
 });
 
 export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase {
-  constructor(
+  static async create(
     instanceSalt: Uint8Array,
     initCoinNonce: Uint8Array,
     tokenDomain: Uint8Array,
     signerCommitments: Uint8Array[],
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       ShieldedMultiSigV3PrivateState,
       ReturnType<typeof ShieldedMultiSigV3Witnesses>
     > = {},
-  ) {
-    super(
+  ): Promise<ShieldedMultiSigV3Simulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
       [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
       options,
-    );
+    ) as Promise<ShieldedMultiSigV3Simulator>;
   }
 
-  public _calculateSignerId(pk: Uint8Array, salt: Uint8Array): Uint8Array {
+  public _calculateSignerId(
+    pk: Uint8Array,
+    salt: Uint8Array,
+  ): Promise<Uint8Array> {
     return this.circuits.pure._calculateSignerId(pk, salt);
   }
 
@@ -66,7 +73,7 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
     pubkeys: Uint8Array[],
     signatures: Uint8Array[],
-  ) {
+  ): Promise<[]> {
     return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
   }
 
@@ -80,31 +87,31 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     amount: bigint,
     pubkeys: Uint8Array[],
     signatures: Uint8Array[],
-  ) {
+  ): Promise<[]> {
     return this.circuits.impure.burn(coin, amount, pubkeys, signatures);
   }
 
-  public getNonce(): bigint {
+  public getNonce(): Promise<bigint> {
     return this.circuits.impure.getNonce();
   }
 
-  public getTokenDomain(): Uint8Array {
+  public getTokenDomain(): Promise<Uint8Array> {
     return this.circuits.impure.getTokenDomain();
   }
 
-  public getTokenType(): Uint8Array {
+  public getTokenType(): Promise<Uint8Array> {
     return this.circuits.impure.getTokenType();
   }
 
-  public getSignerCount(): bigint {
+  public getSignerCount(): Promise<bigint> {
     return this.circuits.impure.getSignerCount();
   }
 
-  public getThreshold(): bigint {
+  public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(commitment: Uint8Array): boolean {
+  public isSigner(commitment: Uint8Array): Promise<boolean> {
     return this.circuits.impure.isSigner(commitment);
   }
 }

@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
@@ -35,16 +35,18 @@ const ProposalManagerSimulatorBase = createSimulator<
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ProposalManagerWitnesses(),
+  artifactName: 'MockProposalManager',
 });
 
 export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
-  constructor(
-    options: BaseSimulatorOptions<
+  static async create(
+    options: SimulatorOptions<
       ProposalManagerPrivateState,
       ReturnType<typeof ProposalManagerWitnesses>
     > = {},
-  ) {
-    super([], options);
+  ): Promise<ProposalManagerSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create([], options) as Promise<ProposalManagerSimulator>;
   }
 
   // Pure circuits (recipient helpers)
@@ -77,11 +79,11 @@ export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
   }
 
   // Guards
-  public assertProposalExists(id: bigint) {
+  public assertProposalExists(id: bigint): Promise<[]> {
     return this.circuits.impure.assertProposalExists(id);
   }
 
-  public assertProposalActive(id: bigint) {
+  public assertProposalActive(id: bigint): Promise<[]> {
     return this.circuits.impure.assertProposalActive(id);
   }
 
@@ -90,36 +92,36 @@ export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
     to: Recipient,
     color: Uint8Array,
     amount: bigint,
-  ): bigint {
+  ): Promise<bigint> {
     return this.circuits.impure._createProposal(to, color, amount);
   }
 
-  public _cancelProposal(id: bigint) {
+  public _cancelProposal(id: bigint): Promise<[]> {
     return this.circuits.impure._cancelProposal(id);
   }
 
-  public _markExecuted(id: bigint) {
+  public _markExecuted(id: bigint): Promise<[]> {
     return this.circuits.impure._markExecuted(id);
   }
 
   // View
-  public getProposal(id: bigint): Proposal {
+  public getProposal(id: bigint): Promise<Proposal> {
     return this.circuits.impure.getProposal(id);
   }
 
-  public getProposalRecipient(id: bigint): Recipient {
+  public getProposalRecipient(id: bigint): Promise<Recipient> {
     return this.circuits.impure.getProposalRecipient(id);
   }
 
-  public getProposalAmount(id: bigint): bigint {
+  public getProposalAmount(id: bigint): Promise<bigint> {
     return this.circuits.impure.getProposalAmount(id);
   }
 
-  public getProposalColor(id: bigint): Uint8Array {
+  public getProposalColor(id: bigint): Promise<Uint8Array> {
     return this.circuits.impure.getProposalColor(id);
   }
 
-  public getProposalStatus(id: bigint): number {
+  public getProposalStatus(id: bigint): Promise<number> {
     return this.circuits.impure.getProposalStatus(id);
   }
 }
