@@ -44,7 +44,7 @@ pragma language_version >= 0.23.0;
  */
 module ForwarderShielded {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
+  import "../../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 

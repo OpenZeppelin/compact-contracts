@@ -20,7 +20,7 @@ pragma language_version >= 0.23.0;
  */
 module ShieldedTreasuryStateless {
   import CompactStandardLibrary;
-  import { selfAsRecipient } from "../utils/Utils" prefix Utils_;
+  import { selfAsRecipient } from "../../utils/Utils" prefix Utils_;
 
   // ─── Deposit ────────────────────────────────────────────────────
 

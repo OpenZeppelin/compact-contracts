@@ -19,7 +19,7 @@ pragma language_version >= 0.23.0;
  */
 module UnshieldedTreasury {
   import CompactStandardLibrary;
-  import { UINT128_MAX } from "../utils/Utils" prefix Utils_;
+  import { UINT128_MAX } from "../../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 
