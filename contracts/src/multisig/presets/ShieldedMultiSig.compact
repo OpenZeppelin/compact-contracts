@@ -27,9 +27,9 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../ProposalManager" prefix Proposal_;
-import "../ShieldedTreasury" prefix Treasury_;
-import "../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
+import "../proposal/ProposalManager" prefix Proposal_;
+import "../treasury/ShieldedTreasury" prefix Treasury_;
+import "../signer/SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
 
 // ─── State ───────────────────────────────────────────────────────────────
 

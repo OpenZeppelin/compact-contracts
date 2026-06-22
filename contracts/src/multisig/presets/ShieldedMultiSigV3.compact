@@ -40,7 +40,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../Signer"<Bytes<32>> prefix Signer_;
+import "../signer/Signer"<Bytes<32>> prefix Signer_;
 import "../../utils/Utils" prefix Utils_;
 // For testing
 export { ZswapCoinPublicKey };
@@ -114,6 +114,11 @@ constructor(
   _tokenDomain = disclose(tokenDomain);
   Signer_initialize<3>(signerCommitments, 2);
 }
+
+// TODO: the mint/burn token-issuance logic below is slated to move into a
+// reusable `ShieldedToken` module so it can be
+// composed independently, mirroring how `SignerManager` / `SignatureVerifier` are
+// factored. Kept inlined here for now.
 
 // ─── Mint ───────────────────────────────────────────────────────
 

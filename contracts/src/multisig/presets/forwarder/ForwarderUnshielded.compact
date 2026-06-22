@@ -24,7 +24,7 @@ pragma language_version >= 0.23.0;
  */
 
 import CompactStandardLibrary;
-import "../../ForwarderUnshielded" prefix Forwarder_;
+import "../../forwarder/ForwarderUnshielded" prefix Forwarder_;
 
 export { ContractAddress, UserAddress, Either };
 

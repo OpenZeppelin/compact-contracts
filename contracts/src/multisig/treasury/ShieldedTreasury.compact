@@ -24,7 +24,7 @@ pragma language_version >= 0.23.0;
  */
 module ShieldedTreasury {
   import CompactStandardLibrary;
-  import { selfAsRecipient, UINT128_MAX } from "../utils/Utils" prefix Utils_;
+  import { selfAsRecipient, UINT128_MAX } from "../../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 

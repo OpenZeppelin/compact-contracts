@@ -22,9 +22,9 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../ProposalManager" prefix Proposal_;
-import "../ShieldedTreasuryStateless" prefix Treasury_;
-import "../SignerManager"<Bytes<32>> prefix Signer_;
+import "../proposal/ProposalManager" prefix Proposal_;
+import "../treasury/ShieldedTreasuryStateless" prefix Treasury_;
+import "../signer/SignerManager"<Bytes<32>> prefix Signer_;
 
 // ─── Types ──────────────────────────────────────────────────────
 
