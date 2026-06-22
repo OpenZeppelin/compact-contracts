@@ -96,7 +96,7 @@ describe('ShieldedMultiSigV2', () => {
           SIGNER_COMMITMENTS,
           0n,
         ),
-      ).rejects.toThrow('SignerManager: threshold must be > 0');
+      ).rejects.toThrow('SignerManagerManager: threshold must be > 0');
     });
 
     it('should fail with threshold greater than 2', async () => {
@@ -185,7 +185,7 @@ describe('ShieldedMultiSigV2', () => {
             [PK1, NON_SIGNER_PK],
             [DUMMY_SIG, DUMMY_SIG],
           ),
-        ).rejects.toThrow('SignerManager: not a signer');
+        ).rejects.toThrow('SignerManagerManager: not a signer');
       });
     });
   });

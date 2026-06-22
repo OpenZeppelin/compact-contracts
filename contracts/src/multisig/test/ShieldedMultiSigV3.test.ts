@@ -95,7 +95,7 @@ describe('ShieldedMultiSigV3', () => {
           TOKEN_DOMAIN,
           [COMMITMENT1, COMMITMENT1, COMMITMENT2],
         ),
-      ).rejects.toThrow('Signer: signer already active');
+      ).rejects.toThrow('SignerManager: signer already active');
     });
 
     it('should store token domain', async () => {
@@ -232,7 +232,7 @@ describe('ShieldedMultiSigV3', () => {
             [PK1, NON_SIGNER_PK],
             [DUMMY_SIG, DUMMY_SIG],
           ),
-        ).rejects.toThrow('Signer: not a signer');
+        ).rejects.toThrow('SignerManager: not a signer');
       });
 
       it('should increment nonce after mint', async () => {
@@ -338,7 +338,7 @@ describe('ShieldedMultiSigV3', () => {
             [PK1, NON_SIGNER_PK],
             [DUMMY_SIG, DUMMY_SIG],
           ),
-        ).rejects.toThrow('Signer: not a signer');
+        ).rejects.toThrow('SignerManager: not a signer');
       });
 
       it('should reject wrong token color', async () => {
