@@ -92,7 +92,7 @@ describe('ShieldedMultiSigV2', () => {
     it('should fail with zero threshold', () => {
       expect(() => {
         new ShieldedMultiSigV2Simulator(INSTANCE_SALT, SIGNER_COMMITMENTS, 0n);
-      }).toThrow('SignerManager: threshold must be > 0');
+      }).toThrow('SignerManager: threshold must not be zero');
     });
 
     it('should fail with threshold greater than 2', () => {

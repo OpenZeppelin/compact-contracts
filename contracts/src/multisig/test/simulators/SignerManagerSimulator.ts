@@ -4,47 +4,47 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
-  Contract as MockSigner,
-} from '../../../../artifacts/MockSigner/contract/index.js';
+  Contract as MockSignerManager,
+} from '../../../../artifacts/MockSignerManager/contract/index.js';
 import {
-  SignerPrivateState,
-  SignerWitnesses,
-} from '../witnesses/SignerWitnesses.js';
+  SignerManagerPrivateState,
+  SignerManagerWitnesses,
+} from '../witnesses/SignerManagerWitnesses.js';
 
 /**
  * Type constructor args
  */
-type SignerArgs = readonly [
+type SignerManagerArgs = readonly [
   signers: Uint8Array[],
   thresh: bigint,
   isInit: boolean,
 ];
 
-const SignerSimulatorBase = createSimulator<
-  SignerPrivateState,
+const SignerManagerSimulatorBase = createSimulator<
+  SignerManagerPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof SignerWitnesses>,
-  MockSigner<SignerPrivateState>,
-  SignerArgs
+  ReturnType<typeof SignerManagerWitnesses>,
+  MockSignerManager<SignerManagerPrivateState>,
+  SignerManagerArgs
 >({
-  contractFactory: (witnesses) => new MockSigner<SignerPrivateState>(witnesses),
-  defaultPrivateState: () => SignerPrivateState,
+  contractFactory: (witnesses) => new MockSignerManager<SignerManagerPrivateState>(witnesses),
+  defaultPrivateState: () => SignerManagerPrivateState,
   contractArgs: (signers, thresh, isInit) => [signers, thresh, isInit],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => SignerWitnesses(),
+  witnessesFactory: () => SignerManagerWitnesses(),
 });
 
 /**
  * Signer Simulator
  */
-export class SignerSimulator extends SignerSimulatorBase {
+export class SignerManagerSimulator extends SignerManagerSimulatorBase {
   constructor(
     signers: Uint8Array[],
     thresh: bigint,
     isInit: boolean,
     options: BaseSimulatorOptions<
-      SignerPrivateState,
-      ReturnType<typeof SignerWitnesses>
+      SignerManagerPrivateState,
+      ReturnType<typeof SignerManagerWitnesses>
     > = {},
   ) {
     super([signers, thresh, isInit], options);

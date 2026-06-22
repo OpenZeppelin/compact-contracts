@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/Signer.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/signer/SignerManager.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module Signer<T>
+ * @module SignerManager<T>
  * @description Manages signer registry, threshold enforcement, and signer
  * validation for multisig governance contracts.
  *
@@ -15,7 +15,7 @@ pragma language_version >= 0.23.0;
  * - `Bytes<32>` for commitment-based identity (e.g., hash of ECDSA public key)
  * - `JubjubPoint` for Schnorr/MuSig aggregated key
  *
- * The Signer module does not resolve caller identity. It receives a validated
+ * The SignerManager module does not resolve caller identity. It receives a validated
  * caller from the contract layer and checks it against the registry.
  * This separation allows the identity mechanism to change without
  * modifying the module.
@@ -43,7 +43,7 @@ pragma language_version >= 0.23.0;
  * call `initialize` outside of the constructor context because
  * this could corrupt the signer set and threshold configuration.
  */
-module Signer<T> {
+module SignerManager<T> {
   import CompactStandardLibrary;
 
   // ─── State ──────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ module Signer<T> {
    */
   export circuit assertSigner(caller: T): [] {
     assertInitialized();
-    assert(isSigner(caller), "Signer: not a signer");
+    assert(isSigner(caller), "SignerManager: not a signer");
   }
 
   /**
@@ -129,8 +129,8 @@ module Signer<T> {
    */
   export circuit assertThresholdMet(approvalCount: Uint<8>): [] {
     assertInitialized();
-    assert(_threshold != 0, "Signer: threshold not set");
-    assert(approvalCount >= _threshold, "Signer: threshold not met");
+    assert(_threshold != 0, "SignerManager: threshold not set");
+    assert(approvalCount >= _threshold, "SignerManager: threshold not met");
   }
 
   // ─── View ──────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ module Signer<T> {
   export circuit _addSigner(signer: T): [] {
     assert(
       !isSigner(signer),
-      "Signer: signer already active"
+      "SignerManager: signer already active"
     );
 
     _signers.insert(disclose(signer));
@@ -225,10 +225,10 @@ module Signer<T> {
    * @returns {[]} Empty tuple.
    */
   export circuit _removeSigner(signer: T): [] {
-    assert(isSigner(signer), "Signer: not a signer");
+    assert(isSigner(signer), "SignerManager: not a signer");
 
     const newCount = _signerCount - 1 as Uint<8>;
-    assert(newCount >= _threshold, "Signer: removal would breach threshold");
+    assert(newCount >= _threshold, "SignerManager: removal would breach threshold");
 
     _signers.remove(disclose(signer));
     _signerCount = newCount;
@@ -252,7 +252,7 @@ module Signer<T> {
    * @returns {[]} Empty tuple.
    */
   export circuit _changeThreshold(newThreshold: Uint<8>): [] {
-    assert(newThreshold <= _signerCount, "Signer: threshold exceeds signer count");
+    assert(newThreshold <= _signerCount, "SignerManager: threshold exceeds signer count");
     _setThreshold(newThreshold);
   }
 
@@ -278,7 +278,7 @@ module Signer<T> {
    * @returns {[]} Empty tuple.
    */
   export circuit _setThreshold(newThreshold: Uint<8>): [] {
-    assert(newThreshold != 0, "Signer: threshold must not be zero");
+    assert(newThreshold != 0, "SignerManager: threshold must not be zero");
     _threshold = disclose(newThreshold);
   }
 
@@ -294,7 +294,7 @@ module Signer<T> {
    * @return {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
-    assert(_isInitialized, "Signer: contract not initialized");
+    assert(_isInitialized, "SignerManager: contract not initialized");
   }
 
   /**
@@ -307,6 +307,6 @@ module Signer<T> {
    * @return {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
-    assert(!_isInitialized, "Signer: contract already initialized");
+    assert(!_isInitialized, "SignerManager: contract already initialized");
   }
 }

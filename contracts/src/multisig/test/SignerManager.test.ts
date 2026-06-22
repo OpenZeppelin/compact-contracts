@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SignerSimulator } from './simulators/SignerSimulator.js';
+import { SignerManagerSimulator } from './simulators/SignerManagerSimulator.js';
 
 const THRESHOLD = 2n;
 const IS_INIT = true;
@@ -12,13 +12,13 @@ const SIGNERS = [SIGNER, SIGNER2, SIGNER3];
 const OTHER = new Uint8Array(32).fill(4);
 const OTHER2 = new Uint8Array(32).fill(5);
 
-let contract: SignerSimulator;
+let contract: SignerManagerSimulator;
 
-describe('Signer', () => {
+describe('SignerManager', () => {
   describe('when not initialized', () => {
     beforeEach(() => {
       const isNotInit = false;
-      contract = new SignerSimulator(SIGNERS, 0n, isNotInit);
+      contract = new SignerManagerSimulator(SIGNERS, 0n, isNotInit);
     });
 
     const circuitsRequiringInit: [string, unknown[]][] = [
@@ -31,11 +31,11 @@ describe('Signer', () => {
     it.each(circuitsRequiringInit)('%s should fail', (circuitName, args) => {
       expect(() => {
         (
-          contract[circuitName as keyof SignerSimulator] as (
+          contract[circuitName as keyof SignerManagerSimulator] as (
             ...a: unknown[]
           ) => unknown
         )(...args);
-      }).toThrow('Signer: contract not initialized');
+      }).toThrow('SignerManager: contract not initialized');
     });
 
     it('isSigner should succeed (no init guard)', () => {
@@ -46,25 +46,25 @@ describe('Signer', () => {
   describe('initialization', () => {
     it('should fail with a threshold of zero', () => {
       expect(() => {
-        new SignerSimulator(SIGNERS, 0n, IS_INIT);
-      }).toThrow('Signer: threshold must not be zero');
+        new SignerManagerSimulator(SIGNERS, 0n, IS_INIT);
+      }).toThrow('SignerManager: threshold must not be zero');
     });
 
     it('should fail when threshold exceeds signer count', () => {
       expect(() => {
-        new SignerSimulator(SIGNERS, BigInt(SIGNERS.length) + 1n, IS_INIT);
-      }).toThrow('Signer: threshold exceeds signer count');
+        new SignerManagerSimulator(SIGNERS, BigInt(SIGNERS.length) + 1n, IS_INIT);
+      }).toThrow('SignerManager: threshold exceeds signer count');
     });
 
     it('should fail with duplicate signers', () => {
       const duplicateSigners = [SIGNER, SIGNER, SIGNER2];
       expect(() => {
-        new SignerSimulator(duplicateSigners, THRESHOLD, IS_INIT);
-      }).toThrow('Signer: signer already active');
+        new SignerManagerSimulator(duplicateSigners, THRESHOLD, IS_INIT);
+      }).toThrow('SignerManager: signer already active');
     });
 
     it('should initialize with threshold equal to signer count', () => {
-      const contract = new SignerSimulator(
+      const contract = new SignerManagerSimulator(
         SIGNERS,
         BigInt(SIGNERS.length),
         IS_INIT,
@@ -74,7 +74,7 @@ describe('Signer', () => {
 
     it('should initialize', () => {
       expect(() => {
-        contract = new SignerSimulator(SIGNERS, THRESHOLD, IS_INIT);
+        contract = new SignerManagerSimulator(SIGNERS, THRESHOLD, IS_INIT);
       }).not.toThrow();
 
       expect(contract.getThreshold()).toEqual(THRESHOLD);
@@ -87,15 +87,15 @@ describe('Signer', () => {
     });
 
     it('should fail when initialized twice', () => {
-      contract = new SignerSimulator(SIGNERS, THRESHOLD, IS_INIT);
+      contract = new SignerManagerSimulator(SIGNERS, THRESHOLD, IS_INIT);
       expect(() => {
         contract.initialize(SIGNERS, THRESHOLD);
-      }).toThrow('Signer: contract already initialized');
+      }).toThrow('SignerManager: contract already initialized');
     });
   });
 
   beforeEach(() => {
-    contract = new SignerSimulator(SIGNERS, THRESHOLD, IS_INIT);
+    contract = new SignerManagerSimulator(SIGNERS, THRESHOLD, IS_INIT);
   });
 
   describe('assertSigner', () => {
@@ -106,7 +106,7 @@ describe('Signer', () => {
     it('should fail with bad signer', () => {
       expect(() => {
         contract.assertSigner(OTHER);
-      }).toThrow('Signer: not a signer');
+      }).toThrow('SignerManager: not a signer');
     });
   });
 
@@ -122,13 +122,13 @@ describe('Signer', () => {
     it('should fail when approvals are below threshold', () => {
       expect(() => {
         contract.assertThresholdMet(THRESHOLD - 1n);
-      }).toThrow('Signer: threshold not met');
+      }).toThrow('SignerManager: threshold not met');
     });
 
     it('should fail with zero approvals', () => {
       expect(() => {
         contract.assertThresholdMet(0n);
-      }).toThrow('Signer: threshold not met');
+      }).toThrow('SignerManager: threshold not met');
     });
   });
 
@@ -187,7 +187,7 @@ describe('Signer', () => {
 
       expect(() => {
         contract._addSigner(OTHER);
-      }).toThrow('Signer: signer already active');
+      }).toThrow('SignerManager: signer already active');
     });
 
     it('should add multiple new signers', () => {
@@ -221,7 +221,7 @@ describe('Signer', () => {
     it('should fail when removing a non-signer', () => {
       expect(() => {
         contract._removeSigner(OTHER);
-      }).toThrow('Signer: not a signer');
+      }).toThrow('SignerManager: not a signer');
     });
 
     it('should fail when removal would breach threshold', () => {
@@ -229,7 +229,7 @@ describe('Signer', () => {
 
       expect(() => {
         contract._removeSigner(SIGNER2);
-      }).toThrow('Signer: removal would breach threshold');
+      }).toThrow('SignerManager: removal would breach threshold');
     });
 
     it('should allow removal after threshold is lowered', () => {
@@ -274,13 +274,13 @@ describe('Signer', () => {
     it('should fail with a threshold of zero', () => {
       expect(() => {
         contract._changeThreshold(0n);
-      }).toThrow('Signer: threshold must not be zero');
+      }).toThrow('SignerManager: threshold must not be zero');
     });
 
     it('should fail when threshold exceeds signer count', () => {
       expect(() => {
         contract._changeThreshold(BigInt(SIGNERS.length) + 1n);
-      }).toThrow('Signer: threshold exceeds signer count');
+      }).toThrow('SignerManager: threshold exceeds signer count');
     });
 
     it('should allow threshold equal to signer count', () => {
@@ -294,7 +294,7 @@ describe('Signer', () => {
 
       expect(() => {
         contract.assertThresholdMet(2n);
-      }).toThrow('Signer: threshold not met');
+      }).toThrow('SignerManager: threshold not met');
 
       expect(() => contract.assertThresholdMet(3n)).not.toThrow();
     });
@@ -303,7 +303,7 @@ describe('Signer', () => {
   describe('_setThreshold', () => {
     beforeEach(() => {
       const isNotInit = false;
-      contract = new SignerSimulator(SIGNERS, 0n, isNotInit);
+      contract = new SignerManagerSimulator(SIGNERS, 0n, isNotInit);
     });
 
     it('should have an empty state', () => {
@@ -328,14 +328,14 @@ describe('Signer', () => {
     it('should fail with zero threshold', () => {
       expect(() => {
         contract._setThreshold(0n);
-      }).toThrow('Signer: threshold must not be zero');
+      }).toThrow('SignerManager: threshold must not be zero');
     });
   });
 
   describe('custom setup flow when not initialized', () => {
     beforeEach(() => {
       const isNotInit = false;
-      contract = new SignerSimulator(SIGNERS, 0n, isNotInit);
+      contract = new SignerManagerSimulator(SIGNERS, 0n, isNotInit);
     });
 
     it('should have no signers by default', () => {
@@ -370,7 +370,7 @@ describe('Signer', () => {
     it('should fail _changeThreshold before signers are added', () => {
       expect(() => {
         contract._changeThreshold(2n);
-      }).toThrow('Signer: threshold exceeds signer count');
+      }).toThrow('SignerManager: threshold exceeds signer count');
     });
   });
 });

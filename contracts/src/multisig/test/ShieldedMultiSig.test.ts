@@ -62,7 +62,7 @@ describe('ShieldedMultiSig', () => {
     it('should fail with zero threshold', () => {
       expect(() => {
         new ShieldedMultiSigSimulator(SIGNERS, 0n);
-      }).toThrow('SignerManager: threshold must be > 0');
+      }).toThrow('SignerManager: threshold must not be zero');
     });
 
     it('should fail with threshold exceeding signer count', () => {

@@ -40,7 +40,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../signer/Signer"<Bytes<32>> prefix Signer_;
+import "../signer/SignerManager"<Bytes<32>> prefix Signer_;
 import "../../utils/Utils" prefix Utils_;
 // For testing
 export { ZswapCoinPublicKey };
