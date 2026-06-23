@@ -72,16 +72,35 @@ pragma language_version >= 0.23.0;
  *   `sendShielded`; any change is auto-received by the contract and returned
  *   so the consumer can persist it.
  *
- * # Supply accounting
+ * # Supply accounting (opt-in extension) and burn-amount privacy
  *
- * - `totalMinted(domain)` is EXACT: color derivation guarantees that every
- *   coin of this contract's colors originates from this module's mints.
- * - `totalBurned(domain)` is a LOWER BOUND: holders can send coins directly
- *   to the burn address without going through the contract, and such burns
- *   are invisible to ledger state.
- * - `totalSupply(domain)` = minted - burned is therefore an UPPER BOUND on
- *   circulating supply. Exact circulating supply is not knowable for native
- *   shielded tokens; these are the strongest guarantees available.
+ * - This module tracks NO supply totals. Per-domain accounting is the optional
+ *   `NativeShieldedTokenFamilySupply` extension; compose it only if you need an
+ *   on-chain `totalSupply(domain)`.
+ *
+ * - The reason it is opt-in is a privacy trade-off, not just modularity. A
+ *   contract-mediated burn here is amount-PRIVATE: the coin operations
+ *   (`receiveShielded`, `sendImmediateShielded`, `sendShielded`) emit only
+ *   commitments and nullifiers (hashes of the coin), never the plaintext
+ *   value. The `disclose()` wrappers they require are compiler permission
+ *   markers, not disclosure sinks. The ONLY thing that puts a burned amount
+ *   into the public transcript is writing it to a public ledger cell. So a
+ *   bare `_burn` / `_burnFromContract` hides the burned amount; composing the
+ *   supply extension (which writes `_totalBurned`) trades that privacy for
+ *   auditability.
+ *
+ * - Mint amounts are public REGARDLESS of the extension: `mintShieldedToken`
+ *   emits the amount in the protocol-level `shieldedMints` effect, which no
+ *   amount of accounting choice can suppress. The extension changes burn
+ *   visibility, not mint visibility.
+ *
+ * - When the supply extension IS composed: `totalMinted(domain)` is EXACT
+ *   (color derivation guarantees every coin of this contract's colors
+ *   originates from this module's mints); `totalBurned(domain)` is a LOWER
+ *   BOUND (holders can send coins straight to the burn address, bypassing the
+ *   contract); and `totalSupply(domain)` = minted - burned is an UPPER BOUND
+ *   on circulating supply. Exact circulating supply is not knowable for native
+ *   shielded tokens.
  *
  * # Wallet visibility
  *
@@ -109,16 +128,6 @@ module NativeShieldedTokenFamily {
    */
   export ledger _isInitialized: Boolean;
 
-  /**
-   * @description Exact amount minted per domain. See "Supply accounting".
-   * @type {Map<Bytes<32>, Uint<128>>} _totalMinted
-   */
-  export ledger _totalMinted: Map<Bytes<32>, Uint<128>>;
-  /**
-   * @description Contract-mediated amount burned per domain (lower bound).
-   * @type {Map<Bytes<32>, Uint<128>>} _totalBurned
-   */
-  export ledger _totalBurned: Map<Bytes<32>, Uint<128>>;
   export sealed ledger _name: Opaque<"string">;
   export sealed ledger _symbol: Opaque<"string">;
   export sealed ledger _decimals: Uint<8>;
@@ -239,62 +248,6 @@ module NativeShieldedTokenFamily {
   }
 
   /**
-   * @description Returns the exact amount ever minted for `domain`.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Uint<128>} - The total amount minted.
-   */
-  export circuit totalMinted(domain: Bytes<32>): Uint<128> {
-    assertInitialized();
-    if (!_totalMinted.member(disclose(domain))) {
-      return 0;
-    }
-    return _totalMinted.lookup(disclose(domain));
-  }
-
-  /**
-   * @description Returns the contract-mediated amount burned for `domain`.
-   * @notice This is a lower bound: coins sent directly to the burn address
-   * without going through this contract are not counted.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Uint<128>} - The total amount burned through this contract.
-   */
-  export circuit totalBurned(domain: Bytes<32>): Uint<128> {
-    assertInitialized();
-    if (!_totalBurned.member(disclose(domain))) {
-      return 0;
-    }
-    return _totalBurned.lookup(disclose(domain));
-  }
-
-  /**
-   * @description Returns `totalMinted(domain) - totalBurned(domain)`.
-   * @notice This is an UPPER BOUND on circulating supply, not an exact value:
-   * burns that bypass the contract are invisible. See "Supply accounting" in
-   * the module notes.
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Uint<128>} - The upper bound on tokens in existence.
-   */
-  export circuit totalSupply(domain: Bytes<32>): Uint<128> {
-    assertInitialized();
-    return (totalMinted(domain) - totalBurned(domain)) as Uint<128>;
-  }
-
-  /**
    * @description Mints `amount` of the token identified by `domain` to
    * `recipient`, using a caller-supplied nonce.
    *
@@ -330,7 +283,6 @@ module NativeShieldedTokenFamily {
     assertInitialized();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedTokenFamily: invalid recipient");
 
-    _addMinted(domain, amount);
     return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
   }
 
@@ -381,7 +333,6 @@ module NativeShieldedTokenFamily {
 
     receiveShielded(disclose(coin));
     const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
-    _addBurned(domain, amount);
 
     if (disclose(sendRes.change.is_some)) {
       const refundRes = sendImmediateShielded(
@@ -425,38 +376,7 @@ module NativeShieldedTokenFamily {
     assert(coin.value >= amount, "NativeShieldedTokenFamily: insufficient coin value");
 
     const sendRes = sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
-    _addBurned(domain, amount);
 
     return disclose(sendRes.change);
-  }
-
-  /**
-   * @description Adds `amount` to the exact minted total for `domain`.
-   * @dev Checks for overflow in order to output a readable error message.
-   *
-   * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @param {Uint<64>} amount - The minted amount.
-   * @return {[]} - Empty tuple.
-   */
-  circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
-    const current = totalMinted(domain);
-    const MAX_UINT128 = 340282366920938463463374607431768211455;
-    assert(MAX_UINT128 - current >= amount, "NativeShieldedTokenFamily: arithmetic overflow");
-    _totalMinted.insert(disclose(domain), disclose((current + amount) as Uint<128>));
-  }
-
-  /**
-   * @description Adds `amount` to the contract-mediated burned total for `domain`.
-   * @dev No overflow guard is needed: every coin of this contract's colors
-   * originates from `_addMinted`-tracked mints, so burned can never exceed
-   * the overflow-checked minted total.
-   *
-   * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @param {Uint<128>} amount - The burned amount.
-   * @return {[]} - Empty tuple.
-   */
-  circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
-    const current = totalBurned(domain);
-    _totalBurned.insert(disclose(domain), disclose((current + amount) as Uint<128>));
   }
 }

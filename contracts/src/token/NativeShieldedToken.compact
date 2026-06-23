@@ -63,16 +63,34 @@ pragma language_version >= 0.23.0;
  *   `sendShielded`; any change is auto-received by the contract and returned
  *   so the consumer can persist it.
  *
- * # Supply accounting
+ * # Supply accounting (opt-in extension) and burn-amount privacy
  *
- * - `totalMinted()` is EXACT: color derivation guarantees that every coin of
- *   this contract's color originates from this module's mints.
- * - `totalBurned()` is a LOWER BOUND: holders can send coins directly to the
- *   burn address without going through the contract, and such burns are
- *   invisible to ledger state.
- * - `totalSupply()` = minted - burned is therefore an UPPER BOUND on
- *   circulating supply. Exact circulating supply is not knowable for native
- *   shielded tokens; these are the strongest guarantees available.
+ * - This module tracks NO supply totals. Supply accounting is the optional
+ *   `NativeShieldedTokenSupply` extension; compose it only if you need an
+ *   on-chain `totalSupply()`.
+ *
+ * - The reason it is opt-in is a privacy trade-off, not just modularity. A
+ *   contract-mediated burn here is amount-PRIVATE: the coin operations
+ *   (`receiveShielded`, `sendImmediateShielded`, `sendShielded`) emit only
+ *   commitments and nullifiers (hashes of the coin), never the plaintext
+ *   value. The `disclose()` wrappers they require are compiler permission
+ *   markers, not disclosure sinks. The ONLY thing that puts a burned amount
+ *   into the public transcript is writing it to a public ledger cell. So a
+ *   bare `_burn` / `_burnFromContract` hides the burned amount; composing the
+ *   supply extension (which writes `_totalBurned`) trades that privacy for
+ *   auditability.
+ *
+ * - Mint amounts are public REGARDLESS of the extension: `mintShieldedToken`
+ *   emits the amount in the protocol-level `shieldedMints` effect, which no
+ *   amount of accounting choice can suppress. The extension changes burn
+ *   visibility, not mint visibility.
+ *
+ * - When the supply extension IS composed: `totalMinted()` is EXACT (color
+ *   derivation guarantees every coin of this contract's color originates from
+ *   this module's mints); `totalBurned()` is a LOWER BOUND (holders can send
+ *   coins straight to the burn address, bypassing the contract); and
+ *   `totalSupply()` = minted - burned is an UPPER BOUND on circulating supply.
+ *   Exact circulating supply is not knowable for native shielded tokens.
  *
  * # Wallet visibility
  *
@@ -115,14 +133,6 @@ module NativeShieldedToken {
    * address it determines this token's color.
    */
   export sealed ledger _domain: Bytes<32>;
-  /**
-   * @description Exact amount minted. See "Supply accounting".
-   */
-  export ledger _totalMinted: Uint<128>;
-  /**
-   * @description Contract-mediated amount burned (lower bound).
-   */
-  export ledger _totalBurned: Uint<128>;
 
   export sealed ledger _name: Opaque<"string">;
   export sealed ledger _symbol: Opaque<"string">;
@@ -251,59 +261,6 @@ module NativeShieldedToken {
   }
 
   /**
-   * @description Returns the exact amount ever minted.
-   *
-   * @circuitInfo k=6, rows=28
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @return {Uint<128>} - The total amount minted.
-   */
-  export circuit totalMinted(): Uint<128> {
-    assertInitialized();
-    return _totalMinted;
-  }
-
-  /**
-   * @description Returns the contract-mediated amount burned.
-   * @notice This is a lower bound: coins sent directly to the burn address
-   * without going through this contract are not counted.
-   *
-   * @circuitInfo k=6, rows=28
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @return {Uint<128>} - The total amount burned through this contract.
-   */
-  export circuit totalBurned(): Uint<128> {
-    assertInitialized();
-    return _totalBurned;
-  }
-
-  /**
-   * @description Returns `totalMinted() - totalBurned()`.
-   * @notice This is an UPPER BOUND on circulating supply, not an exact value:
-   * burns that bypass the contract are invisible. See "Supply accounting" in
-   * the module notes.
-   *
-   * @circuitInfo k=9, rows=88
-   *
-   * Requirements:
-   *
-   * - Contract is initialized.
-   *
-   * @return {Uint<128>} - The upper bound on tokens in existence.
-   */
-  export circuit totalSupply(): Uint<128> {
-    assertInitialized();
-    return (_totalMinted - _totalBurned) as Uint<128>;
-  }
-
-  /**
    * @description Mints `amount` of the token to `recipient`, using a
    * caller-supplied nonce.
    *
@@ -339,7 +296,6 @@ module NativeShieldedToken {
     assertInitialized();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
 
-    _addMinted(amount);
     return mintShieldedToken(_domain, disclose(amount), disclose(nonce), disclose(recipient));
   }
 
@@ -390,7 +346,6 @@ module NativeShieldedToken {
 
     receiveShielded(disclose(coin));
     const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
-    _addBurned(amount);
 
     if (disclose(sendRes.change.is_some)) {
       const refundRes = sendImmediateShielded(
@@ -434,34 +389,7 @@ module NativeShieldedToken {
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
 
     const sendRes = sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
-    _addBurned(amount);
 
     return disclose(sendRes.change);
-  }
-
-  /**
-   * @description Adds `amount` to the exact minted total.
-   * @dev Checks for overflow in order to output a readable error message.
-   *
-   * @param {Uint<64>} amount - The minted amount.
-   * @return {[]} - Empty tuple.
-   */
-  circuit _addMinted(amount: Uint<64>): [] {
-    const MAX_UINT128 = 340282366920938463463374607431768211455;
-    assert(MAX_UINT128 - _totalMinted >= amount, "NativeShieldedToken: arithmetic overflow");
-    _totalMinted = disclose((_totalMinted + amount) as Uint<128>);
-  }
-
-  /**
-   * @description Adds `amount` to the contract-mediated burned total.
-   * @dev No overflow guard is needed: every coin of this contract's color
-   * originates from `_addMinted`-tracked mints, so burned can never exceed
-   * the overflow-checked minted total.
-   *
-   * @param {Uint<128>} amount - The burned amount.
-   * @return {[]} - Empty tuple.
-   */
-  circuit _addBurned(amount: Uint<128>): [] {
-    _totalBurned = disclose((_totalBurned + amount) as Uint<128>);
   }
 }
