@@ -301,7 +301,7 @@ __metadata:
   resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
     "@openzeppelin/compact-cli": "npm:^0.0.2"
-    "@openzeppelin/compact-simulator": "npm:^0.1.0"
+    "@openzeppelin/compact-simulator": "npm:^0.2.0"
     "@tsconfig/node24": "npm:^24.0.4"
     "@types/node": "npm:25.9.3"
     "@vitest/coverage-v8": "npm:^4.1.9"
@@ -312,13 +312,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin/compact-simulator@npm:^0.1.0":
-  version: 0.1.0
-  resolution: "@openzeppelin/compact-simulator@npm:0.1.0"
+"@openzeppelin/compact-simulator@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@openzeppelin/compact-simulator@npm:0.2.0"
   dependencies:
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
-  checksum: 10/432bb2b4c8440e30046198471bb34cf08efec697d10a8f3cc0ce4ffe78e339eb7ea2c405e3114dbdae28c63e07936cba039105277f1ac17d521536b55aa0c7d0
+  peerDependencies:
+    "@midnight-ntwrk/midnight-js-contracts": ^4.1.0
+    "@midnight-ntwrk/midnight-js-types": ^4.1.0
+  peerDependenciesMeta:
+    "@midnight-ntwrk/midnight-js-contracts":
+      optional: true
+    "@midnight-ntwrk/midnight-js-types":
+      optional: true
+  checksum: 10/294e53a3eaade37ae679be8aaff764239d8cb645eae0e69ceb56587b36614ed67b9a38ad641633d91a6ee65d96920475ccedec40c1f1dd734d26a86b0382ce90
   languageName: node
   linkType: hard
 
