@@ -14,7 +14,7 @@ pragma language_version >= 0.23.0;
  * proposals; once the threshold is met, `executeShieldedProposal` transfers from
  * the treasury. Unlike the signature-based modules, authorization is by the
  * on-chain caller (`getCaller`), not off-chain signatures — so it does NOT use
- * `SignatureVerifier` and cannot share a registry with those modules.
+ * `EcdsaSignerManager` (the signature entrance) and cannot share a registry with it.
  *
  * @notice Signer identity uses `Either<ZswapCoinPublicKey, ContractAddress>` for
  * forward compatibility. Today only `left(ZswapCoinPublicKey)` callers can

@@ -11,7 +11,7 @@ pragma language_version >= 0.23.0;
  *
  * `mint` creates a UTXO of this contract's token type via `mintShieldedToken`;
  * `burn` consumes one via `sendShielded` to `shieldedBurnAddress()`. Both require
- * threshold ECDSA approval verified against the shared `SignatureVerifier`
+ * threshold ECDSA approval verified against the shared `EcdsaSignerManager`
  * registry. A counter provides replay protection and feeds `evolveNonce` for
  * unique coin nonces. Operation-domain prefixes (`multisig:mint:` /
  * `multisig:burn:`) stop a signature for one op being replayed as the other.
@@ -26,12 +26,12 @@ pragma language_version >= 0.23.0;
  * the reusable Shielded Native Token standard (with a pluggable multisig access
  * layer), OpenZeppelin/compact-contracts#544. Prefer that standard once available.
  *
- * @notice ECDSA verification is stubbed in `SignatureVerifier`. Replace it (and
+ * @notice ECDSA verification is stubbed in `EcdsaSignerManager`. Replace it (and
  * `persistentHash` with `keccak256`) once the Compact primitives are available.
  */
 module SignatureMintBurn {
   import CompactStandardLibrary;
-  import "../SignatureVerifier" prefix Signature_;
+  import "../EcdsaSignerManager" prefix Signer_;
   import "../../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ module SignatureMintBurn {
     signers: Vector<n, Bytes<32>>,
     thresh: Uint<8>
   ): [] {
-    Signature_initialize<n>(salt, signers, thresh);
+    Signer_initialize<n>(salt, signers, thresh);
   }
 
   /**
@@ -106,7 +106,7 @@ module SignatureMintBurn {
       amount as Bytes<32>
     ]);
 
-    Signature_verify<2>(msgHash, pubkeys, signatures);
+    Signer_verify<2>(msgHash, pubkeys, signatures);
 
     _coinNonce = evolveNonce(_counter, _coinNonce);
     mintShieldedToken(_tokenDomain, disclose(amount), _coinNonce, disclose(canonRecipient));
@@ -142,7 +142,7 @@ module SignatureMintBurn {
       amount as Bytes<32>
     ]);
 
-    Signature_verify<2>(msgHash, pubkeys, signatures);
+    Signer_verify<2>(msgHash, pubkeys, signatures);
 
     assert(coin.color == tokenType(_tokenDomain, kernel.self()), "SignatureMintBurn: coin not from this contract");
     assert(coin.value >= amount, "SignatureMintBurn: insufficient coin value");
@@ -157,7 +157,7 @@ module SignatureMintBurn {
    * callable off-chain by the deployer.
    */
   export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
-    return Signature__calculateSignerId(pk, salt);
+    return Signer__calculateSignerId(pk, salt);
   }
 
   export circuit getNonce(): Uint<64> {
@@ -173,14 +173,14 @@ module SignatureMintBurn {
   }
 
   export circuit getSignerCount(): Uint<8> {
-    return Signature_getSignerCount();
+    return Signer_getSignerCount();
   }
 
   export circuit getThreshold(): Uint<8> {
-    return Signature_getThreshold();
+    return Signer_getThreshold();
   }
 
   export circuit isSigner(commitment: Bytes<32>): Boolean {
-    return Signature_isSigner(commitment);
+    return Signer_isSigner(commitment);
   }
 }
