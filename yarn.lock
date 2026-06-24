@@ -301,7 +301,7 @@ __metadata:
   resolution: "@openzeppelin/compact-contracts@workspace:contracts"
   dependencies:
     "@openzeppelin/compact-cli": "npm:^0.0.2"
-    "@openzeppelin/compact-simulator": "portal:../../compact-tools/packages/simulator"
+    "@openzeppelin/compact-simulator": "npm:^0.2.0"
     "@tsconfig/node24": "npm:^24.0.4"
     "@types/node": "npm:25.9.3"
     "@vitest/coverage-v8": "npm:^4.1.9"
@@ -312,9 +312,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin/compact-simulator@portal:../../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts":
-  version: 0.0.0-use.local
-  resolution: "@openzeppelin/compact-simulator@portal:../../compact-tools/packages/simulator::locator=%40openzeppelin%2Fcompact-contracts%40workspace%3Acontracts"
+"@openzeppelin/compact-simulator@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@openzeppelin/compact-simulator@npm:0.2.0"
   dependencies:
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
@@ -326,8 +326,9 @@ __metadata:
       optional: true
     "@midnight-ntwrk/midnight-js-types":
       optional: true
+  checksum: 10/294e53a3eaade37ae679be8aaff764239d8cb645eae0e69ceb56587b36614ed67b9a38ad641633d91a6ee65d96920475ccedec40c1f1dd734d26a86b0382ce90
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "@oxc-project/types@npm:=0.122.0":
   version: 0.122.0

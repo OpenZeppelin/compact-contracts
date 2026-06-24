@@ -47,7 +47,7 @@
     "@openzeppelin/compact-cli": "^0.0.2"
   },
   "devDependencies": {
-    "@openzeppelin/compact-simulator": "portal:../../compact-tools/packages/simulator",
+    "@openzeppelin/compact-simulator": "^0.2.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "25.9.3",
     "@vitest/coverage-v8": "^4.1.9",
