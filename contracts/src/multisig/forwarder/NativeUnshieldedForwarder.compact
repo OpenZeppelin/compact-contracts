@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/ForwarderUnshielded.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/forwarder/NativeUnshieldedForwarder.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ForwarderUnshielded
+ * @module NativeUnshieldedForwarder (formerly ForwarderUnshielded)
  * @description Public-parent forwarder for unshielded coins. Provides an
  * atomic forward pattern: receive an unshielded amount of a given color
  * and immediately send it to the configured parent recipient.
@@ -46,7 +46,7 @@ pragma language_version >= 0.23.0;
  * permanently. The zero-address guard rejects only the all-zero address,
  * not an otherwise-unspendable one.
  */
-module ForwarderUnshielded {
+module NativeUnshieldedForwarder {
   import CompactStandardLibrary;
 
   // ─── State ──────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ module ForwarderUnshielded {
    */
   export circuit initialize(parent: UserAddress): [] {
     const isZero = default<UserAddress> == parent;
-    assert(!isZero, "ForwarderUnshielded: zero parent");
+    assert(!isZero, "NativeUnshieldedForwarder: zero parent");
     assertNotInitialized();
     _isInitialized = true;
     _parent = right<ContractAddress, UserAddress>(disclose(parent));
@@ -134,7 +134,7 @@ module ForwarderUnshielded {
    * @returns {[]} Empty tuple.
    */
   circuit assertInitialized(): [] {
-    assert(_isInitialized, "ForwarderUnshielded: contract not initialized");
+    assert(_isInitialized, "NativeUnshieldedForwarder: contract not initialized");
   }
 
   /**
@@ -147,6 +147,6 @@ module ForwarderUnshielded {
    * @returns {[]} Empty tuple.
    */
   circuit assertNotInitialized(): [] {
-    assert(!_isInitialized, "ForwarderUnshielded: contract already initialized");
+    assert(!_isInitialized, "NativeUnshieldedForwarder: contract already initialized");
   }
 }

@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/NativeShieldedMintBurn.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @title NativeShieldedMintBurn (formerly ShieldedMultiSigV3)
+ * @description Example preset: a deployable multisig token contract. Both mint
+ * and burn require threshold ECDSA authorization; no single party can create or
+ * destroy supply. Non-transferable (no transfer/execute surface).
+ *
+ * Thin wrapper that composes a single root module, `SignatureMintBurn`. All
+ * behavior lives there; this contract only supplies a constructor and delegates.
+ * For the combined mint/burn + treasury variant, see `NativeShieldedTokenVault`.
+ *
+ * @notice DEPRECATION: the underlying mint/burn is a stopgap. From `0.3.0-alpha`
+ * it is superseded by the reusable Shielded Native Token standard (with a
+ * pluggable multisig access layer), OpenZeppelin/compact-contracts#544. Prefer
+ * that standard once available; do not build new dependents on this.
+ */
+
+import CompactStandardLibrary;
+
+import "../examples/SignatureMintBurn" prefix Token_;
+// For testing
+export { ZswapCoinPublicKey };
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Deploys with 3 signer commitments and a threshold of 2.
+ * `tokenDomain` derives this contract's token color via
+ * `tokenType(tokenDomain, kernel.self())`; `initCoinNonce` seeds the mint
+ * coin-nonce chain. Both `instanceSalt` and `initCoinNonce` must be random.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for signer commitment derivation.
+ * @param {Bytes<32>} initCoinNonce - Initial coin nonce seed.
+ * @param {Bytes<32>} tokenDomain - Domain used to derive this contract's token color.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  initCoinNonce: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+) {
+  Token_initialize<3>(instanceSalt, signerCommitments, 2);
+  Token_initializeToken(tokenDomain, initCoinNonce);
+}
+
+// ─── Circuits (delegated to SignatureMintBurn) ──────────────────
+
+export circuit mint(
+  amount: Uint<64>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  Token_mint(amount, recipient, pubkeys, signatures);
+}
+
+export circuit burn(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  Token_burn(coin, amount, pubkeys, signatures);
+}
+
+export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return Token__calculateSignerId(pk, salt);
+}
+
+// ─── View ───────────────────────────────────────────────────────
+
+export circuit getNonce(): Uint<64> {
+  return Token_getNonce();
+}
+
+export circuit getTokenDomain(): Bytes<32> {
+  return Token_getTokenDomain();
+}
+
+export circuit getTokenType(): Bytes<32> {
+  return Token_getTokenType();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Token_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Token_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Token_isSigner(commitment);
+}

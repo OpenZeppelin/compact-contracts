@@ -1,0 +1,216 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/SignatureVerifier.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module SignatureVerifier
+ * @description Threshold ECDSA-commitment signature verification for multisig
+ * contracts that collect approvals off-chain.
+ *
+ * Signers are identified on-chain by commitments — `persistentHash` of an ECDSA
+ * public key with an instance salt and a domain separator — held in the
+ * `SignerManager<Bytes<32>>` registry. `verify` checks a parallel vector of
+ * public keys and signatures in a single transaction: each key is hashed into a
+ * commitment, checked for membership and duplicates, and its signature
+ * validated, with the valid count folded against the threshold.
+ *
+ * This module owns the commitment signer registry: it is the sole importer of
+ * `SignerManager<Bytes<32>>` for the signature flow and re-exposes the signer
+ * surface (`initialize`, `getSignerCount`, `getThreshold`, `isSigner`).
+ * Consuming contracts import only this module — not `SignerManager` directly —
+ * so there is a single registry. (Compact only shares a module's ledger state
+ * across imports that use the same import-path string, so a co-import from a
+ * different directory would create a second, empty registry.)
+ *
+ * @notice ECDSA verification is stubbed (`stubVerifySignature` always returns
+ * true). Replace it with `ecdsaVerify` once the Compact ECDSA primitive is
+ * available.
+ *
+ * @notice Duplicate detection compares each commitment against the previous one
+ * only, which is sufficient for at most 2 signers. Larger signer sets need a
+ * different uniqueness mechanism (sorted commitments or a bitmap).
+ */
+module SignatureVerifier {
+  import CompactStandardLibrary;
+  import "./SignerManager"<Bytes<32>> prefix Signer_;
+
+  // ─── Types ──────────────────────────────────────────────────────
+
+  /**
+   * @description Accumulator for fold-based signature verification. Threads the
+   * valid count, previous commitment (for duplicate detection), and message hash
+   * through each iteration.
+   */
+  export struct VerificationState {
+    validCount: Uint<8>,
+    prevCommitment: Bytes<32>,
+    msgHash: Bytes<32>
+  }
+
+  /**
+   * @description Input to `persistentHash` for computing signer commitments.
+   * Combines the ECDSA public key with an instance-specific salt and a domain
+   * separator to produce a unique, unlinkable commitment.
+   */
+  export struct SignerCommitmentInput {
+    pk: Bytes<64>,
+    salt: Bytes<32>,
+    domain: Bytes<32>
+  }
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export ledger _instanceSalt: Bytes<32>;
+
+  // ─── Setup ──────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the commitment signer registry and the instance
+   * salt. Should be called once from the consuming contract's constructor.
+   *
+   * @param {Bytes<32>} salt - Cryptographically random instance salt.
+   * @param {Vector<n, Bytes<32>>} signers - The signer commitments.
+   * @param {Uint<8>} thresh - The minimum number of approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize<#n>(
+    salt: Bytes<32>,
+    signers: Vector<n, Bytes<32>>,
+    thresh: Uint<8>
+  ): [] {
+    _instanceSalt = disclose(salt);
+    Signer_initialize<n>(signers, thresh);
+  }
+
+  // ─── Verification ───────────────────────────────────────────────
+
+  /**
+   * @description Verifies a parallel vector of public keys and signatures and
+   * asserts the threshold is met. Each key is hashed into a commitment, checked
+   * for duplicates and registry membership, and its signature validated against
+   * `msgHash`; the valid count is then checked against the threshold.
+   *
+   * @notice Duplicate detection is correct for at most 2 signers (see module
+   * notice).
+   *
+   * Requirements:
+   *
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over `msgHash`.
+   * - Signers must not be duplicates.
+   * - Valid count must meet the threshold.
+   *
+   * @param {Bytes<32>} msgHash - The message hash signers signed off-chain.
+   * @param {Vector<n, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+   * @param {Vector<n, Bytes<64>>} signatures - Signatures over `msgHash`.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit verify<#n>(
+    msgHash: Bytes<32>,
+    pubkeys: Vector<n, Bytes<64>>,
+    signatures: Vector<n, Bytes<64>>
+  ): [] {
+    const initialState = VerificationState {
+      validCount: 0 as Uint<8>,
+      prevCommitment: pad(32, ""),
+      msgHash: msgHash
+    };
+
+    const finalState = fold(verifySignature, initialState, pubkeys, signatures);
+    Signer_assertThresholdMet(finalState.validCount);
+  }
+
+  /**
+   * @description Computes a signer commitment from an ECDSA public key. Pure —
+   * callable off-chain by the deployer to compute the constructor commitments.
+   *
+   * The commitment is `persistentHash(pk, salt, "multisig:signer:")`, where the
+   * salt is instance-specific (prevents cross-contract correlation) and the
+   * domain provides separation.
+   *
+   * @param {Bytes<64>} pk - The ECDSA public key.
+   * @param {Bytes<32>} salt - The instance salt.
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+    return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+      pk: pk,
+      salt: salt,
+      domain: pad(32, "multisig:signer:")
+    });
+  }
+
+  // ─── View ───────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the number of registered signers.
+   * @returns {Uint<8>} The signer count.
+   */
+  export circuit getSignerCount(): Uint<8> {
+    return Signer_getSignerCount();
+  }
+
+  /**
+   * @description Returns the approval threshold.
+   * @returns {Uint<8>} The threshold.
+   */
+  export circuit getThreshold(): Uint<8> {
+    return Signer_getThreshold();
+  }
+
+  /**
+   * @description Returns whether the given commitment is a registered signer.
+   * @param {Bytes<32>} account - The commitment to check.
+   * @returns {Boolean} True if registered.
+   */
+  export circuit isSigner(account: Bytes<32>): Boolean {
+    return Signer_isSigner(account);
+  }
+
+  // ─── Internal ───────────────────────────────────────────────────
+
+  /**
+   * @description Fold callback. Verifies one signer's approval: derives the
+   * commitment, rejects duplicates against the previous commitment, checks
+   * registry membership, and validates the signature.
+   *
+   * @param {VerificationState} state - Accumulator threaded through fold.
+   * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
+   * @param {Bytes<64>} signature - The signer's signature over `msgHash`.
+   * @returns {VerificationState} Updated accumulator.
+   */
+  circuit verifySignature(
+    state: VerificationState,
+    pubkey: Bytes<64>,
+    signature: Bytes<64>
+  ): VerificationState {
+    const commitment = _calculateSignerId(pubkey, _instanceSalt);
+
+    // Duplicate detection — sufficient for 2 signers only
+    assert(commitment != state.prevCommitment, "SignatureVerifier: duplicate signer");
+
+    Signer_assertSigner(commitment);
+
+    // TODO: Replace with ecdsaVerify when the Compact ECDSA primitive is available
+    assert(stubVerifySignature(pubkey, state.msgHash, signature), "SignatureVerifier: invalid signature");
+
+    return VerificationState {
+      validCount: state.validCount + 1 as Uint<8>,
+      prevCommitment: commitment,
+      msgHash: state.msgHash
+    };
+  }
+
+  /**
+   * @description Stub for ECDSA signature verification. Always returns true.
+   * MUST be replaced before any non-test deployment.
+   */
+  circuit stubVerifySignature(
+    pubkey: Bytes<64>,
+    msgHash: Bytes<32>,
+    signature: Bytes<64>
+  ): Boolean {
+    return true;
+  }
+}
