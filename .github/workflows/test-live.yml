@@ -6,11 +6,9 @@ name: Compact Contracts Live Test Suite
 # heavy: gated to manual runs and PRs explicitly labeled `live-tests` rather
 # than every push.
 #
-# DRAFT: this depends on `@openzeppelin/compact-simulator`'s live backend, which
-# is consumed here via a `portal:` dependency on the sibling `compact-tools`
-# checkout below. Once the simulator is published with the live backend, the
-# "Check out simulator" + "Build simulator" steps can be dropped and the
-# dependency pinned to the published version.
+# Consumes the published `@openzeppelin/compact-simulator` (live backend), so the
+# install is a plain `yarn install --immutable` against the committed lockfile —
+# no sibling `compact-tools` checkout/build.
 
 on:
   workflow_dispatch:
@@ -40,15 +38,6 @@ jobs:
         with:
           path: compact-contracts
 
-      # Sibling checkout so the `portal:../../compact-tools/packages/simulator`
-      # dependency in contracts/package.json resolves.
-      - name: Check out compact-tools (simulator source)
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          repository: OpenZeppelin/compact-tools
-          ref: main
-          path: compact-tools
-
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -56,15 +45,9 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Build simulator (live backend)
-        working-directory: compact-tools
-        run: |
-          yarn install --immutable
-          yarn workspace @openzeppelin/compact-simulator build
-
       - name: Install contracts dependencies
         working-directory: compact-contracts
-        run: yarn install --no-immutable
+        run: yarn install --immutable
 
       - name: Start local Midnight stack
         working-directory: compact-contracts
