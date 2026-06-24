@@ -11,7 +11,7 @@ pragma language_version >= 0.23.0;
  * composition the no-C2C protocol forces: a contract that both mints its own
  * token and manages a treasury of it, atomically, under one signer set.
  *
- * Both modules import the same `../SignatureVerifier`, so the compiler
+ * Both modules import the same `../EcdsaSignerManager`, so the compiler
  * deduplicates that state into a single signer registry shared by `mint`, `burn`,
  * and `execute`. The constructor initializes that shared registry once (via the
  * treasury module) and seeds the token state separately.

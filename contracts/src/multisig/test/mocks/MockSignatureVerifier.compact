@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../SignatureVerifier" prefix Signature_;
+import "../../EcdsaSignerManager" prefix Signature_;
 
 constructor(salt: Bytes<32>, signers: Vector<3, Bytes<32>>, thresh: Uint<8>) {
   Signature_initialize<3>(salt, signers, thresh);

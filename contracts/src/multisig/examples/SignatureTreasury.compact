@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
  * spend from a stateless shielded treasury. Formerly the body of
  * `ShieldedMultiSigV2`.
  *
- * Combines `SignatureVerifier` (commitment signer registry + threshold ECDSA
+ * Combines `EcdsaSignerManager` (commitment signer registry + threshold ECDSA
  * verification) with `NativeShieldedTreasuryStateless` (custody + send of native
  * shielded tokens). Approvals are collected off-chain; `execute` verifies them
  * and sends in a single transaction. A monotonic `_nonce` binds each spend to a
@@ -17,12 +17,12 @@ pragma language_version >= 0.23.0;
  *
  * Import this module at the contract root and wrap it in a thin preset (see
  * `presets/NativeShieldedStatelessTreasury`), or compose it with other
- * root modules that import the same `../SignatureVerifier` to share one
+ * root modules that import the same `../EcdsaSignerManager` to share one
  * signer registry (see `presets/NativeShieldedTokenVault`).
  */
 module SignatureTreasury {
   import CompactStandardLibrary;
-  import "../SignatureVerifier" prefix Signature_;
+  import "../EcdsaSignerManager" prefix Signer_;
   import "../treasury/NativeShieldedTreasuryStateless" prefix Treasury_;
   import "../proposal/ProposalManager" prefix Proposal_;
 
@@ -46,7 +46,7 @@ module SignatureTreasury {
     signers: Vector<n, Bytes<32>>,
     thresh: Uint<8>
   ): [] {
-    Signature_initialize<n>(salt, signers, thresh);
+    Signer_initialize<n>(salt, signers, thresh);
   }
 
   // ─── Deposit ────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ module SignatureTreasury {
       amount as Bytes<32>
     ]);
 
-    Signature_verify<2>(msgHash, pubkeys, signatures);
+    Signer_verify<2>(msgHash, pubkeys, signatures);
 
     return Treasury__send(coin, Proposal_toShieldedRecipient(to), amount);
   }
@@ -106,7 +106,7 @@ module SignatureTreasury {
    * callable off-chain by the deployer.
    */
   export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
-    return Signature__calculateSignerId(pk, salt);
+    return Signer__calculateSignerId(pk, salt);
   }
 
   export circuit getNonce(): Uint<64> {
@@ -114,14 +114,14 @@ module SignatureTreasury {
   }
 
   export circuit getSignerCount(): Uint<8> {
-    return Signature_getSignerCount();
+    return Signer_getSignerCount();
   }
 
   export circuit getThreshold(): Uint<8> {
-    return Signature_getThreshold();
+    return Signer_getThreshold();
   }
 
   export circuit isSigner(commitment: Bytes<32>): Boolean {
-    return Signature_isSigner(commitment);
+    return Signer_isSigner(commitment);
   }
 }

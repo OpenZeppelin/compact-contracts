@@ -5,43 +5,41 @@ pragma language_version >= 0.23.0;
 
 /**
  * @module SignerManager<T>
- * @description Manages signer registry, threshold enforcement, and signer
- * validation for multisig governance contracts.
+ * @description The general signer registry for multisig: signer set, threshold
+ * enforcement, and signer validation. Every multisig builds on this; a signature
+ * scheme manager (e.g. `EcdsaSignerManager`) wraps it and adds the verification.
  *
- * Parameterized over the signer identity type `T`, allowing the consuming
- * contract to choose the identity mechanism at import time. Common
- * instantiations include:
+ * Parameterized over the signer identity type `T`, so the consuming contract
+ * picks the identity mechanism at import time. Common instantiations:
  *
- * - `Bytes<32>` for commitment-based identity (e.g., hash of ECDSA public key)
- * - `JubjubPoint` for Schnorr/MuSig aggregated key
+ * - `Bytes<32>` for commitment-based identity (hash of a public key) — used by
+ *   the signature scheme managers.
+ * - `Either<ZswapCoinPublicKey, ContractAddress>` for on-chain caller identity —
+ *   used by caller-authorized governance (see `examples/ProposalTreasury`).
  *
- * The SignerManager module does not resolve caller identity. It receives a validated
- * caller from the contract layer and checks it against the registry.
- * This separation allows the identity mechanism to change without
- * modifying the module.
+ * This module does not resolve caller identity or verify signatures. It receives
+ * a validated identity from the layer above and checks it against the registry.
+ * Keeping it scheme-agnostic is what lets it serve both the `Bytes<32>` signature
+ * path and the `Either` caller path from one generic module.
  *
- * The signer count and threshold are of type `Uint<8>`, limiting the
- * maximum number of signers and threshold to 255. This is sufficient
- * for any practical multisig use case. For large-scale governance
- * requiring more signers, consider a Merkle tree-based variant.
+ * The signer count and threshold are `Uint<8>`, capping signers/threshold at 255
+ * — sufficient for any practical multisig. For large-scale governance, consider
+ * a Merkle tree-based variant.
  *
- * Multi-step signer reconfigurations (e.g., removing a signer and
- * lowering the threshold) may produce intermediate states where the
- * module's invariants temporarily hold but the contract's intended
- * configuration is incomplete. This is a contract-layer concern.
- * Contracts should either perform reconfigurations atomically in a
- * single circuit or use a configuration nonce to invalidate proposals
- * created under a stale signer set.
+ * Multi-step signer reconfigurations (e.g., removing a signer and lowering the
+ * threshold) may produce intermediate states where the module's invariants hold
+ * but the contract's intended configuration is incomplete. This is a
+ * contract-layer concern: reconfigure atomically in one circuit, or use a
+ * configuration nonce to invalidate proposals created under a stale signer set.
  *
- * Underscore-prefixed circuits (_addSigner, _removeSigner,
- * _changeThreshold) have no access control enforcement. The consuming
- * contract must gate these behind its own authorization policy.
+ * Underscore-prefixed circuits (_addSigner, _removeSigner, _changeThreshold)
+ * have no access control. The consuming contract must gate them behind its own
+ * authorization policy.
  *
- * Contracts may handle their own initialization and this module
- * supports custom flows. Thus, contracts may choose to not
- * call `initialize` in the contract's constructor. Contracts MUST NOT
- * call `initialize` outside of the constructor context because
- * this could corrupt the signer set and threshold configuration.
+ * Contracts may handle their own initialization and this module supports custom
+ * flows, so a contract may choose not to call `initialize` in its constructor.
+ * Contracts MUST NOT call `initialize` outside the constructor context, as this
+ * could corrupt the signer set and threshold configuration.
  */
 module SignerManager<T> {
   import CompactStandardLibrary;
