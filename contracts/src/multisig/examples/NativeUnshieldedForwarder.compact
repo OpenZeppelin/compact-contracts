@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/presets/forwarder/ForwarderUnshielded.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/examples/NativeUnshieldedForwarder.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @title ForwarderUnshielded
+ * @title NativeUnshieldedForwarder (formerly ForwarderUnshielded)
  * @description Public-parent forwarder for unshielded coins. Receives
  * an unshielded amount of a given color and atomically forwards it to
  * the configured parent recipient, a user address.
  *
  * Unshielded transfers are publicly visible on the chain: depositor,
  * recipient, color, and amount all appear on the public transcript.
- * Use `ForwarderShielded` instead when the deposit kind is shielded.
+ * Use `NativeShieldedForwarder` instead when the deposit kind is shielded.
  *
  * The constructor accepts a `UserAddress`: an atomic forward can only
  * deliver to a recipient that needs no in-tx claim, and an unshielded
@@ -24,7 +24,7 @@ pragma language_version >= 0.23.0;
  */
 
 import CompactStandardLibrary;
-import "../../forwarder/ForwarderUnshielded" prefix Forwarder_;
+import "../forwarder/NativeUnshieldedForwarder" prefix Forwarder_;
 
 export { ContractAddress, UserAddress, Either };
 

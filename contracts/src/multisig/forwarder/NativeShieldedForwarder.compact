@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/ForwarderShielded.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/forwarder/NativeShieldedForwarder.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ForwarderShielded
+ * @module NativeShieldedForwarder (formerly ForwarderShielded)
  * @description Public-parent forwarder for shielded coins. Provides an
  * atomic forward pattern: receive a shielded coin and immediately send
  * it to the configured parent recipient.
@@ -42,7 +42,7 @@ pragma language_version >= 0.23.0;
  * permanently. The zero-key guard rejects only the all-zero key, not an
  * otherwise-unspendable one.
  */
-module ForwarderShielded {
+module NativeShieldedForwarder {
   import CompactStandardLibrary;
   import "../../utils/Utils" prefix Utils_;
 
@@ -88,7 +88,7 @@ module ForwarderShielded {
    * @returns {[]} Empty tuple.
    */
   export circuit initialize(parent: ZswapCoinPublicKey): [] {
-    assert(!Utils_isKeyZero(parent), "ForwarderShielded: zero parent");
+    assert(!Utils_isKeyZero(parent), "NativeShieldedForwarder: zero parent");
     assertNotInitialized();
     _isInitialized = true;
     _parent = left<ZswapCoinPublicKey, ContractAddress>(disclose(parent));
@@ -131,7 +131,7 @@ module ForwarderShielded {
    * @returns {[]} Empty tuple.
    */
   circuit assertInitialized(): [] {
-    assert(_isInitialized, "ForwarderShielded: contract not initialized");
+    assert(_isInitialized, "NativeShieldedForwarder: contract not initialized");
   }
 
   /**
@@ -144,6 +144,6 @@ module ForwarderShielded {
    * @returns {[]} Empty tuple.
    */
   circuit assertNotInitialized(): [] {
-    assert(!_isInitialized, "ForwarderShielded: contract already initialized");
+    assert(!_isInitialized, "NativeShieldedForwarder: contract already initialized");
   }
 }

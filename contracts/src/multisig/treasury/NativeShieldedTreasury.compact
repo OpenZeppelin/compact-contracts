@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/ShieldedTreasury.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/treasury/NativeShieldedTreasury.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ShieldedTreasury
+ * @module NativeShieldedTreasury
  * @description Manages shielded (private) token deposits, accounting,
  * and transfers for multisig governance contracts.
  *
@@ -22,7 +22,7 @@ pragma language_version >= 0.23.0;
  * enforcement. The consuming contract must gate these behind its own
  * authorization policy.
  */
-module ShieldedTreasury {
+module NativeShieldedTreasury {
   import CompactStandardLibrary;
   import { selfAsRecipient, UINT128_MAX } from "../../utils/Utils" prefix Utils_;
 
@@ -60,7 +60,7 @@ module ShieldedTreasury {
    */
   export circuit _deposit(coin: ShieldedCoinInfo): [] {
     const currentReceived = getReceivedTotal(coin.color);
-    assert(currentReceived <= Utils_UINT128_MAX() - coin.value, "ShieldedTreasury: overflow");
+    assert(currentReceived <= Utils_UINT128_MAX() - coin.value, "NativeShieldedTreasury: overflow");
 
     receiveShielded(disclose(coin));
 
@@ -109,13 +109,13 @@ module ShieldedTreasury {
     color: Bytes<32>,
     amount: Uint<128>
   ): ShieldedSendResult {
-    assert(_coins.member(disclose(color)), "ShieldedTreasury: no balance");
+    assert(_coins.member(disclose(color)), "NativeShieldedTreasury: no balance");
 
     const coin = _coins.lookup(disclose(color));
-    assert(coin.value >= amount, "ShieldedTreasury: coin value insufficient");
+    assert(coin.value >= amount, "NativeShieldedTreasury: coin value insufficient");
 
     const currentSent = getSentTotal(color);
-    assert(currentSent <= Utils_UINT128_MAX() - amount, "ShieldedTreasury: overflow");
+    assert(currentSent <= Utils_UINT128_MAX() - amount, "NativeShieldedTreasury: overflow");
 
     const result = sendShielded(coin, disclose(recipient), disclose(amount));
 

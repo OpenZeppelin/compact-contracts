@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/presets/forwarder/ForwarderShielded.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/examples/NativeShieldedForwarder.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @title ForwarderShielded
+ * @title NativeShieldedForwarder (formerly ForwarderShielded)
  * @description Public-parent forwarder for shielded coins. Receives a
  * shielded coin and atomically forwards it to the configured parent
  * recipient, a coin public key.
@@ -22,7 +22,7 @@ pragma language_version >= 0.23.0;
  */
 
 import CompactStandardLibrary;
-import "../../forwarder/ForwarderShielded" prefix Forwarder_;
+import "../forwarder/NativeShieldedForwarder" prefix Forwarder_;
 
 export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, Either };
 
