@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the `SignatureTreasury` example module as a deployable
+// contract so the simulator can exercise it. DO NOT deploy or use this contract
+// in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../examples/SignatureTreasury" prefix Treasury_;
+import "../../proposal/ProposalManager" prefix Proposal_;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  thresh: Uint<8>,
+) {
+  Treasury_initialize<3>(instanceSalt, signerCommitments, thresh);
+}
+
+// ─── Circuits (delegated to SignatureTreasury) ──────────────────
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Treasury_deposit(coin);
+}
+
+export circuit execute(
+  to: Proposal_Recipient,
+  amount: Uint<128>,
+  coin: QualifiedShieldedCoinInfo,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): ShieldedSendResult {
+  return Treasury_execute(to, amount, coin, pubkeys, signatures);
+}
+
+export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return Treasury__calculateSignerId(pk, salt);
+}
+
+// ─── View ───────────────────────────────────────────────────────
+
+export circuit getNonce(): Uint<64> {
+  return Treasury_getNonce();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Treasury_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Treasury_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Treasury_isSigner(commitment);
+}

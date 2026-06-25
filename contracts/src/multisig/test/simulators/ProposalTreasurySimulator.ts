@@ -1,16 +1,13 @@
 import {
+  type BaseSimulatorOptions,
   createSimulator,
-  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type Ledger,
   ledger,
-  Contract as ShieldedMultiSig,
-} from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
-import {
-  ShieldedMultiSigPrivateState,
-  ShieldedMultiSigWitnesses,
-} from '../witnesses/ShieldedMultiSigWitnesses.js';
+  Contract as MockProposalTreasury,
+} from '../../../../artifacts/MockProposalTreasury/contract/index.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -30,45 +27,40 @@ type Proposal = {
   status: number;
 };
 
-type ShieldedMultiSigArgs = readonly [
+type ProposalTreasuryArgs = readonly [
   signers: EitherPKAddress[],
   thresh: bigint,
 ];
 
-const ShieldedMultiSigSimulatorBase = createSimulator<
-  ShieldedMultiSigPrivateState,
+const ProposalTreasurySimulatorBase = createSimulator<
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigWitnesses>,
-  ShieldedMultiSig<ShieldedMultiSigPrivateState>,
-  ShieldedMultiSigArgs
+  ReturnType<typeof emptyWitnesses>,
+  MockProposalTreasury<EmptyPrivateState>,
+  ProposalTreasuryArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSig<ShieldedMultiSigPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigPrivateState,
+    new MockProposalTreasury<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigWitnesses(),
-  artifactName: 'ShieldedMultiSig',
+  witnessesFactory: () => emptyWitnesses(),
 });
 
-export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
-  static async create(
+export class ProposalTreasurySimulator extends ProposalTreasurySimulatorBase {
+  constructor(
     signers: EitherPKAddress[],
     thresh: bigint,
-    options: SimulatorOptions<
-      ShieldedMultiSigPrivateState,
-      ReturnType<typeof ShieldedMultiSigWitnesses>
+    options: BaseSimulatorOptions<
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigSimulator> {
-    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create(
-      [signers, thresh],
-      options,
-    ) as Promise<ShieldedMultiSigSimulator>;
+  ) {
+    super([signers, thresh], options);
   }
 
   // Deposit
-  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
+  public deposit(coin: ShieldedCoinInfo) {
     return this.circuits.impure.deposit(coin);
   }
 
@@ -77,19 +69,19 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     to: Recipient,
     color: Uint8Array,
     amount: bigint,
-  ): Promise<bigint> {
+  ): bigint {
     return this.circuits.impure.createShieldedProposal(to, color, amount);
   }
 
-  public approveProposal(id: bigint): Promise<[]> {
+  public approveProposal(id: bigint) {
     return this.circuits.impure.approveProposal(id);
   }
 
-  public revokeApproval(id: bigint): Promise<[]> {
+  public revokeApproval(id: bigint) {
     return this.circuits.impure.revokeApproval(id);
   }
 
-  public executeShieldedProposal(id: bigint): Promise<ShieldedSendResult> {
+  public executeShieldedProposal(id: bigint): ShieldedSendResult {
     return this.circuits.impure.executeShieldedProposal(id);
   }
 
@@ -97,67 +89,67 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
   public isProposalApprovedBySigner(
     id: bigint,
     signer: EitherPKAddress,
-  ): Promise<boolean> {
+  ): boolean {
     return this.circuits.impure.isProposalApprovedBySigner(id, signer);
   }
 
-  public getApprovalCount(id: bigint): Promise<bigint> {
+  public getApprovalCount(id: bigint): bigint {
     return this.circuits.impure.getApprovalCount(id);
   }
 
   // View - Proposals
-  public getProposal(id: bigint): Promise<Proposal> {
+  public getProposal(id: bigint): Proposal {
     return this.circuits.impure.getProposal(id);
   }
 
-  public getProposalRecipient(id: bigint): Promise<Recipient> {
+  public getProposalRecipient(id: bigint): Recipient {
     return this.circuits.impure.getProposalRecipient(id);
   }
 
-  public getProposalAmount(id: bigint): Promise<bigint> {
+  public getProposalAmount(id: bigint): bigint {
     return this.circuits.impure.getProposalAmount(id);
   }
 
-  public getProposalColor(id: bigint): Promise<Uint8Array> {
+  public getProposalColor(id: bigint): Uint8Array {
     return this.circuits.impure.getProposalColor(id);
   }
 
-  public getProposalStatus(id: bigint): Promise<number> {
+  public getProposalStatus(id: bigint): number {
     return this.circuits.impure.getProposalStatus(id);
   }
 
   // View - Treasury
-  public getTokenBalance(color: Uint8Array): Promise<bigint> {
+  public getTokenBalance(color: Uint8Array): bigint {
     return this.circuits.impure.getTokenBalance(color);
   }
 
-  public getReceivedTotal(color: Uint8Array): Promise<bigint> {
+  public getReceivedTotal(color: Uint8Array): bigint {
     return this.circuits.impure.getReceivedTotal(color);
   }
 
-  public getSentTotal(color: Uint8Array): Promise<bigint> {
+  public getSentTotal(color: Uint8Array): bigint {
     return this.circuits.impure.getSentTotal(color);
   }
 
-  public getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
+  public getReceivedMinusSent(color: Uint8Array): bigint {
     return this.circuits.impure.getReceivedMinusSent(color);
   }
 
   // View - Signers
-  public getSignerCount(): Promise<bigint> {
+  public getSignerCount(): bigint {
     return this.circuits.impure.getSignerCount();
   }
 
-  public getThreshold(): Promise<bigint> {
+  public getThreshold(): bigint {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(account: EitherPKAddress): Promise<boolean> {
+  public isSigner(account: EitherPKAddress): boolean {
     return this.circuits.impure.isSigner(account);
   }
 
   // Ledger access
-  public getLedger(): Promise<Ledger> {
+  public getLedger(): Ledger {
     return this.getPublicState();
   }
 }

@@ -1,0 +1,226 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { SignatureTreasurySimulator } from './simulators/SignatureTreasurySimulator.js';
+
+const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
+
+const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
+const COLOR = new Uint8Array(32).fill(1);
+const AMOUNT = 1000n;
+
+const PK1 = new Uint8Array(64).fill(0x11);
+const PK2 = new Uint8Array(64).fill(0x22);
+const PK3 = new Uint8Array(64).fill(0x33);
+const NON_SIGNER_PK = new Uint8Array(64).fill(0x99);
+
+const COMMITMENT1 = SignatureTreasurySimulator.calculateSignerId(
+  PK1,
+  INSTANCE_SALT,
+);
+const COMMITMENT2 = SignatureTreasurySimulator.calculateSignerId(
+  PK2,
+  INSTANCE_SALT,
+);
+const COMMITMENT3 = SignatureTreasurySimulator.calculateSignerId(
+  PK3,
+  INSTANCE_SALT,
+);
+const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
+
+const DUMMY_SIG = new Uint8Array(64).fill(0xff);
+
+function makeRecipient(address: Uint8Array): {
+  kind: number;
+  address: Uint8Array;
+} {
+  return { kind: RecipientKind.ShieldedUser, address };
+}
+
+function makeCoin(
+  color: Uint8Array,
+  value: bigint,
+  nonce?: Uint8Array,
+): { nonce: Uint8Array; color: Uint8Array; value: bigint } {
+  return {
+    nonce: nonce ?? new Uint8Array(32).fill(0),
+    color,
+    value,
+  };
+}
+
+function makeQualifiedCoin(
+  color: Uint8Array,
+  value: bigint,
+  mtIndex: bigint,
+  nonce?: Uint8Array,
+): {
+  nonce: Uint8Array;
+  color: Uint8Array;
+  value: bigint;
+  mt_index: bigint;
+} {
+  return {
+    nonce: nonce ?? new Uint8Array(32).fill(0),
+    color,
+    value,
+    mt_index: mtIndex,
+  };
+}
+
+let multisig: SignatureTreasurySimulator;
+
+describe('SignatureTreasury', () => {
+  describe('constructor', () => {
+    it('should initialize with 2-of-3 threshold', () => {
+      multisig = new SignatureTreasurySimulator(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        2n,
+      );
+      expect(multisig.getSignerCount()).toEqual(3n);
+      expect(multisig.getThreshold()).toEqual(2n);
+    });
+
+    it('should initialize with 1-of-3 threshold', () => {
+      multisig = new SignatureTreasurySimulator(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        1n,
+      );
+      expect(multisig.getThreshold()).toEqual(1n);
+    });
+
+    it('should fail with zero threshold', () => {
+      expect(() => {
+        new SignatureTreasurySimulator(INSTANCE_SALT, SIGNER_COMMITMENTS, 0n);
+      }).toThrow('SignerManager: threshold must not be zero');
+    });
+
+    it('should fail with threshold exceeding signer count', () => {
+      expect(() => {
+        new SignatureTreasurySimulator(INSTANCE_SALT, SIGNER_COMMITMENTS, 4n);
+      }).toThrow('SignerManager: threshold exceeds signer count');
+    });
+
+    it('should register all signer commitments', () => {
+      multisig = new SignatureTreasurySimulator(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        2n,
+      );
+      for (const commitment of SIGNER_COMMITMENTS) {
+        expect(multisig.isSigner(commitment)).toEqual(true);
+      }
+    });
+
+    it('should reject a non-signer commitment', () => {
+      multisig = new SignatureTreasurySimulator(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        2n,
+      );
+      const unknown = SignatureTreasurySimulator.calculateSignerId(
+        NON_SIGNER_PK,
+        INSTANCE_SALT,
+      );
+      expect(multisig.isSigner(unknown)).toEqual(false);
+    });
+
+    it('should fail with duplicate signer commitments', () => {
+      expect(() => {
+        new SignatureTreasurySimulator(
+          INSTANCE_SALT,
+          [COMMITMENT1, COMMITMENT1, COMMITMENT2],
+          2n,
+        );
+      }).toThrow('SignerManager: signer already active');
+    });
+  });
+
+  describe('when initialized', () => {
+    beforeEach(() => {
+      multisig = new SignatureTreasurySimulator(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        2n,
+      );
+    });
+
+    describe('view', () => {
+      it('getNonce should start at 0', () => {
+        expect(multisig.getNonce()).toEqual(0n);
+      });
+
+      it('getSignerCount should return 3', () => {
+        expect(multisig.getSignerCount()).toEqual(3n);
+      });
+
+      it('getThreshold should match constructor arg', () => {
+        expect(multisig.getThreshold()).toEqual(2n);
+      });
+    });
+
+    describe('_calculateSignerId', () => {
+      it('should be deterministic for the same key and salt', () => {
+        expect(
+          SignatureTreasurySimulator.calculateSignerId(PK1, INSTANCE_SALT),
+        ).toStrictEqual(COMMITMENT1);
+      });
+
+      it('should produce a different commitment for a different salt', () => {
+        const otherSalt = new Uint8Array(32).fill(0xcc);
+        expect(
+          SignatureTreasurySimulator.calculateSignerId(PK1, otherSalt),
+        ).not.toStrictEqual(COMMITMENT1);
+      });
+    });
+
+    describe('deposit', () => {
+      it('should accept deposits without reverting', () => {
+        expect(() => {
+          multisig.deposit(makeCoin(COLOR, AMOUNT));
+        }).not.toThrow();
+      });
+    });
+
+    describe('execute', () => {
+      it('should reject duplicate signer', () => {
+        const to = makeRecipient(new Uint8Array(32).fill(7));
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        expect(() => {
+          multisig.execute(to, 100n, coin, [PK1, PK1], [DUMMY_SIG, DUMMY_SIG]);
+        }).toThrow('EcdsaSignerManager: duplicate signer');
+      });
+
+      it('should reject a non-signer pubkey', () => {
+        const to = makeRecipient(new Uint8Array(32).fill(7));
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        expect(() => {
+          multisig.execute(
+            to,
+            100n,
+            coin,
+            [PK1, NON_SIGNER_PK],
+            [DUMMY_SIG, DUMMY_SIG],
+          );
+        }).toThrow('SignerManager: not a signer');
+      });
+    });
+
+    describe('execute — threshold above the 2-signature surface', () => {
+      it('should reject when threshold exceeds verifiable signatures', () => {
+        // A 3-of-3 instance can never satisfy `execute`, which verifies at most
+        // two signatures. Two valid distinct signers still fall short.
+        const strict = new SignatureTreasurySimulator(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          3n,
+        );
+        const to = makeRecipient(new Uint8Array(32).fill(7));
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        expect(() => {
+          strict.execute(to, 100n, coin, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        }).toThrow('SignerManager: threshold not met');
+      });
+    });
+  });
+});
