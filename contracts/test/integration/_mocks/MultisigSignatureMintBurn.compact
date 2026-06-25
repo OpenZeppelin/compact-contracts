@@ -1,0 +1,174 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (test/integration/_mocks/MultisigSignatureMintBurn.compact)
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+/**
+ * @title MultisigSignatureMintBurn (example)
+ * @description Example top-level contract: signature-authorized mint/burn of a
+ * native shielded token issued by this contract. Formerly the body of
+ * `ShieldedMultiSigV3`. Lives under `test/integration/_mocks/` so it serves
+ * as both a usage example and an integration-test fixture (composes production
+ * modules into one deployable contract).
+ *
+ * `mint` creates a UTXO of this contract's token type via `mintShieldedToken`;
+ * `burn` consumes one via `sendShielded` to `shieldedBurnAddress()`. Both require
+ * threshold ECDSA approval verified against the shared `EcdsaSignerManager`
+ * registry. A counter provides replay protection and feeds `evolveNonce` for
+ * unique coin nonces. Operation-domain prefixes (`multisig:mint:` /
+ * `multisig:burn:`) stop a signature for one op being replayed as the other.
+ *
+ * This example is fixed at a 3-signer registry with a threshold of 2 and 2
+ * presented approvals per operation.
+ *
+ * @notice ECDSA verification is stubbed in `EcdsaSignerManager`; replace it (and
+ * `persistentHash` with `keccak256`) once the Compact primitives are available.
+ * Not for production deployment.
+ */
+
+import "../../../src/multisig/EcdsaSignerManager" prefix Signer_;
+import "../../../src/utils/Utils" prefix Utils_;
+
+export { ZswapCoinPublicKey };
+
+// ─── State ──────────────────────────────────────────────────────
+
+export ledger _counter: Counter;
+export ledger _coinNonce: Bytes<32>;
+export sealed ledger _tokenDomain: Bytes<32>;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Initializes the shared signer registry (3 signers, threshold 2)
+ * and this contract's token state.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
+ * @param {Bytes<32>} initCoinNonce - Initial coin-nonce seed (random).
+ * @param {Bytes<32>} tokenDomain - Domain used with `kernel.self()` to derive
+ * this contract's token color.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Signer commitments.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  initCoinNonce: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>
+) {
+  Signer_initialize<3>(instanceSalt, signerCommitments, 2);
+  _tokenDomain = disclose(tokenDomain);
+  _coinNonce = disclose(initCoinNonce);
+}
+
+// ─── Mint ───────────────────────────────────────────────────────
+
+/**
+ * @description Mints a new shielded coin of this contract's token type to the
+ * recipient, authorized by threshold signatures. The message hash commits to
+ * the `multisig:mint:` domain, contract address, recipient, counter, and amount.
+ *
+ * @param {Uint<64>} amount - The token amount to mint.
+ * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - Recipient.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the mint hash.
+ * @returns {[]} Empty tuple.
+ */
+export circuit mint(
+  amount: Uint<64>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const opNonce = _counter;
+  _counter.increment(1);
+
+  const canonRecipient = Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(recipient);
+  const recipientHash = persistentHash<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient);
+
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "multisig:mint:"),
+    kernel.self().bytes,
+    recipientHash,
+    opNonce as Bytes<32>,
+    amount as Bytes<32>
+  ]);
+
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  _coinNonce = evolveNonce(_counter, _coinNonce);
+  mintShieldedToken(_tokenDomain, disclose(amount), _coinNonce, disclose(canonRecipient));
+}
+
+// ─── Burn ───────────────────────────────────────────────────────
+
+/**
+ * @description Burns a coin of this contract's token type to
+ * `shieldedBurnAddress()`, authorized by threshold signatures. Change from a
+ * partial burn is handled by the transaction layer. The `multisig:burn:` domain
+ * prefix prevents replay as a mint.
+ *
+ * @param {QualifiedShieldedCoinInfo} coin - The coin to burn (operator pool).
+ * @param {Uint<64>} amount - The token amount to burn.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the burn hash.
+ * @returns {[]} Empty tuple.
+ */
+export circuit burn(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const opNonce = _counter;
+  _counter.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "multisig:burn:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    amount as Bytes<32>
+  ]);
+
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  assert(coin.color == tokenType(_tokenDomain, kernel.self()), "SignatureMintBurn: coin not from this contract");
+  assert(coin.value >= amount, "SignatureMintBurn: insufficient coin value");
+
+  sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
+}
+
+// ─── View ───────────────────────────────────────────────────────
+
+/**
+ * @description Computes a signer commitment from an ECDSA public key. Pure —
+ * callable off-chain by the deployer.
+ */
+export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return Signer__calculateSignerId(pk, salt);
+}
+
+export circuit getNonce(): Uint<64> {
+  return _counter;
+}
+
+export circuit getTokenDomain(): Bytes<32> {
+  return _tokenDomain;
+}
+
+export circuit getTokenType(): Bytes<32> {
+  return tokenType(_tokenDomain, kernel.self());
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Signer_isSigner(commitment);
+}

@@ -18,8 +18,8 @@ import CompactStandardLibrary;
  * This is a top-level deployable contract (not a composable module): the
  * constructor wires the three modules together and the exported circuits are
  * the institution-facing API. It supersedes the bespoke
- * `examples/SignatureMintBurn`, whose hand-rolled token half is replaced by the
- * #621 standard.
+ * `test/integration/_mocks/MultisigSignatureMintBurn`, whose hand-rolled token half
+ * is replaced by the #621 standard.
  *
  * # Shape (the constraints that force it)
  *
