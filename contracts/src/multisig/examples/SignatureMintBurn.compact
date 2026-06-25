@@ -19,8 +19,7 @@ pragma language_version >= 0.23.0;
  * Initialization is split so this module can be composed: `initialize` seeds the
  * shared signer registry, while `initializeToken` seeds this module's own token
  * state. A combined contract calls another module's `initialize` once for the
- * shared registry, then this module's `initializeToken` (see
- * `presets/NativeShieldedTokenVault`).
+ * shared registry, then this module's `initializeToken`.
  *
  * @notice DEPRECATION: this is a stopgap. From `0.3.0-alpha` it is superseded by
  * the reusable Shielded Native Token standard (with a pluggable multisig access
