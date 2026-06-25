@@ -1,7 +1,4 @@
-import {
-  createSimulator,
-  type SimulatorOptions,
-} from '@openzeppelin/compact-simulator';
+import { createSimulator } from '@openzeppelin/compact-simulator';
 import {
   ledger,
   Contract as SharedInitCollision,
@@ -23,7 +20,6 @@ const SharedInitCollisionSimulatorBase = createSimulator<
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ({}),
-  artifactName: 'SharedInitCollision',
 });
 
 /**
@@ -32,27 +28,23 @@ const SharedInitCollisionSimulatorBase = createSimulator<
  * collision.
  */
 export class SharedInitCollisionSimulator extends SharedInitCollisionSimulatorBase {
-  static async create(
-    // biome-ignore lint/complexity/noBannedTypes: the contract declares no witnesses
-    options: SimulatorOptions<EmptyPrivateState, {}> = {},
-  ): Promise<SharedInitCollisionSimulator> {
-    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create([], options) as Promise<SharedInitCollisionSimulator>;
+  constructor() {
+    super([], {});
   }
 
-  public initA(): Promise<[]> {
-    return this.circuits.impure.initA();
+  public initA(): void {
+    this.circuits.impure.initA();
   }
 
-  public initB(): Promise<[]> {
-    return this.circuits.impure.initB();
+  public initB(): void {
+    this.circuits.impure.initB();
   }
 
-  public checkA(): Promise<[]> {
-    return this.circuits.impure.checkA();
+  public checkA(): void {
+    this.circuits.impure.checkA();
   }
 
-  public checkB(): Promise<[]> {
-    return this.circuits.impure.checkB();
+  public checkB(): void {
+    this.circuits.impure.checkB();
   }
 }

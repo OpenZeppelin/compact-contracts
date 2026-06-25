@@ -37,8 +37,6 @@
     "test:live": "yarn run compact && MIDNIGHT_BACKEND=live vitest run --config vitest.live.config.ts",
     "compact:integration": "SKIP_ZK=true compact compile test/integration/_mocks/SharedInitCollision.compact artifacts/SharedInitCollision && SKIP_ZK=true compact compile test/integration/_mocks/ComposedTokens.compact artifacts/ComposedTokens",
     "test:integration": "yarn run compact:integration && vitest run --config vitest.integration.config.ts",
-    "compact:integration:live": "compact compile test/integration/_mocks/SharedInitCollision.compact artifacts/SharedInitCollision && compact compile test/integration/_mocks/ComposedTokens.compact artifacts/ComposedTokens",
-    "test:integration:live": "yarn run compact:integration:live && MIDNIGHT_BACKEND=live vitest run --config vitest.integration.live.config.ts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },

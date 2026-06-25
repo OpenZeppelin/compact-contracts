@@ -1,7 +1,4 @@
-import {
-  createSimulator,
-  type SimulatorOptions,
-} from '@openzeppelin/compact-simulator';
+import { createSimulator } from '@openzeppelin/compact-simulator';
 import {
   ledger,
   Contract as ComposedTokens,
@@ -30,7 +27,7 @@ const ComposedTokensSimulatorBase = createSimulator<
   contractFactory: (witnesses) =>
     new ComposedTokens<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => ({}),
-  contractArgs: (
+  contractArgs: (ftName, ftSymbol, ftDecimals, nftName, nftSymbol, initFT, initNFT) => [
     ftName,
     ftSymbol,
     ftDecimals,
@@ -38,10 +35,9 @@ const ComposedTokensSimulatorBase = createSimulator<
     nftSymbol,
     initFT,
     initNFT,
-  ) => [ftName, ftSymbol, ftDecimals, nftName, nftSymbol, initFT, initNFT],
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ({}),
-  artifactName: 'ComposedTokens',
 });
 
 /**
@@ -51,24 +47,15 @@ const ComposedTokensSimulatorBase = createSimulator<
  * are independent (the #556 fix).
  */
 export class ComposedTokensSimulator extends ComposedTokensSimulatorBase {
-  static async create(
-    initFT: boolean,
-    initNFT: boolean,
-    // biome-ignore lint/complexity/noBannedTypes: the contract declares no witnesses
-    options: SimulatorOptions<EmptyPrivateState, {}> = {},
-  ): Promise<ComposedTokensSimulator> {
-    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create(
-      ['FT', 'FTK', 18n, 'NFT', 'NFTK', initFT, initNFT],
-      options,
-    ) as Promise<ComposedTokensSimulator>;
+  constructor(initFT: boolean, initNFT: boolean) {
+    super(['FT', 'FTK', 18n, 'NFT', 'NFTK', initFT, initNFT], {});
   }
 
-  public ftName(): Promise<string> {
+  public ftName(): string {
     return this.circuits.impure.ftName();
   }
 
-  public nftName(): Promise<string> {
+  public nftName(): string {
     return this.circuits.impure.nftName();
   }
 }
