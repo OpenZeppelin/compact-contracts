@@ -5,50 +5,47 @@ import {
 import {
   ledger,
   pureCircuits,
-  Contract as ShieldedMultiSigV3Contract,
+  Contract as MockSignatureMintBurn,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/ShieldedMultiSigV3/contract/index.js';
-import {
-  ShieldedMultiSigV3PrivateState,
-  ShieldedMultiSigV3Witnesses,
-} from '../witnesses/ShieldedMultiSigV3Witnesses.js';
+} from '../../../../artifacts/MockSignatureMintBurn/contract/index.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type ShieldedMultiSigV3Args = readonly [
+type SignatureMintBurnArgs = readonly [
   instanceSalt: Uint8Array,
   initCoinNonce: Uint8Array,
   tokenDomain: Uint8Array,
   signerCommitments: Uint8Array[],
 ];
 
-const ShieldedMultiSigV3SimulatorBase = createSimulator<
-  ShieldedMultiSigV3PrivateState,
+const SignatureMintBurnSimulatorBase = createSimulator<
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigV3Witnesses>,
-  ShieldedMultiSigV3Contract<ShieldedMultiSigV3PrivateState>,
-  ShieldedMultiSigV3Args
+  ReturnType<typeof emptyWitnesses>,
+  MockSignatureMintBurn<EmptyPrivateState>,
+  SignatureMintBurnArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV3Contract<ShieldedMultiSigV3PrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigV3PrivateState,
-  contractArgs: (
+    new MockSignatureMintBurn<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
+  contractArgs: (instanceSalt, initCoinNonce, tokenDomain, signerCommitments) => [
     instanceSalt,
     initCoinNonce,
     tokenDomain,
     signerCommitments,
-  ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
+  ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigV3Witnesses(),
+  witnessesFactory: () => emptyWitnesses(),
 });
 
-export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase {
+export class SignatureMintBurnSimulator extends SignatureMintBurnSimulatorBase {
   constructor(
     instanceSalt: Uint8Array,
     initCoinNonce: Uint8Array,
     tokenDomain: Uint8Array,
     signerCommitments: Uint8Array[],
     options: BaseSimulatorOptions<
-      ShieldedMultiSigV3PrivateState,
-      ReturnType<typeof ShieldedMultiSigV3Witnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
     super(

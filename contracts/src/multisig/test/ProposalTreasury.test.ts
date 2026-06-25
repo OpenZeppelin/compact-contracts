@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
-import { ShieldedMultiSigSimulator } from './simulators/ShieldedMultiSigSimulator.js';
+import { ProposalTreasurySimulator } from './simulators/ProposalTreasurySimulator.js';
 
 const ProposalStatus = { Inactive: 0, Active: 1, Executed: 2, Cancelled: 3 };
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
@@ -37,44 +37,44 @@ function makeCoin(
   };
 }
 
-let multisig: ShieldedMultiSigSimulator;
+let multisig: ProposalTreasurySimulator;
 
-describe('ShieldedMultiSig', () => {
+describe('ProposalTreasury', () => {
   describe('constructor', () => {
     it('should initialize with signers and threshold', () => {
-      multisig = new ShieldedMultiSigSimulator(SIGNERS, THRESHOLD);
+      multisig = new ProposalTreasurySimulator(SIGNERS, THRESHOLD);
       expect(multisig.getSignerCount()).toEqual(BigInt(SIGNERS.length));
       expect(multisig.getThreshold()).toEqual(THRESHOLD);
     });
 
     it('should register all signers', () => {
-      multisig = new ShieldedMultiSigSimulator(SIGNERS, THRESHOLD);
+      multisig = new ProposalTreasurySimulator(SIGNERS, THRESHOLD);
       for (const signer of SIGNERS) {
         expect(multisig.isSigner(signer)).toEqual(true);
       }
     });
 
     it('should reject non-signers', () => {
-      multisig = new ShieldedMultiSigSimulator(SIGNERS, THRESHOLD);
+      multisig = new ProposalTreasurySimulator(SIGNERS, THRESHOLD);
       expect(multisig.isSigner(Z_NON_SIGNER)).toEqual(false);
     });
 
     it('should fail with zero threshold', () => {
       expect(() => {
-        new ShieldedMultiSigSimulator(SIGNERS, 0n);
+        new ProposalTreasurySimulator(SIGNERS, 0n);
       }).toThrow('SignerManager: threshold must not be zero');
     });
 
     it('should fail with threshold exceeding signer count', () => {
       expect(() => {
-        new ShieldedMultiSigSimulator(SIGNERS, 4n);
+        new ProposalTreasurySimulator(SIGNERS, 4n);
       }).toThrow('SignerManager: threshold exceeds signer count');
     });
   });
 
   describe('when initialized', () => {
     beforeEach(() => {
-      multisig = new ShieldedMultiSigSimulator(SIGNERS, THRESHOLD);
+      multisig = new ProposalTreasurySimulator(SIGNERS, THRESHOLD);
     });
 
     describe('deposit', () => {
@@ -142,7 +142,7 @@ describe('ShieldedMultiSig', () => {
             .as(SIGNER1)
             .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
         }).toThrow(
-          'ShieldedMultiSig: recipient must be a shielded user or contract',
+          'ProposalTreasury: recipient must be a shielded user or contract',
         );
       });
 
@@ -195,7 +195,7 @@ describe('ShieldedMultiSig', () => {
         multisig.as(SIGNER1).approveProposal(proposalId);
         expect(() => {
           multisig.as(SIGNER1).approveProposal(proposalId);
-        }).toThrow('Multisig: already approved');
+        }).toThrow('ProposalTreasury: already approved');
       });
 
       it('should fail for non-existing proposal', () => {
@@ -244,7 +244,7 @@ describe('ShieldedMultiSig', () => {
       it('should fail if not yet approved', () => {
         expect(() => {
           multisig.as(SIGNER2).revokeApproval(proposalId);
-        }).toThrow('Multisig: not approved');
+        }).toThrow('ProposalTreasury: not approved');
       });
 
       it('should allow re-approval after revoke', () => {

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import {
   calculateSignerId,
-  ShieldedMultiSigV3Simulator,
-} from './simulators/ShieldedMultiSigV3Simulator.js';
+  SignatureMintBurnSimulator,
+} from './simulators/SignatureMintBurnSimulator.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────
 
@@ -46,12 +46,12 @@ function makeQualifiedCoin(
   };
 }
 
-let multisig: ShieldedMultiSigV3Simulator;
+let multisig: SignatureMintBurnSimulator;
 
-describe('ShieldedMultiSigV3', () => {
+describe('SignatureMintBurn', () => {
   describe('constructor', () => {
     it('should initialize', () => {
-      multisig = new ShieldedMultiSigV3Simulator(
+      multisig = new SignatureMintBurnSimulator(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -62,7 +62,7 @@ describe('ShieldedMultiSigV3', () => {
     });
 
     it('should register all signer commitments', () => {
-      multisig = new ShieldedMultiSigV3Simulator(
+      multisig = new SignatureMintBurnSimulator(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -74,7 +74,7 @@ describe('ShieldedMultiSigV3', () => {
     });
 
     it('should reject a non-signer commitment', () => {
-      multisig = new ShieldedMultiSigV3Simulator(
+      multisig = new SignatureMintBurnSimulator(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -86,7 +86,7 @@ describe('ShieldedMultiSigV3', () => {
 
     it('should fail with duplicate signer commitments', () => {
       expect(() => {
-        new ShieldedMultiSigV3Simulator(
+        new SignatureMintBurnSimulator(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,
@@ -96,7 +96,7 @@ describe('ShieldedMultiSigV3', () => {
     });
 
     it('should store token domain', () => {
-      multisig = new ShieldedMultiSigV3Simulator(
+      multisig = new SignatureMintBurnSimulator(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -108,7 +108,7 @@ describe('ShieldedMultiSigV3', () => {
 
   describe('when initialized', () => {
     beforeEach(() => {
-      multisig = new ShieldedMultiSigV3Simulator(
+      multisig = new SignatureMintBurnSimulator(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -224,7 +224,7 @@ describe('ShieldedMultiSigV3', () => {
             [PK1, PK1],
             [DUMMY_SIG, DUMMY_SIG],
           );
-        }).toThrow('Multisig: duplicate signer');
+        }).toThrow('EcdsaSignerManager: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', () => {
@@ -318,7 +318,7 @@ describe('ShieldedMultiSigV3', () => {
         const coin = makeQualifiedCoin(multisig.getTokenType(), 100n);
         expect(() => {
           multisig.burn(coin, 100n, [PK1, PK1], [DUMMY_SIG, DUMMY_SIG]);
-        }).toThrow('Multisig: duplicate signer');
+        }).toThrow('EcdsaSignerManager: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', () => {
@@ -338,21 +338,21 @@ describe('ShieldedMultiSigV3', () => {
         const coin = makeQualifiedCoin(wrongColor, 100n);
         expect(() => {
           multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
-        }).toThrow('Multisig: coin not from this contract');
+        }).toThrow('SignatureMintBurn: coin not from this contract');
       });
 
       it('should reject insufficient coin value', () => {
         const coin = makeQualifiedCoin(multisig.getTokenType(), 10n);
         expect(() => {
           multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
-        }).toThrow('Multisig: insufficient coin value');
+        }).toThrow('SignatureMintBurn: insufficient coin value');
       });
 
       it('should reject when amount exceeds value by 1', () => {
         const coin = makeQualifiedCoin(multisig.getTokenType(), 99n);
         expect(() => {
           multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
-        }).toThrow('Multisig: insufficient coin value');
+        }).toThrow('SignatureMintBurn: insufficient coin value');
       });
 
       it('should share nonce across mint and burn', () => {
@@ -377,7 +377,7 @@ describe('ShieldedMultiSigV3', () => {
         const altDomain = new Uint8Array(32);
         Buffer.from('alt:token:').copy(altDomain);
 
-        const alt = new ShieldedMultiSigV3Simulator(
+        const alt = new SignatureMintBurnSimulator(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           altDomain,
@@ -403,7 +403,7 @@ describe('ShieldedMultiSigV3', () => {
 
     describe('cross-instance replay', () => {
       it('should derive different message hashes for different instances', () => {
-        const instance2 = new ShieldedMultiSigV3Simulator(
+        const instance2 = new SignatureMintBurnSimulator(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,

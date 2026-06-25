@@ -5,12 +5,9 @@ import {
 import {
   type Ledger,
   ledger,
-  Contract as ShieldedMultiSig,
-} from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
-import {
-  ShieldedMultiSigPrivateState,
-  ShieldedMultiSigWitnesses,
-} from '../witnesses/ShieldedMultiSigWitnesses.js';
+  Contract as MockProposalTreasury,
+} from '../../../../artifacts/MockProposalTreasury/contract/index.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -30,33 +27,33 @@ type Proposal = {
   status: number;
 };
 
-type ShieldedMultiSigArgs = readonly [
+type ProposalTreasuryArgs = readonly [
   signers: EitherPKAddress[],
   thresh: bigint,
 ];
 
-const ShieldedMultiSigSimulatorBase = createSimulator<
-  ShieldedMultiSigPrivateState,
+const ProposalTreasurySimulatorBase = createSimulator<
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigWitnesses>,
-  ShieldedMultiSig<ShieldedMultiSigPrivateState>,
-  ShieldedMultiSigArgs
+  ReturnType<typeof emptyWitnesses>,
+  MockProposalTreasury<EmptyPrivateState>,
+  ProposalTreasuryArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSig<ShieldedMultiSigPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigPrivateState,
+    new MockProposalTreasury<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
 });
 
-export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
+export class ProposalTreasurySimulator extends ProposalTreasurySimulatorBase {
   constructor(
     signers: EitherPKAddress[],
     thresh: bigint,
     options: BaseSimulatorOptions<
-      ShieldedMultiSigPrivateState,
-      ReturnType<typeof ShieldedMultiSigWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
     super([signers, thresh], options);

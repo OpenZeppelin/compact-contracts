@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the `ProposalTreasury` example module as a deployable
+// contract so the simulator can exercise it. DO NOT deploy or use this contract
+// in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../examples/ProposalTreasury" prefix Proposal_;
+import "../../proposal/ProposalManager" prefix ProposalManager_;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+constructor(
+  signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
+  thresh: Uint<8>
+) {
+  Proposal_initialize<3>(signers, thresh);
+}
+
+// ─── Circuits (delegated to ProposalTreasury) ───────────────────
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Proposal_deposit(coin);
+}
+
+export circuit createShieldedProposal(
+  to: ProposalManager_Recipient,
+  color: Bytes<32>,
+  amount: Uint<128>
+): Uint<64> {
+  return Proposal_createShieldedProposal(to, color, amount);
+}
+
+export circuit approveProposal(id: Uint<64>): [] {
+  Proposal_approveProposal(id);
+}
+
+export circuit revokeApproval(id: Uint<64>): [] {
+  Proposal_revokeApproval(id);
+}
+
+export circuit executeShieldedProposal(id: Uint<64>): ShieldedSendResult {
+  return Proposal_executeShieldedProposal(id);
+}
+
+// ─── View ───────────────────────────────────────────────────────
+
+export circuit isProposalApprovedBySigner(
+  id: Uint<64>,
+  signer: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
+  return Proposal_isProposalApprovedBySigner(id, signer);
+}
+
+export circuit getApprovalCount(id: Uint<64>): Uint<8> {
+  return Proposal_getApprovalCount(id);
+}
+
+export circuit getProposal(id: Uint<64>): ProposalManager_Proposal {
+  return Proposal_getProposal(id);
+}
+
+export circuit getProposalRecipient(id: Uint<64>): ProposalManager_Recipient {
+  return Proposal_getProposalRecipient(id);
+}
+
+export circuit getProposalAmount(id: Uint<64>): Uint<128> {
+  return Proposal_getProposalAmount(id);
+}
+
+export circuit getProposalColor(id: Uint<64>): Bytes<32> {
+  return Proposal_getProposalColor(id);
+}
+
+export circuit getProposalStatus(id: Uint<64>): ProposalManager_ProposalStatus {
+  return Proposal_getProposalStatus(id);
+}
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return Proposal_getTokenBalance(color);
+}
+
+export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+  return Proposal_getReceivedTotal(color);
+}
+
+export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+  return Proposal_getSentTotal(color);
+}
+
+export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
+  return Proposal_getReceivedMinusSent(color);
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Proposal_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Proposal_getThreshold();
+}
+
+export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return Proposal_isSigner(account);
+}

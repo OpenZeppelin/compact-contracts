@@ -3,15 +3,11 @@ import {
   createSimulator,
 } from '@openzeppelin/compact-simulator';
 import {
-  type Ledger,
   ledger,
   pureCircuits,
-  Contract as ShieldedMultiSigV2,
-} from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
-import {
-  ShieldedMultiSigV2PrivateState,
-  ShieldedMultiSigV2Witnesses,
-} from '../witnesses/ShieldedMultiSigV2Witnesses.js';
+  Contract as MockSignatureTreasury,
+} from '../../../../artifacts/MockSignatureTreasury/contract/index.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
@@ -26,39 +22,39 @@ type ShieldedSendResult = {
   sent: ShieldedCoinInfo;
 };
 
-type ShieldedMultiSigV2Args = readonly [
+type SignatureTreasuryArgs = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   thresh: bigint,
 ];
 
-const ShieldedMultiSigV2SimulatorBase = createSimulator<
-  ShieldedMultiSigV2PrivateState,
+const SignatureTreasurySimulatorBase = createSimulator<
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigV2Witnesses>,
-  ShieldedMultiSigV2<ShieldedMultiSigV2PrivateState>,
-  ShieldedMultiSigV2Args
+  ReturnType<typeof emptyWitnesses>,
+  MockSignatureTreasury<EmptyPrivateState>,
+  SignatureTreasuryArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV2<ShieldedMultiSigV2PrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigV2PrivateState,
+    new MockSignatureTreasury<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (instanceSalt, signerCommitments, thresh) => [
     instanceSalt,
     signerCommitments,
     thresh,
   ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigV2Witnesses(),
+  witnessesFactory: () => emptyWitnesses(),
 });
 
-export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
+export class SignatureTreasurySimulator extends SignatureTreasurySimulatorBase {
   constructor(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
     thresh: bigint,
     options: BaseSimulatorOptions<
-      ShieldedMultiSigV2PrivateState,
-      ReturnType<typeof ShieldedMultiSigV2Witnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ) {
     super([instanceSalt, signerCommitments, thresh], options);
@@ -99,9 +95,5 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
 
   public isSigner(commitment: Uint8Array): boolean {
     return this.circuits.impure.isSigner(commitment);
-  }
-
-  public getLedger(): Ledger {
-    return this.getPublicState();
   }
 }
