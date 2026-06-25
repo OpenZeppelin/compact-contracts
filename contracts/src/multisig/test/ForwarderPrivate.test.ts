@@ -74,7 +74,7 @@ describe('ForwarderPrivate module', () => {
 
     it('should fail initialization with zero commitment', () => {
       expect(() => new MockForwarderPrivateSimulator(ZERO, true)).toThrow(
-        'ForwarderPrivate: zero commitment',
+        'PrivateNativeShieldedForwarder: zero commitment',
       );
     });
 
@@ -99,7 +99,7 @@ describe('ForwarderPrivate module', () => {
 
     it('should fail deposit when not initialized', () => {
       expect(() => mock.deposit(makeCoin(COLOR, AMOUNT))).toThrow(
-        'ForwarderPrivate: contract not initialized',
+        'PrivateNativeShieldedForwarder: contract not initialized',
       );
     });
 
@@ -111,7 +111,7 @@ describe('ForwarderPrivate module', () => {
           OP_SECRET,
           AMOUNT,
         ),
-      ).toThrow('ForwarderPrivate: contract not initialized');
+      ).toThrow('PrivateNativeShieldedForwarder: contract not initialized');
     });
   });
 
@@ -167,7 +167,7 @@ describe('ForwarderPrivate module', () => {
           OP_SECRET,
           AMOUNT,
         ),
-      ).toThrow('ForwarderPrivate: invalid parent');
+      ).toThrow('PrivateNativeShieldedForwarder: invalid parent');
     });
 
     it('should fail drain with wrong opSecret', () => {
@@ -178,7 +178,7 @@ describe('ForwarderPrivate module', () => {
           WRONG_OP_SECRET,
           AMOUNT,
         ),
-      ).toThrow('ForwarderPrivate: invalid parent');
+      ).toThrow('PrivateNativeShieldedForwarder: invalid parent');
     });
 
     it('should fail drain with both wrong', () => {
@@ -189,7 +189,7 @@ describe('ForwarderPrivate module', () => {
           WRONG_OP_SECRET,
           AMOUNT,
         ),
-      ).toThrow('ForwarderPrivate: invalid parent');
+      ).toThrow('PrivateNativeShieldedForwarder: invalid parent');
     });
 
     it('should fail drain with value > coin.value', () => {
@@ -248,7 +248,7 @@ describe('ForwarderPrivate module', () => {
           OP_SECRET,
           AMOUNT,
         ),
-      ).toThrow('ForwarderPrivate: zero parent');
+      ).toThrow('PrivateNativeShieldedForwarder: zero parent');
     });
   });
 
