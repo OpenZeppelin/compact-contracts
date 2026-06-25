@@ -6,10 +6,7 @@ import {
   ledger,
   Contract as MockShieldedTreasury,
 } from '../../../../artifacts/MockShieldedTreasury/contract/index.js';
-import {
-  ShieldedTreasuryPrivateState,
-  ShieldedTreasuryWitnesses,
-} from '../witnesses/ShieldedTreasuryWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
 type ShieldedSendResult = {
@@ -20,26 +17,26 @@ type ShieldedSendResult = {
 type ShieldedTreasuryArgs = readonly [];
 
 const ShieldedTreasurySimulatorBase = createSimulator<
-  ShieldedTreasuryPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedTreasuryWitnesses>,
-  MockShieldedTreasury<ShieldedTreasuryPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockShieldedTreasury<EmptyPrivateState>,
   ShieldedTreasuryArgs
 >({
   contractFactory: (witnesses) =>
-    new MockShieldedTreasury<ShieldedTreasuryPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedTreasuryPrivateState,
+    new MockShieldedTreasury<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedTreasuryWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'MockShieldedTreasury',
 });
 
 export class ShieldedTreasurySimulator extends ShieldedTreasurySimulatorBase {
   static async create(
     options: SimulatorOptions<
-      ShieldedTreasuryPrivateState,
-      ReturnType<typeof ShieldedTreasuryWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedTreasurySimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
