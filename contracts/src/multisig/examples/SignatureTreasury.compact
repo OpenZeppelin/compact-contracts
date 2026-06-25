@@ -15,10 +15,10 @@ pragma language_version >= 0.23.0;
  * and sends in a single transaction. A monotonic `_nonce` binds each spend to a
  * unique message hash for replay protection.
  *
- * Import this module at the contract root and wrap it in a thin preset (see
- * `presets/NativeShieldedStatelessTreasury`), or compose it with other
+ * Import this module at the contract root and wrap it in a thin top-level
+ * contract that supplies a constructor and delegates, or compose it with other
  * root modules that import the same `../EcdsaSignerManager` to share one
- * signer registry (see `presets/NativeShieldedTokenVault`).
+ * signer registry.
  */
 module SignatureTreasury {
   import CompactStandardLibrary;
