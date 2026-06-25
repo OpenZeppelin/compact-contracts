@@ -24,50 +24,54 @@ import { SharedInitCollisionSimulator } from '../fixtures/sharedInitCollision.js
 
 describe('Initializable state isolation (#556)', () => {
   describe('the bug — shared Initializable across same-directory modules', () => {
-    it('should treat module B as initialized after only module A is initialized', () => {
-      const c = new SharedInitCollisionSimulator();
+    it('should treat module B as initialized after only module A is initialized', async () => {
+      const c = await SharedInitCollisionSimulator.create();
 
       // Only module A is initialized.
-      c.initA();
+      await c.initA();
 
       // BUG: module B was never initialized, yet its init-guard passes,
       // because both modules share a single `_isInitialized` ledger slot.
-      expect(() => c.checkB()).not.toThrow();
+      await expect(c.checkB()).resolves.not.toThrow();
     });
 
-    it('should not allow module B to initialize once module A has set the shared slot', () => {
-      const c = new SharedInitCollisionSimulator();
-      c.initA();
+    it('should not allow module B to initialize once module A has set the shared slot', async () => {
+      const c = await SharedInitCollisionSimulator.create();
+      await c.initA();
 
       // BUG: B can never be initialized — the shared slot is already set.
-      expect(() => c.initB()).toThrow('Initializable: contract already initialized');
+      await expect(c.initB()).rejects.toThrow(
+        'Initializable: contract already initialized',
+      );
     });
   });
 
   describe('the fix — per-module flags keep production modules isolated', () => {
-    it('should not initialize NonFungibleToken when only FungibleToken is initialized', () => {
-      const c = new ComposedTokensSimulator(true, false);
+    it('should not initialize NonFungibleToken when only FungibleToken is initialized', async () => {
+      const c = await ComposedTokensSimulator.create(true, false);
 
       // FT is usable.
-      expect(() => c.ftName()).not.toThrow();
+      await expect(c.ftName()).resolves.not.toThrow();
       // NFT is independently still uninitialized.
-      expect(() => c.nftName()).toThrow(
+      await expect(c.nftName()).rejects.toThrow(
         'NonFungibleToken: contract not initialized',
       );
     });
 
-    it('should not initialize FungibleToken when only NonFungibleToken is initialized', () => {
-      const c = new ComposedTokensSimulator(false, true);
+    it('should not initialize FungibleToken when only NonFungibleToken is initialized', async () => {
+      const c = await ComposedTokensSimulator.create(false, true);
 
-      expect(() => c.nftName()).not.toThrow();
-      expect(() => c.ftName()).toThrow('FungibleToken: contract not initialized');
+      await expect(c.nftName()).resolves.not.toThrow();
+      await expect(c.ftName()).rejects.toThrow(
+        'FungibleToken: contract not initialized',
+      );
     });
 
-    it('should initialize each module independently', () => {
-      const c = new ComposedTokensSimulator(true, true);
+    it('should initialize each module independently', async () => {
+      const c = await ComposedTokensSimulator.create(true, true);
 
-      expect(() => c.ftName()).not.toThrow();
-      expect(() => c.nftName()).not.toThrow();
+      await expect(c.ftName()).resolves.not.toThrow();
+      await expect(c.nftName()).resolves.not.toThrow();
     });
   });
 });
