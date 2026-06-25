@@ -75,7 +75,7 @@ describe('ForwarderPrivate module', () => {
     it('should fail initialization with zero commitment', async () => {
       await expect(
         MockForwarderPrivateSimulator.create(ZERO, true),
-      ).rejects.toThrow('ForwarderPrivate: zero commitment');
+      ).rejects.toThrow('PrivateNativeShieldedForwarder: zero commitment');
     });
 
     it('should store the parent commitment after initialization', async () => {
@@ -99,7 +99,7 @@ describe('ForwarderPrivate module', () => {
 
     it('should fail deposit when not initialized', async () => {
       await expect(mock.deposit(makeCoin(COLOR, AMOUNT))).rejects.toThrow(
-        'ForwarderPrivate: contract not initialized',
+        'PrivateNativeShieldedForwarder: contract not initialized',
       );
     });
 
@@ -111,7 +111,7 @@ describe('ForwarderPrivate module', () => {
           OP_SECRET,
           AMOUNT,
         ),
-      ).rejects.toThrow('ForwarderPrivate: contract not initialized');
+      ).rejects.toThrow('PrivateNativeShieldedForwarder: contract not initialized');
     });
   });
 
@@ -167,7 +167,7 @@ describe('ForwarderPrivate module', () => {
           OP_SECRET,
           AMOUNT,
         ),
-      ).rejects.toThrow('ForwarderPrivate: invalid parent');
+      ).rejects.toThrow('PrivateNativeShieldedForwarder: invalid parent');
     });
 
     it('should fail drain with wrong opSecret', async () => {
@@ -178,7 +178,7 @@ describe('ForwarderPrivate module', () => {
           WRONG_OP_SECRET,
           AMOUNT,
         ),
-      ).rejects.toThrow('ForwarderPrivate: invalid parent');
+      ).rejects.toThrow('PrivateNativeShieldedForwarder: invalid parent');
     });
 
     it('should fail drain with both wrong', async () => {
@@ -189,7 +189,7 @@ describe('ForwarderPrivate module', () => {
           WRONG_OP_SECRET,
           AMOUNT,
         ),
-      ).rejects.toThrow('ForwarderPrivate: invalid parent');
+      ).rejects.toThrow('PrivateNativeShieldedForwarder: invalid parent');
     });
 
     it('should fail drain with value > coin.value', async () => {
@@ -248,7 +248,7 @@ describe('ForwarderPrivate module', () => {
           OP_SECRET,
           AMOUNT,
         ),
-      ).rejects.toThrow('ForwarderPrivate: zero parent');
+      ).rejects.toThrow('PrivateNativeShieldedForwarder: zero parent');
     });
   });
 
