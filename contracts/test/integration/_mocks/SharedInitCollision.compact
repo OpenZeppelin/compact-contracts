@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY. Intentionally exhibits the compiler#270
+// bug. DO NOT use this pattern in production.
+
+// Top-level contract composing TWO modules (ModuleA, ModuleB) that both import
+// the shared, stateful `Initializable` from the SAME directory. The compiler
+// deduplicates the transitive `_isInitialized` ledger state into a single slot,
+// so initializing one module also marks the other initialized. The
+// `initStateIsolation` spec asserts this collision (the bug), justifying why the
+// production modules now track their init flag per-module instead.
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "./sharedInit/ModuleA" prefix A_;
+import "./sharedInit/ModuleB" prefix B_;
+
+export circuit initA(): [] { A_initA(); }
+export circuit initB(): [] { B_initB(); }
+export circuit checkA(): [] { A_checkA(); }
+export circuit checkB(): [] { B_checkB(); }
