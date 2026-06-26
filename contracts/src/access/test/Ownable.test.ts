@@ -75,29 +75,29 @@ const zeroTypes = [
 
 describe('Ownable', () => {
   describe('before initialized', () => {
-    it('should initialize', () => {
-      ownable = new OwnableSimulator(OWNER.either, isInit, {
+    it('should initialize', async () => {
+      ownable = await OwnableSimulator.create(OWNER.either, isInit, {
         privateState: { secretKey: OWNER.secretKey },
       });
-      expect(ownable.owner()).toEqual(OWNER.either);
+      expect(await ownable.owner()).toEqual(OWNER.either);
     });
 
-    it('should fail to initialize when owner is a contract address', () => {
-      expect(() => {
-        new OwnableSimulator(OWNER_CONTRACT, isInit, {
+    it('should fail to initialize when owner is a contract address', async () => {
+      await expect(
+        OwnableSimulator.create(OWNER_CONTRACT, isInit, {
           privateState: { secretKey: OWNER.secretKey },
-        });
-      }).toThrow('Ownable: unsafe ownership transfer');
+        }),
+      ).rejects.toThrow('Ownable: unsafe ownership transfer');
     });
 
     it.each(
       zeroTypes,
-    )('should fail to initialize when owner is zero (%s)', (_, _zero) => {
-      expect(() => {
-        ownable = new OwnableSimulator(_zero, isInit, {
+    )('should fail to initialize when owner is zero (%s)', async (_, _zero) => {
+      await expect(
+        OwnableSimulator.create(_zero, isInit, {
           privateState: { secretKey: OWNER.secretKey },
-        });
-      }).toThrow('Ownable: invalid initial owner');
+        }),
+      ).rejects.toThrow('Ownable: invalid initial owner');
     });
 
     type FailingCircuits = [method: keyof OwnableSimulator, args: unknown[]];
@@ -112,27 +112,29 @@ describe('Ownable', () => {
     ];
     it.each(
       circuitsToFail,
-    )('should fail when calling circuit "%s"', (circuitName, args) => {
-      ownable = new OwnableSimulator(OWNER.either, isBadInit, {
+    )('should fail when calling circuit "%s"', async (circuitName, args) => {
+      ownable = await OwnableSimulator.create(OWNER.either, isBadInit, {
         privateState: { secretKey: OWNER.secretKey },
       });
-      expect(() => {
-        (ownable[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('Ownable: contract not initialized');
+      await expect(
+        (ownable[circuitName] as (...args: unknown[]) => Promise<unknown>)(
+          ...args,
+        ),
+      ).rejects.toThrow('Ownable: contract not initialized');
     });
 
-    it('should canonicalize initial owner', () => {
+    it('should canonicalize initial owner', async () => {
       const nonCanonical = {
         is_left: true,
         left: OWNER.accountId,
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      ownable = new OwnableSimulator(nonCanonical, isInit, {
+      ownable = await OwnableSimulator.create(nonCanonical, isInit, {
         privateState: { secretKey: OWNER.secretKey },
       });
 
-      const stored = ownable.owner();
+      const stored = await ownable.owner();
       expect(stored.is_left).toBe(true);
       expect(stored.left).toEqual(OWNER.accountId);
       expect(stored.right).toEqual({ bytes: zeroBytes });
@@ -140,48 +142,48 @@ describe('Ownable', () => {
   });
 
   describe('when initialized', () => {
-    beforeEach(() => {
-      ownable = new OwnableSimulator(OWNER.either, isInit, {
+    beforeEach(async () => {
+      ownable = await OwnableSimulator.create(OWNER.either, isInit, {
         privateState: { secretKey: OWNER.secretKey },
       });
     });
 
     describe('owner', () => {
-      it('should return owner', () => {
-        expect(ownable.owner()).toEqual(OWNER.either);
+      it('should return owner', async () => {
+        expect(await ownable.owner()).toEqual(OWNER.either);
       });
 
-      it('should return zero when unowned', () => {
-        ownable._transferOwnership(ZERO_ACCOUNT);
-        expect(ownable.owner()).toEqual(ZERO_ACCOUNT);
+      it('should return zero when unowned', async () => {
+        await ownable._transferOwnership(ZERO_ACCOUNT);
+        expect(await ownable.owner()).toEqual(ZERO_ACCOUNT);
       });
     });
 
     describe('assertOnlyOwner', () => {
-      it('should allow owner to call', () => {
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+      it('should allow owner to call', async () => {
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should fail when called by unauthorized', () => {
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+      it('should fail when called by unauthorized', async () => {
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
       });
 
-      it('should reject all accountId callers when owner is a contract', () => {
-        ownable._unsafeTransferOwnership(OWNER_CONTRACT);
+      it('should reject all accountId callers when owner is a contract', async () => {
+        await ownable._unsafeTransferOwnership(OWNER_CONTRACT);
 
         // Original owner rejected
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: contract address owner authentication is not yet supported',
         );
 
         // Sample other keys
         for (const label of ['SAMPLE_1', 'SAMPLE_2', 'SAMPLE_3']) {
           const sampleUser = makeUser(label);
-          ownable.privateState.injectSecretKey(sampleUser.secretKey);
-          expect(() => ownable.assertOnlyOwner()).toThrow(
+          await ownable.privateState.injectSecretKey(sampleUser.secretKey);
+          await expect(ownable.assertOnlyOwner()).rejects.toThrow(
             'Ownable: contract address owner authentication is not yet supported',
           );
         }
@@ -189,165 +191,165 @@ describe('Ownable', () => {
     });
 
     describe('transferOwnership', () => {
-      it('should transfer ownership', () => {
-        ownable.transferOwnership(NEW_OWNER.either);
-        expect(ownable.owner()).toEqual(NEW_OWNER.either);
+      it('should transfer ownership', async () => {
+        await ownable.transferOwnership(NEW_OWNER.either);
+        expect(await ownable.owner()).toEqual(NEW_OWNER.either);
 
         // Original owner can no longer call
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // Unauthorized still can't call
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // New owner can call
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should fail when unauthorized transfers ownership', () => {
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.transferOwnership(NEW_OWNER.either)).toThrow(
-          'Ownable: caller is not the owner',
-        );
+      it('should fail when unauthorized transfers ownership', async () => {
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(
+          ownable.transferOwnership(NEW_OWNER.either),
+        ).rejects.toThrow('Ownable: caller is not the owner');
       });
 
-      it('should fail when transferring to a contract address', () => {
-        expect(() => ownable.transferOwnership(RECIPIENT_CONTRACT)).toThrow(
-          'Ownable: unsafe ownership transfer',
-        );
+      it('should fail when transferring to a contract address', async () => {
+        await expect(
+          ownable.transferOwnership(RECIPIENT_CONTRACT),
+        ).rejects.toThrow('Ownable: unsafe ownership transfer');
       });
 
-      it('should fail when transferring to zero (accountId)', () => {
-        expect(() => ownable.transferOwnership(ZERO_ACCOUNT)).toThrow(
+      it('should fail when transferring to zero (accountId)', async () => {
+        await expect(ownable.transferOwnership(ZERO_ACCOUNT)).rejects.toThrow(
           'Ownable: invalid new owner',
         );
       });
 
-      it('should fail when transferring to zero (contract)', () => {
-        expect(() => ownable.transferOwnership(ZERO_CONTRACT)).toThrow(
+      it('should fail when transferring to zero (contract)', async () => {
+        await expect(ownable.transferOwnership(ZERO_CONTRACT)).rejects.toThrow(
           'Ownable: unsafe ownership transfer',
         );
       });
 
-      it('should transfer multiple times', () => {
-        ownable.transferOwnership(NEW_OWNER.either);
+      it('should transfer multiple times', async () => {
+        await ownable.transferOwnership(NEW_OWNER.either);
 
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        ownable.transferOwnership(OWNER.either);
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await ownable.transferOwnership(OWNER.either);
 
-        ownable.privateState.injectSecretKey(OWNER.secretKey);
-        ownable.transferOwnership(NEW_OWNER.either);
+        await ownable.privateState.injectSecretKey(OWNER.secretKey);
+        await ownable.transferOwnership(NEW_OWNER.either);
 
-        expect(ownable.owner()).toEqual(NEW_OWNER.either);
+        expect(await ownable.owner()).toEqual(NEW_OWNER.either);
       });
     });
 
     describe('_unsafeTransferOwnership', () => {
-      it('should transfer ownership to accountId', () => {
-        ownable._unsafeTransferOwnership(NEW_OWNER.either);
-        expect(ownable.owner()).toEqual(NEW_OWNER.either);
+      it('should transfer ownership to accountId', async () => {
+        await ownable._unsafeTransferOwnership(NEW_OWNER.either);
+        expect(await ownable.owner()).toEqual(NEW_OWNER.either);
 
         // Original owner rejected
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // New owner can call
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should transfer ownership to contract', () => {
-        ownable._unsafeTransferOwnership(OWNER_CONTRACT);
-        expect(ownable.owner()).toEqual(OWNER_CONTRACT);
+      it('should transfer ownership to contract', async () => {
+        await ownable._unsafeTransferOwnership(OWNER_CONTRACT);
+        expect(await ownable.owner()).toEqual(OWNER_CONTRACT);
 
         // No one can authenticate, c2c not supported
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: contract address owner authentication is not yet supported',
         );
       });
 
-      it('should fail when unauthorized transfers ownership', () => {
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() =>
+      it('should fail when unauthorized transfers ownership', async () => {
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(
           ownable._unsafeTransferOwnership(NEW_OWNER.either),
-        ).toThrow('Ownable: caller is not the owner');
+        ).rejects.toThrow('Ownable: caller is not the owner');
       });
 
-      it('should fail when transferring to zero (accountId)', () => {
-        expect(() => ownable._unsafeTransferOwnership(ZERO_ACCOUNT)).toThrow(
-          'Ownable: invalid new owner',
-        );
+      it('should fail when transferring to zero (accountId)', async () => {
+        await expect(
+          ownable._unsafeTransferOwnership(ZERO_ACCOUNT),
+        ).rejects.toThrow('Ownable: invalid new owner');
       });
 
-      it('should fail when transferring to zero (contract)', () => {
-        expect(() => ownable._unsafeTransferOwnership(ZERO_CONTRACT)).toThrow(
-          'Ownable: invalid new owner',
-        );
+      it('should fail when transferring to zero (contract)', async () => {
+        await expect(
+          ownable._unsafeTransferOwnership(ZERO_CONTRACT),
+        ).rejects.toThrow('Ownable: invalid new owner');
       });
 
-      it('should enforce permissions after transfer (accountId)', () => {
-        ownable._unsafeTransferOwnership(NEW_OWNER.either);
+      it('should enforce permissions after transfer (accountId)', async () => {
+        await ownable._unsafeTransferOwnership(NEW_OWNER.either);
 
         // Original owner can no longer call
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // Unauthorized still can't call
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // New owner can call
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should transfer multiple times', () => {
-        ownable._unsafeTransferOwnership(NEW_OWNER.either);
+      it('should transfer multiple times', async () => {
+        await ownable._unsafeTransferOwnership(NEW_OWNER.either);
 
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        ownable._unsafeTransferOwnership(OWNER.either);
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await ownable._unsafeTransferOwnership(OWNER.either);
 
-        ownable.privateState.injectSecretKey(OWNER.secretKey);
-        ownable._unsafeTransferOwnership(OWNER_CONTRACT);
+        await ownable.privateState.injectSecretKey(OWNER.secretKey);
+        await ownable._unsafeTransferOwnership(OWNER_CONTRACT);
 
-        expect(ownable.owner()).toEqual(OWNER_CONTRACT);
+        expect(await ownable.owner()).toEqual(OWNER_CONTRACT);
       });
     });
 
     describe('renounceOwnership', () => {
-      it('should renounce ownership', () => {
-        expect(ownable.owner()).toEqual(OWNER.either);
+      it('should renounce ownership', async () => {
+        expect(await ownable.owner()).toEqual(OWNER.either);
 
-        ownable.renounceOwnership();
+        await ownable.renounceOwnership();
 
-        expect(ownable.owner()).toEqual(ZERO_ACCOUNT);
+        expect(await ownable.owner()).toEqual(ZERO_ACCOUNT);
 
         // Confirm revoked permissions
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
       });
 
-      it('should fail when renouncing from unauthorized', () => {
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.renounceOwnership()).toThrow(
+      it('should fail when renouncing from unauthorized', async () => {
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(ownable.renounceOwnership()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
       });
 
-      it('should store canonical zero after renouncing', () => {
-        ownable.renounceOwnership();
+      it('should store canonical zero after renouncing', async () => {
+        await ownable.renounceOwnership();
 
-        const stored = ownable.owner();
+        const stored = await ownable.owner();
         expect(stored.is_left).toBe(true);
         expect(stored.left).toEqual(zeroBytes);
         expect(stored.right).toEqual({ bytes: zeroBytes });
@@ -355,118 +357,118 @@ describe('Ownable', () => {
     });
 
     describe('_transferOwnership', () => {
-      it('should transfer ownership', () => {
-        ownable._transferOwnership(NEW_OWNER.either);
-        expect(ownable.owner()).toEqual(NEW_OWNER.either);
+      it('should transfer ownership', async () => {
+        await ownable._transferOwnership(NEW_OWNER.either);
+        expect(await ownable.owner()).toEqual(NEW_OWNER.either);
 
         // Original owner can no longer call
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // Unauthorized still can't call
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // New owner can call
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should fail when transferring to contract address zero', () => {
-        expect(() => ownable._transferOwnership(ZERO_CONTRACT)).toThrow(
+      it('should fail when transferring to contract address zero', async () => {
+        await expect(ownable._transferOwnership(ZERO_CONTRACT)).rejects.toThrow(
           'Ownable: unsafe ownership transfer',
         );
       });
 
-      it('should fail when transferring to non-zero contract address', () => {
-        expect(() => ownable._transferOwnership(OWNER_CONTRACT)).toThrow(
-          'Ownable: unsafe ownership transfer',
-        );
+      it('should fail when transferring to non-zero contract address', async () => {
+        await expect(
+          ownable._transferOwnership(OWNER_CONTRACT),
+        ).rejects.toThrow('Ownable: unsafe ownership transfer');
       });
 
-      it('should transfer multiple times', () => {
-        ownable._transferOwnership(NEW_OWNER.either);
+      it('should transfer multiple times', async () => {
+        await ownable._transferOwnership(NEW_OWNER.either);
 
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        ownable._transferOwnership(OWNER.either);
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await ownable._transferOwnership(OWNER.either);
 
-        ownable.privateState.injectSecretKey(OWNER.secretKey);
-        ownable._transferOwnership(NEW_OWNER.either);
+        await ownable.privateState.injectSecretKey(OWNER.secretKey);
+        await ownable._transferOwnership(NEW_OWNER.either);
 
-        expect(ownable.owner()).toEqual(NEW_OWNER.either);
+        expect(await ownable.owner()).toEqual(NEW_OWNER.either);
       });
 
-      it('should allow transfers to zero', () => {
-        ownable._transferOwnership(ZERO_ACCOUNT);
-        expect(ownable.owner()).toEqual(ZERO_ACCOUNT);
+      it('should allow transfers to zero', async () => {
+        await ownable._transferOwnership(ZERO_ACCOUNT);
+        expect(await ownable.owner()).toEqual(ZERO_ACCOUNT);
 
         // No one can authenticate after zeroing
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
       });
     });
 
     describe('_unsafeUncheckedTransferOwnership', () => {
-      it('should transfer ownership to accountId', () => {
-        ownable._unsafeUncheckedTransferOwnership(NEW_OWNER.either);
-        expect(ownable.owner()).toEqual(NEW_OWNER.either);
+      it('should transfer ownership to accountId', async () => {
+        await ownable._unsafeUncheckedTransferOwnership(NEW_OWNER.either);
+        expect(await ownable.owner()).toEqual(NEW_OWNER.either);
 
         // Original owner rejected
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // New owner can call
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should transfer ownership to contract', () => {
-        ownable._unsafeUncheckedTransferOwnership(OWNER_CONTRACT);
-        expect(ownable.owner()).toEqual(OWNER_CONTRACT);
+      it('should transfer ownership to contract', async () => {
+        await ownable._unsafeUncheckedTransferOwnership(OWNER_CONTRACT);
+        expect(await ownable.owner()).toEqual(OWNER_CONTRACT);
 
         // No one can authenticate, c2c not supported
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: contract address owner authentication is not yet supported',
         );
       });
 
-      it('should enforce permissions after transfer (accountId)', () => {
-        ownable._unsafeUncheckedTransferOwnership(NEW_OWNER.either);
+      it('should enforce permissions after transfer (accountId)', async () => {
+        await ownable._unsafeUncheckedTransferOwnership(NEW_OWNER.either);
 
         // Original owner can no longer call
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // Unauthorized still can't call
-        ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-        expect(() => ownable.assertOnlyOwner()).toThrow(
+        await ownable.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        await expect(ownable.assertOnlyOwner()).rejects.toThrow(
           'Ownable: caller is not the owner',
         );
 
         // New owner can call
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        expect(() => ownable.assertOnlyOwner()).not.toThrow();
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
       });
 
-      it('should transfer multiple times', () => {
-        ownable._unsafeUncheckedTransferOwnership(NEW_OWNER.either);
+      it('should transfer multiple times', async () => {
+        await ownable._unsafeUncheckedTransferOwnership(NEW_OWNER.either);
 
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        ownable._unsafeUncheckedTransferOwnership(OWNER.either);
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await ownable._unsafeUncheckedTransferOwnership(OWNER.either);
 
-        ownable.privateState.injectSecretKey(OWNER.secretKey);
-        ownable._unsafeUncheckedTransferOwnership(OWNER_CONTRACT);
+        await ownable.privateState.injectSecretKey(OWNER.secretKey);
+        await ownable._unsafeUncheckedTransferOwnership(OWNER_CONTRACT);
 
-        expect(ownable.owner()).toEqual(OWNER_CONTRACT);
+        expect(await ownable.owner()).toEqual(OWNER_CONTRACT);
       });
 
-      it('should canonicalize accountId (zero out inactive right side)', () => {
+      it('should canonicalize accountId (zero out inactive right side)', async () => {
         // Craft a non-canonical Either: is_left=true but right side has data
         const nonCanonical = {
           is_left: true,
@@ -474,15 +476,15 @@ describe('Ownable', () => {
           right: utils.encodeToAddress('JUNK_DATA'),
         };
 
-        ownable._unsafeUncheckedTransferOwnership(nonCanonical);
+        await ownable._unsafeUncheckedTransferOwnership(nonCanonical);
 
-        const stored = ownable.owner();
+        const stored = await ownable.owner();
         expect(stored.is_left).toBe(true);
         expect(stored.left).toEqual(NEW_OWNER.accountId);
         expect(stored.right).toEqual({ bytes: zeroBytes });
       });
 
-      it('should canonicalize contract address (zero out inactive left side)', () => {
+      it('should canonicalize contract address (zero out inactive left side)', async () => {
         // Craft a non-canonical Either: is_left=false but left side has data
         const nonCanonical = {
           is_left: false,
@@ -490,9 +492,9 @@ describe('Ownable', () => {
           right: utils.encodeToAddress('OWNER_CONTRACT'),
         };
 
-        ownable._unsafeUncheckedTransferOwnership(nonCanonical);
+        await ownable._unsafeUncheckedTransferOwnership(nonCanonical);
 
-        const stored = ownable.owner();
+        const stored = await ownable.owner();
         expect(stored.is_left).toBe(false);
         expect(stored.left).toEqual(zeroBytes);
         expect(stored.right).toEqual(utils.encodeToAddress('OWNER_CONTRACT'));
@@ -501,42 +503,42 @@ describe('Ownable', () => {
   });
 
   describe('simulator wiring', () => {
-    it('should construct with a generated private state when none is supplied', () => {
-      const sim = new OwnableSimulator(OWNER.either, isInit);
-      const sk = sim.privateState.getCurrentSecretKey();
+    it('should construct with a generated private state when none is supplied', async () => {
+      const sim = await OwnableSimulator.create(OWNER.either, isInit);
+      const sk = await sim.privateState.getCurrentSecretKey();
 
       expect(sk).toBeInstanceOf(Uint8Array);
       expect(sk.length).toBe(32);
     });
 
-    it('should expose an empty public ledger via getPublicState', () => {
-      const sim = new OwnableSimulator(OWNER.either, isInit, {
+    it('should expose an empty public ledger via getPublicState', async () => {
+      const sim = await OwnableSimulator.create(OWNER.either, isInit, {
         privateState: { secretKey: OWNER.secretKey },
       });
 
-      expect(sim.getPublicState()).toStrictEqual({});
+      expect(await sim.getPublicState()).toStrictEqual({});
     });
   });
 
   describe('privateState helpers', () => {
     describe('getCurrentSecretKey', () => {
-      it('should return the injected secret key', () => {
-        ownable = new OwnableSimulator(OWNER.either, isInit, {
+      it('should return the injected secret key', async () => {
+        ownable = await OwnableSimulator.create(OWNER.either, isInit, {
           privateState: { secretKey: OWNER.secretKey },
         });
-        ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
+        await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
 
-        expect(ownable.privateState.getCurrentSecretKey()).toEqual(
+        expect(await ownable.privateState.getCurrentSecretKey()).toEqual(
           NEW_OWNER.secretKey,
         );
       });
 
-      it('should throw when the secret key is undefined', () => {
-        const sim = new OwnableSimulator(OWNER.either, isInit, {
+      it('should throw when the secret key is undefined', async () => {
+        const sim = await OwnableSimulator.create(OWNER.either, isInit, {
           privateState: { secretKey: undefined as unknown as Uint8Array },
         });
 
-        expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+        await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
           'Missing secret key',
         );
       });

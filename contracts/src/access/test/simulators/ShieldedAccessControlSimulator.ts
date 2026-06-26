@@ -1,7 +1,10 @@
-import type { MerkleTreePath } from '@midnight-ntwrk/compact-runtime';
+import type {
+  MerkleTreePath,
+  WitnessContext,
+} from '@midnight-ntwrk/compact-runtime';
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
@@ -38,78 +41,86 @@ const ShieldedAccessControlSimulatorBase = createSimulator<
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () =>
     ShieldedAccessControlWitnesses<ShieldedAccessControlLedger>(),
+  artifactName: 'MockShieldedAccessControl',
 });
 
 /**
  * ShieldedAccessControlSimulator
  */
 export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulatorBase {
-  constructor(
+  static async create(
     instanceSalt: Uint8Array,
     isInit: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       ShieldedAccessControlPrivateState,
       ReturnType<typeof ShieldedAccessControlWitnesses>
     > = {},
-  ) {
-    super([instanceSalt, isInit], options);
+  ): Promise<ShieldedAccessControlSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [instanceSalt, isInit],
+      options,
+    ) as Promise<ShieldedAccessControlSimulator>;
   }
 
-  public DEFAULT_ADMIN_ROLE(): Uint8Array {
+  public DEFAULT_ADMIN_ROLE(): Promise<Uint8Array> {
     return this.circuits.pure.DEFAULT_ADMIN_ROLE();
   }
 
-  public assertOnlyRole(role: Uint8Array) {
-    this.circuits.impure.assertOnlyRole(role);
+  public assertOnlyRole(role: Uint8Array): Promise<[]> {
+    return this.circuits.impure.assertOnlyRole(role);
   }
 
-  public canProveRole(role: Uint8Array): boolean {
+  public canProveRole(role: Uint8Array): Promise<boolean> {
     return this.circuits.impure.canProveRole(role);
   }
 
-  public grantRole(role: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure.grantRole(role, accountId);
+  public grantRole(role: Uint8Array, accountId: Uint8Array): Promise<[]> {
+    return this.circuits.impure.grantRole(role, accountId);
   }
 
-  public _grantRole(role: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure._grantRole(role, accountId);
+  public _grantRole(role: Uint8Array, accountId: Uint8Array): Promise<[]> {
+    return this.circuits.impure._grantRole(role, accountId);
   }
 
-  public renounceRole(role: Uint8Array, callerConfirmation: Uint8Array) {
-    this.circuits.impure.renounceRole(role, callerConfirmation);
+  public renounceRole(
+    role: Uint8Array,
+    callerConfirmation: Uint8Array,
+  ): Promise<[]> {
+    return this.circuits.impure.renounceRole(role, callerConfirmation);
   }
 
-  public revokeRole(role: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure.revokeRole(role, accountId);
+  public revokeRole(role: Uint8Array, accountId: Uint8Array): Promise<[]> {
+    return this.circuits.impure.revokeRole(role, accountId);
   }
 
-  public _revokeRole(role: Uint8Array, accountId: Uint8Array) {
-    this.circuits.impure._revokeRole(role, accountId);
+  public _revokeRole(role: Uint8Array, accountId: Uint8Array): Promise<[]> {
+    return this.circuits.impure._revokeRole(role, accountId);
   }
 
-  public getRoleAdmin(role: Uint8Array): Uint8Array {
+  public getRoleAdmin(role: Uint8Array): Promise<Uint8Array> {
     return this.circuits.impure.getRoleAdmin(role);
   }
 
-  public _setRoleAdmin(role: Uint8Array, adminRole: Uint8Array) {
-    this.circuits.impure._setRoleAdmin(role, adminRole);
+  public _setRoleAdmin(role: Uint8Array, adminRole: Uint8Array): Promise<[]> {
+    return this.circuits.impure._setRoleAdmin(role, adminRole);
   }
 
   public computeRoleCommitment(
     role: Uint8Array,
     accountId: Uint8Array,
-  ): Uint8Array {
+  ): Promise<Uint8Array> {
     return this.circuits.impure.computeRoleCommitment(role, accountId);
   }
 
-  public computeNullifier(roleCommitment: Uint8Array): Uint8Array {
+  public computeNullifier(roleCommitment: Uint8Array): Promise<Uint8Array> {
     return this.circuits.pure.computeNullifier(roleCommitment);
   }
 
   public computeAccountId(
     secretKey: Uint8Array,
     instanceSalt: Uint8Array,
-  ): Uint8Array {
+  ): Promise<Uint8Array> {
     return this.circuits.pure.computeAccountId(secretKey, instanceSalt);
   }
 
@@ -121,12 +132,12 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (
+    injectSecretKey: async (
       newSK: Buffer<ArrayBufferLike>,
-    ): ShieldedAccessControlPrivateState => {
-      const updatedState = { secretKey: newSK };
-      this.circuitContextManager.updatePrivateState(updatedState);
-      return updatedState;
+    ): Promise<ShieldedAccessControlPrivateState> => {
+      const updated = { secretKey: newSK };
+      this.setPrivateState(updated);
+      return updated;
     },
 
     /**
@@ -134,8 +145,8 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
      * @returns The secret key.
      * @throws If the secret key is undefined.
      */
-    getCurrentSecretKey: (): Uint8Array => {
-      const sk = this.getPrivateState().secretKey;
+    getCurrentSecretKey: async (): Promise<Uint8Array> => {
+      const sk = (await this.getPrivateState()).secretKey;
       if (typeof sk === 'undefined') {
         throw new Error('Missing secret key');
       }
@@ -149,12 +160,12 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
      * @param roleCommitment - The role commitment to search for.
      * @returns The Merkle tree path if the commitment exists, undefined otherwise.
      */
-    getCommitmentPathWithFindForLeaf: (
+    getCommitmentPathWithFindForLeaf: async (
       roleCommitment: Uint8Array,
-    ): MerkleTreePath<Uint8Array> | undefined => {
-      return this.getPublicState().ShieldedAccessControl__operatorRoles.findPathForLeaf(
-        roleCommitment,
-      );
+    ): Promise<MerkleTreePath<Uint8Array> | undefined> => {
+      return (
+        await this.getPublicState()
+      ).ShieldedAccessControl__operatorRoles.findPathForLeaf(roleCommitment);
     },
 
     /**
@@ -165,11 +176,19 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
      * @param roleCommitment - The role commitment to find a path for.
      * @returns The Merkle tree path as returned by the witness.
      */
-    getCommitmentPathWithWitnessImpl: (
+    getCommitmentPathWithWitnessImpl: async (
       roleCommitment: Uint8Array,
-    ): MerkleTreePath<Uint8Array> => {
+    ): Promise<MerkleTreePath<Uint8Array>> => {
+      const context: WitnessContext<
+        ShieldedAccessControlLedger,
+        ShieldedAccessControlPrivateState
+      > = {
+        ledger: await this.getPublicState(),
+        privateState: await this.getPrivateState(),
+        contractAddress: '',
+      };
       return this.witnesses.wit_getRoleCommitmentPath(
-        this.getWitnessContext(),
+        context,
         roleCommitment,
       )[1];
     },

@@ -28,87 +28,92 @@ function makeCoin(color: Uint8Array, value: bigint, nonce?: Uint8Array) {
 
 describe('ForwarderShielded module', () => {
   describe('initialization', () => {
-    it('should initialize on construction when isInit is true', () => {
-      expect(
-        () => new MockForwarderShieldedSimulator(SHIELDED_PARENT, true),
-      ).not.toThrow();
+    it('should initialize on construction when isInit is true', async () => {
+      await MockForwarderShieldedSimulator.create(SHIELDED_PARENT, true);
     });
 
-    it('should fail initialization with a zero parent', () => {
-      expect(
-        () => new MockForwarderShieldedSimulator(SHIELDED_ZERO, true),
-      ).toThrow('ForwarderShielded: zero parent');
+    it('should fail initialization with a zero parent', async () => {
+      await expect(
+        MockForwarderShieldedSimulator.create(SHIELDED_ZERO, true),
+      ).rejects.toThrow('ForwarderShielded: zero parent');
     });
 
-    it('should store the coin-public-key parent in the left arm', () => {
-      const mock = new MockForwarderShieldedSimulator(SHIELDED_PARENT, true);
-      const parent = mock.getParent();
+    it('should store the coin-public-key parent in the left arm', async () => {
+      const mock = await MockForwarderShieldedSimulator.create(
+        SHIELDED_PARENT,
+        true,
+      );
+      const parent = await mock.getParent();
       expect(parent.is_left).toBe(true);
       expect(parent.left).toEqual(SHIELDED_PARENT);
     });
   });
 
   describe('init guard', () => {
-    it('should fail deposit when not initialized', () => {
-      const mock = new MockForwarderShieldedSimulator(SHIELDED_PARENT, false);
-      expect(() => mock.deposit(makeCoin(COLOR, AMOUNT))).toThrow(
+    it('should fail deposit when not initialized', async () => {
+      const mock = await MockForwarderShieldedSimulator.create(
+        SHIELDED_PARENT,
+        false,
+      );
+      await expect(mock.deposit(makeCoin(COLOR, AMOUNT))).rejects.toThrow(
         'ForwarderShielded: contract not initialized',
       );
     });
   });
 
   describe('deposit', () => {
-    it('should accept a shielded deposit and forward it', () => {
-      const mock = new MockForwarderShieldedSimulator(SHIELDED_PARENT, true);
-      expect(() => mock.deposit(makeCoin(COLOR, AMOUNT))).not.toThrow();
+    it('should accept a shielded deposit and forward it', async () => {
+      const mock = await MockForwarderShieldedSimulator.create(
+        SHIELDED_PARENT,
+        true,
+      );
+      await mock.deposit(makeCoin(COLOR, AMOUNT));
     });
   });
 });
 
 describe('ForwarderUnshielded module', () => {
   describe('initialization', () => {
-    it('should initialize on construction when isInit is true', () => {
-      expect(
-        () => new MockForwarderUnshieldedSimulator(UNSHIELDED_PARENT, true),
-      ).not.toThrow();
+    it('should initialize on construction when isInit is true', async () => {
+      await MockForwarderUnshieldedSimulator.create(UNSHIELDED_PARENT, true);
     });
 
-    it('should fail initialization with a zero parent', () => {
-      expect(
-        () => new MockForwarderUnshieldedSimulator(UNSHIELDED_ZERO, true),
-      ).toThrow('ForwarderUnshielded: zero parent');
+    it('should fail initialization with a zero parent', async () => {
+      await expect(
+        MockForwarderUnshieldedSimulator.create(UNSHIELDED_ZERO, true),
+      ).rejects.toThrow('ForwarderUnshielded: zero parent');
     });
 
-    it('should store the user-address parent in the right arm', () => {
-      const mock = new MockForwarderUnshieldedSimulator(
+    it('should store the user-address parent in the right arm', async () => {
+      const mock = await MockForwarderUnshieldedSimulator.create(
         UNSHIELDED_PARENT,
         true,
       );
-      const parent = mock.getParent();
+      const parent = await mock.getParent();
       expect(parent.is_left).toBe(false);
       expect(parent.right).toEqual(UNSHIELDED_PARENT);
     });
   });
 
   describe('init guard', () => {
-    it('should fail deposit when not initialized', () => {
-      const mock = new MockForwarderUnshieldedSimulator(
+    it('should fail deposit when not initialized', async () => {
+      const mock = await MockForwarderUnshieldedSimulator.create(
         UNSHIELDED_PARENT,
         false,
       );
-      expect(() => mock.deposit(COLOR, AMOUNT)).toThrow(
+      await expect(mock.deposit(COLOR, AMOUNT)).rejects.toThrow(
         'ForwarderUnshielded: contract not initialized',
       );
     });
   });
 
   describe('deposit', () => {
-    it('should accept an unshielded deposit and forward it', () => {
-      const mock = new MockForwarderUnshieldedSimulator(
+    it('should accept an unshielded deposit and forward it', async () => {
+      const mock = await MockForwarderUnshieldedSimulator.create(
         UNSHIELDED_PARENT,
         true,
       );
-      expect(() => mock.deposit(COLOR, AMOUNT)).not.toThrow();
+      await mock.deposit(COLOR, AMOUNT);
     });
   });
 });

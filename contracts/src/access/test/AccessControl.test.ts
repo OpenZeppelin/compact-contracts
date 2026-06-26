@@ -78,81 +78,93 @@ const operatorTypes = [
 ] as const;
 
 describe('AccessControl', () => {
-  beforeEach(() => {
-    accessControl = new AccessControlSimulator();
+  beforeEach(async () => {
+    accessControl = await AccessControlSimulator.create();
   });
 
   describe('hasRole', () => {
-    beforeEach(() => {
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+    beforeEach(async () => {
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
     });
 
-    it('should return true when operator has a role', () => {
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+    it('should return true when operator has a role', async () => {
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
     });
 
-    it('should return false when unauthorized', () => {
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, UNAUTHORIZED.either)).toBe(
+    it('should return false when unauthorized', async () => {
+      expect(
+        await accessControl.hasRole(OPERATOR_ROLE_1, UNAUTHORIZED.either),
+      ).toBe(false);
+    });
+
+    it('should return false when role does not exist', async () => {
+      expect(await accessControl.hasRole(UNINITIALIZED_ROLE, OP1.either)).toBe(
         false,
       );
     });
 
-    it('should return false when role does not exist', () => {
-      expect(accessControl.hasRole(UNINITIALIZED_ROLE, OP1.either)).toBe(false);
-    });
-
-    it('should return true when queried with dirty Either (canonicalization)', () => {
+    it('should return true when queried with dirty Either (canonicalization)', async () => {
       const dirtyEither = {
         is_left: true,
         left: OP1.accountId,
         right: { bytes: new Uint8Array(32).fill(0xff) },
       };
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, dirtyEither)).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, dirtyEither)).toBe(
+        true,
+      );
     });
 
-    it('should return false when dirty Either has wrong accountId', () => {
+    it('should return false when dirty Either has wrong accountId', async () => {
       const dirtyEither = {
         is_left: true,
         left: UNAUTHORIZED.accountId,
         right: { bytes: new Uint8Array(32).fill(0xff) },
       };
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, dirtyEither)).toBe(false);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, dirtyEither)).toBe(
+        false,
+      );
     });
 
-    it('should match hasRole with dirty left side on contract address', () => {
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
+    it('should match hasRole with dirty left side on contract address', async () => {
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
 
       const dirtyContract = {
         is_left: false,
         left: new Uint8Array(32).fill(0xff),
         right: OP1_CONTRACT.right,
       };
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, dirtyContract)).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, dirtyContract)).toBe(
+        true,
+      );
     });
   });
 
   describe('assertOnlyRole', () => {
-    beforeEach(() => {
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+    beforeEach(async () => {
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
     });
 
-    it('should allow operator with role to call', () => {
+    it('should allow operator with role to call', async () => {
       // Set secret key for OP1
-      accessControl.privateState.injectSecretKey(OP1.secretKey);
+      await accessControl.privateState.injectSecretKey(OP1.secretKey);
 
-      expect(() => accessControl.assertOnlyRole(OPERATOR_ROLE_1)).not.toThrow();
+      await expect(
+        accessControl.assertOnlyRole(OPERATOR_ROLE_1),
+      ).resolves.not.toThrow();
     });
 
-    it('should fail if caller is unauthorized', () => {
+    it('should fail if caller is unauthorized', async () => {
       // Set bad secret key
-      accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+      await accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
 
-      expect(() => accessControl.assertOnlyRole(OPERATOR_ROLE_1)).toThrow(
-        'AccessControl: unauthorized account',
-      );
+      await expect(
+        accessControl.assertOnlyRole(OPERATOR_ROLE_1),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('should fail when contract address matches accountId bytes but is right variant', () => {
+    it('should fail when contract address matches accountId bytes but is right variant', async () => {
       // Grant role to a contract address whose bytes match ADMIN's accountId
       const contractWithSameBytes = {
         is_left: false,
@@ -160,510 +172,591 @@ describe('AccessControl', () => {
         right: { bytes: ADMIN.accountId },
       };
 
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, contractWithSameBytes);
+      await accessControl._unsafeGrantRole(
+        OPERATOR_ROLE_1,
+        contractWithSameBytes,
+      );
       expect(
-        accessControl.hasRole(OPERATOR_ROLE_1, contractWithSameBytes),
+        await accessControl.hasRole(OPERATOR_ROLE_1, contractWithSameBytes),
       ).toBe(true);
 
       // ADMIN's witness produces left(H(sk)) which has the same bytes
       // but is a different Either variant than the granted role
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
-      expect(() => {
-        accessControl.assertOnlyRole(OPERATOR_ROLE_1);
-      }).toThrow('AccessControl: unauthorized account');
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await expect(
+        accessControl.assertOnlyRole(OPERATOR_ROLE_1),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
   });
 
   describe('_checkRole', () => {
-    beforeEach(() => {
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
+    beforeEach(async () => {
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
     });
 
-    it('should not fail if user has role', () => {
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+    it('should not fail if user has role', async () => {
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
 
-      expect(() =>
+      await expect(
         accessControl._checkRole(OPERATOR_ROLE_1, OP1.either),
-      ).not.toThrow();
+      ).resolves.not.toThrow();
     });
 
-    it('should not fail if contract has role', () => {
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1_CONTRACT)).toBe(true);
+    it('should not fail if contract has role', async () => {
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1_CONTRACT)).toBe(
+        true,
+      );
 
-      expect(() =>
+      await expect(
         accessControl._checkRole(OPERATOR_ROLE_1, OP1_CONTRACT),
-      ).not.toThrow();
+      ).resolves.not.toThrow();
     });
 
-    it('should fail if operator is unauthorized', () => {
-      expect(() =>
+    it('should fail if operator is unauthorized', async () => {
+      await expect(
         accessControl._checkRole(OPERATOR_ROLE_1, UNAUTHORIZED.either),
-      ).toThrow('AccessControl: unauthorized account');
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
   });
 
   describe('DEFAULT_ADMIN_ROLE', () => {
-    it('should return zero bytes', () => {
-      expect(accessControl.DEFAULT_ADMIN_ROLE()).toEqual(DEFAULT_ADMIN_ROLE);
+    it('should return zero bytes', async () => {
+      expect(await accessControl.DEFAULT_ADMIN_ROLE()).toEqual(
+        DEFAULT_ADMIN_ROLE,
+      );
     });
   });
 
   describe('getRoleAdmin', () => {
-    it('should return default admin role if admin role not set', () => {
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+    it('should return default admin role if admin role not set', async () => {
+      expect(await accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
         DEFAULT_ADMIN_ROLE,
       );
     });
 
-    it('should return custom admin role if set', () => {
-      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+    it('should return custom admin role if set', async () => {
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+      expect(await accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
         CUSTOM_ADMIN_ROLE,
       );
     });
   });
 
   describe('grantRole', () => {
-    beforeEach(() => {
-      accessControl._grantRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
+    beforeEach(async () => {
+      await accessControl._grantRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
     });
 
-    it('admin should grant role', () => {
+    it('admin should grant role', async () => {
       // Set admin SK
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
     });
 
-    it('admin should grant multiple roles', () => {
+    it('admin should grant multiple roles', async () => {
       // Set admin SK
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
       for (let i = 0; i < operatorRolesList.length; i++) {
         for (let j = 0; j < commitmentOperators.length; j++) {
-          accessControl.grantRole(operatorRolesList[i], commitmentOperators[j]);
+          await accessControl.grantRole(
+            operatorRolesList[i],
+            commitmentOperators[j],
+          );
           expect(
-            accessControl.hasRole(operatorRolesList[i], commitmentOperators[j]),
+            await accessControl.hasRole(
+              operatorRolesList[i],
+              commitmentOperators[j],
+            ),
           ).toBe(true);
         }
       }
     });
 
-    it('should fail if unauthorized grants role', () => {
+    it('should fail if unauthorized grants role', async () => {
       // Set unauthorized SK
-      accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+      await accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
 
-      expect(() => {
-        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
-      }).toThrow('AccessControl: unauthorized account');
+      await expect(
+        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('should fail if operator grants role', () => {
+    it('should fail if operator grants role', async () => {
       // Set admin SK
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
-      accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
 
       // Set OP1 SK
-      accessControl.privateState.injectSecretKey(OP1.secretKey);
+      await accessControl.privateState.injectSecretKey(OP1.secretKey);
 
-      expect(() => {
-        accessControl.grantRole(OPERATOR_ROLE_1, OP2.either);
-      }).toThrow('AccessControl: unauthorized account');
+      await expect(
+        accessControl.grantRole(OPERATOR_ROLE_1, OP2.either),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('should fail if admin grants role to ContractAddress', () => {
+    it('should fail if admin grants role to ContractAddress', async () => {
       // Set admin SK
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      expect(() => {
-        accessControl.grantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
-      }).toThrow('AccessControl: unsafe role approval');
+      await expect(
+        accessControl.grantRole(OPERATOR_ROLE_1, OP1_CONTRACT),
+      ).rejects.toThrow('AccessControl: unsafe role approval');
     });
 
-    it('admin should not be able to grant after self-revocation', () => {
+    it('admin should not be able to grant after self-revocation', async () => {
       // Set admin SK
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      accessControl.revokeRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
+      await accessControl.revokeRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
 
-      expect(() =>
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).toThrow('AccessControl: unauthorized account');
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('admin should not be able to grant after renouncing role', () => {
+    it('admin should not be able to grant after renouncing role', async () => {
       // Set admin SK
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      accessControl.renounceRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
+      await accessControl.renounceRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
 
-      expect(() =>
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).toThrow('AccessControl: unauthorized account');
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('admin authority should not be transitive across role hierarchies', () => {
-      accessControl._setRoleAdmin(OPERATOR_ROLE_2, OPERATOR_ROLE_1);
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+    it('admin authority should not be transitive across role hierarchies', async () => {
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_2, OPERATOR_ROLE_1);
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
 
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
       // ADMIN holds DEFAULT_ADMIN_ROLE but not OPERATOR_ROLE_1
-      expect(() =>
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_2, OP2.either),
-      ).toThrow('AccessControl: unauthorized account');
+      ).rejects.toThrow('AccessControl: unauthorized account');
 
       // OP1 holds OPERATOR_ROLE_1 which is admin of OPERATOR_ROLE_2
-      accessControl.privateState.injectSecretKey(OP1.secretKey);
-      expect(() =>
+      await accessControl.privateState.injectSecretKey(OP1.secretKey);
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_2, OP2.either),
-      ).not.toThrow();
+      ).resolves.not.toThrow();
     });
 
-    it('admin should re-grant a role after revoking it', () => {
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+    it('admin should re-grant a role after revoking it', async () => {
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
 
-      accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
+      await accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
+      );
 
-      accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
     });
 
-    it('should be idempotent when granting an already-held role', () => {
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+    it('should be idempotent when granting an already-held role', async () => {
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
 
       // Second grant should not throw or corrupt state
-      expect(() =>
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).not.toThrow();
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      ).resolves.not.toThrow();
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
 
       // Revoke should still work normally after double-grant
-      accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
+      await accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
+      );
     });
   });
 
   describe('revokeRole', () => {
-    beforeEach(() => {
-      accessControl._grantRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
+    beforeEach(async () => {
+      await accessControl._grantRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
     });
 
     describe.each(
       operatorTypes,
     )('when the operator is a %s', (_operatorType, _operator) => {
-      it('admin should revoke role', () => {
+      it('admin should revoke role', async () => {
         // Set admin SK
-        accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+        await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-        accessControl.revokeRole(OPERATOR_ROLE_1, _operator);
-        expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
+        await accessControl.revokeRole(OPERATOR_ROLE_1, _operator);
+        expect(await accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
+          false,
+        );
       });
     });
 
-    it('should fail if unauthorized revokes role', () => {
-      accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+    it('should fail if unauthorized revokes role', async () => {
+      await accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
 
-      expect(() => {
-        accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
-      }).toThrow('AccessControl: unauthorized account');
+      await expect(
+        accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('should fail if operator revokes role', () => {
-      accessControl.privateState.injectSecretKey(OP1.secretKey);
+    it('should fail if operator revokes role', async () => {
+      await accessControl.privateState.injectSecretKey(OP1.secretKey);
 
-      expect(() => {
-        accessControl.revokeRole(OPERATOR_ROLE_1, OP2.either);
-      }).toThrow('AccessControl: unauthorized account');
+      await expect(
+        accessControl.revokeRole(OPERATOR_ROLE_1, OP2.either),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('admin should revoke multiple roles', () => {
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+    it('admin should revoke multiple roles', async () => {
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
       for (let i = 0; i < operatorRolesList.length; i++) {
         for (let j = 0; j < allOperators.length; j++) {
-          accessControl._unsafeGrantRole(operatorRolesList[i], allOperators[j]);
-          accessControl.revokeRole(operatorRolesList[i], allOperators[j]);
+          await accessControl._unsafeGrantRole(
+            operatorRolesList[i],
+            allOperators[j],
+          );
+          await accessControl.revokeRole(operatorRolesList[i], allOperators[j]);
           expect(
-            accessControl.hasRole(operatorRolesList[i], allOperators[j]),
+            await accessControl.hasRole(operatorRolesList[i], allOperators[j]),
           ).toBe(false);
         }
       }
     });
 
-    it('should not corrupt state when revoking a never-granted role', () => {
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+    it('should not corrupt state when revoking a never-granted role', async () => {
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
       // Revoke a role that was never granted to OP2
-      accessControl.revokeRole(OPERATOR_ROLE_2, OP2.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, OP2.either)).toBe(false);
+      await accessControl.revokeRole(OPERATOR_ROLE_2, OP2.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_2, OP2.either)).toBe(
+        false,
+      );
 
       // Subsequent grant should still work
-      accessControl.grantRole(OPERATOR_ROLE_2, OP2.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_2, OP2.either)).toBe(true);
+      await accessControl.grantRole(OPERATOR_ROLE_2, OP2.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_2, OP2.either)).toBe(
+        true,
+      );
     });
   });
 
   describe('renounceRole', () => {
-    beforeEach(() => {
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+    beforeEach(async () => {
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
     });
 
-    it('should allow operator to renounce own role', () => {
-      accessControl.privateState.injectSecretKey(OP1.secretKey);
+    it('should allow operator to renounce own role', async () => {
+      await accessControl.privateState.injectSecretKey(OP1.secretKey);
 
-      accessControl.renounceRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
+      await accessControl.renounceRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
+      );
     });
 
     // Should be refactored with c2c
-    it('should fail when renouncing as a ContractAddress', () => {
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
+    it('should fail when renouncing as a ContractAddress', async () => {
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
 
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      expect(() => {
-        accessControl.renounceRole(OPERATOR_ROLE_1, OP1_CONTRACT);
-      }).toThrow('AccessControl: bad confirmation');
+      await expect(
+        accessControl.renounceRole(OPERATOR_ROLE_1, OP1_CONTRACT),
+      ).rejects.toThrow('AccessControl: bad confirmation');
     });
 
-    it('should fail when unauthorized renounces role', () => {
-      accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+    it('should fail when unauthorized renounces role', async () => {
+      await accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
 
-      expect(() => {
-        accessControl.renounceRole(OPERATOR_ROLE_1, OP1.either);
-      }).toThrow('AccessControl: bad confirmation');
+      await expect(
+        accessControl.renounceRole(OPERATOR_ROLE_1, OP1.either),
+      ).rejects.toThrow('AccessControl: bad confirmation');
     });
 
-    it('should not fail when renouncing a role not held', () => {
-      accessControl.privateState.injectSecretKey(OP1.secretKey);
+    it('should not fail when renouncing a role not held', async () => {
+      await accessControl.privateState.injectSecretKey(OP1.secretKey);
       // Confirm role not already held
-      expect(accessControl.hasRole(OPERATOR_ROLE_3, OP1.either)).toBe(false);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_3, OP1.either)).toBe(
+        false,
+      );
 
-      accessControl.renounceRole(OPERATOR_ROLE_3, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_3, OP1.either)).toBe(false);
+      await accessControl.renounceRole(OPERATOR_ROLE_3, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_3, OP1.either)).toBe(
+        false,
+      );
     });
   });
 
   describe('_setRoleAdmin', () => {
-    beforeEach(() => {
-      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+    beforeEach(async () => {
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
     });
 
-    it('should set role admin', () => {
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
-        CUSTOM_ADMIN_ROLE,
-      );
-    });
-
-    it('should set multiple role admins', () => {
-      accessControl._setRoleAdmin(OPERATOR_ROLE_2, CUSTOM_ADMIN_ROLE);
-      accessControl._setRoleAdmin(OPERATOR_ROLE_3, CUSTOM_ADMIN_ROLE);
-
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
-        CUSTOM_ADMIN_ROLE,
-      );
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_2)).toEqual(
-        CUSTOM_ADMIN_ROLE,
-      );
-      expect(accessControl.getRoleAdmin(OPERATOR_ROLE_3)).toEqual(
+    it('should set role admin', async () => {
+      expect(await accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
         CUSTOM_ADMIN_ROLE,
       );
     });
 
-    it('should authorize new admin to grant / revoke roles', () => {
-      accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);
-      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+    it('should set multiple role admins', async () => {
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_2, CUSTOM_ADMIN_ROLE);
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_3, CUSTOM_ADMIN_ROLE);
+
+      expect(await accessControl.getRoleAdmin(OPERATOR_ROLE_1)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
+      expect(await accessControl.getRoleAdmin(OPERATOR_ROLE_2)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
+      expect(await accessControl.getRoleAdmin(OPERATOR_ROLE_3)).toEqual(
+        CUSTOM_ADMIN_ROLE,
+      );
+    });
+
+    it('should authorize new admin to grant / revoke roles', async () => {
+      await accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
 
       // Set custom admin SK
-      accessControl.privateState.injectSecretKey(CUSTOM_ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(CUSTOM_ADMIN.secretKey);
 
       // Grant role and check it's been granted
-      expect(() =>
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).not.toThrow();
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      ).resolves.not.toThrow();
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
 
       // Revoke role and check it's been revoked
-      expect(() =>
+      await expect(
         accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either),
-      ).not.toThrow();
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
+      ).resolves.not.toThrow();
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
+      );
     });
 
-    it('should disallow previous admin from granting / revoking roles', () => {
-      accessControl._grantRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
-      accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);
-      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+    it('should disallow previous admin from granting / revoking roles', async () => {
+      await accessControl._grantRole(DEFAULT_ADMIN_ROLE, ADMIN.either);
+      await accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
 
       // Set init admin
-      accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-      expect(() => {
-        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
-      }).toThrow('AccessControl: unauthorized account');
+      await expect(
+        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
+      ).rejects.toThrow('AccessControl: unauthorized account');
 
-      expect(() => {
-        accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
-      }).toThrow('AccessControl: unauthorized account');
+      await expect(
+        accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either),
+      ).rejects.toThrow('AccessControl: unauthorized account');
     });
 
-    it('should allow overwriting admin role and transfer authority', () => {
+    it('should allow overwriting admin role and transfer authority', async () => {
       const NEW_ADMIN_ROLE = convertFieldToBytes(32, 99n, '');
       const NEW_ADMIN = makeUser('NEW_ADMIN');
 
-      accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);
-      accessControl._grantRole(NEW_ADMIN_ROLE, NEW_ADMIN.either);
-      accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
+      await accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);
+      await accessControl._grantRole(NEW_ADMIN_ROLE, NEW_ADMIN.either);
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_1, CUSTOM_ADMIN_ROLE);
 
       // CUSTOM_ADMIN can grant
-      accessControl.privateState.injectSecretKey(CUSTOM_ADMIN.secretKey);
-      expect(() =>
+      await accessControl.privateState.injectSecretKey(CUSTOM_ADMIN.secretKey);
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).not.toThrow();
+      ).resolves.not.toThrow();
 
       // Overwrite admin role
-      accessControl._setRoleAdmin(OPERATOR_ROLE_1, NEW_ADMIN_ROLE);
+      await accessControl._setRoleAdmin(OPERATOR_ROLE_1, NEW_ADMIN_ROLE);
 
       // CUSTOM_ADMIN should lose authority
-      expect(() =>
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP2.either),
-      ).toThrow('AccessControl: unauthorized account');
+      ).rejects.toThrow('AccessControl: unauthorized account');
 
       // NEW_ADMIN should gain authority
-      accessControl.privateState.injectSecretKey(NEW_ADMIN.secretKey);
-      expect(() =>
+      await accessControl.privateState.injectSecretKey(NEW_ADMIN.secretKey);
+      await expect(
         accessControl.grantRole(OPERATOR_ROLE_1, OP2.either),
-      ).not.toThrow();
+      ).resolves.not.toThrow();
     });
   });
 
   describe('_grantRole', () => {
-    it('should grant role', () => {
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+    it('should grant role', async () => {
+      expect(await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
     });
 
-    it('should return false if hasRole already', () => {
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+    it('should return false if hasRole already', async () => {
+      expect(await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
 
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      expect(await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
+      );
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
     });
 
     // Should be refactored with c2c
-    it('should fail to grant role to a ContractAddress', () => {
-      expect(() => {
-        accessControl._grantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
-      }).toThrow('AccessControl: unsafe role approval');
+    it('should fail to grant role to a ContractAddress', async () => {
+      await expect(
+        accessControl._grantRole(OPERATOR_ROLE_1, OP1_CONTRACT),
+      ).rejects.toThrow('AccessControl: unsafe role approval');
     });
 
-    it('should grant multiple roles', () => {
+    it('should grant multiple roles', async () => {
       for (let i = 0; i < operatorRolesList.length; i++) {
         for (let j = 0; j < commitmentOperators.length; j++) {
-          accessControl._grantRole(
+          await accessControl._grantRole(
             operatorRolesList[i],
             commitmentOperators[j],
           );
           expect(
-            accessControl.hasRole(operatorRolesList[i], commitmentOperators[j]),
+            await accessControl.hasRole(
+              operatorRolesList[i],
+              commitmentOperators[j],
+            ),
           ).toBe(true);
         }
       }
     });
 
-    it('should allow regranting a revoked role', () => {
-      accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
-      accessControl._revokeRole(OPERATOR_ROLE_1, OP1.either);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
+    it('should allow regranting a revoked role', async () => {
+      await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either);
+      await accessControl._revokeRole(OPERATOR_ROLE_1, OP1.either);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
+      );
 
-      expect(accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
+      expect(await accessControl._grantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
+      );
     });
   });
 
   describe('_unsafeGrantRole', () => {
-    it('should grant role', () => {
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+    it('should grant role', async () => {
+      expect(
+        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either),
+      ).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
         true,
       );
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
     });
 
-    it('should return false if hasRole already', () => {
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+    it('should return false if hasRole already', async () => {
+      expect(
+        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either),
+      ).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
         true,
       );
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
 
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either)).toBe(
-        false,
+      expect(
+        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either),
+      ).toBe(false);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        true,
       );
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(true);
     });
 
     // Should be refactored with c2c
-    it('should grant role to a ContractAddress', () => {
+    it('should grant role to a ContractAddress', async () => {
       expect(
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT),
+        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT),
       ).toBe(true);
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1_CONTRACT)).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1_CONTRACT)).toBe(
+        true,
+      );
     });
 
-    it('should grant multiple roles', () => {
+    it('should grant multiple roles', async () => {
       for (let i = 0; i < operatorRolesList.length; i++) {
         for (let j = 0; j < allOperators.length; j++) {
           expect(
-            accessControl._unsafeGrantRole(
+            await accessControl._unsafeGrantRole(
               operatorRolesList[i],
               allOperators[j],
             ),
           ).toBe(true);
           expect(
-            accessControl.hasRole(operatorRolesList[i], allOperators[j]),
+            await accessControl.hasRole(operatorRolesList[i], allOperators[j]),
           ).toBe(true);
         }
       }
     });
 
-    it('should match on subsequent hasRole with clean Either after dirty grant', () => {
+    it('should match on subsequent hasRole with clean Either after dirty grant', async () => {
       const dirtyEither = {
         is_left: true,
         left: OP2.accountId,
         right: { bytes: new Uint8Array(32).fill(0xff) },
       };
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, dirtyEither);
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, dirtyEither);
 
       // Clean Either should find the role
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP2.either)).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP2.either)).toBe(
+        true,
+      );
     });
 
-    it('should match on subsequent hasRole with dirty Either after clean grant', () => {
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP2.either);
+    it('should match on subsequent hasRole with dirty Either after clean grant', async () => {
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP2.either);
 
       const dirtyEither = {
         is_left: true,
         left: OP2.accountId,
         right: { bytes: new Uint8Array(32).fill(0xff) },
       };
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, dirtyEither)).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, dirtyEither)).toBe(
+        true,
+      );
     });
 
-    it('should return false for duplicate grant with dirty Either', () => {
+    it('should return false for duplicate grant with dirty Either', async () => {
       // Init granted role
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either);
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either);
 
       const dirtyEither = {
         is_left: true,
@@ -672,9 +765,9 @@ describe('AccessControl', () => {
       };
 
       // Dirty Either should still detect the existing grant
-      expect(accessControl._unsafeGrantRole(OPERATOR_ROLE_1, dirtyEither)).toBe(
-        false,
-      );
+      expect(
+        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, dirtyEither),
+      ).toBe(false);
     });
   });
 
@@ -682,37 +775,45 @@ describe('AccessControl', () => {
     describe.each(
       operatorTypes,
     )('when the operator is a %s', (_, _operator) => {
-      it('should revoke role', () => {
-        accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
-        expect(accessControl._revokeRole(OPERATOR_ROLE_1, _operator)).toBe(
-          true,
+      it('should revoke role', async () => {
+        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
+        expect(
+          await accessControl._revokeRole(OPERATOR_ROLE_1, _operator),
+        ).toBe(true);
+        expect(await accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
+          false,
         );
-        expect(accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(false);
       });
     });
 
-    it('should return false if account does not have role', () => {
-      expect(accessControl._revokeRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+    it('should return false if account does not have role', async () => {
+      expect(await accessControl._revokeRole(OPERATOR_ROLE_1, OP1.either)).toBe(
         false,
       );
     });
 
-    it('should revoke multiple roles', () => {
+    it('should revoke multiple roles', async () => {
       for (let i = 0; i < operatorRolesList.length; i++) {
         for (let j = 0; j < allOperators.length; j++) {
-          accessControl._unsafeGrantRole(operatorRolesList[i], allOperators[j]);
+          await accessControl._unsafeGrantRole(
+            operatorRolesList[i],
+            allOperators[j],
+          );
           expect(
-            accessControl._revokeRole(operatorRolesList[i], allOperators[j]),
+            await accessControl._revokeRole(
+              operatorRolesList[i],
+              allOperators[j],
+            ),
           ).toBe(true);
           expect(
-            accessControl.hasRole(operatorRolesList[i], allOperators[j]),
+            await accessControl.hasRole(operatorRolesList[i], allOperators[j]),
           ).toBe(false);
         }
       }
     });
 
-    it('should revoke with dirty Either after clean grant', () => {
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either);
+    it('should revoke with dirty Either after clean grant', async () => {
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1.either);
 
       const dirtyEither = {
         is_left: true,
@@ -720,61 +821,65 @@ describe('AccessControl', () => {
         right: { bytes: new Uint8Array(32).fill(0xff) },
       };
 
-      expect(accessControl._revokeRole(OPERATOR_ROLE_1, dirtyEither)).toBe(
-        true,
+      expect(
+        await accessControl._revokeRole(OPERATOR_ROLE_1, dirtyEither),
+      ).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
+        false,
       );
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(false);
     });
 
-    it('should return false when revoking ungranted role with dirty Either', () => {
+    it('should return false when revoking ungranted role with dirty Either', async () => {
       const dirtyEither = {
         is_left: true,
         left: OP2.accountId,
         right: { bytes: new Uint8Array(32).fill(0xff) },
       };
-      expect(accessControl._revokeRole(OPERATOR_ROLE_1, dirtyEither)).toBe(
-        false,
-      );
+      expect(
+        await accessControl._revokeRole(OPERATOR_ROLE_1, dirtyEither),
+      ).toBe(false);
     });
 
-    it('should revoke with dirty left side on contract address', () => {
-      accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
+    it('should revoke with dirty left side on contract address', async () => {
+      await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
 
       const dirtyContract = {
         is_left: false,
         left: new Uint8Array(32).fill(0xff),
         right: OP1_CONTRACT.right,
       };
-      expect(accessControl._revokeRole(OPERATOR_ROLE_1, dirtyContract)).toBe(
-        true,
+      expect(
+        await accessControl._revokeRole(OPERATOR_ROLE_1, dirtyContract),
+      ).toBe(true);
+      expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1_CONTRACT)).toBe(
+        false,
       );
-      expect(accessControl.hasRole(OPERATOR_ROLE_1, OP1_CONTRACT)).toBe(false);
     });
   });
 
   describe('privateState helpers', () => {
     describe('getCurrentSecretKey', () => {
-      it('should return the injected secret key', () => {
-        accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+      it('should return the injected secret key', async () => {
+        await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-        expect(accessControl.privateState.getCurrentSecretKey()).toEqual(
+        expect(await accessControl.privateState.getCurrentSecretKey()).toEqual(
           ADMIN.secretKey,
         );
       });
 
-      it('should throw when the secret key is undefined', () => {
-        const sim = new AccessControlSimulator({
+      it('should throw when the secret key is undefined', async () => {
+        const sim = await AccessControlSimulator.create({
           privateState: { secretKey: undefined as unknown as Uint8Array },
         });
 
-        expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+        await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
           'Missing secret key',
         );
       });
     });
 
-    it('should expose an empty public ledger via getPublicState', () => {
-      expect(accessControl.getPublicState()).toStrictEqual({});
+    it('should expose an empty public ledger via getPublicState', async () => {
+      expect(await accessControl.getPublicState()).toStrictEqual({});
     });
   });
 });

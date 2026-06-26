@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
@@ -27,24 +27,29 @@ const ForwarderShieldedSimulatorBase = createSimulator<
   contractArgs: (parent) => [parent],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
+  artifactName: 'ForwarderShielded',
 });
 
 export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
-  constructor(
+  static async create(
     parent: ZswapCoinPublicKey,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ) {
-    super([parent], options);
+  ): Promise<ForwarderShieldedSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [parent],
+      options,
+    ) as Promise<ForwarderShieldedSimulator>;
   }
 
-  public deposit(coin: ShieldedCoinInfo) {
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
   }
 
-  public getParent(): Either<ZswapCoinPublicKey, ContractAddress> {
+  public getParent(): Promise<Either<ZswapCoinPublicKey, ContractAddress>> {
     return this.circuits.impure.getParent();
   }
 }

@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
@@ -29,25 +29,30 @@ const MockForwarderUnshieldedSimulatorBase = createSimulator<
   contractArgs: (parent, isInit) => [parent, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
+  artifactName: 'MockForwarderUnshielded',
 });
 
 export class MockForwarderUnshieldedSimulator extends MockForwarderUnshieldedSimulatorBase {
-  constructor(
+  static async create(
     parent: UserAddress,
     isInit: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ) {
-    super([parent, isInit], options);
+  ): Promise<MockForwarderUnshieldedSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [parent, isInit],
+      options,
+    ) as Promise<MockForwarderUnshieldedSimulator>;
   }
 
-  public deposit(color: Uint8Array, amount: bigint) {
+  public deposit(color: Uint8Array, amount: bigint): Promise<[]> {
     return this.circuits.impure.deposit(color, amount);
   }
 
-  public getParent(): Either<ContractAddress, UserAddress> {
+  public getParent(): Promise<Either<ContractAddress, UserAddress>> {
     return this.circuits.impure.getParent();
   }
 }

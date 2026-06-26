@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   Contract as ForwarderPrivate,
@@ -28,17 +28,22 @@ const ForwarderPrivateSimulatorBase = createSimulator<
   contractArgs: (parentCommitment) => [parentCommitment],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
+  artifactName: 'ForwarderPrivate',
 });
 
 export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
-  constructor(
+  static async create(
     parentCommitment: Uint8Array,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ) {
-    super([parentCommitment], options);
+  ): Promise<ForwarderPrivateSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [parentCommitment],
+      options,
+    ) as Promise<ForwarderPrivateSimulator>;
   }
 
   public static calculateParentCommitment(
@@ -48,7 +53,7 @@ export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
     return pureCircuits.calculateParentCommitment(parentAddr, opSecret);
   }
 
-  public deposit(coin: ShieldedCoinInfo) {
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
   }
 
@@ -57,11 +62,11 @@ export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
     parent: ZswapCoinPublicKey,
     opSecret: Uint8Array,
     value: bigint,
-  ): ShieldedSendResult {
+  ): Promise<ShieldedSendResult> {
     return this.circuits.impure.drain(coin, parent, opSecret, value);
   }
 
-  public getParentCommitment(): Uint8Array {
+  public getParentCommitment(): Promise<Uint8Array> {
     return this.circuits.impure.getParentCommitment();
   }
 }

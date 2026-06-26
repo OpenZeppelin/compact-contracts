@@ -17,8 +17,8 @@ const Z_CONTRACT_RECIPIENT = utils.encodeToAddress('CONTRACT_RECIPIENT');
 let contract: ProposalManagerSimulator;
 
 describe('ProposalManager', () => {
-  beforeEach(() => {
-    contract = new ProposalManagerSimulator();
+  beforeEach(async () => {
+    contract = await ProposalManagerSimulator.create();
   });
 
   describe('recipient helpers (pure)', () => {
@@ -89,25 +89,25 @@ describe('ProposalManager', () => {
   });
 
   describe('_createProposal', () => {
-    it('should create a proposal and return id', () => {
+    it('should create a proposal and return id', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
       expect(id).toEqual(1n);
     });
 
-    it('should create sequential proposal ids', () => {
+    it('should create sequential proposal ids', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id1 = contract._createProposal(recipient, COLOR, AMOUNT);
-      const id2 = contract._createProposal(recipient, COLOR2, AMOUNT2);
+      const id1 = await contract._createProposal(recipient, COLOR, AMOUNT);
+      const id2 = await contract._createProposal(recipient, COLOR2, AMOUNT2);
       expect(id1).toEqual(1n);
       expect(id2).toEqual(2n);
     });
 
-    it('should store proposal data correctly', () => {
+    it('should store proposal data correctly', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
 
-      const proposal = contract.getProposal(id);
+      const proposal = await contract.getProposal(id);
       expect(proposal.to.kind).toEqual(RecipientKind.ShieldedUser);
       expect(proposal.to.address).toEqual(Z_RECIPIENT.bytes);
       expect(proposal.color).toEqual(COLOR);
@@ -115,241 +115,259 @@ describe('ProposalManager', () => {
       expect(proposal.status).toEqual(ProposalStatus.Active);
     });
 
-    it('should store contract recipient correctly', () => {
+    it('should store contract recipient correctly', async () => {
       const recipient = contract.contractRecipient(Z_CONTRACT_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR2, AMOUNT2);
+      const id = await contract._createProposal(recipient, COLOR2, AMOUNT2);
 
-      const proposal = contract.getProposal(id);
+      const proposal = await contract.getProposal(id);
       expect(proposal.to.kind).toEqual(RecipientKind.Contract);
       expect(proposal.to.address).toEqual(Z_CONTRACT_RECIPIENT.bytes);
       expect(proposal.color).toEqual(COLOR2);
       expect(proposal.amount).toEqual(AMOUNT2);
     });
 
-    it('should fail with zero amount', () => {
+    it('should fail with zero amount', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      expect(() => {
-        contract._createProposal(recipient, COLOR, 0n);
-      }).toThrow('ProposalManager: zero amount');
+      await expect(
+        contract._createProposal(recipient, COLOR, 0n),
+      ).rejects.toThrow('ProposalManager: zero amount');
     });
   });
 
   describe('assertProposalExists', () => {
-    it('should pass for existing proposal', () => {
+    it('should pass for existing proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      expect(() => contract.assertProposalExists(id)).not.toThrow();
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract.assertProposalExists(id);
     });
 
-    it('should fail for non-existing proposal', () => {
-      expect(() => {
-        contract.assertProposalExists(999n);
-      }).toThrow('ProposalManager: proposal not found');
+    it('should fail for non-existing proposal', async () => {
+      await expect(contract.assertProposalExists(999n)).rejects.toThrow(
+        'ProposalManager: proposal not found',
+      );
     });
   });
 
   describe('assertProposalActive', () => {
-    it('should pass for active proposal', () => {
+    it('should pass for active proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      expect(() => contract.assertProposalActive(id)).not.toThrow();
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract.assertProposalActive(id);
     });
 
-    it('should fail for non-existing proposal', () => {
-      expect(() => {
-        contract.assertProposalActive(999n);
-      }).toThrow('ProposalManager: proposal not found');
+    it('should fail for non-existing proposal', async () => {
+      await expect(contract.assertProposalActive(999n)).rejects.toThrow(
+        'ProposalManager: proposal not found',
+      );
     });
 
-    it('should fail for cancelled proposal', () => {
+    it('should fail for cancelled proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      contract._cancelProposal(id);
-      expect(() => {
-        contract.assertProposalActive(id);
-      }).toThrow('ProposalManager: proposal not active');
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract._cancelProposal(id);
+      await expect(contract.assertProposalActive(id)).rejects.toThrow(
+        'ProposalManager: proposal not active',
+      );
     });
 
-    it('should fail for executed proposal', () => {
+    it('should fail for executed proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      contract._markExecuted(id);
-      expect(() => {
-        contract.assertProposalActive(id);
-      }).toThrow('ProposalManager: proposal not active');
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract._markExecuted(id);
+      await expect(contract.assertProposalActive(id)).rejects.toThrow(
+        'ProposalManager: proposal not active',
+      );
     });
   });
 
   describe('_cancelProposal', () => {
-    it('should cancel an active proposal', () => {
+    it('should cancel an active proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
 
-      contract._cancelProposal(id);
-      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Cancelled);
+      await contract._cancelProposal(id);
+      expect(await contract.getProposalStatus(id)).toEqual(
+        ProposalStatus.Cancelled,
+      );
     });
 
-    it('should preserve proposal data after cancellation', () => {
+    it('should preserve proposal data after cancellation', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
 
-      contract._cancelProposal(id);
-      const proposal = contract.getProposal(id);
+      await contract._cancelProposal(id);
+      const proposal = await contract.getProposal(id);
       expect(proposal.to.address).toEqual(Z_RECIPIENT.bytes);
       expect(proposal.color).toEqual(COLOR);
       expect(proposal.amount).toEqual(AMOUNT);
     });
 
-    it('should fail for non-existing proposal', () => {
-      expect(() => {
-        contract._cancelProposal(999n);
-      }).toThrow('ProposalManager: proposal not found');
+    it('should fail for non-existing proposal', async () => {
+      await expect(contract._cancelProposal(999n)).rejects.toThrow(
+        'ProposalManager: proposal not found',
+      );
     });
 
-    it('should fail for already cancelled proposal', () => {
+    it('should fail for already cancelled proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      contract._cancelProposal(id);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract._cancelProposal(id);
 
-      expect(() => {
-        contract._cancelProposal(id);
-      }).toThrow('ProposalManager: proposal not active');
+      await expect(contract._cancelProposal(id)).rejects.toThrow(
+        'ProposalManager: proposal not active',
+      );
     });
 
-    it('should fail for executed proposal', () => {
+    it('should fail for executed proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      contract._markExecuted(id);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract._markExecuted(id);
 
-      expect(() => {
-        contract._cancelProposal(id);
-      }).toThrow('ProposalManager: proposal not active');
+      await expect(contract._cancelProposal(id)).rejects.toThrow(
+        'ProposalManager: proposal not active',
+      );
     });
   });
 
   describe('_markExecuted', () => {
-    it('should mark an active proposal as executed', () => {
+    it('should mark an active proposal as executed', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
 
-      contract._markExecuted(id);
-      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Executed);
+      await contract._markExecuted(id);
+      expect(await contract.getProposalStatus(id)).toEqual(
+        ProposalStatus.Executed,
+      );
     });
 
-    it('should fail for non-existing proposal', () => {
-      expect(() => {
-        contract._markExecuted(999n);
-      }).toThrow('ProposalManager: proposal not found');
+    it('should fail for non-existing proposal', async () => {
+      await expect(contract._markExecuted(999n)).rejects.toThrow(
+        'ProposalManager: proposal not found',
+      );
     });
 
-    it('should fail for already executed proposal', () => {
+    it('should fail for already executed proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      contract._markExecuted(id);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract._markExecuted(id);
 
-      expect(() => {
-        contract._markExecuted(id);
-      }).toThrow('ProposalManager: proposal not active');
+      await expect(contract._markExecuted(id)).rejects.toThrow(
+        'ProposalManager: proposal not active',
+      );
     });
 
-    it('should fail for cancelled proposal', () => {
+    it('should fail for cancelled proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      contract._cancelProposal(id);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      await contract._cancelProposal(id);
 
-      expect(() => {
-        contract._markExecuted(id);
-      }).toThrow('ProposalManager: proposal not active');
+      await expect(contract._markExecuted(id)).rejects.toThrow(
+        'ProposalManager: proposal not active',
+      );
     });
   });
 
   describe('view circuits', () => {
     let proposalId: bigint;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      proposalId = contract._createProposal(recipient, COLOR, AMOUNT);
+      proposalId = await contract._createProposal(recipient, COLOR, AMOUNT);
     });
 
-    it('getProposal should return full proposal', () => {
-      const proposal = contract.getProposal(proposalId);
+    it('getProposal should return full proposal', async () => {
+      const proposal = await contract.getProposal(proposalId);
       expect(proposal.to.kind).toEqual(RecipientKind.ShieldedUser);
       expect(proposal.color).toEqual(COLOR);
       expect(proposal.amount).toEqual(AMOUNT);
       expect(proposal.status).toEqual(ProposalStatus.Active);
     });
 
-    it('getProposalRecipient should return recipient', () => {
-      const recipient = contract.getProposalRecipient(proposalId);
+    it('getProposalRecipient should return recipient', async () => {
+      const recipient = await contract.getProposalRecipient(proposalId);
       expect(recipient.kind).toEqual(RecipientKind.ShieldedUser);
       expect(recipient.address).toEqual(Z_RECIPIENT.bytes);
     });
 
-    it('getProposalAmount should return amount', () => {
-      expect(contract.getProposalAmount(proposalId)).toEqual(AMOUNT);
+    it('getProposalAmount should return amount', async () => {
+      expect(await contract.getProposalAmount(proposalId)).toEqual(AMOUNT);
     });
 
-    it('getProposalColor should return color', () => {
-      expect(contract.getProposalColor(proposalId)).toEqual(COLOR);
+    it('getProposalColor should return color', async () => {
+      expect(await contract.getProposalColor(proposalId)).toEqual(COLOR);
     });
 
-    it('getProposalStatus should return status', () => {
-      expect(contract.getProposalStatus(proposalId)).toEqual(
+    it('getProposalStatus should return status', async () => {
+      expect(await contract.getProposalStatus(proposalId)).toEqual(
         ProposalStatus.Active,
       );
     });
 
-    it('all view circuits should fail for non-existing proposal', () => {
+    it('all view circuits should fail for non-existing proposal', async () => {
       const badId = 999n;
-      expect(() => contract.getProposal(badId)).toThrow(
+      await expect(contract.getProposal(badId)).rejects.toThrow(
         'ProposalManager: proposal not found',
       );
-      expect(() => contract.getProposalRecipient(badId)).toThrow(
+      await expect(contract.getProposalRecipient(badId)).rejects.toThrow(
         'ProposalManager: proposal not found',
       );
-      expect(() => contract.getProposalAmount(badId)).toThrow(
+      await expect(contract.getProposalAmount(badId)).rejects.toThrow(
         'ProposalManager: proposal not found',
       );
-      expect(() => contract.getProposalColor(badId)).toThrow(
+      await expect(contract.getProposalColor(badId)).rejects.toThrow(
         'ProposalManager: proposal not found',
       );
-      expect(() => contract.getProposalStatus(badId)).toThrow(
+      await expect(contract.getProposalStatus(badId)).rejects.toThrow(
         'ProposalManager: proposal not found',
       );
     });
   });
 
   describe('lifecycle transitions', () => {
-    it('should handle create -> cancel flow', () => {
+    it('should handle create -> cancel flow', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Active);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      expect(await contract.getProposalStatus(id)).toEqual(
+        ProposalStatus.Active,
+      );
 
-      contract._cancelProposal(id);
-      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Cancelled);
+      await contract._cancelProposal(id);
+      expect(await contract.getProposalStatus(id)).toEqual(
+        ProposalStatus.Cancelled,
+      );
     });
 
-    it('should handle create -> execute flow', () => {
+    it('should handle create -> execute flow', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id = contract._createProposal(recipient, COLOR, AMOUNT);
-      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Active);
+      const id = await contract._createProposal(recipient, COLOR, AMOUNT);
+      expect(await contract.getProposalStatus(id)).toEqual(
+        ProposalStatus.Active,
+      );
 
-      contract._markExecuted(id);
-      expect(contract.getProposalStatus(id)).toEqual(ProposalStatus.Executed);
+      await contract._markExecuted(id);
+      expect(await contract.getProposalStatus(id)).toEqual(
+        ProposalStatus.Executed,
+      );
     });
 
-    it('should handle multiple proposals independently', () => {
+    it('should handle multiple proposals independently', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
-      const id1 = contract._createProposal(recipient, COLOR, AMOUNT);
-      const id2 = contract._createProposal(recipient, COLOR2, AMOUNT2);
+      const id1 = await contract._createProposal(recipient, COLOR, AMOUNT);
+      const id2 = await contract._createProposal(recipient, COLOR2, AMOUNT2);
 
-      contract._cancelProposal(id1);
+      await contract._cancelProposal(id1);
 
-      expect(contract.getProposalStatus(id1)).toEqual(ProposalStatus.Cancelled);
-      expect(contract.getProposalStatus(id2)).toEqual(ProposalStatus.Active);
+      expect(await contract.getProposalStatus(id1)).toEqual(
+        ProposalStatus.Cancelled,
+      );
+      expect(await contract.getProposalStatus(id2)).toEqual(
+        ProposalStatus.Active,
+      );
 
-      contract._markExecuted(id2);
-      expect(contract.getProposalStatus(id2)).toEqual(ProposalStatus.Executed);
+      await contract._markExecuted(id2);
+      expect(await contract.getProposalStatus(id2)).toEqual(
+        ProposalStatus.Executed,
+      );
     });
   });
 });

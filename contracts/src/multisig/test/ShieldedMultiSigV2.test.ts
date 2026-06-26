@@ -70,52 +70,60 @@ let multisig: ShieldedMultiSigV2Simulator;
 
 describe('ShieldedMultiSigV2', () => {
   describe('constructor', () => {
-    it('should initialize with 2-of-3 threshold', () => {
-      multisig = new ShieldedMultiSigV2Simulator(
+    it('should initialize with 2-of-3 threshold', async () => {
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
       );
-      expect(multisig.getSignerCount()).toEqual(3n);
-      expect(multisig.getThreshold()).toEqual(2n);
+      expect(await multisig.getSignerCount()).toEqual(3n);
+      expect(await multisig.getThreshold()).toEqual(2n);
     });
 
-    it('should initialize with 1-of-3 threshold', () => {
-      multisig = new ShieldedMultiSigV2Simulator(
+    it('should initialize with 1-of-3 threshold', async () => {
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         1n,
       );
-      expect(multisig.getThreshold()).toEqual(1n);
+      expect(await multisig.getThreshold()).toEqual(1n);
     });
 
-    it('should fail with zero threshold', () => {
-      expect(() => {
-        new ShieldedMultiSigV2Simulator(INSTANCE_SALT, SIGNER_COMMITMENTS, 0n);
-      }).toThrow('SignerManager: threshold must be > 0');
+    it('should fail with zero threshold', async () => {
+      await expect(
+        ShieldedMultiSigV2Simulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          0n,
+        ),
+      ).rejects.toThrow('SignerManager: threshold must be > 0');
     });
 
-    it('should fail with threshold greater than 2', () => {
-      expect(() => {
-        new ShieldedMultiSigV2Simulator(INSTANCE_SALT, SIGNER_COMMITMENTS, 3n);
-      }).toThrow(
+    it('should fail with threshold greater than 2', async () => {
+      await expect(
+        ShieldedMultiSigV2Simulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          3n,
+        ),
+      ).rejects.toThrow(
         'ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)',
       );
     });
 
-    it('should register all signer commitments', () => {
-      multisig = new ShieldedMultiSigV2Simulator(
+    it('should register all signer commitments', async () => {
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
       );
       for (const commitment of SIGNER_COMMITMENTS) {
-        expect(multisig.isSigner(commitment)).toEqual(true);
+        expect(await multisig.isSigner(commitment)).toEqual(true);
       }
     });
 
-    it('should reject a non-signer commitment', () => {
-      multisig = new ShieldedMultiSigV2Simulator(
+    it('should reject a non-signer commitment', async () => {
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -124,13 +132,13 @@ describe('ShieldedMultiSigV2', () => {
         NON_SIGNER_PK,
         INSTANCE_SALT,
       );
-      expect(multisig.isSigner(unknown)).toEqual(false);
+      expect(await multisig.isSigner(unknown)).toEqual(false);
     });
   });
 
   describe('when initialized', () => {
-    beforeEach(() => {
-      multisig = new ShieldedMultiSigV2Simulator(
+    beforeEach(async () => {
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -138,48 +146,46 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     describe('view', () => {
-      it('getNonce should start at 0', () => {
-        expect(multisig.getNonce()).toEqual(0n);
+      it('getNonce should start at 0', async () => {
+        expect(await multisig.getNonce()).toEqual(0n);
       });
 
-      it('getSignerCount should return 3', () => {
-        expect(multisig.getSignerCount()).toEqual(3n);
+      it('getSignerCount should return 3', async () => {
+        expect(await multisig.getSignerCount()).toEqual(3n);
       });
 
-      it('getThreshold should match constructor arg', () => {
-        expect(multisig.getThreshold()).toEqual(2n);
+      it('getThreshold should match constructor arg', async () => {
+        expect(await multisig.getThreshold()).toEqual(2n);
       });
     });
 
     describe('deposit', () => {
-      it('should accept deposits without reverting', () => {
-        expect(() => {
-          multisig.deposit(makeCoin(COLOR, AMOUNT));
-        }).not.toThrow();
+      it('should accept deposits without reverting', async () => {
+        await multisig.deposit(makeCoin(COLOR, AMOUNT));
       });
     });
 
     describe('execute', () => {
-      it('should reject duplicate signer', () => {
+      it('should reject duplicate signer', async () => {
         const to = makeRecipient(new Uint8Array(32).fill(7));
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
-        expect(() => {
-          multisig.execute(to, 100n, coin, [PK1, PK1], [DUMMY_SIG, DUMMY_SIG]);
-        }).toThrow('Multisig: duplicate signer');
+        await expect(
+          multisig.execute(to, 100n, coin, [PK1, PK1], [DUMMY_SIG, DUMMY_SIG]),
+        ).rejects.toThrow('Multisig: duplicate signer');
       });
 
-      it('should reject a non-signer pubkey', () => {
+      it('should reject a non-signer pubkey', async () => {
         const to = makeRecipient(new Uint8Array(32).fill(7));
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
-        expect(() => {
+        await expect(
           multisig.execute(
             to,
             100n,
             coin,
             [PK1, NON_SIGNER_PK],
             [DUMMY_SIG, DUMMY_SIG],
-          );
-        }).toThrow('SignerManager: not a signer');
+          ),
+        ).rejects.toThrow('SignerManager: not a signer');
       });
     });
   });

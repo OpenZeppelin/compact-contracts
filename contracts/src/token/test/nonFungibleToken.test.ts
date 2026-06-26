@@ -83,81 +83,97 @@ let token: NonFungibleTokenSimulator;
 
 describe('NonFungibleToken', () => {
   describe('initializer and metadata', () => {
-    it('should initialize metadata', () => {
-      token = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
-      expect(token.name()).toEqual(NAME);
-      expect(token.symbol()).toEqual(SYMBOL);
+    it('should initialize metadata', async () => {
+      token = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
+      expect(await token.name()).toEqual(NAME);
+      expect(await token.symbol()).toEqual(SYMBOL);
     });
 
-    it('should initialize empty metadata', () => {
-      token = new NonFungibleTokenSimulator(EMPTY_STRING, EMPTY_STRING, INIT);
-      expect(token.name()).toEqual(EMPTY_STRING);
-      expect(token.symbol()).toEqual(EMPTY_STRING);
+    it('should initialize empty metadata', async () => {
+      token = await NonFungibleTokenSimulator.create(
+        EMPTY_STRING,
+        EMPTY_STRING,
+        INIT,
+      );
+      expect(await token.name()).toEqual(EMPTY_STRING);
+      expect(await token.symbol()).toEqual(EMPTY_STRING);
     });
 
-    it('should initialize metadata with whitespace', () => {
-      token = new NonFungibleTokenSimulator('  NAME  ', '  SYMBOL  ', INIT);
-      expect(token.name()).toEqual('  NAME  ');
-      expect(token.symbol()).toEqual('  SYMBOL  ');
+    it('should initialize metadata with whitespace', async () => {
+      token = await NonFungibleTokenSimulator.create(
+        '  NAME  ',
+        '  SYMBOL  ',
+        INIT,
+      );
+      expect(await token.name()).toEqual('  NAME  ');
+      expect(await token.symbol()).toEqual('  SYMBOL  ');
     });
 
-    it('should initialize metadata with special characters', () => {
-      token = new NonFungibleTokenSimulator('NAME!@#', 'SYMBOL$%^', INIT);
-      expect(token.name()).toEqual('NAME!@#');
-      expect(token.symbol()).toEqual('SYMBOL$%^');
+    it('should initialize metadata with special characters', async () => {
+      token = await NonFungibleTokenSimulator.create(
+        'NAME!@#',
+        'SYMBOL$%^',
+        INIT,
+      );
+      expect(await token.name()).toEqual('NAME!@#');
+      expect(await token.symbol()).toEqual('SYMBOL$%^');
     });
 
-    it('should initialize metadata with very long strings', () => {
+    it('should initialize metadata with very long strings', async () => {
       const longName = 'A'.repeat(1000);
       const longSymbol = 'B'.repeat(1000);
-      token = new NonFungibleTokenSimulator(longName, longSymbol, INIT);
-      expect(token.name()).toEqual(longName);
-      expect(token.symbol()).toEqual(longSymbol);
+      token = await NonFungibleTokenSimulator.create(
+        longName,
+        longSymbol,
+        INIT,
+      );
+      expect(await token.name()).toEqual(longName);
+      expect(await token.symbol()).toEqual(longSymbol);
     });
   });
 
-  beforeEach(() => {
-    token = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
+  beforeEach(async () => {
+    token = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
   });
 
   describe('balanceOf', () => {
-    it('should return zero when requested account has no balance', () => {
-      expect(token.balanceOf(OWNER.either)).toEqual(0n);
+    it('should return zero when requested account has no balance', async () => {
+      expect(await token.balanceOf(OWNER.either)).toEqual(0n);
     });
 
-    it('should return balance when requested account has tokens', () => {
-      token._mint(OWNER.either, AMOUNT);
-      expect(token.balanceOf(OWNER.either)).toEqual(AMOUNT);
+    it('should return balance when requested account has tokens', async () => {
+      await token._mint(OWNER.either, AMOUNT);
+      expect(await token.balanceOf(OWNER.either)).toEqual(AMOUNT);
     });
 
-    it('should return correct balance for multiple tokens', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
-      expect(token.balanceOf(OWNER.either)).toEqual(3n);
+    it('should return correct balance for multiple tokens', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
+      expect(await token.balanceOf(OWNER.either)).toEqual(3n);
     });
 
-    it('should return correct balance after burning multiple tokens', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
-      token._burn(TOKENID_1);
-      token._burn(TOKENID_2);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
+    it('should return correct balance after burning multiple tokens', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
+      await token._burn(TOKENID_1);
+      await token._burn(TOKENID_2);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
     });
 
-    it('should return correct balance after transferring multiple tokens', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
-      token._transfer(OWNER.either, RECIPIENT.either, TOKENID_1);
-      token._transfer(OWNER.either, RECIPIENT.either, TOKENID_2);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
-      expect(token.balanceOf(RECIPIENT.either)).toEqual(2n);
+    it('should return correct balance after transferring multiple tokens', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
+      await token._transfer(OWNER.either, RECIPIENT.either, TOKENID_1);
+      await token._transfer(OWNER.either, RECIPIENT.either, TOKENID_2);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+      expect(await token.balanceOf(RECIPIENT.either)).toEqual(2n);
     });
 
-    it('should return correct balance with non-canonical lookup (left)', () => {
-      token._mint(OWNER.either, TOKENID_1);
+    it('should return correct balance with non-canonical lookup (left)', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
 
       const nonCanonical = {
         is_left: true,
@@ -165,11 +181,11 @@ describe('NonFungibleToken', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      expect(token.balanceOf(nonCanonical)).toEqual(1n);
+      expect(await token.balanceOf(nonCanonical)).toEqual(1n);
     });
 
-    it('should return correct balance with non-canonical lookup (right)', () => {
-      token._unsafeMint(SOME_CONTRACT, TOKENID_1);
+    it('should return correct balance with non-canonical lookup (right)', async () => {
+      await token._unsafeMint(SOME_CONTRACT, TOKENID_1);
 
       const nonCanonical = {
         is_left: false,
@@ -177,322 +193,342 @@ describe('NonFungibleToken', () => {
         right: SOME_CONTRACT.right,
       };
 
-      expect(token.balanceOf(nonCanonical)).toEqual(1n);
+      expect(await token.balanceOf(nonCanonical)).toEqual(1n);
     });
   });
 
   describe('ownerOf', () => {
-    it('should throw if token does not exist', () => {
-      expect(() => {
-        token.ownerOf(NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token does not exist', async () => {
+      await expect(token.ownerOf(NON_EXISTENT_TOKEN)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should throw if token has been burned', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._burn(TOKENID_1);
-      expect(() => {
-        token.ownerOf(TOKENID_1);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token has been burned', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._burn(TOKENID_1);
+      await expect(token.ownerOf(TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should return owner of token if it exists', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+    it('should return owner of token if it exists', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
     });
 
-    it('should return correct owner for multiple tokens', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
-      expect(token.ownerOf(TOKENID_2)).toEqual(OWNER.either);
-      expect(token.ownerOf(TOKENID_3)).toEqual(OWNER.either);
+    it('should return correct owner for multiple tokens', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+      expect(await token.ownerOf(TOKENID_2)).toEqual(OWNER.either);
+      expect(await token.ownerOf(TOKENID_3)).toEqual(OWNER.either);
     });
 
-    it('should return correct owner after multiple transfers', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._mint(OWNER.either, TOKENID_2);
-      token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
-      token._transfer(OWNER.either, OTHER.either, TOKENID_2);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
-      expect(token.ownerOf(TOKENID_2)).toEqual(OTHER.either);
+    it('should return correct owner after multiple transfers', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
+      await token._transfer(OWNER.either, OTHER.either, TOKENID_2);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      expect(await token.ownerOf(TOKENID_2)).toEqual(OTHER.either);
     });
 
-    it('should return correct owner after multiple burns and mints', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._burn(TOKENID_1);
-      token._mint(SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+    it('should return correct owner after multiple burns and mints', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._burn(TOKENID_1);
+      await token._mint(SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
   });
 
   describe('tokenURI', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should throw if token does not exist', () => {
-      expect(() => {
-        token.tokenURI(NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token does not exist', async () => {
+      await expect(token.tokenURI(NON_EXISTENT_TOKEN)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should return the empty string for an unset tokenURI', () => {
-      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
+    it('should return the empty string for an unset tokenURI', async () => {
+      expect(await token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
     });
 
-    it('should return the empty string if tokenURI set as default value', () => {
-      token._setTokenURI(TOKENID_1, EMPTY_URI);
-      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
+    it('should return the empty string if tokenURI set as default value', async () => {
+      await token._setTokenURI(TOKENID_1, EMPTY_URI);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
     });
 
-    it('should return some string if tokenURI is set', () => {
-      token._setTokenURI(TOKENID_1, SOME_URI);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
+    it('should return some string if tokenURI is set', async () => {
+      await token._setTokenURI(TOKENID_1, SOME_URI);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
     });
 
-    it('should return very long tokenURI', () => {
+    it('should return very long tokenURI', async () => {
       const longURI = 'A'.repeat(1000);
-      token._setTokenURI(TOKENID_1, longURI);
-      expect(token.tokenURI(TOKENID_1)).toEqual(longURI);
+      await token._setTokenURI(TOKENID_1, longURI);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(longURI);
     });
 
-    it('should return tokenURI with special characters', () => {
+    it('should return tokenURI with special characters', async () => {
       const specialURI = '!@#$%^&*()_+';
-      token._setTokenURI(TOKENID_1, specialURI);
-      expect(token.tokenURI(TOKENID_1)).toEqual(specialURI);
+      await token._setTokenURI(TOKENID_1, specialURI);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(specialURI);
     });
 
-    it('should update tokenURI multiple times', () => {
-      token._setTokenURI(TOKENID_1, 'URI1');
-      token._setTokenURI(TOKENID_1, 'URI2');
-      token._setTokenURI(TOKENID_1, 'URI3');
-      expect(token.tokenURI(TOKENID_1)).toEqual('URI3');
+    it('should update tokenURI multiple times', async () => {
+      await token._setTokenURI(TOKENID_1, 'URI1');
+      await token._setTokenURI(TOKENID_1, 'URI2');
+      await token._setTokenURI(TOKENID_1, 'URI3');
+      expect(await token.tokenURI(TOKENID_1)).toEqual('URI3');
     });
 
-    it('should maintain tokenURI after token transfer', () => {
-      token._setTokenURI(TOKENID_1, SOME_URI);
-      token._transfer(OWNER.either, RECIPIENT.either, TOKENID_1);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
+    it('should maintain tokenURI after token transfer', async () => {
+      await token._setTokenURI(TOKENID_1, SOME_URI);
+      await token._transfer(OWNER.either, RECIPIENT.either, TOKENID_1);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
     });
   });
 
   describe('approve', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should throw if not owner', () => {
-      token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-      expect(() => {
-        token.approve(SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid approver');
+    it('should throw if not owner', async () => {
+      await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+      await expect(token.approve(SPENDER.either, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid approver',
+      );
     });
 
-    it('should approve spender', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    it('should approve spender', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should allow operator to approve', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should allow operator to approve', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.approve(OTHER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(OTHER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.approve(OTHER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(OTHER.either);
     });
 
-    it('spender approved for only TOKENID_1 should not be able to approve', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
+    it('spender approved for only TOKENID_1 should not be able to approve', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      expect(() => {
-        token.approve(OTHER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid approver');
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(token.approve(OTHER.either, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid approver',
+      );
     });
 
-    it('should approve same address multiple times', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token.approve(SPENDER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    it('should approve same address multiple times', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token.approve(SPENDER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should approve after token transfer', () => {
-      token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
+    it('should approve after token transfer', async () => {
+      await token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.approve(OTHER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(OTHER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.approve(OTHER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(OTHER.either);
     });
 
-    it('should approve after token burn and remint', () => {
-      token._burn(TOKENID_1);
-      token._mint(OWNER.either, TOKENID_1);
+    it('should approve after token burn and remint', async () => {
+      await token._burn(TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should approve with very long token ID', () => {
+    it('should approve with very long token ID', async () => {
       const longTokenId = BigInt('18446744073709551615');
-      token._mint(OWNER.either, longTokenId);
+      await token._mint(OWNER.either, longTokenId);
 
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, longTokenId);
-      expect(token.getApproved(longTokenId)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, longTokenId);
+      expect(await token.getApproved(longTokenId)).toEqual(SPENDER.either);
     });
 
-    it('should normalize right-variant zero approval', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(ZERO_CONTRACT, TOKENID_1);
+    it('should normalize right-variant zero approval', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(ZERO_CONTRACT, TOKENID_1);
 
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
   });
 
   describe('getApproved', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should throw if token does not exist', () => {
-      expect(() => {
-        token.getApproved(NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token does not exist', async () => {
+      await expect(token.getApproved(NON_EXISTENT_TOKEN)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should throw if token has been burned', () => {
-      token._burn(TOKENID_1);
-      expect(() => {
-        token.getApproved(TOKENID_1);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token has been burned', async () => {
+      await token._burn(TOKENID_1);
+      await expect(token.getApproved(TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should get current approved spender', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(OWNER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(OWNER.either);
+    it('should get current approved spender', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(OWNER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(OWNER.either);
     });
 
-    it('should return zero if approval not set', () => {
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    it('should return zero if approval not set', async () => {
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
   });
 
   describe('setApprovalForAll', () => {
-    it('should not approve zero address', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should not approve zero address', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
-      expect(() => {
-        token.setApprovalForAll(ZERO_ACCOUNT, true);
-      }).toThrow('NonFungibleToken: invalid operator');
+      await expect(token.setApprovalForAll(ZERO_ACCOUNT, true)).rejects.toThrow(
+        'NonFungibleToken: invalid operator',
+      );
     });
 
-    it('should set operator', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should set operator', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
     });
 
-    it('should allow operator to manage owner tokens', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
+    it('should allow operator to manage owner tokens', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
 
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
 
-      token.approve(OTHER.either, TOKENID_2);
-      expect(token.getApproved(TOKENID_2)).toEqual(OTHER.either);
+      await token.approve(OTHER.either, TOKENID_2);
+      expect(await token.getApproved(TOKENID_2)).toEqual(OTHER.either);
 
-      token.approve(SPENDER.either, TOKENID_3);
-      expect(token.getApproved(TOKENID_3)).toEqual(SPENDER.either);
+      await token.approve(SPENDER.either, TOKENID_3);
+      expect(await token.getApproved(TOKENID_3)).toEqual(SPENDER.either);
     });
 
-    it('should revoke approval for all', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should revoke approval for all', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
 
-      token.setApprovalForAll(SPENDER.either, false);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(false);
+      await token.setApprovalForAll(SPENDER.either, false);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        false,
+      );
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      expect(() => {
-        token.approve(SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid approver');
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(token.approve(SPENDER.either, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid approver',
+      );
     });
 
-    it('should set approval for all to same address multiple times', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should set approval for all to same address multiple times', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
-      token.setApprovalForAll(SPENDER.either, true);
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      await token.setApprovalForAll(SPENDER.either, true);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
     });
 
-    it('should set approval for all after token transfer', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
+    it('should set approval for all after token transfer', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.setApprovalForAll(OTHER.either, true);
-      expect(token.isApprovedForAll(SPENDER.either, OTHER.either)).toBe(true);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.setApprovalForAll(OTHER.either, true);
+      expect(await token.isApprovedForAll(SPENDER.either, OTHER.either)).toBe(
+        true,
+      );
     });
 
-    it('should set approval for all with multiple operators', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should set approval for all with multiple operators', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
-      token.setApprovalForAll(SPENDER.either, true);
-      token.setApprovalForAll(OTHER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
-      expect(token.isApprovedForAll(OWNER.either, OTHER.either)).toBe(true);
+      await token.setApprovalForAll(SPENDER.either, true);
+      await token.setApprovalForAll(OTHER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
+      expect(await token.isApprovedForAll(OWNER.either, OTHER.either)).toBe(
+        true,
+      );
     });
 
-    it('should set approval for all with very long token IDs', () => {
+    it('should set approval for all with very long token IDs', async () => {
       const longTokenId = BigInt('18446744073709551615');
-      token._mint(OWNER.either, longTokenId);
-      token.privateState.injectSecretKey(OWNER.secretKey);
+      await token._mint(OWNER.either, longTokenId);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
     });
   });
 
   describe('isApprovedForAll', () => {
-    it('should return false if approval not set', () => {
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(false);
+    it('should return false if approval not set', async () => {
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        false,
+      );
     });
 
-    it('should return true if approval set', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+    it('should return true if approval set', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
     });
 
-    it('should return correct result with non-canonical owner lookup', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should return correct result with non-canonical owner lookup', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
       const nonCanonical = {
         is_left: true,
@@ -500,13 +536,15 @@ describe('NonFungibleToken', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      expect(token.isApprovedForAll(nonCanonical, SPENDER.either)).toBe(true);
+      expect(await token.isApprovedForAll(nonCanonical, SPENDER.either)).toBe(
+        true,
+      );
     });
 
-    it('should return correct result with non-canonical operator lookup', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should return correct result with non-canonical operator lookup', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
       const nonCanonical = {
         is_left: true,
@@ -514,238 +552,240 @@ describe('NonFungibleToken', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      expect(token.isApprovedForAll(OWNER.either, nonCanonical)).toBe(true);
+      expect(await token.isApprovedForAll(OWNER.either, nonCanonical)).toBe(
+        true,
+      );
     });
   });
 
   describe('transferFrom', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should not transfer to ContractAddress', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: unsafe transfer');
+    it('should not transfer to ContractAddress', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: unsafe transfer');
     });
 
-    it('should not transfer to zero address', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, ZERO_ACCOUNT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not transfer to zero address', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, ZERO_ACCOUNT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid receiver');
     });
 
-    it('should not transfer from zero address', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token.transferFrom(ZERO_ACCOUNT, SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: incorrect owner');
+    it('should not transfer from zero address', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token.transferFrom(ZERO_ACCOUNT, SPENDER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: incorrect owner');
     });
 
-    it('should not transfer from unauthorized', () => {
-      token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, UNAUTHORIZED.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: insufficient approval');
+    it('should not transfer from unauthorized', async () => {
+      await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, UNAUTHORIZED.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
     });
 
-    it('should not transfer token that has not been minted', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, SPENDER.either, NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should not transfer token that has not been minted', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, SPENDER.either, NON_EXISTENT_TOKEN),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
     });
 
-    it('should transfer token without approvers or operators', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.transferFrom(OWNER.either, RECIPIENT.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(RECIPIENT.either);
+    it('should transfer token without approvers or operators', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.transferFrom(OWNER.either, RECIPIENT.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(RECIPIENT.either);
     });
 
-    it('should transfer token via approved operator', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
+    it('should transfer token via approved operator', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should transfer token via approvedForAll operator', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should transfer token via approvedForAll operator', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should allow transfer to same address', () => {
-      token._approve(SPENDER.either, TOKENID_1, OWNER.either);
-      token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+    it('should allow transfer to same address', async () => {
+      await token._approve(SPENDER.either, TOKENID_1, OWNER.either);
+      await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
 
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, OWNER.either, TOKENID_1);
-      }).not.toThrow();
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, OWNER.either, TOKENID_1),
+      ).resolves.not.toThrow();
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
       expect(
-        token._isAuthorized(OWNER.either, SPENDER.either, TOKENID_1),
+        await token._isAuthorized(OWNER.either, SPENDER.either, TOKENID_1),
       ).toEqual(true);
     });
 
-    it('should not transfer after approval revocation', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token.approve(ZERO_ACCOUNT, TOKENID_1);
+    it('should not transfer after approval revocation', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token.approve(ZERO_ACCOUNT, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: insufficient approval');
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
     });
 
-    it('should not transfer after approval for all revocation', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
-      token.setApprovalForAll(SPENDER.either, false);
+    it('should not transfer after approval for all revocation', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
+      await token.setApprovalForAll(SPENDER.either, false);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      expect(() => {
-        token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: insufficient approval');
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
     });
 
-    it('should transfer multiple tokens in sequence', () => {
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
+    it('should transfer multiple tokens in sequence', async () => {
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
 
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token.approve(SPENDER.either, TOKENID_2);
-      token.approve(SPENDER.either, TOKENID_3);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token.approve(SPENDER.either, TOKENID_2);
+      await token.approve(SPENDER.either, TOKENID_3);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      token.transferFrom(OWNER.either, SPENDER.either, TOKENID_2);
-      token.transferFrom(OWNER.either, SPENDER.either, TOKENID_3);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1);
+      await token.transferFrom(OWNER.either, SPENDER.either, TOKENID_2);
+      await token.transferFrom(OWNER.either, SPENDER.either, TOKENID_3);
 
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
-      expect(token.ownerOf(TOKENID_2)).toEqual(SPENDER.either);
-      expect(token.ownerOf(TOKENID_3)).toEqual(SPENDER.either);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      expect(await token.ownerOf(TOKENID_2)).toEqual(SPENDER.either);
+      expect(await token.ownerOf(TOKENID_3)).toEqual(SPENDER.either);
     });
 
-    it('should transfer with very long token IDs', () => {
+    it('should transfer with very long token IDs', async () => {
       const longTokenId = BigInt('18446744073709551615');
-      token._mint(OWNER.either, longTokenId);
+      await token._mint(OWNER.either, longTokenId);
 
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, longTokenId);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, longTokenId);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token.transferFrom(OWNER.either, SPENDER.either, longTokenId);
-      expect(token.ownerOf(longTokenId)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token.transferFrom(OWNER.either, SPENDER.either, longTokenId);
+      expect(await token.ownerOf(longTokenId)).toEqual(SPENDER.either);
     });
 
-    it('should revoke approval after transferFrom', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+    it('should revoke approval after transferFrom', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
 
-      token.transferFrom(OWNER.either, OTHER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
-      expect(token._isAuthorized(OTHER.either, SPENDER.either, TOKENID_1)).toBe(
-        false,
-      );
+      await token.transferFrom(OWNER.either, OTHER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      expect(
+        await token._isAuthorized(OTHER.either, SPENDER.either, TOKENID_1),
+      ).toBe(false);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      expect(() => {
-        token.approve(UNAUTHORIZED.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid approver');
-      expect(() => {
-        token.transferFrom(OTHER.either, UNAUTHORIZED.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: insufficient approval');
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token.approve(UNAUTHORIZED.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid approver');
+      await expect(
+        token.transferFrom(OTHER.either, UNAUTHORIZED.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
     });
 
-    it('should store canonical zero after clearing approval via transfer', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
+    it('should store canonical zero after clearing approval via transfer', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
 
-      token.transferFrom(OWNER.either, RECIPIENT.either, TOKENID_1);
+      await token.transferFrom(OWNER.either, RECIPIENT.either, TOKENID_1);
 
       // _update calls _approve(zeroAccount(), tokenId, zeroAccount()) internally,
       // which should store the left-variant zero
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
   });
 
   describe('_requireOwned', () => {
-    it('should throw if token has not been minted', () => {
-      expect(() => {
-        token._requireOwned(TOKENID_1);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token has not been minted', async () => {
+      await expect(token._requireOwned(TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should throw if token has been burned', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._burn(TOKENID_1);
-      expect(() => {
-        token._requireOwned(TOKENID_1);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token has been burned', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._burn(TOKENID_1);
+      await expect(token._requireOwned(TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: nonexistent token',
+      );
     });
 
-    it('should return correct owner', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token._requireOwned(TOKENID_1)).toEqual(OWNER.either);
+    it('should return correct owner', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token._requireOwned(TOKENID_1)).toEqual(OWNER.either);
     });
   });
 
   describe('_ownerOf', () => {
-    it('should return zero address if token does not exist', () => {
-      expect(token._ownerOf(NON_EXISTENT_TOKEN)).toEqual(ZERO_ACCOUNT);
+    it('should return zero address if token does not exist', async () => {
+      expect(await token._ownerOf(NON_EXISTENT_TOKEN)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should return owner of token', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token._ownerOf(TOKENID_1)).toEqual(OWNER.either);
+    it('should return owner of token', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token._ownerOf(TOKENID_1)).toEqual(OWNER.either);
     });
   });
 
   describe('_approve', () => {
-    it('should approve if auth is owner', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._approve(SPENDER.either, TOKENID_1, OWNER.either);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    it('should approve if auth is owner', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._approve(SPENDER.either, TOKENID_1, OWNER.either);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should approve if auth is approved for all', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should approve if auth is approved for all', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
-      token._approve(SPENDER.either, TOKENID_1, SPENDER.either);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+      await token._approve(SPENDER.either, TOKENID_1, SPENDER.either);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should throw if auth is unauthorized', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._approve(SPENDER.either, TOKENID_1, UNAUTHORIZED.either);
-      }).toThrow('NonFungibleToken: invalid approver');
+    it('should throw if auth is unauthorized', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(
+        token._approve(SPENDER.either, TOKENID_1, UNAUTHORIZED.either),
+      ).rejects.toThrow('NonFungibleToken: invalid approver');
     });
 
-    it('should approve if auth is zero address', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._approve(SPENDER.either, TOKENID_1, ZERO_ACCOUNT);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    it('should approve if auth is zero address', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._approve(SPENDER.either, TOKENID_1, ZERO_ACCOUNT);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should canonicalize approved address', () => {
-      token._mint(OWNER.either, TOKENID_1);
+    it('should canonicalize approved address', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
 
       const nonCanonical = {
         is_left: true,
@@ -753,165 +793,173 @@ describe('NonFungibleToken', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      token._approve(nonCanonical, TOKENID_1, OWNER.either);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+      await token._approve(nonCanonical, TOKENID_1, OWNER.either);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should normalize right-variant zero to zeroAccount()', () => {
-      token._mint(OWNER.either, TOKENID_1);
+    it('should normalize right-variant zero to zeroAccount()', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
 
       // Approve with a right-variant zero (contract address zero)
-      token._approve(ZERO_CONTRACT, TOKENID_1, OWNER.either);
+      await token._approve(ZERO_CONTRACT, TOKENID_1, OWNER.either);
 
       // getApproved should return the left-variant zeroAccount, not the right-variant
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should normalize left-variant zero to zeroAccount()', () => {
-      token._mint(OWNER.either, TOKENID_1);
+    it('should normalize left-variant zero to zeroAccount()', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
 
       // First set a real approval
-      token._approve(SPENDER.either, TOKENID_1, OWNER.either);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+      await token._approve(SPENDER.either, TOKENID_1, OWNER.either);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
 
       // Clear it with left-variant zero
-      token._approve(ZERO_ACCOUNT, TOKENID_1, OWNER.either);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      await token._approve(ZERO_ACCOUNT, TOKENID_1, OWNER.either);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
   });
 
   describe('_checkAuthorized', () => {
-    it('should throw if token not minted', () => {
-      expect(() => {
-        token._checkAuthorized(ZERO_ACCOUNT, OWNER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token not minted', async () => {
+      await expect(
+        token._checkAuthorized(ZERO_ACCOUNT, OWNER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
     });
 
-    it('should throw if unauthorized', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._checkAuthorized(OWNER.either, UNAUTHORIZED.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: insufficient approval');
+    it('should throw if unauthorized', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(
+        token._checkAuthorized(OWNER.either, UNAUTHORIZED.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
     });
 
-    it('should not throw if approved', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token._checkAuthorized(OWNER.either, SPENDER.either, TOKENID_1);
+    it('should not throw if approved', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token._checkAuthorized(OWNER.either, SPENDER.either, TOKENID_1);
     });
 
-    it('should not throw if approvedForAll', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
-      token._checkAuthorized(OWNER.either, SPENDER.either, TOKENID_1);
+    it('should not throw if approvedForAll', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
+      await token._checkAuthorized(OWNER.either, SPENDER.either, TOKENID_1);
     });
   });
 
   describe('_isAuthorized', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should return true if spender is authorized', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      expect(token._isAuthorized(OWNER.either, SPENDER.either, TOKENID_1)).toBe(
-        true,
-      );
-    });
-
-    it('should return true if spender is authorized for all', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token._isAuthorized(OWNER.either, SPENDER.either, TOKENID_1)).toBe(
-        true,
-      );
-    });
-
-    it('should return true if spender is owner', () => {
-      expect(token._isAuthorized(OWNER.either, OWNER.either, TOKENID_1)).toBe(
-        true,
-      );
-    });
-
-    it('should return false if spender is zero address', () => {
-      expect(token._isAuthorized(OWNER.either, ZERO_ACCOUNT, TOKENID_1)).toBe(
-        false,
-      );
-    });
-
-    it('should return false for unauthorized', () => {
+    it('should return true if spender is authorized', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
       expect(
-        token._isAuthorized(OWNER.either, UNAUTHORIZED.either, TOKENID_1),
+        await token._isAuthorized(OWNER.either, SPENDER.either, TOKENID_1),
+      ).toBe(true);
+    });
+
+    it('should return true if spender is authorized for all', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(
+        await token._isAuthorized(OWNER.either, SPENDER.either, TOKENID_1),
+      ).toBe(true);
+    });
+
+    it('should return true if spender is owner', async () => {
+      expect(
+        await token._isAuthorized(OWNER.either, OWNER.either, TOKENID_1),
+      ).toBe(true);
+    });
+
+    it('should return false if spender is zero address', async () => {
+      expect(
+        await token._isAuthorized(OWNER.either, ZERO_ACCOUNT, TOKENID_1),
+      ).toBe(false);
+    });
+
+    it('should return false for unauthorized', async () => {
+      expect(
+        await token._isAuthorized(OWNER.either, UNAUTHORIZED.either, TOKENID_1),
       ).toBe(false);
     });
   });
 
   describe('_getApproved', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should return zero address if token is not minted', () => {
-      expect(token._getApproved(NON_EXISTENT_TOKEN)).toEqual(ZERO_ACCOUNT);
+    it('should return zero address if token is not minted', async () => {
+      expect(await token._getApproved(NON_EXISTENT_TOKEN)).toEqual(
+        ZERO_ACCOUNT,
+      );
     });
 
-    it('should return approved address', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      expect(token._getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    it('should return approved address', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      expect(await token._getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should return zero address if no approvals', () => {
-      expect(token._getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    it('should return zero address if no approvals', async () => {
+      expect(await token._getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
   });
 
   describe('_setApprovalForAll', () => {
-    it('should approve operator', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._setApprovalForAll(OWNER.either, SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+    it('should approve operator', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
     });
 
-    it('should revoke operator approval', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+    it('should revoke operator approval', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
 
-      token._setApprovalForAll(OWNER.either, SPENDER.either, false);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(false);
+      await token._setApprovalForAll(OWNER.either, SPENDER.either, false);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        false,
+      );
     });
 
-    it('should throw if operator is zero address (left)', () => {
-      expect(() => {
-        token._setApprovalForAll(OWNER.either, ZERO_ACCOUNT, true);
-      }).toThrow('NonFungibleToken: invalid operator');
+    it('should throw if operator is zero address (left)', async () => {
+      await expect(
+        token._setApprovalForAll(OWNER.either, ZERO_ACCOUNT, true),
+      ).rejects.toThrow('NonFungibleToken: invalid operator');
     });
 
-    it('should throw if operator is zero address (right)', () => {
-      expect(() => {
-        token._setApprovalForAll(OWNER.either, ZERO_CONTRACT, true);
-      }).toThrow('NonFungibleToken: invalid operator');
+    it('should throw if operator is zero address (right)', async () => {
+      await expect(
+        token._setApprovalForAll(OWNER.either, ZERO_CONTRACT, true),
+      ).rejects.toThrow('NonFungibleToken: invalid operator');
     });
 
-    it('should fail if owner is zero address (left)', () => {
-      expect(() => {
-        token._setApprovalForAll(ZERO_ACCOUNT, RECIPIENT.either, true);
-      }).toThrow('NonFungibleToken: invalid owner');
+    it('should fail if owner is zero address (left)', async () => {
+      await expect(
+        token._setApprovalForAll(ZERO_ACCOUNT, RECIPIENT.either, true),
+      ).rejects.toThrow('NonFungibleToken: invalid owner');
     });
 
-    it('should fail if owner is zero address (right)', () => {
-      expect(() => {
-        token._setApprovalForAll(ZERO_CONTRACT, RECIPIENT.either, true);
-      }).toThrow('NonFungibleToken: invalid owner');
+    it('should fail if owner is zero address (right)', async () => {
+      await expect(
+        token._setApprovalForAll(ZERO_CONTRACT, RECIPIENT.either, true),
+      ).rejects.toThrow('NonFungibleToken: invalid owner');
     });
 
-    it('should canonicalize owner and operator', () => {
-      token._mint(OWNER.either, TOKENID_1);
+    it('should canonicalize owner and operator', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
 
       const nonCanonicalOwner = {
         is_left: true,
@@ -924,434 +972,436 @@ describe('NonFungibleToken', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      token._setApprovalForAll(nonCanonicalOwner, nonCanonicalOp, true);
-      expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      await token._setApprovalForAll(nonCanonicalOwner, nonCanonicalOp, true);
+      expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        true,
+      );
     });
   });
 
   describe('_mint', () => {
-    it('should not mint to ContractAddress', () => {
-      expect(() => {
-        token._mint(SOME_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: unsafe transfer');
+    it('should not mint to ContractAddress', async () => {
+      await expect(token._mint(SOME_CONTRACT, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: unsafe transfer',
+      );
     });
 
-    it('should not mint to zero address', () => {
-      expect(() => {
-        token._mint(ZERO_ACCOUNT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not mint to zero address', async () => {
+      await expect(token._mint(ZERO_ACCOUNT, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid receiver',
+      );
     });
 
-    it('should not mint a token that already exists', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._mint(OWNER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid sender');
+    it('should not mint a token that already exists', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(token._mint(OWNER.either, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid sender',
+      );
     });
 
-    it('should mint token', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
+    it('should mint token', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
 
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
-      expect(token.balanceOf(OWNER.either)).toEqual(3n);
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
+      expect(await token.balanceOf(OWNER.either)).toEqual(3n);
     });
 
-    it('should mint multiple tokens in sequence', () => {
+    it('should mint multiple tokens in sequence', async () => {
       for (let i = 0; i < 10; i++) {
-        token._mint(OWNER.either, TOKENID_1 + BigInt(i));
+        await token._mint(OWNER.either, TOKENID_1 + BigInt(i));
       }
-      expect(token.balanceOf(OWNER.either)).toEqual(10n);
+      expect(await token.balanceOf(OWNER.either)).toEqual(10n);
     });
 
-    it('should mint with very long token IDs', () => {
+    it('should mint with very long token IDs', async () => {
       const longTokenId = BigInt('18446744073709551615');
-      token._mint(OWNER.either, longTokenId);
-      expect(token.ownerOf(longTokenId)).toEqual(OWNER.either);
+      await token._mint(OWNER.either, longTokenId);
+      expect(await token.ownerOf(longTokenId)).toEqual(OWNER.either);
     });
 
-    it('should mint after burning', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._burn(TOKENID_1);
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+    it('should mint after burning', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._burn(TOKENID_1);
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
     });
 
-    it('should mint with special characters in metadata', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._setTokenURI(TOKENID_1, '!@#$%^&*()_+');
-      expect(token.tokenURI(TOKENID_1)).toEqual('!@#$%^&*()_+');
+    it('should mint with special characters in metadata', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._setTokenURI(TOKENID_1, '!@#$%^&*()_+');
+      expect(await token.tokenURI(TOKENID_1)).toEqual('!@#$%^&*()_+');
     });
 
-    it('should canonicalize recipient', () => {
+    it('should canonicalize recipient', async () => {
       const nonCanonical = {
         is_left: true,
         left: OWNER.accountId,
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      token._mint(nonCanonical, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
+      await token._mint(nonCanonical, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
     });
 
-    it('should not mint to zero (contract)', () => {
-      expect(() => {
-        token._mint(ZERO_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: unsafe transfer');
+    it('should not mint to zero (contract)', async () => {
+      await expect(token._mint(ZERO_CONTRACT, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: unsafe transfer',
+      );
     });
   });
 
   describe('_burn', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should burn token', () => {
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
+    it('should burn token', async () => {
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
 
-      token._burn(TOKENID_1);
-      expect(token._ownerOf(TOKENID_1)).toEqual(ZERO_ACCOUNT);
-      expect(token.balanceOf(OWNER.either)).toEqual(0n);
+      await token._burn(TOKENID_1);
+      expect(await token._ownerOf(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      expect(await token.balanceOf(OWNER.either)).toEqual(0n);
     });
 
-    it('should not burn a token that does not exist', () => {
-      expect(() => {
-        token._burn(NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: invalid sender');
+    it('should not burn a token that does not exist', async () => {
+      await expect(token._burn(NON_EXISTENT_TOKEN)).rejects.toThrow(
+        'NonFungibleToken: invalid sender',
+      );
     });
 
-    it('should clear approval when token is burned', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    it('should clear approval when token is burned', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
 
-      token._burn(TOKENID_1);
-      expect(token._getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      await token._burn(TOKENID_1);
+      expect(await token._getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should burn multiple tokens in sequence', () => {
-      token._mint(OWNER.either, TOKENID_2);
-      token._mint(OWNER.either, TOKENID_3);
+    it('should burn multiple tokens in sequence', async () => {
+      await token._mint(OWNER.either, TOKENID_2);
+      await token._mint(OWNER.either, TOKENID_3);
 
-      token._burn(TOKENID_1);
-      token._burn(TOKENID_2);
-      token._burn(TOKENID_3);
-      expect(token.balanceOf(OWNER.either)).toEqual(0n);
+      await token._burn(TOKENID_1);
+      await token._burn(TOKENID_2);
+      await token._burn(TOKENID_3);
+      expect(await token.balanceOf(OWNER.either)).toEqual(0n);
     });
 
-    it('should burn with very long token IDs', () => {
+    it('should burn with very long token IDs', async () => {
       const longTokenId = BigInt('18446744073709551615');
-      token._mint(OWNER.either, longTokenId);
-      token._burn(longTokenId);
-      expect(token._ownerOf(longTokenId)).toEqual(ZERO_ACCOUNT);
+      await token._mint(OWNER.either, longTokenId);
+      await token._burn(longTokenId);
+      expect(await token._ownerOf(longTokenId)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should burn after transfer', () => {
-      token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
-      token._burn(TOKENID_1);
-      expect(token._ownerOf(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    it('should burn after transfer', async () => {
+      await token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
+      await token._burn(TOKENID_1);
+      expect(await token._ownerOf(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should burn after approval', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token._burn(TOKENID_1);
-      expect(token._ownerOf(TOKENID_1)).toEqual(ZERO_ACCOUNT);
-      expect(token._getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    it('should burn after approval', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token._burn(TOKENID_1);
+      expect(await token._ownerOf(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      expect(await token._getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should clear tokenURI on burn', () => {
-      token._setTokenURI(TOKENID_1, SOME_URI);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
+    it('should clear tokenURI on burn', async () => {
+      await token._setTokenURI(TOKENID_1, SOME_URI);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
 
-      token._burn(TOKENID_1);
+      await token._burn(TOKENID_1);
 
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(EMPTY_URI);
     });
   });
 
   describe('_transfer', () => {
-    it('should not transfer to ContractAddress', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._transfer(OWNER.either, SOME_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: unsafe transfer');
+    it('should not transfer to ContractAddress', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(
+        token._transfer(OWNER.either, SOME_CONTRACT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: unsafe transfer');
     });
 
-    it('should transfer token', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
-      expect(token.balanceOf(SPENDER.either)).toEqual(0n);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+    it('should transfer token', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+      expect(await token.balanceOf(SPENDER.either)).toEqual(0n);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
 
-      token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.balanceOf(OWNER.either)).toEqual(0n);
-      expect(token.balanceOf(SPENDER.either)).toEqual(1n);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token._transfer(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.balanceOf(OWNER.either)).toEqual(0n);
+      expect(await token.balanceOf(SPENDER.either)).toEqual(1n);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should not transfer to zero address', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._transfer(OWNER.either, ZERO_ACCOUNT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not transfer to zero address', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(
+        token._transfer(OWNER.either, ZERO_ACCOUNT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid receiver');
     });
 
-    it('should throw if from does not own token', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._transfer(UNAUTHORIZED.either, SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: incorrect owner');
+    it('should throw if from does not own token', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(
+        token._transfer(UNAUTHORIZED.either, SPENDER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: incorrect owner');
     });
 
-    it('should throw if token does not exist', () => {
-      expect(() => {
-        token._transfer(OWNER.either, SPENDER.either, NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token does not exist', async () => {
+      await expect(
+        token._transfer(OWNER.either, SPENDER.either, NON_EXISTENT_TOKEN),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
     });
 
-    it('should revoke approval after _transfer', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token._transfer(OWNER.either, OTHER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    it('should revoke approval after _transfer', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token._transfer(OWNER.either, OTHER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
   });
 
   describe('_setTokenURI', () => {
-    it('should throw if token does not exist', () => {
-      expect(() => {
-        token._setTokenURI(NON_EXISTENT_TOKEN, EMPTY_URI);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token does not exist', async () => {
+      await expect(
+        token._setTokenURI(NON_EXISTENT_TOKEN, EMPTY_URI),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
     });
 
-    it('should set tokenURI', () => {
-      token._mint(OWNER.either, TOKENID_1);
-      token._setTokenURI(TOKENID_1, SOME_URI);
-      expect(token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
+    it('should set tokenURI', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._setTokenURI(TOKENID_1, SOME_URI);
+      expect(await token.tokenURI(TOKENID_1)).toEqual(SOME_URI);
     });
   });
 
   describe('_unsafeMint', () => {
-    it('should mint to ContractAddress', () => {
-      expect(() => {
-        token._unsafeMint(SOME_CONTRACT, TOKENID_1);
-      }).not.toThrow();
+    it('should mint to ContractAddress', async () => {
+      await expect(
+        token._unsafeMint(SOME_CONTRACT, TOKENID_1),
+      ).resolves.not.toThrow();
     });
 
-    it('should not mint to zero address (accountId)', () => {
-      expect(() => {
-        token._unsafeMint(ZERO_ACCOUNT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not mint to zero address (accountId)', async () => {
+      await expect(token._unsafeMint(ZERO_ACCOUNT, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid receiver',
+      );
     });
 
-    it('should not mint to zero address (contract)', () => {
-      expect(() => {
-        token._unsafeMint(ZERO_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not mint to zero address (contract)', async () => {
+      await expect(token._unsafeMint(ZERO_CONTRACT, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid receiver',
+      );
     });
 
-    it('should not mint a token that already exists', () => {
-      token._unsafeMint(OWNER.either, TOKENID_1);
-      expect(() => {
-        token._unsafeMint(OWNER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid sender');
+    it('should not mint a token that already exists', async () => {
+      await token._unsafeMint(OWNER.either, TOKENID_1);
+      await expect(token._unsafeMint(OWNER.either, TOKENID_1)).rejects.toThrow(
+        'NonFungibleToken: invalid sender',
+      );
     });
 
-    it('should mint token to account', () => {
-      token._unsafeMint(OWNER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
+    it('should mint token to account', async () => {
+      await token._unsafeMint(OWNER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
 
-      token._unsafeMint(OWNER.either, TOKENID_2);
-      token._unsafeMint(OWNER.either, TOKENID_3);
-      expect(token.balanceOf(OWNER.either)).toEqual(3n);
+      await token._unsafeMint(OWNER.either, TOKENID_2);
+      await token._unsafeMint(OWNER.either, TOKENID_3);
+      expect(await token.balanceOf(OWNER.either)).toEqual(3n);
     });
   });
 
   describe('_unsafeTransfer', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should transfer to ContractAddress', () => {
-      expect(() => {
-        token._unsafeTransfer(OWNER.either, SOME_CONTRACT, TOKENID_1);
-      }).not.toThrow();
+    it('should transfer to ContractAddress', async () => {
+      await expect(
+        token._unsafeTransfer(OWNER.either, SOME_CONTRACT, TOKENID_1),
+      ).resolves.not.toThrow();
     });
 
-    it('should transfer token to account', () => {
-      expect(token.balanceOf(OWNER.either)).toEqual(1n);
-      expect(token.balanceOf(SPENDER.either)).toEqual(0n);
-      expect(token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+    it('should transfer token to account', async () => {
+      expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+      expect(await token.balanceOf(SPENDER.either)).toEqual(0n);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
 
-      token._unsafeTransfer(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.balanceOf(OWNER.either)).toEqual(0n);
-      expect(token.balanceOf(SPENDER.either)).toEqual(1n);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token._unsafeTransfer(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.balanceOf(OWNER.either)).toEqual(0n);
+      expect(await token.balanceOf(SPENDER.either)).toEqual(1n);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should not transfer to zero address (accountId)', () => {
-      expect(() => {
-        token._unsafeTransfer(OWNER.either, ZERO_ACCOUNT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not transfer to zero address (accountId)', async () => {
+      await expect(
+        token._unsafeTransfer(OWNER.either, ZERO_ACCOUNT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid receiver');
     });
 
-    it('should not transfer to zero address (contract)', () => {
-      expect(() => {
-        token._unsafeTransfer(OWNER.either, ZERO_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not transfer to zero address (contract)', async () => {
+      await expect(
+        token._unsafeTransfer(OWNER.either, ZERO_CONTRACT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid receiver');
     });
 
-    it('should throw if from does not own token', () => {
-      expect(() => {
+    it('should throw if from does not own token', async () => {
+      await expect(
         token._unsafeTransfer(
           UNAUTHORIZED.either,
           UNAUTHORIZED.either,
           TOKENID_1,
-        );
-      }).toThrow('NonFungibleToken: incorrect owner');
+        ),
+      ).rejects.toThrow('NonFungibleToken: incorrect owner');
     });
 
-    it('should throw if token does not exist', () => {
-      expect(() => {
-        token._unsafeTransfer(OWNER.either, SPENDER.either, NON_EXISTENT_TOKEN);
-      }).toThrow('NonFungibleToken: nonexistent token');
+    it('should throw if token does not exist', async () => {
+      await expect(
+        token._unsafeTransfer(OWNER.either, SPENDER.either, NON_EXISTENT_TOKEN),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
     });
 
-    it('should revoke approval after _unsafeTransfer', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
-      token._unsafeTransfer(OWNER.either, OTHER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    it('should revoke approval after _unsafeTransfer', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
+      await token._unsafeTransfer(OWNER.either, OTHER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should canonicalize contract address recipient', () => {
+    it('should canonicalize contract address recipient', async () => {
       const nonCanonical = {
         is_left: false,
         left: new Uint8Array(32).fill(1),
         right: SOME_CONTRACT.right,
       };
 
-      token._unsafeTransfer(OWNER.either, nonCanonical, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
-      expect(token.balanceOf(SOME_CONTRACT)).toEqual(1n);
+      await token._unsafeTransfer(OWNER.either, nonCanonical, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
+      expect(await token.balanceOf(SOME_CONTRACT)).toEqual(1n);
     });
 
-    it('should handle non-canonical fromAddress', () => {
+    it('should handle non-canonical fromAddress', async () => {
       const nonCanonical = {
         is_left: true,
         left: OWNER.accountId,
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      token._unsafeTransfer(nonCanonical, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token._unsafeTransfer(nonCanonical, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
   });
 
   describe('_unsafeTransferFrom', () => {
-    beforeEach(() => {
-      token._mint(OWNER.either, TOKENID_1);
+    beforeEach(async () => {
+      await token._mint(OWNER.either, TOKENID_1);
     });
 
-    it('should transfer to ContractAddress', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
-      }).not.toThrow();
+    it('should transfer to ContractAddress', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1),
+      ).resolves.not.toThrow();
     });
 
-    it('should not transfer to zero address (accountId)', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token._unsafeTransferFrom(OWNER.either, ZERO_ACCOUNT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not transfer to zero address (accountId)', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token._unsafeTransferFrom(OWNER.either, ZERO_ACCOUNT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid receiver');
     });
 
-    it('should not transfer to zero address (contract)', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token._unsafeTransferFrom(OWNER.either, ZERO_CONTRACT, TOKENID_1);
-      }).toThrow('NonFungibleToken: invalid receiver');
+    it('should not transfer to zero address (contract)', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token._unsafeTransferFrom(OWNER.either, ZERO_CONTRACT, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: invalid receiver');
     });
 
-    it('should not transfer from zero address', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
-        token._unsafeTransferFrom(ZERO_ACCOUNT, SPENDER.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: incorrect owner');
+    it('should not transfer from zero address', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
+        token._unsafeTransferFrom(ZERO_ACCOUNT, SPENDER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: incorrect owner');
     });
 
-    it('unapproved operator should not transfer', () => {
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      expect(() => {
-        token._unsafeTransferFrom(OWNER.either, UNAUTHORIZED.either, TOKENID_1);
-      }).toThrow('NonFungibleToken: insufficient approval');
+    it('unapproved operator should not transfer', async () => {
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token._unsafeTransferFrom(OWNER.either, UNAUTHORIZED.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
     });
 
-    it('should not transfer token that has not been minted', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      expect(() => {
+    it('should not transfer token that has not been minted', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await expect(
         token._unsafeTransferFrom(
           OWNER.either,
           SPENDER.either,
           NON_EXISTENT_TOKEN,
-        );
-      }).toThrow('NonFungibleToken: nonexistent token');
+        ),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
     });
 
-    it('should transfer token to spender via approved operator', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
+    it('should transfer token to spender via approved operator', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token._unsafeTransferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token._unsafeTransferFrom(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should transfer token to ContractAddress via approved operator', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
+    it('should transfer token to ContractAddress via approved operator', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
     });
 
-    it('should transfer token to spender via approvedForAll operator', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should transfer token to spender via approvedForAll operator', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token._unsafeTransferFrom(OWNER.either, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token._unsafeTransferFrom(OWNER.either, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should transfer token to ContractAddress via approvedForAll operator', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.setApprovalForAll(SPENDER.either, true);
+    it('should transfer token to ContractAddress via approvedForAll operator', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.setApprovalForAll(SPENDER.either, true);
 
-      token.privateState.injectSecretKey(SPENDER.secretKey);
-      token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
     });
 
-    it('should revoke approval after _unsafeTransferFrom', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
-      token.approve(SPENDER.either, TOKENID_1);
+    it('should revoke approval after _unsafeTransferFrom', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
+      await token.approve(SPENDER.either, TOKENID_1);
 
-      token._unsafeTransferFrom(OWNER.either, OTHER.either, TOKENID_1);
-      expect(token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+      await token._unsafeTransferFrom(OWNER.either, OTHER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
 
-    it('should handle non-canonical fromAddress', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should handle non-canonical fromAddress', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
       const nonCanonical = {
         is_left: true,
@@ -1359,12 +1409,12 @@ describe('NonFungibleToken', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      token._unsafeTransferFrom(nonCanonical, SPENDER.either, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
+      await token._unsafeTransferFrom(nonCanonical, SPENDER.either, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SPENDER.either);
     });
 
-    it('should canonicalize contract address recipient', () => {
-      token.privateState.injectSecretKey(OWNER.secretKey);
+    it('should canonicalize contract address recipient', async () => {
+      await token.privateState.injectSecretKey(OWNER.secretKey);
 
       const nonCanonical = {
         is_left: false,
@@ -1372,9 +1422,9 @@ describe('NonFungibleToken', () => {
         right: SOME_CONTRACT.right,
       };
 
-      token._unsafeTransferFrom(OWNER.either, nonCanonical, TOKENID_1);
-      expect(token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
-      expect(token.balanceOf(SOME_CONTRACT)).toEqual(1n);
+      await token._unsafeTransferFrom(OWNER.either, nonCanonical, TOKENID_1);
+      expect(await token.ownerOf(TOKENID_1)).toEqual(SOME_CONTRACT);
+      expect(await token.balanceOf(SOME_CONTRACT)).toEqual(1n);
     });
   });
 });
@@ -1415,40 +1465,48 @@ const circuitsToFail: FailingCircuits[] = [
 let uninitializedToken: NonFungibleTokenSimulator;
 
 describe('Uninitialized NonFungibleToken', () => {
-  beforeEach(() => {
-    uninitializedToken = new NonFungibleTokenSimulator(NAME, SYMBOL, BAD_INIT);
+  beforeEach(async () => {
+    uninitializedToken = await NonFungibleTokenSimulator.create(
+      NAME,
+      SYMBOL,
+      BAD_INIT,
+    );
   });
 
-  it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
-    expect(() => {
-      (uninitializedToken[circuitName] as (...args: unknown[]) => unknown)(
-        ...args,
-      );
-    }).toThrow('NonFungibleToken: contract not initialized');
+  it.each(circuitsToFail)('%s should fail', async (circuitName, args) => {
+    await expect(
+      (
+        uninitializedToken[circuitName] as (
+          ...args: unknown[]
+        ) => Promise<unknown>
+      )(...args),
+    ).rejects.toThrow('NonFungibleToken: contract not initialized');
   });
 });
 
 describe('NonFungibleTokenSimulator wiring', () => {
-  it('should expose an empty public ledger via getPublicState', () => {
-    const sim = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
+  it('should expose an empty public ledger via getPublicState', async () => {
+    const sim = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
 
-    expect(sim.getPublicState()).toStrictEqual({});
+    expect(await sim.getPublicState()).toStrictEqual({});
   });
 
   describe('privateState getCurrentSecretKey', () => {
-    it('should return the injected secret key', () => {
-      const sim = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT);
-      sim.privateState.injectSecretKey(OWNER.secretKey);
+    it('should return the injected secret key', async () => {
+      const sim = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
+      await sim.privateState.injectSecretKey(OWNER.secretKey);
 
-      expect(sim.privateState.getCurrentSecretKey()).toEqual(OWNER.secretKey);
+      expect(await sim.privateState.getCurrentSecretKey()).toEqual(
+        OWNER.secretKey,
+      );
     });
 
-    it('should throw when the secret key is undefined', () => {
-      const sim = new NonFungibleTokenSimulator(NAME, SYMBOL, INIT, {
+    it('should throw when the secret key is undefined', async () => {
+      const sim = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT, {
         privateState: { secretKey: undefined as unknown as Uint8Array },
       });
 
-      expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+      await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
         'Missing secret key',
       );
     });

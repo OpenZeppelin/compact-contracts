@@ -125,30 +125,30 @@ let token: MultiTokenSimulator;
 
 describe('MultiToken', () => {
   describe('before initialization', () => {
-    it('should initialize metadata', () => {
-      token = new MultiTokenSimulator(initWithURI);
+    it('should initialize metadata', async () => {
+      token = await MultiTokenSimulator.create(initWithURI);
 
-      expect(token.uri(TOKEN_ID)).toEqual(URI);
+      expect(await token.uri(TOKEN_ID)).toEqual(URI);
     });
 
-    it('should initialize empty metadata', () => {
-      token = new MultiTokenSimulator(initWithEmptyURI);
+    it('should initialize empty metadata', async () => {
+      token = await MultiTokenSimulator.create(initWithEmptyURI);
 
-      expect(token.uri(TOKEN_ID)).toEqual(NO_STRING);
+      expect(await token.uri(TOKEN_ID)).toEqual(NO_STRING);
     });
 
-    it('should not be able to re-initialize', () => {
-      token = new MultiTokenSimulator(initWithEmptyURI);
+    it('should not be able to re-initialize', async () => {
+      token = await MultiTokenSimulator.create(initWithEmptyURI);
 
-      expect(() => {
-        token.initialize(URI);
-      }).toThrow('MultiToken: contract already initialized');
+      await expect(token.initialize(URI)).rejects.toThrow(
+        'MultiToken: contract already initialized',
+      );
     });
   });
 
   describe('when not initialized correctly', () => {
-    beforeEach(() => {
-      token = new MultiTokenSimulator(badInit);
+    beforeEach(async () => {
+      token = await MultiTokenSimulator.create(badInit);
     });
 
     type FailingCircuits = [method: keyof MultiTokenSimulator, args: unknown[]];
@@ -169,24 +169,26 @@ describe('MultiToken', () => {
       ['_setApprovalForAll', [OWNER.either, SPENDER.either, true]],
     ];
 
-    it.each(circuitsToFail)('%s should fail', (circuitName, args) => {
-      expect(() => {
-        (token[circuitName] as (...args: unknown[]) => unknown)(...args);
-      }).toThrow('MultiToken: contract not initialized');
+    it.each(circuitsToFail)('%s should fail', async (circuitName, args) => {
+      await expect(
+        (token[circuitName] as (...args: unknown[]) => Promise<unknown>)(
+          ...args,
+        ),
+      ).rejects.toThrow('MultiToken: contract not initialized');
     });
 
-    it('should allow initialization post deployment', () => {
-      token.initialize(URI);
+    it('should allow initialization post deployment', async () => {
+      await token.initialize(URI);
 
-      expect(() => {
-        token.balanceOf(OWNER.either, TOKEN_ID);
-      }).not.toThrow();
+      await expect(
+        token.balanceOf(OWNER.either, TOKEN_ID),
+      ).resolves.not.toThrow();
     });
   });
 
   describe('when initialized correctly', () => {
-    beforeEach(() => {
-      token = new MultiTokenSimulator(initWithURI);
+    beforeEach(async () => {
+      token = await MultiTokenSimulator.create(initWithURI);
     });
 
     describe('balanceOf', () => {
@@ -196,980 +198,1128 @@ describe('MultiToken', () => {
       ] as const;
 
       describe.each(ownerTypes)('when the owner is a %s', (_, owner) => {
-        it('should return zero when requested account has no balance', () => {
-          expect(token.balanceOf(owner, TOKEN_ID)).toEqual(0n);
-          expect(token.balanceOf(owner, TOKEN_ID2)).toEqual(0n);
+        it('should return zero when requested account has no balance', async () => {
+          expect(await token.balanceOf(owner, TOKEN_ID)).toEqual(0n);
+          expect(await token.balanceOf(owner, TOKEN_ID2)).toEqual(0n);
         });
 
-        it('should return balance when requested account has tokens', () => {
-          token._unsafeMint(owner, TOKEN_ID, AMOUNT);
-          expect(token.balanceOf(owner, TOKEN_ID)).toEqual(AMOUNT);
+        it('should return balance when requested account has tokens', async () => {
+          await token._unsafeMint(owner, TOKEN_ID, AMOUNT);
+          expect(await token.balanceOf(owner, TOKEN_ID)).toEqual(AMOUNT);
 
-          token._unsafeMint(owner, TOKEN_ID2, AMOUNT2);
-          expect(token.balanceOf(owner, TOKEN_ID2)).toEqual(AMOUNT2);
+          await token._unsafeMint(owner, TOKEN_ID2, AMOUNT2);
+          expect(await token.balanceOf(owner, TOKEN_ID2)).toEqual(AMOUNT2);
         });
 
-        it('should handle token ID 0', () => {
+        it('should handle token ID 0', async () => {
           const ZERO_ID = 0n;
-          token._unsafeMint(owner, ZERO_ID, AMOUNT);
-          expect(token.balanceOf(owner, ZERO_ID)).toEqual(AMOUNT);
+          await token._unsafeMint(owner, ZERO_ID, AMOUNT);
+          expect(await token.balanceOf(owner, ZERO_ID)).toEqual(AMOUNT);
         });
 
-        it('should handle MAX_UINT128 token ID', () => {
+        it('should handle MAX_UINT128 token ID', async () => {
           const MAX_ID = MAX_UINT128;
-          token._unsafeMint(owner, MAX_ID, AMOUNT);
-          expect(token.balanceOf(owner, MAX_ID)).toEqual(AMOUNT);
+          await token._unsafeMint(owner, MAX_ID, AMOUNT);
+          expect(await token.balanceOf(owner, MAX_ID)).toEqual(AMOUNT);
         });
       });
 
-      it('should return correct balance with non-canonical lookup (left)', () => {
-        token._unsafeMint(OWNER.either, TOKEN_ID, AMOUNT);
+      it('should return correct balance with non-canonical lookup (left)', async () => {
+        await token._unsafeMint(OWNER.either, TOKEN_ID, AMOUNT);
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
 
-        expect(token.balanceOf(nonCanonical, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(nonCanonical, TOKEN_ID)).toEqual(AMOUNT);
       });
 
-      it('should return correct balance with non-canonical lookup (right)', () => {
-        token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
+      it('should return correct balance with non-canonical lookup (right)', async () => {
+        await token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
         const nonCanonical = nonCanonicalRight(OWNER_CONTRACT.right);
 
-        expect(token.balanceOf(nonCanonical, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(nonCanonical, TOKEN_ID)).toEqual(AMOUNT);
       });
     });
 
     describe('isApprovedForAll', () => {
-      it('should return false when not set', () => {
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+      it('should return false when not set', async () => {
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
           false,
         );
       });
 
-      it('should handle approving owner as operator', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token.setApprovalForAll(OWNER.either, true);
-        expect(token.isApprovedForAll(OWNER.either, OWNER.either)).toBe(true);
+      it('should handle approving owner as operator', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.setApprovalForAll(OWNER.either, true);
+        expect(await token.isApprovedForAll(OWNER.either, OWNER.either)).toBe(
+          true,
+        );
       });
 
-      it('should handle multiple approvals of same operator', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token.setApprovalForAll(SPENDER.either, true);
-        token.setApprovalForAll(SPENDER.either, true);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      it('should handle multiple approvals of same operator', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.setApprovalForAll(SPENDER.either, true);
+        await token.setApprovalForAll(SPENDER.either, true);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+          true,
+        );
       });
 
-      it('should handle revoking non-existent approval', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token.setApprovalForAll(SPENDER.either, false);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+      it('should handle revoking non-existent approval', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.setApprovalForAll(SPENDER.either, false);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
           false,
         );
       });
 
-      it('should return correct result with non-canonical owner lookup', () => {
-        token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+      it('should return correct result with non-canonical owner lookup', async () => {
+        await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
 
-        expect(token.isApprovedForAll(nonCanonical, SPENDER.either)).toBe(true);
+        expect(await token.isApprovedForAll(nonCanonical, SPENDER.either)).toBe(
+          true,
+        );
       });
 
-      it('should return correct result with non-canonical operator lookup', () => {
-        token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+      it('should return correct result with non-canonical operator lookup', async () => {
+        await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
         const nonCanonical = nonCanonicalLeft(SPENDER.accountId);
 
-        expect(token.isApprovedForAll(OWNER.either, nonCanonical)).toBe(true);
+        expect(await token.isApprovedForAll(OWNER.either, nonCanonical)).toBe(
+          true,
+        );
       });
     });
 
     describe('setApprovalForAll', () => {
-      it('should return false when set to false', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token.setApprovalForAll(SPENDER.either, false);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+      it('should return false when set to false', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.setApprovalForAll(SPENDER.either, false);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
           false,
         );
       });
 
-      it('should fail when attempting to approve zero address as an operator', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        expect(() => {
-          token.setApprovalForAll(ZERO_ACCOUNT, true);
-        }).toThrow('MultiToken: invalid operator');
+      it('should fail when attempting to approve zero address as an operator', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await expect(
+          token.setApprovalForAll(ZERO_ACCOUNT, true),
+        ).rejects.toThrow('MultiToken: invalid operator');
       });
 
       describe('when spender is approved as an operator', () => {
-        beforeEach(() => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
-          token.setApprovalForAll(SPENDER.either, true);
+        beforeEach(async () => {
+          await token.privateState.injectSecretKey(OWNER.secretKey);
+          await token.setApprovalForAll(SPENDER.either, true);
         });
 
-        it('should return true when set to true', () => {
-          expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-            true,
-          );
+        it('should return true when set to true', async () => {
+          expect(
+            await token.isApprovedForAll(OWNER.either, SPENDER.either),
+          ).toBe(true);
         });
 
-        it('should unset → set → unset operator', () => {
-          token.setApprovalForAll(SPENDER.either, false);
-          expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-            false,
-          );
+        it('should unset → set → unset operator', async () => {
+          await token.setApprovalForAll(SPENDER.either, false);
+          expect(
+            await token.isApprovedForAll(OWNER.either, SPENDER.either),
+          ).toBe(false);
 
-          token.setApprovalForAll(SPENDER.either, true);
-          expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-            true,
-          );
+          await token.setApprovalForAll(SPENDER.either, true);
+          expect(
+            await token.isApprovedForAll(OWNER.either, SPENDER.either),
+          ).toBe(true);
 
-          token.setApprovalForAll(SPENDER.either, false);
-          expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-            false,
-          );
+          await token.setApprovalForAll(SPENDER.either, false);
+          expect(
+            await token.isApprovedForAll(OWNER.either, SPENDER.either),
+          ).toBe(false);
         });
       });
     });
 
     describe('transferFrom', () => {
-      beforeEach(() => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT);
+      beforeEach(async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
       });
 
       describe.each(callerTypes)('when the caller is the %s', (_, caller) => {
-        beforeEach(() => {
+        beforeEach(async () => {
           if (caller === SPENDER) {
-            token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+            await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
           }
-          token.privateState.injectSecretKey(caller.secretKey);
+          await token.privateState.injectSecretKey(caller.secretKey);
         });
 
-        it('should transfer whole', () => {
-          token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        it('should transfer whole', async () => {
+          await token.transferFrom(
+            OWNER.either,
+            RECIPIENT.either,
+            TOKEN_ID,
+            AMOUNT,
+          );
 
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-          expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+          expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+            AMOUNT,
+          );
         });
 
-        it('should transfer partial', () => {
+        it('should transfer partial', async () => {
           const partialAmt = AMOUNT - 1n;
-          token.transferFrom(
+          await token.transferFrom(
             OWNER.either,
             RECIPIENT.either,
             TOKEN_ID,
             partialAmt,
           );
 
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
             AMOUNT - partialAmt,
           );
-          expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
             partialAmt,
           );
         });
 
-        it('should allow transfer of 0 tokens', () => {
-          token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, 0n);
+        it('should allow transfer of 0 tokens', async () => {
+          await token.transferFrom(
+            OWNER.either,
+            RECIPIENT.either,
+            TOKEN_ID,
+            0n,
+          );
 
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-          expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+          expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
         });
 
-        it('should handle self-transfer', () => {
-          token.transferFrom(OWNER.either, OWNER.either, TOKEN_ID, AMOUNT);
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+        it('should handle self-transfer', async () => {
+          await token.transferFrom(
+            OWNER.either,
+            OWNER.either,
+            TOKEN_ID,
+            AMOUNT,
+          );
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
         });
 
-        it('should handle MAX_UINT128 transfer amount', () => {
-          token._mint(OWNER.either, TOKEN_ID, MAX_UINT128 - AMOUNT);
+        it('should handle MAX_UINT128 transfer amount', async () => {
+          await token._mint(OWNER.either, TOKEN_ID, MAX_UINT128 - AMOUNT);
 
-          token.transferFrom(
+          await token.transferFrom(
             OWNER.either,
             RECIPIENT.either,
             TOKEN_ID,
             MAX_UINT128,
           );
-          expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
             MAX_UINT128,
           );
         });
 
-        it('should handle rapid state changes', () => {
-          token.privateState.injectSecretKey(OWNER.secretKey);
-          token.setApprovalForAll(SPENDER.either, true);
+        it('should handle rapid state changes', async () => {
+          await token.privateState.injectSecretKey(OWNER.secretKey);
+          await token.setApprovalForAll(SPENDER.either, true);
 
-          token.privateState.injectSecretKey(SPENDER.secretKey);
-          token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, AMOUNT);
-          expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
-
-          token.privateState.injectSecretKey(OWNER.secretKey);
-          token.setApprovalForAll(SPENDER.either, false);
-          expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-            false,
+          await token.privateState.injectSecretKey(SPENDER.secretKey);
+          await token.transferFrom(
+            OWNER.either,
+            RECIPIENT.either,
+            TOKEN_ID,
+            AMOUNT,
+          );
+          expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+            AMOUNT,
           );
 
-          token.setApprovalForAll(SPENDER.either, true);
-          expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-            true,
-          );
+          await token.privateState.injectSecretKey(OWNER.secretKey);
+          await token.setApprovalForAll(SPENDER.either, false);
+          expect(
+            await token.isApprovedForAll(OWNER.either, SPENDER.either),
+          ).toBe(false);
+
+          await token.setApprovalForAll(SPENDER.either, true);
+          expect(
+            await token.isApprovedForAll(OWNER.either, SPENDER.either),
+          ).toBe(true);
         });
 
-        it('should fail with insufficient balance', () => {
-          expect(() => {
+        it('should fail with insufficient balance', async () => {
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT.either,
               TOKEN_ID,
               AMOUNT + 1n,
-            );
-          }).toThrow('MultiToken: insufficient balance');
+            ),
+          ).rejects.toThrow('MultiToken: insufficient balance');
         });
 
-        it('should fail with nonexistent id', () => {
-          expect(() => {
+        it('should fail with nonexistent id', async () => {
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT.either,
               NONEXISTENT_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: insufficient balance');
+            ),
+          ).rejects.toThrow('MultiToken: insufficient balance');
         });
 
-        it('should fail with transfer from zero', () => {
-          expect(() => {
+        it('should fail with transfer from zero', async () => {
+          await expect(
             token.transferFrom(
               ZERO_ACCOUNT,
               RECIPIENT.either,
               TOKEN_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: unauthorized operator');
+            ),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
 
-        it('should fail with transfer to zero (id)', () => {
-          expect(() => {
-            token.transferFrom(OWNER.either, ZERO_ACCOUNT, TOKEN_ID, AMOUNT);
-          }).toThrow('MultiToken: invalid receiver');
+        it('should fail with transfer to zero (id)', async () => {
+          await expect(
+            token.transferFrom(OWNER.either, ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
+          ).rejects.toThrow('MultiToken: invalid receiver');
         });
 
-        it('should fail with transfer to zero (contract)', () => {
-          expect(() => {
-            token.transferFrom(OWNER.either, ZERO_CONTRACT, TOKEN_ID, AMOUNT);
-          }).toThrow('MultiToken: unsafe transfer');
+        it('should fail with transfer to zero (contract)', async () => {
+          await expect(
+            token.transferFrom(OWNER.either, ZERO_CONTRACT, TOKEN_ID, AMOUNT),
+          ).rejects.toThrow('MultiToken: unsafe transfer');
         });
 
-        it('should fail when transferring to a contract address', () => {
-          expect(() => {
+        it('should fail when transferring to a contract address', async () => {
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT_CONTRACT,
               TOKEN_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: unsafe transfer');
+            ),
+          ).rejects.toThrow('MultiToken: unsafe transfer');
         });
       });
 
-      it('should handle concurrent operations on same token ID', () => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT * 2n);
+      it('should handle concurrent operations on same token ID', async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT * 2n);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token.setApprovalForAll(SPENDER.either, true);
-        token.setApprovalForAll(OTHER.either, true);
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.setApprovalForAll(SPENDER.either, true);
+        await token.setApprovalForAll(OTHER.either, true);
 
         // First spender transfers half
-        token.privateState.injectSecretKey(SPENDER.secretKey);
-        token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        await token.privateState.injectSecretKey(SPENDER.secretKey);
+        await token.transferFrom(
+          OWNER.either,
+          RECIPIENT.either,
+          TOKEN_ID,
+          AMOUNT,
+        );
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
 
         // Second spender transfers remaining
-        token.privateState.injectSecretKey(OTHER.secretKey);
-        token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+        await token.privateState.injectSecretKey(OTHER.secretKey);
+        await token.transferFrom(
+          OWNER.either,
+          RECIPIENT.either,
+          TOKEN_ID,
+          AMOUNT,
+        );
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
           AMOUNT * 2n,
         );
       });
 
-      it('should handle non-canonical fromAddress (id)', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+      it('should handle non-canonical fromAddress (id)', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
 
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
-        token.transferFrom(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        await token.transferFrom(
+          nonCanonical,
+          RECIPIENT.either,
+          TOKEN_ID,
+          AMOUNT,
+        );
 
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should handle non-canonical fromAddress (contract address)', () => {
-        token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
-        token._setApprovalForAll(OWNER_CONTRACT, OWNER.either, true);
+      it('should handle non-canonical fromAddress (contract address)', async () => {
+        await token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
+        await token._setApprovalForAll(OWNER_CONTRACT, OWNER.either, true);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.privateState.injectSecretKey(OWNER.secretKey);
 
         const nonCanonical = nonCanonicalRight(OWNER_CONTRACT.right);
-        token.transferFrom(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        await token.transferFrom(
+          nonCanonical,
+          RECIPIENT.either,
+          TOKEN_ID,
+          AMOUNT,
+        );
 
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
       describe('when the caller is unauthorized', () => {
-        beforeEach(() => {
-          token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        beforeEach(async () => {
+          await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
         });
 
-        it('should fail when transfer whole', () => {
-          expect(() => {
+        it('should fail when transfer whole', async () => {
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT.either,
               TOKEN_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: unauthorized operator');
+            ),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
 
-        it('should fail when transfer partial', () => {
-          expect(() => {
-            const partialAmt = AMOUNT - 1n;
+        it('should fail when transfer partial', async () => {
+          const partialAmt = AMOUNT - 1n;
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT.either,
               TOKEN_ID,
               partialAmt,
-            );
-          }).toThrow('MultiToken: unauthorized operator');
+            ),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
 
-        it('should fail when transfer zero', () => {
-          expect(() => {
-            token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, 0n);
-          }).toThrow('MultiToken: unauthorized operator');
+        it('should fail when transfer zero', async () => {
+          await expect(
+            token.transferFrom(OWNER.either, RECIPIENT.either, TOKEN_ID, 0n),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
 
-        it('should fail with insufficient balance', () => {
-          expect(() => {
+        it('should fail with insufficient balance', async () => {
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT.either,
               TOKEN_ID,
               AMOUNT + 1n,
-            );
-          }).toThrow('MultiToken: unauthorized operator');
+            ),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
 
-        it('should fail with nonexistent id', () => {
-          expect(() => {
+        it('should fail with nonexistent id', async () => {
+          await expect(
             token.transferFrom(
               OWNER.either,
               RECIPIENT.either,
               NONEXISTENT_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: unauthorized operator');
+            ),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
 
-        it('should fail with transfer from zero', () => {
-          expect(() => {
+        it('should fail with transfer from zero', async () => {
+          await expect(
             token.transferFrom(
               ZERO_ACCOUNT,
               RECIPIENT.either,
               TOKEN_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: unauthorized operator');
+            ),
+          ).rejects.toThrow('MultiToken: unauthorized operator');
         });
       });
     });
 
     describe('_unsafeTransferFrom', () => {
-      beforeEach(() => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT);
+      beforeEach(async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT);
       });
 
       describe.each(callerTypes)('when the caller is the %s', (_, caller) => {
-        beforeEach(() => {
+        beforeEach(async () => {
           if (caller === SPENDER) {
-            token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+            await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
           }
-          token.privateState.injectSecretKey(caller.secretKey);
+          await token.privateState.injectSecretKey(caller.secretKey);
         });
 
         describe.each(
           recipientTypes,
         )('when the recipient is a %s', (_, recipient) => {
-          it('should transfer whole', () => {
-            token._unsafeTransferFrom(
+          it('should transfer whole', async () => {
+            await token._unsafeTransferFrom(
               OWNER.either,
               recipient,
               TOKEN_ID,
               AMOUNT,
             );
 
-            expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
           });
 
-          it('should transfer partial', () => {
+          it('should transfer partial', async () => {
             const partialAmt = AMOUNT - 1n;
-            token._unsafeTransferFrom(
+            await token._unsafeTransferFrom(
               OWNER.either,
               recipient,
               TOKEN_ID,
               partialAmt,
             );
 
-            expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
               AMOUNT - partialAmt,
             );
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(partialAmt);
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+              partialAmt,
+            );
           });
 
-          it('should allow transfer of 0 tokens', () => {
-            token._unsafeTransferFrom(OWNER.either, recipient, TOKEN_ID, 0n);
+          it('should allow transfer of 0 tokens', async () => {
+            await token._unsafeTransferFrom(
+              OWNER.either,
+              recipient,
+              TOKEN_ID,
+              0n,
+            );
 
-            expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+              AMOUNT,
+            );
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
           });
 
-          it('should handle self-transfer', () => {
-            token._unsafeTransferFrom(
+          it('should handle self-transfer', async () => {
+            await token._unsafeTransferFrom(
               OWNER.either,
               OWNER.either,
               TOKEN_ID,
               AMOUNT,
             );
-            expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+              AMOUNT,
+            );
           });
 
-          it('should handle MAX_UINT128 transfer amount', () => {
-            token._mint(OWNER.either, TOKEN_ID, MAX_UINT128 - AMOUNT);
+          it('should handle MAX_UINT128 transfer amount', async () => {
+            await token._mint(OWNER.either, TOKEN_ID, MAX_UINT128 - AMOUNT);
 
-            token._unsafeTransferFrom(
+            await token._unsafeTransferFrom(
               OWNER.either,
               recipient,
               TOKEN_ID,
               MAX_UINT128,
             );
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(MAX_UINT128);
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+              MAX_UINT128,
+            );
           });
 
-          it('should handle rapid state changes', () => {
-            token.privateState.injectSecretKey(OWNER.secretKey);
-            token.setApprovalForAll(SPENDER.either, true);
+          it('should handle rapid state changes', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
+            await token.setApprovalForAll(SPENDER.either, true);
 
-            token._unsafeTransferFrom(
+            await token._unsafeTransferFrom(
               OWNER.either,
               recipient,
               TOKEN_ID,
               AMOUNT,
             );
-            expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
 
-            token.setApprovalForAll(SPENDER.either, false);
-            expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-              false,
-            );
+            await token.setApprovalForAll(SPENDER.either, false);
+            expect(
+              await token.isApprovedForAll(OWNER.either, SPENDER.either),
+            ).toBe(false);
 
-            token.setApprovalForAll(SPENDER.either, true);
-            expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
-              true,
-            );
+            await token.setApprovalForAll(SPENDER.either, true);
+            expect(
+              await token.isApprovedForAll(OWNER.either, SPENDER.either),
+            ).toBe(true);
           });
 
-          it('should fail with insufficient balance', () => {
-            expect(() => {
+          it('should fail with insufficient balance', async () => {
+            await expect(
               token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 TOKEN_ID,
                 AMOUNT + 1n,
-              );
-            }).toThrow('MultiToken: insufficient balance');
+              ),
+            ).rejects.toThrow('MultiToken: insufficient balance');
           });
 
-          it('should fail with nonexistent id', () => {
-            expect(() => {
+          it('should fail with nonexistent id', async () => {
+            await expect(
               token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 NONEXISTENT_ID,
                 AMOUNT,
-              );
-            }).toThrow('MultiToken: insufficient balance');
+              ),
+            ).rejects.toThrow('MultiToken: insufficient balance');
           });
 
-          it('should fail with transfer from zero', () => {
-            expect(() => {
+          it('should fail with transfer from zero', async () => {
+            await expect(
               token._unsafeTransferFrom(
                 ZERO_ACCOUNT,
                 recipient,
                 TOKEN_ID,
                 AMOUNT,
-              );
-            }).toThrow('MultiToken: unauthorized operator');
+              ),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
         });
 
-        it('should fail with transfer to zero (id)', () => {
-          expect(() => {
+        it('should fail with transfer to zero (id)', async () => {
+          await expect(
             token._unsafeTransferFrom(
               OWNER.either,
               ZERO_ACCOUNT,
               TOKEN_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: invalid receiver');
+            ),
+          ).rejects.toThrow('MultiToken: invalid receiver');
         });
 
-        it('should fail with transfer to zero (contract)', () => {
-          expect(() => {
+        it('should fail with transfer to zero (contract)', async () => {
+          await expect(
             token._unsafeTransferFrom(
               OWNER.either,
               ZERO_CONTRACT,
               TOKEN_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: invalid receiver');
+            ),
+          ).rejects.toThrow('MultiToken: invalid receiver');
         });
       });
 
-      it('should handle concurrent operations on same token ID', () => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT * 2n);
+      it('should handle concurrent operations on same token ID', async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT * 2n);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token.setApprovalForAll(SPENDER.either, true);
-        token.setApprovalForAll(OTHER.either, true);
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.setApprovalForAll(SPENDER.either, true);
+        await token.setApprovalForAll(OTHER.either, true);
 
         // First spender transfers half
-        token.privateState.injectSecretKey(SPENDER.secretKey);
-        token._unsafeTransferFrom(
+        await token.privateState.injectSecretKey(SPENDER.secretKey);
+        await token._unsafeTransferFrom(
           OWNER.either,
           RECIPIENT.either,
           TOKEN_ID,
           AMOUNT,
         );
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
 
         // Second spender transfers remaining
-        token.privateState.injectSecretKey(OTHER.secretKey);
-        token._unsafeTransferFrom(
+        await token.privateState.injectSecretKey(OTHER.secretKey);
+        await token._unsafeTransferFrom(
           OWNER.either,
           RECIPIENT.either,
           TOKEN_ID,
           AMOUNT,
         );
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
           AMOUNT * 2n,
         );
       });
 
-      it('should handle non-canonical fromAddress (id)', () => {
+      it('should handle non-canonical fromAddress (id)', async () => {
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
-        token._unsafeTransferFrom(
+        await token.privateState.injectSecretKey(OWNER.secretKey);
+        await token._unsafeTransferFrom(
           nonCanonical,
           RECIPIENT.either,
           TOKEN_ID,
           AMOUNT,
         );
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should handle non-canonical fromAddress (contract address)', () => {
+      it('should handle non-canonical fromAddress (contract address)', async () => {
         // Mint to contract address to test the transfer of non-canonical `fromAddress`
-        token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
+        await token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
         // Approve owner (id) to move OWNER_CONTRACT's token
-        token._setApprovalForAll(OWNER_CONTRACT, OWNER.either, true);
+        await token._setApprovalForAll(OWNER_CONTRACT, OWNER.either, true);
 
-        token.privateState.injectSecretKey(OWNER.secretKey);
+        await token.privateState.injectSecretKey(OWNER.secretKey);
         const nonCanonical = nonCanonicalRight(OWNER_CONTRACT.right);
-        token._unsafeTransferFrom(
+        await token._unsafeTransferFrom(
           nonCanonical,
           RECIPIENT.either,
           TOKEN_ID,
           AMOUNT,
         );
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should canonicalize recipient (id)', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+      it('should canonicalize recipient (id)', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
 
         const nonCanonical = nonCanonicalLeft(RECIPIENT.accountId);
-        token._unsafeTransferFrom(OWNER.either, nonCanonical, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        await token._unsafeTransferFrom(
+          OWNER.either,
+          nonCanonical,
+          TOKEN_ID,
+          AMOUNT,
+        );
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should canonicalize recipient (contract address)', () => {
-        token.privateState.injectSecretKey(OWNER.secretKey);
+      it('should canonicalize recipient (contract address)', async () => {
+        await token.privateState.injectSecretKey(OWNER.secretKey);
 
         const nonCanonical = nonCanonicalRight(RECIPIENT_CONTRACT.right);
-        token._unsafeTransferFrom(OWNER.either, nonCanonical, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(RECIPIENT_CONTRACT, TOKEN_ID)).toEqual(AMOUNT);
+        await token._unsafeTransferFrom(
+          OWNER.either,
+          nonCanonical,
+          TOKEN_ID,
+          AMOUNT,
+        );
+        expect(await token.balanceOf(RECIPIENT_CONTRACT, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
       describe('when the caller is unauthorized', () => {
-        beforeEach(() => {
-          token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+        beforeEach(async () => {
+          await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
         });
 
         describe.each(
           recipientTypes,
         )('when recipient is %s', (_, recipient) => {
-          it('should fail when transfer whole', () => {
-            expect(() => {
+          it('should fail when transfer whole', async () => {
+            await expect(
               token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 TOKEN_ID,
                 AMOUNT,
-              );
-            }).toThrow('MultiToken: unauthorized operator');
+              ),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
 
-          it('should fail when transfer partial', () => {
-            expect(() => {
-              const partialAmt = AMOUNT - 1n;
+          it('should fail when transfer partial', async () => {
+            const partialAmt = AMOUNT - 1n;
+            await expect(
               token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 TOKEN_ID,
                 partialAmt,
-              );
-            }).toThrow('MultiToken: unauthorized operator');
+              ),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
 
-          it('should fail when transfer zero', () => {
-            expect(() => {
-              token._unsafeTransferFrom(OWNER.either, recipient, TOKEN_ID, 0n);
-            }).toThrow('MultiToken: unauthorized operator');
+          it('should fail when transfer zero', async () => {
+            await expect(
+              token._unsafeTransferFrom(OWNER.either, recipient, TOKEN_ID, 0n),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
 
-          it('should fail with insufficient balance', () => {
-            expect(() => {
+          it('should fail with insufficient balance', async () => {
+            await expect(
               token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 TOKEN_ID,
                 AMOUNT + 1n,
-              );
-            }).toThrow('MultiToken: unauthorized operator');
+              ),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
 
-          it('should fail with nonexistent id', () => {
-            expect(() => {
+          it('should fail with nonexistent id', async () => {
+            await expect(
               token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 NONEXISTENT_ID,
                 AMOUNT,
-              );
-            }).toThrow('MultiToken: unauthorized operator');
+              ),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
 
-          it('should fail with transfer from zero', () => {
+          it('should fail with transfer from zero', async () => {
             // With witness-based identity, the caller is H(sk) which is
             // always non-zero. Transferring from ZERO_ACCOUNT means
             // canonFrom != caller → isApprovedForAll(zeroAccount, caller) → false
             // → "unauthorized operator"
-            expect(() => {
+            await expect(
               token._unsafeTransferFrom(
                 ZERO_ACCOUNT,
                 recipient,
                 TOKEN_ID,
                 AMOUNT,
-              );
-            }).toThrow('MultiToken: unauthorized operator');
+              ),
+            ).rejects.toThrow('MultiToken: unauthorized operator');
           });
         });
       });
     });
 
     describe('_transfer', () => {
-      beforeEach(() => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT);
+      beforeEach(async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
       });
 
-      it('should transfer whole', () => {
-        token._transfer(OWNER.either, RECIPIENT.either, TOKEN_ID, AMOUNT);
+      it('should transfer whole', async () => {
+        await token._transfer(OWNER.either, RECIPIENT.either, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should transfer partial', () => {
+      it('should transfer partial', async () => {
         const partialAmt = AMOUNT - 1n;
-        token._transfer(OWNER.either, RECIPIENT.either, TOKEN_ID, partialAmt);
+        await token._transfer(
+          OWNER.either,
+          RECIPIENT.either,
+          TOKEN_ID,
+          partialAmt,
+        );
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
           AMOUNT - partialAmt,
         );
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(partialAmt);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          partialAmt,
+        );
       });
 
-      it('should allow transfer of 0 tokens', () => {
-        token._transfer(OWNER.either, RECIPIENT.either, TOKEN_ID, 0n);
+      it('should allow transfer of 0 tokens', async () => {
+        await token._transfer(OWNER.either, RECIPIENT.either, TOKEN_ID, 0n);
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
       });
 
-      it('should fail with insufficient balance', () => {
-        expect(() => {
+      it('should fail with insufficient balance', async () => {
+        await expect(
           token._transfer(
             OWNER.either,
             RECIPIENT.either,
             TOKEN_ID,
             AMOUNT + 1n,
-          );
-        }).toThrow('MultiToken: insufficient balance');
+          ),
+        ).rejects.toThrow('MultiToken: insufficient balance');
       });
 
-      it('should fail with nonexistent id', () => {
-        expect(() => {
+      it('should fail with nonexistent id', async () => {
+        await expect(
           token._transfer(
             OWNER.either,
             RECIPIENT.either,
             NONEXISTENT_ID,
             AMOUNT,
-          );
-        }).toThrow('MultiToken: insufficient balance');
+          ),
+        ).rejects.toThrow('MultiToken: insufficient balance');
       });
 
-      it('should fail when transfer from 0', () => {
-        expect(() => {
-          token._transfer(ZERO_ACCOUNT, RECIPIENT.either, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid sender');
+      it('should fail when transfer from 0', async () => {
+        await expect(
+          token._transfer(ZERO_ACCOUNT, RECIPIENT.either, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid sender');
       });
 
-      it('should fail when transfer to 0', () => {
-        expect(() => {
-          token._transfer(OWNER.either, ZERO_ACCOUNT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid receiver');
+      it('should fail when transfer to 0', async () => {
+        await expect(
+          token._transfer(OWNER.either, ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid receiver');
       });
 
-      it('should fail when transfer to contract address', () => {
-        expect(() => {
-          token._transfer(OWNER.either, RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: unsafe transfer');
+      it('should fail when transfer to contract address', async () => {
+        await expect(
+          token._transfer(OWNER.either, RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: unsafe transfer');
       });
 
-      it('should handle non-canonical fromAddress (id)', () => {
+      it('should handle non-canonical fromAddress (id)', async () => {
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
 
-        token._transfer(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        await token._transfer(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should handle non-canonical fromAddress (contract address)', () => {
-        token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
+      it('should handle non-canonical fromAddress (contract address)', async () => {
+        await token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
 
         const nonCanonical = nonCanonicalRight(OWNER_CONTRACT.right);
-        token._transfer(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        await token._transfer(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
     });
 
     describe('_unsafeTransfer', () => {
-      beforeEach(() => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT);
+      beforeEach(async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
       });
 
       describe.each(
         recipientTypes,
       )('when the recipient is a %s', (_, recipient) => {
-        it('should transfer whole', () => {
-          token._unsafeTransfer(OWNER.either, recipient, TOKEN_ID, AMOUNT);
+        it('should transfer whole', async () => {
+          await token._unsafeTransfer(
+            OWNER.either,
+            recipient,
+            TOKEN_ID,
+            AMOUNT,
+          );
 
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
         });
 
-        it('should transfer partial', () => {
+        it('should transfer partial', async () => {
           const partialAmt = AMOUNT - 1n;
-          token._unsafeTransfer(OWNER.either, recipient, TOKEN_ID, partialAmt);
+          await token._unsafeTransfer(
+            OWNER.either,
+            recipient,
+            TOKEN_ID,
+            partialAmt,
+          );
 
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
             AMOUNT - partialAmt,
           );
-          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(partialAmt);
+          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+            partialAmt,
+          );
         });
 
-        it('should allow transfer of 0 tokens', () => {
-          token._unsafeTransfer(OWNER.either, recipient, TOKEN_ID, 0n);
+        it('should allow transfer of 0 tokens', async () => {
+          await token._unsafeTransfer(OWNER.either, recipient, TOKEN_ID, 0n);
 
-          expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
+          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
         });
 
-        it('should fail with insufficient balance', () => {
-          expect(() => {
+        it('should fail with insufficient balance', async () => {
+          await expect(
             token._unsafeTransfer(
               OWNER.either,
               recipient,
               TOKEN_ID,
               AMOUNT + 1n,
-            );
-          }).toThrow('MultiToken: insufficient balance');
+            ),
+          ).rejects.toThrow('MultiToken: insufficient balance');
         });
 
-        it('should fail with nonexistent id', () => {
-          expect(() => {
+        it('should fail with nonexistent id', async () => {
+          await expect(
             token._unsafeTransfer(
               OWNER.either,
               recipient,
               NONEXISTENT_ID,
               AMOUNT,
-            );
-          }).toThrow('MultiToken: insufficient balance');
+            ),
+          ).rejects.toThrow('MultiToken: insufficient balance');
         });
 
-        it('should fail when transfer from 0 (id)', () => {
-          expect(() => {
-            token._unsafeTransfer(ZERO_ACCOUNT, recipient, TOKEN_ID, AMOUNT);
-          }).toThrow('MultiToken: invalid sender');
+        it('should fail when transfer from 0 (id)', async () => {
+          await expect(
+            token._unsafeTransfer(ZERO_ACCOUNT, recipient, TOKEN_ID, AMOUNT),
+          ).rejects.toThrow('MultiToken: invalid sender');
         });
 
-        it('should fail when transfer from 0 (contract address)', () => {
-          expect(() => {
-            token._unsafeTransfer(ZERO_CONTRACT, recipient, TOKEN_ID, AMOUNT);
-          }).toThrow('MultiToken: invalid sender');
+        it('should fail when transfer from 0 (contract address)', async () => {
+          await expect(
+            token._unsafeTransfer(ZERO_CONTRACT, recipient, TOKEN_ID, AMOUNT),
+          ).rejects.toThrow('MultiToken: invalid sender');
         });
       });
 
-      it('should handle non-canonical fromAddress (id)', () => {
+      it('should handle non-canonical fromAddress (id)', async () => {
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
-        token._unsafeTransfer(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        await token._unsafeTransfer(
+          nonCanonical,
+          RECIPIENT.either,
+          TOKEN_ID,
+          AMOUNT,
+        );
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should handle non-canonical fromAddress (contract address)', () => {
+      it('should handle non-canonical fromAddress (contract address)', async () => {
         // Mint to contract address to test the transfer of non-canonical `fromAddress`
-        token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
+        await token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
 
         const nonCanonical = nonCanonicalRight(OWNER_CONTRACT.right);
-        token._unsafeTransfer(nonCanonical, RECIPIENT.either, TOKEN_ID, AMOUNT);
+        await token._unsafeTransfer(
+          nonCanonical,
+          RECIPIENT.either,
+          TOKEN_ID,
+          AMOUNT,
+        );
 
-        expect(token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should handle non-canonical to (id)', () => {
+      it('should handle non-canonical to (id)', async () => {
         const nonCanonical = nonCanonicalLeft(RECIPIENT.accountId);
-        token._unsafeTransfer(OWNER.either, nonCanonical, TOKEN_ID, AMOUNT);
+        await token._unsafeTransfer(
+          OWNER.either,
+          nonCanonical,
+          TOKEN_ID,
+          AMOUNT,
+        );
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should handle non-canonical to (contract address)', () => {
+      it('should handle non-canonical to (contract address)', async () => {
         const nonCanonical = nonCanonicalRight(RECIPIENT_CONTRACT.right);
-        token._unsafeTransfer(OWNER.either, nonCanonical, TOKEN_ID, AMOUNT);
+        await token._unsafeTransfer(
+          OWNER.either,
+          nonCanonical,
+          TOKEN_ID,
+          AMOUNT,
+        );
 
-        expect(token.balanceOf(RECIPIENT_CONTRACT, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT_CONTRACT, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should fail when transfer to 0 (id)', () => {
-        expect(() => {
-          token._unsafeTransfer(OWNER.either, ZERO_ACCOUNT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid receiver');
+      it('should fail when transfer to 0 (id)', async () => {
+        await expect(
+          token._unsafeTransfer(OWNER.either, ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid receiver');
       });
 
-      it('should fail when transfer to 0 (contract address)', () => {
-        expect(() => {
-          token._unsafeTransfer(OWNER.either, ZERO_CONTRACT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid receiver');
+      it('should fail when transfer to 0 (contract address)', async () => {
+        await expect(
+          token._unsafeTransfer(OWNER.either, ZERO_CONTRACT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid receiver');
       });
     });
 
     describe('_setURI', () => {
-      it('sets a new URI', () => {
-        token._setURI(NEW_URI);
+      it('sets a new URI', async () => {
+        await token._setURI(NEW_URI);
 
-        expect(token.uri(TOKEN_ID)).toEqual(NEW_URI);
-        expect(token.uri(TOKEN_ID2)).toEqual(NEW_URI);
+        expect(await token.uri(TOKEN_ID)).toEqual(NEW_URI);
+        expect(await token.uri(TOKEN_ID2)).toEqual(NEW_URI);
       });
 
-      it('sets an empty URI → newURI → empty URI → URI', () => {
+      it('sets an empty URI → newURI → empty URI → URI', async () => {
         const URIS = [NO_STRING, NEW_URI, NO_STRING, URI];
 
         for (let i = 0; i < URIS.length; i++) {
-          token._setURI(URIS[i]);
+          await token._setURI(URIS[i]);
 
-          expect(token.uri(TOKEN_ID)).toEqual(URIS[i]);
-          expect(token.uri(TOKEN_ID2)).toEqual(URIS[i]);
+          expect(await token.uri(TOKEN_ID)).toEqual(URIS[i]);
+          expect(await token.uri(TOKEN_ID2)).toEqual(URIS[i]);
         }
       });
 
-      it('should handle long URI', () => {
+      it('should handle long URI', async () => {
         const LONG_URI = `https://example.com/${'a'.repeat(1000)}`;
-        token._setURI(LONG_URI);
-        expect(token.uri(TOKEN_ID)).toEqual(LONG_URI);
+        await token._setURI(LONG_URI);
+        expect(await token.uri(TOKEN_ID)).toEqual(LONG_URI);
       });
 
-      it('should handle URI with special characters', () => {
+      it('should handle URI with special characters', async () => {
         const SPECIAL_URI = 'https://example.com/path?param=value#fragment';
-        token._setURI(SPECIAL_URI);
-        expect(token.uri(TOKEN_ID)).toEqual(SPECIAL_URI);
+        await token._setURI(SPECIAL_URI);
+        expect(await token.uri(TOKEN_ID)).toEqual(SPECIAL_URI);
       });
     });
 
     describe('_mint', () => {
-      it('should update balance when minting', () => {
-        token._mint(RECIPIENT.either, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+      it('should update balance when minting', async () => {
+        await token._mint(RECIPIENT.either, TOKEN_ID, AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should update balance with multiple mints', () => {
+      it('should update balance with multiple mints', async () => {
         for (let i = 0; i < 3; i++) {
-          token._mint(RECIPIENT.either, TOKEN_ID, 1n);
+          await token._mint(RECIPIENT.either, TOKEN_ID, 1n);
         }
 
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(3n);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(3n);
       });
 
-      it('should fail when overflowing uint128', () => {
-        token._mint(RECIPIENT.either, TOKEN_ID, MAX_UINT128);
+      it('should fail when overflowing uint128', async () => {
+        await token._mint(RECIPIENT.either, TOKEN_ID, MAX_UINT128);
 
-        expect(() => {
-          token._mint(RECIPIENT.either, TOKEN_ID, 1n);
-        }).toThrow('MultiToken: arithmetic overflow');
+        await expect(
+          token._mint(RECIPIENT.either, TOKEN_ID, 1n),
+        ).rejects.toThrow('MultiToken: arithmetic overflow');
       });
 
-      it('should fail when minting to zero address (id)', () => {
-        expect(() => {
-          token._mint(ZERO_ACCOUNT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid receiver');
+      it('should fail when minting to zero address (id)', async () => {
+        await expect(
+          token._mint(ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid receiver');
       });
 
-      it('should fail when minting to zero address (contract)', () => {
-        expect(() => {
-          token._mint(ZERO_CONTRACT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: unsafe transfer');
+      it('should fail when minting to zero address (contract)', async () => {
+        await expect(
+          token._mint(ZERO_CONTRACT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: unsafe transfer');
       });
 
-      it('should fail when minting to a contract address', () => {
-        expect(() => {
-          token._mint(RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: unsafe transfer');
+      it('should fail when minting to a contract address', async () => {
+        await expect(
+          token._mint(RECIPIENT_CONTRACT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: unsafe transfer');
       });
 
-      it('should canonicalize recipient', () => {
+      it('should canonicalize recipient', async () => {
         const nonCanonical = nonCanonicalLeft(RECIPIENT.accountId);
-        token._mint(nonCanonical, TOKEN_ID, AMOUNT);
+        await token._mint(nonCanonical, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
     });
 
@@ -1177,167 +1327,179 @@ describe('MultiToken', () => {
       describe.each(
         recipientTypes,
       )('when the recipient is a %s', (_, recipient) => {
-        it('should update balance when minting', () => {
-          token._unsafeMint(recipient, TOKEN_ID, AMOUNT);
+        it('should update balance when minting', async () => {
+          await token._unsafeMint(recipient, TOKEN_ID, AMOUNT);
 
-          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
         });
 
-        it('should update balance with multiple mints', () => {
+        it('should update balance with multiple mints', async () => {
           for (let i = 0; i < 3; i++) {
-            token._unsafeMint(recipient, TOKEN_ID, 1n);
+            await token._unsafeMint(recipient, TOKEN_ID, 1n);
           }
 
-          expect(token.balanceOf(recipient, TOKEN_ID)).toEqual(3n);
+          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(3n);
         });
 
-        it('should fail when overflowing uint128', () => {
-          token._unsafeMint(recipient, TOKEN_ID, MAX_UINT128);
+        it('should fail when overflowing uint128', async () => {
+          await token._unsafeMint(recipient, TOKEN_ID, MAX_UINT128);
 
-          expect(() => {
-            token._unsafeMint(recipient, TOKEN_ID, 1n);
-          }).toThrow('MultiToken: arithmetic overflow');
+          await expect(
+            token._unsafeMint(recipient, TOKEN_ID, 1n),
+          ).rejects.toThrow('MultiToken: arithmetic overflow');
         });
       });
 
-      it('should fail when minting to zero address (id)', () => {
-        expect(() => {
-          token._unsafeMint(ZERO_ACCOUNT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid receiver');
+      it('should fail when minting to zero address (id)', async () => {
+        await expect(
+          token._unsafeMint(ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid receiver');
       });
 
-      it('should fail when minting to zero address (contract)', () => {
-        expect(() => {
-          token._unsafeMint(ZERO_CONTRACT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid receiver');
+      it('should fail when minting to zero address (contract)', async () => {
+        await expect(
+          token._unsafeMint(ZERO_CONTRACT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid receiver');
       });
 
-      it('should canonicalize recipient', () => {
+      it('should canonicalize recipient', async () => {
         const nonCanonical = nonCanonicalLeft(RECIPIENT.accountId);
-        token._unsafeMint(nonCanonical, TOKEN_ID, AMOUNT);
+        await token._unsafeMint(nonCanonical, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
 
-      it('should canonicalize contract address recipient', () => {
+      it('should canonicalize contract address recipient', async () => {
         const nonCanonical = nonCanonicalRight(RECIPIENT_CONTRACT.right);
-        token._unsafeMint(nonCanonical, TOKEN_ID, AMOUNT);
+        await token._unsafeMint(nonCanonical, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(RECIPIENT_CONTRACT, TOKEN_ID)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT_CONTRACT, TOKEN_ID)).toEqual(
+          AMOUNT,
+        );
       });
     });
 
     describe('_burn', () => {
-      beforeEach(() => {
-        token._mint(OWNER.either, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
+      beforeEach(async () => {
+        await token._mint(OWNER.either, TOKEN_ID, AMOUNT);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
       });
 
-      it('should burn tokens', () => {
-        token._burn(OWNER.either, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+      it('should burn tokens', async () => {
+        await token._burn(OWNER.either, TOKEN_ID, AMOUNT);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
       });
 
-      it('should burn partial', () => {
+      it('should burn partial', async () => {
         const partialAmt = 1n;
-        token._burn(OWNER.either, TOKEN_ID, partialAmt);
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+        await token._burn(OWNER.either, TOKEN_ID, partialAmt);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
           AMOUNT - partialAmt,
         );
       });
 
-      it('should update balance with multiple burns', () => {
+      it('should update balance with multiple burns', async () => {
         for (let i = 0; i < 3; i++) {
-          token._burn(OWNER.either, TOKEN_ID, 1n);
+          await token._burn(OWNER.either, TOKEN_ID, 1n);
         }
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT - 3n);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+          AMOUNT - 3n,
+        );
       });
 
-      it('should fail when not enough balance to burn', () => {
-        expect(() => {
-          token._burn(OWNER.either, TOKEN_ID, AMOUNT + 1n);
-        }).toThrow('MultiToken: insufficient balance');
+      it('should fail when not enough balance to burn', async () => {
+        await expect(
+          token._burn(OWNER.either, TOKEN_ID, AMOUNT + 1n),
+        ).rejects.toThrow('MultiToken: insufficient balance');
       });
 
-      it('should fail when burning the zero address tokens', () => {
-        expect(() => {
-          token._burn(ZERO_ACCOUNT, TOKEN_ID, AMOUNT);
-        }).toThrow('MultiToken: invalid sender');
+      it('should fail when burning the zero address tokens', async () => {
+        await expect(
+          token._burn(ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: invalid sender');
       });
 
-      it('should fail when burning tokens from nonexistent id', () => {
-        expect(() => {
-          token._burn(OWNER.either, NONEXISTENT_ID, AMOUNT);
-        }).toThrow('MultiToken: insufficient balance');
+      it('should fail when burning tokens from nonexistent id', async () => {
+        await expect(
+          token._burn(OWNER.either, NONEXISTENT_ID, AMOUNT),
+        ).rejects.toThrow('MultiToken: insufficient balance');
       });
 
-      it('should handle non-canonical fromAddress (id)', () => {
+      it('should handle non-canonical fromAddress (id)', async () => {
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
-        token._burn(nonCanonical, TOKEN_ID, AMOUNT);
+        await token._burn(nonCanonical, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
       });
 
-      it('should handle non-canonical fromAddress (contract address)', () => {
-        token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
-        expect(token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(AMOUNT);
+      it('should handle non-canonical fromAddress (contract address)', async () => {
+        await token._unsafeMint(OWNER_CONTRACT, TOKEN_ID, AMOUNT);
+        expect(await token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(AMOUNT);
 
         const nonCanonical = nonCanonicalRight(OWNER_CONTRACT.right);
-        token._burn(nonCanonical, TOKEN_ID, AMOUNT);
+        await token._burn(nonCanonical, TOKEN_ID, AMOUNT);
 
-        expect(token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(0n);
+        expect(await token.balanceOf(OWNER_CONTRACT, TOKEN_ID)).toEqual(0n);
       });
     });
 
     describe('_setApprovalForAll', () => {
-      it('should return false when set to false', () => {
-        token._setApprovalForAll(OWNER.either, SPENDER.either, false);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+      it('should return false when set to false', async () => {
+        await token._setApprovalForAll(OWNER.either, SPENDER.either, false);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
           false,
         );
       });
 
-      it('should fail when attempting to approve zero address as an operator', () => {
-        expect(() => {
-          token._setApprovalForAll(OWNER.either, ZERO_ACCOUNT, true);
-        }).toThrow('MultiToken: invalid operator');
+      it('should fail when attempting to approve zero address as an operator', async () => {
+        await expect(
+          token._setApprovalForAll(OWNER.either, ZERO_ACCOUNT, true),
+        ).rejects.toThrow('MultiToken: invalid operator');
       });
 
-      it('should fail when owner is zero address', () => {
-        expect(() => {
-          token._setApprovalForAll(ZERO_ACCOUNT, SPENDER.either, true);
-        }).toThrow('MultiToken: invalid owner');
+      it('should fail when owner is zero address', async () => {
+        await expect(
+          token._setApprovalForAll(ZERO_ACCOUNT, SPENDER.either, true),
+        ).rejects.toThrow('MultiToken: invalid owner');
       });
 
-      it('should set → unset → set operator', () => {
-        token._setApprovalForAll(OWNER.either, SPENDER.either, true);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+      it('should set → unset → set operator', async () => {
+        await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+          true,
+        );
 
-        token._setApprovalForAll(OWNER.either, SPENDER.either, false);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+        await token._setApprovalForAll(OWNER.either, SPENDER.either, false);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
           false,
         );
 
-        token._setApprovalForAll(OWNER.either, SPENDER.either, true);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+        await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+          true,
+        );
       });
 
-      it('should canonicalize owner and operator', () => {
+      it('should canonicalize owner and operator', async () => {
         const nonCanonicalOwner = nonCanonicalLeft(OWNER.accountId);
         const nonCanonicalOp = nonCanonicalLeft(SPENDER.accountId);
 
-        token._setApprovalForAll(nonCanonicalOwner, nonCanonicalOp, true);
-        expect(token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(true);
+        await token._setApprovalForAll(nonCanonicalOwner, nonCanonicalOp, true);
+        expect(await token.isApprovedForAll(OWNER.either, SPENDER.either)).toBe(
+          true,
+        );
       });
     });
   });
 
   describe('simulator wiring', () => {
-    it('should expose the balances map via getPublicState', () => {
-      const sim = new MultiTokenSimulator(initWithURI);
+    it('should expose the balances map via getPublicState', async () => {
+      const sim = await MultiTokenSimulator.create(initWithURI);
 
-      const ledgerState = sim.getPublicState();
+      const ledgerState = await sim.getPublicState();
 
       expect(ledgerState.MultiToken__balances.isEmpty()).toBe(true);
       expect(ledgerState.MultiToken__balances.size()).toBe(0n);
@@ -1346,19 +1508,21 @@ describe('MultiToken', () => {
 
   describe('privateState helpers', () => {
     describe('getCurrentSecretKey', () => {
-      it('should return the injected secret key', () => {
-        const sim = new MultiTokenSimulator(initWithURI);
-        sim.privateState.injectSecretKey(OWNER.secretKey);
+      it('should return the injected secret key', async () => {
+        const sim = await MultiTokenSimulator.create(initWithURI);
+        await sim.privateState.injectSecretKey(OWNER.secretKey);
 
-        expect(sim.privateState.getCurrentSecretKey()).toEqual(OWNER.secretKey);
+        expect(await sim.privateState.getCurrentSecretKey()).toEqual(
+          OWNER.secretKey,
+        );
       });
 
-      it('should throw when the secret key is undefined', () => {
-        const sim = new MultiTokenSimulator(initWithURI, {
+      it('should throw when the secret key is undefined', async () => {
+        const sim = await MultiTokenSimulator.create(initWithURI, {
           privateState: { secretKey: undefined as unknown as Uint8Array },
         });
 
-        expect(() => sim.privateState.getCurrentSecretKey()).toThrow(
+        await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
           'Missing secret key',
         );
       });

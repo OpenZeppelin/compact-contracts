@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
@@ -32,19 +32,21 @@ const ShieldedTreasurySimulatorBase = createSimulator<
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ShieldedTreasuryWitnesses(),
+  artifactName: 'MockShieldedTreasury',
 });
 
 export class ShieldedTreasurySimulator extends ShieldedTreasurySimulatorBase {
-  constructor(
-    options: BaseSimulatorOptions<
+  static async create(
+    options: SimulatorOptions<
       ShieldedTreasuryPrivateState,
       ReturnType<typeof ShieldedTreasuryWitnesses>
     > = {},
-  ) {
-    super([], options);
+  ): Promise<ShieldedTreasurySimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create([], options) as Promise<ShieldedTreasurySimulator>;
   }
 
-  public _deposit(coin: ShieldedCoinInfo) {
+  public _deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure._deposit(coin);
   }
 
@@ -56,23 +58,23 @@ export class ShieldedTreasurySimulator extends ShieldedTreasurySimulatorBase {
     },
     color: Uint8Array,
     amount: bigint,
-  ): ShieldedSendResult {
+  ): Promise<ShieldedSendResult> {
     return this.circuits.impure._send(recipient, color, amount);
   }
 
-  public getTokenBalance(color: Uint8Array): bigint {
+  public getTokenBalance(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getTokenBalance(color);
   }
 
-  public getReceivedTotal(color: Uint8Array): bigint {
+  public getReceivedTotal(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getReceivedTotal(color);
   }
 
-  public getSentTotal(color: Uint8Array): bigint {
+  public getSentTotal(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getSentTotal(color);
   }
 
-  public getReceivedMinusSent(color: Uint8Array): bigint {
+  public getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getReceivedMinusSent(color);
   }
 }

@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
@@ -31,19 +31,21 @@ const UtilsSimulatorBase = createSimulator<
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => UtilsWitnesses(),
+  artifactName: 'MockUtils',
 });
 
 /**
  * Utils Simulator
  */
 export class UtilsSimulator extends UtilsSimulatorBase {
-  constructor(
-    options: BaseSimulatorOptions<
+  static async create(
+    options: SimulatorOptions<
       UtilsPrivateState,
       ReturnType<typeof UtilsWitnesses>
     > = {},
-  ) {
-    super([], options);
+  ): Promise<UtilsSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create([], options) as Promise<UtilsSimulator>;
   }
 
   /**
@@ -53,7 +55,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    */
   public isKeyOrAddressZero(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.pure.isKeyOrAddressZero(keyOrAddress);
   }
 
@@ -69,7 +71,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
   public isKeyOrAddressEqual(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
     other: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.pure.isKeyOrAddressEqual(keyOrAddress, other);
   }
 
@@ -78,7 +80,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * @param key The target value to check.
    * @returns Returns true if `key` is zero.
    */
-  public isKeyZero(key: ZswapCoinPublicKey): boolean {
+  public isKeyZero(key: ZswapCoinPublicKey): Promise<boolean> {
     return this.circuits.pure.isKeyZero(key);
   }
 
@@ -89,7 +91,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    */
   public isContractAddress(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.pure.isContractAddress(keyOrAddress);
   }
 
@@ -97,7 +99,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * @description  A helper function that returns the empty string: ""
    * @returns The empty string: ""
    */
-  public emptyString(): string {
+  public emptyString(): Promise<string> {
     return this.circuits.pure.emptyString();
   }
 
@@ -108,7 +110,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    */
   public canonicalizeKeyOrAddress(
     keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): Promise<Either<ZswapCoinPublicKey, ContractAddress>> {
     return this.circuits.pure.canonicalizeKeyOrAddress(keyOrAddress);
   }
 
@@ -117,7 +119,9 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * right-variant `Either<ZswapCoinPublicKey, ContractAddress>`.
    * @returns The contract's own address as a recipient.
    */
-  public selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+  public selfAsRecipient(): Promise<
+    Either<ZswapCoinPublicKey, ContractAddress>
+  > {
     return this.circuits.impure.selfAsRecipient();
   }
 
@@ -125,7 +129,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * @description The maximum value representable by a `Uint<128>`.
    * @returns `2^128 - 1`.
    */
-  public UINT128_MAX(): bigint {
+  public UINT128_MAX(): Promise<bigint> {
     return this.circuits.pure.UINT128_MAX();
   }
 
@@ -134,7 +138,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * (left variant with zero `Bytes<32>`).
    * @returns The canonical zero value.
    */
-  public zeroAccount(): Either<Uint8Array, ContractAddress> {
+  public zeroAccount(): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.pure.zeroAccount();
   }
 
@@ -143,7 +147,9 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * @param target The value to check.
    * @returns Returns true if the active branch is zero.
    */
-  public isTargetZero(target: Either<Uint8Array, ContractAddress>): boolean {
+  public isTargetZero(
+    target: Either<Uint8Array, ContractAddress>,
+  ): Promise<boolean> {
     return this.circuits.pure.isTargetZero(target);
   }
 
@@ -153,7 +159,7 @@ export class UtilsSimulator extends UtilsSimulatorBase {
    * @param secretKey A 32-byte cryptographically secure random value.
    * @returns The computed account identifier.
    */
-  public computeAccountId(secretKey: Uint8Array): Uint8Array {
+  public computeAccountId(secretKey: Uint8Array): Promise<Uint8Array> {
     return this.circuits.pure.computeAccountId(secretKey);
   }
 }

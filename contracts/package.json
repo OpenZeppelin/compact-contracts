@@ -34,6 +34,7 @@
     "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "SKIP_ZK=true yarn run compact && vitest run",
     "test:coverage": "SKIP_ZK=true yarn run compact && vitest run --coverage",
+    "test:live": "yarn run compact && MIDNIGHT_BACKEND=live vitest run --config vitest.live.config.ts",
     "compact:integration": "SKIP_ZK=true compact compile test/integration/_mocks/SharedInitCollision.compact artifacts/SharedInitCollision && SKIP_ZK=true compact compile test/integration/_mocks/ComposedTokens.compact artifacts/ComposedTokens",
     "test:integration": "yarn run compact:integration && vitest run --config vitest.integration.config.ts",
     "types": "tsc -p tsconfig.json --noEmit",
@@ -46,7 +47,7 @@
     "@openzeppelin/compact-cli": "^0.0.2"
   },
   "devDependencies": {
-    "@openzeppelin/compact-simulator": "^0.1.0",
+    "@openzeppelin/compact-simulator": "^0.2.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "25.9.3",
     "@vitest/coverage-v8": "^4.1.9",

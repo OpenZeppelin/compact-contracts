@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type Ledger,
@@ -48,22 +48,27 @@ const ShieldedMultiSigSimulatorBase = createSimulator<
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ShieldedMultiSigWitnesses(),
+  artifactName: 'ShieldedMultiSig',
 });
 
 export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
-  constructor(
+  static async create(
     signers: EitherPKAddress[],
     thresh: bigint,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       ShieldedMultiSigPrivateState,
       ReturnType<typeof ShieldedMultiSigWitnesses>
     > = {},
-  ) {
-    super([signers, thresh], options);
+  ): Promise<ShieldedMultiSigSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [signers, thresh],
+      options,
+    ) as Promise<ShieldedMultiSigSimulator>;
   }
 
   // Deposit
-  public deposit(coin: ShieldedCoinInfo) {
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
   }
 
@@ -72,19 +77,19 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     to: Recipient,
     color: Uint8Array,
     amount: bigint,
-  ): bigint {
+  ): Promise<bigint> {
     return this.circuits.impure.createShieldedProposal(to, color, amount);
   }
 
-  public approveProposal(id: bigint) {
+  public approveProposal(id: bigint): Promise<[]> {
     return this.circuits.impure.approveProposal(id);
   }
 
-  public revokeApproval(id: bigint) {
+  public revokeApproval(id: bigint): Promise<[]> {
     return this.circuits.impure.revokeApproval(id);
   }
 
-  public executeShieldedProposal(id: bigint): ShieldedSendResult {
+  public executeShieldedProposal(id: bigint): Promise<ShieldedSendResult> {
     return this.circuits.impure.executeShieldedProposal(id);
   }
 
@@ -92,67 +97,67 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
   public isProposalApprovedBySigner(
     id: bigint,
     signer: EitherPKAddress,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure.isProposalApprovedBySigner(id, signer);
   }
 
-  public getApprovalCount(id: bigint): bigint {
+  public getApprovalCount(id: bigint): Promise<bigint> {
     return this.circuits.impure.getApprovalCount(id);
   }
 
   // View - Proposals
-  public getProposal(id: bigint): Proposal {
+  public getProposal(id: bigint): Promise<Proposal> {
     return this.circuits.impure.getProposal(id);
   }
 
-  public getProposalRecipient(id: bigint): Recipient {
+  public getProposalRecipient(id: bigint): Promise<Recipient> {
     return this.circuits.impure.getProposalRecipient(id);
   }
 
-  public getProposalAmount(id: bigint): bigint {
+  public getProposalAmount(id: bigint): Promise<bigint> {
     return this.circuits.impure.getProposalAmount(id);
   }
 
-  public getProposalColor(id: bigint): Uint8Array {
+  public getProposalColor(id: bigint): Promise<Uint8Array> {
     return this.circuits.impure.getProposalColor(id);
   }
 
-  public getProposalStatus(id: bigint): number {
+  public getProposalStatus(id: bigint): Promise<number> {
     return this.circuits.impure.getProposalStatus(id);
   }
 
   // View - Treasury
-  public getTokenBalance(color: Uint8Array): bigint {
+  public getTokenBalance(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getTokenBalance(color);
   }
 
-  public getReceivedTotal(color: Uint8Array): bigint {
+  public getReceivedTotal(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getReceivedTotal(color);
   }
 
-  public getSentTotal(color: Uint8Array): bigint {
+  public getSentTotal(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getSentTotal(color);
   }
 
-  public getReceivedMinusSent(color: Uint8Array): bigint {
+  public getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getReceivedMinusSent(color);
   }
 
   // View - Signers
-  public getSignerCount(): bigint {
+  public getSignerCount(): Promise<bigint> {
     return this.circuits.impure.getSignerCount();
   }
 
-  public getThreshold(): bigint {
+  public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(account: EitherPKAddress): boolean {
+  public isSigner(account: EitherPKAddress): Promise<boolean> {
     return this.circuits.impure.isSigner(account);
   }
 
   // Ledger access
-  public getLedger(): Ledger {
+  public getLedger(): Promise<Ledger> {
     return this.getPublicState();
   }
 }

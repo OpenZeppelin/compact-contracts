@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
@@ -32,61 +32,66 @@ const SignerSimulatorBase = createSimulator<
   contractArgs: (signers, thresh, isInit) => [signers, thresh, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => SignerWitnesses(),
+  artifactName: 'MockSigner',
 });
 
 /**
  * Signer Simulator
  */
 export class SignerSimulator extends SignerSimulatorBase {
-  constructor(
+  static async create(
     signers: Uint8Array[],
     thresh: bigint,
     isInit: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       SignerPrivateState,
       ReturnType<typeof SignerWitnesses>
     > = {},
-  ) {
-    super([signers, thresh, isInit], options);
+  ): Promise<SignerSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [signers, thresh, isInit],
+      options,
+    ) as Promise<SignerSimulator>;
   }
 
-  public initialize(signers: Uint8Array[], thresh: bigint) {
+  public initialize(signers: Uint8Array[], thresh: bigint): Promise<[]> {
     return this.circuits.impure.initialize(signers, thresh);
   }
 
-  public assertSigner(caller: Uint8Array) {
+  public assertSigner(caller: Uint8Array): Promise<[]> {
     return this.circuits.impure.assertSigner(caller);
   }
 
-  public assertThresholdMet(approvalCount: bigint) {
+  public assertThresholdMet(approvalCount: bigint): Promise<[]> {
     return this.circuits.impure.assertThresholdMet(approvalCount);
   }
 
-  public getSignerCount(): bigint {
+  public getSignerCount(): Promise<bigint> {
     return this.circuits.impure.getSignerCount();
   }
 
-  public getThreshold(): bigint {
+  public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(account: Uint8Array): boolean {
+  public isSigner(account: Uint8Array): Promise<boolean> {
     return this.circuits.impure.isSigner(account);
   }
 
-  public _addSigner(signer: Uint8Array) {
+  public _addSigner(signer: Uint8Array): Promise<[]> {
     return this.circuits.impure._addSigner(signer);
   }
 
-  public _removeSigner(signer: Uint8Array) {
+  public _removeSigner(signer: Uint8Array): Promise<[]> {
     return this.circuits.impure._removeSigner(signer);
   }
 
-  public _changeThreshold(newThreshold: bigint) {
+  public _changeThreshold(newThreshold: bigint): Promise<[]> {
     return this.circuits.impure._changeThreshold(newThreshold);
   }
 
-  public _setThreshold(newThreshold: bigint) {
+  public _setThreshold(newThreshold: bigint): Promise<[]> {
     return this.circuits.impure._setThreshold(newThreshold);
   }
 }
