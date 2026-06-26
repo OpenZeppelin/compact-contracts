@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../ProposalManager" prefix Proposal_;
+import "../../proposal/ProposalManager" prefix Proposal_;
 
 export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Proposal_Recipient {
   return Proposal_shieldedUserRecipient(key);

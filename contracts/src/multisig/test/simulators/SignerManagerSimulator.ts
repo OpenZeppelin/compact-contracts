@@ -3,46 +3,32 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  type ContractAddress,
-  type Either,
   ledger,
   Contract as MockSignerManager,
-  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockSignerManager/contract/index.js';
-import {
-  SignerManagerPrivateState,
-  SignerManagerWitnesses,
-} from '../witnesses/SignerManagerWitnesses.js';
-
-/**
- * A fixed set of exactly three signers, matching the
- * `Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>` the underlying
- * `MockSignerManager` constructor expects.
- */
-export type SignerSet = readonly [
-  Either<ZswapCoinPublicKey, ContractAddress>,
-  Either<ZswapCoinPublicKey, ContractAddress>,
-  Either<ZswapCoinPublicKey, ContractAddress>,
-];
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 /**
  * Type constructor args
  */
-type SignerManagerArgs = readonly [signers: SignerSet, thresh: bigint];
+type SignerManagerArgs = readonly [
+  signers: Uint8Array[],
+  thresh: bigint,
+  isInit: boolean,
+];
 
 const SignerManagerSimulatorBase = createSimulator<
-  SignerManagerPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof SignerManagerWitnesses>,
-  MockSignerManager<SignerManagerPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockSignerManager<EmptyPrivateState>,
   SignerManagerArgs
 >({
-  contractFactory: (witnesses) =>
-    new MockSignerManager<SignerManagerPrivateState>(witnesses),
-  defaultPrivateState: () => SignerManagerPrivateState,
-  contractArgs: (signers, thresh) => [signers, thresh],
+  contractFactory: (witnesses) => new MockSignerManager<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
+  contractArgs: (signers, thresh, isInit) => [signers, thresh, isInit],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => SignerManagerWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'MockSignerManager',
 });
 
@@ -51,23 +37,26 @@ const SignerManagerSimulatorBase = createSimulator<
  */
 export class SignerManagerSimulator extends SignerManagerSimulatorBase {
   static async create(
-    signers: SignerSet,
+    signers: Uint8Array[],
     thresh: bigint,
+    isInit: boolean,
     options: SimulatorOptions<
-      SignerManagerPrivateState,
-      ReturnType<typeof SignerManagerWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<SignerManagerSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [signers, thresh],
+      [signers, thresh, isInit],
       options,
     ) as Promise<SignerManagerSimulator>;
   }
 
-  public assertSigner(
-    caller: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Promise<[]> {
+  public initialize(signers: Uint8Array[], thresh: bigint): Promise<[]> {
+    return this.circuits.impure.initialize(signers, thresh);
+  }
+
+  public assertSigner(caller: Uint8Array): Promise<[]> {
     return this.circuits.impure.assertSigner(caller);
   }
 
@@ -83,25 +72,23 @@ export class SignerManagerSimulator extends SignerManagerSimulatorBase {
     return this.circuits.impure.getThreshold();
   }
 
-  public isSigner(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Promise<boolean> {
+  public isSigner(account: Uint8Array): Promise<boolean> {
     return this.circuits.impure.isSigner(account);
   }
 
-  public _addSigner(
-    signer: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Promise<[]> {
+  public _addSigner(signer: Uint8Array): Promise<[]> {
     return this.circuits.impure._addSigner(signer);
   }
 
-  public _removeSigner(
-    signer: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): Promise<[]> {
+  public _removeSigner(signer: Uint8Array): Promise<[]> {
     return this.circuits.impure._removeSigner(signer);
   }
 
   public _changeThreshold(newThreshold: bigint): Promise<[]> {
     return this.circuits.impure._changeThreshold(newThreshold);
+  }
+
+  public _setThreshold(newThreshold: bigint): Promise<[]> {
+    return this.circuits.impure._setThreshold(newThreshold);
   }
 }

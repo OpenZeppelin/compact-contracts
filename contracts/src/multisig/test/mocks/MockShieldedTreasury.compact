@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../ShieldedTreasury" prefix Treasury_;
+import "../../treasury/NativeShieldedTreasury" prefix Treasury_;
 
 export circuit _deposit(coin: ShieldedCoinInfo): [] {
   return Treasury__deposit(coin);

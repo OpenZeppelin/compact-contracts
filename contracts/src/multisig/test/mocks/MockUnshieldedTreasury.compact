@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../UnshieldedTreasury" prefix Treasury_;
+import "../../treasury/NativeUnshieldedTreasury" prefix Treasury_;
 
 export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
   return Treasury__deposit(color, amount);
