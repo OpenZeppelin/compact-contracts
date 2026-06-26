@@ -135,9 +135,11 @@ describe('ZOwnablePK', () => {
     it('should allow pure computeOwnerId', async () => {
       const eitherOwner = utils.createEitherTestUser('OWNER');
 
-      await expect(
-        ownable._computeOwnerId(eitherOwner, randomByteArray),
-      ).resolves.not.toThrow();
+      const ownerId = await ownable._computeOwnerId(
+        eitherOwner,
+        randomByteArray,
+      );
+      expect(ownerId).toHaveLength(32);
     });
   });
 
@@ -211,9 +213,7 @@ describe('ZOwnablePK', () => {
         await ownable.privateState.injectSecretNonce(
           Buffer.from(newOwnerNonce),
         );
-        await expect(
-          ownable.as('NEW_OWNER').assertOnlyOwner(),
-        ).resolves.not.toThrow();
+        await ownable.as('NEW_OWNER').assertOnlyOwner();
       });
 
       it('should fail when transferring to id zero', async () => {
@@ -225,7 +225,7 @@ describe('ZOwnablePK', () => {
 
       it('should fail when unauthorized transfers ownership', async () => {
         await expect(
-          ownable.as('UNAUTHORIZED').transferOwnership(newOwnerCommitment),
+          ownable.as('UNAUTHORIZED').transferOwnership(newIdHash),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
       });
 
@@ -237,7 +237,7 @@ describe('ZOwnablePK', () => {
           .ZOwnablePK__counter;
 
         // Transfer
-        await ownable.as('OWNER').transferOwnership(newOwnerCommitment);
+        await ownable.as('OWNER').transferOwnership(newIdHash);
 
         // Check counter
         const afterInstance = (await ownable.getPublicState())
@@ -273,9 +273,7 @@ describe('ZOwnablePK', () => {
         expect(newCommitment).toEqual(expNewCommitment);
 
         // Check same owner maintains permissions after transfer
-        await expect(
-          ownable.as('OWNER').assertOnlyOwner(),
-        ).resolves.not.toThrow();
+        await ownable.as('OWNER').assertOnlyOwner();
       });
     });
 
@@ -320,9 +318,7 @@ describe('ZOwnablePK', () => {
           secretNonce,
         );
 
-        await expect(
-          ownable.as('OWNER').assertOnlyOwner(),
-        ).resolves.not.toThrow();
+        await ownable.as('OWNER').assertOnlyOwner();
       });
 
       it('should fail when the authorized caller has the wrong nonce', async () => {
@@ -503,13 +499,9 @@ describe('ZOwnablePK', () => {
 
       it('should allow anyone to transfer', async () => {
         const id = createIdHash(Z_OWNER, secretNonce);
-        await expect(
-          ownable.as('OWNER')._transferOwnership(id),
-        ).resolves.not.toThrow();
+        await ownable.as('OWNER')._transferOwnership(id);
 
-        await expect(
-          ownable.as('UNAUTHORIZED')._transferOwnership(id),
-        ).resolves.not.toThrow();
+        await ownable.as('UNAUTHORIZED')._transferOwnership(id);
       });
     });
   });

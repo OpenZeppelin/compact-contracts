@@ -627,9 +627,7 @@ describe('NonFungibleToken', () => {
       await token._setApprovalForAll(OWNER.either, SPENDER.either, true);
 
       await token.privateState.injectSecretKey(OWNER.secretKey);
-      await expect(
-        token.transferFrom(OWNER.either, OWNER.either, TOKENID_1),
-      ).resolves.not.toThrow();
+      await token.transferFrom(OWNER.either, OWNER.either, TOKENID_1);
       expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
       expect(await token.balanceOf(OWNER.either)).toEqual(1n);
       expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
@@ -1189,9 +1187,7 @@ describe('NonFungibleToken', () => {
 
   describe('_unsafeMint', () => {
     it('should mint to ContractAddress', async () => {
-      await expect(
-        token._unsafeMint(SOME_CONTRACT, TOKENID_1),
-      ).resolves.not.toThrow();
+      await token._unsafeMint(SOME_CONTRACT, TOKENID_1);
     });
 
     it('should not mint to zero address (accountId)', async () => {
@@ -1230,9 +1226,7 @@ describe('NonFungibleToken', () => {
     });
 
     it('should transfer to ContractAddress', async () => {
-      await expect(
-        token._unsafeTransfer(OWNER.either, SOME_CONTRACT, TOKENID_1),
-      ).resolves.not.toThrow();
+      await token._unsafeTransfer(OWNER.either, SOME_CONTRACT, TOKENID_1);
     });
 
     it('should transfer token to account', async () => {
@@ -1312,9 +1306,7 @@ describe('NonFungibleToken', () => {
 
     it('should transfer to ContractAddress', async () => {
       await token.privateState.injectSecretKey(OWNER.secretKey);
-      await expect(
-        token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1),
-      ).resolves.not.toThrow();
+      await token._unsafeTransferFrom(OWNER.either, SOME_CONTRACT, TOKENID_1);
     });
 
     it('should not transfer to zero address (accountId)', async () => {

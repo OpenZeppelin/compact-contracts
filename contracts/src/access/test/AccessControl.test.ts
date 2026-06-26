@@ -150,9 +150,7 @@ describe('AccessControl', () => {
       // Set secret key for OP1
       await accessControl.privateState.injectSecretKey(OP1.secretKey);
 
-      await expect(
-        accessControl.assertOnlyRole(OPERATOR_ROLE_1),
-      ).resolves.not.toThrow();
+      await accessControl.assertOnlyRole(OPERATOR_ROLE_1);
     });
 
     it('should fail if caller is unauthorized', async () => {
@@ -200,9 +198,7 @@ describe('AccessControl', () => {
         true,
       );
 
-      await expect(
-        accessControl._checkRole(OPERATOR_ROLE_1, OP1.either),
-      ).resolves.not.toThrow();
+      await accessControl._checkRole(OPERATOR_ROLE_1, OP1.either);
     });
 
     it('should not fail if contract has role', async () => {
@@ -210,9 +206,7 @@ describe('AccessControl', () => {
         true,
       );
 
-      await expect(
-        accessControl._checkRole(OPERATOR_ROLE_1, OP1_CONTRACT),
-      ).resolves.not.toThrow();
+      await accessControl._checkRole(OPERATOR_ROLE_1, OP1_CONTRACT);
     });
 
     it('should fail if operator is unauthorized', async () => {
@@ -346,9 +340,7 @@ describe('AccessControl', () => {
 
       // OP1 holds OPERATOR_ROLE_1 which is admin of OPERATOR_ROLE_2
       await accessControl.privateState.injectSecretKey(OP1.secretKey);
-      await expect(
-        accessControl.grantRole(OPERATOR_ROLE_2, OP2.either),
-      ).resolves.not.toThrow();
+      await accessControl.grantRole(OPERATOR_ROLE_2, OP2.either);
     });
 
     it('admin should re-grant a role after revoking it', async () => {
@@ -379,9 +371,7 @@ describe('AccessControl', () => {
       );
 
       // Second grant should not throw or corrupt state
-      await expect(
-        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).resolves.not.toThrow();
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
       expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
         true,
       );
@@ -546,17 +536,13 @@ describe('AccessControl', () => {
       await accessControl.privateState.injectSecretKey(CUSTOM_ADMIN.secretKey);
 
       // Grant role and check it's been granted
-      await expect(
-        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).resolves.not.toThrow();
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
       expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
         true,
       );
 
       // Revoke role and check it's been revoked
-      await expect(
-        accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either),
-      ).resolves.not.toThrow();
+      await accessControl.revokeRole(OPERATOR_ROLE_1, OP1.either);
       expect(await accessControl.hasRole(OPERATOR_ROLE_1, OP1.either)).toBe(
         false,
       );
@@ -589,9 +575,7 @@ describe('AccessControl', () => {
 
       // CUSTOM_ADMIN can grant
       await accessControl.privateState.injectSecretKey(CUSTOM_ADMIN.secretKey);
-      await expect(
-        accessControl.grantRole(OPERATOR_ROLE_1, OP1.either),
-      ).resolves.not.toThrow();
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP1.either);
 
       // Overwrite admin role
       await accessControl._setRoleAdmin(OPERATOR_ROLE_1, NEW_ADMIN_ROLE);
@@ -603,9 +587,7 @@ describe('AccessControl', () => {
 
       // NEW_ADMIN should gain authority
       await accessControl.privateState.injectSecretKey(NEW_ADMIN.secretKey);
-      await expect(
-        accessControl.grantRole(OPERATOR_ROLE_1, OP2.either),
-      ).resolves.not.toThrow();
+      await accessControl.grantRole(OPERATOR_ROLE_1, OP2.either);
     });
   });
 

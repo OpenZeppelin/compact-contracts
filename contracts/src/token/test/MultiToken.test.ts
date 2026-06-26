@@ -180,9 +180,7 @@ describe('MultiToken', () => {
     it('should allow initialization post deployment', async () => {
       await token.initialize(URI);
 
-      await expect(
-        token.balanceOf(OWNER.either, TOKEN_ID),
-      ).resolves.not.toThrow();
+      expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toBe(0n);
     });
   });
 

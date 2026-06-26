@@ -161,7 +161,7 @@ describe('Ownable', () => {
 
     describe('assertOnlyOwner', () => {
       it('should allow owner to call', async () => {
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should fail when called by unauthorized', async () => {
@@ -208,7 +208,7 @@ describe('Ownable', () => {
 
         // New owner can call
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should fail when unauthorized transfers ownership', async () => {
@@ -261,7 +261,7 @@ describe('Ownable', () => {
 
         // New owner can call
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should transfer ownership to contract', async () => {
@@ -309,7 +309,7 @@ describe('Ownable', () => {
 
         // New owner can call
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should transfer multiple times', async () => {
@@ -374,7 +374,7 @@ describe('Ownable', () => {
 
         // New owner can call
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should fail when transferring to contract address zero', async () => {
@@ -424,7 +424,7 @@ describe('Ownable', () => {
 
         // New owner can call
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should transfer ownership to contract', async () => {
@@ -453,7 +453,7 @@ describe('Ownable', () => {
 
         // New owner can call
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
-        await expect(ownable.assertOnlyOwner()).resolves.not.toThrow();
+        await ownable.assertOnlyOwner();
       });
 
       it('should transfer multiple times', async () => {

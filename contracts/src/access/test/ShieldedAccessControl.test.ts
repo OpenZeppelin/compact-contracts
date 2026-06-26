@@ -157,13 +157,11 @@ describe('ShieldedAccessControl', () => {
     it.each(
       circuitsNotRequiringInit,
     )('%s should succeed', async (circuitName, args) => {
-      await expect(
-        (
-          contract[circuitName as keyof ShieldedAccessControlSimulator] as (
-            ...a: unknown[]
-          ) => Promise<unknown>
-        )(...args),
-      ).resolves.not.toThrow();
+      await (
+        contract[circuitName as keyof ShieldedAccessControlSimulator] as (
+          ...a: unknown[]
+        ) => Promise<unknown>
+      )(...args);
     });
 
     it('should fail with zero instanceSalt', async () => {
@@ -324,9 +322,7 @@ describe('ShieldedAccessControl', () => {
 
       describe('should succeed', () => {
         it('when caller has correct key and valid path', async () => {
-          await expect(
-            contract.assertOnlyRole(ROLE_ADMIN),
-          ).resolves.not.toThrow();
+          await contract.assertOnlyRole(ROLE_ADMIN);
         });
 
         it('when caller holds multiple roles with same key', async () => {
@@ -348,9 +344,7 @@ describe('ShieldedAccessControl', () => {
           const newAccountId = buildAccountIdHash(newKey);
           await contract._grantRole(ROLE_ADMIN, newAccountId);
 
-          await expect(
-            contract.assertOnlyRole(ROLE_ADMIN),
-          ).resolves.not.toThrow();
+          await contract.assertOnlyRole(ROLE_ADMIN);
         });
       });
     });
@@ -536,23 +530,15 @@ describe('ShieldedAccessControl', () => {
 
       describe('should succeed', () => {
         it('when caller has admin role', async () => {
-          await expect(
-            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
         });
 
         it('when granting the same role multiple times to the same accountId', async () => {
-          await expect(
-            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
-          await expect(
-            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
-          await expect(
-            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+          await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+          await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
@@ -564,9 +550,7 @@ describe('ShieldedAccessControl', () => {
 
           // Switch to operator 1
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
-          await expect(
-            contract.grantRole(ROLE_OP2, OP2_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP2, OP2_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_2_SK);
           expect(await contract.canProveRole(ROLE_OP2)).toBe(true);
         });
@@ -579,9 +563,7 @@ describe('ShieldedAccessControl', () => {
           const newAccountId = buildAccountIdHash(newKey);
           await contract._grantRole(ROLE_ADMIN, newAccountId);
 
-          await expect(
-            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
         });
@@ -592,32 +574,24 @@ describe('ShieldedAccessControl', () => {
 
           // Admin 1 can grant
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
-          await expect(
-            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
           // Admin 2 can grant
           await contract.privateState.injectSecretKey(OPERATOR_2_SK);
-          await expect(
-            contract.grantRole(ROLE_OP2, OP2_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP2, OP2_ACCOUNT_ID);
         });
 
         it('when admin holds multiple roles', async () => {
           await contract._grantRole(ROLE_OP1, ADMIN_ACCOUNT_ID);
           await contract._grantRole(ROLE_OP2, ADMIN_ACCOUNT_ID);
 
-          await expect(
-            contract.grantRole(ROLE_OP3, OP3_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_OP3, OP3_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_3_SK);
           expect(await contract.canProveRole(ROLE_OP3)).toBe(true);
         });
 
         it('when re-granting an active role (duplicate)', async () => {
-          await expect(
-            contract.grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
           expect(await contract.canProveRole(ROLE_ADMIN)).toBe(true);
         });
       });
@@ -729,9 +703,7 @@ describe('ShieldedAccessControl', () => {
         await contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
         // Different accountId for the same role
-        await expect(
-          contract._grantRole(ROLE_OP1, OP2_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract._grantRole(ROLE_OP1, OP2_ACCOUNT_ID);
         await contract.privateState.injectSecretKey(OPERATOR_2_SK);
         expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
       });
@@ -795,9 +767,7 @@ describe('ShieldedAccessControl', () => {
 
       describe('should succeed', () => {
         it('when caller has admin role', async () => {
-          await expect(
-            contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           expect(await contract.canProveRole(ROLE_OP1)).toBe(false);
         });
@@ -809,9 +779,7 @@ describe('ShieldedAccessControl', () => {
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
-          await expect(
-            contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_2_SK);
           expect(await contract.canProveRole(ROLE_OP2)).toBe(false);
         });
@@ -828,16 +796,12 @@ describe('ShieldedAccessControl', () => {
         });
 
         it('when revoking a role that was never granted', async () => {
-          await expect(
-            contract.revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID);
           expect(await contract.canProveRole(ROLE_NONEXISTENT)).toBe(false);
         });
 
         it('when revoking a role from an unauthorized accountId that was never granted', async () => {
-          await expect(
-            contract.revokeRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.revokeRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID);
 
           await expect(
             contract._grantRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID),
@@ -860,9 +824,7 @@ describe('ShieldedAccessControl', () => {
           const newAccountId = buildAccountIdHash(newKey);
           await contract._grantRole(ROLE_ADMIN, newAccountId);
 
-          await expect(
-            contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID),
-          ).resolves.not.toThrow();
+          await contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           expect(await contract.canProveRole(ROLE_OP1)).toBe(false);
         });
@@ -920,9 +882,7 @@ describe('ShieldedAccessControl', () => {
       });
 
       it('should allow revoking a role that was never granted', async () => {
-        await expect(
-          contract._revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract._revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID);
       });
     });
 
@@ -932,9 +892,7 @@ describe('ShieldedAccessControl', () => {
       });
 
       it('should allow caller to renounce their own role', async () => {
-        await expect(
-          contract.renounceRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.renounceRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
         expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
       });
 
@@ -1016,9 +974,7 @@ describe('ShieldedAccessControl', () => {
         await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
         // ADMIN renounces ROLE_OP1 despite never holding it
-        await expect(
-          contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID);
 
         // OP1's grant is unaffected — different accountId, different nullifier
         await contract.privateState.injectSecretKey(OPERATOR_1_SK);
@@ -1056,17 +1012,13 @@ describe('ShieldedAccessControl', () => {
         await contract._setRoleAdmin(ROLE_OP1, new Uint8Array(32));
 
         // DEFAULT_ADMIN_ROLE holder can grant ROLE_OP1 again
-        await expect(
-          contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
         await contract.privateState.injectSecretKey(OPERATOR_1_SK);
         expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
 
         // And can revoke
         await contract.privateState.injectSecretKey(ADMIN_SK);
-        await expect(
-          contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID);
         await contract.privateState.injectSecretKey(OPERATOR_1_SK);
         expect(await contract.canProveRole(ROLE_OP1)).toBe(false);
       });
@@ -1135,9 +1087,7 @@ describe('ShieldedAccessControl', () => {
 
         // Switch to operator 1 who is now admin of ROLE_OP2
         await contract.privateState.injectSecretKey(OPERATOR_1_SK);
-        await expect(
-          contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID);
         await contract.privateState.injectSecretKey(OPERATOR_2_SK);
         expect(await contract.canProveRole(ROLE_OP2)).toBe(false);
       });
@@ -1148,9 +1098,7 @@ describe('ShieldedAccessControl', () => {
         await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
         // ADMIN can grant ROLE_OP1 (admin is DEFAULT_ADMIN_ROLE)
-        await expect(
-          contract.grantRole(ROLE_OP1, OP2_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.grantRole(ROLE_OP1, OP2_ACCOUNT_ID);
 
         // But ADMIN cannot directly grant ROLE_OP2 (admin is ROLE_OP1, not DEFAULT_ADMIN_ROLE)
         await expect(
@@ -1159,9 +1107,7 @@ describe('ShieldedAccessControl', () => {
 
         // OP1 holder can grant ROLE_OP2
         await contract.privateState.injectSecretKey(OPERATOR_1_SK);
-        await expect(
-          contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID),
-        ).resolves.not.toThrow();
+        await contract.grantRole(ROLE_OP2, OP3_ACCOUNT_ID);
       });
     });
 
