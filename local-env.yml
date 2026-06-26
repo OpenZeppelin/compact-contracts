@@ -1,7 +1,7 @@
 # WARNING: Insecure default credentials below. For local development only — do not use in production.
 services:
   proof-server:
-    image: 'midnightntwrk/proof-server:latest'
+    image: 'midnightntwrk/proof-server:8.0.3'
     command: ['midnight-proof-server -v']
     ports:
       - '6300:6300'
@@ -15,7 +15,10 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'midnightntwrk/indexer-standalone:latest'
+    # Pinned: `latest` drifted to the Cardano-bridge indexer line, whose config
+    # requires an `infra.spo_node.blockfrost_id` not set here, so it crash-loops
+    # on boot. 4.0.1 is the last pre-bridge release compatible with node 0.22.2.
+    image: 'midnightntwrk/indexer-standalone:4.0.1'
     ports:
       - '8088:8088'
     environment:
