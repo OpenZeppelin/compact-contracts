@@ -11,6 +11,7 @@
     "compact": "turbo run compact --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:access": "turbo run compact:access --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:archive": "turbo run compact:archive --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compact:crypto": "turbo run compact:crypto --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:security": "turbo run compact:security --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:token": "turbo run compact:token --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:utils": "turbo run compact:utils --filter=@openzeppelin/compact-contracts --log-prefix=none",

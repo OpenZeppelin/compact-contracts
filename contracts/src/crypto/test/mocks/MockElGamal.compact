@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits of the ElGamal module so they can be
+// driven directly from off-chain tests. DO NOT deploy or use this contract in
+// any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../ElGamal" prefix ElGamal_;
+
+export { ElGamal_Ciphertext }
+
+export pure circuit secretToScalar(secret: Bytes<32>): Field {
+  return ElGamal_secretToScalar(secret);
+}
+
+export pure circuit derivePk(ek: Bytes<32>): JubjubPoint {
+  return ElGamal_derivePk(ek);
+}
+
+export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): Field {
+  return ElGamal_expandRandomness(seed, tag);
+}
+
+export pure circuit encryptZero(): ElGamal_Ciphertext {
+  return ElGamal_encryptZero();
+}
+
+export pure circuit encryptPoint(
+                      pk: JubjubPoint,
+                      m: JubjubPoint,
+                      r: Field
+                      ): ElGamal_Ciphertext {
+  return ElGamal_encryptPoint(pk, m, r);
+}
+
+export pure circuit encrypt(
+                      pk: JubjubPoint,
+                      value: Uint<128>,
+                      r: Field
+                      ): ElGamal_Ciphertext {
+  return ElGamal_encrypt(pk, value, r);
+}
+
+export pure circuit negate(ct: ElGamal_Ciphertext): ElGamal_Ciphertext {
+  return ElGamal_negate(ct);
+}
+
+export pure circuit add(
+                      a: ElGamal_Ciphertext,
+                      b: ElGamal_Ciphertext
+                      ): ElGamal_Ciphertext {
+  return ElGamal_add(a, b);
+}
+
+export pure circuit sub(
+                      a: ElGamal_Ciphertext,
+                      b: ElGamal_Ciphertext
+                      ): ElGamal_Ciphertext {
+  return ElGamal_sub(a, b);
+}
+
+export pure circuit scalarMul(
+                      ct: ElGamal_Ciphertext,
+                      k: Field
+                      ): ElGamal_Ciphertext {
+  return ElGamal_scalarMul(ct, k);
+}
+
+export pure circuit addEncrypted(
+                      old: ElGamal_Ciphertext,
+                      pk: JubjubPoint,
+                      value: Uint<128>,
+                      r: Field
+                      ): ElGamal_Ciphertext {
+  return ElGamal_addEncrypted(old, pk, value, r);
+}
+
+export pure circuit subEncrypted(
+                      old: ElGamal_Ciphertext,
+                      pk: JubjubPoint,
+                      value: Uint<128>,
+                      r: Field
+                      ): ElGamal_Ciphertext {
+  return ElGamal_subEncrypted(old, pk, value, r);
+}
+
+export pure circuit rerandomize(
+                      ct: ElGamal_Ciphertext,
+                      pk: JubjubPoint,
+                      r: Field
+                      ): ElGamal_Ciphertext {
+  return ElGamal_rerandomize(ct, pk, r);
+}
+
+export pure circuit assertKeyPair(pk: JubjubPoint, ek: Bytes<32>): [] {
+  ElGamal_assertKeyPair(pk, ek);
+}
+
+export pure circuit assertDecryptsToPoint(
+                 ct: ElGamal_Ciphertext,
+                 pk: JubjubPoint,
+                 ek: Bytes<32>,
+                 m: JubjubPoint
+                 ): [] {
+  ElGamal_assertDecryptsToPoint(ct, pk, ek, m);
+}
+
+export pure circuit assertDecryptsTo(
+                 ct: ElGamal_Ciphertext,
+                 pk: JubjubPoint,
+                 ek: Bytes<32>,
+                 claimedValue: Uint<128>
+                 ): [] {
+  ElGamal_assertDecryptsTo(ct, pk, ek, claimedValue);
+}
