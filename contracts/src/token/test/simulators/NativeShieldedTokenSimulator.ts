@@ -14,8 +14,8 @@ import {
 } from '../../../../artifacts/MockNativeShieldedToken/contract/index.js';
 
 /**
- * The native shielded token modules (and the derived-nonce extension) declare
- * no witnesses, so the private state is empty and the witnesses object is `{}`.
+ * The native shielded token core module declares no witnesses, so the private
+ * state is empty and the witnesses object is `{}`.
  */
 export type NativeShieldedTokenPrivateState = Record<string, never>;
 export const NativeShieldedTokenPrivateState: NativeShieldedTokenPrivateState =
@@ -24,12 +24,11 @@ export const NativeShieldedTokenWitnesses = () => ({});
 
 /**
  * Type constructor args — mirrors `MockNativeShieldedToken`'s constructor:
- * `(domainSep, initNonce, name, symbol, decimals, init)`. When `init` is
- * false the contract is left uninitialized so the pre-init guards are testable.
+ * `(domainSep, name, symbol, decimals, init)`. When `init` is false the
+ * contract is left uninitialized so the pre-init guards are testable.
  */
 type NativeShieldedTokenArgs = readonly [
   domain: Uint8Array,
-  initNonce: Uint8Array,
   name: string,
   symbol: string,
   decimals: bigint,
@@ -46,9 +45,8 @@ const NativeShieldedTokenSimulatorBase = createSimulator<
   contractFactory: (witnesses) =>
     new MockNativeShieldedToken<NativeShieldedTokenPrivateState>(witnesses),
   defaultPrivateState: () => NativeShieldedTokenPrivateState,
-  contractArgs: (domain, initNonce, name, symbol, decimals, init) => [
+  contractArgs: (domain, name, symbol, decimals, init) => [
     domain,
-    initNonce,
     name,
     symbol,
     decimals,
@@ -63,13 +61,12 @@ const NativeShieldedTokenSimulatorBase = createSimulator<
  * NativeShieldedToken (Fungible profile) Simulator.
  *
  * Wraps the `MockNativeShieldedToken` test contract, which composes the
- * `NativeShieldedToken` module with the `NativeShieldedTokenDerivedNonce`
- * extension and exposes their internal circuits unrestricted.
+ * `NativeShieldedToken` core module in isolation (no supply accounting, no
+ * derived-nonce extension) and exposes its internal circuits unrestricted.
  */
 export class NativeShieldedTokenSimulator extends NativeShieldedTokenSimulatorBase {
   static async create(
     domain: Uint8Array,
-    initNonce: Uint8Array,
     name: string,
     symbol: string,
     decimals: bigint,
@@ -81,7 +78,7 @@ export class NativeShieldedTokenSimulator extends NativeShieldedTokenSimulatorBa
   ): Promise<NativeShieldedTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [domain, initNonce, name, symbol, decimals, init],
+      [domain, name, symbol, decimals, init],
       options,
     ) as Promise<NativeShieldedTokenSimulator>;
   }
@@ -111,25 +108,6 @@ export class NativeShieldedTokenSimulator extends NativeShieldedTokenSimulatorBa
    */
   public tokenColor(): Promise<Uint8Array> {
     return this.circuits.impure.tokenColor();
-  }
-
-  ///
-  /// Supply accounting
-  ///
-
-  /** @description Returns the exact amount ever minted. */
-  public totalMinted(): Promise<bigint> {
-    return this.circuits.impure.totalMinted();
-  }
-
-  /** @description Returns the contract-mediated amount burned (lower bound). */
-  public totalBurned(): Promise<bigint> {
-    return this.circuits.impure.totalBurned();
-  }
-
-  /** @description Returns `totalMinted() - totalBurned()` (upper bound on supply). */
-  public totalSupply(): Promise<bigint> {
-    return this.circuits.impure.totalSupply();
   }
 
   ///
@@ -165,57 +143,19 @@ export class NativeShieldedTokenSimulator extends NativeShieldedTokenSimulatorBa
    * @description Burns `amount` from a contract-held `coin` (Merkle spend).
    * @returns The change coin retained by the contract, or `none` on a full burn.
    */
-  public _burnFromContract(
+  public _burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
     amount: bigint,
   ): Promise<Maybe<ShieldedCoinInfo>> {
-    return this.circuits.impure._burnFromContract(coin, amount);
+    return this.circuits.impure._burnFromSelf(coin, amount);
   }
 
   ///
-  /// Derived-nonce extension
-  ///
-
-  /** @description Advances the nonce chain and returns the next derived coin nonce. */
-  public _deriveNonce(): Promise<Uint8Array> {
-    return this.circuits.impure._deriveNonce();
-  }
-
-  /**
-   * @description The documented composition: base `_mint` with the extension's
-   * `_deriveNonce()` output as the nonce.
-   */
-  public _mintWithDerivedNonce(
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-    amount: bigint,
-  ): Promise<ShieldedCoinInfo> {
-    return this.circuits.impure._mintWithDerivedNonce(recipient, amount);
-  }
-
-  /**
-   * @description Seeds the derived-nonce chain post-deploy. Test-only entry
-   * point for the seed-once / zero-seed guards.
-   */
-  public initializeNonce(initNonce: Uint8Array): Promise<[]> {
-    return this.circuits.impure.initializeNonce(initNonce);
-  }
-
-  ///
-  /// Ledger reads (fields without getter circuits)
+  /// State reads
   ///
 
   /** @description Whether the token module has been initialized. */
-  public async isInitialized(): Promise<boolean> {
-    return (await this.getPublicState()).NativeShieldedToken__isInitialized;
-  }
-
-  /** @description Current value of the derived-nonce chain counter. */
-  public async nonceCounter(): Promise<bigint> {
-    return (await this.getPublicState()).NativeShieldedTokenDerivedNonce__counter;
-  }
-
-  /** @description Latest value of the derived-nonce evolution chain (`_nonce`). */
-  public async nonceChainValue(): Promise<Uint8Array> {
-    return (await this.getPublicState()).NativeShieldedTokenDerivedNonce__nonce;
+  public isInitialized(): Promise<boolean> {
+    return this.circuits.impure.isInitialized();
   }
 }

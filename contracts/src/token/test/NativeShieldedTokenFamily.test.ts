@@ -18,7 +18,6 @@ const { ZERO_KEY, ZERO_ADDRESS } = utils;
 const NAME = 'Family Token';
 const SYMBOL = 'FAM';
 const DECIMALS = 6n;
-const SEED = b32('nonce-seed');
 const DOMAIN_A = b32('domain-A');
 const DOMAIN_B = b32('domain-B');
 const INIT = true;
@@ -26,7 +25,7 @@ const BAD_INIT = false;
 const AMOUNT = 1_000n;
 
 const deploy = (init = INIT): Promise<NativeShieldedTokenFamilySimulator> =>
-  NativeShieldedTokenFamilySimulator.create(SEED, NAME, SYMBOL, DECIMALS, init);
+  NativeShieldedTokenFamilySimulator.create(NAME, SYMBOL, DECIMALS, init);
 
 let token: NativeShieldedTokenFamilySimulator;
 
@@ -36,23 +35,21 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       token = await deploy(INIT);
     });
 
-    it('should expose the family metadata (INV-14)', async () => {
+    it('should expose the family metadata', async () => {
       expect(await token.name()).toEqual(NAME);
       expect(await token.symbol()).toEqual(SYMBOL);
       expect(await token.decimals()).toEqual(DECIMALS);
       expect(await token.isInitialized()).toBe(true);
-    });
-
-    it('should return 0 supply for an unknown domain (INV-2)', async () => {
-      expect(await token.totalMinted(DOMAIN_A)).toBe(0n);
-      expect(await token.totalBurned(DOMAIN_A)).toBe(0n);
-      expect(await token.totalSupply(DOMAIN_A)).toBe(0n);
     });
   });
 
   describe('before initialization', () => {
     beforeEach(async () => {
       token = await deploy(BAD_INIT);
+    });
+
+    it('should report not initialized', async () => {
+      expect(await token.isInitialized()).toBe(false);
     });
 
     type FailingCircuit = [method: keyof Sim, args: unknown[]];
@@ -64,28 +61,19 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       ['_mint', [DOMAIN_A, RECIPIENT, AMOUNT, b32('n')]],
       ['_burn', [DOMAIN_A, { nonce: b32('cn'), color: b32('c'), value: AMOUNT }, AMOUNT, REFUND_TO]],
       [
-        '_burnFromContract',
+        '_burnFromSelf',
         [DOMAIN_A, { nonce: b32('cn'), color: b32('c'), value: AMOUNT, mt_index: 0n }, AMOUNT],
       ],
     ];
 
     it.each(circuitsToFail)(
-      'should revert %s before initialize (INV-15)',
+      'should revert %s before initialize',
       async (method, args) => {
         await expect(
           (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
-        ).rejects.toThrow('NativeShieldedTokenFamily: contract not initialized');
+        ).rejects.toThrow('NativeShieldedToken: contract not initialized');
       },
     );
-
-    it('should report zero supply before initialize for any domain (getters do not gate on init) (INV-2)', async () => {
-      // Per-domain supply accounting now lives in the standalone
-      // NativeShieldedTokenFamilySupply extension; an absent domain reads as 0
-      // independently of the family module's init flag.
-      expect(await token.totalMinted(DOMAIN_A)).toBe(0n);
-      expect(await token.totalBurned(DOMAIN_A)).toBe(0n);
-      expect(await token.totalSupply(DOMAIN_A)).toBe(0n);
-    });
   });
 
   describe('_mint (per domain)', () => {
@@ -93,7 +81,7 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       token = await deploy(INIT);
     });
 
-    it('should return a coin with color = tokenColor(domain), value, nonce (INV-1)', async () => {
+    it('should return a coin with color = tokenColor(domain), value, nonce', async () => {
       const nonce = b32('m-a');
       const coin = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, nonce);
       expect(coin.value).toBe(AMOUNT);
@@ -101,18 +89,13 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       expect(coin.color).toEqual(await token.tokenColor(DOMAIN_A));
     });
 
-    it('should increment totalMinted(domain) by amount (INV-2)', async () => {
-      await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, b32('m-a'));
-      expect(await token.totalMinted(DOMAIN_A)).toBe(AMOUNT);
-    });
-
-    it('should revert on a zero recipient (INV-6)', async () => {
+    it('should revert on a zero recipient', async () => {
       await expect(
         token._mint(DOMAIN_A, ZERO_KEY, AMOUNT, b32('z')),
-      ).rejects.toThrow('NativeShieldedTokenFamily: invalid recipient');
+      ).rejects.toThrow('NativeShieldedToken: invalid recipient');
       await expect(
         token._mint(DOMAIN_A, ZERO_ADDRESS, AMOUNT, b32('z')),
-      ).rejects.toThrow('NativeShieldedTokenFamily: invalid recipient');
+      ).rejects.toThrow('NativeShieldedToken: invalid recipient');
     });
   });
 
@@ -121,35 +104,17 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       token = await deploy(INIT);
     });
 
-    it('should accumulate independent supplies for distinct domains (INV-2)', async () => {
-      await token._mint(DOMAIN_A, RECIPIENT, 1_000n, b32('a1'));
-      await token._mint(DOMAIN_B, RECIPIENT, 250n, b32('b1'));
-      expect(await token.totalMinted(DOMAIN_A)).toBe(1_000n);
-      expect(await token.totalMinted(DOMAIN_B)).toBe(250n);
-    });
-
-    it('should give distinct colors to distinct domains (INV-1)', async () => {
+    it('should give distinct colors to distinct domains', async () => {
       expect(await token.tokenColor(DOMAIN_A)).not.toEqual(
         await token.tokenColor(DOMAIN_B),
       );
     });
 
-    it('should keep domain B unaffected by a burn under domain A', async () => {
-      const colorA = await token.tokenColor(DOMAIN_A);
-      await token._mint(DOMAIN_A, RECIPIENT, 1_000n, b32('a1'));
-      await token._mint(DOMAIN_B, RECIPIENT, 1_000n, b32('b1'));
-      await token._burn(DOMAIN_A, { nonce: b32('c'), color: colorA, value: 400n }, 400n, REFUND_TO);
-      expect(await token.totalBurned(DOMAIN_A)).toBe(400n);
-      expect(await token.totalBurned(DOMAIN_B)).toBe(0n);
-      expect(await token.totalSupply(DOMAIN_A)).toBe(600n);
-      expect(await token.totalSupply(DOMAIN_B)).toBe(1_000n);
-    });
-
-    it('should reject burning a domain-A coin under domain B (wrong color) (INV-1)', async () => {
+    it('should reject burning a domain-A coin under domain B (wrong color)', async () => {
       const colorA = await token.tokenColor(DOMAIN_A);
       await expect(
         token._burn(DOMAIN_B, { nonce: b32('c'), color: colorA, value: AMOUNT }, AMOUNT, REFUND_TO),
-      ).rejects.toThrow('NativeShieldedTokenFamily: wrong token');
+      ).rejects.toThrow('NativeShieldedToken: wrong token');
     });
   });
 
@@ -166,29 +131,49 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       value,
     });
 
-    it('should revert when amount > coin.value (INV-8)', async () => {
+    it('should revert when amount > coin.value', async () => {
       await expect(
         token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT + 1n, REFUND_TO),
-      ).rejects.toThrow('NativeShieldedTokenFamily: insufficient coin value');
+      ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
     });
 
-    it('should revert on a zero refundTo (INV-7)', async () => {
+    it('should revert on a zero refundTo', async () => {
       await expect(
         token._burn(DOMAIN_A, coinOf(AMOUNT), 1n, ZERO_KEY),
-      ).rejects.toThrow('NativeShieldedTokenFamily: invalid refund target');
+      ).rejects.toThrow('NativeShieldedToken: invalid refund target');
     });
 
-    it('should return none on a full burn and some(refund) on a partial burn (INV-10)', async () => {
+    it('should return none on a full burn and some(refund) on a partial burn', async () => {
       expect((await token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT, REFUND_TO)).is_some).toBe(false);
       const partial = await token._burn(DOMAIN_A, coinOf(AMOUNT), 600n, REFUND_TO);
       expect(partial.is_some).toBe(true);
       expect(partial.value.value).toBe(AMOUNT - 600n);
     });
+  });
 
-    it('should report totalSupply(domain) == minted - burned (INV-5)', async () => {
-      await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, b32('m'));
-      await token._burn(DOMAIN_A, coinOf(400n), 400n, REFUND_TO);
-      expect(await token.totalSupply(DOMAIN_A)).toBe(AMOUNT - 400n);
+  describe('_burnFromSelf (per domain)', () => {
+    let colorA: Uint8Array;
+    beforeEach(async () => {
+      token = await deploy(INIT);
+      colorA = await token.tokenColor(DOMAIN_A);
+    });
+
+    const qCoinOf = (value: bigint, c: Uint8Array = colorA) => ({
+      nonce: b32('qcoin'),
+      color: c,
+      value,
+      mt_index: 0n,
+    });
+
+    it('should return change on a partial burn and none on a full burn', async () => {
+      expect((await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), 600n)).is_some).toBe(true);
+      expect((await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT)).is_some).toBe(false);
+    });
+
+    it('should reject a wrong-color coin', async () => {
+      await expect(
+        token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT, b32('wrong')), AMOUNT),
+      ).rejects.toThrow('NativeShieldedToken: wrong token');
     });
   });
 });

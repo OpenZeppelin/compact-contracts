@@ -10,36 +10,23 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../NativeShieldedTokenFamily" prefix NativeShieldedTokenFamily_;
-import "../../extensions/NativeShieldedTokenDerivedNonce" prefix NativeShieldedTokenDerivedNonce_;
-import "../../extensions/NativeShieldedTokenFamilySupply" prefix NativeShieldedTokenFamilySupply_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-// Ledger field re-exports so unit tests can read state via the typed `Ledger`.
-// Family metadata and per-domain supply totals are reachable through getter
-// circuits; these are the fields with no getter that the tests assert on:
-// the init flag and the derived-nonce chain (counter + latest chain value).
-export { NativeShieldedTokenFamily__isInitialized };
-export {
-  NativeShieldedTokenDerivedNonce__counter,
-  NativeShieldedTokenDerivedNonce__nonce
-};
-
-// This mock represents a consumer that wants per-domain supply accounting: it
-// composes the optional NativeShieldedTokenFamilySupply extension and pairs
-// its _addMinted / _addBurned blocks with the base mint / burn ops below.
+// Unit mock for the NativeShieldedTokenFamily core module in isolation: no
+// supply accounting, no derived-nonce extension. Those have their own
+// standalone mocks and test suites.
 
 /**
  * @description `init` is a test-only flag. When true, the constructor
- * initializes both the family module (metadata) and the derived-nonce chain.
- * When false, neither is initialized, so tests can exercise the
- * pre-initialization revert guards. The family `initialize` is intentionally
- * NOT exposed as a circuit: it writes `sealed` ledger fields, which the
- * sealed-write rule confines to constructor execution.
+ * initializes the family module (metadata). When false, it is left
+ * uninitialized so tests can exercise the pre-initialization revert guards.
+ * The family `initialize` is intentionally NOT exposed as a circuit: it writes
+ * `sealed` ledger fields, which the sealed-write rule confines to constructor
+ * execution.
  */
 constructor(
-  initNonce: Bytes<32>,
   name_: Opaque<"string">,
   symbol_: Opaque<"string">,
   decimals_: Uint<8>,
@@ -47,15 +34,11 @@ constructor(
 ) {
   if (disclose(init)) {
     NativeShieldedTokenFamily_initialize(name_, symbol_, decimals_);
-    NativeShieldedTokenDerivedNonce_initialize(initNonce);
   }
 }
 
-// Exposes the extension's seed circuit so tests can exercise the seed-once and
-// zero-seed guards post-deploy. The nonce-chain fields (`_counter`, `_nonce`)
-// are not sealed, so seeding outside the constructor is legal here.
-export circuit initializeNonce(initNonce: Bytes<32>): [] {
-  NativeShieldedTokenDerivedNonce_initialize(initNonce);
+export circuit isInitialized(): Boolean {
+  return NativeShieldedTokenFamily_isInitialized();
 }
 
 export circuit name(): Opaque<"string"> {
@@ -74,43 +57,13 @@ export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
   return NativeShieldedTokenFamily_tokenColor(domain);
 }
 
-export circuit totalMinted(domain: Bytes<32>): Uint<128> {
-  return NativeShieldedTokenFamilySupply_totalMinted(domain);
-}
-
-export circuit totalBurned(domain: Bytes<32>): Uint<128> {
-  return NativeShieldedTokenFamilySupply_totalBurned(domain);
-}
-
-export circuit totalSupply(domain: Bytes<32>): Uint<128> {
-  return NativeShieldedTokenFamilySupply_totalSupply(domain);
-}
-
 export circuit _mint(
   domain: Bytes<32>,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
   amount: Uint<64>,
   nonce: Bytes<32>
 ): ShieldedCoinInfo {
-  const coin = NativeShieldedTokenFamily__mint(domain, recipient, amount, nonce);
-  NativeShieldedTokenFamilySupply__addMinted(domain, amount);
-  return coin;
-}
-
-export circuit _deriveNonce(): Bytes<32> {
-  return NativeShieldedTokenDerivedNonce__deriveNonce();
-}
-
-// Demonstrates the documented composition: base _mint with the extension's
-// _deriveNonce building block as the nonce source.
-export circuit _mintWithDerivedNonce(
-  domain: Bytes<32>,
-  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  amount: Uint<64>
-): ShieldedCoinInfo {
-  const coin = NativeShieldedTokenFamily__mint(domain, recipient, amount, NativeShieldedTokenDerivedNonce__deriveNonce());
-  NativeShieldedTokenFamilySupply__addMinted(domain, amount);
-  return coin;
+  return NativeShieldedTokenFamily__mint(domain, recipient, amount, nonce);
 }
 
 export circuit _burn(
@@ -119,17 +72,13 @@ export circuit _burn(
   amount: Uint<128>,
   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
 ): Maybe<ShieldedCoinInfo> {
-  const refund = NativeShieldedTokenFamily__burn(domain, coin, amount, refundTo);
-  NativeShieldedTokenFamilySupply__addBurned(domain, amount);
-  return refund;
+  return NativeShieldedTokenFamily__burn(domain, coin, amount, refundTo);
 }
 
-export circuit _burnFromContract(
+export circuit _burnFromSelf(
   domain: Bytes<32>,
   coin: QualifiedShieldedCoinInfo,
   amount: Uint<128>
 ): Maybe<ShieldedCoinInfo> {
-  const change = NativeShieldedTokenFamily__burnFromContract(domain, coin, amount);
-  NativeShieldedTokenFamilySupply__addBurned(domain, amount);
-  return change;
+  return NativeShieldedTokenFamily__burnFromSelf(domain, coin, amount);
 }
