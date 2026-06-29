@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (security/Blocklist.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module Blocklist
+ * @description A minimal, reusable deny-list keyed by an abstract `Bytes<32>`
+ * account identifier. It answers a single question: is this account blocked?
+ *
+ * This module is a pure membership MECHANISM, not a policy. It holds no notion
+ * of "when" the list is enforced and no access control. The mutators (`_block`,
+ * `_unblock`) are deliberately UNGATED composable primitives: a composing
+ * contract gates them behind its access-control module (the same way a token
+ * gates `_mint` / `_burn`), and decides when to call `assertNotBlocked`. Keeping
+ * the enforce-or-not decision in the composing layer leaves this module general
+ * enough to back sanctions lists, account freezes, abuse denials, and the like.
+ *
+ * @notice This is the PUBLIC (transparent) blocklist: membership status is
+ * publicly readable and the blocked set is publicly enumerable. That is the
+ * right posture for transparent or public-graph assets. A graph-private asset
+ * should instead use a shielded blocklist (a public blocklist would re-expose
+ * the candidate set and bound the anonymity set).
+ */
+module Blocklist {
+  import CompactStandardLibrary;
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+
+  /** @description Blocked accounts. Absent means not blocked. */
+  export ledger _blocked: Set<Bytes<32>>;
+
+  // ---------------------------------------------------------------------------
+  // Views
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Returns whether `account` is currently blocked.
+   *
+   * @circuitInfo k=9, rows=305
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {Boolean} - True if `account` is a member of the blocklist.
+   */
+  export circuit isBlocked(account: Bytes<32>): Boolean {
+    return _blocked.member(disclose(account));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Check (the eligibility seam)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Asserts that `account` is not blocked. The composing contract
+   * decides when this gate applies.
+   *
+   * @circuitInfo k=9, rows=308
+   *
+   * Requirements:
+   *
+   * - `account` is not a member of the blocklist.
+   *
+   * @param {Bytes<32>} account - The account that must not be blocked.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertNotBlocked(account: Bytes<32>): [] {
+    assert(!isBlocked(account), "Blocklist: account blocked");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mutators (UNGATED - the composing contract is responsible for gating these)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Adds `account` to the blocklist.
+   *
+   * @circuitInfo k=9, rows=303
+   *
+   * @param {Bytes<32>} account - The account to block.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _block(account: Bytes<32>): [] {
+    _blocked.insert(disclose(account));
+  }
+
+  /**
+   * @description Removes `account` from the blocklist.
+   *
+   * @circuitInfo k=9, rows=303
+   *
+   * @param {Bytes<32>} account - The account to unblock.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _unblock(account: Bytes<32>): [] {
+    _blocked.remove(disclose(account));
+  }
+}
