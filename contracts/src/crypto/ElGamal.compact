@@ -1,0 +1,458 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (crypto/ElGamal.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ElGamal
+ * @description Stateless, single-receiver ElGamal primitives over the Jubjub
+ * curve. Provides general point encryption (`encryptPoint` / `assertDecryptsToPoint`)
+ * and the exponential (lifted) variant (`encrypt` / `assertDecryptsTo`) for
+ * bounded scalar values.
+ *
+ * In the lifted variant a value `v` is encrypted as the point `g^v`, so the
+ * scheme is additively homomorphic in the exponent: ciphertexts of `a` and `b`
+ * combine into a ciphertext of `a + b`. Recovering `v` from `g^v` requires a
+ * discrete-log search, so the lifted variant is only usable when `v` is bounded;
+ * the caller is responsible for enforcing that bound (e.g. capping each encrypted
+ * value to a range a discrete-log search can clear). The general point form
+ * carries an arbitrary message point and sidesteps the bound, at the cost of
+ * decryption recovering only a point (not a scalar).
+ *
+ * @notice This module holds NO ledger state and declares NO witnesses. Every
+ * circuit takes its keys, plaintexts, and randomness as explicit arguments so
+ * the same primitives can back many importing modules (single-receiver today;
+ * multi-receiver / auditor variants later) without each importer inheriting a
+ * witness interface it may not need. Secrets and cached plaintexts are supplied
+ * by the importing module's own witnesses and verified there.
+ *
+ * @dev Hash-to-scalar discipline. Both `secretToScalar` and `expandRandomness`
+ * map bytes to a Jubjub scalar via `degradeToTransient(persistentHash(...))`.
+ * `persistentHash` is used because the derived public key is stored on-chain
+ * and compared against on every later verification; `degradeToTransient`
+ * truncates the Field to 31 bytes so the result is ALWAYS a valid Jubjub
+ * scalar. Feeding a raw `persistentHash` output into `ecMulGenerator` would
+ * occasionally exceed the Jubjub scalar field order and fault at runtime.
+ *
+ * @dev Subgroup membership. Every `JubjubPoint` reaching a curve operation is
+ * in the Jubjub prime-order subgroup, including points supplied by a caller as
+ * a witness or argument (e.g. a recipient `pk`, or the message point in
+ * `encryptPoint`). The Midnight runtime enforces this at the ZK-constraint
+ * level: the embedded-curve gadget assigns points via cofactor clearing, so an
+ * off-curve / low-order / mixed-order point makes the circuit unsatisfiable.
+ * This module therefore performs NO in-circuit subgroup check (one is neither
+ * needed nor expressible: `ecMul` by the subgroup order faults, and
+ * `JubjubPoint` is opaque). The `ecNeg` identity and the homomorphic algebra
+ * rely on this guarantee.
+ *
+ * @dev Weak keys. Encrypting under the identity point yields `c2 = m` with no
+ * masking (the plaintext is exposed), and the identity is a valid subgroup
+ * point so the runtime subgroup guarantee does NOT catch it. `encryptPoint`
+ * therefore asserts `pk != identity`, and every encryption path routes through
+ * it, so confidentiality is protected regardless of the importer. An importing
+ * module MAY additionally reject an identity `pk` where keys enter the system
+ * (e.g. at registration) to fail fast with a clear error rather than at first
+ * encryption — a UX nicety, not a confidentiality requirement.
+ *
+ * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
+ * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
+ * the unique mask-zeroing randomness, so the two asserts together guarantee a
+ * non-trivial mask. The remaining obligations the circuit CANNOT enforce:
+ * every `r` MUST be a valid Jubjub scalar (`< ℓ`, the subgroup order; larger
+ * values fault `ecMul`), and MUST be fresh and secret. Reusing an `r` under the
+ * same `pk` leaks the difference of the two plaintexts (`c1` collides, so
+ * `c2 - c2' = m - m'`). Prefer `expandRandomness` with a distinct tag per
+ * encryption.
+ */
+module ElGamal {
+  import CompactStandardLibrary;
+
+  // ---------------------------------------------------------------------------
+  // Types
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Single-receiver ElGamal ciphertext over Jubjub.
+   *   c1 = g^r
+   *   c2 = pk^r * m   (lifted: m = g^v)
+   */
+  export struct Ciphertext {
+    c1: JubjubPoint;
+    c2: JubjubPoint;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Key / scalar derivation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Maps a 32-byte secret to a valid Jubjub scalar. See the
+   * module-level hash-to-scalar note for why `degradeToTransient` is required.
+   *
+   * @param secret - The 32-byte secret to map.
+   * @return A Field guaranteed to be a valid Jubjub scalar.
+   */
+  export pure circuit secretToScalar(secret: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<1, Bytes<32>>>([secret]));
+  }
+
+  /**
+   * @description Derives the ElGamal public key `pk = g^secretToScalar(ek)`
+   * from a secret `ek`.
+   *
+   * @param ek - The 32-byte encryption secret.
+   * @return The corresponding public key point.
+   */
+  export pure circuit derivePk(ek: Bytes<32>): JubjubPoint {
+    return ecMulGenerator(secretToScalar(ek));
+  }
+
+  /**
+   * @description Deterministically expands a 32-byte seed into a Jubjub scalar
+   * tagged by a distinguishing string, so a single witness seed can yield many
+   * distinct randomness values within one circuit invocation. Distinct tags
+   * always produce distinct outputs (collision resistance of the hash); the
+   * caller is responsible for using distinct tags.
+   *
+   * @param seed - The seed to expand.
+   * @param tag - A 32-byte tag distinguishing this expansion from its siblings.
+   * @return A Field suitable for use as encryption randomness.
+   */
+  export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<2, Bytes<32>>>([seed, tag]));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Curve helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description The order of the Jubjub prime-order subgroup (`EmbeddedFr`
+   * modulus `ℓ`), minus one. Used as the scalar for point negation: for any `P`
+   * in the subgroup, `(ℓ - 1) * P = ℓ*P - P = O - P = -P`.
+   *
+   * @notice The negation identity this enables (`P + (ℓ-1)*P == O`) is exercised
+   * by the `negate` round-trip tests. Compact has no module-level constants, so
+   * the value is exposed as a pure circuit returning the literal.
+   */
+  pure circuit JUBJUB_SUBGROUP_ORDER_MINUS_ONE(): Field {
+    return 6554484396890773809930967563523245729705921265872317281365359162392183254198 as Field;
+  }
+
+  /**
+   * @description Negates a Jubjub point.
+   *
+   * @notice Implemented as scalar multiplication by `ORDER - 1` rather than the
+   * obvious `ecMul(p, -1)`: the scalar `-1` computed in the `Field` type is
+   * `BLS_modulus - 1`, which exceeds the Jubjub scalar field order and faults
+   * `ecMul` ("failed to decode for built-in type EmbeddedFr"). `JubjubPoint`
+   * is opaque (no coordinate access), so coordinate negation is unavailable.
+   * The `(ORDER-1)*P = -P` identity holds only in the prime-order subgroup, but
+   * that always applies here: the runtime constrains every assigned `JubjubPoint`
+   * into the prime-order subgroup (the embedded-curve gadget assigns points via
+   * cofactor clearing), so no in-subgroup precondition needs to be checked or
+   * assumed. See the module-level subgroup note.
+   */
+  pure circuit ecNeg(p: JubjubPoint): JubjubPoint {
+    return ecMul(p, JUBJUB_SUBGROUP_ORDER_MINUS_ONE());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Encryption & homomorphic operations
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description The identity ciphertext `Enc(0)` (both components are the
+   * curve identity). Useful for initializing a fresh balance.
+   *
+   * @notice This is a fixed, deterministic value `(O, O)` — NOT a hiding
+   * encryption. It is publicly recognizable, so a slot left at `encryptZero` is
+   * distinguishable as never-written. Rerandomize (or credit with fresh `r`)
+   * before treating it as private.
+   */
+  export pure circuit encryptZero(): Ciphertext {
+    const id = ecMulGenerator(0 as Field);
+    return Ciphertext { c1: id, c2: id };
+  }
+
+  /**
+   * @description Encrypts an arbitrary message point `m` under `pk` with
+   * randomness `r`, producing the ciphertext `(g^r, pk^r * m)`. This is the
+   * general (non-lifted) ElGamal encryption; `encrypt` is the lifted special
+   * case `encryptPoint(pk, g^value, r)`.
+   *
+   * @notice `m` (like `pk`) is constrained into the prime-order subgroup by the
+   * runtime (see the module-level subgroup note), so no in-circuit membership
+   * check is performed. `pk` is asserted non-identity and `r` non-zero — the
+   * two inputs that would zero the mask and expose `m` (see the weak-keys and
+   * randomness notes). Decrypting `m` is only feasible when it is a known or
+   * small-exponent point; the caller owns that concern (the lifted `encrypt`
+   * bounds it via the discrete-log range).
+   *
+   * Requirements:
+   *
+   * - `pk` is not the identity point.
+   * - `r` is non-zero.
+   *
+   * @param pk - The recipient public key.
+   * @param m - The message point to encrypt.
+   * @param r - The encryption randomness.
+   * @return The ciphertext `(g^r, pk^r * m)`.
+   */
+  export pure circuit encryptPoint(pk: JubjubPoint, m: JubjubPoint, r: Field): Ciphertext {
+    assert(pk != ecMulGenerator(0 as Field), "ElGamal: identity pk");
+    assert(r != 0 as Field, "ElGamal: zero randomness");
+    const c1 = ecMulGenerator(r);
+    const mask = ecMul(pk, r);
+    const c2 = ecAdd(mask, m);
+    return Ciphertext { c1: c1, c2: c2 };
+  }
+
+  /**
+   * @description Produces a fresh ciphertext of `value` under `pk` with
+   * randomness `r`, lifting `value` to the point `g^value`. Randomness is taken
+   * as a `Field` directly to avoid a redundant `Bytes<32> -> Field` conversion
+   * at every call site; `expandRandomness` produces `Field` for the same reason.
+   *
+   * Requirements:
+   *
+   * - `pk` is not the identity point.
+   * - `r` is non-zero.
+   *
+   * @param pk - The recipient public key.
+   * @param value - The plaintext value to encrypt.
+   * @param r - The encryption randomness.
+   * @return The ciphertext `(g^r, pk^r * g^value)`.
+   */
+  export pure circuit encrypt(pk: JubjubPoint, value: Uint<128>, r: Field): Ciphertext {
+    return encryptPoint(pk, ecMulGenerator(value as Field), r);
+  }
+
+  /**
+   * @description Negates a ciphertext componentwise: if `ct` encrypts `v` then
+   * the result encrypts `-v` under the same key (with negated randomness).
+   * This is the building block `sub` rests on.
+   *
+   * @param ct - The ciphertext to negate.
+   * @return A ciphertext of `-v`.
+   */
+  export pure circuit negate(ct: Ciphertext): Ciphertext {
+    return Ciphertext { c1: ecNeg(ct.c1), c2: ecNeg(ct.c2) };
+  }
+
+  /**
+   * @description Homomorphically adds two ciphertexts: `Enc(a) + Enc(b)`
+   * decrypts to `a + b`. This is the defining additive-homomorphism primitive
+   * and combines two independently produced ciphertexts componentwise.
+   *
+   * @notice Both inputs MUST be encrypted under the same public key for the
+   * result to decrypt under that key's secret; combining ciphertexts under
+   * different keys yields a ciphertext no single key can open. The randomness
+   * of the result is the sum of the inputs' randomness, so the result is a
+   * valid fresh ciphertext under that key.
+   *
+   * @param a - The first ciphertext.
+   * @param b - The second ciphertext (same recipient key as `a`).
+   * @return A ciphertext of `a + b`.
+   */
+  export pure circuit add(a: Ciphertext, b: Ciphertext): Ciphertext {
+    return Ciphertext { c1: ecAdd(a.c1, b.c1), c2: ecAdd(a.c2, b.c2) };
+  }
+
+  /**
+   * @description Homomorphically subtracts two ciphertexts: `Enc(a) - Enc(b)`
+   * decrypts to `a - b`. Implemented as `add(a, negate(b))`.
+   *
+   * @notice Same-key requirement as `add`. The caller MUST ensure the
+   * underlying plaintext subtraction does not underflow; this circuit cannot
+   * check it (see `subEncrypted`).
+   *
+   * @param a - The minuend ciphertext.
+   * @param b - The subtrahend ciphertext (same recipient key as `a`).
+   * @return A ciphertext of `a - b`.
+   */
+  export pure circuit sub(a: Ciphertext, b: Ciphertext): Ciphertext {
+    return add(a, negate(b));
+  }
+
+  /**
+   * @description Homomorphically multiplies the plaintext of `ct` by a public
+   * scalar `k`: if `ct` encrypts `v` then the result encrypts `k * v` under the
+   * same key. Both components are scaled by `k`, so the randomness scales to
+   * `k * r` and the result is a valid fresh ciphertext under that key.
+   *
+   * This is the scalar-multiplication leg of the homomorphism, and the only way
+   * to express linear combinations: a weighted sum `Enc(3a + 5b)` is
+   * `add(scalarMul(ca, 3), scalarMul(cb, 5))`, which repeated `add` cannot do
+   * for large weights.
+   *
+   * @notice `k` MUST be a valid Jubjub scalar (less than the subgroup order);
+   * larger values fault `ecMul` (see the module-level hash-to-scalar note). The
+   * caller also remains responsible for the discrete-log bound — `k * v` must
+   * stay within the range a recovery search can clear.
+   *
+   * @param ct - The ciphertext whose plaintext is scaled.
+   * @param k - The public scalar multiplier (a valid Jubjub scalar).
+   * @return A ciphertext of `k * v`.
+   */
+  export pure circuit scalarMul(ct: Ciphertext, k: Field): Ciphertext {
+    return Ciphertext { c1: ecMul(ct.c1, k), c2: ecMul(ct.c2, k) };
+  }
+
+  /**
+   * @description Homomorphically adds `value` to the plaintext encrypted by
+   * `old`, producing a fresh ciphertext under `pk` with new randomness `r`.
+   * Convenience over `add` for folding a known plaintext into a ciphertext:
+   * `add(old, encrypt(pk, value, r))`.
+   *
+   * Requirements:
+   *
+   * - `pk` is not the identity point.
+   * - `r` is non-zero.
+   */
+  export pure circuit addEncrypted(
+                        old: Ciphertext,
+                        pk: JubjubPoint,
+                        value: Uint<128>,
+                        r: Field
+                        ): Ciphertext {
+    return add(old, encrypt(pk, value, r));
+  }
+
+  /**
+   * @description Homomorphically subtracts `value` from the plaintext encrypted
+   * by `old`. Convenience over `sub`: `sub(old, encrypt(pk, value, r))`.
+   *
+   * @notice The caller MUST ensure the underlying plaintext subtraction does
+   * not underflow; this circuit cannot check it. Callers verify sufficiency by
+   * reading the plaintext via their own witness and asserting it with
+   * `assertDecryptsTo` before calling.
+   *
+   * Requirements:
+   *
+   * - `pk` is not the identity point.
+   * - `r` is non-zero.
+   */
+  export pure circuit subEncrypted(
+                        old: Ciphertext,
+                        pk: JubjubPoint,
+                        value: Uint<128>,
+                        r: Field
+                        ): Ciphertext {
+    return sub(old, encrypt(pk, value, r));
+  }
+
+  /**
+   * @description Rerandomizes `ct`: returns a fresh ciphertext of the same
+   * plaintext under the same key `pk`, using new randomness `r`. The output is
+   * unlinkable to the input (it is a uniformly fresh encryption of the same
+   * value) yet decrypts identically. Equivalent to homomorphically adding an
+   * encryption of zero.
+   *
+   * @notice `r = 0` is rejected (it would be a no-op via the `encryptPoint`
+   * zero-randomness assert). One silent failure mode remains that the circuit
+   * cannot catch: a `pk` that is not the key `ct` was encrypted under corrupts
+   * the plaintext (the result no longer decrypts to the original value). Pass
+   * fresh randomness and the matching `pk`.
+   *
+   * Requirements:
+   *
+   * - `pk` is not the identity point.
+   * - `r` is non-zero.
+   *
+   * @param ct - The ciphertext to rerandomize.
+   * @param pk - The recipient public key `ct` is encrypted under.
+   * @param r - Fresh, nonzero randomness for the rerandomization.
+   * @return A fresh ciphertext of the same plaintext.
+   */
+  export pure circuit rerandomize(ct: Ciphertext, pk: JubjubPoint, r: Field): Ciphertext {
+    return add(ct, encrypt(pk, 0, r));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Verification
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Asserts that `ek` is the secret for `pk`, i.e.
+   * `derivePk(ek) == pk`. Lets a caller prove ownership of a public key
+   * without touching any ciphertext or plaintext.
+   *
+   * Requirements:
+   *
+   * - `ek` is the secret for `pk` (`derivePk(ek) == pk`).
+   *
+   * @param pk - The public key to check.
+   * @param ek - The secret claimed to correspond to `pk`.
+   */
+  export pure circuit assertKeyPair(pk: JubjubPoint, ek: Bytes<32>): [] {
+    assert(derivePk(ek) == pk,
+           "ElGamal: ek/pk mismatch");
+  }
+
+  /**
+   * @description Asserts that `ct` decrypts under `(pk, ek)` to the message
+   * point `m`, and that `ek` is the secret for `pk`. This is the general
+   * (non-lifted) verification; `assertDecryptsTo` is the lifted special case
+   * with `m = g^claimedValue`.
+   *
+   * Requirements:
+   *
+   * - `ek` is the secret for `pk`.
+   * - `ct` decrypts under `(pk, ek)` to `m`.
+   *
+   * @param ct - The ciphertext to verify.
+   * @param pk - The public key `ct` is expected to be encrypted under.
+   * @param ek - The secret claimed to correspond to `pk`.
+   * @param m - The message point `ct` is claimed to encrypt.
+   */
+  export pure circuit assertDecryptsToPoint(
+                   ct: Ciphertext,
+                   pk: JubjubPoint,
+                   ek: Bytes<32>,
+                   m: JubjubPoint
+                   ): [] {
+    // Inlines the same key check as `assertKeyPair` (rather than calling it) so
+    // `ekField` is computed once and reused for the decryption below, avoiding
+    // a second `secretToScalar` hash in this hot verification path.
+    const ekField = secretToScalar(ek);
+    assert(ecMulGenerator(ekField) == pk,
+           "ElGamal: ek/pk mismatch");
+
+    // m = c2 - ek*c1. ek*c1 is negated via ecNeg (scalar mul by ℓ-1) rather
+    // than ecMul by a negative scalar, which would exceed the Jubjub scalar
+    // field. ekField < ℓ (the subgroup order), so ecMul(ct.c1, ekField) is a
+    // valid scalar mul.
+    const ekC1 = ecMul(ct.c1, ekField);
+    const mPoint = ecAdd(ct.c2, ecNeg(ekC1));
+    assert(mPoint == m,
+           "ElGamal: plaintext mismatch");
+  }
+
+  /**
+   * @description Asserts that `ct` decrypts under `(pk, ek)` to `claimedValue`,
+   * and that `ek` is the secret for `pk`. This is the in-circuit verification
+   * path an importing module uses to bind its witness-supplied `ek` and cached
+   * plaintext to publicly stored state: a wrong `ek` fails the key check, a
+   * wrong plaintext fails the decryption check. Lifted special case of
+   * `assertDecryptsToPoint` with the message point `g^claimedValue`.
+   *
+   * Requirements:
+   *
+   * - `ek` is the secret for `pk`.
+   * - `ct` decrypts under `(pk, ek)` to `claimedValue`.
+   *
+   * @param ct - The ciphertext to verify.
+   * @param pk - The public key `ct` is expected to be encrypted under.
+   * @param ek - The secret claimed to correspond to `pk`.
+   * @param claimedValue - The plaintext `ct` is claimed to encrypt.
+   */
+  export pure circuit assertDecryptsTo(
+                   ct: Ciphertext,
+                   pk: JubjubPoint,
+                   ek: Bytes<32>,
+                   claimedValue: Uint<128>
+                   ): [] {
+    assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as Field));
+  }
+}
