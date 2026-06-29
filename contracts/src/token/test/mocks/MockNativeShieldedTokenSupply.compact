@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../extensions/NativeShieldedTokenSupply" prefix NativeShieldedTokenSupply_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+// Unit mock for the NativeShieldedTokenSupply extension in isolation. The
+// extension imports no token module, so the accounting blocks and getters are
+// driven directly here. The extension needs no initialization.
+
+export circuit _addMinted(amount: Uint<64>): [] {
+  NativeShieldedTokenSupply__addMinted(amount);
+}
+
+export circuit _addBurned(amount: Uint<128>): [] {
+  NativeShieldedTokenSupply__addBurned(amount);
+}
+
+export circuit totalMinted(): Uint<128> {
+  return NativeShieldedTokenSupply_totalMinted();
+}
+
+export circuit totalBurned(): Uint<128> {
+  return NativeShieldedTokenSupply_totalBurned();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return NativeShieldedTokenSupply_totalSupply();
+}
