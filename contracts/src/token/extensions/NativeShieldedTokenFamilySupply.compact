@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.1.0 (token/extensions/NativeShieldedTokenFamilySupply.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenFamilySupply.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
  * @module NativeShieldedTokenFamilySupply
  * @description Optional standalone extension that adds per-domain on-chain
- * supply accounting to a `NativeShieldedTokenFamily`. It owns the per-domain
- * minted/burned maps and exposes `_addMinted` / `_addBurned` as building
- * blocks plus the `totalMinted` / `totalBurned` / `totalSupply` getters, each
- * keyed by domain. It imports no token module.
+ * supply accounting to a `NativeShieldedTokenFamily`. It exposes `_addMinted` /
+ * `_addBurned` building blocks plus the `totalMinted` / `totalBurned` /
+ * `totalSupply` getters, each keyed by domain. It imports no token module.
  *
- * Pairs with `NativeShieldedTokenFamily`. The consuming contract composes the
- * pieces, calling the accounting block alongside the matching token op:
+ * It is a thin wrapper over `NativeShieldedTokenSupplyCore`, forwarding the
+ * caller's per-call `domain`, so the accounting logic and guarantees live in
+ * the shared core.
+ *
+ * @notice Pairs with `NativeShieldedTokenFamily`. The consuming contract
+ * composes the pieces, calling the accounting block alongside the matching
+ * token op:
  *
  *   export circuit mint(
  *     domain: Bytes<32>,
@@ -36,92 +40,66 @@ pragma language_version >= 0.23.0;
  *     return refund;
  *   }
  *
- * # Privacy trade-off (read before composing)
+ * @notice Privacy trade-off (read before composing): composing this extension
+ * makes contract-mediated BURN amounts PUBLIC. The bare family's `_burn` /
+ * `_burnFromSelf` are amount-private (their coin operations emit only
+ * commitments and nullifiers, never the value; the `disclose()` wrappers they
+ * require are compiler permission markers, not disclosure sinks). The
+ * `_addBurned` write here is what puts the burned amount into the public
+ * transcript. Compose this only when on-chain auditability is worth more than
+ * burn-amount privacy.
  *
- * - Composing this extension makes contract-mediated BURN amounts PUBLIC. The
- *   bare family's `_burn` / `_burnFromContract` are amount-private: their coin
- *   operations emit only commitments and nullifiers, never the value, and the
- *   `disclose()` wrappers they require are compiler permission markers, not
- *   disclosure sinks. The `_addBurned` write here is what puts the burned
- *   amount into the public transcript. Compose this only when on-chain
- *   auditability is worth more than burn-amount privacy.
- *
- * - Mint amounts are already public via the protocol's `shieldedMints` effect,
- *   so `_addMinted` adds accounting, not disclosure.
- *
- * # Accounting guarantees (when wired correctly by the consumer)
- *
- * - `totalMinted(domain)` is EXACT, `totalBurned(domain)` a LOWER BOUND (burns
- *   that bypass the contract are invisible), and `totalSupply(domain)` =
- *   minted - burned an UPPER BOUND on circulating supply. These hold only if
- *   the consumer pairs every `_mint` with `_addMinted` and every burn with
- *   `_addBurned` under the same domain; the extension cannot enforce the
- *   pairing itself.
- *
- * # Initialization
- *
- * - None: an absent domain key reads as 0. The getters do not gate on the
- *   family module's init flag (a counter reading 0 before init is correct), so
- *   init enforcement stays with the family module's mint/burn circuits.
+ * @dev Mint amounts are already public via the protocol's `shieldedMints`
+ * effect, so `_addMinted` adds accounting, not disclosure. See
+ * `NativeShieldedTokenSupplyCore` for the exact / lower-bound / upper-bound
+ * guarantees, the per-domain `burned <= minted` invariant, and the mint-side
+ * drift caveat.
  */
 module NativeShieldedTokenFamilySupply {
   import CompactStandardLibrary;
-
-  /**
-   * @description Exact amount minted per domain. See "Accounting guarantees".
-   * @type {Map<Bytes<32>, Uint<128>>} _totalMinted
-   */
-  export ledger _totalMinted: Map<Bytes<32>, Uint<128>>;
-  /**
-   * @description Contract-mediated amount burned per domain (lower bound).
-   * @type {Map<Bytes<32>, Uint<128>>} _totalBurned
-   */
-  export ledger _totalBurned: Map<Bytes<32>, Uint<128>>;
+  import "./NativeShieldedTokenSupplyCore" prefix Core_;
 
   /**
    * @description Adds `amount` to the exact minted total for `domain`. Call
    * once per successful `NativeShieldedTokenFamily._mint`.
-   * @dev Checks for overflow in order to output a readable error message.
+   *
+   * @circuitInfo k=10, rows=653
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {Uint<64>} amount - The minted amount.
    * @return {[]} - Empty tuple.
    */
   export circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
-    const current = totalMinted(domain);
-    const MAX_UINT128 = 340282366920938463463374607431768211455;
-    assert(MAX_UINT128 - current >= amount, "NativeShieldedTokenFamilySupply: arithmetic overflow");
-    _totalMinted.insert(disclose(domain), disclose((current + amount) as Uint<128>));
+    Core__addMinted(domain, amount);
   }
 
   /**
    * @description Adds `amount` to the contract-mediated burned total for
    * `domain`. Call once per successful `NativeShieldedTokenFamily._burn` /
-   * `_burnFromContract`.
-   * @dev No overflow guard is needed: every coin of the paired contract's
-   * colors originates from `_addMinted`-tracked mints, so burned can never
-   * exceed the overflow-checked minted total.
+   * `_burnFromSelf`.
+   * @dev Enforces per-domain `burned <= minted`; an unpaired, duplicate, or
+   * wrong-domain burn reverts.
+   *
+   * @circuitInfo k=10, rows=755
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {Uint<128>} amount - The burned amount.
    * @return {[]} - Empty tuple.
    */
   export circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
-    const current = totalBurned(domain);
-    _totalBurned.insert(disclose(domain), disclose((current + amount) as Uint<128>));
+    Core__addBurned(domain, amount);
   }
 
   /**
    * @description Returns the exact amount ever minted for `domain`.
    *
+   * @circuitInfo k=9, rows=344
+   *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The total amount minted.
    */
   export circuit totalMinted(domain: Bytes<32>): Uint<128> {
-    if (!_totalMinted.member(disclose(domain))) {
-      return 0;
-    }
-    return _totalMinted.lookup(disclose(domain));
+    return Core_totalMinted(domain);
   }
 
   /**
@@ -129,14 +107,13 @@ module NativeShieldedTokenFamilySupply {
    * @notice This is a lower bound: coins sent directly to the burn address
    * without going through the contract are not counted.
    *
+   * @circuitInfo k=9, rows=341
+   *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The total amount burned through the contract.
    */
   export circuit totalBurned(domain: Bytes<32>): Uint<128> {
-    if (!_totalBurned.member(disclose(domain))) {
-      return 0;
-    }
-    return _totalBurned.lookup(disclose(domain));
+    return Core_totalBurned(domain);
   }
 
   /**
@@ -144,10 +121,12 @@ module NativeShieldedTokenFamilySupply {
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
    *
+   * @circuitInfo k=9, rows=440
+   *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(domain: Bytes<32>): Uint<128> {
-    return (totalMinted(domain) - totalBurned(domain)) as Uint<128>;
+    return Core_totalSupply(domain);
   }
 }

@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.1.0 (token/extensions/NativeShieldedTokenSupply.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenSupply.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
  * @module NativeShieldedTokenSupply
  * @description Optional standalone extension that adds on-chain supply
- * accounting to a `NativeShieldedToken`. It owns the minted/burned counters
- * and exposes `_addMinted` / `_addBurned` as building blocks plus the
- * `totalMinted` / `totalBurned` / `totalSupply` getters. It imports no token
- * module.
+ * accounting to a `NativeShieldedToken`. It exposes scalar `_addMinted` /
+ * `_addBurned` building blocks plus the `totalMinted` / `totalBurned` /
+ * `totalSupply` getters. It imports no token module.
  *
- * Pairs with `NativeShieldedToken`. The consuming contract composes the
+ * It is a thin wrapper over `NativeShieldedTokenSupplyCore`, forwarding a
+ * single fixed key (the paired contract has exactly one token type), so the
+ * accounting logic and guarantees live in the shared core.
+ *
+ * @notice Pairs with `NativeShieldedToken`. The consuming contract composes the
  * pieces, calling the accounting block alongside the matching token op:
  *
  *   export circuit mint(
@@ -34,80 +37,68 @@ pragma language_version >= 0.23.0;
  *     return refund;
  *   }
  *
- * # Privacy trade-off (read before composing)
+ * @notice Privacy trade-off (read before composing): composing this extension
+ * makes contract-mediated BURN amounts PUBLIC. The bare token's `_burn` /
+ * `_burnFromSelf` are amount-private (their coin operations emit only
+ * commitments and nullifiers, never the value; the `disclose()` wrappers they
+ * require are compiler permission markers, not disclosure sinks). The
+ * `_addBurned` write here is what puts the burned amount into the public
+ * transcript. Compose this only when on-chain auditability is worth more than
+ * burn-amount privacy.
  *
- * - Composing this extension makes contract-mediated BURN amounts PUBLIC. The
- *   bare token's `_burn` / `_burnFromContract` are amount-private: their coin
- *   operations emit only commitments and nullifiers, never the value, and the
- *   `disclose()` wrappers they require are compiler permission markers, not
- *   disclosure sinks. The `_addBurned` write here is what puts the burned
- *   amount into the public transcript. Compose this only when on-chain
- *   auditability is worth more than burn-amount privacy.
- *
- * - Mint amounts are already public via the protocol's `shieldedMints` effect,
- *   so `_addMinted` adds accounting, not disclosure.
- *
- * # Accounting guarantees (when wired correctly by the consumer)
- *
- * - `totalMinted()` is EXACT, `totalBurned()` a LOWER BOUND (burns that bypass
- *   the contract are invisible), and `totalSupply()` = minted - burned an
- *   UPPER BOUND on circulating supply. These hold only if the consumer pairs
- *   every `_mint` with `_addMinted` and every burn with `_addBurned`; the
- *   extension cannot enforce the pairing itself.
- *
- * # Initialization
- *
- * - None: the counters default to 0. The getters do not gate on the token
- *   module's init flag (a counter reading 0 before init is correct), so init
- *   enforcement stays with the token module's mint/burn circuits.
+ * @dev Mint amounts are already public via the protocol's `shieldedMints`
+ * effect, so `_addMinted` adds accounting, not disclosure. See
+ * `NativeShieldedTokenSupplyCore` for the exact / lower-bound / upper-bound
+ * guarantees, the `burned <= minted` invariant, and the mint-side drift caveat.
  */
 module NativeShieldedTokenSupply {
   import CompactStandardLibrary;
+  import "./NativeShieldedTokenSupplyCore" prefix Core_;
 
   /**
-   * @description Exact amount minted. See "Accounting guarantees".
+   * @description The single fixed domain key. The paired `NativeShieldedToken`
+   * has exactly one token type, so all accounting lives under one key.
    */
-  export ledger _totalMinted: Uint<128>;
-  /**
-   * @description Contract-mediated amount burned (lower bound).
-   */
-  export ledger _totalBurned: Uint<128>;
+  circuit key(): Bytes<32> {
+    return default<Bytes<32>>;
+  }
 
   /**
    * @description Adds `amount` to the exact minted total. Call once per
    * successful `NativeShieldedToken._mint`.
-   * @dev Checks for overflow in order to output a readable error message.
+   *
+   * @circuitInfo k=9, rows=375
    *
    * @param {Uint<64>} amount - The minted amount.
    * @return {[]} - Empty tuple.
    */
   export circuit _addMinted(amount: Uint<64>): [] {
-    const MAX_UINT128 = 340282366920938463463374607431768211455;
-    assert(MAX_UINT128 - _totalMinted >= amount, "NativeShieldedTokenSupply: arithmetic overflow");
-    _totalMinted = disclose((_totalMinted + amount) as Uint<128>);
+    Core__addMinted(key(), amount);
   }
 
   /**
    * @description Adds `amount` to the contract-mediated burned total. Call once
-   * per successful `NativeShieldedToken._burn` / `_burnFromContract`.
-   * @dev No overflow guard is needed: every coin of the paired contract's
-   * color originates from `_addMinted`-tracked mints, so burned can never
-   * exceed the overflow-checked minted total.
+   * per successful `NativeShieldedToken._burn` / `_burnFromSelf`.
+   * @dev Enforces `burned <= minted`; an unpaired or duplicate burn reverts.
+   *
+   * @circuitInfo k=9, rows=477
    *
    * @param {Uint<128>} amount - The burned amount.
    * @return {[]} - Empty tuple.
    */
   export circuit _addBurned(amount: Uint<128>): [] {
-    _totalBurned = disclose((_totalBurned + amount) as Uint<128>);
+    Core__addBurned(key(), amount);
   }
 
   /**
    * @description Returns the exact amount ever minted.
    *
+   * @circuitInfo k=7, rows=65
+   *
    * @return {Uint<128>} - The total amount minted.
    */
   export circuit totalMinted(): Uint<128> {
-    return _totalMinted;
+    return Core_totalMinted(key());
   }
 
   /**
@@ -115,10 +106,12 @@ module NativeShieldedTokenSupply {
    * @notice This is a lower bound: coins sent directly to the burn address
    * without going through the contract are not counted.
    *
+   * @circuitInfo k=7, rows=62
+   *
    * @return {Uint<128>} - The total amount burned through the contract.
    */
   export circuit totalBurned(): Uint<128> {
-    return _totalBurned;
+    return Core_totalBurned(key());
   }
 
   /**
@@ -126,9 +119,11 @@ module NativeShieldedTokenSupply {
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
    *
+   * @circuitInfo k=9, rows=161
+   *
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(): Uint<128> {
-    return (_totalMinted - _totalBurned) as Uint<128>;
+    return Core_totalSupply(key());
   }
 }

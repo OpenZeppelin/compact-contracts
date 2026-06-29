@@ -11,122 +11,56 @@ pragma language_version >= 0.23.0;
  * parameter. To issue multiple token types from one contract, use
  * `NativeShieldedTokenFamily` instead.
  *
- * This module exposes composable building blocks for minting and burning
- * native shielded coins. It does NOT include access control. Consuming
- * contracts compose that through the module/contract pattern (Ownable,
- * AccessControl, etc.). The mint and burn circuits SHOULD be gated by the
- * consumer; they are unrestricted at the module level.
+ * This module is a thin wrapper over `NativeShieldedTokenCore`: it stores the
+ * one `sealed _domain` and forwards it to every core op, so the mint/burn logic
+ * and metadata live in the shared core, not here.
  *
- * # Design notes
+ * @notice This module exposes composable building blocks for minting and
+ * burning native shielded coins. It does NOT include access control: consuming
+ * contracts compose that via the module/contract pattern (Ownable,
+ * AccessControl, etc.) and SHOULD gate the mint and burn circuits, which are
+ * unrestricted at the module level.
  *
- * - The domain separator is stored as `sealed ledger _domain` at construction
- *   and never exposed as a circuit parameter, eliminating caller-supplied
- *   domain misuse. The coin's `color` is `tokenType(_domain, kernel.self())`,
- *   computed at call time (never in the constructor). Only this contract can
- *   ever mint coins of its color.
+ * @dev The domain separator is stored as `sealed ledger _domain` at
+ * construction and never exposed as a circuit parameter, eliminating
+ * caller-supplied domain misuse. The coin's `color` is
+ * `tokenType(_domain, kernel.self())`, computed at call time; only this
+ * contract can mint coins of its color. Metadata follows the FungibleToken
+ * (ERC-20) convention (contract-wide `name`, `symbol`, `decimals`, fixed at
+ * construction). Mint amounts are `Uint<64>`, burn amounts `Uint<128>` — an
+ * asymmetry imposed by the protocol primitives, not a module choice. The
+ * mint/burn mechanics and the `_burn` vs `_burnFromSelf` spend paths live in
+ * `NativeShieldedTokenCore`.
  *
- * - Metadata follows the FungibleToken (ERC-20) convention: contract-wide
- *   `name`, `symbol`, and `decimals`, fixed at construction.
+ * @notice With a secret, cryptographically random `_mint` nonce the mint is
+ * recipient-private; the caller is responsible for nonce uniqueness (a reused
+ * nonce produces a duplicate commitment, which the ledger rejects). For mints
+ * that need no caller-managed nonce, compose `NativeShieldedTokenDerivedNonce`
+ * and pass its `_deriveNonce()` output, at the cost of making those mints
+ * recipient-public.
  *
- * - Supply totals are scalar ledger cells (cheaper circuits than the
- *   token-family flavor's per-domain maps).
+ * @notice Supply accounting is opt-in: this module tracks NO supply totals.
+ * Compose the optional `NativeShieldedTokenSupply` extension only if you need an
+ * on-chain `totalSupply()`; see it for the privacy trade-off it introduces (it
+ * makes contract-mediated burn amounts public).
  *
- * - Mint amounts are `Uint<64>`; burn amounts are `Uint<128>`. This asymmetry
- *   is imposed by the protocol primitives (`mintShieldedToken` caps at 64;
- *   `sendShielded` accepts 128) and is not a choice the module makes.
+ * @dev Composition
+ * Dual-representation tokens (shielded + unshielded with conversion) MUST build
+ * on the token-family modules and the `NativeTokenConverter` extension, not on
+ * this module: it stores a single load-bearing sealed `_domain` (one token
+ * type), while the converter composes both bases' Family profiles.
+ * (Initialization is tracked per-module inline, so the former
+ * shared-`Initializable`-flag "one `initialize` per contract" limit no longer
+ * applies.)
  *
- * # Minting and recipient privacy
- *
- * - `_mint` accepts a caller-supplied nonce, mirroring the protocol's
- *   `mintShieldedToken` one-to-one. The caller is fully responsible for
- *   nonce uniqueness: reusing a nonce for the same (value, recipient)
- *   produces a duplicate commitment, which the ledger rejects.
- *
- * - With a secret, cryptographically random nonce the mint is
- *   recipient-private: the commitment cannot be linked to a recipient
- *   without the nonce. This also supports operator-driven flows where the
- *   commitment must be computed off-chain before submission.
- *
- * - For mints that require no caller-managed nonce, compose the standalone
- *   `NativeShieldedTokenDerivedNonce` extension and pass its `_deriveNonce()`
- *   output as the nonce, at the cost of making those mints recipient-public.
- *
- * # Burn variants
- *
- * - `_burn` destroys value from a coin provided by the transaction itself
- *   (e.g. a user's wallet pays the contract within the same transaction).
- *   It receives the coin and spends it via `sendImmediateShielded`, which is
- *   the required spend path for coins created within the current transaction.
- *
- * - `_burnFromContract` destroys value from a coin the contract already
- *   holds (a real Merkle-tree entry with a valid `mt_index`). It spends via
- *   `sendShielded`; any change is auto-received by the contract and returned
- *   so the consumer can persist it.
- *
- * # Supply accounting (opt-in extension) and burn-amount privacy
- *
- * - This module tracks NO supply totals. Supply accounting is the optional
- *   `NativeShieldedTokenSupply` extension; compose it only if you need an
- *   on-chain `totalSupply()`.
- *
- * - The reason it is opt-in is a privacy trade-off, not just modularity. A
- *   contract-mediated burn here is amount-PRIVATE: the coin operations
- *   (`receiveShielded`, `sendImmediateShielded`, `sendShielded`) emit only
- *   commitments and nullifiers (hashes of the coin), never the plaintext
- *   value. The `disclose()` wrappers they require are compiler permission
- *   markers, not disclosure sinks. The ONLY thing that puts a burned amount
- *   into the public transcript is writing it to a public ledger cell. So a
- *   bare `_burn` / `_burnFromContract` hides the burned amount; composing the
- *   supply extension (which writes `_totalBurned`) trades that privacy for
- *   auditability.
- *
- * - Mint amounts are public REGARDLESS of the extension: `mintShieldedToken`
- *   emits the amount in the protocol-level `shieldedMints` effect, which no
- *   amount of accounting choice can suppress. The extension changes burn
- *   visibility, not mint visibility.
- *
- * - When the supply extension IS composed: `totalMinted()` is EXACT (color
- *   derivation guarantees every coin of this contract's color originates from
- *   this module's mints); `totalBurned()` is a LOWER BOUND (holders can send
- *   coins straight to the burn address, bypassing the contract); and
- *   `totalSupply()` = minted - burned is an UPPER BOUND on circulating supply.
- *   Exact circulating supply is not knowable for native shielded tokens.
- *
- * # Wallet visibility
- *
- * - Contract-initiated sends do not create coin ciphertexts, so recipient
- *   wallets cannot detect coins minted or refunded to them by scanning the
- *   chain. The returned `ShieldedCoinInfo` values are the only copies of the
- *   corresponding coins' info: DApps SHOULD capture and deliver them out of
- *   band; dropping them strands value irrecoverably.
- *
- * # Composition
- *
- * - Dual-representation tokens (shielded + unshielded with conversion) MUST
- *   build on the token-family modules and the `NativeTokenConverter`
- *   extension, not on this module: this module stores a single load-bearing
- *   sealed `_domain` (one token type), and the converter composes both bases'
- *   Family profiles. (Initialization is tracked per-module inline now, so the
- *   former shared-`Initializable`-flag "one `initialize` per contract" limit
- *   no longer applies.)
- *
- * # Out of scope (phase two, pending contract-to-contract support)
- *
- * - `balanceOf`, `allowance`, and transfer mediation are not representable
- *   for native shielded UTXOs: once a user holds a coin, the contract cannot
- *   observe or restrict its movement. Custom spend logic depends on protocol
- *   features that have not landed yet.
+ * @notice Out of scope (phase two, pending contract-to-contract support):
+ * `balanceOf`, `allowance`, and transfer mediation are not representable for
+ * native shielded UTXOs — once a user holds a coin, the contract cannot observe
+ * or restrict its movement.
  */
 module NativeShieldedToken {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
-
-  /**
-   * @description Initialization flag, tracked per-module to avoid the compiler's
-   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
-   * Initializable module for rationale.
-   */
-  export ledger _isInitialized: Boolean;
+  import "./NativeShieldedTokenCore" prefix Core_;
 
   /**
    * @description Domain separator fixed at construction; with the contract
@@ -134,16 +68,10 @@ module NativeShieldedToken {
    */
   export sealed ledger _domain: Bytes<32>;
 
-  export sealed ledger _name: Opaque<"string">;
-  export sealed ledger _symbol: Opaque<"string">;
-  export sealed ledger _decimals: Uint<8>;
-
   /**
    * @description Initializes the module's domain and metadata.
    * @dev This MUST be called in the implementing contract's constructor.
    * Failure to do so can lead to an irreparable contract.
-   *
-   * @circuitInfo k=9, rows=339
    *
    * @param {Bytes<32>} domainSep - Domain separator for this token's color.
    * @param {Opaque<"string">} name_ - The name of the token.
@@ -157,40 +85,19 @@ module NativeShieldedToken {
                    symbol_: Opaque<"string">,
                    decimals_: Uint<8>
                    ): [] {
-    assertNotInitialized();
-    _isInitialized = true;
+    Core_initialize(name_, symbol_, decimals_);
     _domain = disclose(domainSep);
-    _name = disclose(name_);
-    _symbol = disclose(symbol_);
-    _decimals = disclose(decimals_);
   }
 
   /**
-   * @description Asserts that the contract has been initialized, throwing an
-   * error if not.
+   * @description Returns whether the contract has been initialized.
    *
-   * Requirements:
+   * @circuitInfo k=6, rows=26
    *
-   * - Contract must be initialized.
-   *
-   * @return {[]} - Empty tuple.
+   * @return {Boolean} - True once `initialize` has run.
    */
-  circuit assertInitialized(): [] {
-    assert(_isInitialized, "NativeShieldedToken: contract not initialized");
-  }
-
-  /**
-   * @description Asserts that the contract has not been initialized, throwing
-   * an error if it has.
-   *
-   * Requirements:
-   *
-   * - Contract must not be initialized.
-   *
-   * @return {[]} - Empty tuple.
-   */
-  circuit assertNotInitialized(): [] {
-    assert(!_isInitialized, "NativeShieldedToken: contract already initialized");
+  export circuit isInitialized(): Boolean {
+    return Core_isInitialized();
   }
 
   /**
@@ -205,8 +112,7 @@ module NativeShieldedToken {
    * @return {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
-    assertInitialized();
-    return _name;
+    return Core_name();
   }
 
   /**
@@ -221,14 +127,11 @@ module NativeShieldedToken {
    * @return {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
-    assertInitialized();
-    return _symbol;
+    return Core_symbol();
   }
 
   /**
    * @description Returns the number of decimals used to get its user representation.
-   * @dev This is a display convention only. The protocol stores and operates
-   * on integer values without reference to decimals.
    *
    * @circuitInfo k=6, rows=28
    *
@@ -239,8 +142,7 @@ module NativeShieldedToken {
    * @return {Uint<8>} - The decimals value.
    */
   export circuit decimals(): Uint<8> {
-    assertInitialized();
-    return _decimals;
+    return Core_decimals();
   }
 
   /**
@@ -256,8 +158,7 @@ module NativeShieldedToken {
    * @return {Bytes<32>} - The coin color.
    */
   export circuit tokenColor(): Bytes<32> {
-    assertInitialized();
-    return tokenType(_domain, kernel.self());
+    return Core_tokenColor(_domain);
   }
 
   /**
@@ -275,7 +176,7 @@ module NativeShieldedToken {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11090
+   * @circuitInfo k=14, rows=10843
    *
    * Requirements:
    *
@@ -293,10 +194,7 @@ module NativeShieldedToken {
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
-    assertInitialized();
-    assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
-
-    return mintShieldedToken(_domain, disclose(amount), disclose(nonce), disclose(recipient));
+    return Core__mint(_domain, recipient, amount, nonce);
   }
 
   /**
@@ -311,13 +209,13 @@ module NativeShieldedToken {
    * @dev The coin is received by the contract and spent in the same
    * transaction, so the spend goes through `sendImmediateShielded` (the
    * transient path). For coins the contract already holds, use
-   * `_burnFromContract` instead.
+   * `_burnFromSelf` instead.
    *
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47786
+   * @circuitInfo k=16, rows=47656
    *
    * Requirements:
    *
@@ -339,23 +237,7 @@ module NativeShieldedToken {
                    amount: Uint<128>,
                    refundTo: Either<ZswapCoinPublicKey, ContractAddress>
                    ): Maybe<ShieldedCoinInfo> {
-    assertInitialized();
-    assert(coin.color == tokenType(_domain, kernel.self()), "NativeShieldedToken: wrong token");
-    assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
-    assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
-
-    receiveShielded(disclose(coin));
-    const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
-
-    if (disclose(sendRes.change.is_some)) {
-      const refundRes = sendImmediateShielded(
-        disclose(sendRes.change.value),
-        disclose(refundTo),
-        disclose(sendRes.change.value.value)
-      );
-      return some<ShieldedCoinInfo>(refundRes.sent);
-    }
-    return none<ShieldedCoinInfo>();
+    return Core__burn(_domain, coin, amount, refundTo);
   }
 
   /**
@@ -367,7 +249,7 @@ module NativeShieldedToken {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @circuitInfo k=15, rows=23437
+   * @circuitInfo k=15, rows=23307
    *
    * Requirements:
    *
@@ -380,16 +262,10 @@ module NativeShieldedToken {
    * @return {Maybe<ShieldedCoinInfo>} - The change coin retained by the
    * contract, or `none` if the coin was burned in full.
    */
-  export circuit _burnFromContract(
+  export circuit _burnFromSelf(
                    coin: QualifiedShieldedCoinInfo,
                    amount: Uint<128>
                    ): Maybe<ShieldedCoinInfo> {
-    assertInitialized();
-    assert(coin.color == tokenType(_domain, kernel.self()), "NativeShieldedToken: wrong token");
-    assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
-
-    const sendRes = sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
-
-    return disclose(sendRes.change);
+    return Core__burnFromSelf(_domain, coin, amount);
   }
 }
