@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../Allowlist" prefix Allowlist_;
+
+export { Allowlist__allowed };
+
+export circuit isAllowed(account: Bytes<32>): Boolean {
+  return Allowlist_isAllowed(account);
+}
+
+export circuit assertAllowed(account: Bytes<32>): [] {
+  return Allowlist_assertAllowed(account);
+}
+
+export circuit allow(account: Bytes<32>): [] {
+  return Allowlist__allow(account);
+}
+
+export circuit disallow(account: Bytes<32>): [] {
+  return Allowlist__disallow(account);
+}

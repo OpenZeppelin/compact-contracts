@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (security/Allowlist.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module Allowlist
+ * @description A minimal, reusable permit-list keyed by an abstract `Bytes<32>`
+ * account identifier. It answers a single question: is this account a member?
+ *
+ * This module is a pure membership MECHANISM, not a policy. It holds no notion
+ * of "when" the list is enforced and no access control. The mutators (`_allow`,
+ * `_disallow`) are deliberately UNGATED composable primitives: a composing
+ * contract gates them behind its access-control module (the same way a token
+ * gates `_mint` / `_burn`), and decides when to call `assertAllowed` (for
+ * example, only while an "eligibility required" flag is set). Keeping the
+ * enforce-or-not decision in the composing layer leaves this module general
+ * enough to back KYC allowlists, permissioned mints, membership gates, and the
+ * like.
+ *
+ * @notice This is the PUBLIC (transparent) allowlist: membership status is
+ * publicly readable and the approved set is publicly enumerable. That is the
+ * right posture for transparent or public-graph assets. A graph-private asset
+ * should instead use a shielded allowlist (a public allowlist would re-expose
+ * the candidate set and bound the anonymity set).
+ */
+module Allowlist {
+  import CompactStandardLibrary;
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+
+  /** @description Approved accounts. Absent means not allowed. */
+  export ledger _allowed: Set<Bytes<32>>;
+
+  // ---------------------------------------------------------------------------
+  // Views
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Returns whether `account` is currently allowed.
+   *
+   * @circuitInfo k=9, rows=305
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {Boolean} - True if `account` is a member of the allowlist.
+   */
+  export circuit isAllowed(account: Bytes<32>): Boolean {
+    return _allowed.member(disclose(account));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Check (the eligibility seam)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Asserts that `account` is allowed. The composing contract
+   * decides when this gate applies.
+   *
+   * @circuitInfo k=9, rows=305
+   *
+   * Requirements:
+   *
+   * - `account` is a member of the allowlist.
+   *
+   * @param {Bytes<32>} account - The account that must be allowed.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertAllowed(account: Bytes<32>): [] {
+    assert(isAllowed(account), "Allowlist: account not allowed");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mutators (UNGATED - the composing contract is responsible for gating these)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Adds `account` to the allowlist.
+   *
+   * @circuitInfo k=9, rows=303
+   *
+   * @param {Bytes<32>} account - The account to allow.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _allow(account: Bytes<32>): [] {
+    _allowed.insert(disclose(account));
+  }
+
+  /**
+   * @description Removes `account` from the allowlist.
+   *
+   * @circuitInfo k=9, rows=303
+   *
+   * @param {Bytes<32>} account - The account to disallow.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _disallow(account: Bytes<32>): [] {
+    _allowed.remove(disclose(account));
+  }
+}
