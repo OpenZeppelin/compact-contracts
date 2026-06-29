@@ -1,0 +1,132 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenFamilySupply.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module NativeShieldedTokenFamilySupply
+ * @description Optional standalone extension that adds per-domain on-chain
+ * supply accounting to a `NativeShieldedTokenFamily`. It exposes `_addMinted` /
+ * `_addBurned` building blocks plus the `totalMinted` / `totalBurned` /
+ * `totalSupply` getters, each keyed by domain. It imports no token module.
+ *
+ * It is a thin wrapper over `NativeShieldedTokenSupplyCore`, forwarding the
+ * caller's per-call `domain`, so the accounting logic and guarantees live in
+ * the shared core.
+ *
+ * @notice Pairs with `NativeShieldedTokenFamily`. The consuming contract
+ * composes the pieces, calling the accounting block alongside the matching
+ * token op:
+ *
+ *   export circuit mint(
+ *     domain: Bytes<32>,
+ *     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+ *     amount: Uint<64>,
+ *     nonce: Bytes<32>
+ *   ): ShieldedCoinInfo {
+ *     const coin = Family__mint(domain, recipient, amount, nonce);
+ *     Supply__addMinted(domain, amount);
+ *     return coin;
+ *   }
+ *
+ *   export circuit burn(
+ *     domain: Bytes<32>,
+ *     coin: ShieldedCoinInfo,
+ *     amount: Uint<128>,
+ *     refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+ *   ): Maybe<ShieldedCoinInfo> {
+ *     const refund = Family__burn(domain, coin, amount, refundTo);
+ *     Supply__addBurned(domain, amount);
+ *     return refund;
+ *   }
+ *
+ * @notice Privacy trade-off (read before composing): composing this extension
+ * makes contract-mediated BURN amounts PUBLIC. The bare family's `_burn` /
+ * `_burnFromSelf` are amount-private (their coin operations emit only
+ * commitments and nullifiers, never the value; the `disclose()` wrappers they
+ * require are compiler permission markers, not disclosure sinks). The
+ * `_addBurned` write here is what puts the burned amount into the public
+ * transcript. Compose this only when on-chain auditability is worth more than
+ * burn-amount privacy.
+ *
+ * @dev Mint amounts are already public via the protocol's `shieldedMints`
+ * effect, so `_addMinted` adds accounting, not disclosure. See
+ * `NativeShieldedTokenSupplyCore` for the exact / lower-bound / upper-bound
+ * guarantees, the per-domain `burned <= minted` invariant, and the mint-side
+ * drift caveat.
+ */
+module NativeShieldedTokenFamilySupply {
+  import CompactStandardLibrary;
+  import "./NativeShieldedTokenSupplyCore" prefix Core_;
+
+  /**
+   * @description Adds `amount` to the exact minted total for `domain`. Call
+   * once per successful `NativeShieldedTokenFamily._mint`.
+   *
+   * @circuitInfo k=10, rows=653
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<64>} amount - The minted amount.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
+    Core__addMinted(domain, amount);
+  }
+
+  /**
+   * @description Adds `amount` to the contract-mediated burned total for
+   * `domain`. Call once per successful `NativeShieldedTokenFamily._burn` /
+   * `_burnFromSelf`.
+   * @dev Enforces per-domain `burned <= minted`; an unpaired, duplicate, or
+   * wrong-domain burn reverts.
+   *
+   * @circuitInfo k=10, rows=755
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<128>} amount - The burned amount.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
+    Core__addBurned(domain, amount);
+  }
+
+  /**
+   * @description Returns the exact amount ever minted for `domain`.
+   *
+   * @circuitInfo k=9, rows=344
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Uint<128>} - The total amount minted.
+   */
+  export circuit totalMinted(domain: Bytes<32>): Uint<128> {
+    return Core_totalMinted(domain);
+  }
+
+  /**
+   * @description Returns the contract-mediated amount burned for `domain`.
+   * @notice This is a lower bound: coins sent directly to the burn address
+   * without going through the contract are not counted.
+   *
+   * @circuitInfo k=9, rows=341
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Uint<128>} - The total amount burned through the contract.
+   */
+  export circuit totalBurned(domain: Bytes<32>): Uint<128> {
+    return Core_totalBurned(domain);
+  }
+
+  /**
+   * @description Returns `totalMinted(domain) - totalBurned(domain)`.
+   * @notice This is an UPPER BOUND on circulating supply, not an exact value:
+   * burns that bypass the contract are invisible. See the module notes.
+   *
+   * @circuitInfo k=9, rows=440
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Uint<128>} - The upper bound on tokens in existence.
+   */
+  export circuit totalSupply(domain: Bytes<32>): Uint<128> {
+    return Core_totalSupply(domain);
+  }
+}
