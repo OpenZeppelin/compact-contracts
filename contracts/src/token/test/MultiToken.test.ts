@@ -394,6 +394,23 @@ describe('MultiToken', () => {
           expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
         });
 
+        it('should allow transfer of 0 tokens for an uninitialized id', async () => {
+          // A zero-value update must not revert on an uninitialized id.
+          await token.transferFrom(
+            OWNER.either,
+            RECIPIENT.either,
+            NONEXISTENT_ID,
+            0n,
+          );
+
+          expect(await token.balanceOf(OWNER.either, NONEXISTENT_ID)).toEqual(
+            0n,
+          );
+          expect(
+            await token.balanceOf(RECIPIENT.either, NONEXISTENT_ID),
+          ).toEqual(0n);
+        });
+
         it('should handle self-transfer', async () => {
           await token.transferFrom(
             OWNER.either,
@@ -1017,6 +1034,21 @@ describe('MultiToken', () => {
         expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
       });
 
+      it('should allow transfer of 0 tokens for an uninitialized id', async () => {
+        // A zero-value update must not revert on an uninitialized id.
+        await token._transfer(
+          OWNER.either,
+          RECIPIENT.either,
+          NONEXISTENT_ID,
+          0n,
+        );
+
+        expect(await token.balanceOf(OWNER.either, NONEXISTENT_ID)).toEqual(0n);
+        expect(await token.balanceOf(RECIPIENT.either, NONEXISTENT_ID)).toEqual(
+          0n,
+        );
+      });
+
       it('should fail with insufficient balance', async () => {
         await expect(
           token._transfer(
@@ -1293,6 +1325,15 @@ describe('MultiToken', () => {
         ).rejects.toThrow('MultiToken: arithmetic overflow');
       });
 
+      it('should allow minting 0 tokens of an uninitialized id', async () => {
+        // A zero-value mint is a no-op: it must not revert and must not
+        // initialize the id.
+        await token._mint(RECIPIENT.either, NONEXISTENT_ID, 0n);
+        expect(await token.balanceOf(RECIPIENT.either, NONEXISTENT_ID)).toEqual(
+          0n,
+        );
+      });
+
       it('should fail when minting to zero address (id)', async () => {
         await expect(
           token._mint(ZERO_ACCOUNT, TOKEN_ID, AMOUNT),
@@ -1424,6 +1465,12 @@ describe('MultiToken', () => {
         await expect(
           token._burn(OWNER.either, NONEXISTENT_ID, AMOUNT),
         ).rejects.toThrow('MultiToken: insufficient balance');
+      });
+
+      it('should allow burning 0 tokens from an uninitialized id', async () => {
+        // A zero-value burn must not revert on an uninitialized id.
+        await token._burn(OWNER.either, NONEXISTENT_ID, 0n);
+        expect(await token.balanceOf(OWNER.either, NONEXISTENT_ID)).toEqual(0n);
       });
 
       it('should handle non-canonical fromAddress (id)', async () => {

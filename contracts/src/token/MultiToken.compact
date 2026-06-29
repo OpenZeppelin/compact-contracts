@@ -425,11 +425,17 @@ module MultiToken {
     if (!Utils_isTargetZero(disclose(canonFrom))) {
       const fromBalance = balanceOf(canonFrom, id);
       assert(fromBalance >= value, "MultiToken: insufficient balance");
-      const newBalance = fromBalance - value;
-      _balances.lookup(id).insert(disclose(canonFrom), disclose(newBalance));
+      // Skip the write when `value` is zero. A zero-value update leaves the
+      // balance unchanged, so there is nothing to write, and guarding here
+      // avoids `_balances.lookup(id)` reverting outside an assertion when `id`
+      // has never been initialized.
+      if (disclose(value > 0)) {
+        const newBalance = fromBalance - value;
+        _balances.lookup(id).insert(disclose(canonFrom), disclose(newBalance));
+      }
     }
 
-    if (!Utils_isTargetZero(disclose(canonTo))) {
+    if (!Utils_isTargetZero(disclose(canonTo)) && disclose(value > 0)) {
       if (!_balances.member(disclose(id))) {
         _balances.insert(
           disclose(id),
