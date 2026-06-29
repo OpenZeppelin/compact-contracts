@@ -395,7 +395,7 @@ describe('MultiToken', () => {
         });
 
         it('should allow transfer of 0 tokens for an uninitialized id', async () => {
-          // A zero-value update must not revert on an uninitialized id (audit L-01).
+          // A zero-value update must not revert on an uninitialized id.
           await token.transferFrom(
             OWNER.either,
             RECIPIENT.either,
@@ -1035,7 +1035,7 @@ describe('MultiToken', () => {
       });
 
       it('should allow transfer of 0 tokens for an uninitialized id', async () => {
-        // A zero-value update must not revert on an uninitialized id (audit L-01).
+        // A zero-value update must not revert on an uninitialized id.
         await token._transfer(
           OWNER.either,
           RECIPIENT.either,
@@ -1327,7 +1327,7 @@ describe('MultiToken', () => {
 
       it('should allow minting 0 tokens of an uninitialized id', async () => {
         // A zero-value mint is a no-op: it must not revert and must not
-        // initialize the id (audit L-01).
+        // initialize the id.
         await token._mint(RECIPIENT.either, NONEXISTENT_ID, 0n);
         expect(await token.balanceOf(RECIPIENT.either, NONEXISTENT_ID)).toEqual(
           0n,
@@ -1468,7 +1468,7 @@ describe('MultiToken', () => {
       });
 
       it('should allow burning 0 tokens from an uninitialized id', async () => {
-        // A zero-value burn must not revert on an uninitialized id (audit L-01).
+        // A zero-value burn must not revert on an uninitialized id.
         await token._burn(OWNER.either, NONEXISTENT_ID, 0n);
         expect(await token.balanceOf(OWNER.either, NONEXISTENT_ID)).toEqual(0n);
       });

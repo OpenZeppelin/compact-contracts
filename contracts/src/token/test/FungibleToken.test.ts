@@ -590,7 +590,7 @@ describe('FungibleToken', () => {
 
       it('should allow zero-value transferFrom without a pre-existing allowance', async () => {
         // A missing allowance entry is treated as zero, and a zero-value spend
-        // is a no-op, so this must not revert (audit L-02).
+        // is a no-op, so this must not revert.
         await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
 
         const txSuccess = await token.transferFrom(
@@ -1161,7 +1161,7 @@ describe('FungibleToken', () => {
 
       it('should allow a zero-value spend without a pre-existing allowance', async () => {
         // A missing entry is treated as zero and a zero-value spend is a no-op,
-        // so this must not revert and must not create an entry (audit L-02).
+        // so this must not revert and must not create an entry.
         await token._spendAllowance(OWNER.either, OTHER.either, 0n);
         expect(await token.allowance(OWNER.either, OTHER.either)).toEqual(0n);
       });
