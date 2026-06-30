@@ -62,6 +62,14 @@ module NativeShieldedToken {
   import CompactStandardLibrary;
   import "./NativeShieldedTokenCore" prefix Core_;
 
+  // Circuits use the `Core_` prefix above. The named import/re-export below is
+  // only for the core state variables, so the implementing contract's ledger
+  // keys read as `_name` etc. rather than `NativeShieldedTokenCore__name`. The
+  // circuit names (`_mint`, `_burn`, ...) are intentionally NOT imported
+  // unprefixed, to avoid clashing with this module's own circuits.
+  import { _name, _symbol, _decimals, _isInitialized } from "./NativeShieldedTokenCore";
+  export { _name, _symbol, _decimals, _isInitialized };
+
   /**
    * @description Domain separator fixed at construction; with the contract
    * address it determines this token's color.

@@ -61,6 +61,14 @@ module NativeShieldedTokenFamily {
   import CompactStandardLibrary;
   import "./NativeShieldedTokenCore" prefix Core_;
 
+  // Circuits use the `Core_` prefix above. The named import/re-export below is
+  // only for the core state variables, so the implementing contract's ledger
+  // keys read as `_name` etc. rather than `NativeShieldedTokenCore__name`. The
+  // circuit names (`_mint`, `_burn`, ...) are intentionally NOT imported
+  // unprefixed, to avoid clashing with this module's own circuits.
+  import { _name, _symbol, _decimals, _isInitialized } from "./NativeShieldedTokenCore";
+  export { _name, _symbol, _decimals, _isInitialized };
+
   /**
    * @description Initializes the module's family metadata.
    * @dev This MUST be called in the implementing contract's constructor.
