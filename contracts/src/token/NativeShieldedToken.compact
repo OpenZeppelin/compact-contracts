@@ -17,8 +17,8 @@ pragma language_version >= 0.23.0;
  *
  * @notice A contract MUST NOT import both `NativeShieldedToken` and
  * `NativeShieldedTokenFamily`. Both wrap `NativeShieldedTokenCore`, so they
- * share one set of core state (a single init flag and one name/symbol/decimals)
- * and their `_mint`/`_burn` circuit names collide. Pick one flavor per contract.
+ * share one set of core state (a single init flag and one name/symbol/decimals).
+ * Pick one flavor per contract.
  *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
