@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (test/integration/_mocks/MultisigSignatureTreasury.compact)
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+/**
+ * @title MultisigSignatureTreasury (example)
+ * @description Example top-level contract: signature-authorized, single-tx spend
+ * from a stateless shielded treasury. Formerly the body of `ShieldedMultiSigV2`.
+ * Lives under `test/integration/_mocks/` so it serves as both a usage example
+ * and an integration-test fixture (composes production modules into one
+ * deployable contract).
+ *
+ * Combines `EcdsaSignerManager` (commitment signer registry + threshold ECDSA
+ * verification) with `NativeShieldedTreasuryStateless` (custody + send of native
+ * shielded tokens). Approvals are collected off-chain; `execute` verifies them
+ * and sends in a single transaction. A monotonic `_nonce` binds each spend to a
+ * unique message hash for replay protection.
+ *
+ * This example is fixed at a 3-signer registry and 2 presented approvals per
+ * operation.
+ *
+ * @notice ECDSA verification is stubbed in `EcdsaSignerManager`; replace it once
+ * the Compact primitive is available. Not for production deployment.
+ */
+
+import "../../../src/multisig/EcdsaSignerManager" prefix Signer_;
+import "../../../src/multisig/treasury/NativeShieldedTreasuryStateless" prefix Treasury_;
+import "../../../src/multisig/proposal/ProposalManager" prefix Proposal_;
+
+// ─── State ──────────────────────────────────────────────────────
+
+export ledger _nonce: Counter;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Initializes the shared signer registry and instance salt.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Signer commitments.
+ * @param {Uint<8>} thresh - Minimum approvals required.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  thresh: Uint<8>
+) {
+  Signer_initialize<3>(instanceSalt, signerCommitments, thresh);
+}
+
+// ─── Deposit ────────────────────────────────────────────────────
+
+/**
+ * @description Receives a shielded coin into the treasury. No access control;
+ * anyone may deposit. No coin data is stored on the public ledger.
+ *
+ * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+ * @returns {[]} Empty tuple.
+ */
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  Treasury__deposit(coin);
+}
+
+// ─── Execute ────────────────────────────────────────────────────
+
+/**
+ * @description Executes a shielded send authorized by threshold signatures.
+ * Reads and increments the nonce, reconstructs the off-chain message hash
+ * `persistentHash(nonce, recipient address, coin color, amount)`, verifies the
+ * signatures against the shared registry, then sends from the treasury.
+ *
+ * @param {Proposal_Recipient} to - The recipient.
+ * @param {Uint<128>} amount - The amount to send.
+ * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (operator pool).
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the operation.
+ * @returns {ShieldedSendResult} The send result including any change.
+ */
+export circuit execute(
+  to: Proposal_Recipient,
+  amount: Uint<128>,
+  coin: QualifiedShieldedCoinInfo,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): ShieldedSendResult {
+  const currentNonce = _nonce;
+  _nonce.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    currentNonce as Bytes<32>,
+    to.address,
+    coin.color,
+    amount as Bytes<32>
+  ]);
+
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  return Treasury__send(coin, Proposal_toShieldedRecipient(to), amount);
+}
+
+// ─── View ───────────────────────────────────────────────────────
+
+/**
+ * @description Computes a signer commitment from an ECDSA public key. Pure —
+ * callable off-chain by the deployer.
+ */
+export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return Signer__calculateSignerId(pk, salt);
+}
+
+export circuit getNonce(): Uint<64> {
+  return _nonce;
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Signer_isSigner(commitment);
+}

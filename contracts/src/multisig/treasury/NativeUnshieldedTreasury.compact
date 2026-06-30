@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (multisig/UnshieldedTreasury.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/treasury/NativeUnshieldedTreasury.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module UnshieldedTreasury
+ * @module NativeUnshieldedTreasury
  * @description Manages unshielded (transparent) token deposits and
  * transfers for multisig governance contracts.
  *
@@ -17,9 +17,9 @@ pragma language_version >= 0.23.0;
  * enforcement. The consuming contract must gate these behind its own
  * authorization policy.
  */
-module UnshieldedTreasury {
+module NativeUnshieldedTreasury {
   import CompactStandardLibrary;
-  import { UINT128_MAX } from "../utils/Utils" prefix Utils_;
+  import { UINT128_MAX } from "../../utils/Utils" prefix Utils_;
 
   // ─── State ──────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ module UnshieldedTreasury {
   export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
     assert(
       unshieldedBalanceLte(disclose(color), Utils_UINT128_MAX() - disclose(amount)),
-      "UnshieldedTreasury: overflow"
+      "NativeUnshieldedTreasury: overflow"
     );
 
     receiveUnshielded(disclose(color), disclose(amount));
@@ -88,7 +88,7 @@ module UnshieldedTreasury {
   ): [] {
     assert(
       unshieldedBalanceGte(disclose(color), disclose(amount)),
-      "UnshieldedTreasury: insufficient balance"
+      "NativeUnshieldedTreasury: insufficient balance"
     );
 
     const bal = getTokenBalance(color);

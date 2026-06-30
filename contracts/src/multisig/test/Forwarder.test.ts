@@ -35,7 +35,7 @@ describe('ForwarderShielded module', () => {
     it('should fail initialization with a zero parent', async () => {
       await expect(
         MockForwarderShieldedSimulator.create(SHIELDED_ZERO, true),
-      ).rejects.toThrow('ForwarderShielded: zero parent');
+      ).rejects.toThrow('NativeShieldedForwarder: zero parent');
     });
 
     it('should store the coin-public-key parent in the left arm', async () => {
@@ -56,7 +56,7 @@ describe('ForwarderShielded module', () => {
         false,
       );
       await expect(mock.deposit(makeCoin(COLOR, AMOUNT))).rejects.toThrow(
-        'ForwarderShielded: contract not initialized',
+        'NativeShieldedForwarder: contract not initialized',
       );
     });
   });
@@ -81,7 +81,7 @@ describe('ForwarderUnshielded module', () => {
     it('should fail initialization with a zero parent', async () => {
       await expect(
         MockForwarderUnshieldedSimulator.create(UNSHIELDED_ZERO, true),
-      ).rejects.toThrow('ForwarderUnshielded: zero parent');
+      ).rejects.toThrow('NativeUnshieldedForwarder: zero parent');
     });
 
     it('should store the user-address parent in the right arm', async () => {
@@ -102,7 +102,7 @@ describe('ForwarderUnshielded module', () => {
         false,
       );
       await expect(mock.deposit(COLOR, AMOUNT)).rejects.toThrow(
-        'ForwarderUnshielded: contract not initialized',
+        'NativeUnshieldedForwarder: contract not initialized',
       );
     });
   });
