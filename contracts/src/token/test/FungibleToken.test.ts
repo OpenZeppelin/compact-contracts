@@ -588,6 +588,27 @@ describe('FungibleToken', () => {
         ).rejects.toThrow('FungibleToken: insufficient allowance');
       });
 
+      it('should allow zero-value transferFrom without a pre-existing allowance', async () => {
+        // A missing allowance entry is treated as zero, and a zero-value spend
+        // is a no-op, so this must not revert.
+        await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+
+        const txSuccess = await token.transferFrom(
+          OWNER.either,
+          RECIPIENT.either,
+          0n,
+        );
+        expect(txSuccess).toBe(true);
+
+        // No allowance entry is created for the spender, matching `allowance`.
+        expect(
+          await token.allowance(OWNER.either, UNAUTHORIZED.either),
+        ).toEqual(0n);
+        // Balances are unchanged.
+        expect(await token.balanceOf(OWNER.either)).toEqual(AMOUNT);
+        expect(await token.balanceOf(RECIPIENT.either)).toEqual(0n);
+      });
+
       it('should fail to transferFrom to the zero address', async () => {
         await token.privateState.injectSecretKey(SPENDER.secretKey);
 
@@ -1136,6 +1157,21 @@ describe('FungibleToken', () => {
         await expect(
           token._spendAllowance(OWNER.either, SPENDER.either, AMOUNT + 1n),
         ).rejects.toThrow('FungibleToken: insufficient allowance');
+      });
+
+      it('should allow a zero-value spend without a pre-existing allowance', async () => {
+        // A missing entry is treated as zero and a zero-value spend is a no-op,
+        // so this must not revert and must not create an entry.
+        await token._spendAllowance(OWNER.either, OTHER.either, 0n);
+        expect(await token.allowance(OWNER.either, OTHER.either)).toEqual(0n);
+      });
+
+      it('should leave an existing allowance unchanged on a zero-value spend', async () => {
+        await token._approve(OWNER.either, SPENDER.either, AMOUNT);
+        await token._spendAllowance(OWNER.either, SPENDER.either, 0n);
+        expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
+          AMOUNT,
+        );
       });
 
       it('should canonicalize when spending allowance', async () => {
