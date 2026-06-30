@@ -23,8 +23,8 @@ pragma language_version >= 0.23.0;
  *
  * @notice A contract MUST NOT import both `NativeShieldedTokenFamily` and
  * `NativeShieldedToken`. Both wrap `NativeShieldedTokenCore`, so they share one
- * set of core state (a single init flag and one name/symbol/decimals) and their
- * `_mint`/`_burn` circuit names collide. Pick one flavor per contract.
+ * set of core state (a single init flag and one name/symbol/decimals).
+ * Pick one flavor per contract.
  *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
@@ -69,8 +69,7 @@ module NativeShieldedTokenFamily {
   // Circuits use the `Core_` prefix above. The named import/re-export below is
   // only for the core state variables, so the implementing contract's ledger
   // keys read as `_name` etc. rather than `NativeShieldedTokenCore__name`. The
-  // circuit names (`_mint`, `_burn`, ...) are intentionally NOT imported
-  // unprefixed, to avoid clashing with this module's own circuits.
+  // circuit names are intentionally NOT imported unprefixed, to avoid potential clashes.
   import { _name, _symbol, _decimals, _isInitialized } from "./NativeShieldedTokenCore";
   export { _name, _symbol, _decimals, _isInitialized };
 
