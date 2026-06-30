@@ -1,6 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
+    "compact:crypto": {
+      "dependsOn": ["^build"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/crypto/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
+    },
     "compact:security": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
@@ -45,6 +52,7 @@
     },
     "compact": {
       "dependsOn": [
+        "compact:crypto",
         "compact:security",
         "compact:utils",
         "compact:access",

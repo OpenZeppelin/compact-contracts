@@ -688,16 +688,17 @@ module FungibleToken {
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
-    assert((_allowances.member(disclose(canonOwner)) &&
-            _allowances.lookup(canonOwner).member(disclose(canonSpender))),
-           "FungibleToken: insufficient allowance"
-           );
-
-    const currentAllowance = _allowances.lookup(canonOwner).lookup(disclose(canonSpender));
-    const MAX_UINT128 = 340282366920938463463374607431768211455;
-    if (currentAllowance < MAX_UINT128) {
-      assert(currentAllowance >= value, "FungibleToken: insufficient allowance");
-      _approve(canonOwner, canonSpender, currentAllowance - value as Uint<128>);
+    // A missing allowance entry is treated as a zero allowance, mirroring
+    // `allowance`, and a zero-value spend is a no-op. Guarding on `value`
+    // avoids reverting (outside an assertion) on a missing entry and avoids
+    // writing a spurious zero entry for a zero-value spend.
+    if (disclose(value > 0)) {
+      const currentAllowance = allowance(canonOwner, canonSpender);
+      const MAX_UINT128 = 340282366920938463463374607431768211455;
+      if (currentAllowance < MAX_UINT128) {
+        assert(currentAllowance >= value, "FungibleToken: insufficient allowance");
+        _approve(canonOwner, canonSpender, currentAllowance - value as Uint<128>);
+      }
     }
   }
 
