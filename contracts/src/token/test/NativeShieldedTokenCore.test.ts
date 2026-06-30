@@ -43,6 +43,44 @@ describe('NativeShieldedTokenCore (bare base)', () => {
     });
   });
 
+  describe('simulator wiring', () => {
+    it('should return ledger metadata verbatim from the getters', async () => {
+      token = await deploy(INIT);
+
+      const state = await token.getPublicState();
+
+      // The ledger holds exactly what the constructor wrote ...
+      expect(state._name).toEqual(NAME);
+      expect(state._symbol).toEqual(SYMBOL);
+      expect(state._decimals).toEqual(DECIMALS);
+      expect(state._isInitialized).toBe(true);
+
+      // ... and each getter reads its own slot straight from that ledger.
+      expect(await token.name()).toEqual(state._name);
+      expect(await token.symbol()).toEqual(state._symbol);
+      expect(await token.decimals()).toEqual(state._decimals);
+      expect(await token.isInitialized()).toBe(state._isInitialized);
+    });
+
+    it('should keep getters in concert with distinct stored metadata', async () => {
+      token = await NativeShieldedTokenCoreSimulator.create(
+        'Another Asset',
+        'AAA',
+        18n,
+        INIT,
+      );
+
+      const state = await token.getPublicState();
+
+      expect(await token.name()).toEqual(state._name);
+      expect(await token.symbol()).toEqual(state._symbol);
+      expect(await token.decimals()).toEqual(state._decimals);
+      expect(state._name).toEqual('Another Asset');
+      expect(state._symbol).toEqual('AAA');
+      expect(state._decimals).toEqual(18n);
+    });
+  });
+
   describe('init guards', () => {
     it('assertInitialized passes and assertNotInitialized reverts once initialized', async () => {
       token = await deploy(INIT);

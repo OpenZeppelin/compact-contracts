@@ -14,6 +14,11 @@ import "../../NativeShieldedTokenCore" prefix NativeShieldedTokenCore_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
+// Surface the core ledger state unprefixed so tests can read it via
+// `getPublicState()` and assert the metadata getters return it verbatim.
+import { _name, _symbol, _decimals, _isInitialized } from "../../NativeShieldedTokenCore";
+export { _name, _symbol, _decimals, _isInitialized };
+
 // Unit mock for the bare NativeShieldedTokenCore module in isolation: the
 // domain-parameterized base shared by the single-token and family flavors, with
 // no wrapper, no supply accounting, and no derived-nonce extension. It also
