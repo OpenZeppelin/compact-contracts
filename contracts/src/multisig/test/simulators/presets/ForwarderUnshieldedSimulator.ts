@@ -1,50 +1,54 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  ledger,
+  type ContractAddress,
+  type Either,
   Contract as ForwarderUnshielded,
+  ledger,
   type UserAddress,
 } from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
-import {
-  ForwarderUnshieldedPrivateState,
-  ForwarderUnshieldedWitnesses,
-} from '../../witnesses/presets/ForwarderUnshieldedWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
 
 const ForwarderUnshieldedSimulatorBase = createSimulator<
-  ForwarderUnshieldedPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ForwarderUnshieldedWitnesses>,
-  ForwarderUnshielded<ForwarderUnshieldedPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ForwarderUnshielded<EmptyPrivateState>,
   ForwarderUnshieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderUnshielded<ForwarderUnshieldedPrivateState>(witnesses),
-  defaultPrivateState: () => ForwarderUnshieldedPrivateState,
+    new ForwarderUnshielded<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parent) => [parent],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ForwarderUnshieldedWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
+  artifactName: 'ForwarderUnshielded',
 });
 
 export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBase {
-  constructor(
-    parent: Uint8Array,
-    options: BaseSimulatorOptions<
-      ForwarderUnshieldedPrivateState,
-      ReturnType<typeof ForwarderUnshieldedWitnesses>
+  static async create(
+    parent: UserAddress,
+    options: SimulatorOptions<
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
-  ) {
-    super([{ bytes: parent }], options);
+  ): Promise<ForwarderUnshieldedSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [parent],
+      options,
+    ) as Promise<ForwarderUnshieldedSimulator>;
   }
 
-  public depositUnshielded(color: Uint8Array, amount: bigint) {
-    return this.circuits.impure.depositUnshielded(color, amount);
+  public deposit(color: Uint8Array, amount: bigint): Promise<[]> {
+    return this.circuits.impure.deposit(color, amount);
   }
 
-  public getParent(): Uint8Array {
-    return this.circuits.impure.getParent().bytes;
+  public getParent(): Promise<Either<ContractAddress, UserAddress>> {
+    return this.circuits.impure.getParent();
   }
 }

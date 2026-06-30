@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/forwarder/ForwarderPrivate.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/presets/forwarder/ForwarderPrivate.compact)
 
 pragma language_version >= 0.23.0;
 
@@ -24,7 +24,7 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 import "../../ForwarderPrivate" prefix ForwarderPrivate_;
 
-export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
 
 /**
  * @description Deploys the forwarder bound to a specific parent
@@ -51,20 +51,26 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 }
 
 /**
- * @description Spends a previously-deposited shielded coin to
- * `parentAddr`. The caller proves knowledge of `(parentAddr, opSecret)`
- * matching the stored commitment. If the input coin's value exceeds
- * `value`, change is re-emitted back to the contract for future drains.
+ * @description Spends a previously-deposited shielded coin to the parent,
+ * a coin public key. The caller proves knowledge of `(parent, opSecret)`
+ * matching the stored commitment; the coin is sent as a shielded note, so the
+ * parent stays hidden on-chain. If the input coin's value exceeds `value`,
+ * change is re-emitted back to the contract for future drains.
+ *
+ * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
+ * send to a contract publishes that contract's address in cleartext, which
+ * would defeat the private-parent guarantee.
  *
  * Requirements:
  *
- * - `calculateParentCommitment(parentAddr, opSecret)` must equal the stored
+ * - `parent` must not be the zero key.
+ * - `calculateParentCommitment(parent.bytes, opSecret)` must equal the stored
  *   `_parentCommitment`.
  * - `coin.value` must be >= `value` (enforced by `sendShielded`).
  *
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
- * @param {Bytes<32>} parentAddr - The parent address. Preimage to the
- * stored commitment.
+ * @param {ZswapCoinPublicKey} parent - The parent coin public key. Its 32
+ * bytes are the preimage to the stored commitment.
  * @param {Bytes<32>} opSecret - The operational secret. Never appears
  * on the public transcript.
  *
@@ -81,11 +87,11 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  */
 export circuit drain(
   coin: QualifiedShieldedCoinInfo,
-  parentAddr: Bytes<32>,
+  parent: ZswapCoinPublicKey,
   opSecret: Bytes<32>,
   value: Uint<128>
 ): ShieldedSendResult {
-  return ForwarderPrivate__drain(coin, parentAddr, opSecret, value);
+  return ForwarderPrivate__drain(coin, parent, opSecret, value);
 }
 
 /**

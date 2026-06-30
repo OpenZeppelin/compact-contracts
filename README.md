@@ -1,4 +1,4 @@
-[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.29.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact/minokawa-0-18-26-0)
+[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.31.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact/minokawa-0-18-26-0)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 This project is built on the Midnight Network.
@@ -37,8 +37,8 @@ Follow Midnight's [Compact Developer Tools installation guide](https://docs.midn
 ```bash
 $ compact compile --version
 
-Compactc version: 0.29.0
-0.29.0
+Compactc version: 0.31.0
+0.31.0
 ```
 
 ### Installation

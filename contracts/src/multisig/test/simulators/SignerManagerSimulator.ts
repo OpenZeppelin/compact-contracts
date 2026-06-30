@@ -1,6 +1,6 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
@@ -43,54 +43,65 @@ const SignerManagerSimulatorBase = createSimulator<
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => SignerManagerWitnesses(),
+  artifactName: 'MockSignerManager',
 });
 
 /**
  * SignerManager Simulator
  */
 export class SignerManagerSimulator extends SignerManagerSimulatorBase {
-  constructor(
+  static async create(
     signers: SignerSet,
     thresh: bigint,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       SignerManagerPrivateState,
       ReturnType<typeof SignerManagerWitnesses>
     > = {},
-  ) {
-    super([signers, thresh], options);
+  ): Promise<SignerManagerSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [signers, thresh],
+      options,
+    ) as Promise<SignerManagerSimulator>;
   }
 
-  public assertSigner(caller: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public assertSigner(
+    caller: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Promise<[]> {
     return this.circuits.impure.assertSigner(caller);
   }
 
-  public assertThresholdMet(approvalCount: bigint) {
+  public assertThresholdMet(approvalCount: bigint): Promise<[]> {
     return this.circuits.impure.assertThresholdMet(approvalCount);
   }
 
-  public getSignerCount(): bigint {
+  public getSignerCount(): Promise<bigint> {
     return this.circuits.impure.getSignerCount();
   }
 
-  public getThreshold(): bigint {
+  public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
   }
 
   public isSigner(
     account: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure.isSigner(account);
   }
 
-  public _addSigner(signer: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public _addSigner(
+    signer: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Promise<[]> {
     return this.circuits.impure._addSigner(signer);
   }
 
-  public _removeSigner(signer: Either<ZswapCoinPublicKey, ContractAddress>) {
+  public _removeSigner(
+    signer: Either<ZswapCoinPublicKey, ContractAddress>,
+  ): Promise<[]> {
     return this.circuits.impure._removeSigner(signer);
   }
 
-  public _changeThreshold(newThreshold: bigint) {
+  public _changeThreshold(newThreshold: bigint): Promise<[]> {
     return this.circuits.impure._changeThreshold(newThreshold);
   }
 }

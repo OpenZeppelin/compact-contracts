@@ -1,51 +1,55 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  ledger,
+  type ContractAddress,
+  type Either,
   Contract as ForwarderShielded,
+  ledger,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
 } from '../../../../../artifacts/ForwarderShielded/contract/index.js';
-import {
-  ForwarderShieldedPrivateState,
-  ForwarderShieldedWitnesses,
-} from '../../witnesses/presets/ForwarderShieldedWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 
 const ForwarderShieldedSimulatorBase = createSimulator<
-  ForwarderShieldedPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ForwarderShieldedWitnesses>,
-  ForwarderShielded<ForwarderShieldedPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ForwarderShielded<EmptyPrivateState>,
   ForwarderShieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderShielded<ForwarderShieldedPrivateState>(witnesses),
-  defaultPrivateState: () => ForwarderShieldedPrivateState,
+    new ForwarderShielded<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parent) => [parent],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ForwarderShieldedWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
+  artifactName: 'ForwarderShielded',
 });
 
 export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
-  constructor(
-    parent: Uint8Array,
-    options: BaseSimulatorOptions<
-      ForwarderShieldedPrivateState,
-      ReturnType<typeof ForwarderShieldedWitnesses>
+  static async create(
+    parent: ZswapCoinPublicKey,
+    options: SimulatorOptions<
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
-  ) {
-    super([{ bytes: parent }], options);
+  ): Promise<ForwarderShieldedSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [parent],
+      options,
+    ) as Promise<ForwarderShieldedSimulator>;
   }
 
-  public deposit(coin: ShieldedCoinInfo) {
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
   }
 
-  public getParent(): Uint8Array {
-    return this.circuits.impure.getParent().bytes;
+  public getParent(): Promise<Either<ZswapCoinPublicKey, ContractAddress>> {
+    return this.circuits.impure.getParent();
   }
 }

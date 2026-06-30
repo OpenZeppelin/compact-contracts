@@ -155,18 +155,6 @@ module NonFungibleToken {
   witness wit_NonFungibleTokenSK(): Bytes<32>;
 
   /**
-   * @description Returns a canonical zero Either value (left variant with zero Bytes<32>).
-   * Used as the zero value for mint/burn operations and cleared approvals.
-   *
-   * @return {Either<Bytes<32>, ContractAddress>} - The zero value.
-   */
-  export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
-    return Either<Bytes<32>, ContractAddress> {
-      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
-    };
-  }
-
-  /**
    * @description Initializes the contract by setting the name and symbol.
    *
    * This MUST be called in the implementing contract's constructor.
@@ -510,7 +498,7 @@ module NonFungibleToken {
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!_isTargetZero(to), "NonFungibleToken: invalid receiver");
+    assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
     // Setting an "auth" argument enables the `_isAuthorized` check which verifies that the token exists
     // (fromAddress != 0). Therefore, it is not needed to verify that the return value is not 0 here.
     const auth = left<Bytes<32>, ContractAddress>(_computeAccountId());
@@ -535,7 +523,7 @@ module NonFungibleToken {
   export circuit _ownerOf(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
     assertInitialized();
     if (!_owners.member(disclose(tokenId))) {
-      return ZERO();
+      return Utils_zeroAccount();
     }
 
     return _owners.lookup(disclose(tokenId));
@@ -556,7 +544,7 @@ module NonFungibleToken {
   export circuit _getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
     assertInitialized();
     if (!_tokenApprovals.member(disclose(tokenId))) {
-      return ZERO();
+      return Utils_zeroAccount();
     }
     return _tokenApprovals.lookup(disclose(tokenId));
   }
@@ -588,7 +576,7 @@ module NonFungibleToken {
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
-    return (!_isTargetZero(disclose(canonSpender)) &&
+    return (!Utils_isTargetZero(disclose(canonSpender)) &&
             (disclose(canonOwner) == disclose(canonSpender) ||
              isApprovedForAll(canonOwner, canonSpender) ||
              _getApproved(tokenId) == disclose(canonSpender)));
@@ -619,7 +607,7 @@ module NonFungibleToken {
                    ): [] {
     assertInitialized();
     if (!_isAuthorized(owner, spender, tokenId)) {
-      assert(!_isTargetZero(owner), "NonFungibleToken: nonexistent token");
+      assert(!Utils_isTargetZero(owner), "NonFungibleToken: nonexistent token");
       assert(false, "NonFungibleToken: insufficient approval");
     }
   }
@@ -649,20 +637,20 @@ module NonFungibleToken {
     const fromAddress = _ownerOf(tokenId);
 
     // Perform (optional) operator check
-    if (!_isTargetZero(disclose(canonAuth))) {
+    if (!Utils_isTargetZero(disclose(canonAuth))) {
       _checkAuthorized(fromAddress, canonAuth, tokenId);
     }
 
     // Execute the update
-    if (!_isTargetZero(disclose(fromAddress))) {
+    if (!Utils_isTargetZero(disclose(fromAddress))) {
       // Clear approval. No need to re-authorize
-      _approve(ZERO(), tokenId, ZERO());
+      _approve(Utils_zeroAccount(), tokenId, Utils_zeroAccount());
       const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
       const newBalance = _balances.lookup(disclose(canonFrom)) - 1 as Uint<128>;
       _balances.insert(disclose(canonFrom), disclose(newBalance));
     }
 
-    if (!_isTargetZero(disclose(canonTo))) {
+    if (!Utils_isTargetZero(disclose(canonTo))) {
       if (!_balances.member(disclose(canonTo))) {
         _balances.insert(disclose(canonTo), 0);
       }
@@ -723,11 +711,11 @@ module NonFungibleToken {
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!_isTargetZero(to), "NonFungibleToken: invalid receiver");
+    assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
 
-    const previousOwner = _update(to, tokenId, ZERO());
+    const previousOwner = _update(to, tokenId, Utils_zeroAccount());
 
-    assert(_isTargetZero(previousOwner), "NonFungibleToken: invalid sender");
+    assert(Utils_isTargetZero(previousOwner), "NonFungibleToken: invalid sender");
   }
 
   /**
@@ -747,8 +735,8 @@ module NonFungibleToken {
    */
   export circuit _burn(tokenId: Uint<128>): [] {
     assertInitialized();
-    const previousOwner = _update(ZERO(), tokenId, ZERO());
-    assert(!_isTargetZero(previousOwner), "NonFungibleToken: invalid sender");
+    const previousOwner = _update(Utils_zeroAccount(), tokenId, Utils_zeroAccount());
+    assert(!Utils_isTargetZero(previousOwner), "NonFungibleToken: invalid sender");
     _tokenURIs.remove(disclose(tokenId));
   }
 
@@ -814,11 +802,11 @@ module NonFungibleToken {
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!_isTargetZero(to), "NonFungibleToken: invalid receiver");
+    assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
 
-    const previousOwner = _update(to, tokenId, ZERO());
+    const previousOwner = _update(to, tokenId, Utils_zeroAccount());
 
-    assert(!_isTargetZero(previousOwner), "NonFungibleToken: nonexistent token");
+    assert(!Utils_isTargetZero(previousOwner), "NonFungibleToken: nonexistent token");
 
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     assert(previousOwner == canonFrom, "NonFungibleToken: incorrect owner");
@@ -848,12 +836,12 @@ module NonFungibleToken {
     assertInitialized();
     // Canonicalize + normalize `to`
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
-    const normalizedTo = _isTargetZero(canonTo) ? ZERO() : canonTo;
+    const normalizedTo = Utils_isTargetZero(canonTo) ? Utils_zeroAccount() : canonTo;
 
     // Canonicalize auth
     const canonAuth = Utils_canonicalize<Bytes<32>, ContractAddress>(auth);
 
-    if (!_isTargetZero(disclose(canonAuth))) {
+    if (!Utils_isTargetZero(disclose(canonAuth))) {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
@@ -888,10 +876,10 @@ module NonFungibleToken {
                    ): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
-    assert(!_isTargetZero(canonOwner), "NonFungibleToken: invalid owner");
+    assert(!Utils_isTargetZero(canonOwner), "NonFungibleToken: invalid owner");
 
     const canonOp = Utils_canonicalize<Bytes<32>, ContractAddress>(operator);
-    assert(!_isTargetZero(canonOp), "NonFungibleToken: invalid operator");
+    assert(!Utils_isTargetZero(canonOp), "NonFungibleToken: invalid operator");
 
     if (!_operatorApprovals.member(disclose(canonOwner))) {
       _operatorApprovals.insert(
@@ -921,7 +909,7 @@ module NonFungibleToken {
     assertInitialized();
     const owner = _ownerOf(tokenId);
 
-    assert(!_isTargetZero(owner), "NonFungibleToken: nonexistent token");
+    assert(!Utils_isTargetZero(owner), "NonFungibleToken: nonexistent token");
     return owner;
   }
 
@@ -936,52 +924,6 @@ module NonFungibleToken {
    * @returns {Bytes<32>} accountId - The computed account identifier.
    */
   circuit _computeAccountId(): Bytes<32> {
-    return computeAccountId(wit_NonFungibleTokenSK());
-  }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a token operation.
-   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
-   * given the same inputs.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the security of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
-  }
-
-  /**
-   * @description Returns `true` if `target`'s active branch (as indicated by `is_left`)
-   * holds the zero value.
-   *
-   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
-   * @returns {Boolean} - `true` if the active branch is zero, `false` otherwise.
-   */
-  circuit _isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
-    if (target.is_left) {
-      return target.left == default<Bytes<32>>;
-    } else {
-      return target.right == default<ContractAddress>;
-    }
+    return Utils_computeAccountId(wit_NonFungibleTokenSK());
   }
 }

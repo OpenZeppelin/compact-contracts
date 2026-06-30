@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../ForwarderUnshielded" prefix Forwarder_;
+
+export { ContractAddress, UserAddress, Either };
+
+/**
+ * @description Test fixture exposing the `ForwarderUnshielded` module's
+ * underscore-prefixed circuit directly. `isInit` controls whether the
+ * constructor initializes. Set it to `false` to leave the contract
+ * uninitialized and exercise the not-initialized guard.
+ *
+ * DO NOT USE IN PRODUCTION.
+ */
+constructor(parent: UserAddress, isInit: Boolean) {
+  if (disclose(isInit)) {
+    Forwarder_initialize(parent);
+  }
+}
+
+export circuit deposit(color: Bytes<32>, amount: Uint<128>): [] {
+  return Forwarder__deposit(color, amount);
+}
+
+export circuit getParent(): Either<ContractAddress, UserAddress> {
+  return Forwarder__parent;
+}

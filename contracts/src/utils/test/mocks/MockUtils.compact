@@ -49,3 +49,15 @@ export circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
 export pure circuit UINT128_MAX(): Uint<128> {
   return Utils_UINT128_MAX();
 }
+
+export pure circuit zeroAccount(): Either<Bytes<32>, ContractAddress> {
+  return Utils_zeroAccount();
+}
+
+export pure circuit isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
+  return Utils_isTargetZero(target);
+}
+
+export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
+  return Utils_computeAccountId(secretKey);
+}

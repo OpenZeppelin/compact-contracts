@@ -29,10 +29,6 @@ constructor(
   }
 }
 
-export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
-  return NonFungibleToken_ZERO();
-}
-
 export circuit name(): Opaque<"string"> {
   return NonFungibleToken_name();
 }
@@ -176,6 +172,3 @@ export circuit _unsafeMint(
   return NonFungibleToken__unsafeMint(to, tokenId);
 }
 
-export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-  return NonFungibleToken_computeAccountId(secretKey);
-}

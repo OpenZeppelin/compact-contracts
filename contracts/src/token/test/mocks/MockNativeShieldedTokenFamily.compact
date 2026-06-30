@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeShieldedTokenFamily" prefix NativeShieldedTokenFamily_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// Unit mock for the NativeShieldedTokenFamily core module in isolation: no
+// supply accounting, no derived-nonce extension. Those have their own
+// standalone mocks and test suites.
+
+/**
+ * @description `init` is a test-only flag. When true, the constructor
+ * initializes the family module (metadata). When false, it is left
+ * uninitialized so tests can exercise the pre-initialization revert guards.
+ * The family `initialize` is intentionally NOT exposed as a circuit: it writes
+ * `sealed` ledger fields, which the sealed-write rule confines to constructor
+ * execution.
+ */
+constructor(
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  init: Boolean
+) {
+  if (disclose(init)) {
+    NativeShieldedTokenFamily_initialize(name_, symbol_, decimals_);
+  }
+}
+
+export circuit isInitialized(): Boolean {
+  return NativeShieldedTokenFamily_isInitialized();
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedTokenFamily_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedTokenFamily_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedTokenFamily_decimals();
+}
+
+export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
+  return NativeShieldedTokenFamily_tokenColor(domain);
+}
+
+export circuit _mint(
+  domain: Bytes<32>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenFamily__mint(domain, recipient, amount, nonce);
+}
+
+export circuit _burn(
+  domain: Bytes<32>,
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedTokenFamily__burn(domain, coin, amount, refundTo);
+}
+
+export circuit _burnFromSelf(
+  domain: Bytes<32>,
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedTokenFamily__burnFromSelf(domain, coin, amount);
+}

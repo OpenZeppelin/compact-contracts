@@ -4,86 +4,82 @@ import { PausableSimulator } from './simulators/PausableSimulator.js';
 let pausable: PausableSimulator;
 
 describe('Pausable', () => {
-  beforeEach(() => {
-    pausable = new PausableSimulator();
+  beforeEach(async () => {
+    pausable = await PausableSimulator.create();
   });
 
   describe('when not paused', () => {
-    it('should not be paused in initial state', () => {
-      expect(pausable.isPaused()).toBe(false);
+    it('should not be paused in initial state', async () => {
+      expect(await pausable.isPaused()).toBe(false);
     });
 
-    it('should throw when calling assertPaused', () => {
-      expect(() => {
-        pausable.assertPaused();
-      }).toThrow('Pausable: not paused');
+    it('should throw when calling assertPaused', async () => {
+      await expect(pausable.assertPaused()).rejects.toThrow(
+        'Pausable: not paused',
+      );
     });
 
-    it('should not throw when calling assertNotPaused', () => {
-      pausable.assertNotPaused();
+    it('should not throw when calling assertNotPaused', async () => {
+      await pausable.assertNotPaused();
     });
 
-    it('should pause from unpaused state', () => {
-      pausable.pause();
-      expect(pausable.isPaused()).toBe(true);
+    it('should pause from unpaused state', async () => {
+      await pausable.pause();
+      expect(await pausable.isPaused()).toBe(true);
     });
 
-    it('should throw when unpausing in an unpaused state', () => {
-      expect(() => {
-        pausable.unpause();
-      }).toThrow('Pausable: not paused');
+    it('should throw when unpausing in an unpaused state', async () => {
+      await expect(pausable.unpause()).rejects.toThrow('Pausable: not paused');
     });
   });
 
   describe('when paused', () => {
-    beforeEach(() => {
-      pausable.pause();
+    beforeEach(async () => {
+      await pausable.pause();
     });
 
-    it('should not throw when calling assertPaused', () => {
-      pausable.assertPaused();
+    it('should not throw when calling assertPaused', async () => {
+      await pausable.assertPaused();
     });
 
-    it('should throw when calling assertNotPaused', () => {
-      expect(() => {
-        pausable.assertNotPaused();
-      }).toThrow('Pausable: paused');
+    it('should throw when calling assertNotPaused', async () => {
+      await expect(pausable.assertNotPaused()).rejects.toThrow(
+        'Pausable: paused',
+      );
     });
 
-    it('should unpause from paused state', () => {
-      pausable.unpause();
-      expect(pausable.isPaused()).toBe(false);
+    it('should unpause from paused state', async () => {
+      await pausable.unpause();
+      expect(await pausable.isPaused()).toBe(false);
     });
 
-    it('should throw when pausing in an paused state', () => {
-      expect(() => {
-        pausable.pause();
-      }).toThrow('Pausable: paused');
+    it('should throw when pausing in an paused state', async () => {
+      await expect(pausable.pause()).rejects.toThrow('Pausable: paused');
     });
   });
 
   describe('Multiple Operations', () => {
-    it('should handle pause → unpause → pause sequence', () => {
-      pausable.pause();
-      expect(pausable.isPaused()).toBe(true);
+    it('should handle pause → unpause → pause sequence', async () => {
+      await pausable.pause();
+      expect(await pausable.isPaused()).toBe(true);
 
-      pausable.unpause();
-      expect(pausable.isPaused()).toBe(false);
+      await pausable.unpause();
+      expect(await pausable.isPaused()).toBe(false);
 
-      pausable.pause();
-      expect(pausable.isPaused()).toBe(true);
+      await pausable.pause();
+      expect(await pausable.isPaused()).toBe(true);
     });
   });
 
   describe('simulator wiring', () => {
-    it('should expose the public ledger via getPublicState', () => {
-      const sim = new PausableSimulator();
+    it('should expose the public ledger via getPublicState', async () => {
+      const sim = await PausableSimulator.create();
 
-      expect(sim.getPublicState().Pausable__isPaused).toBe(false);
+      expect((await sim.getPublicState()).Pausable__isPaused).toBe(false);
 
-      sim.pause();
+      await sim.pause();
 
-      expect(sim.getPublicState().Pausable__isPaused).toBe(true);
+      expect((await sim.getPublicState()).Pausable__isPaused).toBe(true);
     });
   });
 });

@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: MIT
+
+// TEST-ONLY. NOT FOR PRODUCTION USE.
+// Exposes the raw Jubjub curve built-ins so the runtime-invariants regression
+// test (CurveRuntimeInvariants.test.ts) can assert that the Midnight runtime
+// rejects any point outside the prime-order subgroup. This pins a property the
+// ElGamal module's safety depends on (see the module's subgroup note): if a
+// future runtime stops enforcing subgroup membership on curve ops, that test
+// fails loudly. DO NOT deploy.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+export pure circuit doEcMul(p: JubjubPoint, k: Field): JubjubPoint {
+  return ecMul(p, k);
+}
+
+export pure circuit doEcAdd(a: JubjubPoint, b: JubjubPoint): JubjubPoint {
+  return ecAdd(a, b);
+}
+
+export pure circuit genMul(k: Field): JubjubPoint {
+  return ecMulGenerator(k);
+}

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/forwarder/ForwarderUnshielded.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/presets/forwarder/ForwarderUnshielded.compact)
 
 pragma language_version >= 0.23.0;
 
@@ -7,22 +7,32 @@ pragma language_version >= 0.23.0;
  * @title ForwarderUnshielded
  * @description Public-parent forwarder for unshielded coins. Receives
  * an unshielded amount of a given color and atomically forwards it to
- * the configured parent address.
+ * the configured parent recipient, a user address.
  *
  * Unshielded transfers are publicly visible on the chain: depositor,
  * recipient, color, and amount all appear on the public transcript.
  * Use `ForwarderShielded` instead when the deposit kind is shielded.
+ *
+ * The constructor accepts a `UserAddress`: an atomic forward can only
+ * deliver to a recipient that needs no in-tx claim, and an unshielded
+ * send to a non-participating contract is rejected. The parent is stored
+ * generically (`Either`) on the ledger so a future circuit upgrade can
+ * add contract-address support without a state migration.
+ *
+ * The parent recipient is set at deploy time. This preset exposes no
+ * setter, so the parent is fixed for the life of the contract.
  */
 
 import CompactStandardLibrary;
-import "../../Forwarder"<UserAddress> prefix Forwarder_;
+import "../../ForwarderUnshielded" prefix Forwarder_;
 
-export { UserAddress };
+export { ContractAddress, UserAddress, Either };
 
 /**
- * @description Deploys the forwarder bound to a specific parent address.
+ * @description Deploys the forwarder bound to a specific parent
+ * recipient.
  *
- * @param {UserAddress} parent - The parent address that receives every
+ * @param {UserAddress} parent - The user address that receives every
  * forwarded amount.
  */
 constructor(parent: UserAddress) {
@@ -38,15 +48,17 @@ constructor(parent: UserAddress) {
  *
  * @returns {[]} Empty tuple.
  */
-export circuit depositUnshielded(color: Bytes<32>, amount: Uint<128>): [] {
-  Forwarder__depositUnshielded(color, amount);
+export circuit deposit(color: Bytes<32>, amount: Uint<128>): [] {
+  Forwarder__deposit(color, amount);
 }
 
 /**
- * @description Returns the configured parent address.
+ * @description Returns the configured parent recipient as stored on the
+ * ledger (the generic `Either`; the `right` arm holds the user address).
  *
- * @returns {UserAddress} The parent address set at deploy.
+ * @returns {Either<ContractAddress, UserAddress>} The parent recipient
+ * set at deploy.
  */
-export circuit getParent(): UserAddress {
+export circuit getParent(): Either<ContractAddress, UserAddress> {
   return Forwarder__parent;
 }

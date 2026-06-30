@@ -1,0 +1,343 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (token/NativeShieldedTokenCore.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module NativeShieldedTokenCore
+ * @description Shared, domain-parameterized core of the native shielded
+ * (Zswap) token standard. It owns the initialization flag, the contract-wide
+ * metadata, and the mint/burn building blocks; every token operation takes the
+ * `domain` separator as a parameter.
+ *
+ * This module is NOT meant to be composed directly. It is the de-duplicated
+ * base behind the two user-facing flavors:
+ *
+ * - `NativeShieldedToken` — single token type; stores one `sealed _domain` and
+ *   forwards it to every core op.
+ * - `NativeShieldedTokenFamily` — many token types; forwards the caller's
+ *   per-call `domain` to every core op.
+ *
+ * @dev The flavors are thin wrappers; all of the bug-prone coin logic lives
+ * here so a fix or change happens once. Assertion messages use the generic
+ * `NativeShieldedToken:` prefix so they read sensibly from either flavor. The
+ * coin's `color` is `tokenType(domain, kernel.self())`, computed at call time
+ * (never in the constructor), so only this contract can mint coins of its
+ * colors. Metadata follows the FungibleToken (ERC-20) convention: contract-wide
+ * `name`, `symbol`, and `decimals`, fixed at construction. Mint amounts are
+ * `Uint<64>` and burn amounts `Uint<128>`; that asymmetry is imposed by the
+ * protocol primitives (`mintShieldedToken` caps at 64, `sendShielded` accepts
+ * 128), not a choice the module makes.
+ *
+ * @notice Constructor usage: an implementing contract's constructor MUST call
+ * only `initialize` (via the wrapping flavor). Do NOT perform any other token
+ * operation (`_mint`, `_burn`, `_burnFromSelf`, `tokenColor`) during
+ * construction. `assertInitialized` gates on the init flag but does not stop a
+ * constructor from calling `initialize` and then a token op in the same scope;
+ * those operations belong in post-deployment circuits, not construction.
+ *
+ * @notice Minting and recipient privacy: `_mint` takes a caller-supplied nonce,
+ * mirroring `mintShieldedToken` one-to-one, and the caller is responsible for
+ * nonce uniqueness (reusing a nonce for the same (value, recipient) produces a
+ * duplicate commitment, which the ledger rejects). With a secret, random nonce
+ * the mint is recipient-private; for mints that need no caller-managed nonce,
+ * compose `NativeShieldedTokenDerivedNonce` and pass its `_deriveNonce()`
+ * output, at the cost of making those mints recipient-public.
+ *
+ * @dev Burn variants
+ * `_burn` destroys value from a coin provided within the current transaction
+ * (e.g. the caller's wallet pays the contract): it receives the coin and spends
+ * via `sendImmediateShielded`, the required path for coins created in the same
+ * transaction. `_burnFromSelf` destroys value from a coin the contract already
+ * holds (a Merkle-tree entry with a valid `mt_index`): it spends via
+ * `sendShielded`, and any change is auto-received by the contract and returned
+ * for the consumer to persist.
+ *
+ * @notice Contract-initiated sends do not create coin ciphertexts, so recipient
+ * wallets cannot detect coins minted or refunded to them by scanning the chain.
+ * The returned `ShieldedCoinInfo` values are the only copies of those coins'
+ * info: DApps SHOULD capture and deliver them out of band; dropping them strands
+ * value irrecoverably.
+ */
+module NativeShieldedTokenCore {
+  import CompactStandardLibrary;
+  import "../utils/Utils" prefix Utils_;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  export sealed ledger _name: Opaque<"string">;
+  export sealed ledger _symbol: Opaque<"string">;
+  export sealed ledger _decimals: Uint<8>;
+
+  /**
+   * @description Initializes the contract-wide metadata.
+   * @dev This MUST be called in the implementing contract's constructor (via
+   * the wrapping flavor's `initialize`). Failure to do so can lead to an
+   * irreparable contract.
+   *
+   * @param {Opaque<"string">} name_ - The name of the token.
+   * @param {Opaque<"string">} symbol_ - The symbol of the token.
+   * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>
+                   ): [] {
+    assertNotInitialized();
+    _isInitialized = true;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
+    _decimals = disclose(decimals_);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an
+   * error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertInitialized(): [] {
+    assert(_isInitialized, "NativeShieldedToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing
+   * an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "NativeShieldedToken: contract already initialized");
+  }
+
+  /**
+   * @description Returns whether the contract has been initialized.
+   * @dev Does not gate on init (it reports it), so it is safe to call before
+   * `initialize`.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Boolean} - True once `initialize` has run.
+   */
+  export circuit isInitialized(): Boolean {
+    return _isInitialized;
+  }
+
+  /**
+   * @description Returns the token name.
+   *
+   * @circuitInfo k=6, rows=28
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Opaque<"string">} - The token name.
+   */
+  export circuit name(): Opaque<"string"> {
+    assertInitialized();
+    return _name;
+  }
+
+  /**
+   * @description Returns the symbol of the token.
+   *
+   * @circuitInfo k=6, rows=28
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Opaque<"string">} - The token symbol.
+   */
+  export circuit symbol(): Opaque<"string"> {
+    assertInitialized();
+    return _symbol;
+  }
+
+  /**
+   * @description Returns the number of decimals used to get its user representation.
+   * @dev This is a display convention only. The protocol stores and operates
+   * on integer values without reference to decimals.
+   *
+   * @circuitInfo k=6, rows=28
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Uint<8>} - The decimals value.
+   */
+  export circuit decimals(): Uint<8> {
+    assertInitialized();
+    return _decimals;
+  }
+
+  /**
+   * @description Returns the coin color for `domain` under this contract's
+   * address: `tokenType(domain, kernel.self())`, computed at call time.
+   *
+   * @circuitInfo k=13, rows=4248
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @return {Bytes<32>} - The coin color.
+   */
+  export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
+    assertInitialized();
+    return tokenType(disclose(domain), kernel.self());
+  }
+
+  /**
+   * @description Mints `amount` of the token identified by `domain` to
+   * `recipient`, using a caller-supplied nonce.
+   *
+   * @dev The caller is fully responsible for nonce uniqueness. Reusing a
+   * nonce for the same (domain, value, recipient) produces a duplicate
+   * commitment, which the protocol rejects.
+   *
+   * @notice The returned coin info is the only copy available to the
+   * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
+   * contract-minted coins by scanning the chain.
+   *
+   * @circuitInfo k=14, rows=11119
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `recipient` is not zero.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
+   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   */
+  export circuit _mint(
+                   domain: Bytes<32>,
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   amount: Uint<64>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    assertInitialized();
+    assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
+
+    return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
+  }
+
+  /**
+   * @description Burns `amount` from `coin`, a coin provided within the
+   * current transaction (e.g. paid in by the caller's wallet), and routes the
+   * remaining change to `refundTo`.
+   *
+   * To destroy `coin` in full, pass `coin.value` as `amount`; the change
+   * branch will not fire and `none` is returned. The `refundTo` value is
+   * inert in that case but must still be supplied and non-zero.
+   *
+   * @dev The coin is received by the contract and spent in the same
+   * transaction, so the spend goes through `sendImmediateShielded` (the
+   * transient path). For coins the contract already holds, use
+   * `_burnFromSelf` instead.
+   *
+   * @notice The returned refund coin info is the only copy available to
+   * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
+   * contract-sent coins by scanning the chain.
+   *
+   * @circuitInfo k=16, rows=47932
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `coin.color` is this contract's token type for `domain`.
+   * - `amount` is less than or equal to `coin.value`.
+   * - `refundTo` is not zero (the zero key is the burn address; a zero
+   *   `refundTo` would silently burn the change as well).
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {ShieldedCoinInfo} coin - The coin to burn from.
+   * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
+   * route the unspent portion (`coin.value - amount`).
+   * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
+   * or `none` if the coin was burned in full.
+   */
+  export circuit _burn(
+                   domain: Bytes<32>,
+                   coin: ShieldedCoinInfo,
+                   amount: Uint<128>,
+                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): Maybe<ShieldedCoinInfo> {
+    assertInitialized();
+    assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedToken: wrong token");
+    assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
+    assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
+
+    receiveShielded(disclose(coin));
+    const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
+
+    if (disclose(sendRes.change.is_some)) {
+      const refundRes = sendImmediateShielded(
+        disclose(sendRes.change.value),
+        disclose(refundTo),
+        disclose(sendRes.change.value.value)
+      );
+      return some<ShieldedCoinInfo>(refundRes.sent);
+    }
+    return none<ShieldedCoinInfo>();
+  }
+
+  /**
+   * @description Burns `amount` from `coin`, a coin this contract already
+   * holds (a Merkle-tree entry with a valid `mt_index`). Any change is
+   * auto-received by the contract and returned.
+   *
+   * @dev The consumer SHOULD persist the returned change coin info in its own
+   * ledger state: the change replaces `coin` as the contract's holding, and
+   * its info is not otherwise recoverable.
+   *
+   * @circuitInfo k=15, rows=23583
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `coin.color` is this contract's token type for `domain`.
+   * - `amount` is less than or equal to `coin.value`.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
+   * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
+   * @return {Maybe<ShieldedCoinInfo>} - The change coin retained by the
+   * contract, or `none` if the coin was burned in full.
+   */
+  export circuit _burnFromSelf(
+                   domain: Bytes<32>,
+                   coin: QualifiedShieldedCoinInfo,
+                   amount: Uint<128>
+                   ): Maybe<ShieldedCoinInfo> {
+    assertInitialized();
+    assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedToken: wrong token");
+    assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
+
+    const sendRes = sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
+
+    return disclose(sendRes.change);
+  }
+}

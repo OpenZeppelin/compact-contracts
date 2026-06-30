@@ -27,10 +27,6 @@ constructor(
   }
 }
 
-export pure circuit ZERO(): Either<Bytes<32>, ContractAddress> {
-  return MultiToken_ZERO();
-}
-
 export circuit initialize(_uri: Opaque<"string">): [] {
   return MultiToken_initialize(_uri);
 }
@@ -114,6 +110,3 @@ export circuit _setApprovalForAll(
   return MultiToken__setApprovalForAll(owner, operator, approved);
 }
 
-export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-  return MultiToken_computeAccountId(secretKey);
-}

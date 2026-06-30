@@ -61,6 +61,3 @@ export circuit _revokeRole(roleId: Bytes<32>, account: Either<Bytes<32>, Contrac
   return AccessControl__revokeRole(roleId, account);
 }
 
-export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-  return AccessControl_computeAccountId(secretKey);
-}

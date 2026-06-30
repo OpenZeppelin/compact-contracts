@@ -1,46 +1,49 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
+  type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
+  Contract as ForwarderPrivate,
   ledger,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
-  Contract as ForwarderPrivate,
+  type ZswapCoinPublicKey,
 } from '../../../../../artifacts/ForwarderPrivate/contract/index.js';
-import {
-  ForwarderPrivatePrivateState,
-  ForwarderPrivateWitnesses,
-} from '../../witnesses/presets/ForwarderPrivateWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderPrivateArgs = readonly [parentCommitment: Uint8Array];
 
 const ForwarderPrivateSimulatorBase = createSimulator<
-  ForwarderPrivatePrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ForwarderPrivateWitnesses>,
-  ForwarderPrivate<ForwarderPrivatePrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ForwarderPrivate<EmptyPrivateState>,
   ForwarderPrivateArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderPrivate<ForwarderPrivatePrivateState>(witnesses),
-  defaultPrivateState: () => ForwarderPrivatePrivateState,
+    new ForwarderPrivate<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parentCommitment) => [parentCommitment],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ForwarderPrivateWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
+  artifactName: 'ForwarderPrivate',
 });
 
 export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
-  constructor(
+  static async create(
     parentCommitment: Uint8Array,
-    options: BaseSimulatorOptions<
-      ForwarderPrivatePrivateState,
-      ReturnType<typeof ForwarderPrivateWitnesses>
+    options: SimulatorOptions<
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
-  ) {
-    super([parentCommitment], options);
+  ): Promise<ForwarderPrivateSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [parentCommitment],
+      options,
+    ) as Promise<ForwarderPrivateSimulator>;
   }
 
   public static calculateParentCommitment(
@@ -50,20 +53,20 @@ export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
     return pureCircuits.calculateParentCommitment(parentAddr, opSecret);
   }
 
-  public deposit(coin: ShieldedCoinInfo) {
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
   }
 
   public drain(
     coin: QualifiedShieldedCoinInfo,
-    parentAddr: Uint8Array,
+    parent: ZswapCoinPublicKey,
     opSecret: Uint8Array,
     value: bigint,
-  ): ShieldedSendResult {
-    return this.circuits.impure.drain(coin, parentAddr, opSecret, value);
+  ): Promise<ShieldedSendResult> {
+    return this.circuits.impure.drain(coin, parent, opSecret, value);
   }
 
-  public getParentCommitment(): Uint8Array {
+  public getParentCommitment(): Promise<Uint8Array> {
     return this.circuits.impure.getParentCommitment();
   }
 }
