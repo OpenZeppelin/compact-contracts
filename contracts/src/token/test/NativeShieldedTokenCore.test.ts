@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import {
-  type NativeShieldedTokenCoreSimulator as Sim,
   NativeShieldedTokenCoreSimulator,
+  type NativeShieldedTokenCoreSimulator as Sim,
 } from './simulators/NativeShieldedTokenCoreSimulator.js';
 
 const b32 = (label: string): Uint8Array => {
@@ -78,21 +78,32 @@ describe('NativeShieldedTokenCore (bare base)', () => {
       ['decimals', []],
       ['tokenColor', [DOMAIN_A]],
       ['_mint', [DOMAIN_A, RECIPIENT, AMOUNT, b32('n')]],
-      ['_burn', [DOMAIN_A, { nonce: b32('cn'), color: b32('c'), value: AMOUNT }, AMOUNT, REFUND_TO]],
+      [
+        '_burn',
+        [
+          DOMAIN_A,
+          { nonce: b32('cn'), color: b32('c'), value: AMOUNT },
+          AMOUNT,
+          REFUND_TO,
+        ],
+      ],
       [
         '_burnFromSelf',
-        [DOMAIN_A, { nonce: b32('cn'), color: b32('c'), value: AMOUNT, mt_index: 0n }, AMOUNT],
+        [
+          DOMAIN_A,
+          { nonce: b32('cn'), color: b32('c'), value: AMOUNT, mt_index: 0n },
+          AMOUNT,
+        ],
       ],
     ];
 
-    it.each(circuitsToFail)(
-      'should revert %s before initialize',
-      async (method, args) => {
-        await expect(
-          (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
-        ).rejects.toThrow('NativeShieldedToken: contract not initialized');
-      },
-    );
+    it.each(
+      circuitsToFail,
+    )('should revert %s before initialize', async (method, args) => {
+      await expect(
+        (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
+      ).rejects.toThrow('NativeShieldedToken: contract not initialized');
+    });
   });
 
   describe('_mint (per domain)', () => {
@@ -132,7 +143,12 @@ describe('NativeShieldedTokenCore (bare base)', () => {
     it('should reject burning a domain-A coin under domain B (wrong color)', async () => {
       const colorA = await token.tokenColor(DOMAIN_A);
       await expect(
-        token._burn(DOMAIN_B, { nonce: b32('c'), color: colorA, value: AMOUNT }, AMOUNT, REFUND_TO),
+        token._burn(
+          DOMAIN_B,
+          { nonce: b32('c'), color: colorA, value: AMOUNT },
+          AMOUNT,
+          REFUND_TO,
+        ),
       ).rejects.toThrow('NativeShieldedToken: wrong token');
     });
   });
@@ -163,8 +179,16 @@ describe('NativeShieldedTokenCore (bare base)', () => {
     });
 
     it('should return none on a full burn and some(refund) on a partial burn', async () => {
-      expect((await token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT, REFUND_TO)).is_some).toBe(false);
-      const partial = await token._burn(DOMAIN_A, coinOf(AMOUNT), 600n, REFUND_TO);
+      expect(
+        (await token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT, REFUND_TO))
+          .is_some,
+      ).toBe(false);
+      const partial = await token._burn(
+        DOMAIN_A,
+        coinOf(AMOUNT),
+        600n,
+        REFUND_TO,
+      );
       expect(partial.is_some).toBe(true);
       expect(partial.value.value).toBe(AMOUNT - 600n);
     });
@@ -185,8 +209,12 @@ describe('NativeShieldedTokenCore (bare base)', () => {
     });
 
     it('should return change on a partial burn and none on a full burn', async () => {
-      expect((await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), 600n)).is_some).toBe(true);
-      expect((await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT)).is_some).toBe(false);
+      expect(
+        (await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), 600n)).is_some,
+      ).toBe(true);
+      expect(
+        (await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT)).is_some,
+      ).toBe(false);
     });
 
     it('should reject a wrong-color coin', async () => {
