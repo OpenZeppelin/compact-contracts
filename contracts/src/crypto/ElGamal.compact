@@ -34,16 +34,29 @@ pragma language_version >= 0.23.0;
  * scalar. Feeding a raw `persistentHash` output into `ecMulGenerator` would
  * occasionally exceed the Jubjub scalar field order and fault at runtime.
  *
- * @dev Subgroup membership. Every `JubjubPoint` reaching a curve operation is
- * in the Jubjub prime-order subgroup, including points supplied by a caller as
- * a witness or argument (e.g. a recipient `pk`, or the message point in
- * `encryptPoint`). The Midnight runtime enforces this at the ZK-constraint
+ * @dev TRUST ASSUMPTION — subgroup membership. This is the module's most
+ * load-bearing assumption. Every `JubjubPoint` reaching a curve operation is
+ * assumed to be in the Jubjub prime-order subgroup, including points supplied by
+ * a caller as a witness or argument (e.g. a recipient `pk`, or the message point
+ * in `encryptPoint`). The Midnight runtime enforces this at the ZK-constraint
  * level: the embedded-curve gadget assigns points via cofactor clearing, so an
  * off-curve / low-order / mixed-order point makes the circuit unsatisfiable.
- * This module therefore performs NO in-circuit subgroup check (one is neither
- * needed nor expressible: `ecMul` by the subgroup order faults, and
- * `JubjubPoint` is opaque). The `ecNeg` identity and the homomorphic algebra
- * rely on this guarantee.
+ * The module therefore performs NO in-circuit subgroup check: the runtime
+ * already constrains membership (so it is unnecessary), and the direct test
+ * `ℓ*P == O` is unavailable anyway because `ecMul` by `ℓ` faults (verified — `ℓ`
+ * exceeds the valid scalar range, while `ℓ-1` is accepted). The `ecNeg` identity
+ * (`(ℓ-1)*P = -P`) and the homomorphic algebra depend on this holding.
+ *
+ * Basis (and its limits): source-verified against `midnight-circuits` 6.0.0 —
+ * the version vendored by the Midnight onchain-runtime we compile against —
+ * specifically `ecc::native::edwards_chip`, where `assign` cofactor-clears the
+ * point and `q_mem`'s `create_membership_gate` enforces on-curve, reached from
+ * the ZKIR `ec_mul`/`ec_add` lowering via `ecc_from_parts`. This is NOT a
+ * team-confirmed or audited guarantee: compactc and midnight-ledger are
+ * unaudited, so treat it as a substantiated-but-unaudited assumption. It is
+ * pinned against regression by `crypto/test/CurveRuntimeInvariants.test.ts` (a
+ * runtime behavior canary) and MUST be re-verified in source on any Midnight
+ * runtime / circuits version bump.
  *
  * @dev Weak keys. Encrypting under the identity point yields `c2 = m` with no
  * masking (the plaintext is exposed), and the identity is a valid subgroup
@@ -142,13 +155,15 @@ module ElGamal {
   /**
    * @description Negates a Jubjub point.
    *
-   * @notice Implemented as scalar multiplication by `ORDER - 1` rather than the
-   * obvious `ecMul(p, -1)`: the scalar `-1` computed in the `Field` type is
-   * `BLS_modulus - 1`, which exceeds the Jubjub scalar field order and faults
-   * `ecMul` ("failed to decode for built-in type EmbeddedFr"). `JubjubPoint`
-   * is opaque (no coordinate access), so coordinate negation is unavailable.
-   * The `(ORDER-1)*P = -P` identity holds only in the prime-order subgroup, but
-   * that always applies here: the runtime constrains every assigned `JubjubPoint`
+   * @notice Implemented as scalar multiplication by `ℓ-1` (via
+   * `JUBJUB_SUBGROUP_ORDER_MINUS_ONE`) rather than the obvious `ecMul(p, -1)`:
+   * the scalar `-1` computed in the `Field` type is `BLS_modulus - 1`, which
+   * exceeds the Jubjub scalar field order and faults `ecMul` ("failed to decode
+   * for built-in type EmbeddedFr"). (Coordinate negation `(-x, y)` via
+   * `constructJubjubPoint`/`jubjubPointX`/`jubjubPointY` is an equivalent
+   * alternative that does not depend on the subgroup assumption.) The
+   * `(ℓ-1)*P = -P` identity holds only in the prime-order subgroup, but that
+   * always applies here: the runtime constrains every assigned `JubjubPoint`
    * into the prime-order subgroup (the embedded-curve gadget assigns points via
    * cofactor clearing), so no in-subgroup precondition needs to be checked or
    * assumed. See the module-level subgroup note.
