@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (security/Pausable.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (security/Pausable.compact)
 
 pragma language_version >= 0.23.0;
 
