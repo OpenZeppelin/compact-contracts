@@ -29,6 +29,13 @@ pragma language_version >= 0.23.0;
  * protocol primitives (`mintShieldedToken` caps at 64, `sendShielded` accepts
  * 128), not a choice the module makes.
  *
+ * @notice Constructor usage: an implementing contract's constructor MUST call
+ * only `initialize` (via the wrapping flavor). Do NOT perform any other token
+ * operation (`_mint`, `_burn`, `_burnFromSelf`, `tokenColor`) during
+ * construction. `assertInitialized` gates on the init flag but does not stop a
+ * constructor from calling `initialize` and then a token op in the same scope;
+ * those operations belong in post-deployment circuits, not construction.
+ *
  * @notice Minting and recipient privacy: `_mint` takes a caller-supplied nonce,
  * mirroring `mintShieldedToken` one-to-one, and the caller is responsible for
  * nonce uniqueness (reusing a nonce for the same (value, recipient) produces a

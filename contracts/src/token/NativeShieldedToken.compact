@@ -83,8 +83,10 @@ module NativeShieldedToken {
 
   /**
    * @description Initializes the module's domain and metadata.
-   * @dev This MUST be called in the implementing contract's constructor.
-   * Failure to do so can lead to an irreparable contract.
+   * @dev This MUST be called in the implementing contract's constructor, and it
+   * MUST be the only token operation performed there. Failure to call it can
+   * lead to an irreparable contract; perform mint, burn, and `tokenColor` only
+   * in post-deployment circuits, never in the constructor.
    *
    * @param {Bytes<32>} domainSep - Domain separator for this token's color.
    * @param {Opaque<"string">} name_ - The name of the token.
