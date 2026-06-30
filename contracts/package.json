@@ -50,7 +50,7 @@
   "devDependencies": {
     "@openzeppelin/compact-simulator": "^0.2.0",
     "@tsconfig/node24": "^24.0.4",
-    "@types/node": "25.9.3",
+    "@types/node": "26.0.1",
     "@vitest/coverage-v8": "^4.1.9",
     "fast-check": "^4.8.0",
     "ts-node": "^10.9.2",
