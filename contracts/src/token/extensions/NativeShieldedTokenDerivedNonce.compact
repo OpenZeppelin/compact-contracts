@@ -34,14 +34,13 @@ pragma language_version >= 0.23.0;
  * nothing here because the seed and chain are disclosed to public state, so it
  * was removed.)
  *
- * @notice The predictability also enables deliberate collision-griefing: an
- * actor with access to a caller-nonce mint can pre-mint a commitment that
- * collides with a future derived-nonce mint of the same tuple, making that mint
- * fail on duplicate-commitment rejection. Gate both mint paths behind access
- * control, and prefer not exposing both to distinct trust levels. A failed mint
- * is recoverable with the same recipient and amount: the counter has already
- * advanced, so the retry derives a fresh nonce and therefore a different
- * commitment, which no longer collides.
+ * @notice Collision-griefing. Derived nonces are predictable, so an actor with a
+ * caller-nonce mint can pre-mint a colliding commitment and make the matching
+ * derived-nonce mint fail. Mitigations:
+ * - Access-control both mint paths, and avoid exposing them at different trust
+ *   levels.
+ * - Do not rely on retrying. The nonce is a pure function of the counter, and a
+ *   reverted mint may not advance it, so the retry can collide again.
  */
 module NativeShieldedTokenDerivedNonce {
   import CompactStandardLibrary;
