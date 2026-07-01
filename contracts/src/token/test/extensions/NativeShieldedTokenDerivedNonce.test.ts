@@ -36,4 +36,19 @@ describe('NativeShieldedTokenDerivedNonce (extension)', () => {
     }
     expect(seen.size).toBe(N);
   });
+
+  it('should derive an identical sequence across independent instances', async () => {
+    // The derivation is a pure function of the public counter, so two fresh
+    // deployments must yield byte-identical nonce sequences. This is a loud
+    // guard: any hidden randomness introduced into `_deriveNonce` would make
+    // the two sequences diverge and fail this assertion.
+    const other = await NativeShieldedTokenDerivedNonceSimulator.create();
+    const seqA: string[] = [];
+    const seqB: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      seqA.push(toHex(await nonce._deriveNonce()));
+      seqB.push(toHex(await other._deriveNonce()));
+    }
+    expect(seqA).toStrictEqual(seqB);
+  });
 });
