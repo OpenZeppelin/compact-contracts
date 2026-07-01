@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenDerivedNonce.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module NativeShieldedTokenDerivedNonce
+ * @description Optional standalone extension providing derived coin nonces for
+ * native shielded token mints, so callers need not manage nonces themselves. It
+ * owns a monotonic `_counter` and exposes `_deriveNonce`; it imports no token
+ * module and needs no initialization.
+ *
+ * @notice Pairs with `NativeShieldedToken`, `NativeShieldedTokenFamily`, and
+ * `NativeTokenConverter`. The consuming contract composes the pieces:
+ *
+ *   export circuit mint(recipient: ..., amount: Uint<64>): ShieldedCoinInfo {
+ *     return Token__mint(recipient, amount, Derived__deriveNonce());
+ *   }
+ *
+ * @dev Derivation
+ * Each call derives `evolveNonce(_counter, pad(32, "NativeShieldedToken:nonce"))`:
+ * the monotonic counter guarantees uniqueness, and the fixed tag pushes derived
+ * nonces out of the small-integer space an honest caller of the base `_mint`
+ * might pick, avoiding accidental cross-path collisions. One counter serves the
+ * whole contract, so derived nonces never repeat across token types (domains)
+ * or across the shielded/converter mint paths of one contract.
+ *
+ * @notice This variant is deterministic and recipient-PUBLIC by design: derived
+ * nonces are predictable from public state, so anyone can recompute the coin
+ * commitment for candidate recipient keys. For recipient privacy, call the base
+ * `_mint` with a secret, cryptographically random nonce instead. (An earlier
+ * design seeded a hash chain to make the sequence look random; that bought
+ * nothing here because the seed and chain are disclosed to public state, so it
+ * was removed.)
+ *
+ * @notice The predictability also enables deliberate collision-griefing: an
+ * actor with access to a caller-nonce mint can pre-mint a commitment that
+ * collides with a future derived-nonce mint of the same tuple, making that mint
+ * fail on duplicate-commitment rejection. Gate both mint paths behind access
+ * control, and prefer not exposing both to distinct trust levels. A failed mint
+ * is recoverable: any subsequent derived mint advances the counter past the
+ * collision.
+ */
+module NativeShieldedTokenDerivedNonce {
+  import CompactStandardLibrary;
+
+  /**
+   * @description Monotonic index feeding the derived-nonce derivation.
+   */
+  export ledger _counter: Counter;
+
+  /**
+   * @description Advances the counter and returns the next derived coin nonce,
+   * for use as the `nonce` argument of a native token mint or a converter
+   * shield.
+   *
+   * @notice The derivation input is public ledger state, so mints using this
+   * nonce are recipient-public; see the module notes.
+   *
+   * @circuitInfo k=9, rows=451
+   *
+   * @return {Bytes<32>} - The next derived coin nonce.
+   */
+  export circuit _deriveNonce(): Bytes<32> {
+    _counter.increment(1);
+    return evolveNonce(_counter, pad(32, "NativeShieldedToken:nonce"));
+  }
+}
