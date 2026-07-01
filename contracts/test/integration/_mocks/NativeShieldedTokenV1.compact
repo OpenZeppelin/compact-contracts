@@ -1,0 +1,145 @@
+// SPDX-License-Identifier: MIT
+//
+// WARNING: FOR TESTING PURPOSES ONLY.
+// The single deployable used by the native-shielded-token integration suite.
+// Composes the Fungible profile (`NativeShieldedToken`) with the optional
+// derived-nonce and supply extensions in one compilation unit, so one deploy
+// exercises both mint paths (caller-supplied nonce and contract-derived
+// nonce), both burns, and supply accounting end-to-end against the local
+// stack.
+//
+// Unrestricted by design: the module circuits carry no authorization (gating
+// is a consumer concern; see the MIP §Access Control). This contract is NOT a
+// production preset — it is the integration deployable.
+//
+// DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+// From contracts/test/integration/_mocks/ up three levels to contracts/, then src/token/.
+import "../../../src/token/NativeShieldedToken" prefix NativeShieldedToken_;
+import "../../../src/token/extensions/NativeShieldedTokenDerivedNonce" prefix NativeShieldedTokenDerivedNonce_;
+import "../../../src/token/extensions/NativeShieldedTokenSupply" prefix NativeShieldedTokenSupply_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// Ledger field re-exports so specs can read state via the typed `Ledger`
+// (the indexer `queryContractState` path) without a proving round-trip.
+//
+// Only fields a module declares directly are surfaced this way: the token's
+// `_domain` and the derived-nonce `_counter`. Initialization + metadata live in
+// `NativeShieldedTokenCore`, and the supply totals in
+// `NativeShieldedTokenSupplyCore`, both behind prefixed imports — specs read
+// those through the `isInitialized` / `name` / `symbol` / `decimals` /
+// `totalMinted` / `totalBurned` / `totalSupply` circuits instead.
+export {
+  NativeShieldedToken__domain
+};
+export {
+  NativeShieldedTokenDerivedNonce__counter
+};
+
+/**
+ * @description Initializes the token module. `initialize` writes sealed
+ * metadata + domain, so it is constructor-only by the sealed-write rule. The
+ * derived-nonce extension is counter-only and needs no initialization.
+ */
+constructor(
+  domainSep: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>
+) {
+  NativeShieldedToken_initialize(domainSep, name_, symbol_, decimals_);
+}
+
+// ─── Metadata ───
+
+export circuit isInitialized(): Boolean {
+  return NativeShieldedToken_isInitialized();
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedToken_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedToken_tokenColor();
+}
+
+// ─── Supply accounting (NativeShieldedTokenSupply extension) ───
+
+export circuit totalMinted(): Uint<128> {
+  return NativeShieldedTokenSupply_totalMinted();
+}
+
+export circuit totalBurned(): Uint<128> {
+  return NativeShieldedTokenSupply_totalBurned();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return NativeShieldedTokenSupply_totalSupply();
+}
+
+// ─── Mint (caller-supplied nonce — recipient-private path) ───
+
+export circuit _mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  const coin = NativeShieldedToken__mint(recipient, amount, nonce);
+  NativeShieldedTokenSupply__addMinted(amount);
+  return coin;
+}
+
+// ─── Mint (derived nonce — recipient-public path) ───
+
+export circuit _deriveNonce(): Bytes<32> {
+  return NativeShieldedTokenDerivedNonce__deriveNonce();
+}
+
+// The documented composition: base `_mint` with the extension's `_deriveNonce`
+// output as the nonce source, plus supply accounting.
+export circuit _mintWithDerivedNonce(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>
+): ShieldedCoinInfo {
+  const coin = NativeShieldedToken__mint(recipient, amount, NativeShieldedTokenDerivedNonce__deriveNonce());
+  NativeShieldedTokenSupply__addMinted(amount);
+  return coin;
+}
+
+// ─── Burn (same-tx coin, transient spend) ───
+
+export circuit _burn(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  const refund = NativeShieldedToken__burn(coin, amount, refundTo);
+  NativeShieldedTokenSupply__addBurned(amount);
+  return refund;
+}
+
+// ─── Burn (contract-held coin, Merkle spend) ───
+
+export circuit _burnFromSelf(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>
+): Maybe<ShieldedCoinInfo> {
+  const change = NativeShieldedToken__burnFromSelf(coin, amount);
+  NativeShieldedTokenSupply__addBurned(amount);
+  return change;
+}
