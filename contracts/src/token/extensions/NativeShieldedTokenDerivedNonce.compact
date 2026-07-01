@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenDerivedNonce.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/extensions/NativeShieldedTokenDerivedNonce.compact)
 
 pragma language_version >= 0.23.0;
 
@@ -10,20 +10,21 @@ pragma language_version >= 0.23.0;
  * owns a monotonic `_counter` and exposes `_deriveNonce`; it imports no token
  * module and needs no initialization.
  *
- * @notice Pairs with `NativeShieldedToken`, `NativeShieldedTokenFamily`, and
- * `NativeTokenConverter`. The consuming contract composes the pieces:
+ * @notice Pairs with `NativeShieldedToken` and `NativeShieldedTokenFamily`. The
+ * consuming contract composes the pieces:
  *
  *   export circuit mint(recipient: ..., amount: Uint<64>): ShieldedCoinInfo {
  *     return Token__mint(recipient, amount, Derived__deriveNonce());
  *   }
  *
  * @dev Derivation
- * Each call derives `evolveNonce(_counter, pad(32, "NativeShieldedToken:nonce"))`:
- * the monotonic counter guarantees uniqueness, and the fixed tag pushes derived
- * nonces out of the small-integer space an honest caller of the base `_mint`
- * might pick, avoiding accidental cross-path collisions. One counter serves the
- * whole contract, so derived nonces never repeat across token types (domains)
- * or across the shielded/converter mint paths of one contract.
+ * Each call derives `evolveNonce(_counter, pad(32, "NativeShieldedToken:nonce"))`.
+ * `evolveNonce` hashes the counter into a full 32-byte nonce, so uniqueness comes
+ * from the monotonic counter, not the tag. The fixed tag is a domain separator:
+ * it keeps these derived nonces from clashing with any other `evolveNonce` call
+ * the implementing contract makes on the same counter for a different purpose.
+ * One counter serves the whole contract, so derived nonces never repeat across
+ * token types (domains) of one contract.
  *
  * @notice This variant is deterministic and recipient-PUBLIC by design: derived
  * nonces are predictable from public state, so anyone can recompute the coin
@@ -38,8 +39,9 @@ pragma language_version >= 0.23.0;
  * collides with a future derived-nonce mint of the same tuple, making that mint
  * fail on duplicate-commitment rejection. Gate both mint paths behind access
  * control, and prefer not exposing both to distinct trust levels. A failed mint
- * is recoverable: any subsequent derived mint advances the counter past the
- * collision.
+ * is recoverable with the same recipient and amount: the counter has already
+ * advanced, so the retry derives a fresh nonce and therefore a different
+ * commitment, which no longer collides.
  */
 module NativeShieldedTokenDerivedNonce {
   import CompactStandardLibrary;
@@ -51,8 +53,7 @@ module NativeShieldedTokenDerivedNonce {
 
   /**
    * @description Advances the counter and returns the next derived coin nonce,
-   * for use as the `nonce` argument of a native token mint or a converter
-   * shield.
+   * for use as the `nonce` argument of a native token mint.
    *
    * @notice The derivation input is public ledger state, so mints using this
    * nonce are recipient-public; see the module notes.
