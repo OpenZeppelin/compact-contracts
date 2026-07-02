@@ -1,0 +1,9 @@
+flowchart LR
+    TX(["🧾 shielded transaction"]):::tx
+    TX --> NF["<b>Nullifier set</b><br/>+1 per coin spent<br/><i>append-only</i>"]:::struct
+    TX --> CM["<b>Commitment tree</b><br/>+1 per coin created<br/><i>append-only</i>"]:::struct
+    TX --> DL["<b>Value deltas</b><br/>inputs − outputs, per color<br/><i>published in the clear</i>"]:::delta
+
+    classDef tx fill:#1e293b,stroke:#0f172a,color:#f8fafc;
+    classDef struct fill:#e0f2fe,stroke:#0284c7,color:#075985;
+    classDef delta fill:#fef3c7,stroke:#d97706,color:#78350f;

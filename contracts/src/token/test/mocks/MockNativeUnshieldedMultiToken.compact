@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeUnshieldedMultiToken" prefix NativeUnshieldedMultiToken_;
+
+export { ContractAddress, UserAddress, Either };
+
+constructor(uri_: Opaque<"string">) {
+  NativeUnshieldedMultiToken_initialize(uri_);
+}
+
+export circuit uri(domain: Bytes<32>): Opaque<"string"> {
+  return NativeUnshieldedMultiToken_uri(domain);
+}
+
+export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
+  return NativeUnshieldedMultiToken_tokenColor(domain);
+}
+
+export circuit unshieldedBurnAddress(): Either<ContractAddress, UserAddress> {
+  return NativeUnshieldedMultiToken_unshieldedBurnAddress();
+}
+
+export circuit totalMinted(domain: Bytes<32>): Uint<128> {
+  return NativeUnshieldedMultiToken_totalMinted(domain);
+}
+
+export circuit totalBurned(domain: Bytes<32>): Uint<128> {
+  return NativeUnshieldedMultiToken_totalBurned(domain);
+}
+
+export circuit totalSupply(domain: Bytes<32>): Uint<128> {
+  return NativeUnshieldedMultiToken_totalSupply(domain);
+}
+
+export circuit _mint(
+  domain: Bytes<32>,
+  recipient: Either<ContractAddress, UserAddress>,
+  amount: Uint<64>
+): Bytes<32> {
+  return NativeUnshieldedMultiToken__mint(domain, recipient, amount);
+}
+
+export circuit _burn(domain: Bytes<32>, amount: Uint<128>): [] {
+  NativeUnshieldedMultiToken__burn(domain, amount);
+}
+
+export circuit _burnFromContract(domain: Bytes<32>, amount: Uint<128>): [] {
+  NativeUnshieldedMultiToken__burnFromContract(domain, amount);
+}

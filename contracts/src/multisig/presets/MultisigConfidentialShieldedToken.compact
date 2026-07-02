@@ -1,0 +1,461 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (multisig/presets/MultisigConfidentialShieldedToken.compact)
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+/**
+ * @title MultisigConfidentialShieldedToken
+ * @description A single, deployable preset that puts per-customer MGBP balances
+ * ON-CHAIN but ENCRYPTED, as exponential-ElGamal ciphertexts under an operator
+ * (Monument) key. It is the confidential sibling of
+ * `MultisigNativeShieldedToken` (which keeps balances off-chain): same 2-of-3
+ * ECDSA authorization and same contract-owned shielded reserve, but with an
+ * encrypted per-customer ledger and supply that a key-holding regulator can
+ * verify and selectively disclose.
+ *
+ * Composes four pieces:
+ *   - `token/NativeShieldedToken`                         (reserve mint / burn, sealed color)
+ *   - `token/extensions/NativeShieldedTokenDerivedNonce`  (caller-free coin nonces)
+ *   - `multisig/EcdsaSignerManager`                       (2-of-3 ECDSA verification)
+ *   - `token/extensions/NativeShieldedTokenConfidentialLedger` (encrypted ledger)
+ *
+ * # Shape (the constraints that force it)
+ *
+ * - **Coin ops do NOT leak the amount — only sinks do.** `sendShielded` emits
+ *   only commitments/nullifiers. An amount leaks only at a real sink: a
+ *   plaintext ledger write, a public circuit parameter, or a return. So amounts
+ *   and coins are sourced from WITNESSES, only ciphertexts are written, and the
+ *   in-contract reserve burn in `redeem` is amount-private. (INV-33/39)
+ * - **Reserve and ledger are decoupled.** A public Zswap reserve (coins, grown by
+ *   `mintReserve`, shrunk by `redeem` burns) and a private encrypted ledger
+ *   (`encTotalSupply`, grown by `credit`, shrunk by `redeem`) are independent,
+ *   bridged at issuance and reconciled by the off-chain solvency audit. (INV-23/53)
+ * - **Mint amount is irreducibly public but unattributed.** `mintReserve` emits
+ *   its amount in the `shieldedMints` effect (M2 split: aggregate reserve top-up,
+ *   no customer). Customer attribution happens only in the private `credit`. (INV-36)
+ * - **Authorization is cryptographic, never `msg.sender`.** A 2-of-3 threshold of
+ *   registered ECDSA signers approves each op's `msgHash`; `credit`/`redeem` bind
+ *   the private amount through `amountCommitment`, never a plaintext. (INV-46/47/48)
+ *
+ * # Prover / co-signer trust model
+ *
+ * "Private" means private from the public indexer and third parties — NOT from
+ * the 2-of-3 co-signers or the prover. `mintReserve` (public, no witness) is
+ * relayer-proven. `credit`/`redeem` are Monument-proven (it holds `opAmount`,
+ * `ek`, balances, coins). BitGo co-signs `amountCommitment` via HSM, learns the
+ * amount off-chain, and never runs a proof server or holds `ek`/coin keys. (INV-52)
+ *
+ * # M-of-N sizing
+ *
+ * Fixed 2-of-3: registers 3 signer commitments (`Vector<3>`) and accepts exactly
+ * 2 approvals per op (`Vector<2>`). These sizes are compile-time literals (part
+ * of the verifier key); `threshold` is a runtime constructor scalar validated
+ * `1 <= threshold <= 3` (must be `<= 2` to be satisfiable here). A different
+ * M-of-N shape is a recompiled variant with its own verifier key.
+ *
+ * @notice ECDSA verification is STUBBED in `EcdsaSignerManager`
+ * (`stubVerifySignature` always returns true) and the `msgHash` uses
+ * `persistentHash` rather than `keccak256`. Both stay until the Compact ECDSA
+ * primitive lands; this contract MUST NOT be deployed to production before the
+ * destub. The placeholder is acceptable for test/preprod only. (INV-46)
+ */
+
+// #621 token core + derived-nonce extension. (Plaintext) Supply extension omitted.
+import "../../token/NativeShieldedToken" prefix Token_;
+import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix TokenNonce_;
+// NEW confidential ledger extension (encBalances + encTotalSupply/Burned, sealed encPk).
+import "../../token/extensions/NativeShieldedTokenConfidentialLedger" prefix Conf_;
+// #628 ECDSA M-of-N registry + verification.
+import "../EcdsaSignerManager" prefix Signer_;
+// ElGamal — only for `expandRandomness` (pure) and the `Ciphertext` view type.
+import "../../crypto/ElGamal" prefix ElGamal_;
+
+// Surface coin + ciphertext types as named TS artifact aliases so dApp/relayer
+// code (the operator's UTXO store, the regulator's decryptor) imports them.
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ElGamal_Ciphertext };
+
+// ─── Witnesses (the family's FIRST witness surface) ─────────────
+//
+// Implemented in `presets/witnesses.ts`. INV-40: each returns private material
+// that MUST NEVER be logged, persisted off-device, or sent over a network. Each
+// is read EXACTLY ONCE per op into a `const` and that single value reused for
+// every dependent operation (INV-11) — a witness is an oracle and may return a
+// different value on a second call.
+
+/** Operator ElGamal secret seed (ek). Redeem + selective disclosure only. */
+witness elGamalSecret(): Bytes<32>;
+/** Current plaintext balance from Monument's books, for the redeem decrypt-check. */
+witness accountBalancePlain(customer: Bytes<32>): Uint<64>;
+/** The private op amount (credit / redeem). */
+witness opAmount(): Uint<64>;
+/** Fresh, high-entropy 32-byte blind opening `amountCommitment` (INV-35). */
+witness opAmountBlind(): Bytes<32>;
+/** Fresh 32-byte randomness seed; expanded per-encryption in-circuit (INV-34). */
+witness encryptRandomness(): Bytes<32>;
+/** The contract-held reserve coin to burn on redeem (INV-15/50). */
+witness redeemCoin(): QualifiedShieldedCoinInfo;
+
+// ─── State ──────────────────────────────────────────────────────
+//
+// The preset owns ONLY the multisig replay nonce. All other ledger cells live
+// in the composed modules (prefixed, so no `_isInitialized` collision):
+//   Token_*      : _isInitialized, _domain (sealed), _name/_symbol/_decimals
+//   TokenNonce_* : _counter, _nonce               (coin-nonce chain)
+//   Signer_*     : _instanceSalt, _signers, _signerCount, _threshold, _isInitialized
+//   Conf_*       : encPk (sealed), encBalances, encTotalSupply, encTotalBurned, _confidentialInit
+
+/**
+ * @description Multisig replay nonce. Read into each op's `msgHash` then
+ * incremented; strictly monotonic over the contract lifetime. Distinct from the
+ * derived coin-nonce chain. (INV-7/26)
+ */
+export ledger _replayNonce: Counter;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Initializes all four composed modules. Each owns an independent
+ * init flag / seed (compact#270 per-module workaround), so partial
+ * initialization is possible — this constructor MUST seed all four or the first
+ * op aborts. (INV-9/17/18/24/28/29/44)
+ *
+ * @param {Bytes<32>} domainSep - Token domain separator; with `kernel.self()`
+ * fixes this contract's immutable color.
+ * @param {Opaque<"string">} name_ - Token name.
+ * @param {Opaque<"string">} symbol_ - Token symbol.
+ * @param {Uint<8>} decimals_ - Display decimals.
+ * @param {Bytes<32>} instanceSalt - Cryptographically random per-instance salt;
+ * makes signer commitments cross-instance-unlinkable.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - The signer commitments
+ * (computed off-chain via `_calculateSignerId`). No duplicates.
+ * @param {Uint<8>} threshold - Minimum approvals; `1 <= threshold <= 3`. For this
+ * 2-of-3 shape, must be `<= 2` to be satisfiable.
+ * @param {Bytes<32>} initCoinNonce - Random seed for the derived coin-nonce
+ * chain; non-zero.
+ * @param {JubjubPoint} operatorPk - The operator's ElGamal public key; sealed.
+ */
+constructor(
+  domainSep: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  threshold: Uint<8>,
+  initCoinNonce: Bytes<32>,
+  operatorPk: JubjubPoint
+) {
+  // _domain is sealed here; the token color is fixed for the contract lifetime.
+  Token_initialize(domainSep, name_, symbol_, decimals_);
+  // Seed the coin-nonce chain (non-zero, once).
+  TokenNonce_initialize(initCoinNonce);
+  // Threshold validity, no-dup signers, salted commitments.
+  Signer_initialize<3>(instanceSalt, signerCommitments, threshold);
+  // Seal encPk; seed encTotalSupply/encTotalBurned to a canonical Enc(0).
+  Conf_initialize(operatorPk);
+}
+
+// ─── Reserve layer (public coins) ───────────────────────────────
+
+/**
+ * @description Public, unattributed aggregate reserve top-up. Mints
+ * contract-owned coins to `right(kernel.self())`; the recipient is the
+ * compile-time constant self, never a parameter (INV-6). The amount is public
+ * via the `shieldedMints` effect (intended, unattributed — INV-36); no customer
+ * is credited. Relayer-provable: no witness, no private input.
+ *
+ * The signers approve `msgHash = H("mgbp:mintReserve:" ‖ self ‖ replayNonce ‖
+ * amount)`. (INV-47)
+ *
+ * @notice The returned `ShieldedCoinInfo` is the ONLY copy of the minted coin's
+ * info: the operator MUST capture it (with the Zswap output's Merkle index) or
+ * the value is irrecoverably stranded. (INV-30)
+ *
+ * Requirements:
+ *
+ * - All four modules initialized. (INV-9)
+ * - `threshold` valid ECDSA approvals over the mint `msgHash`. (INV-19)
+ *
+ * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the
+ * protocol `mintShieldedToken` primitive.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of the approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the mint `msgHash`.
+ * @return {ShieldedCoinInfo} - The newly minted contract-owned coin.
+ */
+export circuit mintReserve(
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): ShieldedCoinInfo {
+  // INV-9: enforce confidential init too (Token/Nonce/Signer init are asserted
+  // by the delegated calls below; this op does not otherwise touch Conf_).
+  Conf_assertInitialized();
+
+  // Consume and advance the replay nonce. (INV-26)
+  const replayNonce = _replayNonce;
+  _replayNonce.increment(1);
+
+  // Bind op-domain, instance, replay nonce, and the public amount. (INV-47)
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "mgbp:mintReserve:"),
+    kernel.self().bytes,
+    replayNonce as Bytes<32>,
+    amount as Bytes<32>
+  ]);
+
+  // Threshold of distinct registered signers with valid signatures. (INV-19)
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  // Recipient is the constant self (INV-6); derived coin nonce (INV-27).
+  return Token__mint(
+    right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+    amount,
+    TokenNonce__deriveNonce()
+  );
+}
+
+// ─── Accounting layer (encrypted, private) ──────────────────────
+
+/**
+ * @description Private per-customer credit (tokenisation allocation). A keyless
+ * homomorphic add: `amount` is a witness, bound to the 2-of-3 signers via
+ * `amountCommitment` (INV-10/48). Mirrors into `encTotalSupply` so conservation
+ * holds (INV-20). Proven by Monument (knows the amount).
+ *
+ * The signers approve `msgHash = H("mgbp:credit:" ‖ self ‖ replayNonce ‖
+ * customer ‖ amountCommitment)`. (INV-47)
+ *
+ * Leaks: that `customer` was touched + tx success; never the amount. (INV-37/39)
+ *
+ * Requirements:
+ *
+ * - Confidential ledger + signer registry initialized. (INV-9)
+ * - `threshold` valid ECDSA approvals over the credit `msgHash`. (INV-19)
+ * - `persistentCommit(opAmount, opAmountBlind) == amountCommitment`. (INV-10)
+ *
+ * @param {Bytes<32>} customer - The (pseudonymous) account commitment to credit.
+ * @param {Bytes<32>} amountCommitment - Hiding commitment to the private amount,
+ * signed by the co-signers.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the credit `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit credit(
+  customer: Bytes<32>,
+  amountCommitment: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  // INV-11: read each witness exactly once and reuse the bound value.
+  const amount = opAmount();
+  const blind = opAmountBlind();
+  const seed = encryptRandomness();
+
+  // Consume and advance the replay nonce. (INV-26)
+  const replayNonce = _replayNonce;
+  _replayNonce.increment(1);
+
+  // Bind op-domain, instance, nonce, customer, and the amount commitment. (INV-47)
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "mgbp:credit:"),
+    kernel.self().bytes,
+    replayNonce as Bytes<32>,
+    customer,
+    amountCommitment
+  ]);
+
+  // Threshold of distinct registered signers with valid signatures. (INV-19)
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  // INV-10/48: bind the signed commitment to the exact private amount the
+  // circuit will act on. The commitment is hiding (INV-35); it never crosses
+  // into a sink (compared in an assert only).
+  assert(persistentCommit<Uint<64>>(amount, blind) == amountCommitment,
+         "ConfidentialLedger: amount commitment mismatch");
+
+  // INV-34: distinct, independent randomness per encryption, derived in-circuit
+  // from one seed under distinct tags (the wallet cannot force reuse).
+  const rBalance = ElGamal_expandRandomness(seed, pad(32, "credit_balance"));
+  const rSupply  = ElGamal_expandRandomness(seed, pad(32, "credit_supply"));
+
+  // INV-16/20/32: first-touch seed + homomorphic add mirrored into supply.
+  // Keyless (no ek); no overflow guard (INV-54).
+  Conf__credit(customer, amount, rBalance, rSupply);
+}
+
+/**
+ * @description Private per-customer redeem (debit) + atomic in-contract
+ * reserve-coin burn. Verifies the operator key and the stored balance plaintext
+ * (INV-12/13), guards overdraw (INV-14), debits the balance, folds the amount
+ * out of supply and into burned (INV-20/21), then burns the reserve coin via
+ * `Token__burnFromContract` with the coin AND amount sourced from witnesses —
+ * so neither is a public input and the burn is amount-private and atomic with
+ * the debit (INV-22/39). Proven by Monument (knows amount + key + coin).
+ *
+ * The signers approve `msgHash = H("mgbp:redeem:" ‖ self ‖ replayNonce ‖
+ * customer ‖ amountCommitment)`. (INV-47)
+ *
+ * Leaks: that `customer` was touched + one success bit (`bal >= opAmount`);
+ * never the amount, balance, coin value, or change. (INV-39)
+ *
+ * Requirements:
+ *
+ * - Confidential ledger + signer registry + token initialized. (INV-9)
+ * - `threshold` valid ECDSA approvals over the redeem `msgHash`. (INV-19)
+ * - `persistentCommit(opAmount, opAmountBlind) == amountCommitment`. (INV-10)
+ * - `elGamalSecret` is the operator secret for `encPk`. (INV-12)
+ * - `accountBalancePlain(customer)` is the true stored balance. (INV-13)
+ * - `accountBalancePlain(customer) >= opAmount`. (INV-14)
+ * - `redeemCoin` is a contract-held coin of this color with value `>= opAmount`. (INV-15)
+ *
+ * @param {Bytes<32>} customer - The account commitment to debit.
+ * @param {Bytes<32>} amountCommitment - Hiding commitment to the private amount,
+ * signed by the co-signers.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the redeem `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit redeem(
+  customer: Bytes<32>,
+  amountCommitment: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  // INV-11: read each witness exactly once and reuse the bound value. The same
+  // `amount` feeds the commitment check, the overdraw bound, the balance/supply
+  // debit, the burned fold, and the reserve-coin burn.
+  const amount = opAmount();
+  const blind = opAmountBlind();
+  const ek = elGamalSecret();
+  const bal = accountBalancePlain(customer);
+  const seed = encryptRandomness();
+  const coin = redeemCoin();
+
+  // Consume and advance the replay nonce. (INV-26)
+  const replayNonce = _replayNonce;
+  _replayNonce.increment(1);
+
+  // Bind op-domain, instance, nonce, customer, and the amount commitment. (INV-47)
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "mgbp:redeem:"),
+    kernel.self().bytes,
+    replayNonce as Bytes<32>,
+    customer,
+    amountCommitment
+  ]);
+
+  // Threshold of distinct registered signers with valid signatures. (INV-19)
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  // INV-10/48: bind the signed commitment to the exact private amount.
+  assert(persistentCommit<Uint<64>>(amount, blind) == amountCommitment,
+         "ConfidentialLedger: amount commitment mismatch");
+
+  // INV-12 (key-pair) + INV-13 (decrypt-check): prove `ek` is the operator
+  // secret and `bal` is the true stored balance before trusting either.
+  Conf_assertBalanceDecryptsTo(customer, ek, bal);
+
+  // INV-14: overdraw guard on the decrypt-verified plaintext. A homomorphic sub
+  // cannot detect underflow (INV-54), so this guard is load-bearing.
+  assert(bal >= amount, "ConfidentialLedger: insufficient balance");
+
+  // INV-34: distinct, independent randomness per encryption.
+  const rBalance = ElGamal_expandRandomness(seed, pad(32, "redeem_balance"));
+  const rSupply  = ElGamal_expandRandomness(seed, pad(32, "redeem_supply"));
+  const rBurned  = ElGamal_expandRandomness(seed, pad(32, "redeem_burned"));
+
+  // INV-20/21/22/25: balance -= amount, supply -= amount, burned += amount.
+  Conf__debit(customer, amount, rBalance, rSupply, rBurned);
+
+  // INV-15/22/39/50: burn the reserve coin in-contract. `coin` and `amount` are
+  // witnesses, disclosed only at the `sendShielded` effect inside
+  // `_burnFromContract` (which emits commitments/nullifiers, never the value).
+  // The change coin auto-returns to the contract; its info is intentionally NOT
+  // returned (a return is a sink, INV-39) and is reconstructed off-chain by the
+  // operator (INV-30).
+  const _change = Token__burnFromContract(coin, amount as Uint<128>);
+}
+
+// ─── Audit views (return ciphertexts; regulator decrypts off-chain) ──
+
+/**
+ * @description Returns `customer`'s encrypted balance (`Enc(0)` if untouched).
+ * @param {Bytes<32>} customer - The account commitment to query.
+ * @return {ElGamal_Ciphertext} - The hiding balance ciphertext.
+ */
+export circuit encryptedBalanceOf(customer: Bytes<32>): ElGamal_Ciphertext {
+  return Conf_encryptedBalanceOf(customer);
+}
+
+/**
+ * @description Returns the encrypted total supply (`= Σ encBalances`). (INV-20)
+ * @return {ElGamal_Ciphertext} - The hiding supply ciphertext.
+ */
+export circuit encryptedTotalSupply(): ElGamal_Ciphertext {
+  return Conf_encryptedTotalSupply();
+}
+
+/**
+ * @description Returns the encrypted cumulative burned total. (INV-21)
+ * @return {ElGamal_Ciphertext} - The hiding burned ciphertext.
+ */
+export circuit encryptedTotalBurned(): ElGamal_Ciphertext {
+  return Conf_encryptedTotalBurned();
+}
+
+// ─── Config / registry views ────────────────────────────────────
+
+/**
+ * @description Returns this token's coin color, `tokenType(_domain, self())`.
+ * @return {Bytes<32>} - The immutable coin color.
+ */
+export circuit tokenColor(): Bytes<32> {
+  return Token_tokenColor();
+}
+
+/**
+ * @description Returns the current multisig replay nonce (next op binds it).
+ * @return {Uint<64>} - The replay nonce.
+ */
+export circuit getNonce(): Uint<64> {
+  return _replayNonce;
+}
+
+/**
+ * @description Returns the number of registered signers (3 for this preset).
+ * @return {Uint<8>} - The signer count.
+ */
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+/**
+ * @description Returns the approval threshold, fixed at construction.
+ * @return {Uint<8>} - The threshold.
+ */
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+/**
+ * @description Returns whether `commitment` is a registered signer.
+ * @param {Bytes<32>} commitment - The commitment to check.
+ * @return {Boolean} - True if registered.
+ */
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Signer_isSigner(commitment);
+}
+
+/**
+ * @description Computes a signer commitment from an ECDSA public key and the
+ * instance salt. Pure — the deployer calls it off-chain to compute the
+ * constructor commitments. (INV-8/44)
+ * @param {Bytes<64>} pk - The ECDSA public key.
+ * @param {Bytes<32>} salt - The instance salt.
+ * @return {Bytes<32>} - The signer commitment.
+ */
+export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return Signer__calculateSignerId(pk, salt);
+}

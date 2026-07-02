@@ -1,0 +1,352 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.1.0 (token/extensions/FungibleTokenConverter.compact)
+
+pragma language_version >= 0.21.0;
+
+/**
+ * @module FungibleTokenConverter
+ * @description Optional extension to FungibleToken that converts Map balances
+ * to and from native UTXO representations (shielded Zswap coins and
+ * unshielded Schnorr-signed value). An alternative to the MIP-0004 design.
+ *
+ * - `_shield` / `_shieldWithNonce`: Map balance -> shielded coin.
+ * - `_unshield`: shielded coin -> Map balance (with partial-amount refund).
+ * - `_toUnshielded`: Map balance -> unshielded value.
+ * - `_fromUnshielded`: unshielded value -> Map balance.
+ *
+ * # Reserve-account supply model
+ *
+ * Outbound conversions move the caller's Map balance to a RESERVE account
+ * (the contract's own address in the `_balances` map); inbound conversions
+ * move it back from the reserve to the credited account. Consequences:
+ *
+ * - The base invariant `sum(Map balances) == totalSupply` holds EXACTLY at
+ *   all times; `totalSupply` never changes on conversion.
+ * - The outstanding UTXO-side value is `balanceOf(RESERVE)` — exposed as
+ *   `utxoSupply()` — with no separate counter that could drift.
+ * - Inbound conversions are structurally capped by the reserve balance: only
+ *   this contract can mint its colors, so UTXO-side value can never exceed
+ *   what outbound conversions placed in the reserve.
+ *
+ * # Inbound value is destroyed, not held
+ *
+ * Inbound conversions burn the absorbed UTXO-side value (shielded coins to
+ * the zero-key burn address via the transient spend path; unshielded value to
+ * the zero `UserAddress`). Absorb-and-hold designs leave a contract-owned
+ * pile that a future CMA verifier-key rotation could add a spend circuit for,
+ * re-monetizing value already credited back to Map balances — an
+ * issuer-controlled double-spend. Burned value is unspendable under any
+ * future verifier key.
+ *
+ * # Privacy
+ *
+ * `_shield` derives the coin nonce from public ledger state and is therefore
+ * recipient-public (commitments are recomputable by enumerating candidate
+ * recipient keys); the kernel additionally discloses mint amount and domain.
+ * `_shieldWithNonce` with a secret, cryptographically random nonce is the
+ * recipient-private variant. The internal nonce chain is domain-separated
+ * (coin nonces are `persistentHash([pad(32, "FungibleTokenConverter:nonce"),
+ * chainValue])`), so values read from the public `_nonce` field can never
+ * collide with internal mints.
+ *
+ * # Composition
+ *
+ * The consuming contract's constructor MUST call `FungibleToken_initialize`
+ * (which owns the shared Initializable flag) and this module's `initialize`
+ * (which only writes sealed fields and the nonce seed, and is therefore
+ * constructor-only by the sealed-write rule). The single token `domain` is
+ * fixed at construction; the color is computed at call time, never in the
+ * constructor. Like the base library, this module includes NO access
+ * control; conversion is value-preserving, so consumers MAY leave it open to
+ * all holders or gate it as policy requires.
+ */
+module FungibleTokenConverter {
+  import CompactStandardLibrary;
+  import "../../security/Initializable" prefix Initializable_;
+  import "../../utils/Utils" prefix Utils_;
+  import "../FungibleToken" prefix FungibleToken_;
+
+  /**
+   * @description Domain separator fixed at construction; with the contract
+   * address it determines the color of both UTXO representations.
+   */
+  export sealed ledger _domain: Bytes<32>;
+  /**
+   * @description Latest value of the internal nonce evolution chain for
+   * shielded mints. Coin nonces are derived from (not equal to) this value.
+   */
+  export ledger _nonce: Bytes<32>;
+  /**
+   * @description Monotonic index feeding the internal nonce evolution chain.
+   */
+  export ledger _counter: Counter;
+
+  /**
+   * @description Initializes the converter's domain and nonce seed.
+   * @dev MUST be called in the consuming contract's constructor, alongside
+   * `FungibleToken_initialize`. Writing the sealed `_domain` makes this
+   * circuit constructor-only.
+   *
+   * @param {Bytes<32>} domainSep - Domain separator for the token's UTXO color.
+   * @param {Bytes<32>} initNonce - Nonce chain seed. Choose unpredictably.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(domainSep: Bytes<32>, initNonce: Bytes<32>): [] {
+    _domain = disclose(domainSep);
+    _nonce = disclose(initNonce);
+  }
+
+  /**
+   * @description Returns the color (token type) of this token's UTXO
+   * representations: `tokenType(_domain, kernel.self())`, computed at call
+   * time.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Bytes<32>} - The color.
+   */
+  export circuit tokenColor(): Bytes<32> {
+    Initializable_assertInitialized();
+    return tokenType(_domain, kernel.self());
+  }
+
+  /**
+   * @description Returns the total value currently held in UTXO form (both
+   * representations): the reserve account's Map balance.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Uint<128>} - The outstanding UTXO-side value.
+   */
+  export circuit utxoSupply(): Uint<128> {
+    return FungibleToken_balanceOf(RESERVE());
+  }
+
+  /**
+   * @description Converts `value` of the caller's Map balance into a shielded
+   * coin minted to `recipient`, using an internally derived nonce
+   * (recipient-public; see the module notes). For a recipient-private
+   * conversion use `_shieldWithNonce`.
+   *
+   * @notice The returned coin info MUST be delivered to `recipient` out of
+   * band; wallets cannot detect contract-minted coins by scanning the chain.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is greater than 0.
+   * - `recipient` is not zero.
+   * - The caller has a Map balance of at least `value`.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {Uint<64>} value - Amount to convert. Capped at `Uint<64>` by the
+   * protocol's shielded mint.
+   * @return {ShieldedCoinInfo} - The newly created coin's info.
+   */
+  export circuit _shield(
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   value: Uint<64>
+                   ): ShieldedCoinInfo {
+    _counter.increment(1);
+    const chainValue = evolveNonce(_counter, _nonce);
+    _nonce = chainValue;
+    const coinNonce = persistentHash<Vector<2, Bytes<32>>>(
+      [pad(32, "FungibleTokenConverter:nonce"), chainValue]
+    );
+    return _shieldWithNonce(recipient, value, coinNonce);
+  }
+
+  /**
+   * @description Converts `value` of the caller's Map balance into a shielded
+   * coin minted to `recipient`, using a caller-supplied nonce. With a secret,
+   * cryptographically random nonce this is the recipient-private conversion.
+   * The caller is fully responsible for nonce uniqueness.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is greater than 0.
+   * - `recipient` is not zero.
+   * - The caller has a Map balance of at least `value`.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {Uint<64>} value - Amount to convert.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
+   * contract's color.
+   * @return {ShieldedCoinInfo} - The newly created coin's info.
+   */
+  export circuit _shieldWithNonce(
+                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   value: Uint<64>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    Initializable_assertInitialized();
+    assert(value > 0, "FungibleTokenConverter: zero amount");
+    assert(!Utils_isKeyOrAddressZero(recipient), "FungibleTokenConverter: invalid recipient");
+
+    FungibleToken__unsafeTransfer(RESERVE(), value);
+    return mintShieldedToken(_domain, disclose(value), disclose(nonce), disclose(recipient));
+  }
+
+  /**
+   * @description Converts `amount` from `coin` (a shielded coin provided
+   * within the current transaction) back into Map balance for `creditTo`,
+   * refunding any unconverted remainder of the coin as a shielded coin to
+   * `refundTo`.
+   *
+   * The absorbed shielded value is destroyed (sent to the zero-key burn
+   * address via the transient spend path); the Map credit is paid from the
+   * reserve account.
+   *
+   * @notice The returned refund coin info (if any) MUST be delivered to
+   * `refundTo` out of band.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `amount` is greater than 0.
+   * - `coin.color` is this token's color.
+   * - `amount` is less than or equal to `coin.value`.
+   * - `creditTo` is not zero and not a ContractAddress.
+   * - `refundTo` is not zero (the zero key is the shielded burn address).
+   * - The reserve holds at least `amount` (guaranteed for coins originating
+   *   from `_shield`; see the module notes).
+   *
+   * @param {ShieldedCoinInfo} coin - The shielded coin to convert from.
+   * @param {Uint<128>} amount - Value to convert back. Must be <= `coin.value`.
+   * @param {Either<Bytes<32>, ContractAddress>} creditTo - Map account to credit.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
+   * route the unconverted shielded remainder.
+   * @return {Maybe<ShieldedCoinInfo>} - The shielded refund coin created for
+   * `refundTo`, or `none` if the coin was converted in full.
+   */
+  export circuit _unshield(
+                   coin: ShieldedCoinInfo,
+                   amount: Uint<128>,
+                   creditTo: Either<Bytes<32>, ContractAddress>,
+                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   ): Maybe<ShieldedCoinInfo> {
+    Initializable_assertInitialized();
+    assert(amount > 0, "FungibleTokenConverter: zero amount");
+    assert(coin.color == tokenType(_domain, kernel.self()), "FungibleTokenConverter: wrong token");
+    assert(coin.value >= amount, "FungibleTokenConverter: insufficient coin value");
+    assert(!Utils_isKeyOrAddressZero(refundTo), "FungibleTokenConverter: invalid refund target");
+
+    receiveShielded(disclose(coin));
+    const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
+    FungibleToken__transfer(RESERVE(), creditTo, disclose(amount));
+
+    if (disclose(sendRes.change.is_some)) {
+      const refundRes = sendImmediateShielded(
+        disclose(sendRes.change.value),
+        disclose(refundTo),
+        disclose(sendRes.change.value.value)
+      );
+      return some<ShieldedCoinInfo>(refundRes.sent);
+    }
+    return none<ShieldedCoinInfo>();
+  }
+
+  /**
+   * @description Converts `value` of the caller's Map balance into unshielded
+   * value owned by `recipient`.
+   *
+   * @notice The unshielded output is publicly visible and wallet-discoverable;
+   * no out-of-band delivery is needed.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is greater than 0.
+   * - `recipient` is not the zero address or zero `UserAddress` (the latter
+   *   is the unshielded burn address).
+   * - The caller has a Map balance of at least `value`.
+   *
+   * @param {Either<ContractAddress, UserAddress>} recipient - The recipient.
+   * @param {Uint<64>} value - Amount to convert. Capped at `Uint<64>` by the
+   * protocol's unshielded mint.
+   * @return {Bytes<32>} - The minted token's color.
+   */
+  export circuit _toUnshielded(
+                   recipient: Either<ContractAddress, UserAddress>,
+                   value: Uint<64>
+                   ): Bytes<32> {
+    Initializable_assertInitialized();
+    assert(value > 0, "FungibleTokenConverter: zero amount");
+    assert(!isUnshieldedTargetZero(recipient), "FungibleTokenConverter: invalid recipient");
+
+    FungibleToken__unsafeTransfer(RESERVE(), value);
+    return mintUnshieldedToken(_domain, disclose(value), disclose(recipient));
+  }
+
+  /**
+   * @description Converts `amount` of unshielded value, provided to the
+   * contract within the current transaction, back into Map balance for
+   * `creditTo`. The absorbed unshielded value is destroyed (sent to the zero
+   * `UserAddress`); the Map credit is paid from the reserve account.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `amount` is greater than 0.
+   * - `creditTo` is not zero and not a ContractAddress.
+   * - The transaction provides `amount` of this token's unshielded value to
+   *   the contract.
+   * - The reserve holds at least `amount`.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} creditTo - Map account to credit.
+   * @param {Uint<128>} amount - Value to convert back.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _fromUnshielded(
+                   creditTo: Either<Bytes<32>, ContractAddress>,
+                   amount: Uint<128>
+                   ): [] {
+    Initializable_assertInitialized();
+    assert(amount > 0, "FungibleTokenConverter: zero amount");
+
+    const color = tokenType(_domain, kernel.self());
+    receiveUnshielded(color, disclose(amount));
+    sendUnshielded(color, disclose(amount), unshieldedBurnAddress());
+    FungibleToken__transfer(RESERVE(), creditTo, disclose(amount));
+  }
+
+  /**
+   * @description Returns the burn target for unshielded value: the all-zero
+   * `UserAddress`, for which no signing key is known.
+   *
+   * @return {Either<ContractAddress, UserAddress>} - The unshielded burn address.
+   */
+  export pure circuit unshieldedBurnAddress(): Either<ContractAddress, UserAddress> {
+    return right<ContractAddress, UserAddress>(default<UserAddress>);
+  }
+
+  /**
+   * @description Returns the reserve account: the contract's own address in
+   * the FungibleToken balance map. Its balance is the outstanding UTXO-side
+   * value.
+   *
+   * @return {Either<Bytes<32>, ContractAddress>} - The reserve account.
+   */
+  circuit RESERVE(): Either<Bytes<32>, ContractAddress> {
+    return right<Bytes<32>, ContractAddress>(kernel.self());
+  }
+
+  /**
+   * @description Returns `true` if `target`'s active branch holds the zero value.
+   *
+   * @param {Either<ContractAddress, UserAddress>} target - The value to check.
+   * @return {Boolean} - `true` if the active branch is zero, `false` otherwise.
+   */
+  circuit isUnshieldedTargetZero(target: Either<ContractAddress, UserAddress>): Boolean {
+    if (target.is_left) {
+      return target.left == default<ContractAddress>;
+    } else {
+      return target.right == default<UserAddress>;
+    }
+  }
+}

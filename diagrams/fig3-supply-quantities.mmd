@@ -1,0 +1,23 @@
+%%{init: {"flowchart": {"rankSpacing": 110, "nodeSpacing": 75, "curve": "basis"}}}%%
+flowchart TB
+    M["👁️ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>totalMinted = 1,000,000</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;exact · independently verifiable · the only inflation bound&nbsp;&nbsp;&nbsp;"]:::pub
+
+    M --> PB["👁️ protocol-burned<br/><b>100,000</b>"]:::pub
+    M --> HB["🙈 hidden-burned<br/><b>200,000</b>"]:::hid
+    M --> SP["🙈 spendable<br/><b>300,000</b>"]:::hid
+    M --> CB["👁️ contract-burned<br/><b>400,000</b>"]:::pub
+
+    PB --> TS
+    HB --> TS
+    SP --> TS
+    TS["👁️ <b>totalSupply = 600,000</b><br/>contract counter<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;blind to hidden + protocol&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::pub
+
+    SP --> TR["🙈 <b>true spendable = 300,000</b><br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;computable by no one&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::hid
+
+    SP --> PV
+    HB --> PV
+    CB --> PV
+    PV["👁️ <b>pool value = 900,000</b><br/>indexer delta-fold<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;blind to contract + hidden&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]:::pub
+
+    classDef pub fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef hid fill:#e5e7eb,stroke:#6b7280,color:#374151;

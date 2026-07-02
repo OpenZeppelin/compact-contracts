@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.21.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeShieldedToken" prefix NativeShieldedToken_;
+import "../../extensions/NativeShieldedTokenCustody" prefix Custody_;
+import "../../../security/Pausable" prefix Pausable_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// The Initializable state is shared across the composition: the base token's
+// initialize owns it; the custody extension has no initializer.
+constructor(
+  domainSep: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>
+) {
+  NativeShieldedToken_initialize(domainSep, name_, symbol_, decimals_);
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedToken_name();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedToken_tokenColor();
+}
+
+export circuit nativeTotalMinted(): Uint<128> {
+  return NativeShieldedToken_totalMinted();
+}
+
+export circuit nativeTotalBurned(): Uint<128> {
+  return NativeShieldedToken_totalBurned();
+}
+
+export circuit nativeTotalSupply(): Uint<128> {
+  return NativeShieldedToken_totalSupply();
+}
+
+export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  return Custody_balanceOf(account);
+}
+
+export circuit custodySupply(): Uint<128> {
+  return Custody_custodySupply();
+}
+
+export circuit isFrozen(account: Either<Bytes<32>, ContractAddress>): Boolean {
+  return Custody_isFrozen(account);
+}
+
+export circuit isPaused(): Boolean {
+  return Pausable_isPaused();
+}
+
+export circuit _pause(): [] {
+  return Pausable__pause();
+}
+
+export circuit _unpause(): [] {
+  return Pausable__unpause();
+}
+
+export circuit _freeze(account: Either<Bytes<32>, ContractAddress>): [] {
+  return Custody__freeze(account);
+}
+
+export circuit _unfreeze(account: Either<Bytes<32>, ContractAddress>): [] {
+  return Custody__unfreeze(account);
+}
+
+export circuit _mint(account: Either<Bytes<32>, ContractAddress>, amount: Uint<128>): [] {
+  return Custody__mint(account, amount);
+}
+
+export circuit _burn(account: Either<Bytes<32>, ContractAddress>, amount: Uint<128>): [] {
+  return Custody__burn(account, amount);
+}
+
+export circuit _transfer(
+  fromAccount: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  amount: Uint<128>
+): [] {
+  return Custody__transfer(fromAccount, to, amount);
+}
+
+export circuit _deposit(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  creditTo: Either<Bytes<32>, ContractAddress>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return Custody__deposit(coin, amount, creditTo, refundTo);
+}
+
+export circuit _withdraw(
+  account: Either<Bytes<32>, ContractAddress>,
+  amount: Uint<64>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return Custody__withdraw(account, amount, recipient, nonce);
+}
+
+// Exposes the base mint so tests can create native coins to deposit.
+export circuit _nativeMint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return NativeShieldedToken__mint(recipient, amount, nonce);
+}

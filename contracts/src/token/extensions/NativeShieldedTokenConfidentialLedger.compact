@@ -1,0 +1,317 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/NativeShieldedTokenConfidentialLedger.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module NativeShieldedTokenConfidentialLedger
+ * @description Optional standalone extension that holds a per-customer balance
+ * ledger ON-CHAIN but ENCRYPTED, as exponential-ElGamal ciphertexts under a
+ * single operator public key (`crypto/ElGamal`), alongside an encrypted supply
+ * total and an encrypted cumulative-burned total. It is the confidential
+ * counterpart of the (plaintext) supply extension: balances live on-chain, but
+ * only a key holder can read them.
+ *
+ * Pairs with `NativeShieldedToken` and `EcdsaSignerManager` in the
+ * `MultisigConfidentialShieldedToken` preset. The consuming contract composes:
+ * it owns the witnesses (operator secret, plaintext amounts, randomness) and the
+ * reserve coins; this module owns the encrypted bookkeeping.
+ *
+ * # Confidential state
+ *
+ * - `encBalances: Map<Bytes<32>, Ciphertext>` — the KEY is a public
+ *   (pseudonymous) account commitment; the VALUE is a hiding ciphertext. The
+ *   set of touched accounts leaks; no amount does. (INV-2, INV-37)
+ * - `encTotalSupply: Ciphertext` — equals `Σ encBalances` by construction
+ *   (every balance delta is mirrored here in the same circuit). (INV-20)
+ * - `encTotalBurned: Ciphertext` — cumulative redeemed amount, monotonic
+ *   non-decreasing. (INV-21)
+ * - `encPk: sealed JubjubPoint` — the operator ElGamal public key, fixed for the
+ *   contract lifetime; key rotation is a redeploy. (INV-28)
+ *
+ * # Conservation by construction
+ *
+ * `_credit` adds `amount` to a customer balance AND to `encTotalSupply`;
+ * `_debit` subtracts `amount` from a customer balance AND from `encTotalSupply`,
+ * AND folds the same `amount` into `encTotalBurned`. So a key holder always
+ * recovers `decrypt(encTotalSupply) == Σ decrypt(encBalances)`. (INV-20/21)
+ *
+ * # Witness-free, like crypto/ElGamal
+ *
+ * This module declares NO witnesses and reads NO caller identity. Plaintext
+ * amounts, the operator secret `ek`, the cached plaintext balance, and the
+ * encryption randomness all live in the COMPOSING contract's witnesses and are
+ * verified there (commitment-binding, `assertBalanceDecryptsTo`, overdraw
+ * guard). This module takes amounts as `Uint<64>` and per-encryption randomness
+ * as `Field` explicit arguments. Keeping it witness-free lets the preset own one
+ * audited `witnesses.ts` (INV-40) instead of spreading the witness surface.
+ *
+ * # First-touch seeding (INV-16)
+ *
+ * A never-seen customer is seeded from `encryptZero()` — the identity-point
+ * ciphertext `{(0,1),(0,1)}` — NOT the `Map` absent-key default
+ * `{(0,0),(0,0)}`. The point `(0,0)` is off the Jubjub curve, so a homomorphic
+ * add against it would fault or yield garbage and strand the customer's funds.
+ * The seeding branch is keyed on PUBLIC `Map` membership, not a private
+ * predicate, so it leaks nothing (INV-38).
+ *
+ * # No keyless overflow guard (INV-54)
+ *
+ * `_credit` is a keyless homomorphic add: with no operator secret it cannot
+ * decrypt the result to range-check it. Realistic MGBP totals are far below
+ * `2^64` (and far below the Jubjub group order, so no exponent aliasing), so no
+ * overflow assert is provided. A hard bound would require making `_credit`
+ * key-holding (a decrypt-check) or capping per-credit amounts.
+ */
+module NativeShieldedTokenConfidentialLedger {
+  import CompactStandardLibrary;
+  import "../../crypto/ElGamal" prefix ElGamal_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  /**
+   * @description Operator ElGamal public key. Every ciphertext in this module is
+   * under this one key. Sealed: set once at construction, fixed for life. (INV-28)
+   */
+  export sealed ledger encPk: JubjubPoint;
+
+  /**
+   * @description Per-customer encrypted balances. KEY is a public account
+   * commitment; VALUE is a hiding ElGamal ciphertext. (INV-2, INV-37)
+   */
+  export ledger encBalances: Map<Bytes<32>, ElGamal_Ciphertext>;
+
+  /**
+   * @description Encrypted total supply, `= Σ encBalances` by construction. (INV-20)
+   */
+  export ledger encTotalSupply: ElGamal_Ciphertext;
+
+  /**
+   * @description Encrypted cumulative redeemed (burned) amount, monotonic. (INV-21)
+   */
+  export ledger encTotalBurned: ElGamal_Ciphertext;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270).
+   */
+  export ledger _confidentialInit: Boolean;
+
+  // ─── Initialization ─────────────────────────────────────────────
+
+  /**
+   * @description Seeds the operator key and the two scalar ciphertext cells.
+   * MUST be called once from the consuming contract's constructor.
+   *
+   * @notice `encTotalSupply` and `encTotalBurned` are seeded to a canonical
+   * `Enc(0)` (`encryptZero()` = `{identity, identity}`), NOT the struct default
+   * `{(0,0),(0,0)}`, so they decrypt to 0 at deploy and the first homomorphic
+   * add is well-formed. (INV-24)
+   *
+   * Requirements:
+   *
+   * - Not already initialized.
+   *
+   * @param {JubjubPoint} operatorPk - The operator's ElGamal public key.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(operatorPk: JubjubPoint): [] {
+    assert(!_confidentialInit, "ConfidentialLedger: already initialized");
+    _confidentialInit = true;
+
+    // INV-28: encPk is sealed; written once here.
+    encPk = disclose(operatorPk);
+    // INV-24: canonical Enc(0), not the (0,0) struct default.
+    encTotalSupply = disclose(ElGamal_encryptZero());
+    encTotalBurned = disclose(ElGamal_encryptZero());
+  }
+
+  /**
+   * @description Asserts the confidential ledger has been initialized.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertInitialized(): [] {
+    assert(_confidentialInit, "ConfidentialLedger: not initialized");
+  }
+
+  // ─── Views ──────────────────────────────────────────────────────
+
+  /**
+   * @description Returns `customer`'s balance ciphertext, or `encryptZero()`
+   * (the canonical `Enc(0)`) if the account has never been touched. The amount
+   * is hiding; only the operator key holder can decrypt it. (INV-16/32/37)
+   *
+   * Requirements:
+   *
+   * - Confidential ledger is initialized.
+   *
+   * @param {Bytes<32>} customer - The account commitment to query.
+   * @return {ElGamal_Ciphertext} - The encrypted balance.
+   */
+  export circuit encryptedBalanceOf(customer: Bytes<32>): ElGamal_Ciphertext {
+    assertInitialized();
+    if (!encBalances.member(disclose(customer))) {
+      return ElGamal_encryptZero();
+    }
+    return encBalances.lookup(disclose(customer));
+  }
+
+  /**
+   * @description Returns the encrypted total supply. (INV-20)
+   * @return {ElGamal_Ciphertext} - The encrypted supply.
+   */
+  export circuit encryptedTotalSupply(): ElGamal_Ciphertext {
+    assertInitialized();
+    return encTotalSupply;
+  }
+
+  /**
+   * @description Returns the encrypted cumulative burned total. (INV-21)
+   * @return {ElGamal_Ciphertext} - The encrypted burned total.
+   */
+  export circuit encryptedTotalBurned(): ElGamal_Ciphertext {
+    assertInitialized();
+    return encTotalBurned;
+  }
+
+  // ─── Verification helper ─────────────────────────────────────────
+
+  /**
+   * @description Asserts that `ek` is the operator secret for `encPk` AND that
+   * `customer`'s stored balance ciphertext decrypts to `claimedBalance`. Both
+   * checks are folded into one `ElGamal_assertDecryptsTo` call: a wrong `ek`
+   * fails the key-pair check (INV-12), a wrong plaintext fails the decryption
+   * check (INV-13). The composing contract reads `ek` and `claimedBalance` from
+   * its own witnesses and passes them here; they never touch a sink.
+   *
+   * @notice Aborts surface as `"ElGamal: ek/pk mismatch"` / `"ElGamal: plaintext
+   * mismatch"` (the vendored module's strings). Both are short, lowercase, and
+   * carry no sensitive data (INV-45).
+   *
+   * Requirements:
+   *
+   * - Confidential ledger is initialized.
+   * - `ek` is the operator secret for `encPk`.
+   * - `customer`'s balance ciphertext decrypts to `claimedBalance`.
+   *
+   * @param {Bytes<32>} customer - The account whose balance is checked.
+   * @param {Bytes<32>} ek - The claimed operator secret.
+   * @param {Uint<64>} claimedBalance - The claimed plaintext balance.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertBalanceDecryptsTo(
+                   customer: Bytes<32>,
+                   ek: Bytes<32>,
+                   claimedBalance: Uint<64>
+                   ): [] {
+    assertInitialized();
+    ElGamal_assertDecryptsTo(
+      encryptedBalanceOf(customer),
+      encPk,
+      ek,
+      claimedBalance as Uint<128>
+    );
+  }
+
+  // ─── Internal value primitives ───────────────────────────────────
+  //
+  // `_credit` and `_debit` are the only writers of the encrypted cells. Each
+  // mirrors its balance delta into `encTotalSupply` (and `_debit` also folds it
+  // into `encTotalBurned`) in the SAME circuit, so conservation (INV-20) and the
+  // burned fold (INV-21) hold by construction. Randomness is taken as explicit
+  // `Field` arguments so the composing circuit can pass an independently-derived
+  // value to each encryption (a shared seed expanded under distinct tags),
+  // preventing randomness reuse within one op (INV-34).
+
+  /**
+   * @description Seeds a never-seen customer from `encryptZero()`. Branches on
+   * PUBLIC `Map` membership only, so it reveals no private predicate. (INV-16/38)
+   */
+  circuit ensureSeeded(customer: Bytes<32>): [] {
+    if (!encBalances.member(disclose(customer))) {
+      encBalances.insert(disclose(customer), disclose(ElGamal_encryptZero()));
+    }
+  }
+
+  /**
+   * @description Credits `amount` to `customer` and mirrors it into supply.
+   * Keyless homomorphic add: no operator secret required. (INV-16/20/32/34)
+   *
+   * @warning No overflow guard (INV-54): a keyless add cannot decrypt to
+   * range-check the result. The composing contract keeps aggregate totals far
+   * below `2^64`.
+   *
+   * @param {Bytes<32>} customer - The account to credit.
+   * @param {Uint<64>} amount - The amount to add (sourced from a witness, bound
+   * to the signers via the preset's amount commitment).
+   * @param {Field} rBalance - Fresh randomness for the balance ciphertext.
+   * @param {Field} rSupply - Fresh randomness for the supply ciphertext; MUST be
+   * independent of `rBalance` (INV-34).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _credit(
+                   customer: Bytes<32>,
+                   amount: Uint<64>,
+                   rBalance: Field,
+                   rSupply: Field
+                   ): [] {
+    assertInitialized();
+    ensureSeeded(customer);
+
+    // INV-32: the write is a hiding ciphertext, so `disclose` reveals nothing
+    // about `amount`. The plaintext never crosses into a sink (INV-33).
+    const oldBal = encBalances.lookup(disclose(customer));
+    encBalances.insert(
+      disclose(customer),
+      disclose(ElGamal_addEncrypted(oldBal, encPk, amount as Uint<128>, rBalance))
+    );
+
+    // INV-20: mirror the SAME amount into supply, in this same circuit.
+    encTotalSupply = disclose(
+      ElGamal_addEncrypted(encTotalSupply, encPk, amount as Uint<128>, rSupply)
+    );
+  }
+
+  /**
+   * @description Debits `amount` from `customer`, mirrors it out of supply, and
+   * folds it into burned. (INV-20/21/22/25)
+   *
+   * @warning A keyless homomorphic sub cannot detect underflow (INV-54). The
+   * caller MUST have verified sufficiency first via `assertBalanceDecryptsTo`
+   * plus an overdraw guard `bal >= amount` (INV-12/13/14).
+   *
+   * @param {Bytes<32>} customer - The account to debit.
+   * @param {Uint<64>} amount - The amount to subtract.
+   * @param {Field} rBalance - Fresh randomness for the balance ciphertext.
+   * @param {Field} rSupply - Fresh randomness for the supply ciphertext.
+   * @param {Field} rBurned - Fresh randomness for the burned ciphertext. All
+   * three MUST be mutually independent (INV-34).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _debit(
+                   customer: Bytes<32>,
+                   amount: Uint<64>,
+                   rBalance: Field,
+                   rSupply: Field,
+                   rBurned: Field
+                   ): [] {
+    assertInitialized();
+    ensureSeeded(customer);
+
+    // INV-25: update in place; a redeem-to-zero leaves a valid Enc(0), never
+    // deletes the key.
+    const oldBal = encBalances.lookup(disclose(customer));
+    encBalances.insert(
+      disclose(customer),
+      disclose(ElGamal_subEncrypted(oldBal, encPk, amount as Uint<128>, rBalance))
+    );
+
+    // INV-20/21: supply -= amount ; burned += amount.
+    encTotalSupply = disclose(
+      ElGamal_subEncrypted(encTotalSupply, encPk, amount as Uint<128>, rSupply)
+    );
+    encTotalBurned = disclose(
+      ElGamal_addEncrypted(encTotalBurned, encPk, amount as Uint<128>, rBurned)
+    );
+  }
+}

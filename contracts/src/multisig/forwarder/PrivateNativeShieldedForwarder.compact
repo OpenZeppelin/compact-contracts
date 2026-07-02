@@ -1,0 +1,231 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/forwarder/PrivateNativeShieldedForwarder.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module PrivateNativeShieldedForwarder (formerly ForwarderPrivate)
+ * @description Private-parent forwarder primitives. The parent is a coin
+ * public key, hidden behind a `persistentHash` commitment on the ledger.
+ * Deposits accumulate at the contract (no atomic forward); the operator
+ * drains coins by presenting the `(parent, opSecret)` preimage at drain
+ * time. The drained coin is sent as a shielded note to the parent key, so
+ * the parent stays hidden on-chain. The parent is deliberately a coin public
+ * key and not a contract address: a shielded send to a contract publishes
+ * that contract's address in cleartext, which would defeat the guarantee.
+ *
+ * Knowledge of the preimage is the sole authorization gate — there is
+ * no signer set and no nullifier scheme. The operational secret is
+ * held off-chain; the contract never sees it except during a drain.
+ * Two forwarders bound to the same parent with different operational
+ * secrets produce different commitments and are unlinkable on-chain.
+ *
+ * Underscore-prefixed circuits have no access control beyond the
+ * preimage check inside `_drain`. State access is gated by the
+ * initialization pattern: every state-touching circuit asserts the
+ * module has been initialized via `initialize`. The pure
+ * `_calculateParentCommitment` helper does not access state and is
+ * intentionally callable without initialization.
+ */
+module PrivateNativeShieldedForwarder {
+  import CompactStandardLibrary;
+  import "../../utils/Utils" prefix Utils_;
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  export ledger _parentCommitment: Bytes<32>;
+
+  /**
+   * @description Initialization flag, tracked per-module to avoid the compiler's
+   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
+   * Initializable module for rationale.
+   */
+  export ledger _isInitialized: Boolean;
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  /**
+   * @description Initializes the forwarder with a parent commitment.
+   * Called once from the preset constructor. The commitment is
+   * immutable after init.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   * - `parentCommitment` must not be the zero bytes. A zero commitment
+   *   is the sole drain gate and would leave every deposited coin
+   *   permanently unrecoverable (no preimage exists for `default<Bytes<32>>`
+   *   under the domain-tagged hash).
+   *
+   * @param {Bytes<32>} parentCommitment - Domain-tagged
+   * `persistentHash([pad(32, "PrivateNativeShieldedForwarder:commitment"), parentAddr, opSecret])`
+   * computed off-chain by the deployer (see `_calculateParentCommitment`).
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(parentCommitment: Bytes<32>): [] {
+    assert(parentCommitment != default<Bytes<32>>, "PrivateNativeShieldedForwarder: zero commitment");
+    assertNotInitialized();
+    _isInitialized = true;
+    _parentCommitment = disclose(parentCommitment);
+  }
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin into the forwarder's custody.
+   * No ledger write — coins dwell at the contract address until drained.
+   *
+   * @circuitInfo k=13, rows=6538
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   *
+   * @returns {[]} Empty tuple.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    assertInitialized();
+    receiveShielded(disclose(coin));
+  }
+
+  // ─── Drain ──────────────────────────────────────────────────────
+
+  /**
+   * @description Spends a previously-deposited shielded coin to the parent,
+   * a coin public key. The caller proves knowledge of `(parent, opSecret)`
+   * matching the stored commitment; the coin is sent as a plain shielded note,
+   * so the parent stays hidden on-chain. If `coin.value` exceeds `value`, the
+   * change is re-emitted back to the contract for future drains.
+   *
+   * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
+   * send to a contract publishes that contract's address in cleartext on the
+   * transaction (the protocol must route the coin to a named contract), which
+   * would defeat the private-parent guarantee. A coin public key is encrypted
+   * inside the Zswap output and never appears on the public transcript.
+   *
+   * @circuitInfo k=16, rows=41961
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   * - `parent` must not be the zero key.
+   * - `_calculateParentCommitment(parent.bytes, opSecret) == _parentCommitment`.
+   * - `coin.value` must be >= `value` (enforced by `sendShielded`).
+   *
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend.
+   * @param {ZswapCoinPublicKey} parent - The parent coin public key. Its 32
+   * bytes are the preimage to the stored commitment.
+   * @param {Bytes<32>} opSecret - The operational secret. Never appears
+   * on the public transcript.
+   *
+   * @warning **Losing the operational secret is permanent fund loss.** It
+   * is the sole drain authorization, with no rotation, revocation, or
+   * recovery path. If the operator misplaces it, every shielded coin
+   * accumulated at this contract is forever inaccessible, equivalent to
+   * losing a hot-wallet private key. Back it up offline before the first
+   * deposit and treat it with the same hygiene as a signing key.
+   *
+   * @param {Uint<128>} value - The amount to send.
+   *
+   * @returns {ShieldedSendResult} The result containing the sent coin
+   * and any change.
+   */
+  export circuit _drain(
+    coin: QualifiedShieldedCoinInfo,
+    parent: ZswapCoinPublicKey,
+    opSecret: Bytes<32>,
+    value: Uint<128>
+  ): ShieldedSendResult {
+    assertInitialized();
+
+    // Reject a zero parent before the commitment gate.
+    assert(!Utils_isKeyZero(parent), "PrivateNativeShieldedForwarder: zero parent");
+
+    // Commitment gate — the preimage is the parent key's 32 bytes.
+    assert(
+      _calculateParentCommitment(parent.bytes, opSecret) == _parentCommitment,
+      "PrivateNativeShieldedForwarder: invalid parent"
+    );
+
+    // Send to the parent coin public key (the `left` arm). `disclose` reveals
+    // nothing: a coin-public-key recipient is encrypted in the Zswap output, so
+    // the parent never appears on the public transcript. A contract recipient
+    // is intentionally unsupported — it would publish the address in cleartext.
+    const result = sendShielded(
+      disclose(coin),
+      left<ZswapCoinPublicKey, ContractAddress>(disclose(parent)),
+      disclose(value)
+    );
+
+    if (disclose(result.change.is_some)) {
+      sendImmediateShielded(
+        disclose(result.change.value),
+        Utils_selfAsRecipient(),
+        disclose(result.change.value.value)
+      );
+    }
+
+    return result;
+  }
+
+  // ─── Pure helpers ───────────────────────────────────────────────
+
+  /**
+   * @description Computes the parent commitment from `(parentAddr, opSecret)`.
+   * Pure circuit — used off-chain by the deployer to compute the
+   * constructor argument, and inside `_drain` for the preimage check.
+   * Callable without initialization.
+   *
+   * The first hash input is a fixed domain tag
+   * (`pad(32, "PrivateNativeShieldedForwarder:commitment")`). The tag prevents
+   * preimage collisions with other `persistentHash` users in the
+   * system that hash two `Bytes<32>` values — a colliding preimage
+   * crafted under a different domain cannot satisfy this commitment.
+   *
+   * @param {Bytes<32>} parentAddr - The parent address.
+   * @param {Bytes<32>} opSecret - The operational secret.
+   *
+   * @returns {Bytes<32>} `persistentHash([pad(32, "PrivateNativeShieldedForwarder"), parentAddr, opSecret])`.
+   */
+  export pure circuit _calculateParentCommitment(
+    parentAddr: Bytes<32>,
+    opSecret: Bytes<32>
+  ): Bytes<32> {
+    // Domain separator. Must be <= 32 bytes; the module name (30 bytes) is used
+    // verbatim as a unique tag for this commitment.
+    return persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "PrivateNativeShieldedForwarder"), parentAddr, opSecret]
+    );
+  }
+
+  // ─── Init guards ────────────────────────────────────────────────
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "PrivateNativeShieldedForwarder: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "PrivateNativeShieldedForwarder: contract already initialized");
+  }
+}

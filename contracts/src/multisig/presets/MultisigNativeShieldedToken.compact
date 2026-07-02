@@ -1,0 +1,315 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.2.0 (multisig/presets/MultisigNativeShieldedToken.compact)
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+/**
+ * @title MultisigNativeShieldedToken
+ * @description A single, deployable preset that composes the Native Shielded
+ * Token standard (`token/NativeShieldedToken` + the derived-nonce extension)
+ * with `multisig/EcdsaSignerManager` for institutional M-of-N ECDSA-authorized
+ * mint and burn of ONE shielded (Zswap) token. Target use: a regulated
+ * institutional issuer — one omnibus contract, one color, mint/burn only,
+ * non-transferable, with per-customer balances held OFF-CHAIN in the operator's
+ * custodial sub-accounts.
+ *
+ * This is a top-level deployable contract (not a composable module): the
+ * constructor wires the three modules together and the exported circuits are
+ * the institution-facing API. It supersedes the bespoke
+ * `test/integration/_mocks/MultisigSignatureMintBurn`, whose hand-rolled token half
+ * is replaced by the #621 standard.
+ *
+ * # Shape (the constraints that force it)
+ *
+ * - Coins are CONTRACT-OWNED: `mint` always targets `right(kernel.self())`,
+ *   never a caller-supplied recipient. No coin secret key exists, there is no
+ *   single-sig hop, and the mint is constant-shape.
+ * - One contract = one color: `tokenType(_domain, kernel.self())` with `_domain`
+ *   sealed at construction.
+ * - Authorization is cryptographic (a threshold of registered ECDSA signers),
+ *   never `msg.sender`. Public keys and signatures are passed as circuit
+ *   PARAMETERS — there are no witnesses, hence no `witnesses.ts` and no
+ *   off-chain leak surface.
+ *
+ * # Privacy posture (Supply extension intentionally NOT composed)
+ *
+ * - Burn amounts are AMOUNT-PRIVATE. The bare token's `_burnFromContract` emits
+ *   only commitments and nullifiers; the `disclose()` wrappers it requires are
+ *   compiler permission markers, not disclosure sinks. We deliberately do NOT
+ *   compose `NativeShieldedTokenSupply`, so no `_totalBurned` cell publishes the
+ *   burned amount and there is no on-chain `totalSupply()`.
+ * - Mint amounts are PUBLIC regardless: `mintShieldedToken` emits the amount in
+ *   the protocol-level `shieldedMints` effect. Reconciliation against the
+ *   off-chain customer ledger uses those public mint effects minus burns.
+ * - Per-customer balances are NEVER on-chain.
+ *
+ * # Replay and coin binding
+ *
+ * - `_replayNonce` (a `Counter`) is consumed into every mint/burn `msgHash` and
+ *   incremented, so a threshold-signed authorization is valid for exactly one
+ *   (op, instance, nonce, amount) — and, for burn, one coin. It is a DISTINCT
+ *   cell from the derived coin-nonce chain.
+ *
+ * # M-of-N sizing
+ *
+ * - This preset is fixed at 2-of-3: it registers 3 signer commitments
+ *   (`Vector<3>` in the constructor) and accepts exactly 2 approvals per op
+ *   (`Vector<2>` in mint/burn). These sizes are compile-time literals (part of
+ *   the verifier key) — a top-level contract cannot be generic over them, and a
+ *   `Vector` size cannot be a runtime constructor argument. The `threshold` IS a
+ *   runtime constructor parameter (a scalar), validated 1 <= threshold <= 3 by
+ *   the registry; for this 2-of-3 shape it must be <= 2 to be satisfiable. A
+ *   different N-of-M shape is a recompiled variant (change the two literals),
+ *   which is also its own verifier key.
+ *
+ * @notice ECDSA verification is STUBBED in `EcdsaSignerManager`
+ * (`stubVerifySignature` always returns true) and the `msgHash` uses
+ * `persistentHash` rather than `keccak256`. Both stay until the Compact ECDSA
+ * primitive lands; this contract MUST NOT be deployed to production before the
+ * destub. The placeholder is acceptable for test/preprod only.
+ */
+
+// #621 token core + derived-nonce extension. Supply extension deliberately omitted.
+import "../../token/NativeShieldedToken" prefix Token_;
+import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix TokenNonce_;
+// #628 ECDSA M-of-N registry + verification.
+import "../EcdsaSignerManager" prefix Signer_;
+
+// Surface the protocol coin types as named TS artifact aliases so dApp/relayer
+// code (the operator's UTXO store) imports them instead of inlining the raw shapes.
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// ─── State ──────────────────────────────────────────────────────
+//
+// The preset owns ONLY the multisig replay nonce. All other ledger cells live
+// in the composed modules (prefixed, so no `_isInitialized` collision):
+//   Token_*      : _isInitialized, _domain (sealed), _name/_symbol/_decimals
+//   TokenNonce_* : _counter, _nonce            (coin-nonce chain)
+//   Signer_*     : _instanceSalt, _signers, _signerCount, _threshold, _isInitialized
+
+/**
+ * @description Multisig replay nonce. Read into each op's `msgHash` then
+ * incremented; strictly monotonic over the contract lifetime. Distinct from the
+ * derived coin-nonce chain.
+ */
+export ledger _replayNonce: Counter;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Initializes all three composed modules. Each owns an independent
+ * init flag / seed (compact#270 per-module workaround), so partial
+ * initialization is possible — this constructor MUST seed all three or the
+ * first op aborts.
+ *
+ * @param {Bytes<32>} domainSep - Token domain separator; with `kernel.self()`
+ * fixes this contract's immutable color.
+ * @param {Opaque<"string">} name_ - Token name.
+ * @param {Opaque<"string">} symbol_ - Token symbol.
+ * @param {Uint<8>} decimals_ - Display decimals.
+ * @param {Bytes<32>} instanceSalt - Cryptographically random per-instance salt;
+ * makes signer commitments cross-instance-unlinkable.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - The signer commitments
+ * (computed off-chain via `_calculateSignerId`). No duplicates.
+ * @param {Uint<8>} threshold - Minimum approvals; 1 <= threshold <= 3. For this
+ * 2-of-3 shape, must be <= 2 to be satisfiable, since each op presents exactly 2
+ * approvals.
+ * @param {Bytes<32>} initCoinNonce - Random seed for the derived coin-nonce
+ * chain; non-zero.
+ */
+constructor(
+  domainSep: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  threshold: Uint<8>,
+  initCoinNonce: Bytes<32>
+) {
+  // _domain is sealed here; the token color is fixed for the contract lifetime.
+  Token_initialize(domainSep, name_, symbol_, decimals_);
+  // Seed the coin-nonce chain (non-zero, once).
+  TokenNonce_initialize(initCoinNonce);
+  // Threshold validity, no-dup signers, salted commitments.
+  Signer_initialize<3>(instanceSalt, signerCommitments, threshold);
+}
+
+// ─── Mint ───────────────────────────────────────────────────────
+
+/**
+ * @description Mints `amount` of this contract's token to the contract itself
+ * (omnibus pool), authorized by a threshold of registered ECDSA signers.
+ *
+ * The signers approve `msgHash = H("multisig:mint:" ‖ self ‖ replayNonce ‖
+ * amount)`. The recipient is the compile-time constant `right(kernel.self())`
+ * and is NOT part of the hash or the parameters: the mint is constant-shape and
+ * cannot be redirected to an external key.
+ *
+ * @notice The returned `ShieldedCoinInfo` is the ONLY copy of the minted coin's
+ * info: contract-initiated sends emit no wallet-scannable ciphertext. The
+ * operator MUST capture it (with the Zswap output's Merkle index) into its UTXO
+ * store or the value is irrecoverably stranded. The mint amount is public via
+ * `shieldedMints` (unavoidable, and needed for off-chain reconciliation).
+ *
+ * Requirements:
+ *
+ * - All modules initialized.
+ * - `threshold` valid ECDSA approvals over the mint `msgHash`; pubkeys MUST be
+ *   presented in strictly-increasing commitment order.
+ *
+ * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the
+ * protocol `mintShieldedToken` primitive.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of the approving
+ * signers, sorted by ascending commitment.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the mint `msgHash`.
+ * @return {ShieldedCoinInfo} - The newly minted contract-owned coin.
+ */
+export circuit mint(
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): ShieldedCoinInfo {
+  // Consume and advance the replay nonce.
+  const replayNonce = _replayNonce;
+  _replayNonce.increment(1);
+
+  // Bind op-domain, instance, replay nonce, and amount.
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "multisig:mint:"),
+    kernel.self().bytes,
+    replayNonce as Bytes<32>,
+    amount as Bytes<32>
+  ]);
+
+  // Threshold of distinct registered signers with valid signatures.
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  // Recipient is the constant self; derived (recipient-public, moot for self)
+  // coin nonce. `_mint` enforces init + non-zero recipient.
+  return Token__mint(
+    right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+    amount,
+    TokenNonce__deriveNonce()
+  );
+}
+
+// ─── Burn ───────────────────────────────────────────────────────
+
+/**
+ * @description Burns `amount` from a contract-held coin (`QualifiedShieldedCoinInfo`
+ * supplied by the relayer from the operator's UTXO store), authorized by a threshold
+ * of registered ECDSA signers. One circuit covers both the whole-coin burn
+ * (`amount == coin.value`, no change) and the partial burn (`amount <
+ * coin.value`, change auto-received by the contract and returned).
+ *
+ * The signers approve `msgHash = H("multisig:burn:" ‖ self ‖ replayNonce ‖
+ * amount ‖ coin.nonce)`. The distinct `"multisig:burn:"` domain prevents replay
+ * as a mint; `coin.nonce` binds the authorization to the exact coin the signers
+ * approved, so the relayer cannot redirect it to a different coin.
+ *
+ * @notice Burn is AMOUNT-PRIVATE (Supply not composed): no public cell records
+ * the burned value. The returned change coin (if any) is the only copy of its
+ * info and MUST be captured by the operator. Double-spending the same coin is rejected
+ * by Zswap's nullifier set at the protocol layer.
+ *
+ * Requirements:
+ *
+ * - All modules initialized.
+ * - `threshold` valid ECDSA approvals over the burn `msgHash`; pubkeys MUST be
+ *   presented in strictly-increasing commitment order.
+ * - `coin.color` is this contract's token color (enforced by `_burnFromContract`).
+ * - `coin.value >= amount` (enforced by `_burnFromContract`).
+ *
+ * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
+ * @param {Uint<128>} amount - Value to destroy. Capped at `Uint<128>` by
+ * `sendShielded`.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of the approving
+ * signers, sorted by ascending commitment.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the burn `msgHash`.
+ * @return {Maybe<ShieldedCoinInfo>} - The change coin retained by the contract,
+ * or `none` if burned in full.
+ */
+export circuit burn(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): Maybe<ShieldedCoinInfo> {
+  // Consume and advance the replay nonce.
+  const replayNonce = _replayNonce;
+  _replayNonce.increment(1);
+
+  // Bind op-domain, instance, replay nonce, amount, AND the coin's nonce.
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "multisig:burn:"),
+    kernel.self().bytes,
+    replayNonce as Bytes<32>,
+    amount as Bytes<32>,
+    coin.nonce
+  ]);
+
+  // Threshold of distinct registered signers with valid signatures.
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  // Color + sufficiency enforced inside _burnFromContract; amount-private (no
+  // supply accounting).
+  return Token__burnFromContract(coin, amount);
+}
+
+// ─── Views ──────────────────────────────────────────────────────
+
+/**
+ * @description Returns this token's coin color, `tokenType(_domain, self())`.
+ * @return {Bytes<32>} - The immutable coin color.
+ */
+export circuit tokenColor(): Bytes<32> {
+  return Token_tokenColor();
+}
+
+/**
+ * @description Returns the current multisig replay nonce (next op binds it).
+ * @return {Uint<64>} - The replay nonce.
+ */
+export circuit getNonce(): Uint<64> {
+  return _replayNonce;
+}
+
+/**
+ * @description Returns the number of registered signers (3 for this preset).
+ * @return {Uint<8>} - The signer count.
+ */
+export circuit getSignerCount(): Uint<8> {
+  return Signer_getSignerCount();
+}
+
+/**
+ * @description Returns the approval threshold, fixed at construction.
+ * @return {Uint<8>} - The threshold.
+ */
+export circuit getThreshold(): Uint<8> {
+  return Signer_getThreshold();
+}
+
+/**
+ * @description Returns whether `commitment` is a registered signer.
+ * @param {Bytes<32>} commitment - The commitment to check.
+ * @return {Boolean} - True if registered.
+ */
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return Signer_isSigner(commitment);
+}
+
+/**
+ * @description Computes a signer commitment from an ECDSA public key and the
+ * instance salt. Pure — the deployer calls it off-chain to compute the
+ * constructor commitments.
+ * @param {Bytes<64>} pk - The ECDSA public key.
+ * @param {Bytes<32>} salt - The instance salt.
+ * @return {Bytes<32>} - The signer commitment.
+ */
+export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
+  return Signer__calculateSignerId(pk, salt);
+}

@@ -1,0 +1,17 @@
+flowchart LR
+    C(["🪙 live coin"]):::coin
+    BA["output to burn address<br/>all-zero key · unspendable<br/><b>delta = 0</b>"]:::dead
+    X["no successor coin<br/><b>delta = +value</b>"]:::burn
+
+    C -->|"contract burn<br/>(circuit)"| BA
+    C -->|"hidden burn<br/>(wallet)"| BA
+    C -->|"protocol burn<br/>(imbalanced offer)"| X
+
+    BA --> P["✅ value STAYS in the pool<br/>dead, but still counted"]:::stay
+    X --> Q["🔥 value LEAVES the pool<br/>the only delta-visible burn"]:::gone
+
+    classDef coin fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef dead fill:#fee2e2,stroke:#dc2626,color:#7f1d1d;
+    classDef burn fill:#f3e8ff,stroke:#9333ea,color:#581c87;
+    classDef stay fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    classDef gone fill:#fde68a,stroke:#ea580c,color:#7c2d12;
