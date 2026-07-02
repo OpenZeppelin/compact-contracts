@@ -13,6 +13,11 @@ import "../../extensions/NativeShieldedTokenSupply" prefix NativeShieldedTokenSu
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
+// Surface the core supply ledger state unprefixed so tests can read it via
+// `getPublicState()` and assert the accounting getters return it verbatim.
+import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenSupply";
+export { _totalMinted, _totalBurned };
+
 // Unit mock for the NativeShieldedTokenSupply extension in isolation. The
 // extension imports no token module, so the accounting blocks and getters are
 // driven directly here. The extension needs no initialization.

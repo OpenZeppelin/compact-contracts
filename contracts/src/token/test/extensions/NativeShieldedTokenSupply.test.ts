@@ -75,4 +75,27 @@ describe('NativeShieldedTokenSupply (extension)', () => {
       expect(await supply.totalSupply()).toBe(0n);
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should surface the core supply ledger and return it verbatim from the getters', async () => {
+      // The scalar flavor keys everything under one fixed slot: default<Bytes<32>>.
+      const KEY = new Uint8Array(32);
+
+      await supply._addMinted(1_500n);
+      await supply._addBurned(400n);
+
+      const state = await supply.getPublicState();
+
+      // The re-exported ledger keys read cleanly as `_totalMinted` / `_totalBurned` ...
+      expect(state._totalMinted.lookup(KEY)).toBe(1_500n);
+      expect(state._totalBurned.lookup(KEY)).toBe(400n);
+
+      // ... and each getter reads its slot straight from that ledger.
+      expect(await supply.totalMinted()).toBe(state._totalMinted.lookup(KEY));
+      expect(await supply.totalBurned()).toBe(state._totalBurned.lookup(KEY));
+      expect(await supply.totalSupply()).toBe(
+        state._totalMinted.lookup(KEY) - state._totalBurned.lookup(KEY),
+      );
+    });
+  });
 });

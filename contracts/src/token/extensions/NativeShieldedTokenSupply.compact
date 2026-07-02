@@ -55,6 +55,14 @@ module NativeShieldedTokenSupply {
   import CompactStandardLibrary;
   import "./NativeShieldedTokenSupplyCore" prefix Core_;
 
+  // Circuits use the `Core_` prefix above. The named import/re-export below is
+  // only for the core supply ledger keys, so the implementing contract's ledger
+  // keys read as `_totalMinted` / `_totalBurned` rather than
+  // `NativeShieldedTokenSupplyCore__totalMinted`. The circuit names are
+  // intentionally NOT imported unprefixed, to avoid potential clashes.
+  import { _totalMinted, _totalBurned } from "./NativeShieldedTokenSupplyCore";
+  export { _totalMinted, _totalBurned };
+
   /**
    * @description The single fixed domain key. The paired `NativeShieldedToken`
    * has exactly one token type, so all accounting lives under one key.

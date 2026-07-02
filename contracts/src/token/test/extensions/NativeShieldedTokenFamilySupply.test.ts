@@ -76,4 +76,35 @@ describe('NativeShieldedTokenFamilySupply (extension)', () => {
       );
     });
   });
+
+  describe('simulator wiring', () => {
+    it('should surface the per-domain supply ledger and return it verbatim from the getters', async () => {
+      await supply._addMinted(DOMAIN_A, 1_500n);
+      await supply._addBurned(DOMAIN_A, 400n);
+      await supply._addMinted(DOMAIN_B, 250n);
+
+      const state = await supply.getPublicState();
+
+      // The re-exported ledger keys read cleanly as `_totalMinted` /
+      // `_totalBurned`, each keyed by domain ...
+      expect(state._totalMinted.lookup(DOMAIN_A)).toBe(1_500n);
+      expect(state._totalBurned.lookup(DOMAIN_A)).toBe(400n);
+      expect(state._totalMinted.lookup(DOMAIN_B)).toBe(250n);
+      // ... an unburned domain has no burned slot, which the getter reads as 0.
+      expect(state._totalBurned.member(DOMAIN_B)).toBe(false);
+
+      // ... and each getter reads its slot straight from that ledger.
+      expect(await supply.totalMinted(DOMAIN_A)).toBe(
+        state._totalMinted.lookup(DOMAIN_A),
+      );
+      expect(await supply.totalBurned(DOMAIN_A)).toBe(
+        state._totalBurned.lookup(DOMAIN_A),
+      );
+      expect(await supply.totalSupply(DOMAIN_A)).toBe(
+        state._totalMinted.lookup(DOMAIN_A) -
+          state._totalBurned.lookup(DOMAIN_A),
+      );
+      expect(await supply.totalBurned(DOMAIN_B)).toBe(0n);
+    });
+  });
 });
