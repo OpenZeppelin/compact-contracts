@@ -1,0 +1,915 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/AuditableShieldedCustody.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module AuditableShieldedCustody
+ * @description NST Phase 2 custody: a note-commitment pool (graph-private
+ * transfers, `ShieldedCustody`-style) where EVERY note additionally carries an
+ * on-chain ElGamal memo encrypted to a sealed custodian key. The custodian
+ * reconstructs every balance and flow from chain data alone — no off-chain
+ * note DB — while the public ledger sees only commitments, nullifiers, tree
+ * roots, and hiding ciphertexts.
+ *
+ * Differences from the sibling custody profiles:
+ *
+ * - vs `ShieldedCustody`/`EscrowedShieldedCustody`: no public `_custodySupply`
+ *   cell — supply and the unallocated reserve are ElGamal ciphertexts under
+ *   the custodian key, so credit/redeem/seize amounts never appear in
+ *   plaintext (INV-25). No `_deposit`/`_withdraw`: value enters only against
+ *   the contract-owned reserve (`_credit`) and leaves only through
+ *   multisig-gated redemption/seizure paired with a reserve burn (INV-41).
+ * - The memo layer (INV-21/28/32/34): every `_notes` insert writes exactly one
+ *   `_memos` entry in the same call, keyed by the commitment; the same
+ *   in-circuit witness values feed both the commitment and the memo, so a
+ *   memo that decrypts to anything other than the committed (owner, value)
+ *   is unsatisfiable.
+ *
+ * # Note scheme
+ *
+ * A note is `(ownerId, value, rho)`; `ownerId = H(ownerTag, secretKey)` (salt-
+ * free, so ids are computable off-chain from the HSM master secret — INV-4).
+ * The ledger stores `commitment = H(noteTag, _instanceSalt, H(note))`; spends
+ * disclose `nullifier = H(nullTag, _instanceSalt, secretKey, rho)`. All rho
+ * values are derived IN-CIRCUIT (never free witnesses): `rho_credit` binds the
+ * preset's replay nonce, `rho_out`/`rho_change` bind the spent note's
+ * nullifier — this is what makes the custodian's inductive reconstruction
+ * sound (INV-23/32).
+ *
+ * # Value bound (INV-9)
+ *
+ * Every note value is `< 2^48` (`MAX_NOTE_VALUE`), asserted at the value-
+ * injection point `_credit` and inherited inductively by every spend output
+ * (`out <= in`, `change = in - out`). The bound keeps `Enc(g^value)` memos
+ * recoverable by the custodian's BSGS discrete-log search.
+ *
+ * # Randomness (INV-28)
+ *
+ * Memo/cell randomness is derived in-circuit: spend paths from
+ * `(secretKey, spentNullifier)` under distinct per-ciphertext tags (unique
+ * because a nullifier is consumed once, secret because `secretKey` is);
+ * the credit path expands a custodian witness seed under nonce-mixed tags
+ * (so even a reused seed cannot repeat `(seed, tag)`). Exception, documented:
+ * `_addUnallocated` (the `mintReserve` delta) uses PUBLIC randomness — its
+ * plaintext amount is protocol-public anyway (`shieldedMints` effect), and
+ * public randomness keeps `mintReserve` relayer-provable; uniqueness comes
+ * from `(self, replayNonce)`.
+ *
+ * # Composition
+ *
+ * All circuits are ungated building blocks for a consuming preset
+ * (`MultisigAuditableShieldedToken`): `_authorize`/`_freeze`/`_unfreeze`/
+ * `_credit`/`_redeem`/`_seizeTo`/`_addUnallocated` are administrative and MUST
+ * be multisig-gated; `_transfer` self-authenticates via the secret-key witness
+ * and MAY be exposed directly. `initialize` MUST be called exactly once from
+ * the consuming contract's constructor (INV-6; inline per-module flag, see
+ * LFDT-Minokawa/compact#270). The preset MUST bind each gated op's private
+ * parameters into its signed message via the `opCommitment` these circuits
+ * verify (INV-38).
+ *
+ * @notice Hash domain tags use the short `"AuditableCustody:"` prefix (the
+ * full module name exceeds the 32-byte `pad` limit); assert messages use the
+ * full `"AuditableShieldedCustody: "` prefix.
+ */
+module AuditableShieldedCustody {
+  import CompactStandardLibrary;
+  import "../../crypto/ElGamal" prefix ElGamal_;
+  import "../../security/Pausable" prefix Pausable_;
+  import "../NativeShieldedToken" prefix Token_;
+
+  // ─── Types ──────────────────────────────────────────────────────
+
+  /**
+   * @description A custodial note opening. Never on the ledger; only its hash
+   * (inside the commitment) and its custodian-keyed memo ever cross.
+   */
+  struct Note {
+    ownerId: Bytes<32>;
+    value: Uint<64>;
+    rho: Bytes<32>;
+  }
+
+  /**
+   * @description Custodian-keyed ciphertexts written alongside every note
+   * commitment (INV-21). `encValue` is lifted ElGamal (`Enc(g^value)`,
+   * BSGS-recoverable under the `MAX_NOTE_VALUE` bound); `encOwner` is point
+   * ElGamal of `_ownerPoint(ownerId)` (a KYC-list lookup token, INV-34).
+   */
+  export struct NoteMemo {
+    encValue: ElGamal_Ciphertext;
+    encOwner: ElGamal_Ciphertext;
+  }
+
+  /**
+   * @description Opening of the note being spent, supplied by the acting
+   * prover (holder, or custodian with the victim's derived key).
+   */
+  export struct SpentNote {
+    value: Uint<64>;
+    rho: Bytes<32>;
+  }
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  /**
+   * @description Salt binding commitments and nullifiers to this instance
+   * (INV-2, sealed). Note `computeOwnerId` is deliberately salt-FREE (INV-4);
+   * per-instance separation enters at the commitment/nullifier layer.
+   */
+  export sealed ledger _instanceSalt: Bytes<32>;
+  /**
+   * @description Custodian memo/audit ElGamal public key (INV-2, sealed).
+   * Rotation is a redeploy, same limitation as `NativeShieldedTokenConfidentialLedger`.
+   */
+  export sealed ledger _custodianPk: JubjubPoint;
+  /**
+   * @description Note commitments. Historic so spend proofs survive concurrent
+   * inserts (INV-16); double-spends are stopped by nullifiers, not roots.
+   */
+  export ledger _notes: HistoricMerkleTree<20, Bytes<32>>;
+  /**
+   * @description Disclosed nullifiers of spent notes. Grow-only (INV-17).
+   */
+  export ledger _nullifiers: Set<Bytes<32>>;
+  /**
+   * @description Allowlist of authorized account ids. Deliberately
+   * NON-historic: membership is checked against the CURRENT root only, so a
+   * tombstone freeze takes effect immediately (INV-10/20).
+   */
+  export ledger _authorizedAccounts: MerkleTree<20, Bytes<32>>;
+  /**
+   * @description commitment -> custodian-keyed memo. One entry per note,
+   * written in the same call as the tree insert, never overwritten (INV-21/23).
+   * The custodian's indexer subscription feed (event substitute).
+   */
+  export ledger _memos: Map<Bytes<32>, NoteMemo>;
+  /**
+   * @description `Enc(Σ unspent note values)` under `_custodianPk` (INV-19.1).
+   */
+  export ledger _encCustodySupply: ElGamal_Ciphertext;
+  /**
+   * @description `Enc(Σ mintReserve amounts − Σ credited amounts)` under
+   * `_custodianPk` (INV-19.2).
+   */
+  export ledger _encUnallocated: ElGamal_Ciphertext;
+  /**
+   * @description Per-module init flag (INV-6; compact#270 workaround — never
+   * the shared `Initializable` module).
+   */
+  export ledger _custodyInit: Boolean;
+
+  // ─── Witnesses ──────────────────────────────────────────────────
+  //
+  // Implemented in `test/witnesses/AuditableShieldedCustodyWitnesses.ts`.
+  // INV-14: each witness is read EXACTLY ONCE per circuit invocation, bound to
+  // a `const`, and that single value reused everywhere (commitment recompute,
+  // memo encryption, opCommitment check). INV-33: implementations MUST be
+  // side-effect-free on the secret path — no logging, telemetry, or network
+  // I/O touching keys, openings, or cached plaintexts.
+
+  /** The ACTING account's secret key: the holder's own for `_transfer`, the
+   *  custodian-derived (`PRF(masterSecret, customerId)`) victim/customer key
+   *  for `_redeem`/`_seizeTo` (INV-35, design D2). */
+  witness wit_secretKey(): Bytes<32>;
+  /** Merkle path to `commitment` in `_notes`. Never disclosed; only the root
+   *  it hashes to crosses (INV-26). */
+  witness wit_notePath(commitment: Bytes<32>): MerkleTreePath<20, Bytes<32>>;
+  /** Merkle path to `ownerId` in `_authorizedAccounts`. Root-only disclosure
+   *  (INV-26). */
+  witness wit_authPath(ownerId: Bytes<32>): MerkleTreePath<20, Bytes<32>>;
+  /** Opening `(value, rho)` of the note being spent. */
+  witness wit_spentNote(): SpentNote;
+  /** The private credit/redeem/seize amount, bound to the multisig via the
+   *  opCommitment (INV-38). */
+  witness wit_opAmount(): Uint<64>;
+  /** Fresh, high-entropy blinding factor opening the opCommitment (INV-38). */
+  witness wit_opBlind(): Bytes<32>;
+  /** Recipient account id for `_credit`/`_seizeTo`, bound via opCommitment. */
+  witness wit_recipientOwnerId(): Bytes<32>;
+  /** Custodian ElGamal secret; decrypt-verify overdraw guards only (INV-11).
+   *  Only ever provided to custodian-operated provers (INV-33). */
+  witness wit_custodianEk(): Bytes<32>;
+  /** Claimed plaintext of `_encUnallocated` (custodian cache; verified
+   *  in-circuit before trusting — INV-11). */
+  witness wit_plainUnallocated(): Uint<128>;
+  /** Claimed plaintext of `_encCustodySupply` (verified in-circuit — INV-11). */
+  witness wit_plainSupply(): Uint<128>;
+  /** Fresh 32-byte seed for credit-path memo/cell randomness; expanded
+   *  in-circuit under nonce-mixed tags (INV-28). */
+  witness wit_seed(): Bytes<32>;
+  /** The contract-held reserve coin to burn on redeem/seizeBurn (INV-12). */
+  witness wit_redeemCoin(): QualifiedShieldedCoinInfo;
+
+  // ─── Initialization ─────────────────────────────────────────────
+
+  /**
+   * @description Seeds the sealed salt and custodian key and the two encrypted
+   * cells. MUST be called exactly once from the consuming contract's
+   * constructor (INV-6/22).
+   *
+   * @notice Cells are seeded to the canonical `Enc(0)` (`encryptZero()` =
+   * `{identity, identity}`), NOT the struct default `{(0,0),(0,0)}` — the
+   * default is off-curve and the first homomorphic update against it would
+   * fault and strand the accounting (INV-22).
+   *
+   * Requirements:
+   *
+   * - Not already initialized.
+   * - `custodianPk` is not the identity point (fail fast; `encryptPoint`
+   *   re-asserts per encryption — INV-15).
+   *
+   * @param {Bytes<32>} instanceSalt - Per-instance salt. Choose unpredictably.
+   * @param {JubjubPoint} custodianPk - The custodian's ElGamal public key.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(instanceSalt: Bytes<32>, custodianPk: JubjubPoint): [] {
+    // INV-6: once-only.
+    assert(!_custodyInit, "AuditableShieldedCustody: already initialized");
+    _custodyInit = true;
+
+    // INV-15: reject the one key that would make every memo non-hiding.
+    assert(custodianPk != ecMulGenerator(0 as Field),
+           "AuditableShieldedCustody: identity custodian key");
+
+    // INV-2: sealed, constructor-only writes.
+    _instanceSalt = disclose(instanceSalt);
+    _custodianPk = disclose(custodianPk);
+    // INV-22: canonical Enc(0), decryptable to 0 from genesis (INV-19/32).
+    _encCustodySupply = disclose(ElGamal_encryptZero());
+    _encUnallocated = disclose(ElGamal_encryptZero());
+  }
+
+  /**
+   * @description Asserts the custody module has been initialized (INV-6).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertInitialized(): [] {
+    assert(_custodyInit, "AuditableShieldedCustody: not initialized");
+  }
+
+  // ─── Views / pure helpers ───────────────────────────────────────
+
+  /**
+   * @description The exclusive per-note value bound, `2^48` (INV-9, design
+   * D5). Values at or above it would produce memos the custodian's BSGS
+   * search cannot decrypt.
+   * @return {Uint<64>} - `2^48`.
+   */
+  export pure circuit MAX_NOTE_VALUE(): Uint<64> {
+    return 281474976710656;
+  }
+
+  /**
+   * @description Computes the account id for `secretKey`:
+   * `H(ownerTag, secretKey)`. Pure and salt-free by design (INV-4): ownerIds
+   * are computable off-chain from the HSM master secret and portable across
+   * instances; per-instance separation enters at the commitment/nullifier
+   * layer via `_instanceSalt`.
+   *
+   * @warning Local use only — never expose `secretKey` to untrusted
+   * environments (INV-24/33).
+   *
+   * @param {Bytes<32>} secretKey - The account secret key.
+   * @return {Bytes<32>} - The account id.
+   */
+  export pure circuit computeOwnerId(secretKey: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>(
+      [pad(32, "AuditableCustody:owner"), secretKey]
+    );
+  }
+
+  /**
+   * @description Returns the sealed custodian ElGamal public key.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {JubjubPoint} - The custodian public key.
+   */
+  export circuit custodianPk(): JubjubPoint {
+    assertInitialized();
+    return _custodianPk;
+  }
+
+  // ─── Allowlist lifecycle (INV-20) ───────────────────────────────
+
+  /**
+   * @description Authorizes `ownerId`: appends it as the next leaf of the
+   * allowlist tree. The admin SHOULD record the consumed leaf index
+   * (first-free before the call) for later freeze operations.
+   *
+   * @dev MUST be multisig-gated by the consuming preset. Deliberately not
+   * pause-gated (administrative operation, policy matrix).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The allowlist tree is not full (INV-13).
+   *
+   * @param {Bytes<32>} ownerId - The account id to authorize.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _authorize(ownerId: Bytes<32>): [] {
+    assertInitialized();
+    // INV-13: capacity guard.
+    assert(!_authorizedAccounts.isFull(), "AuditableShieldedCustody: allowlist full");
+
+    _authorizedAccounts.insert(disclose(ownerId));
+  }
+
+  /**
+   * @description Freezes the account authorized at `index` by overwriting its
+   * allowlist leaf with a tombstone (INV-20). The current root changes, so
+   * every note owned by that account becomes untransferable immediately —
+   * without revealing which notes those are. Frozen accounts remain
+   * seizable/redeemable through the unchecked spend paths (INV-37).
+   *
+   * @dev MUST be multisig-gated. Works while paused (compliance ops during
+   * incident response). The circuit cannot verify which account occupies
+   * `index`; the admin's off-chain `ownerId -> index` bookkeeping is trusted
+   * (INV-20) — a wrong index freezes the wrong account.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Uint<64>} index - The allowlist leaf index to tombstone.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _freeze(index: Uint<64>): [] {
+    assertInitialized();
+
+    // INV-20: tombstone overwrite; non-historic tree makes it immediate.
+    _authorizedAccounts.insertIndex(pad(32, "AuditableCustody:frozen"), disclose(index));
+  }
+
+  /**
+   * @description Unfreezes an account by restoring `ownerId` at `index`
+   * (INV-20).
+   *
+   * @dev MUST be multisig-gated; works while paused. The circuit cannot verify
+   * that `ownerId` originally occupied `index`; a gated admin supplying a
+   * different id is performing an authorization, not an unfreeze.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} ownerId - The account id to restore.
+   * @param {Uint<64>} index - The allowlist leaf index it occupied.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _unfreeze(ownerId: Bytes<32>, index: Uint<64>): [] {
+    assertInitialized();
+
+    _authorizedAccounts.insertIndex(disclose(ownerId), disclose(index));
+  }
+
+  // ─── Reserve-side cell update ───────────────────────────────────
+
+  /**
+   * @description Folds a public `mintReserve` amount into `_encUnallocated`
+   * (INV-19.2). Witness-free so the preset's `mintReserve` stays
+   * relayer-provable.
+   *
+   * @dev DOCUMENTED INV-28(b) EXCEPTION: the encryption randomness here is
+   * PUBLIC (derived from `(self, replayNonce)`), because the plaintext amount
+   * is already protocol-public via the `shieldedMints` effect — this
+   * ciphertext hides nothing, and public randomness preserves the no-witness
+   * property. Uniqueness (INV-28a) holds: `replayNonce` is strictly monotonic
+   * and `self` separates instances sharing a custodian key. The cell's hiding
+   * rests on the credit-path deltas' secret randomness.
+   *
+   * @dev MUST be multisig-gated (it is reachable only through the preset's
+   * `mintReserve`, whose signed message binds `amount` and the nonce).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Uint<64>} amount - The public reserve top-up amount.
+   * @param {Uint<64>} replayNonce - The preset's consumed (pre-increment)
+   * replay nonce for this op (INV-18).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _addUnallocated(amount: Uint<64>, replayNonce: Uint<64>): [] {
+    assertInitialized();
+
+    // INV-28a: unique per (instance, nonce); secrecy deliberately waived (see @dev).
+    const r = degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "AuditableCustody:r:mint"), kernel.self().bytes, replayNonce as Bytes<32>]
+    ));
+    // INV-19.2: unallocated += amount.
+    _encUnallocated = disclose(
+      ElGamal_addEncrypted(_encUnallocated, _custodianPk, amount as Uint<128>, r)
+    );
+  }
+
+  // ─── Note-pool operations ───────────────────────────────────────
+
+  /**
+   * @description Custodial issuance against the unallocated reserve: creates
+   * one note (+ memo) for the witnessed recipient and moves `amount` from
+   * `_encUnallocated` to `_encCustodySupply` (INV-19). All parameters are
+   * witnesses, bound to the multisig via `opCommitment` (INV-38); the public
+   * ledger sees one commitment, one memo, and two ciphertext writes (INV-29).
+   *
+   * @dev MUST be multisig-gated. The recipient is multisig-vetted, not
+   * allowlist-checked (policy matrix: spender-authorized n/a) — crediting an
+   * unauthorized id creates a note only seize/redeem paths can move.
+   *
+   * opCommitment opening (the off-chain signing contract):
+   * `persistentCommit<Vector<2, Bytes<32>>>([recipientOwnerId, amount], wit_opBlind())`.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized and not paused.
+   * - `opCommitment` opens to the witnessed `(recipientOwnerId, amount)` (INV-38).
+   * - `amount < MAX_NOTE_VALUE()` (INV-9).
+   * - `wit_custodianEk` is the custodian secret and `wit_plainUnallocated` is
+   *   the true unallocated plaintext (INV-11).
+   * - `wit_plainUnallocated() >= amount` (INV-11 — homomorphic sub wraps mod
+   *   the group order, so this decrypt-verified guard is load-bearing).
+   * - The notes tree is not full (INV-13).
+   *
+   * @param {Uint<64>} replayNonce - The preset's consumed (pre-increment)
+   * replay nonce; binds `rho_credit` (INV-23) and the randomness tags (INV-28).
+   * @param {Bytes<32>} opCommitment - Hiding commitment to the private op
+   * parameters, signed by the co-signers (INV-38).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _credit(replayNonce: Uint<64>, opCommitment: Bytes<32>): [] {
+    assertInitialized();
+    Pausable_assertNotPaused();
+
+    // INV-14: read each witness exactly once; every use below reuses these.
+    const recipientOwnerId = wit_recipientOwnerId();
+    const amount = wit_opAmount();
+    const blind = wit_opBlind();
+    const ek = wit_custodianEk();
+    const claimedUnallocated = wit_plainUnallocated();
+    const seed = wit_seed();
+
+    // INV-38: the signed commitment opens to the exact params acted on.
+    assert(persistentCommit<Vector<2, Bytes<32>>>(
+             [recipientOwnerId, amount as Bytes<32>], blind
+           ) == opCommitment,
+           "AuditableShieldedCustody: commitment mismatch");
+
+    // INV-9: keep the memo BSGS-decryptable.
+    assert(amount < MAX_NOTE_VALUE(), "AuditableShieldedCustody: value bound exceeded");
+
+    // INV-11: decrypt-verify overdraw guard on the unallocated cell. Leaks the
+    // accepted one success bit "plaintext >= amount" (INV-30).
+    ElGamal_assertDecryptsTo(_encUnallocated, _custodianPk, ek, claimedUnallocated);
+    assert(claimedUnallocated >= (amount as Uint<128>),
+           "AuditableShieldedCustody: insufficient unallocated reserve");
+
+    // INV-23: rho_credit binds the strictly-monotonic replay nonce — globally
+    // unique per (recipient, nonce). Accepted INV-31 exception: no custodian-
+    // secret component (open Q4).
+    const rho = persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "AuditableCustody:rho:credit"), recipientOwnerId, replayNonce as Bytes<32>]
+    );
+
+    // INV-28 (+ adopted hardening): expand the witness seed under NONCE-MIXED
+    // tags, one per ciphertext, so even a reused seed cannot repeat (seed, tag).
+    const rValue = ElGamal_expandRandomness(seed, _nonceMixedTag(pad(32, "AuditableCustody:r:cr:value"), replayNonce));
+    const rOwner = ElGamal_expandRandomness(seed, _nonceMixedTag(pad(32, "AuditableCustody:r:cr:owner"), replayNonce));
+    const rSupply = ElGamal_expandRandomness(seed, _nonceMixedTag(pad(32, "AuditableCustody:r:cr:supply"), replayNonce));
+    const rUnalloc = ElGamal_expandRandomness(seed, _nonceMixedTag(pad(32, "AuditableCustody:r:cr:unalloc"), replayNonce));
+
+    // INV-32 soundness: the SAME (recipientOwnerId, amount) consts feed the
+    // commitment (via the note) and the memo — divergence is unsatisfiable.
+    const memo = NoteMemo {
+      encValue: ElGamal_encrypt(_custodianPk, amount as Uint<128>, rValue),
+      encOwner: ElGamal_encryptPoint(_custodianPk, _ownerPoint(recipientOwnerId), rOwner)
+    };
+    // INV-21: note + memo written by the single shared helper.
+    _insertNoteWithMemo(Note { ownerId: recipientOwnerId, value: amount, rho: rho }, memo);
+
+    // INV-19: supply += amount, unallocated -= amount, one `amount` variable.
+    _encCustodySupply = disclose(
+      ElGamal_addEncrypted(_encCustodySupply, _custodianPk, amount as Uint<128>, rSupply)
+    );
+    _encUnallocated = disclose(
+      ElGamal_subEncrypted(_encUnallocated, _custodianPk, amount as Uint<128>, rUnalloc)
+    );
+  }
+
+  /**
+   * @description Moves value inside the pool: spends the caller's note (full
+   * checks: ownership, historic membership, consume-once, current allowlist —
+   * INV-7/10/35/36) and writes two fresh notes + memos: `sendValue` to
+   * `recipientOwnerId`, change back to the spender. Constant shape (INV-29):
+   * always 1 nullifier + 2 commitments + 2 memos, change written even at zero
+   * value, zero `sendValue` legal — exact-amount, partial, and zero transfers
+   * are indistinguishable.
+   *
+   * @dev Self-authenticating (key knowledge is the authorization, INV-35);
+   * the preset MAY expose it ungated. Pause-gated (policy matrix, open Q3).
+   *
+   * @notice The recipient cannot detect the note by scanning the chain; the
+   * sender (or the custodian discovery API, which decrypts every memo)
+   * delivers the opening out of band.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized and not paused.
+   * - The caller (secret-key witness) owns the witnessed spent note, it is
+   *   unspent, and the owner is currently authorized (INV-7/10/35/36).
+   * - `recipientOwnerId` is non-zero and currently authorized (INV-10).
+   * - `sendValue` is at most the spent note's value (INV-8).
+   * - The notes tree has at least two free slots (INV-13).
+   *
+   * @param {Uint<64>} sendValue - The value to move. NOT disclosed (circuit
+   * parameters are private inputs).
+   * @param {Bytes<32>} recipientOwnerId - The recipient account id. NOT disclosed.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _transfer(sendValue: Uint<64>, recipientOwnerId: Bytes<32>): [] {
+    assertInitialized();
+    Pausable_assertNotPaused();
+
+    // INV-14: read-once.
+    const sk = wit_secretKey();
+    const spent = wit_spentNote();
+    const selfId = computeOwnerId(sk);
+
+    // INV-8: conservation bound before any state write.
+    assert(spent.value >= sendValue, "AuditableShieldedCustody: insufficient note value");
+    // INV-10: reject the zero recipient.
+    assert(recipientOwnerId != default<Bytes<32>>, "AuditableShieldedCustody: zero recipient");
+
+    // INV-7/17/35/36 + spender-side INV-10 (allowlist, current root).
+    const nullifier = _spendNote(sk, selfId, spent.value, spent.rho);
+    // INV-10: recipient-side current-root allowlist check.
+    _assertAuthorized(recipientOwnerId);
+
+    // INV-8: out + change == in, both from the same in-circuit arithmetic.
+    const changeValue = (spent.value - sendValue) as Uint<64>;
+
+    // INV-23: output rhos bind the globally-unique spent nullifier.
+    const rhoOut = persistentHash<Vector<4, Bytes<32>>>(
+      [pad(32, "AuditableCustody:rho:out"), sk, recipientOwnerId, nullifier]
+    );
+    const rhoChange = persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "AuditableCustody:rho:change"), sk, nullifier]
+    );
+
+    // INV-28: secret (sk-derived), unique (once-only nullifier), distinct tag
+    // per ciphertext. INV-32: same consts feed commitments and memos.
+    const outMemo = NoteMemo {
+      encValue: ElGamal_encrypt(_custodianPk, sendValue as Uint<128>,
+                                _spendRandomness(pad(32, "AuditableCustody:r:out:value"), sk, nullifier)),
+      encOwner: ElGamal_encryptPoint(_custodianPk, _ownerPoint(recipientOwnerId),
+                                     _spendRandomness(pad(32, "AuditableCustody:r:out:owner"), sk, nullifier))
+    };
+    const changeMemo = NoteMemo {
+      encValue: ElGamal_encrypt(_custodianPk, changeValue as Uint<128>,
+                                _spendRandomness(pad(32, "AuditableCustody:r:chg:value"), sk, nullifier)),
+      encOwner: ElGamal_encryptPoint(_custodianPk, _ownerPoint(selfId),
+                                     _spendRandomness(pad(32, "AuditableCustody:r:chg:owner"), sk, nullifier))
+    };
+
+    // INV-21/29: two note+memo pairs, unconditionally (change even at zero).
+    _insertNoteWithMemo(Note { ownerId: recipientOwnerId, value: sendValue, rho: rhoOut }, outMemo);
+    _insertNoteWithMemo(Note { ownerId: selfId, value: changeValue, rho: rhoChange }, changeMemo);
+  }
+
+  /**
+   * @description Exit: spends the customer's note WITHOUT the spender
+   * allowlist check (INV-37 — frozen accounts stay redeemable), debits
+   * `_encCustodySupply` under the decrypt-verify guard (INV-11), writes the
+   * change note + memo back to the customer, and burns `amount` from the
+   * witnessed contract-held reserve coin (INV-12/19). Serves both the
+   * consented (`redeemNote`) and unconsented (`seizeBurn`) preset paths —
+   * identical effects and write shape by construction (INV-29/36).
+   *
+   * @dev MUST be multisig-gated. NOT pause-gated (compliance/remediation runs
+   * during incident response, policy matrix). The burn change coin's info is
+   * deliberately NOT returned — a return is a public sink (INV-1/25); the
+   * operator reconstructs the change coin off-chain, as in
+   * `MultisigConfidentialShieldedToken.redeem`.
+   *
+   * opCommitment opening (the off-chain signing contract):
+   * `persistentCommit<Vector<3, Bytes<32>>>([customerOwnerId, amount, coin.nonce], wit_opBlind())`
+   * — binds WHOSE claim is redeemed, the exact amount, and the exact reserve
+   * coin (INV-38).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized. (Pause exempt.)
+   * - `opCommitment` opens to the witnessed `(ownerId, amount, coin.nonce)` (INV-38).
+   * - The witnessed key owns the witnessed spent note and it is unspent
+   *   (INV-7/35/36); the owner's allowlist status is NOT checked (INV-37).
+   * - `amount` is at most the spent note's value (INV-8).
+   * - `wit_custodianEk`/`wit_plainSupply` pass the decrypt-verify guard and
+   *   `wit_plainSupply() >= amount` (INV-11).
+   * - `coin` is contract-held, of this contract's color, with
+   *   `coin.value >= amount` (INV-12, enforced by `Token__burnFromSelf`).
+   * - The notes tree is not full (INV-13).
+   *
+   * @param {Bytes<32>} opCommitment - Hiding commitment to the private op
+   * parameters, signed by the co-signers (INV-38).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _redeem(opCommitment: Bytes<32>): [] {
+    assertInitialized();
+
+    // INV-14: read-once. The single `amount` const feeds the opCommitment
+    // check, the conservation bound, the supply debit, the change note, the
+    // memo, and the reserve burn (INV-12/19).
+    const sk = wit_secretKey();
+    const spent = wit_spentNote();
+    const amount = wit_opAmount();
+    const blind = wit_opBlind();
+    const ek = wit_custodianEk();
+    const claimedSupply = wit_plainSupply();
+    const coin = wit_redeemCoin();
+    const selfId = computeOwnerId(sk);
+
+    // INV-38: bind customer, amount, and the exact reserve coin.
+    assert(persistentCommit<Vector<3, Bytes<32>>>(
+             [selfId, amount as Bytes<32>, coin.nonce], blind
+           ) == opCommitment,
+           "AuditableShieldedCustody: commitment mismatch");
+
+    // INV-8.
+    assert(spent.value >= amount, "AuditableShieldedCustody: insufficient note value");
+
+    // INV-11: decrypt-verify overdraw guard on the supply cell (homomorphic
+    // sub wraps; this guard is load-bearing). One success bit leaks (INV-30).
+    ElGamal_assertDecryptsTo(_encCustodySupply, _custodianPk, ek, claimedSupply);
+    assert(claimedSupply >= (amount as Uint<128>),
+           "AuditableShieldedCustody: insufficient custody supply");
+
+    // INV-7/17/35/36 WITHOUT the spender allowlist check (INV-37).
+    const nullifier = _spendNoteUnchecked(sk, selfId, spent.value, spent.rho);
+
+    const changeValue = (spent.value - amount) as Uint<64>;
+    // INV-23.
+    const rhoChange = persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "AuditableCustody:rho:change"), sk, nullifier]
+    );
+    // INV-28: sk-derived, nullifier-unique, per-ciphertext tags.
+    const changeMemo = NoteMemo {
+      encValue: ElGamal_encrypt(_custodianPk, changeValue as Uint<128>,
+                                _spendRandomness(pad(32, "AuditableCustody:r:chg:value"), sk, nullifier)),
+      encOwner: ElGamal_encryptPoint(_custodianPk, _ownerPoint(selfId),
+                                     _spendRandomness(pad(32, "AuditableCustody:r:chg:owner"), sk, nullifier))
+    };
+    // INV-21/29: 1 commitment + 1 memo, change written even at zero value.
+    _insertNoteWithMemo(Note { ownerId: selfId, value: changeValue, rho: rhoChange }, changeMemo);
+
+    // INV-19: supply -= amount.
+    _encCustodySupply = disclose(
+      ElGamal_subEncrypted(_encCustodySupply, _custodianPk, amount as Uint<128>,
+                           _spendRandomness(pad(32, "AuditableCustody:r:supply"), sk, nullifier))
+    );
+
+    // INV-12: burn the SAME `amount` from the reserve coin (color + sufficiency
+    // asserted inside). Change info intentionally dropped (see @dev).
+    const _change = Token__burnFromSelf(coin, amount as Uint<128>);
+  }
+
+  /**
+   * @description SEIZE-AND-MOVE: spends the VICTIM's note via the unchecked
+   * path (INV-37 — reaches frozen accounts), moves `amount` to the witnessed
+   * custodian-chosen recipient, change back to the victim (open Q5 default).
+   * Reserve and cells untouched (INV-19). Write shape identical to
+   * `_transfer` up to circuit identity (INV-29; occurrence is public by
+   * design D4, parameters are not).
+   *
+   * @dev MUST be multisig-gated. NOT pause-gated (policy matrix). Zero
+   * `amount` is legal (shape uniformity, INV-29).
+   *
+   * opCommitment opening (the off-chain signing contract):
+   * `persistentCommit<Vector<3, Bytes<32>>>([victimOwnerId, recipientOwnerId, amount], wit_opBlind())`
+   * — the signers authorize WHO is seized, WHERE value goes, and HOW MUCH
+   * (INV-38).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized. (Pause exempt.)
+   * - `opCommitment` opens to the witnessed `(victimOwnerId, recipientOwnerId,
+   *   amount)` (INV-38).
+   * - The witnessed (custodian-derived) key owns the witnessed spent note and
+   *   it is unspent (INV-7/35/36); the victim's allowlist status is NOT
+   *   checked (INV-37).
+   * - `recipientOwnerId` is non-zero and currently authorized — seized value
+   *   stays inside the KYC perimeter (INV-10).
+   * - `amount` is at most the spent note's value (INV-8).
+   * - The notes tree has at least two free slots (INV-13).
+   *
+   * @param {Bytes<32>} opCommitment - Hiding commitment to the private op
+   * parameters, signed by the co-signers (INV-38).
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _seizeTo(opCommitment: Bytes<32>): [] {
+    assertInitialized();
+
+    // INV-14: read-once.
+    const sk = wit_secretKey();
+    const spent = wit_spentNote();
+    const amount = wit_opAmount();
+    const blind = wit_opBlind();
+    const recipientOwnerId = wit_recipientOwnerId();
+    const victimId = computeOwnerId(sk);
+
+    // INV-38: bind victim, recipient, and amount.
+    assert(persistentCommit<Vector<3, Bytes<32>>>(
+             [victimId, recipientOwnerId, amount as Bytes<32>], blind
+           ) == opCommitment,
+           "AuditableShieldedCustody: commitment mismatch");
+
+    // INV-8.
+    assert(spent.value >= amount, "AuditableShieldedCustody: insufficient note value");
+    // INV-10.
+    assert(recipientOwnerId != default<Bytes<32>>, "AuditableShieldedCustody: zero recipient");
+
+    // INV-7/17/35/36 WITHOUT the victim allowlist check (INV-37).
+    const nullifier = _spendNoteUnchecked(sk, victimId, spent.value, spent.rho);
+    // INV-10: recipient must be currently authorized.
+    _assertAuthorized(recipientOwnerId);
+
+    const changeValue = (spent.value - amount) as Uint<64>;
+
+    // INV-23: same derivations as `_transfer` — one nullifier can never feed
+    // two circuits (consume-once), so tag reuse across spend paths is safe.
+    const rhoOut = persistentHash<Vector<4, Bytes<32>>>(
+      [pad(32, "AuditableCustody:rho:out"), sk, recipientOwnerId, nullifier]
+    );
+    const rhoChange = persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "AuditableCustody:rho:change"), sk, nullifier]
+    );
+
+    // INV-28/32.
+    const outMemo = NoteMemo {
+      encValue: ElGamal_encrypt(_custodianPk, amount as Uint<128>,
+                                _spendRandomness(pad(32, "AuditableCustody:r:out:value"), sk, nullifier)),
+      encOwner: ElGamal_encryptPoint(_custodianPk, _ownerPoint(recipientOwnerId),
+                                     _spendRandomness(pad(32, "AuditableCustody:r:out:owner"), sk, nullifier))
+    };
+    const changeMemo = NoteMemo {
+      encValue: ElGamal_encrypt(_custodianPk, changeValue as Uint<128>,
+                                _spendRandomness(pad(32, "AuditableCustody:r:chg:value"), sk, nullifier)),
+      encOwner: ElGamal_encryptPoint(_custodianPk, _ownerPoint(victimId),
+                                     _spendRandomness(pad(32, "AuditableCustody:r:chg:owner"), sk, nullifier))
+    };
+
+    // INV-21/29: 1 nullifier + 2 commitments + 2 memos, unconditionally.
+    _insertNoteWithMemo(Note { ownerId: recipientOwnerId, value: amount, rho: rhoOut }, outMemo);
+    _insertNoteWithMemo(Note { ownerId: victimId, value: changeValue, rho: rhoChange }, changeMemo);
+  }
+
+  // ─── Private helpers ────────────────────────────────────────────
+
+  /**
+   * @description Spends the note `(selfId, value, rho)` with the FULL check
+   * set: unchecked spend (INV-7/17/35/36) plus the spender's current-root
+   * allowlist membership (INV-10). Returns the disclosed nullifier.
+   *
+   * @param {Bytes<32>} sk - The acting secret key (read once by the caller).
+   * @param {Bytes<32>} selfId - `computeOwnerId(sk)`, computed by the caller.
+   * @param {Uint<64>} value - The spent note's value.
+   * @param {Bytes<32>} rho - The spent note's randomness.
+   * @return {Bytes<32>} - The spent note's nullifier.
+   */
+  circuit _spendNote(sk: Bytes<32>, selfId: Bytes<32>, value: Uint<64>, rho: Bytes<32>): Bytes<32> {
+    const nullifier = _spendNoteUnchecked(sk, selfId, value, rho);
+    // INV-10: holder spends require current authorization (freeze check).
+    _assertAuthorized(selfId);
+    return nullifier;
+  }
+
+  /**
+   * @description Spends the note `(selfId, value, rho)` EXACTLY as
+   * `_spendNote` does — ownership binding (INV-35), historic-root membership
+   * (INV-7), consume-once nullifier (INV-17/36) — with ONE deliberate
+   * omission: no allowlist check on the acting account. This is the single
+   * difference that lets seize/redeem reach a frozen account (INV-37). No
+   * other check may ever be dropped here.
+   *
+   * @param {Bytes<32>} sk - The acting secret key (read once by the caller).
+   * @param {Bytes<32>} selfId - `computeOwnerId(sk)`, computed by the caller.
+   * @param {Uint<64>} value - The spent note's value.
+   * @param {Bytes<32>} rho - The spent note's randomness.
+   * @return {Bytes<32>} - The spent note's nullifier.
+   */
+  circuit _spendNoteUnchecked(sk: Bytes<32>, selfId: Bytes<32>, value: Uint<64>, rho: Bytes<32>): Bytes<32> {
+    // INV-7a/35: ownership binds by recomputing the commitment from the key.
+    const note = Note { ownerId: selfId, value: value, rho: rho };
+    const commitment = _commitment(note);
+
+    // INV-7b/26: historic-root membership; only the path ROOT is disclosed.
+    const path = wit_notePath(commitment);
+    assert(path.leaf == commitment, "AuditableShieldedCustody: path leaf mismatch");
+    assert(_notes.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+           "AuditableShieldedCustody: unknown note root");
+
+    // INV-7c/17/36: single derivation formula, single set, consume-once.
+    const nullifier = persistentHash<Vector<4, Bytes<32>>>(
+      [pad(32, "AuditableCustody:nullifier"), _instanceSalt, sk, rho]
+    );
+    // INV-27: the disclosed nullifier is unlinkable to the commitment without sk.
+    assert(!_nullifiers.member(disclose(nullifier)), "AuditableShieldedCustody: note already spent");
+    _nullifiers.insert(disclose(nullifier));
+
+    // INV-37: intentionally NO _assertAuthorized(selfId) here.
+    return nullifier;
+  }
+
+  /**
+   * @description Proves `ownerId` is a member of the allowlist against its
+   * CURRENT root (INV-10/20 — non-historic by design, so tombstoned accounts
+   * fail immediately). Only the recomputed root is disclosed (INV-26).
+   *
+   * @param {Bytes<32>} ownerId - The account id to check.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _assertAuthorized(ownerId: Bytes<32>): [] {
+    const path = wit_authPath(ownerId);
+    assert(path.leaf == ownerId, "AuditableShieldedCustody: path leaf mismatch");
+    assert(_authorizedAccounts.checkRoot(disclose(merkleTreePathRoot<20, Bytes<32>>(path))),
+           "AuditableShieldedCustody: not authorized");
+  }
+
+  /**
+   * @description The salted, domain-tagged note commitment (INV-23/31: ≥256
+   * bits of secret preimage entropy via ownerId).
+   *
+   * @param {Note} note - The note opening.
+   * @return {Bytes<32>} - The commitment.
+   */
+  circuit _commitment(note: Note): Bytes<32> {
+    return persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "AuditableCustody:note"), _instanceSalt, persistentHash<Note>(note)]
+    );
+  }
+
+  /**
+   * @description Records a note: capacity guard, tree insert, and the paired
+   * memo insert — the ONLY place either write happens, so no call site can
+   * skip one (INV-21). Memo keys cannot collide because commitments are
+   * unique (INV-23), so no entry is ever overwritten.
+   *
+   * @param {Note} note - The note to record.
+   * @param {NoteMemo} memo - Its custodian-keyed memo.
+   * @return {[]} - Empty tuple.
+   */
+  circuit _insertNoteWithMemo(note: Note, memo: NoteMemo): [] {
+    // INV-13: capacity guard.
+    assert(!_notes.isFull(), "AuditableShieldedCustody: notes tree full");
+    const commitment = _commitment(note);
+    // INV-1: the commitment and its memo ciphertexts are intended crossings.
+    _notes.insert(disclose(commitment));
+    _memos.insert(disclose(commitment), disclose(memo));
+  }
+
+  /**
+   * @description The injective, one-way ownerId -> JubjubPoint map behind
+   * `encOwner` (INV-34, resolved design Q2): `g^H(ownerPtTag, ownerId)`.
+   * Injective w.h.p. by hash collision resistance; one-way given ownerId
+   * entropy (INV-24/31). The known discrete log to `g` is harmless — the
+   * point is a custodian KYC-lookup token, not a commitment base.
+   *
+   * @param {Bytes<32>} ownerId - The account id to map.
+   * @return {JubjubPoint} - The lookup point.
+   */
+  pure circuit _ownerPoint(ownerId: Bytes<32>): JubjubPoint {
+    return ecMulGenerator(degradeToTransient(persistentHash<Vector<2, Bytes<32>>>(
+      [pad(32, "AuditableCustody:owner:pt"), ownerId]
+    )));
+  }
+
+  /**
+   * @description Spend-path encryption randomness (INV-28): secret via `sk`,
+   * unique via the once-only spent `nullifier`, separated by the
+   * per-ciphertext `tag`. `degradeToTransient` keeps the result a valid
+   * Jubjub scalar (INV-15).
+   *
+   * @param {Bytes<32>} tag - Per-ciphertext domain tag.
+   * @param {Bytes<32>} sk - The acting secret key.
+   * @param {Bytes<32>} nullifier - The spent note's nullifier.
+   * @return {Field} - The encryption randomness.
+   */
+  pure circuit _spendRandomness(tag: Bytes<32>, sk: Bytes<32>, nullifier: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<3, Bytes<32>>>([tag, sk, nullifier]));
+  }
+
+  /**
+   * @description Credit-path randomness tag, mixed with the replay nonce
+   * (INV-28 hardening): `H(tag, nonce)`, so a reused or misconfigured
+   * `wit_seed` cannot repeat `(seed, tag)` across credits.
+   *
+   * @param {Bytes<32>} tag - The base per-ciphertext tag.
+   * @param {Uint<64>} replayNonce - The consumed replay nonce.
+   * @return {Bytes<32>} - The mixed tag.
+   */
+  pure circuit _nonceMixedTag(tag: Bytes<32>, replayNonce: Uint<64>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([tag, replayNonce as Bytes<32>]);
+  }
+}

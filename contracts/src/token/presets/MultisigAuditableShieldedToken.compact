@@ -1,0 +1,556 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/presets/MultisigAuditableShieldedToken.compact)
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+/**
+ * @title MultisigAuditableShieldedToken
+ * @description NST Phase 2 preset: the Phase 1 multisig-gated omnibus reserve
+ * (`MultisigNativeShieldedToken`) plus the `AuditableShieldedCustody` note
+ * pool on top. Per-customer claims live as note commitments (graph-private
+ * transfers); every note carries an on-chain ElGamal memo under a sealed
+ * custodian key, so the custodian reconstructs all balances and flows from
+ * chain data alone. Boundary amounts (credit/redeem/seize) exist publicly
+ * only as ciphertexts; only `mintReserve` amounts are protocol-public
+ * (`shieldedMints` effect).
+ *
+ * Composes (all unchanged):
+ *   - `token/NativeShieldedToken`                          (reserve mint/burn, sealed color)
+ *   - `token/extensions/NativeShieldedTokenDerivedNonce`   (caller-free coin nonces)
+ *   - `token/extensions/AuditableShieldedCustody`          (note pool + memo layer + encrypted cells)
+ *   - `multisig/EcdsaSignerManager`                        (2-of-3 ECDSA verification)
+ *   - `security/Pausable`                                  (multisig-wrapped here — the module is ungated)
+ *
+ * # Authorization (INV-38)
+ *
+ * Every gated op verifies `threshold` ECDSA approvals over
+ * `msgHash = H(opTag ‖ self ‖ replayNonce ‖ paramsSlot)`:
+ *   - op tag        → a bundle for op A cannot drive op B;
+ *   - `self`        → a bundle for one instance cannot drive another
+ *                     (closes the `ShieldedCustodyMultiSig` msgHash gap);
+ *   - `replayNonce` → consumed once per gated op, strictly monotonic (INV-18);
+ *   - `paramsSlot`  → for private-param ops, the hiding
+ *     `opCommitment = persistentCommit(privateParams, wit_opBlind())`, opened
+ *     in-circuit against the acted-on witnesses; for public-param ops, the
+ *     params (or their hash); constant `pad(32, "")` for pause/unpause.
+ *
+ * The per-op opCommitment openings (the off-chain signing contract) are
+ * documented on the corresponding `AuditableShieldedCustody` circuits.
+ *
+ * # Policy matrix
+ *
+ * | Circuit                                    | not-paused | spender allowlist | multisig |
+ * |--------------------------------------------|------------|-------------------|----------|
+ * | mintReserve, creditNote                    | yes        | n/a               | yes      |
+ * | transfer                                   | yes        | yes (both sides)  | —        |
+ * | redeemNote, seizeTo, seizeBurn             | exempt     | no (unchecked)    | yes      |
+ * | authorizeAccount, freeze, unfreeze,        | exempt     | n/a               | yes      |
+ * | pause, unpause                             | exempt     | n/a               | yes      |
+ *
+ * There is NO `withdraw` to a bearer coin: value leaves custody only through
+ * the multisig-gated `redeemNote`/`seizeBurn` reserve burns (INV-41).
+ *
+ * # M-of-N sizing
+ *
+ * Fixed 2-of-3, as in Phase 1: 3 registered signer commitments (`Vector<3>`),
+ * exactly 2 approvals per op (`Vector<2>`), `threshold <= 2` asserted at
+ * construction (INV-22/39; adjacency-based duplicate detection is sound only
+ * for <= 2 signatures). A different shape is a recompiled variant.
+ *
+ * @notice ECDSA verification is STUBBED in `EcdsaSignerManager`
+ * (`stubVerifySignature` always returns true) and `msgHash` uses
+ * `persistentHash` rather than `keccak256`. Until both are replaced, every
+ * multisig gate reduces to "anyone who can build the proof" (INV-40). This
+ * contract MUST NOT hold real value before the destub. The msgHash preimage
+ * structure is destub-stable: only the hash primitive and the verifier swap.
+ */
+
+// #621 token core + derived-nonce extension. Supply extension deliberately
+// omitted (no public burn totals); the encrypted cells live in the custody
+// extension instead (INV-25).
+import "../NativeShieldedToken" prefix Token_;
+import "../extensions/NativeShieldedTokenDerivedNonce" prefix TokenNonce_;
+// Phase 2 custody extension (note pool, memos, encrypted cells).
+import "../extensions/AuditableShieldedCustody" prefix Custody_;
+// #628 ECDSA M-of-N registry + verification.
+import "../../multisig/EcdsaSignerManager" prefix Signer_;
+// Ungated pause module; multisig-wrapped by this preset (preserved-invariant note).
+import "../../security/Pausable" prefix Pausable_;
+// Ciphertext type re-export only (cells and memos in the ledger reader).
+import "../../crypto/ElGamal" prefix ElGamal_;
+
+// Named TS artifact aliases for dApp/relayer/custodian tooling.
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ElGamal_Ciphertext };
+
+// ─── State ──────────────────────────────────────────────────────
+//
+// The preset owns ONLY the multisig replay nonce. Everything else lives in
+// the composed modules (prefixed; each owns its per-module init — compact#270):
+//   Token_*      : _isInitialized, _domain (sealed), _name/_symbol/_decimals
+//   TokenNonce_* : _counter, _nonce                  (coin-nonce chain)
+//   Signer_*     : _instanceSalt, _signers, _signerCount, _threshold, _isInitialized
+//   Pausable_*   : _isPaused
+//   Custody_*    : _instanceSalt/_custodianPk (sealed), _notes, _nullifiers,
+//                  _authorizedAccounts, _memos, _encCustodySupply,
+//                  _encUnallocated, _custodyInit
+
+/**
+ * @description Multisig replay nonce. Read into each gated op's `msgHash`
+ * then incremented — strictly monotonic, consumed exactly once per gated op
+ * (INV-18). Distinct from the derived coin-nonce chain. Also binds
+ * `rho_credit` and the credit-path randomness tags (INV-23/28).
+ */
+export ledger _replayNonce: Counter;
+
+// ─── Constructor ────────────────────────────────────────────────
+
+/**
+ * @description Initializes every composed module exactly once (INV-6/22).
+ * Each owns an independent init flag/seed, so partial initialization is
+ * possible — this constructor MUST seed all of them or the first op aborts.
+ *
+ * @param {Bytes<32>} domainSep - Token domain separator; with `kernel.self()`
+ * fixes this contract's immutable color.
+ * @param {Opaque<"string">} name_ - Token name.
+ * @param {Opaque<"string">} symbol_ - Token symbol.
+ * @param {Uint<8>} decimals_ - Display decimals.
+ * @param {Bytes<32>} instanceSalt - Cryptographically random per-instance
+ * salt. Shared by the signer registry (domain `"multisig:signer:"`) and the
+ * custody commitment/nullifier layer (`"AuditableCustody:*"` tags) — the
+ * domain tags keep the two uses separated.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Signer commitments
+ * (computed off-chain via `EcdsaSignerManager._calculateSignerId`). No duplicates.
+ * @param {Uint<8>} threshold - Minimum approvals; must be `<= 2` to be
+ * satisfiable with 2 presented signatures (INV-22/39).
+ * @param {Bytes<32>} initCoinNonce - Random seed for the derived coin-nonce
+ * chain; non-zero.
+ * @param {JubjubPoint} custodianPk - The custodian's memo/audit ElGamal
+ * public key; sealed, rotation is a redeploy (INV-2).
+ */
+constructor(
+  domainSep: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  threshold: Uint<8>,
+  initCoinNonce: Bytes<32>,
+  custodianPk: JubjubPoint
+) {
+  // INV-22: 2 signature slots can never satisfy a threshold of 3 (INV-39
+  // adjacency dedup is only sound for <= 2 anyway).
+  assert(threshold <= 2,
+         "MultisigAuditableShieldedToken: threshold cannot exceed 2");
+
+  // _domain is sealed here; the token color is fixed for the contract lifetime.
+  Token_initialize(domainSep, name_, symbol_, decimals_);
+  // Seed the coin-nonce chain (non-zero, once).
+  TokenNonce_initialize(initCoinNonce);
+  // Threshold validity, no-dup signers, salted commitments.
+  Signer_initialize<3>(instanceSalt, signerCommitments, threshold);
+  // Sealed salt + custodian key; cells seeded to canonical Enc(0) (INV-22).
+  Custody_initialize(instanceSalt, custodianPk);
+}
+
+// ─── Reserve layer ──────────────────────────────────────────────
+
+/**
+ * @description Public, unattributed reserve top-up: mints contract-owned
+ * coins to the compile-time constant `right(kernel.self())` and folds the
+ * amount into `Enc(unallocated)` (INV-19.2). The amount is public via the
+ * `shieldedMints` effect (intended — the only public amount in the system,
+ * INV-25). Relayer-provable: no witness, no private input.
+ *
+ * `paramsSlot = amount` — the signers approve the exact public amount.
+ *
+ * @notice The returned `ShieldedCoinInfo` is the ONLY copy of the minted
+ * coin's info: contract-owned coins emit no wallet-scannable ciphertext. The
+ * operator MUST capture it (with the Zswap output's Merkle index) into its
+ * UTXO store or the value is irrecoverably stranded.
+ *
+ * Requirements:
+ *
+ * - All modules initialized; not paused (INV-6, policy matrix).
+ * - `threshold` valid ECDSA approvals over the mint `msgHash` (INV-38..40).
+ *
+ * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the
+ * protocol `mintShieldedToken` primitive.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the mint `msgHash`.
+ * @return {ShieldedCoinInfo} - The newly minted contract-owned coin.
+ */
+export circuit mintReserve(
+  amount: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): ShieldedCoinInfo {
+  Pausable_assertNotPaused();
+
+  // INV-18/38/39/40.
+  const replayNonce = _authorizeOp(
+    pad(32, "AuditableCustody:mintReserve"), amount as Bytes<32>, pubkeys, signatures
+  );
+
+  // INV-19.2: Enc(unallocated) += amount (public randomness — documented
+  // INV-28(b) exception on `_addUnallocated`).
+  Custody__addUnallocated(amount, replayNonce);
+
+  // Recipient is the constant self; derived (recipient-public, moot for
+  // self) coin nonce. `_mint` enforces init + non-zero recipient.
+  return Token__mint(
+    right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+    amount,
+    TokenNonce__deriveNonce()
+  );
+}
+
+// ─── Custody layer (gated) ──────────────────────────────────────
+
+/**
+ * @description Credits a note to a customer against the unallocated reserve.
+ * All op parameters are witnesses bound via `opCommitment` (opening:
+ * `persistentCommit([recipientOwnerId, amount], wit_opBlind())` — see
+ * `AuditableShieldedCustody._credit`). Custodian-proven.
+ *
+ * Requirements:
+ *
+ * - All modules initialized; not paused.
+ * - `threshold` valid approvals over the credit `msgHash` (INV-38..40).
+ * - `opCommitment` opens to the acted-on witnesses; `amount <
+ *   MAX_NOTE_VALUE()`; unallocated overdraw guard passes (INV-9/11).
+ *
+ * @param {Bytes<32>} opCommitment - Hiding commitment to `(recipientOwnerId,
+ * amount)`, signed by the co-signers.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the credit `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit creditNote(
+  opCommitment: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  // INV-18/38/39/40. (Pause gate lives inside `_credit`.)
+  const replayNonce = _authorizeOp(
+    pad(32, "AuditableCustody:credit"), opCommitment, pubkeys, signatures
+  );
+  // INV-8/9/11/14/19/21/23/28/29/32.
+  Custody__credit(replayNonce, opCommitment);
+}
+
+/**
+ * @description Customer-consented exit: spends the customer's note
+ * (custodian-derived key, unchecked spend — INV-37), debits `Enc(supply)`,
+ * and burns the same amount from a witnessed contract-held reserve coin
+ * (INV-12/19). opCommitment opening:
+ * `persistentCommit([customerOwnerId, amount, coin.nonce], wit_opBlind())`.
+ * NOT pause-gated (policy matrix). Custodian-proven.
+ *
+ * @notice Amount-private: no plaintext amount crosses; the burn change coin
+ * info is deliberately not returned (a return is a public sink — INV-1/25)
+ * and is reconstructed off-chain by the operator.
+ *
+ * Requirements:
+ *
+ * - Custody + token + signer modules initialized.
+ * - `threshold` valid approvals over the redeem `msgHash` (INV-38..40).
+ * - Extension-side checks per `AuditableShieldedCustody._redeem`.
+ *
+ * @param {Bytes<32>} opCommitment - Hiding commitment to `(customerOwnerId,
+ * amount, coin.nonce)`, signed by the co-signers.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the redeem `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit redeemNote(
+  opCommitment: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:redeem"), opCommitment, pubkeys, signatures
+  );
+  Custody__redeem(opCommitment);
+}
+
+/**
+ * @description SEIZE-AND-MOVE: spends the victim's note (unchecked — reaches
+ * frozen accounts, INV-37) and moves the amount to a custodian-chosen
+ * authorized recipient; change back to the victim. Reserve untouched.
+ * opCommitment opening: `persistentCommit([victimOwnerId, recipientOwnerId,
+ * amount], wit_opBlind())`. Seizure OCCURRENCE is public by circuit identity
+ * (design D4 — countable, regulator-friendly); target, amount, and victim
+ * are not. NOT pause-gated.
+ *
+ * Requirements:
+ *
+ * - Custody + signer modules initialized.
+ * - `threshold` valid approvals over the seizeTo `msgHash` (INV-38..40).
+ * - Extension-side checks per `AuditableShieldedCustody._seizeTo`.
+ *
+ * @param {Bytes<32>} opCommitment - Hiding commitment to `(victimOwnerId,
+ * recipientOwnerId, amount)`, signed by the co-signers.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the seizeTo `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit seizeTo(
+  opCommitment: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:seizeTo"), opCommitment, pubkeys, signatures
+  );
+  Custody__seizeTo(opCommitment);
+}
+
+/**
+ * @description SEIZE-AND-DESTROY: identical effects and write shape to
+ * `redeemNote` (same extension circuit — INV-29/36 by construction), without
+ * consent semantics; only the msgHash domain tag differs. opCommitment
+ * opening: `persistentCommit([victimOwnerId, amount, coin.nonce],
+ * wit_opBlind())`. NOT pause-gated.
+ *
+ * Requirements:
+ *
+ * - Custody + token + signer modules initialized.
+ * - `threshold` valid approvals over the seizeBurn `msgHash` (INV-38..40).
+ * - Extension-side checks per `AuditableShieldedCustody._redeem`.
+ *
+ * @param {Bytes<32>} opCommitment - Hiding commitment to `(victimOwnerId,
+ * amount, coin.nonce)`, signed by the co-signers.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the seizeBurn `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit seizeBurn(
+  opCommitment: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:seizeBurn"), opCommitment, pubkeys, signatures
+  );
+  Custody__redeem(opCommitment);
+}
+
+// ─── Allowlist administration (gated; work while paused) ────────
+
+/**
+ * @description Onboards `ownerId` to the transfer allowlist (INV-20). The
+ * admin SHOULD record the consumed leaf index for later freezes.
+ * `paramsSlot = ownerId`.
+ *
+ * Requirements:
+ *
+ * - Custody + signer modules initialized.
+ * - `threshold` valid approvals over the authorize `msgHash` (INV-38..40).
+ * - The allowlist tree is not full (INV-13).
+ *
+ * @param {Bytes<32>} ownerId - The account id to authorize.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the authorize `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit authorizeAccount(
+  ownerId: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:authorize"), ownerId, pubkeys, signatures
+  );
+  Custody__authorize(ownerId);
+}
+
+/**
+ * @description Tombstones the allowlist leaf at `index` (INV-20): the
+ * account's notes become untransferable immediately, while remaining
+ * seizable/redeemable (INV-37). Works while paused. `paramsSlot = index`.
+ *
+ * Requirements:
+ *
+ * - Custody + signer modules initialized.
+ * - `threshold` valid approvals over the freeze `msgHash` (INV-38..40).
+ *
+ * @param {Uint<64>} index - The allowlist leaf index to tombstone (admin-
+ * trusted bookkeeping — a wrong index freezes the wrong account).
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the freeze `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit freeze(
+  index: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:freeze"), index as Bytes<32>, pubkeys, signatures
+  );
+  Custody__freeze(index);
+}
+
+/**
+ * @description Restores `ownerId` at allowlist `index` (INV-20). Works while
+ * paused. `paramsSlot = H(ownerId, index)`.
+ *
+ * Requirements:
+ *
+ * - Custody + signer modules initialized.
+ * - `threshold` valid approvals over the unfreeze `msgHash` (INV-38..40).
+ *
+ * @param {Bytes<32>} ownerId - The account id to restore.
+ * @param {Uint<64>} index - The allowlist leaf index it occupied.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the unfreeze `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit unfreeze(
+  ownerId: Bytes<32>,
+  index: Uint<64>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const params = persistentHash<Vector<2, Bytes<32>>>([ownerId, index as Bytes<32>]);
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:unfreeze"), params, pubkeys, signatures
+  );
+  Custody__unfreeze(ownerId, index);
+}
+
+/**
+ * @description Multisig-gated emergency stop (the `Pausable` module itself is
+ * ungated — this wrap is the preserved-invariant requirement). Gates
+ * `mintReserve`/`creditNote`/`transfer`; redeem/seize/allowlist ops keep
+ * working (policy matrix). `paramsSlot = pad(32, "")` (no params; op tag +
+ * self + nonce alone bind the approval).
+ *
+ * Requirements:
+ *
+ * - `threshold` valid approvals over the pause `msgHash` (INV-38..40).
+ * - Not already paused.
+ *
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the pause `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit pause(
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:pause"), pad(32, ""), pubkeys, signatures
+  );
+  Pausable__pause();
+}
+
+/**
+ * @description Multisig-gated resume.
+ *
+ * Requirements:
+ *
+ * - `threshold` valid approvals over the unpause `msgHash` (INV-38..40).
+ * - Currently paused.
+ *
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over the unpause `msgHash`.
+ * @return {[]} - Empty tuple.
+ */
+export circuit unpause(
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): [] {
+  const _nonce = _authorizeOp(
+    pad(32, "AuditableCustody:unpause"), pad(32, ""), pubkeys, signatures
+  );
+  Pausable__unpause();
+}
+
+// ─── Custody layer (self-authenticating) ────────────────────────
+
+/**
+ * @description Moves value inside the pool. Self-authenticating — knowledge
+ * of the note's secret key IS the authorization (INV-35); no multisig.
+ * Pause-gated; both spender and recipient must be currently allowlisted
+ * (INV-10). Public effects: 1 nullifier + 2 commitments + 2 memos + roots —
+ * no amounts, no identities (INV-25/26/29).
+ *
+ * @param {Uint<64>} sendValue - Value to move. A private input (circuit
+ * parameters are not disclosed).
+ * @param {Bytes<32>} recipientOwnerId - Recipient account id. Private input.
+ * @return {[]} - Empty tuple.
+ */
+export circuit transfer(sendValue: Uint<64>, recipientOwnerId: Bytes<32>): [] {
+  Custody__transfer(sendValue, recipientOwnerId);
+}
+
+// ─── Views (kept minimal — composite-deploy block-limit budget) ──
+
+/**
+ * @description Returns this token's coin color, `tokenType(_domain, self())`.
+ * @return {Bytes<32>} - The immutable coin color.
+ */
+export circuit tokenColor(): Bytes<32> {
+  return Token_tokenColor();
+}
+
+/**
+ * @description Returns the current multisig replay nonce (the next gated op
+ * binds it). The off-chain signing flow reads this to build `msgHash`.
+ * @return {Uint<64>} - The replay nonce.
+ */
+export circuit getNonce(): Uint<64> {
+  return _replayNonce;
+}
+
+/**
+ * @description Returns the sealed custodian ElGamal public key.
+ * @return {JubjubPoint} - The custodian public key.
+ */
+export circuit custodianPk(): JubjubPoint {
+  return Custody_custodianPk();
+}
+
+// ─── Internal ───────────────────────────────────────────────────
+
+/**
+ * @description Shared gate for every multisig op: consumes the replay nonce
+ * (INV-18), builds `msgHash = H(opTag ‖ self ‖ nonce ‖ paramsSlot)` (INV-38),
+ * and verifies `threshold` distinct registered approvals (INV-39/40).
+ * Returns the consumed (pre-increment) nonce for ops that bind it
+ * downstream (`rho_credit`, cell-randomness tags).
+ *
+ * @param {Bytes<32>} opTag - The op's 32-byte domain tag.
+ * @param {Bytes<32>} paramsSlot - opCommitment | params hash | public param |
+ * `pad(32, "")`.
+ * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
+ * @param {Vector<2, Bytes<64>>} signatures - Signatures over `msgHash`.
+ * @return {Uint<64>} - The consumed replay nonce.
+ */
+circuit _authorizeOp(
+  opTag: Bytes<32>,
+  paramsSlot: Bytes<32>,
+  pubkeys: Vector<2, Bytes<64>>,
+  signatures: Vector<2, Bytes<64>>
+): Uint<64> {
+  // INV-18: read then increment exactly once, before verification.
+  const replayNonce = _replayNonce;
+  _replayNonce.increment(1);
+
+  // INV-38: bind op domain, THIS instance, the consumed nonce, and the params.
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    opTag,
+    kernel.self().bytes,
+    replayNonce as Bytes<32>,
+    paramsSlot
+  ]);
+
+  // INV-39/40: threshold of distinct registered signers (ECDSA verify STUBBED).
+  Signer_verify<2>(msgHash, pubkeys, signatures);
+
+  return replayNonce;
+}
