@@ -129,7 +129,7 @@ module NativeShieldedTokenFamilySupply {
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
    *
-   * @circuitInfo k=9, rows=440
+   * @circuitInfo k=9, rows=439
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The upper bound on tokens in existence.

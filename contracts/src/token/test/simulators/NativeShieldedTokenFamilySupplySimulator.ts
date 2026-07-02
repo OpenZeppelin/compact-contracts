@@ -81,4 +81,13 @@ export class NativeShieldedTokenFamilySupplySimulator extends NativeShieldedToke
   public totalSupply(domain: Uint8Array): Promise<bigint> {
     return this.circuits.impure.totalSupply(domain);
   }
+
+  /**
+   * @description TEST-ONLY: writes `_totalBurned(domain)` directly, bypassing
+   * the `burned <= minted` invariant, to reach the otherwise-unreachable
+   * `burned > minted` state and exercise the `totalSupply` clamp.
+   */
+  public unsafeSetBurned(domain: Uint8Array, amount: bigint): Promise<[]> {
+    return this.circuits.impure.unsafeSetBurned(domain, amount);
+  }
 }

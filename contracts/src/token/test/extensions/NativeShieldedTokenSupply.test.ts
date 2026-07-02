@@ -74,6 +74,15 @@ describe('NativeShieldedTokenSupply (extension)', () => {
       await supply._addBurned(1_000n);
       expect(await supply.totalSupply()).toBe(0n);
     });
+
+    it('should clamp to 0 when burned somehow exceeds minted', async () => {
+      await supply._addMinted(1_000n);
+      // Corrupt the state past the invariant the accounting API enforces.
+      await supply.unsafeSetBurned(1_500n);
+      expect(await supply.totalBurned()).toBe(1_500n);
+      // The getter reads cleanly as 0 instead of reverting on the underflow.
+      expect(await supply.totalSupply()).toBe(0n);
+    });
   });
 
   describe('simulator wiring', () => {

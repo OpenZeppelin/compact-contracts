@@ -41,3 +41,11 @@ export circuit totalBurned(): Uint<128> {
 export circuit totalSupply(): Uint<128> {
   return NativeShieldedTokenSupply_totalSupply();
 }
+
+// Test-only: force `_totalBurned` past `_totalMinted` to reach the otherwise
+// unreachable `burned > minted` state and exercise the `totalSupply` clamp.
+// Writes the ledger directly, bypassing the `_addBurned` invariant; never
+// expose anything like this in a production contract.
+export circuit unsafeSetBurned(amount: Uint<128>): [] {
+  _totalBurned.insert(default<Bytes<32>>, disclose(amount));
+}

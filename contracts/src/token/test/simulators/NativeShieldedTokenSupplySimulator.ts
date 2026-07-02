@@ -81,4 +81,13 @@ export class NativeShieldedTokenSupplySimulator extends NativeShieldedTokenSuppl
   public totalSupply(): Promise<bigint> {
     return this.circuits.impure.totalSupply();
   }
+
+  /**
+   * @description TEST-ONLY: writes `_totalBurned` directly, bypassing the
+   * `burned <= minted` invariant, to reach the otherwise-unreachable
+   * `burned > minted` state and exercise the `totalSupply` clamp.
+   */
+  public unsafeSetBurned(amount: bigint): Promise<[]> {
+    return this.circuits.impure.unsafeSetBurned(amount);
+  }
 }

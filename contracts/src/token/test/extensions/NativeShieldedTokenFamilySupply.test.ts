@@ -77,6 +77,20 @@ describe('NativeShieldedTokenFamilySupply (extension)', () => {
     });
   });
 
+  describe('totalSupply clamp', () => {
+    it('should clamp to 0 when burned somehow exceeds minted for a domain', async () => {
+      await supply._addMinted(DOMAIN_A, 1_000n);
+      // Corrupt DOMAIN_A past the invariant the accounting API enforces.
+      await supply.unsafeSetBurned(DOMAIN_A, 1_500n);
+      expect(await supply.totalBurned(DOMAIN_A)).toBe(1_500n);
+      // The getter reads cleanly as 0 instead of reverting on the underflow.
+      expect(await supply.totalSupply(DOMAIN_A)).toBe(0n);
+      // A healthy domain is unaffected.
+      await supply._addMinted(DOMAIN_B, 250n);
+      expect(await supply.totalSupply(DOMAIN_B)).toBe(250n);
+    });
+  });
+
   describe('simulator wiring', () => {
     it('should surface the per-domain supply ledger and return it verbatim from the getters', async () => {
       await supply._addMinted(DOMAIN_A, 1_500n);

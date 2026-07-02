@@ -127,16 +127,23 @@ module NativeShieldedTokenSupplyCore {
   }
 
   /**
-   * @description Returns `totalMinted(domain) - totalBurned(domain)`.
+   * @description Returns `totalMinted(domain) - totalBurned(domain)`, or 0 if
+   * `totalBurned` somehow exceeds `totalMinted`.
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
+   * @dev The `burned <= minted` invariant enforced by `_addBurned` already makes
+   * `burned > minted` unreachable through the accounting API, so the clamp never
+   * fires in normal operation. It is kept so the getter is a total function that
+   * reads cleanly (returning 0) rather than reverting on an out-of-bound state.
    *
-   * @circuitInfo k=9, rows=440
+   * @circuitInfo k=9, rows=439
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(domain: Bytes<32>): Uint<128> {
-    return (totalMinted(domain) - totalBurned(domain)) as Uint<128>;
+    const minted = totalMinted(domain);
+    const burned = totalBurned(domain);
+    return (minted >= burned ? (minted - burned) : 0) as Uint<128>;
   }
 }
