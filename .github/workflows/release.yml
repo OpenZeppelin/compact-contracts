@@ -7,6 +7,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-24.04
+    # Manual approval gate: the `release` Environment must have required
+    # reviewers configured in repo Settings, else this pauses for no one.
+    environment: release
     permissions:
       contents: read
       id-token: write
