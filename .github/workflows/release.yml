@@ -1,3 +1,7 @@
+# Publishes to npm via OIDC trusted publishing — no NPM_TOKEN.
+# Prerequisite: this repo + this workflow must be registered as a Trusted
+# Publisher for the package on npmjs.org (package → Settings → Trusted
+# Publishers), otherwise the publish step fails with an auth error.
 name: Publish Package on Release
 
 on:
@@ -55,6 +59,11 @@ jobs:
         with:
           registry-url: "https://registry.npmjs.org"
 
+      - name: Ensure npm supports trusted publishing
+        # OIDC trusted publishing needs npm >= 11.5.1; the version bundled with
+        # the .nvmrc Node may be older.
+        run: npm install -g npm@latest
+
       - name: Pack tarball
         id: pack
         run: |
@@ -99,9 +108,8 @@ jobs:
           # Publish the tarball with appropriate tag
           npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public
         env:
+          # No NODE_AUTH_TOKEN — OIDC trusted publishing mints per-run credentials.
           NPM_CONFIG_PROVENANCE: true
-          # Token required for actions/setup-node
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Log success
         run: |
