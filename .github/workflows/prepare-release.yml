@@ -73,11 +73,39 @@ jobs:
           # 1) NEW_VERSION must be valid semver
           node -e "const v=process.env.NEW_VERSION; const semver=/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$/; if(!semver.test(v)){ console.error('Error: version is not valid semver:', v); process.exit(1); }"
 
-          # 2) NEW_VERSION must differ from CURRENT_VERSION
-          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
-            echo "Error: version equals current version ($CURRENT_VERSION). Nothing to release." >&2
-            exit 1
-          fi
+          # 2) NEW_VERSION must be a forward bump (strictly greater than CURRENT_VERSION
+          #    by SemVer precedence) so a typo can't downgrade the published version.
+          node -e '
+            const cmp = (a, b) => {
+              const parse = (v) => {
+                const noBuild = v.split("+")[0];
+                const [core, pre] = noBuild.split("-");
+                const nums = core.split(".").map(Number);
+                return { nums, pre: pre ? pre.split(".") : null };
+              };
+              const A = parse(a), B = parse(b);
+              for (let i = 0; i < 3; i++) if (A.nums[i] !== B.nums[i]) return A.nums[i] - B.nums[i];
+              if (!A.pre && !B.pre) return 0;
+              if (!A.pre) return 1;   // release outranks prerelease
+              if (!B.pre) return -1;
+              const n = Math.max(A.pre.length, B.pre.length);
+              for (let i = 0; i < n; i++) {
+                const x = A.pre[i], y = B.pre[i];
+                if (x === undefined) return -1;
+                if (y === undefined) return 1;
+                const xn = /^\d+$/.test(x), yn = /^\d+$/.test(y);
+                if (xn && yn) { const d = Number(x) - Number(y); if (d !== 0) return d; }
+                else if (xn !== yn) return xn ? -1 : 1;   // numeric identifiers rank lower
+                else if (x !== y) return x < y ? -1 : 1;
+              }
+              return 0;
+            };
+            const nw = process.env.NEW_VERSION, cur = process.env.CURRENT_VERSION;
+            if (cmp(nw, cur) <= 0) {
+              console.error(`Error: NEW_VERSION (${nw}) must be strictly greater than CURRENT_VERSION (${cur}).`);
+              process.exit(1);
+            }
+          '
 
       - name: Replace version in files
         env:
