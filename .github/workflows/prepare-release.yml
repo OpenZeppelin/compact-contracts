@@ -153,6 +153,9 @@ jobs:
           BUMP_BRANCH="chore/bump-${NEW_VERSION}"
           echo "BUMP_BRANCH=$BUMP_BRANCH" >> "$GITHUB_ENV"
           BASE_SHA=$(git rev-parse HEAD)
+          # Idempotent re-runs: drop a stale bump branch left by a failed prior run
+          # (closing any open PR from it) before recreating it at the current base.
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/${BUMP_BRANCH}" >/dev/null 2>&1 || true
           gh api "repos/${{ github.repository }}/git/refs" \
             -f ref="refs/heads/${BUMP_BRANCH}" \
             -f sha="${BASE_SHA}"
