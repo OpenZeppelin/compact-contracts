@@ -70,6 +70,26 @@ export class MockForwarderPrivateSimulator extends MockForwarderPrivateSimulator
     return this.circuits.impure.drain(coin, parent, opSecret, value);
   }
 
+  public drainAndRouteChange(
+    coin: QualifiedShieldedCoinInfo,
+    parent: ZswapCoinPublicKey,
+    opSecret: Uint8Array,
+    value: bigint,
+    changeRecipient: {
+      is_left: boolean;
+      left: { bytes: Uint8Array };
+      right: { bytes: Uint8Array };
+    },
+  ): Promise<ShieldedSendResult> {
+    return this.circuits.impure.drainAndRouteChange(
+      coin,
+      parent,
+      opSecret,
+      value,
+      changeRecipient,
+    );
+  }
+
   public getParentCommitment(): Promise<Uint8Array> {
     return this.circuits.impure.getParentCommitment();
   }
