@@ -1,10 +1,22 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
+import {
+  bytesToHex,
+  isNonceSpent,
+  zswapDelta,
+  zswapSnapshot,
+} from '#test-utils/zswap.js';
 import { ShieldedTreasurySimulator } from './simulators/ShieldedTreasurySimulator.js';
 
 const COLOR = new Uint8Array(32).fill(1);
 const COLOR2 = new Uint8Array(32).fill(2);
 const AMOUNT = 1000n;
+
+// A non-zero deploy address so the change output (routed to self via
+// `selfAsRecipient()`) carries a recognizable address instead of the zero
+// `dummyContractAddress()` default — lets the tests assert change returns to
+// THIS contract, not merely to "some contract arm".
+const TREASURY_ADDRESS = '7a'.repeat(32);
 
 const Z_RECIPIENT = utils.createEitherTestUser('RECIPIENT');
 
@@ -24,7 +36,9 @@ let treasury: ShieldedTreasurySimulator;
 
 describe('ShieldedTreasury', () => {
   beforeEach(async () => {
-    treasury = await ShieldedTreasurySimulator.create();
+    treasury = await ShieldedTreasurySimulator.create({
+      contractAddress: TREASURY_ADDRESS,
+    });
   });
 
   describe('initial state', () => {
@@ -121,6 +135,100 @@ describe('ShieldedTreasury', () => {
       await expect(treasury._send(Z_RECIPIENT, COLOR2, 1n)).rejects.toThrow(
         'ShieldedTreasury: no balance',
       );
+    });
+  });
+
+  // Regression: a partial `_send` must not re-spend the change coin it stores.
+  //
+  // `sendShielded` already emits change as a self-owned output; re-spending it
+  // with `sendImmediateShielded` reveals the stored coin's nullifier in the
+  // same transaction, so the next spend of that stored coin is a double spend a
+  // node rejects with `Zswap(NullifierAlreadyPresent)`. The dry simulator does
+  // not enforce nullifiers, so we assert on the recorded Zswap I/O instead: the
+  // spend of the change coin shows up as an extra input carrying its nonce.
+  describe('_send — change coin is spendable (no double spend)', () => {
+    beforeEach(async () => {
+      await treasury._deposit(makeCoin(COLOR, 400n));
+    });
+
+    it('should spend the stored coin and route the change back to itself on a partial send', async () => {
+      const snap = zswapSnapshot(treasury);
+      const result = await treasury._send(Z_RECIPIENT, COLOR, 150n);
+      const { inputs, outputs } = zswapDelta(treasury, snap);
+
+      // Exactly one coin is consumed: the stored 400 balance (nonce 0).
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].value).toBe(400n);
+      expect(inputs[0].color).toStrictEqual(COLOR);
+      expect(inputs[0].nonce).toStrictEqual(new Uint8Array(32).fill(0));
+
+      // Two coins are produced: the payment (to the recipient key, `left` arm)
+      // and the change (back to this contract, `right`/self arm).
+      expect(outputs).toHaveLength(2);
+      const toRecipient = outputs.filter((o) => o.recipient.is_left);
+      const toSelf = outputs.filter((o) => !o.recipient.is_left);
+      expect(toRecipient).toHaveLength(1);
+      expect(toSelf).toHaveLength(1);
+
+      // Payment: 150 of COLOR to the intended recipient key; equals result.sent.
+      expect(toRecipient[0].coinInfo.value).toBe(150n);
+      expect(toRecipient[0].coinInfo.color).toStrictEqual(COLOR);
+      expect(toRecipient[0].coinInfo).toStrictEqual(result.sent);
+      expect(toRecipient[0].recipient.left.bytes).toStrictEqual(
+        Z_RECIPIENT.left.bytes,
+      );
+
+      // Change: 250 of COLOR routed back to THIS contract's address; identical
+      // to the returned change coin, and crucially NOT spent in this same tx.
+      expect(result.change.is_some).toBe(true);
+      expect(toSelf[0].coinInfo.value).toBe(250n);
+      expect(toSelf[0].coinInfo).toStrictEqual(result.change.value);
+      expect(bytesToHex(toSelf[0].recipient.right.bytes)).toBe(
+        TREASURY_ADDRESS,
+      );
+      expect(isNonceSpent(inputs, result.change.value.nonce)).toBe(false);
+    });
+
+    it('should spend exactly the stored change coin on a follow-up spend', async () => {
+      const first = await treasury._send(Z_RECIPIENT, COLOR, 150n); // 250 change stored
+      const storedChange = first.change.value;
+
+      const snap = zswapSnapshot(treasury);
+      const second = await treasury._send(Z_RECIPIENT, COLOR, 250n); // spend the change
+      const { inputs, outputs } = zswapDelta(treasury, snap);
+
+      // A node would reject this as a double spend if the 250 change coin had
+      // already been nullified by the first send. The single input must be
+      // exactly that stored change coin (same nonce/value/color).
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].value).toBe(250n);
+      expect(inputs[0].color).toStrictEqual(COLOR);
+      expect(inputs[0].nonce).toStrictEqual(storedChange.nonce);
+
+      // Full spend of the change: one output to the recipient, no further change.
+      expect(second.change.is_some).toBe(false);
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0].recipient.is_left).toBe(true);
+      expect(outputs[0].coinInfo.value).toBe(250n);
+      expect(await treasury.getTokenBalance(COLOR)).toBe(0n);
+    });
+
+    it('should spend the balance and produce only the payment when sending in full', async () => {
+      const snap = zswapSnapshot(treasury);
+      const result = await treasury._send(Z_RECIPIENT, COLOR, 400n);
+      const { inputs, outputs } = zswapDelta(treasury, snap);
+
+      // No change: one input (the 400 balance), one output (the payment).
+      expect(result.change.is_some).toBe(false);
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].value).toBe(400n);
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0].recipient.is_left).toBe(true);
+      expect(outputs[0].recipient.left.bytes).toStrictEqual(
+        Z_RECIPIENT.left.bytes,
+      );
+      expect(outputs[0].coinInfo.value).toBe(400n);
+      expect(outputs[0].coinInfo).toStrictEqual(result.sent);
     });
   });
 
