@@ -20,7 +20,6 @@ pragma language_version >= 0.23.0;
  */
 module ShieldedTreasuryStateless {
   import CompactStandardLibrary;
-  import { selfAsRecipient } from "../utils/Utils" prefix Utils_;
 
   // ─── Deposit ────────────────────────────────────────────────────
 
@@ -38,9 +37,11 @@ module ShieldedTreasuryStateless {
    *
    * The coin is supplied by the caller rather than looked up from
    * on-chain state; the token color is derived from `coin.color`.
-   * Executes the shielded send and, if change is produced, returns it
-   * to the contract via `sendImmediateShielded`. No balance or
-   * received/sent accounting is tracked on the ledger.
+   * Executes the shielded send and returns the result. `sendShielded`
+   * already routes any change back to this contract as a self-owned
+   * output; the caller must persist `result.change` and pass it back as
+   * the `coin` for the next spend. No balance or received/sent
+   * accounting is tracked on the ledger.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -63,14 +64,13 @@ module ShieldedTreasuryStateless {
   ): ShieldedSendResult {
     const result = sendShielded(disclose(coin), disclose(recipient), disclose(amount));
 
-    if (disclose(result.change.is_some)) {
-      sendImmediateShielded(
-        disclose(result.change.value),
-        Utils_selfAsRecipient(),
-        disclose(result.change.value.value)
-      );
-    }
-
+    // `sendShielded` already emits any change as a fresh, self-owned output.
+    // `_send` returns it untouched: it must not re-spend the change here and
+    // then hand that same (now-nullified) coin back via `result.change`. That
+    // is the double spend a node rejects on the next spend. The implementing
+    // contract decides what to do with the returned change: persist it and
+    // spend it later, or route it onward itself. The rule is only that the
+    // change must never be re-spent AND still treated as held.
     return result;
   }
 }

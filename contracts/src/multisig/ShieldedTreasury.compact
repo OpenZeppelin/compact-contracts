@@ -85,8 +85,9 @@ module ShieldedTreasury {
    * @description Sends shielded tokens from the treasury.
    *
    * Looks up the stored coin by color, verifies sufficient value,
-   * and executes the shielded send. If the send produces change,
-   * it is sent back to the contract via `sendImmediateShielded`.
+   * and executes the shielded send. `sendShielded` already routes any
+   * change back to this contract as a self-owned output; the change coin
+   * is simply recorded in the UTXO map for the next spend.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -119,14 +120,13 @@ module ShieldedTreasury {
 
     const result = sendShielded(coin, disclose(recipient), disclose(amount));
 
+    // `sendShielded` spends the stored coin (revealing its nullifier) and,
+    // when there is change, emits it as a fresh output owned by this
+    // contract. That change coin is already spendable. Do NOT re-spend it
+    // with `sendImmediateShielded`, which would reveal its nullifier in this
+    // same transaction and leave the recorded coin permanently double-spent.
     if (disclose(result.change.is_some)) {
-      const changeCoin = result.change.value;
-      sendImmediateShielded(
-        changeCoin,
-        Utils_selfAsRecipient(),
-        changeCoin.value
-      );
-      _coins.insertCoin(disclose(color), changeCoin, Utils_selfAsRecipient());
+      _coins.insertCoin(disclose(color), result.change.value, Utils_selfAsRecipient());
     } else {
       _coins.remove(disclose(color));
     }
