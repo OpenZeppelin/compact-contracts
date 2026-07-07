@@ -16,6 +16,12 @@ permissions:
   contents: write
   pull-requests: write
 
+# Serialize per target version so a double-dispatch can't race on the
+# bump-branch delete/recreate; different versions still prepare in parallel.
+concurrency:
+  group: prepare-release-${{ inputs.version }}
+  cancel-in-progress: false
+
 jobs:
   prepare_release:
     runs-on: ubuntu-24.04

@@ -17,6 +17,12 @@ on:
 permissions:
   contents: write
 
+# Serialize per branch so two overlapping pushes can't both pass the
+# "does this release exist yet?" guard and race to create the same tag.
+concurrency:
+  group: create-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   create-release:
     runs-on: ubuntu-24.04
