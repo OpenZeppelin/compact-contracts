@@ -99,8 +99,10 @@ module ForwarderPrivate {
    * matching the stored commitment; the coin is sent as a plain shielded note,
    * so the parent stays hidden on-chain. If `coin.value` exceeds `value`,
    * `sendShielded` routes the change back to this contract as a self-owned
-   * output (dwelling at the contract address for future drains); it is
-   * returned untouched via `result.change` and must not be re-spent here.
+   * output; `_drain` returns it untouched via `result.change`. The
+   * implementing contract chooses what to do with it: leave it dwelling at
+   * the contract for a future drain, or spend it onward to a different
+   * recipient in the same transaction via `sendImmediateShielded`.
    *
    * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
    * send to a contract publishes that contract's address in cleartext on the

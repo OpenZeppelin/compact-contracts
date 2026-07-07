@@ -79,14 +79,14 @@ describe('ShieldedTreasuryStateless', () => {
     });
   });
 
-  // Regression: `_send` returns `result.change` to the caller to persist and
-  // spend next. `sendShielded` already routes change back to the contract as a
-  // self-owned output; re-spending it here with `sendImmediateShielded` would
-  // reveal its nullifier in the same tx, so the returned change coin
-  // would be a double-spent coin a node rejects on the next spend. The dry
-  // simulator does not enforce nullifiers, so we assert on the recorded Zswap
-  // I/O: the returned change coin's nonce must not appear among the spent
-  // inputs.
+  // `_send` hands `result.change` back to the caller to persist and spend later.
+  // `sendShielded` routes that change back to the contract as a self-owned
+  // output, so it must stay spendable: if `_send` also re-spent it with
+  // `sendImmediateShielded`, that would reveal its nullifier in the same
+  // transaction, making the returned change a double spend the node rejects on
+  // the next spend. The dry simulator does not enforce nullifiers, so these
+  // tests read the recorded Zswap I/O: the returned change coin's nonce must not
+  // appear among the spent inputs.
   describe('_send — change coin is spendable (no double spend)', () => {
     it('should spend the supplied coin and route the change back to itself on a partial send', async () => {
       const snap = zswapSnapshot(treasury);
@@ -152,9 +152,11 @@ describe('ShieldedTreasuryStateless', () => {
     });
   });
 
-  // The fix returns a live, unspent change coin, so an implementing contract can
-  // route it onward to a different recipient in the same tx (the burn()-style pattern).
-  // This would be impossible if `_send` handed back a coin it had already spent.
+  // `_send` hands back a live, unspent change coin, so an implementing contract
+  // can spend it onward to a different recipient in the same tx (the only reason
+  // to re-spend change, since `sendShielded` already routes it to self). If
+  // `_send` returned a coin it had already spent, this same-tx re-spend would be
+  // a double spend and fail.
   describe('_send — implementing contract routes the change onward', () => {
     const CHANGE_DEST = utils.createEitherTestUser('CHANGE_DEST');
 

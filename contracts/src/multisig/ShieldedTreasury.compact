@@ -86,8 +86,11 @@ module ShieldedTreasury {
    *
    * Looks up the stored coin by color, verifies sufficient value,
    * and executes the shielded send. `sendShielded` already routes any
-   * change back to this contract as a self-owned output; the change coin
-   * is simply recorded in the UTXO map for the next spend.
+   * change back to this contract as a self-owned output. Unlike the
+   * stateless variant, this treasury RETAINS the change: it is recorded in
+   * the UTXO map for the next spend. The returned `result.change` therefore
+   * belongs to the treasury and must not be re-spent by the caller (doing
+   * so would double-spend the recorded coin).
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own

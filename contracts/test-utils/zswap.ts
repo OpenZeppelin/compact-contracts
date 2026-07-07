@@ -11,7 +11,7 @@
  * in particular, a circuit that emits a change coin, immediately re-spends it
  * (revealing its nullifier), and then persists/returns that same coin as if it
  * were still spendable. See the `ShieldedTreasury` / `ForwarderPrivate`
- * change-handling regression tests.
+ * "change coin is spendable" tests.
  */
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };

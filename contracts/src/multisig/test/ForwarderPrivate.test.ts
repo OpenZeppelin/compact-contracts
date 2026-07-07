@@ -288,13 +288,13 @@ describe('ForwarderPrivate module', () => {
     });
   });
 
-  // Regression: a partial drain must return a change coin that is still
-  // spendable. `sendShielded` routes change back to the contract as a
-  // self-owned output; re-spending it here with `sendImmediateShielded` would
-  // reveal its nullifier in the same tx, so the `result.change` handed
-  // back would be a double-spent coin a node rejects on the next drain. The dry
-  // simulator does not enforce nullifiers, so we assert on the recorded Zswap
-  // I/O: the change coin's nonce must not appear among the spent inputs.
+  // `sendShielded` routes a partial drain's change back to the contract as a
+  // self-owned output, handed to the caller via `result.change`. That coin must
+  // stay spendable: if `_drain` also re-spent it with `sendImmediateShielded`,
+  // that would reveal its nullifier in the same transaction, making the returned
+  // coin a double spend the node rejects on the next drain. The dry simulator
+  // does not enforce nullifiers, so these tests read the recorded Zswap I/O: the
+  // change coin's nonce must not appear among the spent inputs.
   describe('drain — change coin is spendable (no double spend)', () => {
     // A non-zero deploy address so the change output (routed to self for future
     // drains) carries a recognizable address rather than the zero
@@ -374,10 +374,11 @@ describe('ForwarderPrivate module', () => {
     });
   });
 
-  // Tests that `_drain` (inner call in the mock `drainAndRouteChange`) returns a live,
-  // unspent change coin, so an implementing contract can route it onward to a different
-  // recipient in the same tx (the burn()-style pattern). This would be impossible if `_drain`
-  // handed back a coin it had already spent.
+  // Tests that `_drain` (inner call in the mock `drainAndRouteChange`) returns a
+  // live, unspent change coin, so an implementing contract can spend it onward to
+  // a different recipient in the same tx (the only reason to re-spend change,
+  // since `sendShielded` already routes it to self). This would be impossible if
+  // `_drain` handed back a coin it had already spent.
   describe('drain — implementing contract routes the change onward', () => {
     const CHANGE_DEST = utils.createEitherTestUser('CHANGE_DEST');
     let mock: MockForwarderPrivateSimulator;

@@ -37,11 +37,15 @@ module ShieldedTreasuryStateless {
    *
    * The coin is supplied by the caller rather than looked up from
    * on-chain state; the token color is derived from `coin.color`.
-   * Executes the shielded send and returns the result. `sendShielded`
-   * already routes any change back to this contract as a self-owned
-   * output; the caller must persist `result.change` and pass it back as
-   * the `coin` for the next spend. No balance or received/sent
-   * accounting is tracked on the ledger.
+   * Executes the shielded send and returns the result untouched.
+   * `sendShielded` already routes any change back to this contract as a
+   * self-owned output, so `result.change` is a live, spendable coin. The
+   * implementing contract chooses what to do with it: persist it and pass
+   * it back as the `coin` for a later spend, or spend it onward to a
+   * different recipient in the same transaction via `sendImmediateShielded`.
+   * (Re-spending change is only meaningful when it goes somewhere other than
+   * self — `sendShielded` already routes it to self.) No balance or
+   * received/sent accounting is tracked on the ledger.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own

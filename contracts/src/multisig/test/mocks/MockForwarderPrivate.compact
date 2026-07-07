@@ -40,12 +40,12 @@ export circuit drain(
   return ForwarderPrivate__drain(coin, parent, opSecret, value);
 }
 
-// Demonstrates how an implementing contract drains to the parent,
-// then uses the returned `result.change` to route the change onward
-// to a *different* recipient in the same transaction (the burn()-style
-// pattern). Only possible because `_drain` hands back a live, unspent change
-// coin. Returns the onward send's result, whose `sent` is the coin delivered to
-// `changeRecipient`.
+// Demonstrates how an implementing contract drains to the parent, then uses the
+// returned `result.change` to spend the change onward to a *different* recipient
+// in the same transaction. (Re-spending change is only meaningful when it goes
+// somewhere other than self — `sendShielded` already routes it to self.) Only
+// possible because `_drain` hands back a live, unspent change coin. Returns the
+// onward send's result, whose `sent` is the coin delivered to `changeRecipient`.
 export circuit drainAndRouteChange(
   coin: QualifiedShieldedCoinInfo,
   parent: ZswapCoinPublicKey,

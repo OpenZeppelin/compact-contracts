@@ -138,14 +138,14 @@ describe('ShieldedTreasury', () => {
     });
   });
 
-  // Regression: a partial `_send` must not re-spend the change coin it stores.
-  //
-  // `sendShielded` already emits change as a self-owned output; re-spending it
-  // with `sendImmediateShielded` reveals the stored coin's nullifier in the
-  // same transaction, so the next spend of that stored coin is a double spend a
-  // node rejects with `Zswap(NullifierAlreadyPresent)`. The dry simulator does
-  // not enforce nullifiers, so we assert on the recorded Zswap I/O instead: the
-  // spend of the change coin shows up as an extra input carrying its nonce.
+  // `sendShielded` emits a partial spend's change as a fresh output owned by
+  // this contract, which `_send` records in `_coins` for the next spend. That
+  // recorded coin must stay spendable: if the circuit also re-spent it with
+  // `sendImmediateShielded`, that would reveal its nullifier in the same
+  // transaction, and the next spend of it would be a double spend the node
+  // rejects (`Zswap(NullifierAlreadyPresent)`). The dry simulator does not
+  // enforce nullifiers, so these tests read the recorded Zswap I/O: a re-spend
+  // of the change coin would show up as an extra input carrying its nonce.
   describe('_send — change coin is spendable (no double spend)', () => {
     beforeEach(async () => {
       await treasury._deposit(makeCoin(COLOR, 400n));
