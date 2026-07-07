@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ steps.gh-app-token.outputs.token }}
           VERSION: ${{ steps.version.outputs.version }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
-          TARGET: ${{ github.ref_name }}
+          TARGET: ${{ github.sha }}
         run: |
           TAG="v${VERSION}"
 
