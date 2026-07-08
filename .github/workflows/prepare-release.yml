@@ -1,15 +1,29 @@
-name: Update version on new release branch
+name: Prepare release (version bump PR)
 
+# Manually dispatched. Pick the branch to release from (main for alphas,
+# release/X.Y.x for rc/stable) and type the exact target version. Opens a
+# version-bump PR into that branch; merging it cuts the release (see
+# create-release.yml).
 on:
-  create:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Target version (exact SemVer, e.g. 0.3.0-alpha.3)"
+        required: true
+        type: string
 
 permissions:
   contents: write
   pull-requests: write
 
+# Serialize per target version so a double-dispatch can't race on the
+# bump-branch delete/recreate; different versions still prepare in parallel.
+concurrency:
+  group: prepare-release-${{ inputs.version }}
+  cancel-in-progress: false
+
 jobs:
-  update_version:
-    if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release-v')
+  prepare_release:
     runs-on: ubuntu-24.04
 
     steps:
@@ -24,11 +38,16 @@ jobs:
         with:
           app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          # Least privilege: commit the bump (contents) and open the PR (pull-requests).
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           token: ${{ steps.gh-app-token.outputs.token }}
+          # Commit/PR go through the app token via API, not git creds on disk.
+          persist-credentials: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -44,33 +63,55 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./contracts/package.json').version")
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> "$GITHUB_ENV"
 
-      - name: Extract new version number
-        run: echo "NEW_VERSION=${GITHUB_REF#refs/heads/release-v}" >> "$GITHUB_ENV"
+      - name: Set new version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: echo "NEW_VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
 
       - name: Validate new version
+        env:
+          BASE_BRANCH: ${{ github.ref_name }}
         run: |
-          BRANCH="${GITHUB_REF#refs/heads/}"
-          echo "Branch: $BRANCH"
+          echo "Base branch: $BASE_BRANCH"
           echo "Current version: $CURRENT_VERSION"
           echo "New version: $NEW_VERSION"
 
-          # 1) Branch must match release-v<semver>
-          if ! echo "$BRANCH" | grep -Eq '^release-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'; then
-            echo "Error: Branch '$BRANCH' must match 'release-v<semver>' (e.g., release-v1.2.3)." >&2
-            exit 1
-          fi
+          # 1) NEW_VERSION must be valid semver
+          node -e "const v=process.env.NEW_VERSION; const semver=/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$/; if(!semver.test(v)){ console.error('Error: version is not valid semver:', v); process.exit(1); }"
 
-          # 2) NEW_VERSION must be valid semver
-          node -e "const v=process.env.NEW_VERSION; const semver=/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$/; if(!semver.test(v)){ console.error('Error: NEW_VERSION is not valid semver:', v); process.exit(1); }"
-          if [ $? -ne 0 ]; then
-            exit 1
-          fi
-
-          # 3) NEW_VERSION must differ from CURRENT_VERSION
-          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
-            echo "Error: NEW_VERSION equals CURRENT_VERSION ($CURRENT_VERSION). Nothing to release." >&2
-            exit 1
-          fi
+          # 2) NEW_VERSION must be a forward bump (strictly greater than CURRENT_VERSION
+          #    by SemVer precedence) so a typo can't downgrade the published version.
+          node -e '
+            const cmp = (a, b) => {
+              const parse = (v) => {
+                const noBuild = v.split("+")[0];
+                const [core, pre] = noBuild.split("-");
+                const nums = core.split(".").map(Number);
+                return { nums, pre: pre ? pre.split(".") : null };
+              };
+              const A = parse(a), B = parse(b);
+              for (let i = 0; i < 3; i++) if (A.nums[i] !== B.nums[i]) return A.nums[i] - B.nums[i];
+              if (!A.pre && !B.pre) return 0;
+              if (!A.pre) return 1;   // release outranks prerelease
+              if (!B.pre) return -1;
+              const n = Math.max(A.pre.length, B.pre.length);
+              for (let i = 0; i < n; i++) {
+                const x = A.pre[i], y = B.pre[i];
+                if (x === undefined) return -1;
+                if (y === undefined) return 1;
+                const xn = /^\d+$/.test(x), yn = /^\d+$/.test(y);
+                if (xn && yn) { const d = Number(x) - Number(y); if (d !== 0) return d; }
+                else if (xn !== yn) return xn ? -1 : 1;   // numeric identifiers rank lower
+                else if (x !== y) return x < y ? -1 : 1;
+              }
+              return 0;
+            };
+            const nw = process.env.NEW_VERSION, cur = process.env.CURRENT_VERSION;
+            if (cmp(nw, cur) <= 0) {
+              console.error(`Error: NEW_VERSION (${nw}) must be strictly greater than CURRENT_VERSION (${cur}).`);
+              process.exit(1);
+            }
+          '
 
       - name: Replace version in files
         env:
@@ -111,11 +152,37 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
+      - name: Create bump branch
+        env:
+          GH_TOKEN: ${{ steps.gh-app-token.outputs.token }}
+        run: |
+          BUMP_BRANCH="chore/bump-${NEW_VERSION}"
+          echo "BUMP_BRANCH=$BUMP_BRANCH" >> "$GITHUB_ENV"
+          BASE_SHA=$(git rev-parse HEAD)
+          # Idempotent re-runs: drop a stale bump branch left by a failed prior run
+          # (closing any open PR from it) before recreating it at the current base.
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/${BUMP_BRANCH}" >/dev/null 2>&1 || true
+          gh api "repos/${{ github.repository }}/git/refs" \
+            -f ref="refs/heads/${BUMP_BRANCH}" \
+            -f sha="${BASE_SHA}"
+
       # Uses GitHub API to create signed commits (requires creating blobs per file)
       - name: Commit version bump
         uses: iarekylew00t/verified-bot-commit@5b4e8852dc472093935b8debcb81459bb79f7986 # v2.3.2
         with:
-          message: Bump version to ${{ env.NEW_VERSION }}
+          message: "chore(release): bump version to ${{ env.NEW_VERSION }}"
           token: ${{ steps.gh-app-token.outputs.token }}
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.BUMP_BRANCH }}
           files: ${{ steps.changes.outputs.files }}
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ steps.gh-app-token.outputs.token }}
+          BASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          BODY=$(printf 'Automated version bump to `%s`.\n\nMerging this PR into `%s` cuts `v%s` and publishes to npm after the release approval gate.' "$NEW_VERSION" "$BASE_BRANCH" "$NEW_VERSION")
+          gh pr create \
+            --base "$BASE_BRANCH" \
+            --head "$BUMP_BRANCH" \
+            --title "chore(release): bump version to $NEW_VERSION" \
+            --body "$BODY"
