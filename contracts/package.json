@@ -21,7 +21,8 @@
   "homepage": "https://docs.openzeppelin.com/contracts-compact/",
   "type": "module",
   "imports": {
-    "#test-utils/address.js": "./test-utils/address.js"
+    "#test-utils/address.js": "./test-utils/address.js",
+    "#test-utils/zswap.js": "./test-utils/zswap.js"
   },
   "scripts": {
     "compact": "compact-compiler --exclude '*/archive/*'",

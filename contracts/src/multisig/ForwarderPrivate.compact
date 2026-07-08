@@ -97,8 +97,12 @@ module ForwarderPrivate {
    * @description Spends a previously-deposited shielded coin to the parent,
    * a coin public key. The caller proves knowledge of `(parent, opSecret)`
    * matching the stored commitment; the coin is sent as a plain shielded note,
-   * so the parent stays hidden on-chain. If `coin.value` exceeds `value`, the
-   * change is re-emitted back to the contract for future drains.
+   * so the parent stays hidden on-chain. If `coin.value` exceeds `value`,
+   * `sendShielded` routes the change back to this contract as a self-owned
+   * output; `_drain` returns it untouched via `result.change`. The
+   * implementing contract chooses what to do with it: leave it dwelling at
+   * the contract for a future drain, or spend it onward to a different
+   * recipient in the same transaction via `sendImmediateShielded`.
    *
    * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
    * send to a contract publishes that contract's address in cleartext on the
@@ -160,14 +164,14 @@ module ForwarderPrivate {
       disclose(value)
     );
 
-    if (disclose(result.change.is_some)) {
-      sendImmediateShielded(
-        disclose(result.change.value),
-        Utils_selfAsRecipient(),
-        disclose(result.change.value.value)
-      );
-    }
-
+    // `sendShielded` already emits any change as a fresh output owned by this
+    // contract (dwelling at the contract address for future drains). `_drain`
+    // returns it untouched: it must not re-spend the change here and then hand
+    // that same (now-nullified) coin back via `result.change` — that is the
+    // double spend a node rejects on the next drain. A caller is free to spend
+    // the returned change onward itself (e.g. route it to another recipient);
+    // the rule is only that the change must never be re-spent AND still treated
+    // as held.
     return result;
   }
 
