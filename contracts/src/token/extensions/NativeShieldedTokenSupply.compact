@@ -50,6 +50,11 @@ pragma language_version >= 0.23.0;
  * effect, so `_addMinted` adds accounting, not disclosure. See
  * `NativeShieldedTokenSupplyCore` for the exact / lower-bound / upper-bound
  * guarantees, the `burned <= minted` invariant, and the mint-side drift caveat.
+ *
+ * @warning Pair every mint with `_addMinted` and every burn with `_addBurned` on
+ * every path; mis-wiring is a security-critical, undetectable error (e.g. an
+ * undercounted mint makes `_addBurned` reject legitimate burns). See
+ * `NativeShieldedTokenSupplyCore`.
  */
 module NativeShieldedTokenSupply {
   import CompactStandardLibrary;

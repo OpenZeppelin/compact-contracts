@@ -39,6 +39,17 @@ pragma language_version >= 0.23.0;
  * a duplicated `_addMinted`, or one keyed to the wrong domain, silently inflates
  * `totalMinted` (and the `burned <= minted` headroom). Correct mint pairing
  * remains the consumer's responsibility.
+ *
+ * @warning The mint/burn <-> accounting pairing is a security-critical invariant
+ * of the CONSUMING contract; this extension cannot enforce or detect a breach:
+ * - A mint whose `_addMinted` is missing or wrong-domain leaves `totalMinted`
+ *   too low, so `_addBurned` REJECTS burns that are actually legitimate —
+ *   holders cannot burn coins that genuinely exist.
+ * - A duplicate or wrong-domain `_addMinted` inflates `totalMinted`, letting
+ *   `_addBurned` accept burns beyond what was minted.
+ * - A missing `_addBurned` leaves `totalBurned` too low, so `totalSupply`
+ *   overstates circulating supply.
+ * Call the matching accounting block on every mint and burn path, same domain.
  */
 module NativeShieldedTokenSupplyCore {
   import CompactStandardLibrary;

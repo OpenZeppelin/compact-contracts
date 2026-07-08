@@ -54,6 +54,11 @@ pragma language_version >= 0.23.0;
  * `NativeShieldedTokenSupplyCore` for the exact / lower-bound / upper-bound
  * guarantees, the per-domain `burned <= minted` invariant, and the mint-side
  * drift caveat.
+ *
+ * @warning Pair every mint with `_addMinted` and every burn with `_addBurned` on
+ * every path, under the matching domain; mis-wiring is a security-critical,
+ * undetectable error (e.g. an undercounted mint makes `_addBurned` reject
+ * legitimate burns). See `NativeShieldedTokenSupplyCore`.
  */
 module NativeShieldedTokenFamilySupply {
   import CompactStandardLibrary;
