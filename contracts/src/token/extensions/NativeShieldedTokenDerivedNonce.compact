@@ -40,7 +40,9 @@ pragma language_version >= 0.23.0;
  * - Access-control both mint paths, and avoid exposing them at different trust
  *   levels.
  * - Do not rely on retrying. The nonce is a pure function of the counter, and a
- *   reverted mint may not advance it, so the retry can collide again.
+ *   reverted mint will not advance it, so an identical retry collides again.
+ *   Recovery is a mint with different inputs (recipient or amount): it advances
+ *   the counter, so the original tuple then mints against a fresh nonce.
  */
 module NativeShieldedTokenDerivedNonce {
   import CompactStandardLibrary;
