@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../extensions/NativeShieldedTokenFamilySupply" prefix NativeShieldedTokenFamilySupply_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+// Surface the core supply ledger state unprefixed so tests can read it via
+// `getPublicState()` and assert the per-domain accounting getters return it verbatim.
+import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenFamilySupply";
+export { _totalMinted, _totalBurned };
+
+// Unit mock for the NativeShieldedTokenFamilySupply extension in isolation. The
+// extension imports no token module, so the per-domain accounting blocks and
+// getters are driven directly here. The extension needs no initialization.
+
+export circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
+  NativeShieldedTokenFamilySupply__addMinted(domain, amount);
+}
+
+export circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
+  NativeShieldedTokenFamilySupply__addBurned(domain, amount);
+}
+
+export circuit totalMinted(domain: Bytes<32>): Uint<128> {
+  return NativeShieldedTokenFamilySupply_totalMinted(domain);
+}
+
+export circuit totalBurned(domain: Bytes<32>): Uint<128> {
+  return NativeShieldedTokenFamilySupply_totalBurned(domain);
+}
+
+export circuit totalSupply(domain: Bytes<32>): Uint<128> {
+  return NativeShieldedTokenFamilySupply_totalSupply(domain);
+}
+
+// Test-only: force `_totalBurned(domain)` past `_totalMinted(domain)` to reach
+// the otherwise unreachable `burned > minted` state and exercise the
+// `totalSupply` clamp. Writes the ledger directly, bypassing the `_addBurned`
+// invariant; never expose anything like this in a production contract.
+export circuit unsafeSetBurned(domain: Bytes<32>, amount: Uint<128>): [] {
+  _totalBurned.insert(disclose(domain), disclose(amount));
+}
