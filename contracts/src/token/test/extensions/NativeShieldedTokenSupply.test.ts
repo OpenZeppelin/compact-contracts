@@ -37,14 +37,14 @@ describe('NativeShieldedTokenSupply (extension)', () => {
 
     it('should revert an unpaired burn (burned exceeds minted from zero)', async () => {
       await expect(supply._addBurned(1n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned exceeds minted',
+        'NativeShieldedTokenSupply: burn exceeds available supply',
       );
     });
 
     it('should revert a burn that exceeds the minted total', async () => {
       await supply._addMinted(1_000n);
       await expect(supply._addBurned(1_001n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned exceeds minted',
+        'NativeShieldedTokenSupply: burn exceeds available supply',
       );
     });
 
@@ -52,10 +52,20 @@ describe('NativeShieldedTokenSupply (extension)', () => {
       await supply._addMinted(1_000n);
       await supply._addBurned(600n);
       await expect(supply._addBurned(600n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned exceeds minted',
+        'NativeShieldedTokenSupply: burn exceeds available supply',
       );
       // The rejected burn left the total unchanged.
       expect(await supply.totalBurned()).toBe(600n);
+    });
+
+    it('should revert with the underflow-guard message when burned already exceeds minted', async () => {
+      await supply._addMinted(1_000n);
+      // Corrupt the state past the invariant the accounting API enforces, so the
+      // first guard (not the available-supply check) is what fires.
+      await supply.unsafeSetBurned(1_500n);
+      await expect(supply._addBurned(1n)).rejects.toThrow(
+        'NativeShieldedTokenSupply: burned total exceeds minted',
+      );
     });
   });
 

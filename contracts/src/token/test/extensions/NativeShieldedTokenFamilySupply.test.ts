@@ -65,14 +65,24 @@ describe('NativeShieldedTokenFamilySupply (extension)', () => {
       await supply._addMinted(DOMAIN_A, 1_000n);
       // DOMAIN_B was never minted; burning under it must revert.
       await expect(supply._addBurned(DOMAIN_B, 1n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned exceeds minted',
+        'NativeShieldedTokenSupply: burn exceeds available supply',
       );
     });
 
     it('should revert a burn that exceeds the domain minted total', async () => {
       await supply._addMinted(DOMAIN_A, 1_000n);
       await expect(supply._addBurned(DOMAIN_A, 1_001n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned exceeds minted',
+        'NativeShieldedTokenSupply: burn exceeds available supply',
+      );
+    });
+
+    it('should revert with the underflow-guard message when burned already exceeds minted for a domain', async () => {
+      await supply._addMinted(DOMAIN_A, 1_000n);
+      // Corrupt DOMAIN_A past the invariant so the first guard (not the
+      // available-supply check) is what fires.
+      await supply.unsafeSetBurned(DOMAIN_A, 1_500n);
+      await expect(supply._addBurned(DOMAIN_A, 1n)).rejects.toThrow(
+        'NativeShieldedTokenSupply: burned total exceeds minted',
       );
     });
   });

@@ -89,8 +89,11 @@ module NativeShieldedTokenSupplyCore {
   export circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
     const minted = totalMinted(domain);
     const current = totalBurned(domain);
-    assert(minted >= current, "NativeShieldedTokenSupply: burned exceeds minted");
-    assert(minted - current >= amount, "NativeShieldedTokenSupply: burned exceeds minted");
+    // First guards the subtraction below from underflowing on an already-corrupt
+    // state (stored burned past minted); the second is the reachable per-call
+    // check that this burn does not push the domain past its minted total.
+    assert(minted >= current, "NativeShieldedTokenSupply: burned total exceeds minted");
+    assert(minted - current >= amount, "NativeShieldedTokenSupply: burn exceeds available supply");
     _totalBurned.insert(disclose(domain), disclose((current + amount) as Uint<128>));
   }
 
