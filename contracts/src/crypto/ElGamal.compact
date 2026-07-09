@@ -470,4 +470,59 @@ module ElGamal {
                    ): [] {
     assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as Field));
   }
+
+  /**
+   * @description Scalar-native variant of `assertDecryptsToPoint`: takes the
+   * secret as a raw Jubjub scalar `ekScalar` (with `g^ekScalar == pk`) rather than
+   * a `Bytes<32>` ek hashed via `secretToScalar`. This is the path a stealth
+   * one-time balance needs: its secret `p = c + b` is a computed scalar with no
+   * `Bytes<32>` preimage.
+   *
+   * Requirements:
+   *
+   * - `ekScalar` is the discrete log of `pk` (`g^ekScalar == pk`).
+   * - `ct` decrypts under `(pk, ekScalar)` to `m`.
+   *
+   * @param ct - The ciphertext to verify.
+   * @param pk - The public key `ct` is encrypted under (`g^ekScalar`).
+   * @param ekScalar - The secret scalar.
+   * @param m - The message point `ct` is claimed to encrypt.
+   */
+  export pure circuit assertDecryptsToPointScalar(
+                   ct: Ciphertext,
+                   pk: JubjubPoint,
+                   ekScalar: Field,
+                   m: JubjubPoint
+                   ): [] {
+    assert(ecMulGenerator(ekScalar) == pk,
+           "ElGamal: scalar/pk mismatch");
+    const ekC1 = ecMul(ct.c1, ekScalar);
+    const mPoint = ecAdd(ct.c2, ecNeg(ekC1));
+    assert(mPoint == m,
+           "ElGamal: plaintext mismatch");
+  }
+
+  /**
+   * @description Scalar-native lifted decrypt check: asserts `ct` decrypts under
+   * `(pk, ekScalar)` to `claimedValue`. Lifted special case of
+   * `assertDecryptsToPointScalar` with `m = g^claimedValue`.
+   *
+   * Requirements:
+   *
+   * - `ekScalar` is the discrete log of `pk`.
+   * - `ct` decrypts under `(pk, ekScalar)` to `claimedValue`.
+   *
+   * @param ct - The ciphertext to verify.
+   * @param pk - The public key `ct` is encrypted under.
+   * @param ekScalar - The secret scalar.
+   * @param claimedValue - The plaintext `ct` is claimed to encrypt.
+   */
+  export pure circuit assertDecryptsToScalar(
+                   ct: Ciphertext,
+                   pk: JubjubPoint,
+                   ekScalar: Field,
+                   claimedValue: Uint<128>
+                   ): [] {
+    assertDecryptsToPointScalar(ct, pk, ekScalar, ecMulGenerator(claimedValue as Field));
+  }
 }

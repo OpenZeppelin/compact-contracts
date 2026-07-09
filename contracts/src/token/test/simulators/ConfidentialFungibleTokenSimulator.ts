@@ -3,7 +3,7 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  type CFT_EscrowEntry,
+  type Token_EscrowEntry,
   type ElGamal_Ciphertext,
   ledger,
   Contract as MockCFT,
@@ -100,6 +100,23 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   }
 
   /**
+   * @description Returns the pending (incoming, not-yet-swept) balance ciphertext
+   * for `account`. A wallet's total is `balanceOf` (spendable) + `pendingOf`.
+   * @param account The account id to query.
+   */
+  public pendingOf(account: Uint8Array): Promise<ElGamal_Ciphertext> {
+    return this.circuits.impure.pendingOf(account);
+  }
+
+  /**
+   * @description Sweeps the caller's pending pool into their spendable balance.
+   * Only the owner can call it (account derived from the caller's secret).
+   */
+  public sweep(): Promise<Uint8Array> {
+    return this.circuits.impure.sweep();
+  }
+
+  /**
    * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
    * through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
    * @param owner The public key or contract address of approver.
@@ -109,7 +126,7 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   public allowance(
     owner: Uint8Array,
     spender: Uint8Array,
-  ): Promise<CFT_EscrowEntry> {
+  ): Promise<Token_EscrowEntry> {
     return this.circuits.impure.allowance(owner, spender);
   }
 
@@ -121,6 +138,14 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
    */
   public transfer(to: Uint8Array, value: bigint): Promise<Uint8Array> {
     return this.circuits.impure.transfer(to, value);
+  }
+
+  /**
+   * @description The conserving value-movement primitive: debits the caller and
+   * credits `to`, net zero, never touching supply.
+   */
+  public _move(to: Uint8Array, value: bigint): Promise<Uint8Array> {
+    return this.circuits.impure._move(to, value);
   }
 
   /**
@@ -149,30 +174,30 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   }
 
   /**
-   * @description Creates a `value` amount of tokens and assigns them to `account`,
-   * by transferring it from the zero address. Relies on the `update` mechanism.
+   * @description Creates a `value` amount of tokens and credits them to
+   * `account`, increasing the public total supply. Supply layer operation
+   * (`PublicSupplyConfidentialToken`), not part of the supply-free base.
    * @param account The recipient of tokens minted.
    * @param value The amount of tokens minted.
    */
-  public _mint(account: Uint8Array, value: bigint): Promise<[]> {
-    return this.circuits.impure._mint(account, value);
+  public mint(account: Uint8Array, value: bigint): Promise<[]> {
+    return this.circuits.impure.mint(account, value);
   }
 
   /**
-   * @description Destroys a `value` amount of tokens from `account`, lowering the total supply.
-   * Relies on the `_update` mechanism.
-   * @param account The target owner of tokens to burn.
+   * @description Destroys a `value` amount of tokens from the caller's balance,
+   * lowering the public total supply. Supply layer operation.
    * @param value The amount of tokens to burn.
    */
-  public _burn(value: bigint): Promise<Uint8Array> {
-    return this.circuits.impure._burn(value);
+  public burn(value: bigint): Promise<Uint8Array> {
+    return this.circuits.impure.burn(value);
   }
 
-  public _burnFrom(
+  public burnFrom(
     fromAddress: Uint8Array,
     value: bigint,
   ): Promise<Uint8Array> {
-    return this.circuits.impure._burnFrom(fromAddress, value);
+    return this.circuits.impure.burnFrom(fromAddress, value);
   }
 
   public clearMemos() {
