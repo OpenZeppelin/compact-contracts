@@ -4,7 +4,7 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import type { Maybe } from '../../../artifacts/MockMultiToken/contract/index.js';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator.js';
 

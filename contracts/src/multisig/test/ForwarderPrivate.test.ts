@@ -2,22 +2,22 @@ import type { EncodedQualifiedShieldedCoinInfo } from '@midnight-ntwrk/compact-r
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import {
-  contractOwner,
-  getQualifiedShieldedCoinInfo,
-} from '#test-utils/live/shieldedCoinTracker.js';
-import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin,
-  shieldedTestParentKey,
-} from '#test-utils/liveShielded.js';
+  encodeShieldedCoinInfo,
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   bytesToHex,
   isNonceSpent,
   zswapDelta,
   zswapSnapshot,
-} from '#test-utils/zswap.js';
+} from '#test-utils/fixtures/zswap.js';
+import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
 import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivateSimulator.js';
 
 // The drain parent is a `ZswapCoinPublicKey` (coin public key only). A contract
@@ -38,7 +38,7 @@ const WRONG_OP_SECRET = new Uint8Array(32).fill(0xbb);
 const ZERO = new Uint8Array(32);
 // A shielded token type the deployer wallet holds on live (genesis-minted);
 // `fill(1)` would be unfunded on live. On dry the color is arbitrary.
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 const MAX_U64 = (1n << 64n) - 1n;
 
@@ -56,7 +56,7 @@ function key(bytes: Uint8Array): { bytes: Uint8Array } {
 // persists nullifiers, so a fixed nonce would replay a spent coin); dry uses
 // `nonce` (else zero) for reproducibility.
 function makeCoin(color: Uint8Array, value: bigint, nonce?: Uint8Array) {
-  return makeShieldedCoin(color, value, nonce);
+  return encodeShieldedCoinInfo(color, value, nonce);
 }
 
 function makeQualifiedCoin(

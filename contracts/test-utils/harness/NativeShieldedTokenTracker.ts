@@ -28,7 +28,7 @@ export type ShieldedOwner =
  * Resolves coins whose fields (nonce/color/value) are known. Auto-discovering an
  * unknown wallet coin (ciphertext-only) is the wallet SDK's job.
  */
-export class ShieldedCoinTracker {
+export class NativeShieldedTokenTracker {
   private readonly outputs = new Map<
     string,
     { contract: string | undefined; mtIndex: bigint }
@@ -43,8 +43,8 @@ export class ShieldedCoinTracker {
   }
 
   /** Builds a tracker anchored at the current chain head. */
-  static async create(url: string): Promise<ShieldedCoinTracker> {
-    return new ShieldedCoinTracker(url, await indexerHead(url));
+  static async create(url: string): Promise<NativeShieldedTokenTracker> {
+    return new NativeShieldedTokenTracker(url, await indexerHead(url));
   }
 
   /**
@@ -106,19 +106,19 @@ export class ShieldedCoinTracker {
   }
 }
 
-let trackerPromise: Promise<ShieldedCoinTracker> | undefined;
+let trackerPromise: Promise<NativeShieldedTokenTracker> | undefined;
 
 /**
- * The process-wide {@link ShieldedCoinTracker}, anchored at the chain head on
+ * The process-wide {@link NativeShieldedTokenTracker}, anchored at the chain head on
  * first use. The indexer URL is derived from `MIDNIGHT_INDEXER_PORT` (default
  * `8088`), matching the harness. Depends only on the indexer over `fetch`, so it
  * is decoupled from the testkit live harness (a dry spec can import this module
  * without pulling in testkit — it just never calls this on dry).
  */
-export function getShieldedCoinTracker(): Promise<ShieldedCoinTracker> {
+export function getShieldedCoinTracker(): Promise<NativeShieldedTokenTracker> {
   if (!trackerPromise) {
     const port = process.env.MIDNIGHT_INDEXER_PORT ?? '8088';
-    trackerPromise = ShieldedCoinTracker.create(
+    trackerPromise = NativeShieldedTokenTracker.create(
       `http://127.0.0.1:${port}/api/v4/graphql`,
     );
   }

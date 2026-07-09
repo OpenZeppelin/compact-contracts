@@ -4,7 +4,7 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as contractUtils from '#test-utils/address.js';
+import * as contractUtils from '#test-utils/fixtures/address.js';
 import { UtilsSimulator } from './simulators/UtilsSimulator.js';
 
 const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');

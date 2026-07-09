@@ -1,11 +1,11 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin,
-  shieldedTestParentKey,
-} from '#test-utils/liveShielded.js';
+  encodeShieldedCoinInfo,
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
 import { MockForwarderShieldedSimulator } from './simulators/MockForwarderShieldedSimulator.js';
 import { MockForwarderUnshieldedSimulator } from './simulators/MockForwarderUnshieldedSimulator.js';
 
@@ -31,7 +31,8 @@ const UNSHIELDED_ZERO = utils.ZERO_USER_ADDRESS.right;
 // draw; `fill(1)` would be unfunded on live. Unshielded color: on live the
 // deployer wallet only holds the native unshielded token (`0x00…00`), so the
 // forward draws that; on dry any color mints freely.
-const SHIELDED_COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+const SHIELDED_COLOR =
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const UNSHIELDED_COLOR = isLiveBackend()
   ? new Uint8Array(32)
   : new Uint8Array(32).fill(1);
@@ -40,7 +41,7 @@ const AMOUNT = 1000n;
 // Live gets a fresh random nonce per run (the node persists nullifiers); dry
 // uses zero for reproducibility.
 function makeCoin(color: Uint8Array, value: bigint, nonce?: Uint8Array) {
-  return makeShieldedCoin(color, value, nonce);
+  return encodeShieldedCoinInfo(color, value, nonce);
 }
 
 describe('ForwarderShielded module', () => {

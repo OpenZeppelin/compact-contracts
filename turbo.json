@@ -80,13 +80,23 @@
       "cache": false
     },
     "test:live": {
-      "dependsOn": ["compile"],
+      "dependsOn": ["compile", "test:harness:live"],
       "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false
     },
     "test:integration": {
       "dependsOn": ["compile:integration"],
+      "env": ["COMPACT_HOME"],
+      "outputs": [],
+      "cache": false
+    },
+    "test:harness": {
+      "outputs": [],
+      "cache": false
+    },
+    "test:harness:live": {
+      "dependsOn": ["test:harness"],
       "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false

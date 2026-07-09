@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin as makeCoin,
-} from '#test-utils/liveShielded.js';
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
 import { ShieldedStatelessMultisigSimulator } from './simulators/ShieldedStatelessMultisigSimulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
@@ -10,7 +10,7 @@ const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
 // A shielded token type the deployer wallet holds on live (genesis-minted);
 // `fill(1)` would be unfunded on live. On dry the color is arbitrary.
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
 const PK1 = new Uint8Array(64).fill(0x11);

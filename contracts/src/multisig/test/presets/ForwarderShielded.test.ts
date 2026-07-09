@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin as makeCoin,
-  shieldedTestParentKey,
-} from '#test-utils/liveShielded.js';
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
 import { ForwarderShieldedSimulator } from '../simulators/presets/ForwarderShieldedSimulator.js';
 
 // The constructor takes a `ZswapCoinPublicKey` (the supported arm). The
@@ -17,7 +17,7 @@ import { ForwarderShieldedSimulator } from '../simulators/presets/ForwarderShiel
 const PARENT = shieldedTestParentKey();
 const ZERO_KEY = utils.ZERO_KEY.left;
 // A shielded token type the deployer wallet holds on live (genesis-minted).
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
 describe('ForwarderShielded preset', () => {
