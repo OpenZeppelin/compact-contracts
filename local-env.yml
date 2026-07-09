@@ -7,12 +7,14 @@ services:
       - '6300:6300'
     environment:
       RUST_BACKTRACE: 'full'
+    # No healthcheck: this image is a minimal Nix build with no shell and no
+    # curl/wget, so any in-container HTTP probe fails with "executable not found"
+    # and `docker compose up --wait` aborts even though the server is serving
+    # (`GET :6300/version` returns 200 from the host). The server starts
+    # immediately and is ready long before node/indexer (whose healthchecks do
+    # work) finish; the harness/midnight-js also retry proof requests.
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:6300/version']
-      interval: 10s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      disable: true
 
   indexer:
     # Pinned: `latest` drifted to the Cardano-bridge indexer line, whose config

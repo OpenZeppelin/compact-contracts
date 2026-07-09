@@ -16,11 +16,20 @@
     "compile:security": "turbo run compile:security --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:token": "turbo run compile:token --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:utils": "turbo run compile:utils --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:integration": "turbo run compile:integration --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "build": "turbo run build --log-prefix=none",
-    "test": "turbo run test --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "test": "SKIP_ZK=true turbo run test --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:coverage": "SKIP_ZK=true turbo run test:coverage --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:live": "turbo run test:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:integration": "SKIP_ZK=true turbo run test:integration --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "lint:ci": "biome ci . --no-errors-on-unmatched",
+    "env:up": "make env-up",
+    "env:down": "make env-down",
+    "env:status": "make env-status",
+    "env:logs": "make env-logs",
+    "env:logs:clean": "make env-logs-clean",
     "types": "turbo run types",
     "clean": "turbo run clean"
   },
@@ -31,7 +40,8 @@
     "minimatch": "9.0.6",
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
-    "ip-address": "10.1.1"
+    "ip-address": "10.1.1",
+    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0"

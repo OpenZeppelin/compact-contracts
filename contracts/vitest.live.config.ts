@@ -14,7 +14,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     exclude: [...configDefaults.exclude, 'src/archive/**'],
-    setupFiles: ['./test/integration/_harness/live.setup.ts'],
+    setupFiles: ['./test-utils/live/live.setup.ts'],
     reporters: 'verbose',
     testTimeout: 180_000,
     hookTimeout: 300_000,

@@ -50,6 +50,13 @@
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
+    "compile:integration": {
+      "dependsOn": ["^build"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["test/integration/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
+    },
     "compile": {
       "dependsOn": [
         "compile:crypto",
@@ -58,21 +65,29 @@
         "compile:access",
         "compile:multisig",
         "compile:token"
-      ],
-      "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/**/*.compact", "test/**/*.compact"],
-      "outputLogs": "new-only",
-      "outputs": ["artifacts/**"]
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["compile"],
       "env": ["COMPACT_HOME"],
-      "inputs": [
-        "src/**/*.ts",
-        "src/**/*.compact",
-        "vitest.config.ts",
-        "package.json"
-      ],
+      "outputs": [],
+      "cache": false
+    },
+    "test:coverage": {
+      "dependsOn": ["compile"],
+      "env": ["COMPACT_HOME"],
+      "outputs": [],
+      "cache": false
+    },
+    "test:live": {
+      "dependsOn": ["compile"],
+      "env": ["COMPACT_HOME"],
+      "outputs": [],
+      "cache": false
+    },
+    "test:integration": {
+      "dependsOn": ["compile:integration"],
+      "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false
     },
@@ -82,6 +97,7 @@
       "inputs": [
         "src/**/*.ts",
         "!src/**/*.test.ts",
+        "src/**/*.compact",
         "tsconfig.json",
         "tsconfig.build.json",
         ".env"
