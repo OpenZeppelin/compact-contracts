@@ -528,26 +528,18 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     // First approve: 40 to Bob. Alice's main balance 100 -> 60.
     await cft.approve(BOB.accountId, 40n);
 
-    // Caches the second approve's refund path needs:
-    const ownerPk = (await cft.getPublicState()).Token__encryptionKeys.lookup(
-      ALICE.accountId,
-    );
-    // (a) the owner's escrow copy, decrypted by _refundPriorEscrow.
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).ownerCt,
-      40n,
-    );
-    // (b) the post-refund main balance: addEncrypted(Enc(60), pk, 40, r) = Enc(100),
-    //     where r is the "refund_balance"-tagged expansion of the fixed seed.
-    const r = elgamal.expandRandomness(
-      DEFAULT_RANDOMNESS_SEED,
-      padTag('refund_balance'),
-    );
-    const refunded = elgamal.addEncrypted(
+    // The refund is now HOMOMORPHIC: `_refundPriorEscrow` adds the escrow's
+    // owner-copy ciphertext (Enc(40)) straight onto Alice's balance (Enc(60))
+    // via `ElGamal_add`, with no decrypt. Predict that exact post-refund
+    // ciphertext (Enc(100)) and cache its plaintext so approve's subsequent debit
+    // decrypt resolves it. No cache is needed for the escrow copy itself — the
+    // refund never decrypts it.
+    const escrowOwnerCt = (
+      await cft.allowance(ALICE.accountId, BOB.accountId)
+    ).ownerCt;
+    const refunded = elgamal.add(
       await cft.balanceOf(ALICE.accountId),
-      ownerPk,
-      40n,
-      r,
+      escrowOwnerCt,
     );
     await cft.privateState.cachePlaintext(refunded, 100n);
 

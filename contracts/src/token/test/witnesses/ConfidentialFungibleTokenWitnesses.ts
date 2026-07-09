@@ -17,6 +17,7 @@
 // nonce). Do not copy this seed behavior into a real wallet.
 
 import { getRandomValues } from 'node:crypto';
+import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import type {
   JubjubPoint,
   WitnessContext,
@@ -60,6 +61,19 @@ export type Ciphertext = {
 function serializeCiphertext(ct: Ciphertext): string {
   return `${ct.c1.x.toString(16)}:${ct.c1.y.toString(16)}:${ct.c2.x.toString(16)}:${ct.c2.y.toString(16)}`;
 }
+
+/**
+ * @description Serialized key of `encryptZero()` = (identity, identity), with
+ * identity = `ecMulGenerator(0)`. A wallet knows this constant ciphertext
+ * decrypts to 0 without a cache entry; the `approve` refund path reads it for a
+ * freshly-created (encryptZero) escrow slot, so `wit_PlaintextBalance` returns 0
+ * for it directly rather than requiring the caller to cache it. A production
+ * wallet must do the same.
+ */
+const ZERO_CIPHERTEXT_KEY: string = (() => {
+  const identity = ecMulGenerator(0n) as JubjubPoint;
+  return serializeCiphertext({ c1: identity, c2: identity });
+})();
 
 // ---------------------------------------------------------------------------
 // Witness interface
@@ -249,6 +263,12 @@ export const ConfidentialFungibleTokenWitnesses = <
     context: WitnessContext<L, ConfidentialFungibleTokenPrivateState>,
     ct: Ciphertext,
   ): [ConfidentialFungibleTokenPrivateState, bigint] {
+    // encryptZero() decrypts to 0 under any consistent key; the wallet knows
+    // this without caching it. The `approve` refund path reads it for a
+    // freshly-created escrow slot (see `_refundPriorEscrow`).
+    if (serializeCiphertext(ct) === ZERO_CIPHERTEXT_KEY) {
+      return [context.privateState, 0n];
+    }
     const plaintext = ConfidentialFungibleTokenPrivateState.lookupPlaintext(
       context.privateState,
       ct,

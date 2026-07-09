@@ -750,7 +750,7 @@ module ConfidentialFungibleToken {
     const ownerPk = _encryptionKeys.lookup(disclose(ownerId));
 
     // Refund any prior escrow back to owner's main balance first.
-    _refundPriorEscrow(ownerId, spender, ownerPk, ek);
+    _refundPriorEscrow(ownerId, spender);
 
     // Debit the owner's main balance by `value`.
     const ownerCt = _balances.lookup(disclose(ownerId));
@@ -949,27 +949,38 @@ module ConfidentialFungibleToken {
    * owner previously held. The maximum refundable amount is bounded by
    * MAX_TRANSFER_VALUE() (since approve enforces this bound).
    */
-  circuit _refundPriorEscrow(
-            ownerId: Bytes<32>,
-            spender: Bytes<32>,
-            ownerPk: JubjubPoint,
-            ek: Bytes<32>
-            ): [] {
-    if (!_escrow.member(disclose(ownerId)) ||
-        !_escrow.lookup(disclose(ownerId)).member(disclose(spender))) {
-      return [];
+  circuit _refundPriorEscrow(ownerId: Bytes<32>, spender: Bytes<32>): [] {
+    // Homomorphic-refund workaround for a Compact prover codegen bug: reading a
+    // nested-Map ElGamal point and SCALAR-MULTIPLYING it (an ElGamal decrypt)
+    // inside `approve` faults at preprocess with a Jubjub subgroup assertion,
+    // even when the value is on-curve and the identical op proves standalone
+    // (bisection-pinned; see the compiler-issue writeup). So refund WITHOUT a
+    // decrypt: the escrow's `ownerCt` already encrypts the unspent amount under
+    // the owner's key, so add it straight back to the balance with a ciphertext
+    // ADD (`ElGamal_add` = point addition, NOT scalar-mult). No witness and no
+    // plaintext claim, so this is strictly more trustworthy than the old decrypt
+    // path (nothing for a wallet to lie about).
+    //
+    // Ensure the slot is present + on-curve first so the read is never a default:
+    // a fresh slot is `encryptZero()` (identity), and adding identity is an EXACT
+    // no-op, so a first approve refunds nothing and leaves the balance ciphertext
+    // byte-identical (no re-randomization -> no new wallet-cache burden).
+    if (!_escrow.member(disclose(ownerId))) {
+      _escrow.insert(disclose(ownerId), default<Map<Bytes<32>, EscrowEntry>>);
     }
+    if (!_escrow.lookup(disclose(ownerId)).member(disclose(spender))) {
+      _escrow.lookup(disclose(ownerId)).insert(
+        disclose(spender),
+        disclose(EscrowEntry {
+          spenderCt: ElGamal_encryptZero(),
+          ownerCt:   ElGamal_encryptZero()
+        })
+      );
+    }
+
     const entry = _escrow.lookup(disclose(ownerId)).lookup(disclose(spender));
-
-    const priorCap = wit_PlaintextBalance(entry.ownerCt);
-    ElGamal_assertDecryptsTo(entry.ownerCt, ownerPk, ek, priorCap);
-
-    const seed = wit_RandomnessSeed();
-    const r = ElGamal_expandRandomness(seed, pad(32, "refund_balance"));
-    const ownerCt = _balances.lookup(disclose(ownerId));
-    const refunded = ElGamal_addEncrypted(ownerCt, ownerPk, priorCap, r);
+    const refunded = ElGamal_add(_balances.lookup(disclose(ownerId)), entry.ownerCt);
     _balances.insert(disclose(ownerId), disclose(refunded));
-
     _escrow.lookup(disclose(ownerId)).remove(disclose(spender));
   }
 
