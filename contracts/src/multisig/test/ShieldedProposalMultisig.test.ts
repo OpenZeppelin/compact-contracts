@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin,
+  encodeShieldedCoinInfo,
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import {
   shieldedTestParentKey,
   shieldedTestSigner,
-} from '#test-utils/liveShielded.js';
+} from '#test-utils/fixtures/shieldedKey.js';
 import { ShieldedProposalMultisigSimulator } from './simulators/ShieldedProposalMultisigSimulator.js';
 
 const ProposalStatus = { Inactive: 0, Active: 1, Executed: 2, Cancelled: 3 };
@@ -13,7 +15,7 @@ const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 const THRESHOLD = 2n;
 // A shielded token type the deployer wallet holds on live (genesis-minted);
 // `fill(1)` would be unfunded on live. On dry the color is arbitrary.
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 const PROPOSAL_AMOUNT = 400n;
 
@@ -47,7 +49,7 @@ function makeCoin(
   value: bigint,
   nonce?: Uint8Array,
 ): { nonce: Uint8Array; color: Uint8Array; value: bigint } {
-  return makeShieldedCoin(color, value, nonce);
+  return encodeShieldedCoinInfo(color, value, nonce);
 }
 
 let multisig: ShieldedProposalMultisigSimulator;

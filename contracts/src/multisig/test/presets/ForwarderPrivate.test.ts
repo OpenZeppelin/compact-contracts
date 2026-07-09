@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
+import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
-} from '#test-utils/live/shieldedCoinTracker.js';
-import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin as makeCoin,
-  shieldedTestParentKey,
-} from '#test-utils/liveShielded.js';
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
 import { ForwarderPrivateSimulator } from '../simulators/presets/ForwarderPrivateSimulator.js';
 
 // The drain parent is a `ZswapCoinPublicKey` (`{ bytes }`); the commitment is
@@ -17,7 +17,7 @@ import { ForwarderPrivateSimulator } from '../simulators/presets/ForwarderPrivat
 const PARENT_BYTES = shieldedTestParentKey().bytes;
 const OP_SECRET = new Uint8Array(32).fill(0xaa);
 // A shielded token type the deployer wallet holds on live (genesis-minted).
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
 function key(bytes: Uint8Array) {

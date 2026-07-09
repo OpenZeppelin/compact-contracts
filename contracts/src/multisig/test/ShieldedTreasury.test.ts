@@ -1,24 +1,24 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin,
-  shieldedTestRecipient,
-} from '#test-utils/liveShielded.js';
+  encodeShieldedCoinInfo,
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
 import {
   bytesToHex,
   isNonceSpent,
   zswapDelta,
   zswapSnapshot,
-} from '#test-utils/zswap.js';
+} from '#test-utils/fixtures/zswap.js';
 import { ShieldedTreasurySimulator } from './simulators/ShieldedTreasurySimulator.js';
 
 // Genesis-funded shielded colors (`0x00…01` / `0x00…02`): on the live backend a
 // `_deposit` / `_send` can only draw a color the deployer wallet holds, so specs
 // must use these. `new Uint8Array(32).fill(1)` (`0x0101…01`) is unfunded on live
-// (`Wallet.InsufficientFunds`); on dry any color mints freely. See liveShielded.ts.
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
-const COLOR2 = GENESIS_SHIELDED_COLORS.shieldedCoin2;
+// (`Wallet.InsufficientFunds`); on dry any color mints freely. See nativeShieldedToken.ts.
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
+const COLOR2 = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken2;
 const AMOUNT = 1000n;
 
 // A non-zero deploy address so the change output (routed to self via
@@ -41,7 +41,7 @@ function makeCoin(
   value: bigint,
   nonce?: Uint8Array,
 ): { nonce: Uint8Array; color: Uint8Array; value: bigint } {
-  return makeShieldedCoin(color, value, nonce);
+  return encodeShieldedCoinInfo(color, value, nonce);
 }
 
 let treasury: ShieldedTreasurySimulator;

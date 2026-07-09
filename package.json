@@ -22,6 +22,8 @@
     "test:coverage": "SKIP_ZK=true turbo run test:coverage --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:live": "turbo run test:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:integration": "SKIP_ZK=true turbo run test:integration --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:harness": "turbo run test:harness --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:harness:live": "turbo run test:harness:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "check": "biome check .",
     "check:fix": "biome check . --write",
     "check:ci": "biome ci . --no-errors-on-unmatched",

@@ -1,11 +1,34 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 
+/**
+ * One config, one project per test flavour. Select with `--project <name>`:
+ *
+ *   - `unit`         — dry simulator run of the per-module specs (`src/**`).
+ *   - `unit-live`    — the same specs against the local stack (`make env-up`),
+ *                      via the live backend registered in `live.setup`. Driven
+ *                      by `MIDNIGHT_BACKEND=live` (set by the `test:live` script).
+ *   - `integration`  — composed-contract specs (`test/integration/specs`).
+ *   - `harness`      — dry unit tests for the live harness itself (`test-utils`).
+ *   - `harness-live` — live smoke that the real wallet pool funds + resolves on
+ *                      the node, before the expensive contract live specs.
+ *
+ * Coverage is a root-level concern (applies to whichever project runs with
+ * `--coverage`); the `unit` project is the one gated in CI.
+ */
+
+const NODE = { globals: true, environment: 'node' as const };
+const ARCHIVE_EXCLUDE = [...configDefaults.exclude, 'src/archive/**'];
+// Live projects: one funded genesis account + one node, so run sequentially
+// (no nonce/UTXO races) with generous timeouts (real proofs + on-chain txs).
+const LIVE = {
+  fileParallelism: false,
+  sequence: { concurrent: false },
+  testTimeout: 180_000,
+  hookTimeout: 300_000,
+} as const;
+
 export default defineConfig({
   test: {
-    globals: true,
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
-    exclude: [...configDefaults.exclude, 'src/archive/**'],
     reporters: 'verbose',
     coverage: {
       provider: 'v8',
@@ -39,5 +62,50 @@ export default defineConfig({
         },
       },
     },
+    projects: [
+      {
+        test: {
+          ...NODE,
+          name: 'unit',
+          include: ['src/**/*.test.ts'],
+          exclude: ARCHIVE_EXCLUDE,
+        },
+      },
+      {
+        test: {
+          ...NODE,
+          ...LIVE,
+          name: 'unit-live',
+          include: ['src/**/*.test.ts'],
+          exclude: ARCHIVE_EXCLUDE,
+          setupFiles: ['./test-utils/harness/live.setup.ts'],
+        },
+      },
+      {
+        test: {
+          ...NODE,
+          name: 'integration',
+          include: ['test/integration/specs/**/*.spec.ts'],
+        },
+      },
+      {
+        test: {
+          ...NODE,
+          name: 'harness',
+          include: ['test-utils/**/*.test.ts'],
+        },
+      },
+      {
+        // Same files as `harness`; `MIDNIGHT_BACKEND=live` (set by the
+        // `test:harness:live` script) flips the `isLiveBackend()`-gated blocks
+        // (e.g. the WalletPool live smoke) on. LIVE timeouts + sequential.
+        test: {
+          ...NODE,
+          ...LIVE,
+          name: 'harness-live',
+          include: ['test-utils/**/*.test.ts'],
+        },
+      },
+    ],
   },
 });

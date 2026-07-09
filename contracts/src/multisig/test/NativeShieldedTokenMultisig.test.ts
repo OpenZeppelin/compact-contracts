@@ -1,7 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
-import { shieldedTestRecipient } from '#test-utils/liveShielded.js';
+import * as utils from '#test-utils/fixtures/address.js';
+import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
 import {
   calculateSignerId,
   NativeShieldedTokenMultisigSimulator,

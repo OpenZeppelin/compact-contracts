@@ -1,29 +1,29 @@
 import type { EncodedQualifiedShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import {
-  contractOwner,
-  getQualifiedShieldedCoinInfo,
-} from '#test-utils/live/shieldedCoinTracker.js';
-import {
-  GENESIS_SHIELDED_COLORS,
-  makeShieldedCoin,
-  shieldedTestRecipient,
-} from '#test-utils/liveShielded.js';
+  encodeShieldedCoinInfo,
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
 import {
   bytesToHex,
   isNonceSpent,
   zswapDelta,
   zswapSnapshot,
-} from '#test-utils/zswap.js';
+} from '#test-utils/fixtures/zswap.js';
+import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
 import { MockShieldedTreasuryStatelessSimulator } from './simulators/MockShieldedTreasuryStatelessSimulator.js';
 
 // Genesis-funded shielded color (`0x00…01`): on the live backend a `_deposit` /
 // `_send` can only draw a color the deployer wallet holds. `fill(1)` (`0x0101…01`)
 // is a different, unfunded type on live; on dry any color mints freely. See
-// liveShielded.ts.
-const COLOR = GENESIS_SHIELDED_COLORS.shieldedCoin1;
+// nativeShieldedToken.ts.
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
 // A non-zero deploy address so the change output (routed to self) carries a
@@ -39,7 +39,7 @@ let Z_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
 // (the local node persists nullifiers, so a fixed nonce would replay a spent
 // coin — Custom error 103); dry uses `nonce` (else zero) for reproducibility.
 function makeCoin(color: Uint8Array, value: bigint, nonce?: Uint8Array) {
-  return makeShieldedCoin(color, value, nonce);
+  return encodeShieldedCoinInfo(color, value, nonce);
 }
 
 let treasury: MockShieldedTreasuryStatelessSimulator;
