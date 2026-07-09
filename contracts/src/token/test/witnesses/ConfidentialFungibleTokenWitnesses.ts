@@ -9,10 +9,12 @@
 // invocation. A fixed or predictable seed does NOT affect integrity (balances,
 // allowances, and supply are still sound), but it destroys confidentiality:
 // the seed -> randomness expansion is deterministic and public, so anyone who
-// knows (or guesses) the seed can strip the ElGamal mask and brute-force every
-// bounded amount (< 2^48) on the public ledger. Reusing a seed across
-// transactions also leaks plaintext differences. Do not copy this seed
-// behavior into a real wallet.
+// knows (or guesses) the seed can strip the ElGamal mask and read the exact
+// delivered amount from a memo (any size; the ECDH memo channel removed the
+// former 2^48 brute-force bound), and can recover balance/escrow amounts from
+// the public ciphertexts. Reusing a seed across transactions also leaks
+// plaintext differences (the debit and escrow paths have no per-operation
+// nonce). Do not copy this seed behavior into a real wallet.
 
 import { getRandomValues } from 'node:crypto';
 import type {

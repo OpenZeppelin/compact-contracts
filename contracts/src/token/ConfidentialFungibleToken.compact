@@ -50,15 +50,22 @@ pragma language_version >= 0.23.0;
  *    call-order conventions.
  *
  *  - `wit_RandomnessSeed`: the wallet supplies a single 32-byte seed per
- *    circuit invocation. All per-operation randomness (and each memo's ephemeral)
- *    is derived in-circuit from this seed, bound to a per-recipient monotonic
- *    nonce, so the wallet CANNOT cause randomness or one-time-pad reuse across
- *    ciphertexts in one circuit, nor across invocations that reuse a seed. A
- *    low-entropy or predictable seed cannot break that property, but it harms
- *    confidentiality: the derivation is deterministic and public, so an observer
- *    who knows the seed can recompute a memo's ephemeral, recover its mask, and
- *    read the delivered amount (the recipients' incoming amounts). The seed MUST
- *    be fresh, high-entropy, and secret.
+ *    circuit invocation, from which all per-operation randomness (and each
+ *    memo's ephemeral) is derived in-circuit. Seed freshness is load-bearing
+ *    for confidentiality on EVERY path. The seed-to-randomness expansion is
+ *    deterministic and public, so an observer who knows the seed can strip a
+ *    memo's mask and read the exact delivered amount (of any size), and can
+ *    recover a balance or escrow amount from its public ciphertext by discrete
+ *    log. The seed MUST be fresh, high-entropy, and secret for every invocation.
+ *
+ *    Seed REUSE leaks plaintext differences, and the circuit does NOT prevent
+ *    it. The debit and escrow ciphertexts (`_debit`, `approve`, `_spendEscrow`,
+ *    and the re-approve refund) derive randomness from a static domain tag with
+ *    no per-operation nonce, so two operations under one seed share randomness
+ *    and their public ciphertext deltas reveal the amount difference. The credit
+ *    path folds the recipient's memo-list length in as a nonce (defense in
+ *    depth), but that counter RESETS on `clearMemos`, so it is an in-epoch
+ *    backstop only, never a substitute for freshness.
  *
  * @dev Plaintext disclosures (what reaches the public ledger):
  *  - This base discloses no amounts; supply accounting lives in a layer.
@@ -90,6 +97,14 @@ pragma language_version >= 0.23.0;
  * reconstructs a never-spent account. (2) The owner self-refund in
  * `_refundPriorEscrow` (re-approve) credits the owner with no memo; the owner
  * observes it by initiating that transaction.
+ *
+ * @dev Residual griefing. The dual-balance split (see `sweep`) stops dust
+ * credits from churning a victim's spendable ciphertext, but every `_credit`
+ * still appends a memo, and only the recipient can `clearMemos`. An attacker
+ * can spam value-1 credits to grow a victim's memo list without bound; the
+ * victim pays the storage, the wallet scan cost, and the clear gas. Rejecting
+ * value == 0 does not help (dust at value == 1 defeats it). A real fix is
+ * architectural (event-based delivery, a memo cap, or a bond) and is deferred.
  *
  * @dev Hash function discipline. Every hash is built on `persistentHash` (no
  * direct use of `transientHash`). `accountId` is a raw `persistentHash` map key.
@@ -452,27 +467,37 @@ module ConfidentialFungibleToken {
   // ---------------------------------------------------------------------------
   // Internal value primitives: _debit and _credit
   //
-  // These are INTERNAL (not exported). Exposing the asymmetric halves cannot
-  // preserve `sum(balances) == totalSupply`: a composer could `_credit` without
-  // a matching `_debit`/mint (inflation), and the module has no way to compel
-  // the pairing (Compact has no end-of-transaction settlement hook). The planned
-  // external surface for custom value flows is instead a CONSERVING primitive (a
-  // `_move` that always pairs a debit with an equal credit), which holds the
-  // invariant by construction. This base is supply-free: supply changes live in
-  // a separate layer that imports it (see `PublicSupplyConfidentialToken`).
+  // These are exported ONLY so a supply layer in a separate module can compose
+  // them (see `PublicSupplyConfidentialToken`); they are NOT a general external
+  // surface. Exposing the asymmetric halves on a deployed contract cannot
+  // preserve `sum(balances) == totalSupply`: a caller could `_credit` without a
+  // matching `_debit`/mint (inflation), and the module has no way to compel the
+  // pairing (Compact has no end-of-transaction settlement hook). The conserving
+  // primitive for custom value flow is `_move` (it always pairs a debit with an
+  // equal credit), which holds the invariant by construction. This base is
+  // supply-free; supply changes live in the layer that imports it.
+  //
+  // DANGER: `export circuit` means callable on the deployed contract, and
+  // Compact cannot restrict a re-export. A consumer that re-exports `_credit`
+  // turns it into a permissionless mint, and `_debit` into a permissionless
+  // burn. This base is a module, not independently deployable; a consuming
+  // contract MUST expose only the conserving surface (`transfer`, `_move`,
+  // `approve`/`transferFrom`, `sweep`) plus a supply layer's gated `mint`/`burn`,
+  // and MUST NEVER re-export `_credit` or `_debit`.
   //
   // WARNING: neither `_debit` nor `_credit` adjusts any supply total. They only
   // move value into/out of a single account's balance ciphertext. A supply layer
   // pairs them with supply accounting where required (its `mint` increments the
-  // total before crediting; its `burn` decrements it after debiting). They are
-  // exported so that layer can compose them; they are not a general external
-  // surface (use `_move`/`transfer` for conserving value flow).
+  // total before crediting; its `burn` decrements it after debiting).
   //
-  // Randomness: `_credit` derives its encryption randomness internally from the
-  // witness seed and a per-recipient monotonic nonce (the memo-list length), so
-  // each credit's randomness is unique even across invocations that reuse a
-  // seed. This is essential for the memo one-time pad, and it also keeps
-  // multi-party credits safe (each recipient's count is independent).
+  // Randomness: `_credit` folds a per-recipient nonce (the memo-list length)
+  // into its seed-derived randomness as defense in depth. This helps only
+  // within a memo epoch: `clearMemos` resets the counter, and it is NOT a
+  // substitute for seed freshness (see the header note); seed reuse still leaks
+  // credited-amount differences. Within an epoch the nonce keeps a single
+  // circuit's multi-party credits distinct (each recipient's count is
+  // independent). The debit side has no such nonce, so seed freshness is the
+  // only defense there.
   // ---------------------------------------------------------------------------
 
   /**
