@@ -5,12 +5,12 @@ import {
 import {
   type Ledger,
   ledger,
-  Contract as ShieldedMultiSig,
-} from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
+  Contract as ShieldedProposalMultisig,
+} from '../../../../artifacts/ShieldedProposalMultisig/contract/index.js';
 import {
-  ShieldedMultiSigPrivateState,
-  ShieldedMultiSigWitnesses,
-} from '../witnesses/ShieldedMultiSigWitnesses.js';
+  ShieldedProposalMultisigPrivateState,
+  ShieldedProposalMultisigWitnesses,
+} from '../witnesses/ShieldedProposalMultisigWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -30,41 +30,43 @@ type Proposal = {
   status: number;
 };
 
-type ShieldedMultiSigArgs = readonly [
+type ShieldedProposalMultisigArgs = readonly [
   signers: EitherPKAddress[],
   thresh: bigint,
 ];
 
-const ShieldedMultiSigSimulatorBase = createSimulator<
-  ShieldedMultiSigPrivateState,
+const ShieldedProposalMultisigSimulatorBase = createSimulator<
+  ShieldedProposalMultisigPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigWitnesses>,
-  ShieldedMultiSig<ShieldedMultiSigPrivateState>,
-  ShieldedMultiSigArgs
+  ReturnType<typeof ShieldedProposalMultisigWitnesses>,
+  ShieldedProposalMultisig<ShieldedProposalMultisigPrivateState>,
+  ShieldedProposalMultisigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSig<ShieldedMultiSigPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigPrivateState,
+    new ShieldedProposalMultisig<ShieldedProposalMultisigPrivateState>(
+      witnesses,
+    ),
+  defaultPrivateState: () => ShieldedProposalMultisigPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigWitnesses(),
-  artifactName: 'ShieldedMultiSig',
+  witnessesFactory: () => ShieldedProposalMultisigWitnesses(),
+  artifactName: 'ShieldedProposalMultisig',
 });
 
-export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
+export class ShieldedProposalMultisigSimulator extends ShieldedProposalMultisigSimulatorBase {
   static async create(
     signers: EitherPKAddress[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedMultiSigPrivateState,
-      ReturnType<typeof ShieldedMultiSigWitnesses>
+      ShieldedProposalMultisigPrivateState,
+      ReturnType<typeof ShieldedProposalMultisigWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigSimulator> {
+  ): Promise<ShieldedProposalMultisigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [signers, thresh],
       options,
-    ) as Promise<ShieldedMultiSigSimulator>;
+    ) as Promise<ShieldedProposalMultisigSimulator>;
   }
 
   // Deposit
@@ -110,16 +112,19 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     return this.circuits.impure.getProposal(id);
   }
 
-  public getProposalRecipient(id: bigint): Promise<Recipient> {
-    return this.circuits.impure.getProposalRecipient(id);
+  // getProposalRecipient / getProposalAmount / getProposalColor were dropped from
+  // the contract (redundant with getProposal; removed to fit the deploy block
+  // limit). Derive them here so specs are unchanged.
+  public async getProposalRecipient(id: bigint): Promise<Recipient> {
+    return (await this.getProposal(id)).to;
   }
 
-  public getProposalAmount(id: bigint): Promise<bigint> {
-    return this.circuits.impure.getProposalAmount(id);
+  public async getProposalAmount(id: bigint): Promise<bigint> {
+    return (await this.getProposal(id)).amount;
   }
 
-  public getProposalColor(id: bigint): Promise<Uint8Array> {
-    return this.circuits.impure.getProposalColor(id);
+  public async getProposalColor(id: bigint): Promise<Uint8Array> {
+    return (await this.getProposal(id)).color;
   }
 
   public getProposalStatus(id: bigint): Promise<number> {
@@ -139,8 +144,14 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     return this.circuits.impure.getSentTotal(color);
   }
 
-  public getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
-    return this.circuits.impure.getReceivedMinusSent(color);
+  // getReceivedMinusSent was dropped from the contract (redundant; removed to fit
+  // the deploy block limit). Derive it from the two tracked totals.
+  public async getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
+    const [received, sent] = await Promise.all([
+      this.getReceivedTotal(color),
+      this.getSentTotal(color),
+    ]);
+    return received - sent;
   }
 
   // View - Signers
