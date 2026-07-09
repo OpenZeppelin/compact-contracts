@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (multisig/presets/ShieldedMultiSigV2.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (multisig/presets/ShieldedStatelessMultisig.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @title ShieldedMultisigV2
+ * @title ShieldedStatelessMultisig
  * @description Privacy-preserving 2-of-3 multisig contract.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
@@ -86,7 +86,7 @@ constructor(
 ) {
   assert(
     thresh <= 2,
-    "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
+    "ShieldedStatelessMultisig: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
   );
   _instanceSalt = disclose(instanceSalt);
   Signer_initialize<3>(signerCommitments, thresh);

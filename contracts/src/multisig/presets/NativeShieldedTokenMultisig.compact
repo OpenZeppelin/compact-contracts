@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/ShieldedMultiSigV3.compact)
+// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (multisig/presets/NativeShieldedTokenMultisig.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @title ShieldedMultiSigV3
+ * @title NativeShieldedTokenMultisig
  * @description Privacy-preserving multisig token contract for tokenised
  * deposits. Both minting and burning require threshold ECDSA
  * authorization. No single party can unilaterally create or destroy tokens.

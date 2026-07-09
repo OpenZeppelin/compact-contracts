@@ -6,12 +6,12 @@ import {
   type Ledger,
   ledger,
   pureCircuits,
-  Contract as ShieldedMultiSigV2,
-} from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
+  Contract as ShieldedStatelessMultisig,
+} from '../../../../artifacts/ShieldedStatelessMultisig/contract/index.js';
 import {
-  ShieldedMultiSigV2PrivateState,
-  ShieldedMultiSigV2Witnesses,
-} from '../witnesses/ShieldedMultiSigV2Witnesses.js';
+  ShieldedStatelessMultisigPrivateState,
+  ShieldedStatelessMultisigWitnesses,
+} from '../witnesses/ShieldedStatelessMultisigWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
@@ -26,47 +26,49 @@ type ShieldedSendResult = {
   sent: ShieldedCoinInfo;
 };
 
-type ShieldedMultiSigV2Args = readonly [
+type ShieldedStatelessMultisigArgs = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   thresh: bigint,
 ];
 
-const ShieldedMultiSigV2SimulatorBase = createSimulator<
-  ShieldedMultiSigV2PrivateState,
+const ShieldedStatelessMultisigSimulatorBase = createSimulator<
+  ShieldedStatelessMultisigPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigV2Witnesses>,
-  ShieldedMultiSigV2<ShieldedMultiSigV2PrivateState>,
-  ShieldedMultiSigV2Args
+  ReturnType<typeof ShieldedStatelessMultisigWitnesses>,
+  ShieldedStatelessMultisig<ShieldedStatelessMultisigPrivateState>,
+  ShieldedStatelessMultisigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV2<ShieldedMultiSigV2PrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigV2PrivateState,
+    new ShieldedStatelessMultisig<ShieldedStatelessMultisigPrivateState>(
+      witnesses,
+    ),
+  defaultPrivateState: () => ShieldedStatelessMultisigPrivateState,
   contractArgs: (instanceSalt, signerCommitments, thresh) => [
     instanceSalt,
     signerCommitments,
     thresh,
   ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigV2Witnesses(),
-  artifactName: 'ShieldedMultiSigV2',
+  witnessesFactory: () => ShieldedStatelessMultisigWitnesses(),
+  artifactName: 'ShieldedStatelessMultisig',
 });
 
-export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
+export class ShieldedStatelessMultisigSimulator extends ShieldedStatelessMultisigSimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedMultiSigV2PrivateState,
-      ReturnType<typeof ShieldedMultiSigV2Witnesses>
+      ShieldedStatelessMultisigPrivateState,
+      ReturnType<typeof ShieldedStatelessMultisigWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigV2Simulator> {
+  ): Promise<ShieldedStatelessMultisigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [instanceSalt, signerCommitments, thresh],
       options,
-    ) as Promise<ShieldedMultiSigV2Simulator>;
+    ) as Promise<ShieldedStatelessMultisigSimulator>;
   }
 
   public static calculateSignerId(
