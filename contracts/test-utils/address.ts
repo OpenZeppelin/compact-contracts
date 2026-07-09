@@ -67,6 +67,23 @@ export const createEitherTestUser = (
 });
 
 /**
+ * @description Builds an `Either<ZswapCoinPublicKey, ContractAddress>` bound to a
+ * real coin public key (a 64-char hex string, e.g. a live wallet's
+ * `getCoinPublicKey()`) instead of a hashed test string. The live backend uses
+ * this so shielded sends target a recipient whose encryption key the node can
+ * resolve (a fabricated key from `createEitherTestUser` has none).
+ * @param coinPublicKey 64-char hex coin public key.
+ * @returns Defined Either object for the given ZswapCoinPublicKey.
+ */
+export const eitherUserFromCoinPublicKey = (
+  coinPublicKey: string,
+): Either<ZswapCoinPublicKey, ContractAddress> => ({
+  is_left: true,
+  left: { bytes: encodeCoinPublicKey(coinPublicKey) },
+  right: encodeToAddress(''),
+});
+
+/**
  * @description Generates an Either object for ContractAddress for testing.
  *              For use when an Either argument is expected.
  * @param str String to hexify and encode.
