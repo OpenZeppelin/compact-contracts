@@ -2,25 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Spies for everything buildContext delegates to, so it runs with no node and
 // no artifact on disk.
-const { registerSpy, createContextSpy, deploySpy, initProvidersSpy } =
-  vi.hoisted(() => ({
-    registerSpy: vi.fn(),
-    createContextSpy: vi.fn(() => ({ liveContext: true })),
-    deploySpy: vi.fn(async () => ({
-      deployTxData: { public: { contractAddress: 'abc123' } },
-    })),
-    initProvidersSpy: vi.fn(
-      (
-        wallet: unknown,
-        _env: unknown,
-        opts: { privateStateStoreName: string },
-      ) => ({
-        walletProvider: wallet,
-        publicDataProvider: `pub:${opts.privateStateStoreName}`,
-        privateStateProvider: `priv:${opts.privateStateStoreName}`,
-      }),
-    ),
-  }));
+const { registerSpy, createContextSpy, deploySpy } = vi.hoisted(() => ({
+  registerSpy: vi.fn(),
+  createContextSpy: vi.fn(() => ({ liveContext: true })),
+  deploySpy: vi.fn(async () => ({
+    deployTxData: { public: { contractAddress: 'abc123' } },
+  })),
+}));
 
 vi.mock('@openzeppelin/compact-simulator', async (importOriginal) => {
   const actual =
@@ -42,7 +30,18 @@ vi.mock('@midnight-ntwrk/midnight-js-contracts', () => ({
   deployContract: deploySpy,
 }));
 vi.mock('@midnight-ntwrk/testkit-js', () => ({
-  initializeMidnightProviders: initProvidersSpy,
+  inMemoryPrivateStateProvider: vi.fn(() => ({ inMemory: true })),
+}));
+vi.mock('@midnight-ntwrk/midnight-js-indexer-public-data-provider', () => ({
+  indexerPublicDataProvider: vi.fn(() => ({ publicData: true })),
+}));
+vi.mock('@midnight-ntwrk/midnight-js-http-client-proof-provider', () => ({
+  httpClientProofProvider: vi.fn(() => ({ proof: true })),
+}));
+vi.mock('@midnight-ntwrk/midnight-js-node-zk-config-provider', () => ({
+  NodeZkConfigProvider: class {
+    constructor(readonly dir: string) {}
+  },
 }));
 
 import { LiveSimulatorBackend } from '../LiveSimulatorBackend.js';
