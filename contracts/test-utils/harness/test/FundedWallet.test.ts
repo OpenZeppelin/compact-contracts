@@ -9,12 +9,18 @@ const NIGHT_RAW = 'night-raw-token';
 const m = vi.hoisted(() => {
   const start = vi.fn(async (_wait?: boolean) => {});
   const stop = vi.fn(async () => {});
-  const provider = {
+  const balanceTx = vi.fn(async (_tx: unknown) => 'balanced-tx');
+  // A fresh provider object per `withWallet` call, as production does (each
+  // `FundedWallet.build` constructs a new provider). It reuses the shared fns
+  // so tests can assert against them, but its own `balanceTx` slot is distinct
+  // per call — so `build`'s wrapping doesn't stack across tests.
+  const makeProvider = () => ({
     start,
     stop,
+    balanceTx,
     getCoinPublicKey: () => 'coin-pk-xyz',
     wallet: { id: 'facade' },
-  };
+  });
   const builder = {
     withSeed: vi.fn().mockReturnThis(),
     withDustOptions: vi.fn().mockReturnThis(),
@@ -33,10 +39,10 @@ const m = vi.hoisted(() => {
   return {
     start,
     stop,
-    provider,
+    balanceTx,
     builder,
     syncState,
-    withWallet: vi.fn(async () => provider),
+    withWallet: vi.fn(async () => makeProvider()),
     waitForFunds: vi.fn(async () => 250_000_000_000_000n),
     syncWallet,
   };
@@ -123,6 +129,22 @@ describe('FundedWallet.build', () => {
     const wallet = await build();
     expect(wallet.nightBalance).toBe(0n);
     expect(wallet.isFunded).toBe(true);
+  });
+
+  it('should re-sync the wallet before balancing a tx', async () => {
+    const wallet = await build();
+    m.syncWallet.mockClear();
+
+    const balanced = await wallet.provider.balanceTx('unbalanced' as never);
+
+    // The original balanceTx result flows through unchanged...
+    expect(balanced).toBe('balanced-tx');
+    // ...but a fresh sync runs first, so the tx balances against post-prior-tx
+    // state (the guard against consecutive same-signer UTXO reuse).
+    expect(m.syncWallet).toHaveBeenCalledTimes(1);
+    expect(m.syncWallet.mock.invocationCallOrder[0]).toBeLessThan(
+      m.balanceTx.mock.invocationCallOrder[0],
+    );
   });
 
   it('should refresh both balances after a top-up', async () => {
