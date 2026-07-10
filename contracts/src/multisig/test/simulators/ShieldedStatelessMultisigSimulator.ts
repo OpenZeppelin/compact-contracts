@@ -8,10 +8,7 @@ import {
   pureCircuits,
   Contract as ShieldedStatelessMultisig,
 } from '../../../../artifacts/ShieldedStatelessMultisig/contract/index.js';
-import {
-  ShieldedStatelessMultisigPrivateState,
-  ShieldedStatelessMultisigWitnesses,
-} from '../witnesses/ShieldedStatelessMultisigWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
@@ -33,24 +30,22 @@ type ShieldedStatelessMultisigArgs = readonly [
 ];
 
 const ShieldedStatelessMultisigSimulatorBase = createSimulator<
-  ShieldedStatelessMultisigPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedStatelessMultisigWitnesses>,
-  ShieldedStatelessMultisig<ShieldedStatelessMultisigPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ShieldedStatelessMultisig<EmptyPrivateState>,
   ShieldedStatelessMultisigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedStatelessMultisig<ShieldedStatelessMultisigPrivateState>(
-      witnesses,
-    ),
-  defaultPrivateState: () => ShieldedStatelessMultisigPrivateState,
+    new ShieldedStatelessMultisig<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (instanceSalt, signerCommitments, thresh) => [
     instanceSalt,
     signerCommitments,
     thresh,
   ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedStatelessMultisigWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'ShieldedStatelessMultisig',
 });
 
@@ -60,8 +55,8 @@ export class ShieldedStatelessMultisigSimulator extends ShieldedStatelessMultisi
     signerCommitments: Uint8Array[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedStatelessMultisigPrivateState,
-      ReturnType<typeof ShieldedStatelessMultisigWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedStatelessMultisigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
