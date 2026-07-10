@@ -36,7 +36,8 @@ export type WalletBuilder = (
  * wallet can't impersonate three signers). Override the deployer slot via
  * `MIDNIGHT_WALLET_SEED`.
  */
-const seed = (lastByte: number): string => `${'0'.repeat(63)}${lastByte}`;
+const seed = (lastByte: number): string =>
+  `${'0'.repeat(62)}${lastByte.toString(16).padStart(2, '0')}`;
 export const WALLET_SEEDS: Readonly<Record<string, string>> = {
   deployer: process.env.MIDNIGHT_WALLET_SEED ?? seed(1),
   SIGNER1: seed(2),
