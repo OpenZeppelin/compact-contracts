@@ -10,12 +10,13 @@ import { UnshieldedAddress } from '@midnight-ntwrk/wallet-sdk-address-format';
 /**
  * Deployer-funds-signer top-up for the local `undeployed` devnet.
  *
- * The dev preset only genesis-funds three of the pool's four seeds, so the
- * fourth signer starts with zero NIGHT and cannot pay tx fees. This transfers
- * NIGHT from the (genesis-funded) deployer to that signer, registers it for dust
+ * Each worker's three signers are derived seeds the dev preset never funds, so
+ * they start with zero NIGHT and cannot pay tx fees. This transfers NIGHT from
+ * the worker's (genesis-funded) deployer to a signer, registers it for dust
  * generation, and waits for the dust to appear — after which the signer can pay
  * for its own multisig transactions. Verified end-to-end on the live stack: dust
- * bootstraps within one block of the registration.
+ * bootstraps within one block of the registration. On-chain funding persists, so
+ * only the first spec file per worker pays the top-up; later files skip it.
  *
  * Only the testkit-aware layer uses this; the pool and its unit tests stay
  * testkit-free (the funder is wired in by `live.setup.ts`).

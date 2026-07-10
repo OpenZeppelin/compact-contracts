@@ -18,14 +18,38 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 const NODE = { globals: true, environment: 'node' as const };
 const ARCHIVE_EXCLUDE = [...configDefaults.exclude, 'src/archive/**'];
-// Live projects: one funded genesis account + one node, so run sequentially
-// (no nonce/UTXO races) with generous timeouts (real proofs + on-chain txs).
-const LIVE = {
-  fileParallelism: false,
-  sequence: { concurrent: false },
+
+// Generous timeouts every live project shares (real proofs + on-chain finality
+// are slow). Split out from the sequential/parallel knobs below.
+const LIVE_TIMEOUTS = {
   testTimeout: 600_000,
   hookTimeout: 300_000,
 } as const;
+
+// Fully-sequential live run: no file parallelism, no concurrent tests. Used by
+// `harness-live` (a single shared node, no per-worker wallet partition).
+const LIVE_SEQUENTIAL = {
+  ...LIVE_TIMEOUTS,
+  fileParallelism: false,
+  sequence: { concurrent: false },
+} as const;
+
+// `unit-live` parallelism. Each vitest worker drives a disjoint wallet
+// partition (see WalletPool.walletSeedsFor), so up to MIDNIGHT_LIVE_WORKERS
+// spec files run concurrently against the shared node. Tests WITHIN a file stay
+// sequential (`sequence.concurrent: false`). Bounded by the 3 genesis-funded
+// deployer seeds; forced to 1 when MIDNIGHT_WALLET_SEED pins a custom deployer
+// (it would collide across workers).
+const MAX_LIVE_WORKERS = 3;
+const liveWorkers = process.env.MIDNIGHT_WALLET_SEED
+  ? 1
+  : Math.min(
+      MAX_LIVE_WORKERS,
+      Math.max(
+        1,
+        Number(process.env.MIDNIGHT_LIVE_WORKERS ?? MAX_LIVE_WORKERS) || 1,
+      ),
+    );
 
 export default defineConfig({
   test: {
@@ -74,11 +98,17 @@ export default defineConfig({
       {
         test: {
           ...NODE,
-          ...LIVE,
+          ...LIVE_TIMEOUTS,
           name: 'unit-live',
           include: ['src/**/*.test.ts'],
           exclude: ARCHIVE_EXCLUDE,
           setupFiles: ['./test-utils/harness/live.setup.ts'],
+          // Run up to `liveWorkers` spec files concurrently (fileParallelism
+          // defaults to true). `groupOrder` keeps this project in its own
+          // scheduler group: a multi-project run otherwise rejects two projects
+          // that share a group but differ in `maxWorkers`.
+          maxWorkers: liveWorkers,
+          sequence: { concurrent: false, groupOrder: 1 },
         },
       },
       {
@@ -101,7 +131,7 @@ export default defineConfig({
         // (e.g. the WalletPool live smoke) on. LIVE timeouts + sequential.
         test: {
           ...NODE,
-          ...LIVE,
+          ...LIVE_SEQUENTIAL,
           name: 'harness-live',
           include: ['test-utils/**/*.test.ts'],
         },

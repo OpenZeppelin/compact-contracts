@@ -25,25 +25,58 @@ export type WalletBuilder = (
   seed: string,
 ) => Promise<PooledWallet>;
 
-/**
- * The pooled wallet seeds. `midnight-node --preset=dev` genesis-funds only three
- * seeds (`0x..01`–`0x..03`) with NIGHT + shielded coins; the fourth (`SIGNER3`,
- * `0x..04`) starts empty and is topped up from the deployer at live setup (see
- * `funding.ts`). `deployer` pays for every deploy and is the default caller;
- * `SIGNER1`–`SIGNER3` back distinct on-chain identities, so a multisig spec's
- * `.as('SIGNER1')` submits from a wallet whose `ownPublicKey()` differs from the
- * others (the only way to exercise multi-signer authorization on live — one
- * wallet can't impersonate three signers). Override the deployer slot via
- * `MIDNIGHT_WALLET_SEED`.
- */
 const seed = (lastByte: number): string =>
   `${'0'.repeat(62)}${lastByte.toString(16).padStart(2, '0')}`;
-export const WALLET_SEEDS: Readonly<Record<string, string>> = {
-  deployer: process.env.MIDNIGHT_WALLET_SEED ?? seed(1),
-  SIGNER1: seed(2),
-  SIGNER2: seed(3),
-  SIGNER3: seed(4),
-};
+
+/**
+ * How many live workers the wallet partition supports. Bounded by the
+ * genesis-funded deployer seeds `midnight-node --preset=dev` provides
+ * (`0x..01`–`0x..03`): each worker's deployer must be a genesis seed, because
+ * only those carry the NIGHT + genesis shielded coins the deposit specs spend.
+ */
+export const MAX_LIVE_WORKERS = 3;
+
+/**
+ * The pooled wallet seeds for one live worker `w` (1-based). Each worker gets a
+ * disjoint set so up to {@link MAX_LIVE_WORKERS} `unit-live` files can run
+ * concurrently against the shared node without sharing a wallet's UTXOs/nonces:
+ *
+ *   - `deployer` is genesis seed `0x..0w` — one of the three seeds the dev
+ *     preset funds with NIGHT + the genesis shielded coins deposit specs spend
+ *     (so it MUST be a genesis seed; hence the 3-worker cap). It pays for every
+ *     deploy and is the default caller. Worker 1's deployer honours
+ *     `MIDNIGHT_WALLET_SEED`.
+ *   - `SIGNER1`–`SIGNER3` are derived seeds `0x..(0x10·w + slot)` (worker 1:
+ *     `0x11`–`0x13`, worker 2: `0x21`–`0x23`, worker 3: `0x31`–`0x33`) — disjoint
+ *     from the genesis seeds (`0x01`–`0x04`) and from other workers'. They start
+ *     empty and are topped up from the worker's deployer at live setup (see
+ *     `funding.ts`); signers only pay fees, never spend shielded coins, so they
+ *     need no genesis grant. They back distinct on-chain identities, so a
+ *     multisig spec's `.as('SIGNER1')` submits from a wallet whose
+ *     `ownPublicKey()` differs from the others (the only way to exercise
+ *     multi-signer authorization on live — one wallet can't impersonate three).
+ */
+export function walletSeedsFor(
+  worker: number,
+): Readonly<Record<string, string>> {
+  const deployer =
+    worker === 1
+      ? (process.env.MIDNIGHT_WALLET_SEED ?? seed(worker))
+      : seed(worker);
+  return {
+    deployer,
+    SIGNER1: seed(0x10 * worker + 1),
+    SIGNER2: seed(0x10 * worker + 2),
+    SIGNER3: seed(0x10 * worker + 3),
+  };
+}
+
+/**
+ * Worker 1's pooled seeds — the default single-worker pool. A stable symbol for
+ * callers that don't partition by worker; the live setup builds its pool from
+ * {@link walletSeedsFor} keyed on the worker's `VITEST_POOL_ID`.
+ */
+export const WALLET_SEEDS: Readonly<Record<string, string>> = walletSeedsFor(1);
 
 /** The env var carrying an alias's coin public key (e.g. `MIDNIGHT_SIGNER1_COIN_PK`,
  * `MIDNIGHT_DEPLOYER_COIN_PK`). Specs read these to build a live signer set. */
