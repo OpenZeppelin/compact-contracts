@@ -1,12 +1,22 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { DustFundingError } from '../dust.js';
 import {
   coinPkEnv,
+  MAX_LIVE_WORKERS,
   type PooledWallet,
   WALLET_SEEDS,
   type WalletBuilder,
   WalletPool,
+  walletSeedsFor,
 } from '../WalletPool.js';
 
 // A testkit-free stand-in for a built wallet. `provider` is a sentinel we can
@@ -142,14 +152,82 @@ describe('WalletPool', () => {
     });
   });
 
-  describe('WALLET_SEEDS defaults', () => {
-    it('should expose the deployer plus three signer slots', () => {
+  describe('walletSeedsFor / WALLET_SEEDS', () => {
+    // A 64-hex seed with the given last byte(s), mirroring WalletPool's `seed`.
+    const s = (hex: string): string => '0'.repeat(64 - hex.length) + hex;
+    // The exact-value assertions assume the deployer isn't pinned; save/restore
+    // any real override so the suite stays hermetic.
+    const savedSeed = process.env.MIDNIGHT_WALLET_SEED;
+    beforeEach(() => {
+      delete process.env.MIDNIGHT_WALLET_SEED;
+    });
+    afterAll(() => {
+      if (savedSeed === undefined) delete process.env.MIDNIGHT_WALLET_SEED;
+      else process.env.MIDNIGHT_WALLET_SEED = savedSeed;
+    });
+
+    it('should give each worker a genesis deployer and derived signers', () => {
+      expect(walletSeedsFor(1)).toStrictEqual({
+        deployer: s('01'),
+        SIGNER1: s('11'),
+        SIGNER2: s('12'),
+        SIGNER3: s('13'),
+      });
+      expect(walletSeedsFor(2)).toStrictEqual({
+        deployer: s('02'),
+        SIGNER1: s('21'),
+        SIGNER2: s('22'),
+        SIGNER3: s('23'),
+      });
+      expect(walletSeedsFor(3)).toStrictEqual({
+        deployer: s('03'),
+        SIGNER1: s('31'),
+        SIGNER2: s('32'),
+        SIGNER3: s('33'),
+      });
+    });
+
+    it('should produce 64-hex seeds disjoint across workers', () => {
+      const all: string[] = [];
+      for (let w = 1; w <= MAX_LIVE_WORKERS; w++) {
+        for (const value of Object.values(walletSeedsFor(w))) {
+          expect(value).toMatch(/^[0-9a-f]{64}$/);
+          all.push(value);
+        }
+      }
+      expect(new Set(all).size).toBe(all.length);
+    });
+
+    it('should keep signer seeds out of the genesis set', () => {
+      const genesis = new Set(['01', '02', '03', '04'].map(s));
+      for (let w = 1; w <= MAX_LIVE_WORKERS; w++) {
+        const { deployer: _deployer, ...signers } = walletSeedsFor(w);
+        for (const value of Object.values(signers)) {
+          expect(genesis.has(value)).toBe(false);
+        }
+      }
+    });
+
+    it('should override only worker 1 deployer via MIDNIGHT_WALLET_SEED', () => {
+      const pinned = 'ff'.repeat(32);
+      process.env.MIDNIGHT_WALLET_SEED = pinned;
+      expect(walletSeedsFor(1).deployer).toBe(pinned);
+      expect(walletSeedsFor(2).deployer).toBe(s('02'));
+      expect(walletSeedsFor(3).deployer).toBe(s('03'));
+    });
+
+    it('WALLET_SEEDS should be the worker-1 pool', () => {
       expect(Object.keys(WALLET_SEEDS).sort()).toEqual([
         'SIGNER1',
         'SIGNER2',
         'SIGNER3',
         'deployer',
       ]);
+      const w1 = walletSeedsFor(1);
+      expect(WALLET_SEEDS.SIGNER1).toBe(w1.SIGNER1);
+      expect(WALLET_SEEDS.SIGNER2).toBe(w1.SIGNER2);
+      expect(WALLET_SEEDS.SIGNER3).toBe(w1.SIGNER3);
+      expect(WALLET_SEEDS.deployer).toMatch(/^[0-9a-f]{64}$/);
     });
 
     it('should map the deployer alias to the DEPLOYER env var', () => {
@@ -177,18 +255,18 @@ describe.runIf(isLiveBackend())('WalletPool (live smoke)', () => {
       ]);
     setNetworkId('undeployed');
     const env = localEnv();
-    const logger = createLogger('logs/live-harness.log');
-    pool = new WalletPool(WALLET_SEEDS, (alias, walletSeed) =>
+    // Mirror the live setup: build this worker's own disjoint partition.
+    const worker = Number(process.env.VITEST_POOL_ID ?? '1');
+    const seeds = walletSeedsFor(worker);
+    const logger = createLogger(`logs/live-harness-w${worker}.log`);
+    pool = new WalletPool(seeds, (alias, walletSeed) =>
       FundedWallet.build(env, alias, walletSeed, logger),
     );
     // Throws DustFundingError (naming the alias) if a seed can't pay fees.
     await pool.ensureReady();
     // Snapshot the published keys now, before the dry afterEach clears any.
     published = Object.fromEntries(
-      Object.keys(WALLET_SEEDS).map((alias) => [
-        alias,
-        process.env[coinPkEnv(alias)],
-      ]),
+      Object.keys(seeds).map((alias) => [alias, process.env[coinPkEnv(alias)]]),
     );
   });
 

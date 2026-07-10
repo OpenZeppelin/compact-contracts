@@ -5,7 +5,12 @@ import { FundedWallet } from './FundedWallet.js';
 import { fundFromDeployer } from './funding.js';
 import { LiveSimulatorBackend } from './LiveSimulatorBackend.js';
 import { localEnv } from './network.js';
-import { WALLET_SEEDS, type WalletBuilder, WalletPool } from './WalletPool.js';
+import {
+  MAX_LIVE_WORKERS,
+  type WalletBuilder,
+  WalletPool,
+  walletSeedsFor,
+} from './WalletPool.js';
 
 /**
  * Composition root for the live backend. Runs once per worker before the unit
@@ -18,9 +23,11 @@ import { WALLET_SEEDS, type WalletBuilder, WalletPool } from './WalletPool.js';
  *   - {@link LiveSimulatorBackend} deploys per `Sim.create()` and assembles the
  *     simulator `LiveContext`.
  *
- * The local dev preset genesis-funds only three of the four pool seeds, so the
- * deployer is built first (it must be genesis-funded) and any signer that comes
- * up empty is topped up from it before the pool's readiness gate.
+ * Each vitest worker drives a disjoint wallet partition keyed on its
+ * `VITEST_POOL_ID` (see {@link walletSeedsFor}), so parallel `unit-live` files
+ * never share a wallet's UTXOs. Every worker's deployer is a genesis-funded
+ * seed; its three signers start empty and are topped up from it before the
+ * pool's readiness gate.
  *
  * Order matters: pin the process network id first (deployContract and the
  * indexer provider read it globally), register the backend, then build the
@@ -31,7 +38,20 @@ import { WALLET_SEEDS, type WalletBuilder, WalletPool } from './WalletPool.js';
 
 setNetworkId('undeployed');
 
-const logger = createLogger('logs/live-harness.log');
+// The forks pool sets `VITEST_POOL_ID` to 1..maxWorkers before setup files
+// load; it is this worker's partition index. Defaults to 1 on a non-forked run.
+const worker = Number(process.env.VITEST_POOL_ID ?? '1');
+if (!Number.isInteger(worker) || worker < 1 || worker > MAX_LIVE_WORKERS) {
+  throw new Error(
+    `live setup: VITEST_POOL_ID='${process.env.VITEST_POOL_ID}' is outside ` +
+      `1..${MAX_LIVE_WORKERS}. The wallet partition only has ${MAX_LIVE_WORKERS} ` +
+      'genesis-funded deployers — lower MIDNIGHT_LIVE_WORKERS, and check that ' +
+      "VITEST_MAX_WORKERS isn't overriding the configured worker count.",
+  );
+}
+
+const seeds = walletSeedsFor(worker);
+const logger = createLogger(`logs/live-harness-w${worker}.log`);
 const env = localEnv();
 
 // The deployer pays for every deploy and funds the signers, so it must be
@@ -39,7 +59,7 @@ const env = localEnv();
 const deployer = await FundedWallet.build(
   env,
   'deployer',
-  WALLET_SEEDS.deployer,
+  seeds.deployer,
   logger,
 );
 assertFunded('deployer', deployer.nightBalance);
@@ -57,7 +77,7 @@ const buildWallet: WalletBuilder = async (alias, walletSeed) => {
   return wallet;
 };
 
-const pool = new WalletPool(WALLET_SEEDS, buildWallet);
+const pool = new WalletPool(seeds, buildWallet);
 const backend = new LiveSimulatorBackend(pool, env);
 
 backend.register();
