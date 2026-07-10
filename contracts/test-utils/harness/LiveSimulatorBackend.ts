@@ -167,7 +167,16 @@ function makeProvidersFor(
   };
 }
 
-/** Deploy the compiled contract with `providers` and return its address. */
+/**
+ * Deploy the compiled contract with `providers` and return its address.
+ *
+ * Retried once on failure with a jittered backoff. With parallel workers, several
+ * deploys can contend for one block and the node may bounce a submission
+ * ("Transaction submission error"); a single retry absorbs that race (and the
+ * occasional transient submit flake). A deterministic failure (bad args, a
+ * contract too big for the block limit) simply fails again on the retry, so this
+ * masks nothing. The jitter keeps contending workers from retrying in lockstep.
+ */
 async function deployArtifact(
   providers: Providers,
   compiled: CompiledArtifact,
@@ -177,11 +186,18 @@ async function deployArtifact(
   const initialPrivateState =
     req.options.privateState ?? req.config.defaultPrivateState();
   const args = req.config.contractArgs(...req.contractArgs);
-  const deployed = await deployContract(providers, {
-    compiledContract: compiled,
-    privateStateId,
-    initialPrivateState,
-    args,
+  const deploy = () =>
+    deployContract(providers, {
+      compiledContract: compiled,
+      privateStateId,
+      initialPrivateState,
+      args,
+    });
+  const deployed = await deploy().catch(async () => {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 500 + Math.floor(Math.random() * 1000));
+    });
+    return deploy();
   });
   return deployed.deployTxData.public.contractAddress;
 }
