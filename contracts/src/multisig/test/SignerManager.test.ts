@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import {
   SignerManagerSimulator,
@@ -15,6 +15,11 @@ const [_OTHER, Z_OTHER] = utils.generateEitherPubKeyPair('OTHER');
 const [_OTHER2, Z_OTHER2] = utils.generateEitherPubKeyPair('OTHER2');
 
 let contract: SignerManagerSimulator;
+
+// A fresh 2-of-3 SignerManager. Mutating groups build one per test
+// (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
+// live deploy tx.
+const freshInit = () => SignerManagerSimulator.create(SIGNERS, THRESHOLD);
 
 describe('SigningManager', () => {
   describe('initialization', () => {
@@ -45,11 +50,11 @@ describe('SigningManager', () => {
     });
   });
 
-  beforeEach(async () => {
-    contract = await SignerManagerSimulator.create(SIGNERS, THRESHOLD);
-  });
-
   describe('assertSigner', () => {
+    beforeAll(async () => {
+      contract = await freshInit();
+    });
+
     it('should pass with good signer', async () => {
       await contract.assertSigner(Z_SIGNER);
     });
@@ -62,6 +67,10 @@ describe('SigningManager', () => {
   });
 
   describe('assertThresholdMet', () => {
+    beforeAll(async () => {
+      contract = await freshInit();
+    });
+
     it('should pass when approvals equal threshold', async () => {
       await contract.assertThresholdMet(THRESHOLD);
     });
@@ -84,6 +93,10 @@ describe('SigningManager', () => {
   });
 
   describe('isSigner', () => {
+    beforeAll(async () => {
+      contract = await freshInit();
+    });
+
     it('should return true for an active signer', async () => {
       expect(await contract.isSigner(Z_SIGNER)).toEqual(true);
     });
@@ -94,6 +107,10 @@ describe('SigningManager', () => {
   });
 
   describe('_addSigner', () => {
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should add a new signer', async () => {
       await contract._addSigner(Z_OTHER);
 
@@ -122,6 +139,10 @@ describe('SigningManager', () => {
   });
 
   describe('_removeSigner', () => {
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should remove an existing signer', async () => {
       await contract._removeSigner(Z_SIGNER3);
 
@@ -160,6 +181,10 @@ describe('SigningManager', () => {
   });
 
   describe('_changeThreshold', () => {
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should update the threshold', async () => {
       await contract._changeThreshold(3n);
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
@@ -54,6 +54,11 @@ function makeCoin(
 
 let multisig: ShieldedProposalMultisigSimulator;
 
+// A fresh 2-of-3 multisig. Mutating groups deploy one per test (`beforeEach`);
+// read-only groups deploy one per group (`beforeAll`) to save a live deploy tx.
+const freshMultisig = () =>
+  ShieldedProposalMultisigSimulator.create(SIGNERS, THRESHOLD);
+
 describe('ShieldedProposalMultisig', () => {
   describe('constructor', () => {
     it('should initialize with signers and threshold', async () => {
@@ -97,14 +102,11 @@ describe('ShieldedProposalMultisig', () => {
   });
 
   describe('when initialized', () => {
-    beforeEach(async () => {
-      multisig = await ShieldedProposalMultisigSimulator.create(
-        SIGNERS,
-        THRESHOLD,
-      );
-    });
-
     describe('deposit', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should accept deposits', async () => {
         await multisig.deposit(makeCoin(COLOR, AMOUNT));
         expect(await multisig.getTokenBalance(COLOR)).toEqual(AMOUNT);
@@ -127,6 +129,10 @@ describe('ShieldedProposalMultisig', () => {
     });
 
     describe('view - signer manager delegation', () => {
+      beforeAll(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('getSignerCount should match initial count', async () => {
         expect(await multisig.getSignerCount()).toEqual(BigInt(SIGNERS.length));
       });
@@ -145,7 +151,8 @@ describe('ShieldedProposalMultisig', () => {
     });
 
     describe('view - treasury delegation', () => {
-      beforeEach(async () => {
+      beforeAll(async () => {
+        multisig = await freshMultisig();
         await multisig.deposit(makeCoin(COLOR, AMOUNT));
       });
 
@@ -174,6 +181,10 @@ describe('ShieldedProposalMultisig', () => {
     // so these run on both backends.
     describe('caller-gated proposal flows', () => {
       describe('createShieldedProposal', () => {
+        beforeEach(async () => {
+          multisig = await freshMultisig();
+        });
+
         it('should allow signer to create proposal', async () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
@@ -243,6 +254,7 @@ describe('ShieldedProposalMultisig', () => {
         let proposalId: bigint;
 
         beforeEach(async () => {
+          multisig = await freshMultisig();
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
@@ -298,6 +310,7 @@ describe('ShieldedProposalMultisig', () => {
         let proposalId: bigint;
 
         beforeEach(async () => {
+          multisig = await freshMultisig();
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
@@ -349,6 +362,7 @@ describe('ShieldedProposalMultisig', () => {
         let proposalId: bigint;
 
         beforeEach(async () => {
+          multisig = await freshMultisig();
           // Fund the treasury
           await multisig.deposit(makeCoin(COLOR, AMOUNT));
 
@@ -445,6 +459,10 @@ describe('ShieldedProposalMultisig', () => {
       });
 
       describe('view - approvals', () => {
+        beforeAll(async () => {
+          multisig = await freshMultisig();
+        });
+
         it('should return false for unapproved signer', async () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
@@ -467,7 +485,8 @@ describe('ShieldedProposalMultisig', () => {
       describe('view - proposal delegation', () => {
         let proposalId: bigint;
 
-        beforeEach(async () => {
+        beforeAll(async () => {
+          multisig = await freshMultisig();
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
@@ -493,6 +512,10 @@ describe('ShieldedProposalMultisig', () => {
 
       // TODO: move to integration tests
       describe('full lifecycle', () => {
+        beforeEach(async () => {
+          multisig = await freshMultisig();
+        });
+
         it('should handle deposit -> propose -> approve -> execute', async () => {
           // Deposit
           await multisig.deposit(makeCoin(COLOR, AMOUNT));

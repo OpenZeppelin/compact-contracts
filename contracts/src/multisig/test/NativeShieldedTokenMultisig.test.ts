@@ -1,5 +1,5 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
 import {
@@ -61,6 +61,17 @@ function makeQualifiedCoin(
 }
 
 let multisig: NativeShieldedTokenMultisigSimulator;
+
+// A fresh multisig-token instance. Mutating groups build one per test
+// (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
+// live deploy tx.
+const freshMultisig = () =>
+  NativeShieldedTokenMultisigSimulator.create(
+    INSTANCE_SALT,
+    INIT_COIN_NONCE,
+    TOKEN_DOMAIN,
+    SIGNER_COMMITMENTS,
+  );
 
 describe('NativeShieldedTokenMultisig', () => {
   describe('constructor', () => {
@@ -124,13 +135,12 @@ describe('NativeShieldedTokenMultisig', () => {
   });
 
   describe('when initialized', () => {
-    beforeEach(async () => {
-      multisig = await NativeShieldedTokenMultisigSimulator.create(
-        INSTANCE_SALT,
-        INIT_COIN_NONCE,
-        TOKEN_DOMAIN,
-        SIGNER_COMMITMENTS,
-      );
+    // USER_RECIPIENT is stable (deployer key on live, synthetic on dry), so
+    // resolve it once after the first deploy. The read-only `view` and
+    // `_calculateSignerId` groups run first and reuse this shared deploy;
+    // mutating groups below build their own fresh instance per test.
+    beforeAll(async () => {
+      multisig = await freshMultisig();
       USER_RECIPIENT = shieldedTestRecipient();
     });
 
@@ -192,6 +202,10 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     describe('mint', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should mint to a user recipient with signers 0 and 1', async () => {
         await multisig.mint(
           100n,
@@ -323,6 +337,10 @@ describe('NativeShieldedTokenMultisig', () => {
     // rejection paths below throw before the receive/spend, so they run on both
     // backends; the success paths are dry-only.
     describe('burn', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it.skipIf(isLiveBackend())(
         'should burn with valid coin and signers 0 and 1',
         async () => {
@@ -417,6 +435,12 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     describe('domain separation', () => {
+      // Read-only on `multisig`, but runs after the mutating groups above, so
+      // deploy a clean shared instance for the group.
+      beforeAll(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should isolate signers across instances with different salts', async () => {
         const salt2 = new Uint8Array(32).fill(0xcc);
         const c1 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
@@ -442,6 +466,10 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     describe('nonce', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should start at 0', async () => {
         expect(await multisig.getNonce()).toEqual(0n);
       });
@@ -460,6 +488,10 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     describe('cross-instance replay', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should derive different message hashes for different instances', async () => {
         const instance2 = await NativeShieldedTokenMultisigSimulator.create(
           INSTANCE_SALT,
