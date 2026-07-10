@@ -1,5 +1,5 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
@@ -46,11 +46,18 @@ function makeCoin(
 
 let treasury: ShieldedTreasurySimulator;
 
+// A fresh treasury at the fixed deploy address. Mutating groups build one per
+// test (`beforeEach`); the read-only `initial state` group shares one deploy.
+const freshTreasury = () =>
+  ShieldedTreasurySimulator.create({ contractAddress: TREASURY_ADDRESS });
+
 describe('ShieldedTreasury', () => {
-  beforeEach(async () => {
-    treasury = await ShieldedTreasurySimulator.create({
-      contractAddress: TREASURY_ADDRESS,
-    });
+  // Z_RECIPIENT is stable (the deployer's own coin key on live, a synthetic key
+  // on dry), so resolve it once after the first deploy; mutating groups then
+  // only need a fresh treasury per test. The read-only `initial state` group
+  // reuses this shared deploy.
+  beforeAll(async () => {
+    treasury = await freshTreasury();
     Z_RECIPIENT = shieldedTestRecipient();
   });
 
@@ -73,6 +80,10 @@ describe('ShieldedTreasury', () => {
   });
 
   describe('_deposit', () => {
+    beforeEach(async () => {
+      treasury = await freshTreasury();
+    });
+
     it('should deposit and update balance', async () => {
       await treasury._deposit(makeCoin(COLOR, AMOUNT));
       expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
@@ -115,6 +126,7 @@ describe('ShieldedTreasury', () => {
 
   describe('_send', () => {
     beforeEach(async () => {
+      treasury = await freshTreasury();
       await treasury._deposit(makeCoin(COLOR, AMOUNT));
     });
 
@@ -167,6 +179,7 @@ describe('ShieldedTreasury', () => {
     '_send — change coin is spendable, via Zswap I/O (dry only, no double spend)',
     () => {
       it('should spend the stored coin and route the change back to itself on a partial send', async () => {
+        treasury = await freshTreasury();
         await treasury._deposit(makeCoin(COLOR, 400n));
         const snap = zswapSnapshot(treasury);
         const result = await treasury._send(Z_RECIPIENT, COLOR, 150n);
@@ -206,6 +219,7 @@ describe('ShieldedTreasury', () => {
       });
 
       it('should spend exactly the stored change coin on a follow-up spend', async () => {
+        treasury = await freshTreasury();
         await treasury._deposit(makeCoin(COLOR, 400n));
         const first = await treasury._send(Z_RECIPIENT, COLOR, 150n); // 250 change stored
         const storedChange = first.change.value;
@@ -231,6 +245,7 @@ describe('ShieldedTreasury', () => {
       });
 
       it('should spend the balance and produce only the payment when sending in full', async () => {
+        treasury = await freshTreasury();
         await treasury._deposit(makeCoin(COLOR, 400n));
         const snap = zswapSnapshot(treasury);
         const result = await treasury._send(Z_RECIPIENT, COLOR, 400n);
@@ -261,6 +276,7 @@ describe('ShieldedTreasury', () => {
     '_send — change coin is spendable on live (no double spend)',
     () => {
       it('should spend the stored coin and route the change back to itself on a partial send', async () => {
+        treasury = await freshTreasury();
         await treasury._deposit(makeCoin(COLOR, 400n));
         const result = await treasury._send(Z_RECIPIENT, COLOR, 150n);
 
@@ -277,6 +293,7 @@ describe('ShieldedTreasury', () => {
       });
 
       it('should spend exactly the stored change coin on a follow-up spend', async () => {
+        treasury = await freshTreasury();
         await treasury._deposit(makeCoin(COLOR, 400n));
         const first = await treasury._send(Z_RECIPIENT, COLOR, 150n); // 250 change stored
         expect(first.change.is_some).toBe(true);
@@ -292,6 +309,7 @@ describe('ShieldedTreasury', () => {
       });
 
       it('should spend the balance and produce only the payment when sending in full', async () => {
+        treasury = await freshTreasury();
         await treasury._deposit(makeCoin(COLOR, 400n));
         const result = await treasury._send(Z_RECIPIENT, COLOR, 400n);
 
@@ -304,6 +322,10 @@ describe('ShieldedTreasury', () => {
   );
 
   describe('accounting consistency', () => {
+    beforeEach(async () => {
+      treasury = await freshTreasury();
+    });
+
     it('should keep receivedMinusSent equal to balance', async () => {
       await treasury._deposit(makeCoin(COLOR, 500n));
       await treasury._send(Z_RECIPIENT, COLOR, 200n);

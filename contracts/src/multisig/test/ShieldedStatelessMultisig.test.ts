@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
   encodeShieldedCoinInfo as makeCoin,
@@ -65,6 +65,15 @@ function makeQualifiedCoin(
 }
 
 let multisig: ShieldedStatelessMultisigSimulator;
+
+// A fresh 2-of-3 stateless multisig. Mutating groups build one per test
+// (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
+const freshMultisig = () =>
+  ShieldedStatelessMultisigSimulator.create(
+    INSTANCE_SALT,
+    SIGNER_COMMITMENTS,
+    2n,
+  );
 
 describe('ShieldedStatelessMultisig', () => {
   describe('constructor', () => {
@@ -135,15 +144,11 @@ describe('ShieldedStatelessMultisig', () => {
   });
 
   describe('when initialized', () => {
-    beforeEach(async () => {
-      multisig = await ShieldedStatelessMultisigSimulator.create(
-        INSTANCE_SALT,
-        SIGNER_COMMITMENTS,
-        2n,
-      );
-    });
-
     describe('view', () => {
+      beforeAll(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('getNonce should start at 0', async () => {
         expect(await multisig.getNonce()).toEqual(0n);
       });
@@ -158,12 +163,20 @@ describe('ShieldedStatelessMultisig', () => {
     });
 
     describe('deposit', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should accept deposits without reverting', async () => {
         await multisig.deposit(makeCoin(COLOR, AMOUNT));
       });
     });
 
     describe('execute', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should reject duplicate signer', async () => {
         const to = makeRecipient(new Uint8Array(32).fill(7));
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
