@@ -491,6 +491,7 @@ describe('ShieldedProposalMultisig', () => {
         });
       });
 
+      // TODO: move to integration tests
       describe('full lifecycle', () => {
         it('should handle deposit -> propose -> approve -> execute', async () => {
           // Deposit

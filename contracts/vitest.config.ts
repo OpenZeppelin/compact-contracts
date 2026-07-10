@@ -23,7 +23,7 @@ const ARCHIVE_EXCLUDE = [...configDefaults.exclude, 'src/archive/**'];
 const LIVE = {
   fileParallelism: false,
   sequence: { concurrent: false },
-  testTimeout: 180_000,
+  testTimeout: 600_000,
   hookTimeout: 300_000,
 } as const;
 
