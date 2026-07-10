@@ -7,10 +7,7 @@ import {
   Contract as MockProposalManager,
   pureCircuits,
 } from '../../../../artifacts/MockProposalManager/contract/index.js';
-import {
-  ProposalManagerPrivateState,
-  ProposalManagerWitnesses,
-} from '../witnesses/ProposalManagerWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type Proposal = {
@@ -23,26 +20,26 @@ type Proposal = {
 type ProposalManagerArgs = readonly [];
 
 const ProposalManagerSimulatorBase = createSimulator<
-  ProposalManagerPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ProposalManagerWitnesses>,
-  MockProposalManager<ProposalManagerPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockProposalManager<EmptyPrivateState>,
   ProposalManagerArgs
 >({
   contractFactory: (witnesses) =>
-    new MockProposalManager<ProposalManagerPrivateState>(witnesses),
-  defaultPrivateState: () => ProposalManagerPrivateState,
+    new MockProposalManager<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ProposalManagerWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'MockProposalManager',
 });
 
 export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
   static async create(
     options: SimulatorOptions<
-      ProposalManagerPrivateState,
-      ReturnType<typeof ProposalManagerWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ProposalManagerSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`

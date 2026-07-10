@@ -7,10 +7,7 @@ import {
   ledger,
   Contract as ShieldedProposalMultisig,
 } from '../../../../artifacts/ShieldedProposalMultisig/contract/index.js';
-import {
-  ShieldedProposalMultisigPrivateState,
-  ShieldedProposalMultisigWitnesses,
-} from '../witnesses/ShieldedProposalMultisigWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -36,20 +33,18 @@ type ShieldedProposalMultisigArgs = readonly [
 ];
 
 const ShieldedProposalMultisigSimulatorBase = createSimulator<
-  ShieldedProposalMultisigPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedProposalMultisigWitnesses>,
-  ShieldedProposalMultisig<ShieldedProposalMultisigPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ShieldedProposalMultisig<EmptyPrivateState>,
   ShieldedProposalMultisigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedProposalMultisig<ShieldedProposalMultisigPrivateState>(
-      witnesses,
-    ),
-  defaultPrivateState: () => ShieldedProposalMultisigPrivateState,
+    new ShieldedProposalMultisig<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedProposalMultisigWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'ShieldedProposalMultisig',
 });
 
@@ -58,8 +53,8 @@ export class ShieldedProposalMultisigSimulator extends ShieldedProposalMultisigS
     signers: EitherPKAddress[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedProposalMultisigPrivateState,
-      ReturnType<typeof ShieldedProposalMultisigWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedProposalMultisigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
