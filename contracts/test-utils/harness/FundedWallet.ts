@@ -96,6 +96,23 @@ export class FundedWallet implements PooledWallet {
       `live wallet '${alias}' built — NIGHT ${nightBalance}, dust ${dustBalance}`,
     );
 
+    // Re-sync the wallet before every tx build. Consecutive submissions from
+    // the same signer must balance against state that already reflects the
+    // prior tx; otherwise the second call reuses a dust/coin UTXO the first
+    // call already spent (the wallet observes the spend only on its next synced
+    // emission) and the node rejects it with a bare "Transaction submission
+    // error". `syncWallet` waits for a strictly-complete shielded/unshielded/
+    // dust state — i.e. the wallet has caught up to the latest block. The cost
+    // is negligible next to proving. Guarded on a real `balanceTx`: the
+    // unit-test mock provider may omit it.
+    if (typeof provider.balanceTx === 'function') {
+      const balanceTx = provider.balanceTx.bind(provider);
+      provider.balanceTx = (async (...args: Parameters<typeof balanceTx>) => {
+        await syncWallet(wallet);
+        return balanceTx(...args);
+      }) as typeof provider.balanceTx;
+    }
+
     return new FundedWallet(alias, provider, nightBalance, dustBalance);
   }
 }
