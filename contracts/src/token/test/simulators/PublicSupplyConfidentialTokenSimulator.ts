@@ -3,11 +3,11 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  type CFT_EscrowEntry,
+  type Token_EscrowEntry,
   type ElGamal_Ciphertext,
   ledger,
   Contract as MockCFT,
-} from '../../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
+} from '../../../../artifacts/MockPublicSupplyConfidentialToken/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
   ConfidentialFungibleTokenWitnesses,
@@ -23,7 +23,7 @@ type ConfidentialFungibleTokenArgs = readonly [
   decimals: bigint,
 ];
 
-const ConfidentialFungibleTokenSimulatorBase = createSimulator<
+const PublicSupplyConfidentialTokenSimulatorBase = createSimulator<
   ConfidentialFungibleTokenPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof ConfidentialFungibleTokenWitnesses>,
@@ -36,13 +36,13 @@ const ConfidentialFungibleTokenSimulatorBase = createSimulator<
   contractArgs: (name, symbol, decimals) => [name, symbol, decimals],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialFungibleTokenWitnesses(),
-  artifactName: 'MockConfidentialFungibleToken',
+  artifactName: 'MockPublicSupplyConfidentialToken',
 });
 
 /**
  * ConfidentialFungibleToken Simulator
  */
-export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleTokenSimulatorBase {
+export class PublicSupplyConfidentialTokenSimulator extends PublicSupplyConfidentialTokenSimulatorBase {
   static async create(
     name: string,
     symbol: string,
@@ -51,12 +51,12 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
       ConfidentialFungibleTokenPrivateState,
       ReturnType<typeof ConfidentialFungibleTokenWitnesses>
     > = {},
-  ): Promise<ConfidentialFungibleTokenSimulator> {
+  ): Promise<PublicSupplyConfidentialTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [name, symbol, decimals],
       options,
-    ) as Promise<ConfidentialFungibleTokenSimulator>;
+    ) as Promise<PublicSupplyConfidentialTokenSimulator>;
   }
   /**
    * @description Returns the token name.
@@ -80,6 +80,14 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
    */
   public decimals(): Promise<bigint> {
     return this.circuits.impure.decimals();
+  }
+
+  /**
+   * @description Returns the value of tokens in existence.
+   * @returns The total supply of tokens.
+   */
+  public totalSupply(): Promise<bigint> {
+    return this.circuits.impure.totalSupply();
   }
 
   /**
@@ -118,7 +126,7 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   public allowance(
     owner: Uint8Array,
     spender: Uint8Array,
-  ): Promise<CFT_EscrowEntry> {
+  ): Promise<Token_EscrowEntry> {
     return this.circuits.impure.allowance(owner, spender);
   }
 
@@ -166,28 +174,30 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   }
 
   /**
-   * @description Test-only funding: credits `value` to `account` via the base's
-   * own supply-free `_credit` primitive (what mint wraps, minus the supply
-   * bookkeeping). Lands in the recipient's pending pool, so sweep before
-   * spending. The supply-free base suite funds accounts with this instead of
-   * mint.
-   * @param account The recipient account id.
-   * @param value The amount to credit.
+   * @description Creates a `value` amount of tokens and credits them to
+   * `account`, increasing the public total supply. Supply layer operation
+   * (`PublicSupplyConfidentialToken`), not part of the supply-free base.
+   * @param account The recipient of tokens minted.
+   * @param value The amount of tokens minted.
    */
-  public _credit(account: Uint8Array, value: bigint): Promise<[]> {
-    return this.circuits.impure._credit(account, value);
+  public mint(account: Uint8Array, value: bigint): Promise<[]> {
+    return this.circuits.impure.mint(account, value);
   }
 
   /**
-   * @description Test-only balance proof / drain: debits `value` from the
-   * caller's spendable balance via the base's `_debit`. Its in-circuit
-   * assertDecryptsTo only passes if the balance truly encrypts >= value, so it
-   * doubles as the behavioural "holds exactly N" check the supply-free suite
-   * uses in place of burn.
-   * @param value The amount to debit.
+   * @description Destroys a `value` amount of tokens from the caller's balance,
+   * lowering the public total supply. Supply layer operation.
+   * @param value The amount of tokens to burn.
    */
-  public _debit(value: bigint): Promise<Uint8Array> {
-    return this.circuits.impure._debit(value);
+  public burn(value: bigint): Promise<Uint8Array> {
+    return this.circuits.impure.burn(value);
+  }
+
+  public burnFrom(
+    fromAddress: Uint8Array,
+    value: bigint,
+  ): Promise<Uint8Array> {
+    return this.circuits.impure.burnFrom(fromAddress, value);
   }
 
   public clearMemos() {

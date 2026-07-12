@@ -5,16 +5,17 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
+import { PublicSupplyConfidentialTokenSimulator } from './simulators/PublicSupplyConfidentialTokenSimulator.js';
 
 // ---------------------------------------------------------------------------
 // PublicSupplyConfidentialToken
 //
 // Exercises the supply layer (mint / burn / burnFrom / totalSupply) that sits
-// over the supply-free base. The shared mock composes base + this layer, so the
-// same simulator drives both; these specs assert the supply-specific behavior
-// (public totalSupply accounting, overflow/underflow, mint credits pending),
-// while the base value surface is covered in ConfidentialFungibleToken.test.ts.
+// over the supply-free base, via its own mock/simulator
+// (MockPublicSupplyConfidentialToken). These specs assert the supply-specific
+// behavior (public totalSupply accounting, overflow/underflow, mint credits
+// pending, burnFrom consuming an escrow); the base value surface is covered
+// separately in ConfidentialFungibleToken.test.ts against the supply-free base.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -55,11 +56,11 @@ const NAME = 'ConfidentialToken';
 const SYMBOL = 'CT';
 const DECIMALS = 6n;
 
-let cft: ConfidentialFungibleTokenSimulator;
+let cft: PublicSupplyConfidentialTokenSimulator;
 
 describe('PublicSupplyConfidentialToken', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
+    cft = await PublicSupplyConfidentialTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -323,6 +324,35 @@ describe('PublicSupplyConfidentialToken', () => {
       await expect(cft.mint(ALICE.accountId, 1n)).rejects.toThrow(
         'PublicSupplyConfidentialToken: overflow',
       );
+    });
+  });
+
+  describe('burnFrom', () => {
+    it('consumes the caller’s escrow and lowers totalSupply', async () => {
+      // Alice mints 100, sweeps, and approves Bob for 40. Bob then burns 25 of
+      // that escrow: totalSupply drops 100 -> 75 while Alice's main balance is
+      // untouched (only the escrowed amount is consumed).
+      for (const u of [ALICE, BOB]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+      await cft.approve(BOB.accountId, 40n);
+      expect(await cft.totalSupply()).toBe(100n);
+
+      // Bob decrypts his escrow copy (40) and burns 25 of it.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
+
+      await cft.burnFrom(ALICE.accountId, 25n);
+      expect(await cft.totalSupply()).toBe(75n);
     });
   });
 });

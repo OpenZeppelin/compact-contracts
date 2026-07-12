@@ -1,0 +1,112 @@
+// TEST-ONLY. Mock for the PublicSupplyConfidentialToken variant (the supply-free
+// base composed with the public-supply layer). Exposes mint / burn / burnFrom /
+// totalSupply alongside the base surface, and drives the
+// PublicSupplyConfidentialToken test suite. DO NOT deploy.
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+import "../../PublicSupplyConfidentialToken" prefix Token_;
+import "../../../crypto/ElGamal" prefix ElGamal_;
+
+export { Token_EscrowEntry, ElGamal_Ciphertext };
+
+// The variant re-exports the base ledger unprefixed, so at this consumer every
+// cell (base and this layer's `_totalSupply`) chains a single `Token_` prefix.
+export {
+  Token__balances,
+  Token__pending,
+  Token__encryptionKeys,
+  Token__memos,
+  Token__escrow,
+  Token__totalSupply,
+  Token__name,
+  Token__symbol,
+  Token__decimals
+};
+
+constructor(
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
+) {
+  Token_initialize(name_, symbol_, decimals_);
+}
+
+export circuit name(): Opaque<"string"> {
+  return Token_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return Token_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return Token_decimals();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return Token_totalSupply();
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return Token_balanceOf(account);
+}
+
+export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return Token_pendingOf(account);
+}
+
+export circuit sweep(): Bytes<32> {
+  return Token_sweep();
+}
+
+export circuit allowance(account: Bytes<32>, spender: Bytes<32>): Token_EscrowEntry {
+  return Token_allowance(account, spender);
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return Token_isRegistered(account);
+}
+
+export circuit register(): Bytes<32> {
+  return Token_register();
+}
+
+export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token_transfer(to, value);
+}
+
+export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token__move(to, value);
+}
+
+export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token_approve(spender, value);
+}
+
+export circuit transferFrom(
+    fromAddress: Bytes<32>,
+    to: Bytes<32>,
+    value: Uint<128>
+): Bytes<32> {
+  return Token_transferFrom(fromAddress, to, value);
+}
+
+export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
+  return Token_mint(account, value);
+}
+
+export circuit burn(value: Uint<128>): Bytes<32> {
+  return Token_burn(value);
+}
+
+export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token_burnFrom(fromAddress, value);
+}
+
+export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+  return Token_computeAccountId(sk);
+}
+
+export circuit clearMemos(): [] {
+  return Token_clearMemos();
+}

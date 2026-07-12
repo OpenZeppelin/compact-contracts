@@ -1,22 +1,29 @@
+// TEST-ONLY. Mock for the supply-free ConfidentialFungibleToken BASE. Exposes
+// the conserving surface plus the base's own `_credit` / `_debit` primitives, so
+// the base suite can seed and prove balances using ONLY base primitives (no
+// supply layer). Mint / burn / burnFrom / totalSupply live in the separate
+// MockPublicSupplyConfidentialToken.
+//
+// `_credit`/`_debit` are exposed here purely as a test affordance: they are the
+// base's supply-free value primitives (mint/burn wrap them). A PRODUCTION
+// contract must NEVER re-export them (see the base's DANGER note). Doing so
+// would be a permissionless mint/burn. DO NOT deploy this mock.
 pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
-import "../../PublicSupplyConfidentialToken" prefix Token_;
+import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;
 
-export { Token_EscrowEntry, ElGamal_Ciphertext };
+export { CFT_EscrowEntry, ElGamal_Ciphertext };
 
-// The variant re-exports the base ledger unprefixed, so at this consumer every
-// cell (base and this layer's `_totalSupply`) chains a single `Token_` prefix.
 export {
-  Token__balances,
-  Token__pending,
-  Token__encryptionKeys,
-  Token__memos,
-  Token__escrow,
-  Token__totalSupply,
-  Token__name,
-  Token__symbol,
-  Token__decimals
+  CFT__balances,
+  CFT__pending,
+  CFT__encryptionKeys,
+  CFT__memos,
+  CFT__escrow,
+  CFT__name,
+  CFT__symbol,
+  CFT__decimals
 };
 
 constructor(
@@ -24,59 +31,55 @@ constructor(
     symbol_: Opaque<"string">,
     decimals_: Uint<8>,
 ) {
-  Token_initialize(name_, symbol_, decimals_);
+  CFT_initialize(name_, symbol_, decimals_);
 }
 
 export circuit name(): Opaque<"string"> {
-  return Token_name();
+  return CFT_name();
 }
 
 export circuit symbol(): Opaque<"string"> {
-  return Token_symbol();
+  return CFT_symbol();
 }
 
 export circuit decimals(): Uint<8> {
-  return Token_decimals();
-}
-
-export circuit totalSupply(): Uint<128> {
-  return Token_totalSupply();
+  return CFT_decimals();
 }
 
 export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
-  return Token_balanceOf(account);
+  return CFT_balanceOf(account);
 }
 
 export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
-  return Token_pendingOf(account);
+  return CFT_pendingOf(account);
 }
 
 export circuit sweep(): Bytes<32> {
-  return Token_sweep();
+  return CFT_sweep();
 }
 
-export circuit allowance(account: Bytes<32>, spender: Bytes<32>): Token_EscrowEntry {
-  return Token_allowance(account, spender);
+export circuit allowance(account: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
+  return CFT_allowance(account, spender);
 }
 
 export circuit isRegistered(account: Bytes<32>): Boolean {
-  return Token_isRegistered(account);
+  return CFT_isRegistered(account);
 }
 
 export circuit register(): Bytes<32> {
-  return Token_register();
+  return CFT_register();
 }
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_transfer(to, value);
+  return CFT_transfer(to, value);
 }
 
 export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token__move(to, value);
+  return CFT__move(to, value);
 }
 
 export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_approve(spender, value);
+  return CFT_approve(spender, value);
 }
 
 export circuit transferFrom(
@@ -84,25 +87,24 @@ export circuit transferFrom(
     to: Bytes<32>,
     value: Uint<128>
 ): Bytes<32> {
-  return Token_transferFrom(fromAddress, to, value);
+  return CFT_transferFrom(fromAddress, to, value);
 }
 
-export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
-  return Token_mint(account, value);
+// Test-only funding / draining. `_credit` seeds a balance (mint minus supply
+// bookkeeping); `_debit` proves a balance behaviourally (its in-circuit
+// assertDecryptsTo only passes if the balance truly encrypts >= value).
+export circuit _credit(account: Bytes<32>, value: Uint<128>): [] {
+  return CFT__credit(account, value);
 }
 
-export circuit burn(value: Uint<128>): Bytes<32> {
-  return Token_burn(value);
-}
-
-export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_burnFrom(fromAddress, value);
+export circuit _debit(value: Uint<128>): Bytes<32> {
+  return CFT__debit(value);
 }
 
 export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-  return Token_computeAccountId(sk);
+  return CFT_computeAccountId(sk);
 }
 
 export circuit clearMemos(): [] {
-  return Token_clearMemos();
+  return CFT_clearMemos();
 }
