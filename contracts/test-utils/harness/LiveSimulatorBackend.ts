@@ -167,15 +167,49 @@ function makeProvidersFor(
   };
 }
 
+const DETERMINISTIC_REJECTION = /1010: Invalid Transaction/;
+
+/**
+ * Whether `err` is a deterministic node rejection (RPC 1010 "Invalid
+ * Transaction") that would fail identically on a retry — e.g. a shielded spend
+ * the ledger rejects against stale node state (`Custom error: 103`). Retrying
+ * only doubles the proving cost and the log noise.
+ *
+ * The 1010 text can hide behind an effect `FiberFailure` (which keeps its cause
+ * chain behind a Symbol and only renders it via `toString()`) or a plain
+ * `cause` / `AggregateError.errors` chain, so walk both: test `String(e)` (picks
+ * up a custom `toString`) and each `Error`'s `message`, following `cause` and
+ * `errors`. Cycle-safe.
+ */
+function isDeterministicRejection(err: unknown): boolean {
+  const seen = new Set<unknown>();
+  const queue: unknown[] = [err];
+  while (queue.length > 0) {
+    const e = queue.pop();
+    if (e == null || seen.has(e)) continue;
+    seen.add(e);
+    if (DETERMINISTIC_REJECTION.test(String(e))) return true;
+    if (e instanceof Error) {
+      if (DETERMINISTIC_REJECTION.test(e.message)) return true;
+      queue.push(e.cause);
+      const { errors } = e as { errors?: unknown };
+      if (Array.isArray(errors)) queue.push(...errors);
+    }
+  }
+  return false;
+}
+
 /**
  * Deploy the compiled contract with `providers` and return its address.
  *
  * Retried once on failure with a jittered backoff. With parallel workers, several
  * deploys can contend for one block and the node may bounce a submission
  * ("Transaction submission error"); a single retry absorbs that race (and the
- * occasional transient submit flake). A deterministic failure (bad args, a
- * contract too big for the block limit) simply fails again on the retry, so this
- * masks nothing. The jitter keeps contending workers from retrying in lockstep.
+ * occasional transient submit flake). The jitter keeps contending workers from
+ * retrying in lockstep.
+ *
+ * A deterministic node rejection (RPC 1010 "Invalid Transaction") is NOT retried
+ * — it would fail identically. See {@link isDeterministicRejection}.
  */
 async function deployArtifact(
   providers: Providers,
@@ -193,7 +227,8 @@ async function deployArtifact(
       initialPrivateState,
       args,
     });
-  const deployed = await deploy().catch(async () => {
+  const deployed = await deploy().catch(async (err: unknown) => {
+    if (isDeterministicRejection(err)) throw err;
     await new Promise((resolve) => {
       setTimeout(resolve, 500 + Math.floor(Math.random() * 1000));
     });

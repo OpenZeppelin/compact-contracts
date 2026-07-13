@@ -144,4 +144,58 @@ describe('LiveSimulatorBackend', () => {
       });
     });
   });
+
+  describe('deploy retry', () => {
+    it('should retry once on a transient submission error', async () => {
+      vi.useFakeTimers();
+      try {
+        deploySpy
+          .mockRejectedValueOnce(new Error('Transaction submission error'))
+          .mockResolvedValueOnce({
+            deployTxData: { public: { contractAddress: 'retried-ok' } },
+          });
+        const buildContext = capturedBuildContext(deployBackend());
+        const pending = buildContext(REQUEST);
+        await vi.advanceTimersByTimeAsync(1500); // cover the jittered backoff
+        await pending;
+        expect(deploySpy).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should not retry a deterministic node rejection (RPC 1010)', async () => {
+      const rejection = new Error(
+        '1010: Invalid Transaction: Custom error: 103',
+      );
+      deploySpy.mockRejectedValueOnce(rejection);
+      const buildContext = capturedBuildContext(deployBackend());
+      await expect(buildContext(REQUEST)).rejects.toBe(rejection);
+      expect(deploySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not retry when 1010 is nested in the cause chain', async () => {
+      const rpc = new Error('1010: Invalid Transaction: Custom error: 103');
+      const inner = new Error('Transaction submission failed', { cause: rpc });
+      const top = new Error('Transaction submission error', { cause: inner });
+      deploySpy.mockRejectedValueOnce(top);
+      const buildContext = capturedBuildContext(deployBackend());
+      await expect(buildContext(REQUEST)).rejects.toBe(top);
+      expect(deploySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not retry a FiberFailure whose 1010 is only in toString()', async () => {
+      // effect's FiberFailure hides its cause behind a Symbol; the 1010 text is
+      // reachable only via toString(), not `.message` or `.cause`.
+      const fiberFailure = {
+        message: 'Transaction submission error',
+        toString: () =>
+          'FiberFailure: 1010: Invalid Transaction: Custom error: 103',
+      };
+      deploySpy.mockRejectedValueOnce(fiberFailure);
+      const buildContext = capturedBuildContext(deployBackend());
+      await expect(buildContext(REQUEST)).rejects.toBe(fiberFailure);
+      expect(deploySpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
