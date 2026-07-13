@@ -1,5 +1,6 @@
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '@midnight-ntwrk/testkit-js';
+import { beforeAll, expect } from 'vitest';
 import { assertFunded } from './dust.js';
 import { FundedWallet } from './FundedWallet.js';
 import { fundFromDeployer } from './funding.js';
@@ -50,6 +51,21 @@ if (!Number.isInteger(worker) || worker < 1 || worker > MAX_LIVE_WORKERS) {
   );
 }
 
+// Total configured live workers (resolved and published by vitest.config).
+// Shown in the per-worker banner and the per-file tag below.
+const totalWorkers = Number(
+  process.env.MIDNIGHT_LIVE_WORKERS ?? MAX_LIVE_WORKERS,
+);
+
+// Per-file worker pointer: tag each spec file with the worker running it, so
+// interleaved output from parallel workers stays attributable. A setup-file
+// `beforeAll` fires once before each spec file's suite.
+beforeAll(() => {
+  const testPath = (expect.getState?.().testPath ?? '') as string;
+  const file = testPath ? (testPath.split('/').pop() ?? testPath) : '(spec)';
+  console.log(`[w${worker}] ❯ ${file}`);
+});
+
 const seeds = walletSeedsFor(worker);
 const logger = createLogger(`logs/live-harness-w${worker}.log`);
 const env = localEnv();
@@ -82,3 +98,9 @@ const backend = new LiveSimulatorBackend(pool, env);
 
 backend.register();
 await pool.ensureReady();
+
+// Worker ready: wallets funded, backend registered. Printed after the (slow)
+// wallet build, before any spec in this worker runs — a "we're live" pointer.
+console.log(
+  `▶ live worker ${worker}/${totalWorkers} ready — deployer 0x…${seeds.deployer.slice(-4)}`,
+);

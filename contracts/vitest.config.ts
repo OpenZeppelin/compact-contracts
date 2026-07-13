@@ -51,6 +51,10 @@ const liveWorkers = process.env.MIDNIGHT_WALLET_SEED
       ),
     );
 
+// Publish the resolved count so `live.setup` can print `w<n>/<total>` in its
+// per-worker banner. Workers inherit this env at fork time.
+process.env.MIDNIGHT_LIVE_WORKERS = String(liveWorkers);
+
 export default defineConfig({
   test: {
     reporters: 'verbose',
