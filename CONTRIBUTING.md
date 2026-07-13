@@ -173,18 +173,38 @@ corepack yarn test
 
 Live tests run against a local Midnight network (node, indexer, and proof server) defined in [`local-env.yml`](./local-env.yml). They require [Docker](https://docs.docker.com/get-docker/) and a completed `corepack yarn install`.
 
+For a full run, use the two-round verifier. It resets the stack, runs the whole suite, then re-runs any failed files on a fresh node to separate a real failure from an environment flake:
+
+```bash
+corepack yarn test:live:verify
+```
+
+* A file that fails round 1 but passes the isolated re-run is reported **FLAKY** (exit 0); one that fails both is **REAL** (exit non-zero).
+* Scope to specific files after `--`: `corepack yarn test:live:verify -- multisig`.
+
+To drive the suite directly (single run, or while iterating), reset first:
+
 ```bash
 corepack yarn env:up && corepack yarn test:live
 ```
 
-* `env:up` starts the network and blocks until it is healthy. It tears down any existing containers first, so every run starts from a fresh genesis (block 0).
-* Add a filter after `--` to scope the run to specific files: `corepack yarn test:live -- multisig`.
-* Stop the network when you are done: `corepack yarn env:down`.
+* `env:up` tears down any existing containers, so every run starts from a fresh genesis (block 0).
+* Filter to specific files after `--`: `corepack yarn test:live -- multisig`.
+* Stop the network when done: `corepack yarn env:down`.
 
-> **Note:** Two rules keep live runs reliable:
+> **Note:** The live tests all run against one shared node, so state left by an earlier run can make a later one fail. Two rules keep them reliable, both enforced by a guard that fails fast, before any wallet build:
 >
-> 1. **Always run `env:up` first.** Reusing a network from a previous run leaves a dirty coin-commitment tree, which produces spurious shielded-proof failures such as `BadInput("failed to fill whole buffer")`.
-> 2. **Run one live suite at a time.** Concurrent runs share the same funded wallets and coin tree and will corrupt each other.
+> 1. **Start from a fresh node.** State left by a previous run makes shielded spends fail with node `Custom error: 103`. The guard aborts if it finds any shielded coin event beyond genesis; reset with `corepack yarn env:up`.
+> 2. **One live run at a time.** A pid-stamped lock (`contracts/logs/.live-run.lock`) makes a second concurrent run abort. (`test:live:verify` resets between rounds for you.)
+
+Environment knobs:
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `MIDNIGHT_LIVE_WORKERS` | 3 | Parallel spec files (max 3 — one genesis-funded deployer each). |
+| `MIDNIGHT_LIVE_ALLOW_DIRTY` | unset | `1` skips the freshness check (run against a dirty node). |
+| `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0 | Coin events beyond genesis tolerated before "not fresh". |
+| `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600 | Above this indexer head, the guard asks you to `env:up` rather than scan. |
 
 `unit-live` runs up to 3 workers in parallel, so their output interleaves. Each is tagged: a `▶ live worker N/3 ready` banner once that worker's wallets are funded, then a `[wN] ❯ <file>` line as each spec file starts. Each worker also writes a detailed log to `logs/live-harness-wN.log`.
 
