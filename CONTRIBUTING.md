@@ -23,6 +23,11 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Compa
 * [Pull Requests](#pull-requests)
 * [Opening an Issue](#opening-an-issue)
 
+[Running Tests](#running-tests)
+
+* [Unit Tests](#unit-tests)
+* [Live Tests](#live-tests)
+
 [Styleguides](#styleguides)
 
 * [Git Commit Messages](#git-commit-messages)
@@ -151,6 +156,45 @@ If a status check is failing, and you believe that the failure is unrelated to y
 A maintainer will re-run the status check for you. If we conclude that the failure was a false positive, then we will open an issue to track that problem with our status check suite.</details>
 
 While the prerequisites above must be satisfied prior to having your pull request reviewed, the reviewer(s) may ask you to complete additional design work, tests, or other changes before your pull request can be ultimately accepted.
+
+## Running Tests
+
+Run all commands from the repository root, and always invoke Yarn through `corepack`.
+
+### Unit Tests
+
+Unit tests run against an in-process mock backend (no network, ZK proving skipped):
+
+```bash
+corepack yarn test
+```
+
+### Live Tests
+
+Live tests run against a local Midnight network (node, indexer, and proof server) defined in [`local-env.yml`](./local-env.yml). They require [Docker](https://docs.docker.com/get-docker/) and a completed `corepack yarn install`.
+
+```bash
+corepack yarn env:up && corepack yarn test:live
+```
+
+* `env:up` starts the network and blocks until it is healthy. It tears down any existing containers first, so every run starts from a fresh genesis (block 0).
+* Add a filter after `--` to scope the run to specific files: `corepack yarn test:live -- multisig`.
+* Stop the network when you are done: `corepack yarn env:down`.
+
+> **Note:** Two rules keep live runs reliable:
+>
+> 1. **Always run `env:up` first.** Reusing a network from a previous run leaves a dirty coin-commitment tree, which produces spurious shielded-proof failures such as `BadInput("failed to fill whole buffer")`.
+> 2. **Run one live suite at a time.** Concurrent runs share the same funded wallets and coin tree and will corrupt each other.
+
+`unit-live` runs up to 3 workers in parallel, so their output interleaves. Each is tagged: a `▶ live worker N/3 ready` banner once that worker's wallets are funded, then a `[wN] ❯ <file>` line as each spec file starts. Each worker also writes a detailed log to `logs/live-harness-wN.log`.
+
+> **Tip:** to save the run to a colored, readable log, force color and pipe to `tee`. Piping (stdout is no longer a TTY) makes vitest print one clean line per result instead of an animated spinner, and `FORCE_COLOR=1` keeps the color. Write it to a `.ansi` file:
+>
+> ```bash
+> FORCE_COLOR=1 corepack yarn test:live -- multisig 2>&1 | tee logs/live-multisig.ansi
+> ```
+>
+> The file stores ANSI color codes, so render them rather than reading them raw. In VS Code, an ANSI extension such as [`iliazeus.vscode-ansi`](https://marketplace.visualstudio.com/items?itemName=iliazeus.vscode-ansi) renders a `.ansi` file via **"ANSI Text: Open Preview"**. In a terminal, use `less -R logs/live-multisig.ansi`. On Linux, prefix `systemd-inhibit --why="live tests"` for a long run.
 
 ## Styleguides
 
