@@ -7,6 +7,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-24.04
+    # Manual approval gate: the `release` Environment must have required
+    # reviewers configured in repo Settings, else this pauses for no one.
+    environment: release
     permissions:
       contents: read
       id-token: write
@@ -19,6 +22,9 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          # No git writes here (publish goes through the npm token), so don't persist creds.
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
