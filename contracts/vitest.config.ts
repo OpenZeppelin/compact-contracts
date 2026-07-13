@@ -106,6 +106,9 @@ export default defineConfig({
           name: 'unit-live',
           include: ['src/**/*.test.ts'],
           exclude: ARCHIVE_EXCLUDE,
+          // Fail fast (before any wallet build) if the node is dirty or another
+          // live run holds the lock. See `live.globalSetup`.
+          globalSetup: ['./test-utils/harness/live.globalSetup.ts'],
           setupFiles: ['./test-utils/harness/live.setup.ts'],
           // Run up to `liveWorkers` spec files concurrently (fileParallelism
           // defaults to true). `groupOrder` keeps this project in its own
@@ -138,6 +141,7 @@ export default defineConfig({
           ...LIVE_SEQUENTIAL,
           name: 'harness-live',
           include: ['test-utils/**/*.test.ts'],
+          globalSetup: ['./test-utils/harness/live.globalSetup.ts'],
         },
       },
     ],
