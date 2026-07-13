@@ -3,7 +3,7 @@ import type {
   WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
+import type { Ledger } from '../../../../artifacts/MockConfidentialFungibleTokenCore/contract/index.js';
 import {
   type Ciphertext,
   ConfidentialFungibleTokenPrivateState,

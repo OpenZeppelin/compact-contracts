@@ -1,0 +1,243 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/ConfidentialFungibleTokenPublicSupply.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialFungibleTokenPublicSupply
+ * @description A supply layer over the supply-free `ConfidentialFungibleTokenCore`
+ * base.
+ *
+ * The base holds only the conserving, spend-sound value surface (transfer,
+ * _move, approve/transferFrom, sweep) and never tracks a supply total. This
+ * module adds the asymmetric operations that create and destroy value (mint,
+ * burn, burnFrom) and the public `_totalSupply` cell they maintain.
+ *
+ * "Public" supply means the total, and therefore each mint/burn delta, is
+ * disclosed on chain. Balances stay confidential; only the aggregate is
+ * visible. This is the right default for issuers who must attest to a public
+ * circulating supply (stablecoins, tokenized funds). A confidential-supply
+ * layer (ElGamal supply cell + auditor viewing key) is a separate variant.
+ *
+ * @dev Composition model: a consuming contract imports ONLY this module. It
+ * re-exports the base's full conserving surface as clean wrappers, so the base
+ * is never a direct dependency of the consumer (a single import chain). The
+ * base ledger is re-exported unprefixed so consumers read it with a single
+ * prefix; production consumers read it off chain via the indexer and need not
+ * export the view circuits.
+ *
+ * @dev Capped supply: import this module, `mint` the cap in the constructor,
+ * and do not expose `mint` on the deployed contract. The token is then
+ * fixed-supply by construction with no further inflation path. This composes
+ * the same way with the stealth and ring account-model variants; it does not
+ * apply to a notes (shielded-pool) variant, which needs its own supply layer.
+ */
+module ConfidentialFungibleTokenPublicSupply {
+  import CompactStandardLibrary;
+  import "./ConfidentialFungibleTokenCore" prefix CFT_;
+  import "../crypto/ElGamal" prefix ElGamal_;
+
+  // Re-export the base ledger and the escrow struct unprefixed (see the
+  // NativeShieldedTokenFamily pattern), so a consumer reads them with a single
+  // prefix (e.g. `Token__balances`) rather than a chained one. This layer's
+  // own `_totalSupply` is declared below and chains the same single prefix.
+  import {
+    _balances,
+    _pending,
+    _encryptionKeys,
+    _memos,
+    _escrow,
+    _isInitialized,
+    _name,
+    _symbol,
+    _decimals,
+    EscrowEntry
+  } from "./ConfidentialFungibleTokenCore";
+  export {
+    _balances,
+    _pending,
+    _encryptionKeys,
+    _memos,
+    _escrow,
+    _isInitialized,
+    _name,
+    _symbol,
+    _decimals,
+    EscrowEntry
+  };
+  export { ElGamal_Ciphertext };
+
+  // This layer's own state: the public circulating supply. Mint and burn
+  // disclose their amounts through the delta on this value.
+  export ledger _totalSupply: Uint<128>;
+
+  // This is a module, not a deployable contract: the consuming contract's
+  // constructor calls `initialize`, exactly as it would for the base.
+  export circuit initialize(
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>
+                   ): [] {
+    CFT_initialize(name_, symbol_, decimals_);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Supply operations (this layer)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Creates `value` tokens, credits them to `account`, and
+   * increases `totalSupply` by `value`. The minted amount is disclosed via the
+   * supply delta; gate this to an issuer in the composing contract, or mint
+   * only in the constructor for a fixed-supply token.
+   *
+   * @circuitInfo k=15, rows=30130
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `totalSupply + value` does not overflow `Uint<128>`.
+   * - `account` is registered.
+   *
+   * @param {Bytes<32>} account - The recipient of the minted tokens.
+   * @param {Uint<128>} value - The amount to mint.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - _totalSupply >= value,
+           "ConfidentialFungibleToken: overflow");
+    _totalSupply = disclose(_totalSupply + value as Uint<128>);
+
+    CFT__credit(account, value);
+  }
+
+  /**
+   * @description Burns `value` tokens from the caller's own balance and
+   * decreases `totalSupply` by `value`.
+   *
+   * @circuitInfo k=14, rows=14759
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered and has a balance of at least `value`.
+   *
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  export circuit burn(value: Uint<128>): Bytes<32> {
+    const accountId = CFT__debit(value);
+    assert(_totalSupply >= value,
+           "ConfidentialFungibleToken: supply underflow");
+    _totalSupply = disclose(_totalSupply - value as Uint<128>);
+    return accountId;
+  }
+
+  /**
+   * @description Burns `value` tokens from `fromAddress`'s balance, consuming an
+   * escrow that `fromAddress` previously granted to the caller via `approve`.
+   * Mirrors `transferFrom`, except the spent value is removed from `totalSupply`
+   * instead of credited to a recipient.
+   *
+   * @circuitInfo k=15, rows=22354
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   *
+   * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   */
+  export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+    const spenderId = CFT__spendEscrow(fromAddress, value);
+    assert(_totalSupply >= value,
+           "ConfidentialFungibleToken: supply underflow");
+    _totalSupply = disclose(_totalSupply - value as Uint<128>);
+    return spenderId;
+  }
+
+  /**
+   * @description Returns the public total token supply.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Uint<128>} - The total supply.
+   */
+  export circuit totalSupply(): Uint<128> {
+    return _totalSupply;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Re-exported base surface (conserving value operations + metadata/views)
+  // ---------------------------------------------------------------------------
+
+  export circuit name(): Opaque<"string"> {
+    return CFT_name();
+  }
+
+  export circuit symbol(): Opaque<"string"> {
+    return CFT_symbol();
+  }
+
+  export circuit decimals(): Uint<8> {
+    return CFT_decimals();
+  }
+
+  export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+    return CFT_balanceOf(account);
+  }
+
+  export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
+    return CFT_pendingOf(account);
+  }
+
+  export circuit sweep(): Bytes<32> {
+    return CFT_sweep();
+  }
+
+  export circuit allowance(account: Bytes<32>, spender: Bytes<32>): EscrowEntry {
+    return CFT_allowance(account, spender);
+  }
+
+  export circuit isRegistered(account: Bytes<32>): Boolean {
+    return CFT_isRegistered(account);
+  }
+
+  export circuit register(): Bytes<32> {
+    return CFT_register();
+  }
+
+  export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+    return CFT_transfer(to, value);
+  }
+
+  export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+    return CFT__move(to, value);
+  }
+
+  export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+    return CFT_approve(spender, value);
+  }
+
+  export circuit transferFrom(
+      fromAddress: Bytes<32>,
+      to: Bytes<32>,
+      value: Uint<128>
+  ): Bytes<32> {
+    return CFT_transferFrom(fromAddress, to, value);
+  }
+
+  export circuit clearMemos(): [] {
+    return CFT_clearMemos();
+  }
+
+  export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+    return CFT_computeAccountId(sk);
+  }
+}
