@@ -336,7 +336,10 @@ describe('ConfidentialFungibleTokenPublicSupply', () => {
         await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
         await cft.register();
       }
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.mint(ALICE.accountId, 100n);
       await cft.sweep();
       await cft.privateState.cachePlaintext(

@@ -109,7 +109,9 @@ describe('EcdhMask', () => {
     it('does not recover the value under the wrong secret key', () => {
       const ciphertext = pureCircuits.encrypt(PK, 1000n, 42n, DOMAIN);
       const WRONG_EK = 999999n;
-      expect(pureCircuits.decrypt(ciphertext, WRONG_EK, DOMAIN)).not.toBe(1000n);
+      expect(pureCircuits.decrypt(ciphertext, WRONG_EK, DOMAIN)).not.toBe(
+        1000n,
+      );
     });
 
     it('does not recover the value under the wrong domain', () => {

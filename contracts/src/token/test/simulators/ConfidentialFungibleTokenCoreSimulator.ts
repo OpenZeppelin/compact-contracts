@@ -269,7 +269,10 @@ export class ConfidentialFungibleTokenCoreSimulator extends ConfidentialFungible
     setRandomnessSeed: async (
       seed: Uint8Array,
     ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const updated = { ...(await this.getPrivateState()), randomnessSeed: seed };
+      const updated = {
+        ...(await this.getPrivateState()),
+        randomnessSeed: seed,
+      };
       this.setPrivateState(updated);
       return updated;
     },

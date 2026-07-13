@@ -17,11 +17,11 @@
 // nonce). Do not copy this seed behavior into a real wallet.
 
 import { getRandomValues } from 'node:crypto';
-import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import type {
   JubjubPoint,
   WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
+import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 
 /**
  * @description Default deterministic randomness seed for tests. `wit_RandomnessSeed`

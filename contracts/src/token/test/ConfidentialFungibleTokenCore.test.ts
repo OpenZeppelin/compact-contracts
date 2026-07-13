@@ -6,12 +6,12 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 // The ElGamal pure circuits double as an off-circuit "mirror." They let a test
 // predict a ciphertext the contract will produce internally (e.g. the
 // post-refund balance in `approve`) so its plaintext can be cached ahead of the
 // witness query. They are pure (no proof), so this is cheap.
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
-import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 import { ConfidentialFungibleTokenCoreSimulator } from './simulators/ConfidentialFungibleTokenCoreSimulator.js';
 
 // Mirrors Compact's `pad(32, s)`: UTF-8 bytes of `s`, zero-padded to 32 bytes.
@@ -91,7 +91,10 @@ describe('ConfidentialFungibleToken: registration', () => {
 
   describe('register', () => {
     it('should register a fresh account', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
 
       expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
 
@@ -101,7 +104,10 @@ describe('ConfidentialFungibleToken: registration', () => {
     });
 
     it('should fail when re-registering the same account', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       await expect(cft.register()).rejects.toThrow(
@@ -110,7 +116,10 @@ describe('ConfidentialFungibleToken: registration', () => {
     });
 
     it('should allow distinct users to register independently', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
@@ -128,7 +137,10 @@ describe('ConfidentialFungibleToken: registration', () => {
     });
 
     it('should store the expected pk for the registered EK', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       const ledger = await cft.getPublicState();
@@ -139,7 +151,10 @@ describe('ConfidentialFungibleToken: registration', () => {
     });
 
     it('should store distinct pks for distinct EKs', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
@@ -153,7 +168,10 @@ describe('ConfidentialFungibleToken: registration', () => {
     });
 
     it('should initialize the balance to Enc(0)', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       const balance = await cft.balanceOf(ALICE.accountId);
@@ -166,14 +184,20 @@ describe('ConfidentialFungibleToken: registration', () => {
     it('should fail to transfer from an unregistered account', async () => {
       // Registration is a prerequisite for transfer. _debit asserts the
       // sender is registered.
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
 
       await expect(cft.transfer(BOB.accountId, 100n)).rejects.toThrow();
     });
 
     it('should fail to transfer to an unregistered account', async () => {
       // Alice registers, Bob doesn't. Alice tries to transfer to Bob.
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       await expect(cft.transfer(BOB.accountId, 100n)).rejects.toThrow();
@@ -186,14 +210,20 @@ describe('ConfidentialFungibleToken: registration', () => {
     });
 
     it('should return true after registration', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
     });
 
     it('should return false for an account that has not registered, even when others have', async () => {
-      await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
 
       expect(await cft.isRegistered(BOB.accountId)).toBe(false);
@@ -231,7 +261,6 @@ describe('ConfidentialFungibleToken: registration', () => {
       expect(id1).toEqual(id2);
     });
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -311,7 +340,6 @@ describe('ConfidentialFungibleToken: transfer', () => {
       'ConfidentialFungibleToken: insufficient balance',
     );
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -473,7 +501,6 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     );
   });
 
-
   it('rejects transferFrom to the zero account', async () => {
     await approveBob(100n, 40n);
     await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
@@ -509,9 +536,8 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     // ciphertext (Enc(100)) and cache its plaintext so approve's subsequent debit
     // decrypt resolves it. No cache is needed for the escrow copy itself — the
     // refund never decrypts it.
-    const escrowOwnerCt = (
-      await cft.allowance(ALICE.accountId, BOB.accountId)
-    ).ownerCt;
+    const escrowOwnerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
+      .ownerCt;
     const refunded = elgamal.add(
       await cft.balanceOf(ALICE.accountId),
       escrowOwnerCt,
@@ -687,7 +713,10 @@ describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
     await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
     await cft._credit(BOB.accountId, 10n);
     await cft.sweep();
-    await cft.privateState.cachePlaintext(await cft.balanceOf(BOB.accountId), 10n);
+    await cft.privateState.cachePlaintext(
+      await cft.balanceOf(BOB.accountId),
+      10n,
+    );
 
     // Bob spams a dust credit to Alice.
     await cft.transfer(ALICE.accountId, 1n);

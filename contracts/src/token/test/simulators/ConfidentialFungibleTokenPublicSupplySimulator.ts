@@ -3,10 +3,10 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  type Token_EscrowEntry,
   type ElGamal_Ciphertext,
   ledger,
   Contract as MockCFT,
+  type Token_EscrowEntry,
 } from '../../../../artifacts/MockConfidentialFungibleTokenPublicSupply/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
@@ -193,10 +193,7 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Confidential
     return this.circuits.impure.burn(value);
   }
 
-  public burnFrom(
-    fromAddress: Uint8Array,
-    value: bigint,
-  ): Promise<Uint8Array> {
+  public burnFrom(fromAddress: Uint8Array, value: bigint): Promise<Uint8Array> {
     return this.circuits.impure.burnFrom(fromAddress, value);
   }
 
@@ -279,7 +276,10 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Confidential
     setRandomnessSeed: async (
       seed: Uint8Array,
     ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const updated = { ...(await this.getPrivateState()), randomnessSeed: seed };
+      const updated = {
+        ...(await this.getPrivateState()),
+        randomnessSeed: seed,
+      };
       this.setPrivateState(updated);
       return updated;
     },
