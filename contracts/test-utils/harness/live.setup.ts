@@ -1,6 +1,6 @@
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '@midnight-ntwrk/testkit-js';
-import { beforeAll, expect } from 'vitest';
+import { beforeAll, beforeEach, expect } from 'vitest';
 import { assertFunded } from './dust.js';
 import { FundedWallet } from './FundedWallet.js';
 import { fundFromDeployer } from './funding.js';
@@ -64,6 +64,14 @@ beforeAll(() => {
   const testPath = (expect.getState?.().testPath ?? '') as string;
   const file = testPath ? (testPath.split('/').pop() ?? testPath) : '(spec)';
   console.log(`[w${worker}] ❯ ${file}`);
+});
+
+// Stamp this worker's id onto each test's metadata so the live progress
+// reporter (main process) can tag every result line with its worker — the
+// worker is the only place that knows its `VITEST_POOL_ID`. A setup-file
+// `beforeEach` fires in the worker before each test. See `liveProgressReporter`.
+beforeEach((ctx) => {
+  (ctx.task.meta as { workerId?: number }).workerId = worker;
 });
 
 const seeds = walletSeedsFor(worker);
