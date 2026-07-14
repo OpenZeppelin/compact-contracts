@@ -5,12 +5,12 @@ import {
 import {
   type ContractAddress,
   type Either,
+  ledger,
   type Maybe,
+  Contract as MockNativeShieldedTokenFamily,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-  Contract as MockNativeShieldedTokenFamily,
-  ledger,
 } from '../../../../artifacts/MockNativeShieldedTokenFamily/contract/index.js';
 
 /**
@@ -46,7 +46,12 @@ const NativeShieldedTokenFamilySimulatorBase = createSimulator<
       witnesses,
     ),
   defaultPrivateState: () => NativeShieldedTokenFamilyPrivateState,
-  contractArgs: (name, symbol, decimals, init) => [name, symbol, decimals, init],
+  contractArgs: (name, symbol, decimals, init) => [
+    name,
+    symbol,
+    decimals,
+    init,
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => NativeShieldedTokenFamilyWitnesses(),
   artifactName: 'MockNativeShieldedTokenFamily',

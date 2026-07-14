@@ -40,7 +40,9 @@ describe('Initializable state isolation (#556)', () => {
       c.initA();
 
       // BUG: B can never be initialized — the shared slot is already set.
-      expect(() => c.initB()).toThrow('Initializable: contract already initialized');
+      expect(() => c.initB()).toThrow(
+        'Initializable: contract already initialized',
+      );
     });
   });
 
@@ -60,7 +62,9 @@ describe('Initializable state isolation (#556)', () => {
       const c = new ComposedTokensSimulator(false, true);
 
       expect(() => c.nftName()).not.toThrow();
-      expect(() => c.ftName()).toThrow('FungibleToken: contract not initialized');
+      expect(() => c.ftName()).toThrow(
+        'FungibleToken: contract not initialized',
+      );
     });
 
     it('should initialize each module independently', () => {

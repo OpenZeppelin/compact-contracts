@@ -5,12 +5,12 @@ import {
 import {
   type ContractAddress,
   type Either,
+  ledger,
   type Maybe,
+  Contract as MockNativeShieldedToken,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-  Contract as MockNativeShieldedToken,
-  ledger,
 } from '../../../../artifacts/MockNativeShieldedToken/contract/index.js';
 
 /**
