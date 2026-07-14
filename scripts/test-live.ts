@@ -32,6 +32,18 @@ import { emptyKeyArtifacts } from './keyIntegrity.ts';
  * failure. Exit 0 unless there is a real failure, so an env flake never turns
  * the run red — but it is reported loudly.
  *
+ * Why a script and not turbo tasks: turbo models a DAG of stateless,
+ * cacheable tasks, and a live run needs stateful orchestration that a task
+ * graph cannot express:
+ *   - the two-round flake classification above (re-run failures, classify,
+ *     exit 0 on flaky-only);
+ *   - docker lifecycle between categories and rounds (`make env-up`) against
+ *     ONE shared node — parallel turbo tasks would race over it;
+ *   - ZK-key integrity self-heal (turbo's own poisoned cache, #675);
+ *   - infra-vs-test exit codes (2 vs 1), the pid lock, CI verdict summaries.
+ * Turbo still runs where the DAG helps: the compile and harness-smoke steps
+ * below go through it (cached keygen, dependency ordering).
+ *
  * Usage (via the root package.json scripts):
  *   corepack yarn test:live                        # every live-ready category
  *   corepack yarn test:live:multisig               # one category
