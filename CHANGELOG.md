@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add Confidential Fungible Token (#???)
 - Native shielded token standard implementing `MIP-0011`, with opt-in supply and derived-nonce extensions. (#621)
 - Add blocklist (#626)
 - Add allowList (#625)
