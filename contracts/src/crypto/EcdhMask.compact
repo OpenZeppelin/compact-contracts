@@ -40,12 +40,17 @@ pragma language_version >= 0.23.0;
  *
  * @dev Weak inputs. Two degenerate inputs zero the shared secret and expose the
  * value: `recipientPk = identity` gives `S = identity` for any `e`, and `e = 0`
- * gives `S = identity` for any key. These are the only two (for a subgroup key,
- * `S = identity` iff `e = 0`). Both yield `mask = KDF(identity, domain)`, a value
- * any observer can recompute, so `ct = value + mask` opens trivially. The
+ * gives `S = identity` for any key. Both yield `mask = KDF(identity, domain)`, a
+ * value any observer can recompute, so `ct = value + mask` opens trivially. The
  * identity is a valid subgroup point, so the runtime subgroup guarantee does NOT
- * catch it; `encrypt` therefore asserts `recipientPk != identity` and `e != 0`,
- * mirroring `crypto/ElGamal`'s `encryptPoint` guards.
+ * catch it; `encrypt` therefore asserts `recipientPk != identity` and
+ * `ephemeralPk (= g^e) != identity`. Guarding the ephemeral POINT rather than the
+ * scalar subsumes `e != 0` and stays correct regardless of how the runtime treats
+ * an out-of-range scalar: `g^e = identity` captures both `e = 0` and any
+ * `e ≡ 0 (mod ℓ)`. (Guarding `e != 0` directly would instead lean on the runtime
+ * faulting `ecMul` for scalars `≥ ℓ`; the point guard removes that dependency.)
+ * These are the only weak inputs (for a subgroup key, `S = identity` iff the
+ * ephemeral point is the identity).
  *
  * @dev Integrity. The pad is malleable and NO authentication is added here. This
  * is safe in the intended on-chain use, where the ciphertext is computed
@@ -70,6 +75,13 @@ pragma language_version >= 0.23.0;
  * KDF is deliberately omitted: for a fixed `recipientPk`, `E = g^e` and
  * `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E` and
  * folding it in buys nothing.
+ *
+ * @dev Shared key with `crypto/ElGamal` (in scope). A consumer MAY use the same
+ * recipient Jubjub key for both these memos (hashed ElGamal) and exponential-
+ * ElGamal balance ciphertexts, as the confidential token does. This joint use is
+ * safe: the two schemes share only the public key, this KDF is domain-separated
+ * and keyed by the secret DH point, and neither exposes a decryption oracle, so
+ * under CPA / ODH a ciphertext of one scheme does not help attack the other.
  *
  * @dev No ledger state, no witnesses. Every circuit is pure and takes its keys,
  * value, and randomness as explicit arguments. `decrypt` is exposed as a pure
@@ -133,9 +145,14 @@ module EcdhMask {
                         e: Field,
                         domain: Bytes<32>
                         ): Ciphertext {
-    assert(recipientPk != ecMulGenerator(0 as Field), "EcdhMask: identity pk");
-    assert(e != 0 as Field, "EcdhMask: zero ephemeral");
+    const identity = ecMulGenerator(0 as Field);
+    assert(recipientPk != identity, "EcdhMask: identity pk");
     const ephemeralPk = ecMulGenerator(e);
+    // Guard the ephemeral POINT, not the scalar: `ephemeralPk == identity`
+    // captures `e == 0` and any `e` that reduces to 0 mod l, so the guard is
+    // correct regardless of how the runtime treats an out-of-range scalar. This
+    // subsumes `e != 0` (see the weak-inputs note).
+    assert(ephemeralPk != identity, "EcdhMask: zero ephemeral");
     const sShared = ecMul(recipientPk, e);
     const mask = kdf(sShared, domain);
     return Ciphertext { ephemeralPk: ephemeralPk, ct: (value as Field) + mask };
@@ -146,7 +163,8 @@ module EcdhMask {
    * secret scalar. Pure and off-chain (no proof needed to read a received value).
    *
    * @param ciphertext - The ciphertext to decrypt.
-   * @param ekScalar - The recipient's secret scalar (`secretToScalar(EK)`).
+   * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
+   *                   `secretToScalar(EK)`).
    * @param domain - The consumer's domain-separation tag (must match encrypt).
    * @return The recovered value as a `Field` (equal to the original `value`,
    *         which is `< 2^128`).
