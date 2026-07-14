@@ -3,14 +3,19 @@ name: Live Test Suite
 env:
   TURBO_TELEMETRY_DISABLED: 1
 
-# The live suite runs every live-ready category against a real local stack
+# The live suite runs the live-ready categories against a real local stack
 # (node + indexer + proof-server via `make env-up`) with real ZK proofs, so a
-# full run takes hours, not minutes. It is deliberately separate from the
-# regular PR checks and never required:
+# run takes hours, not minutes. It is deliberately separate from the regular
+# PR checks and never required:
 #   - nightly on main, as the regression safety net
 #   - on demand via workflow_dispatch (optionally scoped to one category or
 #     file filter)
 #   - on a PR, opt-in, by applying the `live-tests` label (re-apply to re-run)
+#
+# A plan job derives the live-ready list from the runner (`test:live --list`,
+# backed by LIVE_READY in scripts/test-live.ts) and fans out one matrix job
+# per category, so each category gets its own runner, stack, and 6-hour
+# job budget.
 on:
   schedule:
     - cron: "0 2 * * *"
@@ -37,15 +42,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run-live-suite:
-    name: Run Live Suite
+  plan:
+    name: Plan categories
     if: github.event_name != 'pull_request' || github.event.label.name == 'live-tests'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    # The runner itself compiles (real ZK keys), resets the stack per category,
-    # and verifies failures with a second round — budget generously but stay
-    # under the 6h hosted-runner cap.
+    timeout-minutes: 5
+    outputs:
+      categories: ${{ steps.list.outputs.categories }}
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # The list script only uses node builtins — no yarn install needed.
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: List live-ready categories
+        id: list
+        env:
+          CATEGORY: ${{ inputs.category }}
+        run: |
+          if [ -n "$CATEGORY" ] && [ "$CATEGORY" != "all" ]; then
+            echo "categories=[\"$CATEGORY\"]" >> "$GITHUB_OUTPUT"
+          else
+            echo "categories=$(node scripts/test-live.ts --list)" >> "$GITHUB_OUTPUT"
+          fi
+
+  run-live-suite:
+    name: live-${{ matrix.category }}
+    needs: plan
+    strategy:
+      fail-fast: false # one category failing should not cancel the others
+      matrix:
+        category: ${{ fromJSON(needs.plan.outputs.categories) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    # Per-category budget: the runner compiles (real ZK keys), resets the
+    # stack, and verifies failures with a second round — budget generously but
+    # stay under the 6h hosted-runner cap.
     timeout-minutes: 350
 
     steps:
@@ -64,13 +109,9 @@ jobs:
 
       - name: Run live suite
         env:
-          CATEGORY: ${{ inputs.category }}
+          CATEGORY: ${{ matrix.category }}
           FILTER: ${{ inputs.filter }}
-        # `all` = no category arg (the runner covers every live-ready category);
-        # a bare unknown token would be taken as a file filter instead.
-        run: |
-          if [ "$CATEGORY" = "all" ]; then CATEGORY=""; fi
-          yarn test:live $CATEGORY $FILTER
+        run: yarn test:live "$CATEGORY" $FILTER
 
       - name: Stop local stack
         if: always()
@@ -80,7 +121,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: live-logs
+          name: live-logs-${{ matrix.category }}
           if-no-files-found: ignore
           retention-days: 7
           path: |
