@@ -186,12 +186,19 @@ If any files fail, a second round re-runs just those files on a fresh node with 
 * Fails round 1, passes round 2 → **FLAKY** (exit 0, reported loudly).
 * Fails both rounds → **REAL** (exit non-zero).
 
-Scope the same mechanism to one category, or to files within it:
+Scope the same mechanism to one category, or to a single file within it. Any
+argument after `--` is a filename substring (vitest matches it), so pass a spec
+name to run just that file on the live backend — the fast loop while iterating
+on one feature, instead of waiting for the whole category:
 
 ```bash
-corepack yarn test:live:multisig               # one category
-corepack yarn test:live:multisig -- Forwarder  # matching files only
+corepack yarn test:live:multisig                     # the whole category
+corepack yarn test:live:multisig -- ShieldedTreasury # just that one file
+corepack yarn test:live:multisig -- Forwarder        # any file matching "Forwarder"
 ```
+
+The two-round flake check still applies to a single-file run, so a green result
+means the same thing it does for the full suite.
 
 Stop the network when done: `corepack yarn env:down`. (No manual `env:up` is needed — the runner resets the stack itself.)
 
