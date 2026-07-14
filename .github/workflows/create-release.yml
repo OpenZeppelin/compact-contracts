@@ -1,0 +1,90 @@
+name: Create release on version bump
+
+# When a version bump merges into main (alpha line) or a release/* branch
+# (rc/stable line), cut the matching GitHub Release + tag. That fires
+# release.yml to publish to npm (behind the release approval gate).
+#
+# Idempotent: a release is cut only if its tag has no release yet, so any
+# push that does not change the version is a no-op and retries are safe.
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+    paths:
+      - "contracts/package.json"
+
+permissions:
+  contents: write
+
+# Serialize per branch so two overlapping pushes can't both pass the
+# "does this release exist yet?" guard and race to create the same tag.
+concurrency:
+  group: create-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  create-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      # App token (not GITHUB_TOKEN): a release created by GITHUB_TOKEN does
+      # not trigger release.yml, so the publish would never run.
+      - name: Get github app token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: gh-app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          # Least privilege: only contents write (create the tag + release).
+          permission-contents: write
+
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          # No git writes here (release is cut via gh/app token), so don't persist creds.
+          persist-credentials: false
+
+      - name: Read package version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./contracts/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # A SemVer prerelease has a hyphen (e.g. -alpha.1, -rc.1); stable does not.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release if the tag does not exist
+        env:
+          GH_TOKEN: ${{ steps.gh-app-token.outputs.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          TARGET: ${{ github.sha }}
+        run: |
+          TAG="v${VERSION}"
+
+          # Idempotent guard: never re-cut an existing release (safe retries,
+          # no manual tag deletion). Any non-bump push lands here and exits.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — nothing to do."
+            exit 0
+          fi
+
+          PRERELEASE_FLAG=""
+          if [ "$PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          echo "Creating release $TAG on $TARGET (prerelease=$PRERELEASE)"
+          gh release create "$TAG" \
+            --target "$TARGET" \
+            --title "$TAG" \
+            --generate-notes \
+            $PRERELEASE_FLAG

@@ -1,6 +1,12 @@
 import fc from 'fast-check';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
+import {
+  bytesToHex,
+  isNonceSpent,
+  zswapDelta,
+  zswapSnapshot,
+} from '#test-utils/zswap.js';
 import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivateSimulator.js';
 
 // The drain parent is a `ZswapCoinPublicKey` (coin public key only). A contract
@@ -279,6 +285,149 @@ describe('ForwarderPrivate module', () => {
 
       expect(after).toStrictEqual(before);
       expect(after).toStrictEqual(c);
+    });
+  });
+
+  // `sendShielded` routes a partial drain's change back to the contract as a
+  // self-owned output, handed to the caller via `result.change`. That coin must
+  // stay spendable: if `_drain` also re-spent it with `sendImmediateShielded`,
+  // that would reveal its nullifier in the same transaction, making the returned
+  // coin a double spend the node rejects on the next drain. The dry simulator
+  // does not enforce nullifiers, so these tests read the recorded Zswap I/O: the
+  // change coin's nonce must not appear among the spent inputs.
+  describe('drain — change coin is spendable (no double spend)', () => {
+    // A non-zero deploy address so the change output (routed to self for future
+    // drains) carries a recognizable address rather than the zero
+    // `dummyContractAddress()` default.
+    const FORWARDER_ADDRESS = '3e'.repeat(32);
+    let mock: MockForwarderPrivateSimulator;
+
+    beforeEach(async () => {
+      mock = await MockForwarderPrivateSimulator.create(
+        commitment(PARENT_BYTES, OP_SECRET),
+        true,
+        { contractAddress: FORWARDER_ADDRESS },
+      );
+      await mock.deposit(makeCoin(COLOR, AMOUNT));
+    });
+
+    it('should send the note to the parent and route the change back to itself on a partial drain', async () => {
+      const snap = zswapSnapshot(mock);
+      const result = await mock.drain(
+        makeQualifiedCoin(COLOR, AMOUNT, 0n),
+        key(PARENT_BYTES),
+        OP_SECRET,
+        400n,
+      );
+      const { inputs, outputs } = zswapDelta(mock, snap);
+
+      // One coin consumed: the drained coin (nonce 0, full value).
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].value).toBe(AMOUNT);
+      expect(inputs[0].color).toStrictEqual(COLOR);
+      expect(inputs[0].nonce).toStrictEqual(new Uint8Array(32).fill(0));
+
+      // Two coins produced: the note to the parent key (`left` arm) and the
+      // change back to this contract (`right`/self arm).
+      expect(outputs).toHaveLength(2);
+      const toParent = outputs.filter((o) => o.recipient.is_left);
+      const toSelf = outputs.filter((o) => !o.recipient.is_left);
+      expect(toParent).toHaveLength(1);
+      expect(toSelf).toHaveLength(1);
+
+      // Note: 400 of COLOR to the parent key; equals result.sent.
+      expect(toParent[0].coinInfo.value).toBe(400n);
+      expect(toParent[0].coinInfo).toStrictEqual(result.sent);
+      expect(toParent[0].recipient.left.bytes).toStrictEqual(PARENT_BYTES);
+
+      // Change: the remainder back to THIS contract's address (for future
+      // drains), identical to the returned change coin, and NOT spent in this
+      // same tx.
+      expect(result.change.is_some).toBe(true);
+      expect(toSelf[0].coinInfo.value).toBe(AMOUNT - 400n);
+      expect(toSelf[0].coinInfo).toStrictEqual(result.change.value);
+      expect(bytesToHex(toSelf[0].recipient.right.bytes)).toBe(
+        FORWARDER_ADDRESS,
+      );
+      expect(isNonceSpent(inputs, result.change.value.nonce)).toBe(false);
+    });
+
+    it('should spend the coin and produce only the note when draining in full', async () => {
+      const snap = zswapSnapshot(mock);
+      const result = await mock.drain(
+        makeQualifiedCoin(COLOR, AMOUNT, 0n),
+        key(PARENT_BYTES),
+        OP_SECRET,
+        AMOUNT,
+      );
+      const { inputs, outputs } = zswapDelta(mock, snap);
+
+      // No change: one input (the drained coin), one output (the note to parent).
+      expect(result.change.is_some).toBe(false);
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].value).toBe(AMOUNT);
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0].recipient.is_left).toBe(true);
+      expect(outputs[0].recipient.left.bytes).toStrictEqual(PARENT_BYTES);
+      expect(outputs[0].coinInfo.value).toBe(AMOUNT);
+      expect(outputs[0].coinInfo).toStrictEqual(result.sent);
+    });
+  });
+
+  // Tests that `_drain` (inner call in the mock `drainAndRouteChange`) returns a
+  // live, unspent change coin, so an implementing contract can spend it onward to
+  // a different recipient in the same tx (the only reason to re-spend change,
+  // since `sendShielded` already routes it to self). This would be impossible if
+  // `_drain` handed back a coin it had already spent.
+  describe('drain — implementing contract routes the change onward', () => {
+    const CHANGE_DEST = utils.createEitherTestUser('CHANGE_DEST');
+    let mock: MockForwarderPrivateSimulator;
+
+    beforeEach(async () => {
+      mock = await freshMock(PARENT_BYTES);
+    });
+
+    it('should let the caller send the change to a different recipient using the drain result', async () => {
+      const snap = zswapSnapshot(mock);
+      const routed = await mock.drainAndRouteChange(
+        makeQualifiedCoin(COLOR, AMOUNT, 0n),
+        key(PARENT_BYTES),
+        OP_SECRET,
+        400n,
+        CHANGE_DEST,
+      );
+      const { inputs, outputs } = zswapDelta(mock, snap);
+
+      // The onward send delivered the whole change to `changeRecipient`, so
+      // nothing is left over.
+      expect(routed.change.is_some).toBe(false);
+      expect(routed.sent.value).toBe(AMOUNT - 400n);
+
+      // Two coins are consumed: the drained coin, then the change coin (spent
+      // to route it onward — spending it here is correct, unlike the keep-change
+      // path).
+      expect(inputs).toHaveLength(2);
+
+      // The note still went to the parent for the drained `value`...
+      const toParent = outputs.filter(
+        (o) =>
+          o.recipient.is_left &&
+          bytesToHex(o.recipient.left.bytes) === bytesToHex(PARENT_BYTES),
+      );
+      expect(toParent).toHaveLength(1);
+      expect(toParent[0].coinInfo.value).toBe(400n);
+
+      // ...and the change was routed onward to `changeRecipient`, matching the
+      // returned coin.
+      const toChangeDest = outputs.filter(
+        (o) =>
+          o.recipient.is_left &&
+          bytesToHex(o.recipient.left.bytes) ===
+            bytesToHex(CHANGE_DEST.left.bytes),
+      );
+      expect(toChangeDest).toHaveLength(1);
+      expect(toChangeDest[0].coinInfo.value).toBe(AMOUNT - 400n);
+      expect(toChangeDest[0].coinInfo).toStrictEqual(routed.sent);
     });
   });
 

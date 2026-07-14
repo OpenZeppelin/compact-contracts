@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../extensions/NativeShieldedTokenSupply" prefix NativeShieldedTokenSupply_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+
+// Surface the core supply ledger state unprefixed so tests can read it via
+// `getPublicState()` and assert the accounting getters return it verbatim.
+import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenSupply";
+export { _totalMinted, _totalBurned };
+
+// Unit mock for the NativeShieldedTokenSupply extension in isolation. The
+// extension imports no token module, so the accounting blocks and getters are
+// driven directly here. The extension needs no initialization.
+
+export circuit _addMinted(amount: Uint<64>): [] {
+  NativeShieldedTokenSupply__addMinted(amount);
+}
+
+export circuit _addBurned(amount: Uint<128>): [] {
+  NativeShieldedTokenSupply__addBurned(amount);
+}
+
+export circuit totalMinted(): Uint<128> {
+  return NativeShieldedTokenSupply_totalMinted();
+}
+
+export circuit totalBurned(): Uint<128> {
+  return NativeShieldedTokenSupply_totalBurned();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return NativeShieldedTokenSupply_totalSupply();
+}
+
+// Test-only: force `_totalBurned` past `_totalMinted` to reach the otherwise
+// unreachable `burned > minted` state and exercise the `totalSupply` clamp.
+// Writes the ledger directly, bypassing the `_addBurned` invariant; never
+// expose anything like this in a production contract.
+export circuit unsafeSetBurned(amount: Uint<128>): [] {
+  _totalBurned.insert(default<Bytes<32>>, disclose(amount));
+}

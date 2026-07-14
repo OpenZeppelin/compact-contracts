@@ -22,3 +22,26 @@ export circuit _send(
   return Treasury__send(coin, recipient, amount);
 }
 
+// Demonstrates how an implementing contract sends, then uses the returned
+// `result.change` to spend the change onward to a *different* recipient in the
+// same transaction. (Re-spending change is only meaningful when it goes
+// somewhere other than self — `sendShielded` already routes it to self.) Only
+// possible because `_send` hands back a live, unspent change coin. Returns the
+// onward send's result, whose `sent` is the coin delivered to `changeRecipient`.
+export circuit _sendAndRouteChange(
+  coin: QualifiedShieldedCoinInfo,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<128>,
+  changeRecipient: Either<ZswapCoinPublicKey, ContractAddress>
+): ShieldedSendResult {
+  const sendRes = Treasury__send(coin, recipient, amount);
+  if (disclose(sendRes.change.is_some)) {
+    return sendImmediateShielded(
+      disclose(sendRes.change.value),
+      disclose(changeRecipient),
+      disclose(sendRes.change.value.value)
+    );
+  }
+  return sendRes;
+}
+
