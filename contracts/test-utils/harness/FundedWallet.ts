@@ -89,31 +89,38 @@ export class FundedWallet implements PooledWallet {
     // our own asserting wait so a zero-NIGHT/unsynced seed is spotted fast (the
     // plain `start(true)` logs a `0` balance and proceeds, which is the ~1h hang).
     // `waitForFunds` also registers any NIGHT UTXOs for dust generation.
-    await provider.start(false);
-    const nightBalance = await waitForFunds(wallet, env, true, keystore);
-    const dustBalance = (await syncWallet(wallet)).dust.balance(new Date());
-    logger.info(
-      `live wallet '${alias}' built — NIGHT ${nightBalance}, dust ${dustBalance}`,
-    );
+    // Stop the provider on any init failure so a rejected build doesn't leak the
+    // started connection (WalletPool.reset only stops wallets it recorded).
+    try {
+      await provider.start(false);
+      const nightBalance = await waitForFunds(wallet, env, true, keystore);
+      const dustBalance = (await syncWallet(wallet)).dust.balance(new Date());
+      logger.info(
+        `live wallet '${alias}' built — NIGHT ${nightBalance}, dust ${dustBalance}`,
+      );
 
-    // Re-sync the wallet before every tx build. Consecutive submissions from
-    // the same signer must balance against state that already reflects the
-    // prior tx; otherwise the second call reuses a dust/coin UTXO the first
-    // call already spent (the wallet observes the spend only on its next synced
-    // emission) and the node rejects it with a bare "Transaction submission
-    // error". `syncWallet` waits for a strictly-complete shielded/unshielded/
-    // dust state — i.e. the wallet has caught up to the latest block. The cost
-    // is negligible next to proving. Guarded on a real `balanceTx`: the
-    // unit-test mock provider may omit it.
-    if (typeof provider.balanceTx === 'function') {
-      const balanceTx = provider.balanceTx.bind(provider);
-      provider.balanceTx = (async (...args: Parameters<typeof balanceTx>) => {
-        await syncWallet(wallet);
-        return balanceTx(...args);
-      }) as typeof provider.balanceTx;
+      // Re-sync the wallet before every tx build. Consecutive submissions from
+      // the same signer must balance against state that already reflects the
+      // prior tx; otherwise the second call reuses a dust/coin UTXO the first
+      // call already spent (the wallet observes the spend only on its next synced
+      // emission) and the node rejects it with a bare "Transaction submission
+      // error". `syncWallet` waits for a strictly-complete shielded/unshielded/
+      // dust state — i.e. the wallet has caught up to the latest block. The cost
+      // is negligible next to proving. Guarded on a real `balanceTx`: the
+      // unit-test mock provider may omit it.
+      if (typeof provider.balanceTx === 'function') {
+        const balanceTx = provider.balanceTx.bind(provider);
+        provider.balanceTx = (async (...args: Parameters<typeof balanceTx>) => {
+          await syncWallet(wallet);
+          return balanceTx(...args);
+        }) as typeof provider.balanceTx;
+      }
+
+      return new FundedWallet(alias, provider, nightBalance, dustBalance);
+    } catch (error) {
+      await provider.stop().catch(() => {});
+      throw error;
     }
-
-    return new FundedWallet(alias, provider, nightBalance, dustBalance);
   }
 }
 
