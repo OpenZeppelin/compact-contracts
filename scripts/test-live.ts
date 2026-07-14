@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -83,6 +84,19 @@ const r1Json = (category: string): string =>
 function banner(message: string): void {
   const rule = '═'.repeat(64);
   console.log(`\n${rule}\n${message}\n${rule}`);
+}
+
+/** Append markdown to the GitHub Actions job summary (no-op outside CI). */
+function appendJobSummary(markdown: string): void {
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (!summaryPath) return;
+  appendFileSync(summaryPath, `${markdown}\n`);
+}
+
+/** Emit a GitHub Actions warning annotation (no-op outside CI). */
+function ciWarn(file: string, message: string): void {
+  if (process.env.GITHUB_ACTIONS !== 'true') return;
+  console.log(`::warning file=${file}::${message}`);
 }
 
 /** `src/` subdirectories that contain test files (future categories join
@@ -263,6 +277,33 @@ function reportVerdict(flaky: string[], real: string[]): number {
     console.log('\nREAL (failed both rounds — investigate):');
     for (const f of real) console.log(`  ✗ ${rel(f)}`);
   }
+  // A flaky-only run exits 0, so without these a green CI run would swallow
+  // the flake report entirely.
+  for (const f of flaky) {
+    ciWarn(
+      rel(f),
+      'flaky live spec — failed round 1, passed round 2 on a fresh node',
+    );
+  }
+  appendJobSummary(
+    [
+      `### ${headline}`,
+      ...(flaky.length > 0
+        ? [
+            '',
+            'Flaky (failed round 1, passed round 2 on a fresh node):',
+            ...flaky.map((f) => `- ~ \`${rel(f)}\``),
+          ]
+        : []),
+      ...(real.length > 0
+        ? [
+            '',
+            'Real failures (failed both rounds — investigate):',
+            ...real.map((f) => `- ✗ \`${rel(f)}\``),
+          ]
+        : []),
+    ].join('\n'),
+  );
   return real.length === 0 ? 0 : 1;
 }
 
@@ -363,6 +404,9 @@ async function main(): Promise<number> {
 
     if (failed.length === 0) {
       banner('VERDICT: PASSED — all live specs green on the first run.');
+      appendJobSummary(
+        '### VERDICT: PASSED — all live specs green on the first run.',
+      );
       return 0;
     }
 
