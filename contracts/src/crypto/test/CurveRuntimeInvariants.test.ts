@@ -27,6 +27,12 @@ import { pureCircuits } from '../../../artifacts/MockCurveOps/contract/index.js'
 const Q =
   52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
+// Jubjub prime-order subgroup order ell. Valid ecMul scalars are [0, ell-1]; the
+// runtime faults on scalars >= ell. crypto/ElGamal (negation by ell-1) and
+// EcdhMask's ephemeral-point guard both lean on this range fault.
+const L =
+  6554484396890773809930967563523245729705921265872317281365359162392183254199n;
+
 // (0, q-1) = (0, -1): on-curve, order 2 -> NOT in the prime-order subgroup.
 const ORDER_2 = constructJubjubPoint(0n, Q - 1n);
 // (1, 1): off-curve (fails the twisted Edwards equation).
@@ -125,6 +131,24 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
       expect(classify(() => pureCircuits.doEcAdd(GARBAGE, inSubgroup)).ok).toBe(
         false,
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Scalar-range fault: ecMulGenerator (and ecMul) must fault on scalars >= ell.
+  // EcdhMask's "only two weak inputs" reasoning and ElGamal's negation-by-(ell-1)
+  // both depend on it. Pinning it means a runtime that silently reduced mod ell
+  // (letting e = ell pass as e = 0, yielding a publicly recomputable mask) fails
+  // loudly here. Note EcdhMask's encrypt no longer relies on this: it guards the
+  // ephemeral POINT (g^e != identity), which catches e = ell regardless.
+  // -------------------------------------------------------------------------
+  describe('scalar-range fault (ecMulGenerator)', () => {
+    it('accepts the maximum valid scalar (ell - 1)', () => {
+      expect(classify(() => pureCircuits.genMul(L - 1n)).ok).toBe(true);
+    });
+
+    it('TRAPS on scalar == ell (out of range)', () => {
+      expect(classify(() => pureCircuits.genMul(L)).ok).toBe(false);
     });
   });
 });
