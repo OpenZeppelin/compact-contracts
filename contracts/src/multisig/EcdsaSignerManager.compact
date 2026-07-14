@@ -31,9 +31,17 @@ pragma language_version >= 0.23.0;
  * true). Replace it with `ecdsaVerify` once the Compact ECDSA primitive is
  * available.
  *
- * @notice Duplicate detection compares each commitment against the previous one
- * only, which is sufficient for at most 2 signers. Larger signer sets need a
- * different uniqueness mechanism (sorted commitments or a bitmap).
+ * @notice Duplicate detection requires that presented signer commitments form a
+ * **strictly increasing** sequence under Compact's `Bytes`→integer order
+ * (first byte is the least-significant byte — the same embedding as
+ * `Bytes as Field`). Equal commitments therefore fail, including non-adjacent
+ * duplicates such as `[A, B, A]`. Callers that present `n >= 2` public
+ * keys/signatures must sort them by ascending commitment under that order
+ * before calling `verify`.
+ *
+ * Order is total on 32-byte values. Collision of distinct hash commitments is
+ * negligible. Comparison is implemented as two `Uint<128>` limbs (bytes 0–15
+ * and 16–31) so no value overflows Compact's 248-bit `Uint` cap.
  */
 module EcdsaSignerManager {
   import CompactStandardLibrary;
@@ -43,8 +51,8 @@ module EcdsaSignerManager {
 
   /**
    * @description Accumulator for fold-based signature verification. Threads the
-   * valid count, previous commitment (for duplicate detection), and message hash
-   * through each iteration.
+   * valid count, previous commitment (strictly-increasing uniqueness for any
+   * `n`), and message hash through each iteration.
    */
   export struct VerificationState {
     validCount: Uint<8>,
@@ -95,19 +103,22 @@ module EcdsaSignerManager {
    * for duplicates and registry membership, and its signature validated against
    * `msgHash`; the valid count is then checked against the threshold.
    *
-   * @notice Duplicate detection is correct for at most 2 signers (see module
-   * notice).
+   * @notice Presented commitments must be **strictly increasing** under Compact
+   * `Bytes`→integer order (first byte LSB; see module notice). Sort
+   * `pubkeys`/`signatures` by ascending commitment before calling when `n >= 2`.
    *
    * Requirements:
    *
    * - Every public key must hash to a registered signer commitment.
    * - Every signature must be valid over `msgHash`.
-   * - Signers must not be duplicates.
+   * - Signers must be distinct: each commitment must be strictly greater than
+   *   the previous one in presentation order (total order on `Bytes<32>`).
    * - Valid count must meet the threshold.
    *
    * @param {Bytes<32>} msgHash - The message hash signers signed off-chain.
-   * @param {Vector<n, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
-   * @param {Vector<n, Bytes<64>>} signatures - Signatures over `msgHash`.
+   * @param {Vector<n, Bytes<64>>} pubkeys - ECDSA public keys of approving signers
+   *   (ordered by ascending commitment; first byte LSB).
+   * @param {Vector<n, Bytes<64>>} signatures - Signatures over `msgHash` (same order).
    * @returns {[]} Empty tuple.
    */
   export circuit verify<#n>(
@@ -117,6 +128,9 @@ module EcdsaSignerManager {
   ): [] {
     const initialState = VerificationState {
       validCount: 0 as Uint<8>,
+      // Zero sentinel so the first commitment need only be non-zero (hash
+      // commitments are effectively never zero) and later ones must strictly
+      // increase.
       prevCommitment: pad(32, ""),
       msgHash: msgHash
     };
@@ -176,8 +190,8 @@ module EcdsaSignerManager {
 
   /**
    * @description Fold callback. Verifies one signer's approval: derives the
-   * commitment, rejects duplicates against the previous commitment, checks
-   * registry membership, and validates the signature.
+   * commitment, enforces strictly-increasing commitments (distinct signers for
+   * any `n`), checks registry membership, and validates the signature.
    *
    * @param {VerificationState} state - Accumulator threaded through fold.
    * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
@@ -191,8 +205,13 @@ module EcdsaSignerManager {
   ): VerificationState {
     const commitment = _calculateSignerId(pubkey, _instanceSalt);
 
-    // Duplicate detection — sufficient for 2 signers only
-    assert(commitment != state.prevCommitment, "EcdsaSignerManager: duplicate signer");
+    // Distinct signers for any n: require strictly increasing commitments
+    // under Bytes→integer order (first byte LSB). Equals (including
+    // non-adjacent repeats) fail. Callers must present pubkeys sorted.
+    assert(
+      isStrictlyGreaterCommitment(commitment, state.prevCommitment),
+      "EcdsaSignerManager: duplicate or unsorted signer"
+    );
 
     Signer_assertSigner(commitment);
 
@@ -217,4 +236,30 @@ module EcdsaSignerManager {
   ): Boolean {
     return true;
   }
+
+  /**
+   * @description True iff `a` is strictly greater than `b` under Compact's
+   * `Bytes`→integer embedding (first byte is least-significant — same as
+   * `Bytes as Field`).
+   *
+   * Compact allows `>` only on `Uint`, not on `Field` or `Bytes`. A full
+   * 32-byte value can exceed `Uint<248>` (runtime cast overflow), so we split
+   * into two 16-byte little-endian limbs, each fitting in `Uint<128>`, and
+   * compare high then low. Equal high limbs fall through to the low limb so
+   * the order is total on 32-byte values.
+   *
+   * @param {Bytes<32>} a - Candidate commitment.
+   * @param {Bytes<32>} b - Previous commitment in presentation order.
+   * @returns {Boolean} True if a > b.
+   */
+  pure circuit isStrictlyGreaterCommitment(a: Bytes<32>, b: Bytes<32>): Boolean {
+    // Bytes→Uint: first byte of the slice is the least-significant byte.
+    // 16 bytes always fit in Uint<128> (max 2^128-1).
+    const aLow = slice<16>(a, 0) as Uint<128>;
+    const aHigh = slice<16>(a, 16) as Uint<128>;
+    const bLow = slice<16>(b, 0) as Uint<128>;
+    const bHigh = slice<16>(b, 16) as Uint<128>;
+    return (aHigh > bHigh) || ((aHigh == bHigh) && (aLow > bLow));
+  }
 }
+

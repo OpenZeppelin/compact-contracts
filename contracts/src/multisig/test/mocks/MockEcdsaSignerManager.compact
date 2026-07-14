@@ -23,6 +23,17 @@ export circuit verify(
   return Signature_verify<2>(msgHash, pubkeys, signatures);
 }
 
+/**
+ * 3-of-N presentation path used to test non-adjacent duplicate rejection (#629).
+ */
+export circuit verify3(
+  msgHash: Bytes<32>,
+  pubkeys: Vector<3, Bytes<64>>,
+  signatures: Vector<3, Bytes<64>>
+): [] {
+  return Signature_verify<3>(msgHash, pubkeys, signatures);
+}
+
 export pure circuit _calculateSignerId(pk: Bytes<64>, salt: Bytes<32>): Bytes<32> {
   return Signature__calculateSignerId(pk, salt);
 }

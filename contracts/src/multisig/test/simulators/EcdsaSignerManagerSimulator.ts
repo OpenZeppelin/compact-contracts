@@ -35,6 +35,41 @@ const EcdsaSignerManagerSimulatorBase = createSimulator<
 });
 
 /**
+ * Interpret a 32-byte commitment the way Compact's `Bytes as Field` cast does
+ * in the runtime (little-endian field element). Used to sort presentation order.
+ */
+export function commitmentFieldOrderKey(commitment: Uint8Array): bigint {
+  let x = 0n;
+  for (let i = commitment.length - 1; i >= 0; i--) {
+    x = (x << 8n) | BigInt(commitment[i]!);
+  }
+  return x;
+}
+
+/**
+ * Sort pubkeys (and parallel signatures) by ascending commitment as Field.
+ */
+export function sortByCommitmentField(
+  salt: Uint8Array,
+  pubkeys: Uint8Array[],
+  signatures: Uint8Array[],
+): { pubkeys: Uint8Array[]; signatures: Uint8Array[] } {
+  const decorated = pubkeys.map((pk, i) => {
+    const c = EcdsaSignerManagerSimulator.calculateSignerId(pk, salt);
+    return {
+      pk,
+      sig: signatures[i]!,
+      key: commitmentFieldOrderKey(c),
+    };
+  });
+  decorated.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  return {
+    pubkeys: decorated.map((d) => d.pk),
+    signatures: decorated.map((d) => d.sig),
+  };
+}
+
+/**
  * EcdsaSignerManager Simulator
  */
 export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase {
@@ -67,6 +102,14 @@ export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase
     signatures: [Uint8Array, Uint8Array],
   ) {
     return this.circuits.impure.verify(msgHash, pubkeys, signatures);
+  }
+
+  public verify3(
+    msgHash: Uint8Array,
+    pubkeys: [Uint8Array, Uint8Array, Uint8Array],
+    signatures: [Uint8Array, Uint8Array, Uint8Array],
+  ) {
+    return this.circuits.impure.verify3(msgHash, pubkeys, signatures);
   }
 
   public getSignerCount(): Promise<bigint> {
