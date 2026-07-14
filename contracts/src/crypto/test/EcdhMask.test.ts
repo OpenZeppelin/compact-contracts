@@ -2,9 +2,16 @@ import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { pureCircuits } from '../../../artifacts/MockEcdhMask/contract/index.js';
+import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
 
 // The EcdhMask circuits are pure, so tests drive them directly via the compiled
 // artifact's `pureCircuits` (no proof, no simulator needed).
+
+// Jubjub prime-order subgroup order. Valid scalars are [1, L-1]; the runtime
+// faults ecMul on scalars >= L (see crypto/ElGamal), so L-1 is the largest
+// valid scalar.
+const L =
+  6554484396890773809930967563523245729705921265872317281365359162392183254199n;
 
 // A recipient's secret scalar and their derived public key g^ek.
 const EK = 111222333444555n;
@@ -38,12 +45,36 @@ describe('EcdhMask', () => {
       expect(pureCircuits.decrypt(ciphertext, EK, DOMAIN)).toBe(big);
     });
 
-    it('round-trips the maximum Uint<128> value (no field wrap)', () => {
-      // mask < 2^248 and value < 2^128, so value + mask never reaches the field
-      // order: even the largest value recovers exactly.
+    it('round-trips the maximum Uint<128> value', () => {
+      // Recovery is field subtraction (ct - mask), which is exact even if
+      // value + mask wrapped the field modulus, so the max value round-trips
+      // regardless of wrap.
       const max = (1n << 128n) - 1n;
       const ciphertext = pureCircuits.encrypt(PK, max, 42n, DOMAIN);
       expect(pureCircuits.decrypt(ciphertext, EK, DOMAIN)).toBe(max);
+    });
+
+    it('round-trips at the maximum valid scalar (L - 1) for key and ephemeral', () => {
+      // Exercise the top of the valid scalar range: both the recipient key's
+      // secret and the ephemeral are L - 1, the largest scalar the runtime
+      // accepts (L and above fault ecMul).
+      const ek = L - 1n;
+      const e = L - 1n;
+      const max = (1n << 128n) - 1n;
+      const pk = ecMulGenerator(ek);
+      const ciphertext = pureCircuits.encrypt(pk, max, e, DOMAIN);
+      expect(pureCircuits.decrypt(ciphertext, ek, DOMAIN)).toBe(max);
+    });
+
+    it('round-trips through the real crypto/ElGamal key derivation', () => {
+      // The CFT memo path derives the recipient pair from a Bytes<32> EK via
+      // crypto/ElGamal: pk = derivePk(EK), ekScalar = secretToScalar(EK). Pin
+      // that shared-key infrastructure end to end rather than using raw scalars.
+      const ekBytes = new Uint8Array(32).fill(0x11);
+      const pk = elgamal.derivePk(ekBytes);
+      const ekScalar = elgamal.secretToScalar(ekBytes);
+      const ciphertext = pureCircuits.encrypt(pk, 4242n, 99n, DOMAIN);
+      expect(pureCircuits.decrypt(ciphertext, ekScalar, DOMAIN)).toBe(4242n);
     });
 
     it('round-trips for arbitrary keys, ephemerals, and values (property)', () => {
@@ -136,6 +167,17 @@ describe('EcdhMask', () => {
       expect(pureCircuits.kdf(PK, domain('a'))).not.toBe(
         pureCircuits.kdf(PK, domain('b')),
       );
+    });
+
+    it('produces a mask below 2^248 (hiding-margin regression)', () => {
+      // The module's ~2^-120 hiding margin rests on the kdf output staying in
+      // [0, 2^248) (the degradeToTransient range). Pin that stdlib behavior over
+      // several points so a regression surfaces here rather than silently
+      // shrinking the margin.
+      const bound = 1n << 248n;
+      for (const s of [2n, 5n, 222n, 999999n]) {
+        expect(pureCircuits.kdf(ecMulGenerator(s), DOMAIN)).toBeLessThan(bound);
+      }
     });
   });
 });
