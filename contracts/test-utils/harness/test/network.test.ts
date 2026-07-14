@@ -1,6 +1,6 @@
 import { LocalTestConfiguration } from '@midnight-ntwrk/testkit-js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { localEnv, PORTS } from '../network.js';
+import { localEnv } from '../network.js';
 
 describe('network config', () => {
   afterEach(() => {
@@ -9,8 +9,15 @@ describe('network config', () => {
   });
 
   describe('PORTS', () => {
-    it('should default to the local stack ports', () => {
-      expect(PORTS).toStrictEqual({
+    it('should default to the local stack ports', async () => {
+      // Clear any real overrides so a dev/CI env with MIDNIGHT_*_PORT set does
+      // not fail this default assertion; re-import so PORTS re-evaluates.
+      vi.stubEnv('MIDNIGHT_INDEXER_PORT', undefined);
+      vi.stubEnv('MIDNIGHT_NODE_PORT', undefined);
+      vi.stubEnv('MIDNIGHT_PROOF_SERVER_PORT', undefined);
+      vi.resetModules();
+      const { PORTS: defaults } = await import('../network.js');
+      expect(defaults).toStrictEqual({
         indexer: 8088,
         node: 9944,
         proofServer: 6300,
