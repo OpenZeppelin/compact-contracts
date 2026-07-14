@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": ["GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"],
   "tasks": {
     "compile:crypto": {
       "dependsOn": ["^build"],
