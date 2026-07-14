@@ -142,10 +142,11 @@ export class ShieldedProposalMultisigSimulator extends ShieldedProposalMultisigS
   // getReceivedMinusSent was dropped from the contract (redundant; removed to fit
   // the deploy block limit). Derive it from the two tracked totals.
   public async getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
-    const [received, sent] = await Promise.all([
-      this.getReceivedTotal(color),
-      this.getSentTotal(color),
-    ]);
+    // Await sequentially: on live each impure getter submits a tx, and two
+    // concurrent submissions balance against the same wallet snapshot and
+    // trigger a stale-UTXO rejection.
+    const received = await this.getReceivedTotal(color);
+    const sent = await this.getSentTotal(color);
     return received - sent;
   }
 
