@@ -27,7 +27,7 @@ const AMOUNT = 1000n;
 // THIS contract, not merely to "some contract arm".
 const TREASURY_ADDRESS = '7a'.repeat(32);
 
-// Assigned in `beforeEach` after `create()` syncs the wallet: on live the harness
+// Assigned in `beforeAll` after `create()` syncs the wallet: on live the harness
 // then publishes MIDNIGHT_DEPLOYER_COIN_PK, so this resolves to the deployer's own
 // coin public key (an encryption key the node can resolve); dry → a synthetic user.
 let Z_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
