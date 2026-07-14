@@ -234,7 +234,7 @@ The live suite is too slow for the regular PR checks (hours, not minutes), so [`
 * **On demand** — trigger `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `category` / `filter` inputs.
 * **On a PR** — apply the `live-tests` label. Re-apply it (or re-run the workflow) for a fresh run after new pushes.
 
-The job runs the same `yarn test:live` runner as a local run, so the two-round flake semantics apply unchanged; service and worker logs are uploaded as a `live-logs` artifact on failure.
+A plan job reads the live-ready list from the runner (`yarn test:live --list`) and fans out one job per category (`live-multisig`, ...), so each category gets its own runner, stack, and 6-hour job budget. Every job runs the same `yarn test:live` runner as a local run, so the two-round flake semantics apply unchanged; service and worker logs are uploaded as a `live-logs-<category>` artifact on failure.
 
 ## Styleguides
 
