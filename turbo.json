@@ -81,12 +81,6 @@
       "outputs": [],
       "cache": false
     },
-    "test:live": {
-      "dependsOn": ["compile", "test:harness:live"],
-      "env": ["COMPACT_HOME"],
-      "outputs": [],
-      "cache": false
-    },
     "test:integration": {
       "dependsOn": ["compile:integration"],
       "env": ["COMPACT_HOME"],
