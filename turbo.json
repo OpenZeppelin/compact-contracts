@@ -63,6 +63,7 @@
         "compile:security",
         "compile:utils",
         "compile:access",
+        "compile:archive",
         "compile:multisig",
         "compile:token"
       ]
