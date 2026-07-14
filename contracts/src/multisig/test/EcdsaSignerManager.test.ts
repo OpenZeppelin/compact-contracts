@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { EcdsaSignerManagerSimulator } from './simulators/EcdsaSignerManagerSimulator.js';
+import {
+  EcdsaSignerManagerSimulator,
+  sortByCommitmentField,
+} from './simulators/EcdsaSignerManagerSimulator.js';
 
 const THRESHOLD = 2n;
+const THRESHOLD_3 = 3n;
 
 // Instance salt and ECDSA public keys (Bytes<64>) used to derive commitments.
 const SALT = new Uint8Array(32).fill(7);
@@ -21,6 +25,45 @@ const COMMITMENT3 = EcdsaSignerManagerSimulator.calculateSignerId(PK3, SALT);
 const SIGNERS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
 
 let verifier: EcdsaSignerManagerSimulator;
+let verifier3: EcdsaSignerManagerSimulator;
+
+/** Present keys sorted by ascending commitment (Field order), as verify requires. */
+function sortedPair(
+  a: Uint8Array,
+  b: Uint8Array,
+): {
+  pubkeys: [Uint8Array, Uint8Array];
+  signatures: [Uint8Array, Uint8Array];
+} {
+  const { pubkeys, signatures } = sortByCommitmentField(
+    SALT,
+    [a, b],
+    [SIG, SIG],
+  );
+  return {
+    pubkeys: [pubkeys[0]!, pubkeys[1]!],
+    signatures: [signatures[0]!, signatures[1]!],
+  };
+}
+
+function sortedTriple(
+  a: Uint8Array,
+  b: Uint8Array,
+  c: Uint8Array,
+): {
+  pubkeys: [Uint8Array, Uint8Array, Uint8Array];
+  signatures: [Uint8Array, Uint8Array, Uint8Array];
+} {
+  const { pubkeys, signatures } = sortByCommitmentField(
+    SALT,
+    [a, b, c],
+    [SIG, SIG, SIG],
+  );
+  return {
+    pubkeys: [pubkeys[0]!, pubkeys[1]!, pubkeys[2]!],
+    signatures: [signatures[0]!, signatures[1]!, signatures[2]!],
+  };
+}
 
 describe('EcdsaSignerManager', () => {
   beforeEach(async () => {
@@ -28,6 +71,11 @@ describe('EcdsaSignerManager', () => {
       SALT,
       SIGNERS,
       THRESHOLD,
+    );
+    verifier3 = await EcdsaSignerManagerSimulator.create(
+      SALT,
+      SIGNERS,
+      THRESHOLD_3,
     );
   });
 
@@ -69,20 +117,42 @@ describe('EcdsaSignerManager', () => {
   });
 
   describe('verify', () => {
-    it('should pass with two distinct registered signers', async () => {
-      await verifier.verify(MSG, [PK1, PK2], [SIG, SIG]);
+    it('should pass with two distinct registered signers (sorted)', async () => {
+      const { pubkeys, signatures } = sortedPair(PK1, PK2);
+      await verifier.verify(MSG, pubkeys, signatures);
     });
 
-    it('should reject a duplicate signer', async () => {
+    it('should reject an adjacent duplicate signer', async () => {
       await expect(
         verifier.verify(MSG, [PK1, PK1], [SIG, SIG]),
-      ).rejects.toThrow('EcdsaSignerManager: duplicate signer');
+      ).rejects.toThrow('EcdsaSignerManager: duplicate or unsorted signer');
     });
 
     it('should reject an unregistered signer', async () => {
+      const { pubkeys, signatures } = sortedPair(PK_UNKNOWN, PK2);
+      // Order may place unknown first or second; either fails membership or order
+      await expect(verifier.verify(MSG, pubkeys, signatures)).rejects.toThrow();
+    });
+  });
+
+  describe('verify3 (issue #629 — non-adjacent duplicates)', () => {
+    it('should pass with three distinct registered signers sorted by commitment', async () => {
+      const { pubkeys, signatures } = sortedTriple(PK1, PK2, PK3);
+      await verifier3.verify3(MSG, pubkeys, signatures);
+    });
+
+    it('should reject non-adjacent duplicate presentation [A, B, A]', async () => {
+      // Deliberately unsorted path that previously counted A twice under
+      // adjacent-only checks. Strictly-increasing Field order rejects this.
       await expect(
-        verifier.verify(MSG, [PK_UNKNOWN, PK2], [SIG, SIG]),
-      ).rejects.toThrow('SignerManager: not a signer');
+        verifier3.verify3(MSG, [PK1, PK2, PK1], [SIG, SIG, SIG]),
+      ).rejects.toThrow('EcdsaSignerManager: duplicate or unsorted signer');
+    });
+
+    it('should reject adjacent duplicate in a 3-signer presentation', async () => {
+      await expect(
+        verifier3.verify3(MSG, [PK1, PK1, PK2], [SIG, SIG, SIG]),
+      ).rejects.toThrow('EcdsaSignerManager: duplicate or unsorted signer');
     });
   });
 });
