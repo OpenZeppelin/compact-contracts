@@ -17,9 +17,14 @@ on:
   workflow_dispatch:
     inputs:
       category:
-        description: "Live-ready category to run (empty = all live-ready)"
-        required: false
-        default: ""
+        description: "Live-ready category to run"
+        type: choice
+        # Mirror LIVE_READY in scripts/test-live.ts as categories join. A stale
+        # entry fails loudly: the runner rejects non-live-ready names (exit 2).
+        options:
+          - all
+          - multisig
+        default: all
       filter:
         description: "Vitest file filter within the category (e.g. Forwarder)"
         required: false
@@ -61,7 +66,11 @@ jobs:
         env:
           CATEGORY: ${{ inputs.category }}
           FILTER: ${{ inputs.filter }}
-        run: yarn test:live $CATEGORY $FILTER
+        # `all` = no category arg (the runner covers every live-ready category);
+        # a bare unknown token would be taken as a file filter instead.
+        run: |
+          if [ "$CATEGORY" = "all" ]; then CATEGORY=""; fi
+          yarn test:live $CATEGORY $FILTER
 
       - name: Stop local stack
         if: always()
