@@ -3,8 +3,8 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  Contract as MockNativeShieldedTokenDerivedNonce,
   ledger,
+  Contract as MockNativeShieldedTokenDerivedNonce,
 } from '../../../../artifacts/MockNativeShieldedTokenDerivedNonce/contract/index.js';
 
 /**
@@ -64,6 +64,7 @@ export class NativeShieldedTokenDerivedNonceSimulator extends NativeShieldedToke
 
   /** @description Current value of the derived-nonce counter. */
   public async nonceCounter(): Promise<bigint> {
-    return (await this.getPublicState()).NativeShieldedTokenDerivedNonce__counter;
+    return (await this.getPublicState())
+      .NativeShieldedTokenDerivedNonce__counter;
   }
 }

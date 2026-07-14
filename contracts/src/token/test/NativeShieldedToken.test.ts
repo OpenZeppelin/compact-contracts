@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/address.js';
 import {
-  type NativeShieldedTokenSimulator as Sim,
   NativeShieldedTokenSimulator,
+  type NativeShieldedTokenSimulator as Sim,
 } from './simulators/NativeShieldedTokenSimulator.js';
 
 // Helpers
@@ -75,21 +75,30 @@ describe('NativeShieldedToken (Fungible profile)', () => {
       ['decimals', []],
       ['tokenColor', []],
       ['_mint', [RECIPIENT, AMOUNT, b32('n')]],
-      ['_burn', [{ nonce: b32('cn'), color: b32('c'), value: AMOUNT }, AMOUNT, REFUND_TO]],
+      [
+        '_burn',
+        [
+          { nonce: b32('cn'), color: b32('c'), value: AMOUNT },
+          AMOUNT,
+          REFUND_TO,
+        ],
+      ],
       [
         '_burnFromSelf',
-        [{ nonce: b32('cn'), color: b32('c'), value: AMOUNT, mt_index: 0n }, AMOUNT],
+        [
+          { nonce: b32('cn'), color: b32('c'), value: AMOUNT, mt_index: 0n },
+          AMOUNT,
+        ],
       ],
     ];
 
-    it.each(circuitsToFail)(
-      'should revert %s before initialize',
-      async (method, args) => {
-        await expect(
-          (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
-        ).rejects.toThrow('NativeShieldedToken: contract not initialized');
-      },
-    );
+    it.each(
+      circuitsToFail,
+    )('should revert %s before initialize', async (method, args) => {
+      await expect(
+        (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
+      ).rejects.toThrow('NativeShieldedToken: contract not initialized');
+    });
   });
 
   describe('_mint', () => {
