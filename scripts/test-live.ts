@@ -35,6 +35,7 @@ import { emptyKeyArtifacts } from './keyIntegrity.ts';
  *   corepack yarn test:live                        # every live-ready category
  *   corepack yarn test:live:multisig               # one category
  *   corepack yarn test:live:multisig -- Forwarder  # files within a category
+ *   corepack yarn test:live --list                 # live-ready categories (JSON)
  *
  * Node runs this .ts directly (type stripping); only `node:` builtins.
  */
@@ -266,6 +267,15 @@ function reportVerdict(flaky: string[], real: string[]): number {
 }
 
 async function main(): Promise<number> {
+  // `--list` prints the live-ready categories as JSON and exits — CI derives
+  // its per-category matrix from this, so LIVE_READY stays the single source
+  // of truth.
+  if (process.argv.includes('--list')) {
+    console.log(
+      JSON.stringify(liveCategories().filter((c) => LIVE_READY.has(c))),
+    );
+    return 0;
+  }
   const args = process.argv.slice(2).filter((a) => a !== '--');
   const allCategories = liveCategories();
   // First arg naming a category (the test:live:<category> scripts pass one)
