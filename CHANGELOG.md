@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add EcdhMask (#655)
+
 ## 0.3.0-alpha (2026-06-30)
 
 ### Added
 
-- Add EcdhMask (#655)
 - Native shielded token standard implementing `MIP-0011`, with opt-in supply and derived-nonce extensions. (#621)
 - Add blocklist (#626)
 - Add allowList (#625)
