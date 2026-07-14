@@ -7,7 +7,8 @@ env:
 # (node + indexer + proof-server via `make env-up`) with real ZK proofs, so a
 # run takes hours, not minutes. It is deliberately separate from the regular
 # PR checks and never required:
-#   - nightly on main, as the regression safety net
+#   - nightly on main, as the regression safety net (failures are mirrored
+#     into a `live-nightly` tracking issue)
 #   - on demand via workflow_dispatch (optionally scoped to one category or
 #     file filter)
 #   - on a PR, opt-in, by applying the `live-tests` label (re-apply to re-run)
@@ -117,6 +118,18 @@ jobs:
         if: always()
         run: make env-down
 
+      # The JSON verdict reports are tiny and useful on green runs too (flaky
+      # trends); the service/worker logs can reach hundreds of MB after a
+      # multi-hour run, so those only upload when something failed.
+      - name: Upload live reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-reports-${{ matrix.category }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: logs/live-*.json
+
       - name: Upload live logs
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -125,8 +138,76 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           path: |
-            logs/live-*.json
             logs/live-harness-*.log
             logs/node.log
             logs/indexer.log
             logs/proof-server.log
+
+  # A failed scheduled run only emails the workflow author, which is easy to
+  # miss — mirror the nightly state into a `live-nightly` tracking issue
+  # instead: opened (or commented) on failure, closed on the next green run.
+  report-nightly:
+    name: Report nightly result
+    needs: [plan, run-live-suite]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Open, update, or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SUITE_RESULT: ${{ needs.run-live-suite.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # The suite is `skipped` when the plan job died before it — that is
+          # still a failed nightly. A cancelled run (superseded) reports nothing.
+          if [ "$SUITE_RESULT" = "skipped" ] && [ "$PLAN_RESULT" = "failure" ]; then
+            SUITE_RESULT="failure"
+          fi
+
+          issue=$(gh issue list --repo "$REPO" --label live-nightly --state open \
+            --json number --jq '.[0].number')
+
+          case "$SUITE_RESULT" in
+            success)
+              if [ -n "$issue" ]; then
+                gh issue close "$issue" --repo "$REPO" \
+                  --comment "Nightly live run is green again: $RUN_URL"
+              fi
+              ;;
+            failure)
+              if [ -n "$issue" ]; then
+                gh issue comment "$issue" --repo "$REPO" \
+                  --body "Nightly live run failed again: $RUN_URL"
+              else
+                gh label create live-nightly --repo "$REPO" --force \
+                  --description "Tracks the nightly live test run" --color B60205
+                body=$(cat <<EOF
+          The scheduled live test run failed.
+
+          * Run: $RUN_URL
+          * Per-category verdicts are in each job's summary; JSON reports and service logs are attached as artifacts.
+
+          Managed by \`live.yml\`: each failing nightly adds a comment here, and the issue closes automatically on the next green run.
+          EOF
+          )
+                gh issue create --repo "$REPO" --label live-nightly \
+                  --title "Nightly live test run is failing" \
+                  --body "$body"
+              fi
+              ;;
+            *)
+              echo "suite result: $SUITE_RESULT — nothing to report."
+              ;;
+          esac
