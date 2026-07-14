@@ -1,0 +1,82 @@
+name: Live Test Suite
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+# The live suite runs every live-ready category against a real local stack
+# (node + indexer + proof-server via `make env-up`) with real ZK proofs, so a
+# full run takes hours, not minutes. It is deliberately separate from the
+# regular PR checks and never required:
+#   - nightly on main, as the regression safety net
+#   - on demand via workflow_dispatch (optionally scoped to one category or
+#     file filter)
+#   - on a PR, opt-in, by applying the `live-tests` label (re-apply to re-run)
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      category:
+        description: "Live-ready category to run (empty = all live-ready)"
+        required: false
+        default: ""
+      filter:
+        description: "Vitest file filter within the category (e.g. Forwarder)"
+        required: false
+        default: ""
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: live-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-live-suite:
+    name: Run Live Suite
+    if: github.event_name != 'pull_request' || github.event.label.name == 'live-tests'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    # The runner itself compiles (real ZK keys), resets the stack per category,
+    # and verifies failures with a second round — budget generously but stay
+    # under the 6h hosted-runner cap.
+    timeout-minutes: 350
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 2 # Recommended by turbo team
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+
+      - name: Run live suite
+        env:
+          CATEGORY: ${{ inputs.category }}
+          FILTER: ${{ inputs.filter }}
+        run: yarn test:live $CATEGORY $FILTER
+
+      - name: Stop local stack
+        if: always()
+        run: make env-down
+
+      - name: Upload live logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-logs
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            logs/live-*.json
+            logs/live-harness-*.log
+            logs/node.log
+            logs/indexer.log
+            logs/proof-server.log
