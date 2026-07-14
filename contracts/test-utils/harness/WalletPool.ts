@@ -98,18 +98,22 @@ export class WalletPool {
   ) {}
 
   /**
-   * Build every pooled wallet once, concurrently, and publish each coin public
-   * key. Idempotent; a no-op-cost await after the first call.
+   * Build every pooled wallet once, sequentially, and publish each coin public
+   * key. Serial (not `Promise.all`): the live builder funds empty signers from
+   * the shared deployer, so concurrent builds would balance several funding
+   * transactions against the same deployer snapshot and reintroduce the
+   * stale-UTXO race the harness exists to prevent. Idempotent; a no-op-cost
+   * await after the first call.
    */
   ensureReady(): Promise<void> {
     if (!this.ready) {
-      this.ready = Promise.all(
-        Object.entries(this.seeds).map(async ([alias, walletSeed]) => {
+      this.ready = (async () => {
+        for (const [alias, walletSeed] of Object.entries(this.seeds)) {
           const wallet = await this.buildWallet(alias, walletSeed);
           process.env[coinPkEnv(alias)] = wallet.coinPublicKey;
           this.wallets.set(alias, wallet);
-        }),
-      ).then(() => undefined);
+        }
+      })();
     }
     return this.ready;
   }
