@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteTokenDelivery" prefix Delivery_;
+import "../../../crypto/NoteDelivery" prefix NoteDelivery_;
+
+export { NoteDelivery_FullDelivery, NoteDelivery_Recovered }
+
+export { Delivery__deliveries };
+
+export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
+  return Delivery__deliver(encPk, value, nonce, slot);
+}
+
+export pure circuit recoverNote(delivery: NoteDelivery_FullDelivery, encSk: Field): NoteDelivery_Recovered {
+  return NoteDelivery_recoverNote(delivery, encSk);
+}

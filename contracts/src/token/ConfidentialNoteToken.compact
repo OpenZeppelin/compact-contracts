@@ -1,0 +1,341 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/ConfidentialNoteToken.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteToken
+ * @description DRAFT tier-4 core: a self-contained note-based confidential
+ * token with FULL graph privacy (amounts, sender, and recipient hidden).
+ *
+ * Vocabulary: the TOKEN is the asset; a NOTE is its internal value record (a
+ * UTXO). A note is `(value, nonce)` owned by `pk = Hf(sk)` (field-typed hash);
+ * a balance is the sum of one's unspent notes. Commitment
+ * `cm = H(domain, value, nonce, pk)` goes in the tree; nullifier
+ * `nf = H(domain, nonce)` marks the note spent. Spending proves membership of
+ * the note's commitment without revealing which leaf.
+ *
+ * The core is a complete token on its own: `initialize` binds the issuer,
+ * `mint` (issuer-gated), `transfer`, and `burn` work out of the box, deriving
+ * output nonces from the caller's own randomness witness. Created notes are
+ * returned to the caller (a local, private result — nothing extra goes
+ * on-chain), who hands them to recipients out of band.
+ *
+ * Compliance and UX are layered on top, not baked in:
+ *
+ * - auditor viewing — `extensions/ConfidentialNoteTokenAudit`,
+ * - on-chain note delivery (recipients discover funds by scanning) —
+ *   `extensions/ConfidentialNoteTokenDelivery`,
+ * - confidential supply + public attestation —
+ *   `extensions/ConfidentialNoteTokenSupply`,
+ * - the wired-together deployable token —
+ *   `presets/RegulatedConfidentialNoteToken`.
+ *
+ * For that wiring, the `_`-prefixed building blocks (`_mint`, `_transfer`,
+ * `_burn`, `_consumeNote`) accept caller-built notes, so a composing contract
+ * can source nonces from its emission policy (e.g. audit-derived) instead of
+ * the core default. Like all `_` circuits, they carry no authorization —
+ * the composer gates them.
+ *
+ * @dev Nonces are spend-critical: the nullifier preimage is the nonce alone
+ * (no owner secret), so any party that knows a nonce derives the SAME
+ * nullifier. This is what makes regulated seizure escrow-free in the preset
+ * (owner-spend and seizure are mutually exclusive), and why output nonces
+ * MUST be unique and unpredictable. `wit_NonceRandomness` MUST return a
+ * fresh, secret seed per invocation.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteToken {
+  import CompactStandardLibrary;
+
+  // A note's value and its unique nonce. Ownership is a separate pk.
+  export struct Note {
+    value: Uint<128>;
+    nonce: Field;
+  }
+
+  // Commitment/nullifier hash preimages (domain-separated).
+  struct CommitPreimage {
+    domain: Bytes<32>;
+    value: Uint<128>;
+    nonce: Field;
+    pk: Field;
+  }
+  struct NullifierPreimage {
+    domain: Bytes<32>;
+    nonce: Field;
+  }
+
+  export ledger _isInitialized: Boolean;
+  // Mint authorization: `Hf(issuerSecret)`.
+  export ledger _issuerPk: Field;
+  export ledger _commitments: HistoricMerkleTree<32, Bytes<32>>;
+  export ledger _nullifiers: Set<Bytes<32>>;
+
+  // Owner's spend secret (pk = Hf(sk)).
+  witness wit_SecretKey(): Bytes<32>;
+  // The issuer's secret (issuerPk = Hf(issuerSecret)).
+  witness wit_IssuerSecret(): Bytes<32>;
+  // The note being consumed, and its Merkle path.
+  witness wit_InputNote(): Note;
+  witness wit_Path(cm: Bytes<32>): MerkleTreePath<32, Bytes<32>>;
+  // Randomness seed for the core's default output nonces. MUST be fresh +
+  // secret per invocation (see module doc).
+  witness wit_NonceRandomness(): Bytes<32>;
+
+  /**
+   * @description Field-typed identity hash: `pk = Hf(sk)`. Exported so
+   * wallets, auditors, and tests derive identities the way the circuits do.
+   */
+  export pure circuit derivePk(sk: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Bytes<32>>(sk));
+  }
+
+  /**
+   * @description `cm = H(domain, value, nonce, pk)`. Exported so off-chain
+   * viewers can recompute commitments for notes they recover.
+   */
+  export pure circuit commitOf(note: Note, pk: Field): Bytes<32> {
+    return persistentHash<CommitPreimage>(CommitPreimage {
+      domain: pad(32, "OZ:cnt:commit"),
+      value: note.value,
+      nonce: note.nonce,
+      pk: pk
+    });
+  }
+
+  /**
+   * @description `nf = H(domain, nonce)` — derivable by anyone who knows the
+   * nonce. Exported so off-chain viewers can watch a note's consumption.
+   */
+  export pure circuit nullifierOf(note: Note): Bytes<32> {
+    return persistentHash<NullifierPreimage>(NullifierPreimage {
+      domain: pad(32, "OZ:cnt:null"),
+      nonce: note.nonce
+    });
+  }
+
+  /**
+   * @description One-shot initialization binding the issuer (the only role
+   * the core itself needs).
+   *
+   * Requirements:
+   *
+   * - Module is not already initialized.
+   *
+   * @circuitInfo k=6, rows=31
+   */
+  export circuit initialize(issuerPk: Field): [] {
+    assert(!_isInitialized, "ConfidentialNoteToken: already initialized");
+    _issuerPk = disclose(issuerPk);
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Mints a note of `value` to `recipientPk` and returns it (a
+   * local private result) so the issuer can hand it to the recipient out of
+   * band. The amount is NOT written to public state — issuance stays hidden;
+   * only the hiding commitment appears on-chain.
+   *
+   * Requirements:
+   *
+   * - Module is initialized.
+   * - The caller proves the issuer secret (`Hf(secret) == _issuerPk`).
+   *
+   * @circuitInfo k=14, rows=13217
+   */
+  export circuit mint(recipientPk: Field, value: Uint<128>): Note {
+    _assertIssuer();
+    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:cnt:out")) };
+    _mint(note, recipientPk);
+    // The note returns only to the local caller; revealing it on-chain would
+    // expose the nonce (spend-critical) and the amount.
+    return disclose(note);
+  }
+
+  /**
+   * @description Fully-private transfer: spends the caller's input note and
+   * creates a recipient note of `value` plus a change note back to the
+   * caller, conserving value. Returns `[outNote, changeNote]` (a local
+   * private result) so the caller's wallet can hand the note over and track
+   * its change. Sender and recipient are both hidden; the public ledger gains
+   * one nullifier and two commitments.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `value <= input.value`.
+   *
+   * @circuitInfo k=16, rows=36394
+   */
+  export circuit transfer(recipientPk: Field, value: Uint<128>): [Note, Note] {
+    const pk = _spenderPk();
+    const input = _inputNote();
+    assert(input.value >= value, "ConfidentialNoteToken: insufficient note value");
+
+    const outNote = Note { value: value, nonce: freshNonce(pad(32, "OZ:cnt:out")) };
+    const changeNote = Note {
+      value: (input.value - value) as Uint<128>,
+      nonce: freshNonce(pad(32, "OZ:cnt:chg"))
+    };
+    _transfer(pk, recipientPk, outNote, changeNote);
+    return [disclose(outNote), disclose(changeNote)];
+  }
+
+  /**
+   * @description Burns `value` from the caller's input note: spends the note
+   * and re-issues only the change (returned as a local private result), so
+   * `value` leaves circulation. Both the burned amount and the burner stay
+   * hidden; publicly a burn looks like any other spend.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `value <= input.value`.
+   *
+   * @circuitInfo k=15, rows=25584
+   */
+  export circuit burn(value: Uint<128>): Note {
+    const pk = _spenderPk();
+    const input = _inputNote();
+    assert(input.value >= value, "ConfidentialNoteToken: insufficient note value");
+
+    const changeNote = Note {
+      value: (input.value - value) as Uint<128>,
+      nonce: freshNonce(pad(32, "OZ:cnt:chg"))
+    };
+    _burn(pk, value, changeNote);
+    return disclose(changeNote);
+  }
+
+  /**
+   * @description Building block: the caller's spend identity,
+   * `Hf(wit_SecretKey())`. Exposed so composing contracts authorize spends
+   * the way the core does.
+   */
+  export circuit _spenderPk(): Field {
+    return derivePk(wit_SecretKey());
+  }
+
+  /**
+   * @description Building block: asserts the caller proves the issuer secret.
+   *
+   * Requirements:
+   *
+   * - Module is initialized.
+   * - `Hf(wit_IssuerSecret()) == _issuerPk`.
+   *
+   * @circuitInfo k=13, rows=2277
+   */
+  export circuit _assertIssuer(): [] {
+    assert(_isInitialized, "ConfidentialNoteToken: contract not initialized");
+    assert(derivePk(wit_IssuerSecret()) == _issuerPk,
+           "ConfidentialNoteToken: not the issuer");
+  }
+
+  /**
+   * @description Building block: peek at the input note about to be consumed
+   * (the same witness `_consumeNote` reads), so a composing contract can size
+   * the change and run its emission policy BEFORE the spend. Any mismatch
+   * with what it then passes to `_transfer` / `_burn` is caught by their
+   * conservation asserts against this same witness.
+   */
+  export circuit _inputNote(): Note {
+    return wit_InputNote();
+  }
+
+  /**
+   * @description UNGATED building block: commits a caller-built note to
+   * `ownerPk`. The composer decides who may create value, how the nonce was
+   * produced, and how the note reaches its owner.
+   *
+   * @circuitInfo k=13, rows=6766
+   */
+  export circuit _mint(note: Note, ownerPk: Field): [] {
+    // Only the hiding commitment crosses to public state.
+    _commitments.insert(disclose(commitOf(note, ownerPk)));
+  }
+
+  /**
+   * @description UNGATED building block: consumes the input note owned by
+   * `spenderPk` and commits `outNote` to `recipientPk` plus `changeNote` back
+   * to the spender, conserving value exactly.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `input.value == outNote.value + changeNote.value`.
+   *
+   * @circuitInfo k=15, rows=25732
+   */
+  export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: Note, changeNote: Note): [] {
+    const input = _consumeNote(spenderPk);
+    assert(input.value == outNote.value + changeNote.value,
+           "ConfidentialNoteToken: transfer does not conserve value");
+    _mint(outNote, recipientPk);
+    _mint(changeNote, spenderPk);
+  }
+
+  /**
+   * @description UNGATED building block: consumes the input note owned by
+   * `spenderPk` and re-issues only `changeNote`, so `value` leaves
+   * circulation.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `input.value == value + changeNote.value`.
+   *
+   * @circuitInfo k=15, rows=19119
+   */
+  export circuit _burn(spenderPk: Field, value: Uint<128>, changeNote: Note): [] {
+    const input = _consumeNote(spenderPk);
+    assert(input.value == value + changeNote.value,
+           "ConfidentialNoteToken: burn does not conserve value");
+    _mint(changeNote, spenderPk);
+  }
+
+  /**
+   * @description UNGATED building block: consumes the witness-supplied input
+   * note owned by `ownerPk` — proves its commitment is in the tree at some
+   * historical root (without revealing which leaf), checks it is unspent, and
+   * publishes its nullifier. Returns the note for value accounting. Used by
+   * `_transfer` / `_burn` and directly by custom spend paths (e.g. seizure,
+   * where `ownerPk` is the target's key and authorization is the caller's).
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   *
+   * @circuitInfo k=14, rows=12248
+   */
+  export circuit _consumeNote(ownerPk: Field): Note {
+    const input = wit_InputNote();
+
+    // Membership at some historical root. The root is public; disclosing it
+    // reveals nothing about which leaf, since the path itself stays witness.
+    const cm = commitOf(input, ownerPk);
+    const path = wit_Path(cm);
+    const root = disclose(merkleTreePathRoot<32, Bytes<32>>(path));
+    assert(_commitments.checkRoot(root),
+           "ConfidentialNoteToken: input root not recognized");
+    assert(cm == path.leaf,
+           "ConfidentialNoteToken: path does not match input commitment");
+
+    // Single-spend: the shared nullifier can be consumed exactly once.
+    const nf = nullifierOf(input);
+    assert(!_nullifiers.member(disclose(nf)),
+           "ConfidentialNoteToken: note already spent");
+    _nullifiers.insert(disclose(nf));
+
+    return input;
+  }
+
+  // Fresh output nonce from the caller's randomness witness, domain-separated
+  // per slot within one invocation.
+  circuit freshNonce(slot: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
+      [wit_NonceRandomness(), pad(32, "OZ:cnt:nonce:core"), slot]));
+  }
+}

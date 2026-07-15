@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../ConfidentialNoteToken" prefix CNT_;
+
+export { CNT_Note }
+
+export { CNT__isInitialized, CNT__issuerPk, CNT__commitments, CNT__nullifiers };
+
+export circuit initialize(issuerPk: Field): [] {
+  return CNT_initialize(issuerPk);
+}
+
+export circuit mint(recipientPk: Field, value: Uint<128>): CNT_Note {
+  return CNT_mint(recipientPk, value);
+}
+
+export circuit transfer(recipientPk: Field, value: Uint<128>): [CNT_Note, CNT_Note] {
+  return CNT_transfer(recipientPk, value);
+}
+
+export circuit burn(value: Uint<128>): CNT_Note {
+  return CNT_burn(value);
+}
+
+// Building blocks, exposed for composition-level tests.
+
+export circuit _spenderPk(): Field {
+  // Exported-boundary marker: returns only to the local caller.
+  return disclose(CNT__spenderPk());
+}
+
+export circuit _assertIssuer(): [] {
+  return CNT__assertIssuer();
+}
+
+export circuit _inputNote(): CNT_Note {
+  // Exported-boundary marker: returns only to the local caller.
+  return disclose(CNT__inputNote());
+}
+
+export circuit _mint(note: CNT_Note, ownerPk: Field): [] {
+  return CNT__mint(note, ownerPk);
+}
+
+export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: CNT_Note, changeNote: CNT_Note): [] {
+  return CNT__transfer(spenderPk, recipientPk, outNote, changeNote);
+}
+
+export circuit _burn(spenderPk: Field, value: Uint<128>, changeNote: CNT_Note): [] {
+  return CNT__burn(spenderPk, value, changeNote);
+}
+
+export circuit _consumeNote(ownerPk: Field): CNT_Note {
+  // Exported-boundary marker: the consumed note returns only to the local
+  // caller (who supplied it as a witness in the first place).
+  return disclose(CNT__consumeNote(ownerPk));
+}
+
+export pure circuit derivePk(sk: Bytes<32>): Field {
+  return CNT_derivePk(sk);
+}
+
+export pure circuit commitOf(note: CNT_Note, pk: Field): Bytes<32> {
+  return CNT_commitOf(note, pk);
+}
+
+export pure circuit nullifierOf(note: CNT_Note): Bytes<32> {
+  return CNT_nullifierOf(note);
+}

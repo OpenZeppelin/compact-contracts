@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteTokenDelivery.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteTokenDelivery
+ * @description Optional standalone extension that delivers each output note's
+ * `(value, nonce)` to its owner's encryption key on-chain, so a recipient
+ * discovers incoming notes from chain data alone — no out-of-band channel.
+ * It imports no token module.
+ *
+ * Wallet flow: scan `_deliveries`, trial-decrypt each entry with the account's
+ * encryption secret (`crypto/NoteDelivery.recoverNote`), and keep the notes
+ * whose recomputed commitment exists in the token core's tree.
+ *
+ * @notice Pairs with `ConfidentialNoteToken`. The consuming contract calls
+ * `_deliver` alongside every `_createNote` whose owner should be able to find
+ * the note by scanning (skipping it makes the note reachable only out of
+ * band — the funds still exist, but only the creator knows the nonce).
+ *
+ * @dev Identity is two keys per account: the spend key `pk = Hf(sk)` owns
+ * notes; the encryption key `encPk = g^encSk` (Jubjub) receives deliveries.
+ * The circuit cannot bind the two — an account hands them out together, and a
+ * sender who addresses the delivery to the wrong `encPk` only prevents
+ * discovery, not the note's existence.
+ *
+ * @dev `wit_DeliveryRandomness` MUST return a fresh, secret seed per
+ * invocation; ephemerals expand from it (see `crypto/EcdhMask` freshness
+ * rules). `slot` domain-separates ephemerals when one transaction emits
+ * several outputs.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteTokenDelivery {
+  import CompactStandardLibrary;
+  import "../../crypto/NoteDelivery" prefix NoteDelivery_;
+
+  // Per-output deliveries, for observation: wallets trial-decrypt this list.
+  // It is this extension's event substitute.
+  export ledger _deliveries: List<NoteDelivery_FullDelivery>;
+
+  // Randomness seed for delivery ephemerals. MUST be fresh + secret per
+  // invocation (see module doc).
+  witness wit_DeliveryRandomness(): Bytes<32>;
+
+  /**
+   * @description Encrypts one output note's `(value, nonce)` to `encPk` and
+   * publishes the ciphertext for wallet scanning.
+   *
+   * @circuitInfo k=15, rows=23198
+   */
+  export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
+    const ed = degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
+      [wit_DeliveryRandomness(), pad(32, "OZ:cnt:ed"), slot]));
+    // Only the ciphertext crosses to public state.
+    _deliveries.pushFront(disclose(NoteDelivery_deliverNote(
+      encPk,
+      NoteDelivery_Note { value: value, nonce: nonce },
+      ed
+    )));
+  }
+}
