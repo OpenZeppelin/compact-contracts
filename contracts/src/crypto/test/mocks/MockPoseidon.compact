@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../Poseidon" prefix Poseidon_;
+
+export { Poseidon_PoseidonState }
+
+// One ledger write per circuit: forces proof generation (a circuit with no
+// public effect gets no proof circuit) and matches the HashersCompare
+// benchmark harness for apples-to-apples row counts.
+export ledger _out: Field;
+
+// Return-only (no proof circuit): used off-chain to check the reference test
+// vector against the compiled artifact.
+export circuit permute(state: Poseidon_PoseidonState): Poseidon_PoseidonState {
+  return disclose(Poseidon_permute(state));
+}
+
+export circuit hash2(a: Field, b: Field): [] {
+  _out = disclose(Poseidon_hash2(a, b));
+}
+
+export circuit hash4(a: Field, b: Field, c: Field, d: Field): [] {
+  _out = disclose(Poseidon_hash4(a, b, c, d));
+}
