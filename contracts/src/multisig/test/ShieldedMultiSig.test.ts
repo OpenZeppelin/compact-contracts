@@ -7,7 +7,7 @@ import {
   shieldedTestParentKey,
   shieldedTestSigner,
 } from '#test-utils/fixtures/shieldedKey.js';
-import { ShieldedProposalMultisigSimulator } from './simulators/ShieldedProposalMultisigSimulator.js';
+import { ShieldedMultiSigSimulator } from './simulators/ShieldedMultiSigSimulator.js';
 
 const ProposalStatus = { Inactive: 0, Active: 1, Executed: 2, Cancelled: 3 };
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
@@ -52,51 +52,42 @@ function makeCoin(
   return encodeShieldedCoinInfo(color, value, nonce);
 }
 
-let multisig: ShieldedProposalMultisigSimulator;
+let multisig: ShieldedMultiSigSimulator;
 
 // A fresh 2-of-3 multisig. Mutating groups deploy one per test (`beforeEach`);
 // read-only groups deploy one per group (`beforeAll`) to save a live deploy tx.
 const freshMultisig = () =>
-  ShieldedProposalMultisigSimulator.create(SIGNERS, THRESHOLD);
+  ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
 
-describe('ShieldedProposalMultisig', () => {
+describe('ShieldedMultiSig', () => {
   describe('constructor', () => {
     it('should initialize with signers and threshold', async () => {
-      multisig = await ShieldedProposalMultisigSimulator.create(
-        SIGNERS,
-        THRESHOLD,
-      );
+      multisig = await ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
       expect(await multisig.getSignerCount()).toEqual(BigInt(SIGNERS.length));
       expect(await multisig.getThreshold()).toEqual(THRESHOLD);
     });
 
     it('should register all signers', async () => {
-      multisig = await ShieldedProposalMultisigSimulator.create(
-        SIGNERS,
-        THRESHOLD,
-      );
+      multisig = await ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
       for (const signer of SIGNERS) {
         expect(await multisig.isSigner(signer)).toEqual(true);
       }
     });
 
     it('should reject non-signers', async () => {
-      multisig = await ShieldedProposalMultisigSimulator.create(
-        SIGNERS,
-        THRESHOLD,
-      );
+      multisig = await ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
       expect(await multisig.isSigner(Z_NON_SIGNER)).toEqual(false);
     });
 
     it('should fail with zero threshold', async () => {
       await expect(
-        ShieldedProposalMultisigSimulator.create(SIGNERS, 0n),
+        ShieldedMultiSigSimulator.create(SIGNERS, 0n),
       ).rejects.toThrow('SignerManager: threshold must be > 0');
     });
 
     it('should fail with threshold exceeding signer count', async () => {
       await expect(
-        ShieldedProposalMultisigSimulator.create(SIGNERS, 4n),
+        ShieldedMultiSigSimulator.create(SIGNERS, 4n),
       ).rejects.toThrow('SignerManager: threshold exceeds signer count');
     });
   });
@@ -231,7 +222,7 @@ describe('ShieldedProposalMultisig', () => {
               .as('SIGNER1')
               .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT),
           ).rejects.toThrow(
-            'ShieldedProposalMultisig: recipient must be a shielded user or contract',
+            'ShieldedMultiSig: recipient must be a shielded user or contract',
           );
         });
 
