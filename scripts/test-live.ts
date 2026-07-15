@@ -45,10 +45,10 @@ import { emptyKeyArtifacts } from './keyIntegrity.ts';
  * below go through it (cached keygen, dependency ordering).
  *
  * Usage (via the root package.json scripts):
- *   corepack yarn test:live                        # every live-ready category
- *   corepack yarn test:live:multisig               # one category
- *   corepack yarn test:live:multisig -- Forwarder  # files within a category
- *   corepack yarn test:live --list                 # live-ready categories (JSON)
+ *   yarn test:live                        # every live-ready category
+ *   yarn test:live:multisig               # one category
+ *   yarn test:live:multisig -- Forwarder  # files within a category
+ *   yarn test:live --list                 # live-ready categories (JSON)
  *
  * Node runs this .ts directly (type stripping); only `node:` builtins.
  */
@@ -239,7 +239,7 @@ const truncatedKeys = (): string[] =>
  * after the rebuild.
  */
 function compileVerified(): boolean {
-  if (run('corepack', ['yarn', 'compact']) !== 0) {
+  if (run('yarn', ['compact']) !== 0) {
     console.log('compile failed — a compile error is real, not a flake.');
     return false;
   }
@@ -259,7 +259,7 @@ function compileVerified(): boolean {
     recursive: true,
     force: true,
   });
-  if (run('corepack', ['yarn', 'compact', '--concurrency=1']) !== 0) {
+  if (run('yarn', ['compact', '--concurrency=1']) !== 0) {
     console.log('serial recompile failed.');
     return false;
   }
@@ -364,7 +364,7 @@ async function main(): Promise<number> {
       console.log('env-up failed — cannot start the live stack.');
       return 2;
     }
-    if (run('corepack', ['yarn', 'test:harness:live']) !== 0) {
+    if (run('yarn', ['test:harness:live']) !== 0) {
       console.log(
         '\nlive harness smoke failed — this is an infrastructure problem, ' +
           'not a spec flake. Fix the stack and retry.',
