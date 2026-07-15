@@ -85,7 +85,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === selfPath) {
     console.log(
       '\nDrain the turbo cache and recompile serially — a parallel recompile ' +
         'can re-poison the cache (OpenZeppelin/compact-contracts#675):\n' +
-        '  rm -rf .turbo/cache && corepack yarn compile --concurrency=1',
+        '  rm -rf .turbo/cache && corepack yarn compact --concurrency=1',
     );
   }
   process.exit(bad.length === 0 ? 0 : 1);
