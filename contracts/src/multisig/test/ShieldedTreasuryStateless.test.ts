@@ -20,9 +20,7 @@ import {
 import { MockShieldedTreasuryStatelessSimulator } from './simulators/MockShieldedTreasuryStatelessSimulator.js';
 
 // Genesis-funded shielded color (`0x00…01`): on the live backend a `_deposit` /
-// `_send` can only draw a color the deployer wallet holds. `fill(1)` (`0x0101…01`)
-// is a different, unfunded type on live; on dry any color mints freely. See
-// nativeShieldedToken.ts.
+// `_send` can only draw a color the deployer wallet holds.
 const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
