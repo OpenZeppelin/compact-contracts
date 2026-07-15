@@ -25,7 +25,9 @@ import { emptyKeyArtifacts } from './keyIntegrity.ts';
  *   Round 1: compile + harness smoke once, then per category: reset the stack
  *            and run that category's files (parallel workers). Collect the
  *            files that failed from the JSON reporter.
- *   Round 2: reset the stack again, re-run only those files, one worker.
+ *   Round 2: for each failed file, reset the stack and re-run just that file
+ *            on its own (one worker), so no earlier round-2 file can dirty the
+ *            node under a later one.
  *
  * A file that fails round 1 but passes round 2 is FLAKY (an environment
  * artifact); one that fails both — or never reports in round 2 — is a REAL
@@ -66,7 +68,6 @@ const PROGRESS_REPORTER = path.join(
   'test-utils/harness/liveProgressReporter.ts',
 );
 const VERIFY_LOCK = path.join(LOGS, '.live-verify.lock');
-const R2_JSON = path.join(LOGS, 'live-r2.json');
 
 // `archive` is excluded from the unit/unit-live projects (see vitest.config).
 const EXCLUDED_CATEGORIES = new Set(['archive']);
@@ -92,6 +93,11 @@ interface LockInfo {
 const rel = (abs: string): string => path.relative(REPO_ROOT, abs);
 const r1Json = (category: string): string =>
   path.join(LOGS, `live-r1-${category}.json`);
+const r2Json = (file: string): string =>
+  path.join(
+    LOGS,
+    `live-r2-${path.basename(file).replace(/\.test\.ts$/, '')}.json`,
+  );
 
 function banner(message: string): void {
   const rule = '═'.repeat(64);
@@ -350,7 +356,13 @@ async function main(): Promise<number> {
   acquireVerifyLock();
   try {
     for (const c of categories) rmSync(r1Json(c), { force: true });
-    rmSync(R2_JSON, { force: true });
+    if (existsSync(LOGS)) {
+      for (const f of readdirSync(LOGS)) {
+        if (f.startsWith('live-r2-') && f.endsWith('.json')) {
+          rmSync(path.join(LOGS, f), { force: true });
+        }
+      }
+    }
 
     banner(
       `ROUND 1 — categories: ${categories.join(', ')}` +
@@ -425,16 +437,27 @@ async function main(): Promise<number> {
     banner(`ROUND 1 found ${failed.length} failing file(s)`);
     for (const f of failed) console.log(`  ✗ ${rel(f)}`);
 
-    banner('ROUND 2 — re-run only the failed files, fresh node, one worker');
-    if (run('make', ['env-up']) !== 0) {
-      console.log('env-up failed — cannot start round 2.');
-      return 2;
-    }
-    runLiveVitest(R2_JSON, failed, { MIDNIGHT_LIVE_WORKERS: '1' });
-    const round2 = fileStatuses(R2_JSON);
-    if (round2 === undefined) {
-      console.log('\nround 2 produced no results file — cannot classify.');
-      return 2;
+    banner('ROUND 2 — re-run each failed file alone on a fresh node');
+    // Reset the node before each file so state left by an earlier round-2 file
+    // can never fail a later one (which would misclassify a flake as REAL).
+    const round2 = new Map<string, string>();
+    for (const [i, file] of failed.entries()) {
+      banner(`ROUND 2 · ${rel(file)} (${i + 1}/${failed.length})`);
+      if (run('make', ['env-up']) !== 0) {
+        console.log(`env-up failed before round 2 of '${rel(file)}'.`);
+        return 2;
+      }
+      const jsonPath = r2Json(file);
+      runLiveVitest(jsonPath, [file], { MIDNIGHT_LIVE_WORKERS: '1' });
+      const statuses = fileStatuses(jsonPath);
+      if (statuses === undefined) {
+        console.log(
+          `\nround 2 produced no results for '${rel(file)}' — cannot classify.`,
+        );
+        return 2;
+      }
+      // No entry means the file crashed without reporting; treat as not-passed.
+      round2.set(file, statuses.get(file) ?? 'failed');
     }
 
     // Only an explicit round-2 pass demotes a failure to FLAKY; a file that
