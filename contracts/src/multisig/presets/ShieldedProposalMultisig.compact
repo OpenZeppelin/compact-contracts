@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (multisig/presets/ShieldedMultiSig.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (multisig/presets/ShieldedProposalMultisig.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ShieldedMultiSig
+ * @module ShieldedProposalMultisig
  * @description A shielded multisig preset composing `SignerManager`,
  * `ProposalManager`, and `ShieldedTreasury`. Signers approve proposals that
  * transfer shielded tokens out of the treasury once the configured threshold
@@ -64,7 +64,7 @@ export circuit createShieldedProposal(
   assert(
     to.kind == Proposal_RecipientKind.ShieldedUser
       || to.kind == Proposal_RecipientKind.Contract,
-    "ShieldedMultiSig: recipient must be a shielded user or contract"
+    "ShieldedProposalMultisig: recipient must be a shielded user or contract"
   );
 
   return Proposal__createProposal(to, color, amount);
