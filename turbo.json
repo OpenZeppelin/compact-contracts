@@ -64,7 +64,6 @@
         "compact:security",
         "compact:utils",
         "compact:access",
-        "compact:archive",
         "compact:multisig",
         "compact:token"
       ]
