@@ -45,10 +45,10 @@ import { emptyKeyArtifacts } from './keyIntegrity.ts';
  * below go through it (cached keygen, dependency ordering).
  *
  * Usage (via the root package.json scripts):
- *   yarn test:live                        # every live-ready category
- *   yarn test:live:multisig               # one category
- *   yarn test:live:multisig -- Forwarder  # files within a category
- *   yarn test:live --list                 # live-ready categories (JSON)
+ *   yarn test:live                     # every live-ready category
+ *   yarn test:live multisig            # one category
+ *   yarn test:live multisig Forwarder  # files within a category
+ *   yarn test:live --list              # live-ready categories (JSON)
  *
  * Node runs this .ts directly (type stripping); only `node:` builtins.
  */
