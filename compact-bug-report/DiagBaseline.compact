@@ -1,0 +1,15 @@
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+export ledger _out: Field;
+export ledger _outB: Bytes<32>;
+
+// Baseline A: the pattern our contracts use today - persistentHash (SHA-256)
+// of two field-sized values.
+export circuit shaHash2(a: Field, b: Field): [] {
+  _outB = disclose(persistentHash<Vector<2, Field>>([a, b]));
+}
+
+// Baseline B: the platform's circuit-efficient hash (not upgrade-stable).
+export circuit transientHash2(a: Field, b: Field): [] {
+  _out = disclose(transientHash<Vector<2, Field>>([a, b]));
+}

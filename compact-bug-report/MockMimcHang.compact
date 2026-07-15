@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: MIT
+
+// REPRO — DO NOT ADD TO BUILD SWEEPS: compiling this contract hangs
+// compactc 0.31.0/0.31.1 (>9 min, killed). The `hash4` re-export inlines
+// three chained 110-round MiMC compressions (~330 unrolled rounds), which
+// exceeds the front-end's superlinear scaling budget. See README.md.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../contracts/src/crypto/Mimc" prefix Mimc_;
+
+export pure circuit compress(h: Field, m: Field): Field {
+  return Mimc_compress(h, m);
+}
+
+export pure circuit hash2(a: Field, b: Field): Field {
+  return Mimc_hash2(a, b);
+}
+
+export pure circuit hash4(a: Field, b: Field, c: Field, d: Field): Field {
+  return Mimc_hash4(a, b, c, d);
+}

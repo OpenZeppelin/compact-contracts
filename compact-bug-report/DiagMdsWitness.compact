@@ -1,0 +1,51 @@
+// Workaround test: materialize each linear layer's output through a witness
+// hint pinned by asserts. If the compiler treats witness returns as opaque
+// wires (and does not substitute them away via equality propagation), the
+// exponential re-expansion of chained linear layers cannot happen.
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+
+export ledger _out: Field;
+
+struct St { s0: Field; s1: Field; s2: Field; }
+
+// Identity hint: implementation must return its argument unchanged; the
+// asserts in materialize() enforce it, so a wrong witness only fails proofs.
+witness wit_wire(s: St): St;
+
+circuit materialize(s: St): St {
+  const h = wit_wire(s);
+  assert(h.s0 == s.s0, "wire hint mismatch");
+  assert(h.s1 == s.s1, "wire hint mismatch");
+  assert(h.s2 == s.s2, "wire hint mismatch");
+  return h;
+}
+
+circuit mds(s: St): St {
+  return materialize(St {
+    s0: (12345678901 as Field) * s.s0 + (22345678901 as Field) * s.s1 + (32345678901 as Field) * s.s2,
+    s1: (42345678901 as Field) * s.s0 + (52345678901 as Field) * s.s1 + (62345678901 as Field) * s.s2,
+    s2: (72345678901 as Field) * s.s0 + (82345678901 as Field) * s.s1 + (92345678901 as Field) * s.s2
+  });
+}
+
+export circuit chain(a: Field, b: Field, c: Field): [] {
+  const s0 = St { s0: a, s1: b, s2: c };
+  const s1 = mds(s0);
+  const s2 = mds(s1);
+  const s3 = mds(s2);
+  const s4 = mds(s3);
+  const s5 = mds(s4);
+  const s6 = mds(s5);
+  const s7 = mds(s6);
+  const s8 = mds(s7);
+  const s9 = mds(s8);
+  const s10 = mds(s9);
+  const s11 = mds(s10);
+  const s12 = mds(s11);
+  const s13 = mds(s12);
+  const s14 = mds(s13);
+  const s15 = mds(s14);
+  const s16 = mds(s15);
+  _out = disclose(s16.s0 + s16.s1 + s16.s2);
+}

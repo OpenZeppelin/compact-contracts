@@ -1,0 +1,44 @@
+// Witness-FREE workaround test: materialize each linear layer's output via a
+// semantically-identity ternary (x == 0 ? 0 : x). The mux output is a
+// constrained wire, so downstream rounds reference wires instead of
+// re-expandable linear combinations. Unlike the wit_wire hint this keeps
+// circuits pure (no witness interface).
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+
+export ledger _out: Field;
+
+struct St { s0: Field; s1: Field; s2: Field; }
+
+circuit wire(x: Field): Field {
+  return x == (0 as Field) ? (0 as Field) : x;
+}
+
+circuit mds(s: St): St {
+  return St {
+    s0: wire((12345678901 as Field) * s.s0 + (22345678901 as Field) * s.s1 + (32345678901 as Field) * s.s2),
+    s1: wire((42345678901 as Field) * s.s0 + (52345678901 as Field) * s.s1 + (62345678901 as Field) * s.s2),
+    s2: wire((72345678901 as Field) * s.s0 + (82345678901 as Field) * s.s1 + (92345678901 as Field) * s.s2)
+  };
+}
+
+export circuit chain(a: Field, b: Field, c: Field): [] {
+  const s0 = St { s0: a, s1: b, s2: c };
+  const s1 = mds(s0);
+  const s2 = mds(s1);
+  const s3 = mds(s2);
+  const s4 = mds(s3);
+  const s5 = mds(s4);
+  const s6 = mds(s5);
+  const s7 = mds(s6);
+  const s8 = mds(s7);
+  const s9 = mds(s8);
+  const s10 = mds(s9);
+  const s11 = mds(s10);
+  const s12 = mds(s11);
+  const s13 = mds(s12);
+  const s14 = mds(s13);
+  const s15 = mds(s14);
+  const s16 = mds(s15);
+  _out = disclose(s16.s0 + s16.s1 + s16.s2);
+}
