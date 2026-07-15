@@ -33,4 +33,4 @@ jobs:
           skip-compact: "true"
 
       - name: Format & Lint
-        run: yarn check:ci
+        run: yarn fmt-and-lint:ci

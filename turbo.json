@@ -2,87 +2,87 @@
   "$schema": "https://turbo.build/schema.json",
   "globalPassThroughEnv": ["GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"],
   "tasks": {
-    "compile:crypto": {
+    "compact:crypto": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/crypto/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:security": {
+    "compact:security": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/security/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:utils": {
+    "compact:utils": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/utils/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:access": {
-      "dependsOn": ["^build", "compile:utils"],
+    "compact:access": {
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/access/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:archive": {
-      "dependsOn": ["^build", "compile:utils"],
+    "compact:archive": {
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/archive/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:multisig": {
-      "dependsOn": ["^build", "compile:utils"],
+    "compact:multisig": {
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/multisig/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:token": {
-      "dependsOn": ["^build", "compile:utils"],
+    "compact:token": {
+      "dependsOn": ["^build", "compact:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/token/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile:integration": {
+    "compact:integration": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["test/integration/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compile": {
+    "compact": {
       "dependsOn": [
-        "compile:crypto",
-        "compile:security",
-        "compile:utils",
-        "compile:access",
-        "compile:archive",
-        "compile:multisig",
-        "compile:token"
+        "compact:crypto",
+        "compact:security",
+        "compact:utils",
+        "compact:access",
+        "compact:archive",
+        "compact:multisig",
+        "compact:token"
       ]
     },
     "test": {
-      "dependsOn": ["compile"],
+      "dependsOn": ["compact"],
       "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false
     },
     "test:coverage": {
-      "dependsOn": ["compile"],
+      "dependsOn": ["compact"],
       "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false
     },
     "test:integration": {
-      "dependsOn": ["compile:integration"],
+      "dependsOn": ["compact:integration"],
       "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false
@@ -111,8 +111,13 @@
       "outputs": ["dist/**"]
     },
     "types": {
-      "dependsOn": ["@openzeppelin/compact-contracts#compile"],
+      "dependsOn": ["@openzeppelin/compact-contracts#compact"],
       "outputs": [],
+      "cache": false
+    },
+    "//#fmt-and-lint": {},
+    "//#fmt-and-lint:ci": {},
+    "//#fmt-and-lint:fix": {
       "cache": false
     },
     "clean": {
