@@ -3,7 +3,7 @@ import {
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { ShieldedStatelessMultisigSimulator } from './simulators/ShieldedStatelessMultisigSimulator.js';
+import { ShieldedMultiSigV2Simulator } from './simulators/ShieldedMultiSigV2Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 
@@ -18,15 +18,15 @@ const PK2 = new Uint8Array(64).fill(0x22);
 const PK3 = new Uint8Array(64).fill(0x33);
 const NON_SIGNER_PK = new Uint8Array(64).fill(0x99);
 
-const COMMITMENT1 = ShieldedStatelessMultisigSimulator.calculateSignerId(
+const COMMITMENT1 = ShieldedMultiSigV2Simulator.calculateSignerId(
   PK1,
   INSTANCE_SALT,
 );
-const COMMITMENT2 = ShieldedStatelessMultisigSimulator.calculateSignerId(
+const COMMITMENT2 = ShieldedMultiSigV2Simulator.calculateSignerId(
   PK2,
   INSTANCE_SALT,
 );
-const COMMITMENT3 = ShieldedStatelessMultisigSimulator.calculateSignerId(
+const COMMITMENT3 = ShieldedMultiSigV2Simulator.calculateSignerId(
   PK3,
   INSTANCE_SALT,
 );
@@ -64,21 +64,17 @@ function makeQualifiedCoin(
   };
 }
 
-let multisig: ShieldedStatelessMultisigSimulator;
+let multisig: ShieldedMultiSigV2Simulator;
 
 // A fresh 2-of-3 stateless multisig. Mutating groups build one per test
 // (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
 const freshMultisig = () =>
-  ShieldedStatelessMultisigSimulator.create(
-    INSTANCE_SALT,
-    SIGNER_COMMITMENTS,
-    2n,
-  );
+  ShieldedMultiSigV2Simulator.create(INSTANCE_SALT, SIGNER_COMMITMENTS, 2n);
 
-describe('ShieldedStatelessMultisig', () => {
+describe('ShieldedMultiSigV2', () => {
   describe('constructor', () => {
     it('should initialize with 2-of-3 threshold', async () => {
-      multisig = await ShieldedStatelessMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -88,7 +84,7 @@ describe('ShieldedStatelessMultisig', () => {
     });
 
     it('should initialize with 1-of-3 threshold', async () => {
-      multisig = await ShieldedStatelessMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         1n,
@@ -98,7 +94,7 @@ describe('ShieldedStatelessMultisig', () => {
 
     it('should fail with zero threshold', async () => {
       await expect(
-        ShieldedStatelessMultisigSimulator.create(
+        ShieldedMultiSigV2Simulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
           0n,
@@ -108,18 +104,18 @@ describe('ShieldedStatelessMultisig', () => {
 
     it('should fail with threshold greater than 2', async () => {
       await expect(
-        ShieldedStatelessMultisigSimulator.create(
+        ShieldedMultiSigV2Simulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
           3n,
         ),
       ).rejects.toThrow(
-        'ShieldedStatelessMultisig: threshold cannot exceed 2 (execute verifies at most 2 signatures)',
+        'ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)',
       );
     });
 
     it('should register all signer commitments', async () => {
-      multisig = await ShieldedStatelessMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -130,12 +126,12 @@ describe('ShieldedStatelessMultisig', () => {
     });
 
     it('should reject a non-signer commitment', async () => {
-      multisig = await ShieldedStatelessMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV2Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
       );
-      const unknown = ShieldedStatelessMultisigSimulator.calculateSignerId(
+      const unknown = ShieldedMultiSigV2Simulator.calculateSignerId(
         NON_SIGNER_PK,
         INSTANCE_SALT,
       );

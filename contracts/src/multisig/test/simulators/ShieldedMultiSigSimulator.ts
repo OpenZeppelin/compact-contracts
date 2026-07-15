@@ -5,8 +5,8 @@ import {
 import {
   type Ledger,
   ledger,
-  Contract as ShieldedProposalMultisig,
-} from '../../../../artifacts/ShieldedProposalMultisig/contract/index.js';
+  Contract as ShieldedMultiSig,
+} from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EitherPKAddress = {
@@ -27,28 +27,28 @@ type Proposal = {
   status: number;
 };
 
-type ShieldedProposalMultisigArgs = readonly [
+type ShieldedMultiSigArgs = readonly [
   signers: EitherPKAddress[],
   thresh: bigint,
 ];
 
-const ShieldedProposalMultisigSimulatorBase = createSimulator<
+const ShieldedMultiSigSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ShieldedProposalMultisig<EmptyPrivateState>,
-  ShieldedProposalMultisigArgs
+  ShieldedMultiSig<EmptyPrivateState>,
+  ShieldedMultiSigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedProposalMultisig<EmptyPrivateState>(witnesses),
+    new ShieldedMultiSig<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedProposalMultisig',
+  artifactName: 'ShieldedMultiSig',
 });
 
-export class ShieldedProposalMultisigSimulator extends ShieldedProposalMultisigSimulatorBase {
+export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
   static async create(
     signers: EitherPKAddress[],
     thresh: bigint,
@@ -56,12 +56,12 @@ export class ShieldedProposalMultisigSimulator extends ShieldedProposalMultisigS
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedProposalMultisigSimulator> {
+  ): Promise<ShieldedMultiSigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [signers, thresh],
       options,
-    ) as Promise<ShieldedProposalMultisigSimulator>;
+    ) as Promise<ShieldedMultiSigSimulator>;
   }
 
   // Deposit

@@ -4,8 +4,8 @@ import * as utils from '#test-utils/fixtures/address.js';
 import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
 import {
   calculateSignerId,
-  NativeShieldedTokenMultisigSimulator,
-} from './simulators/NativeShieldedTokenMultisigSimulator.js';
+  ShieldedMultiSigV3Simulator,
+} from './simulators/ShieldedMultiSigV3Simulator.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────
 
@@ -60,23 +60,23 @@ function makeQualifiedCoin(
   };
 }
 
-let multisig: NativeShieldedTokenMultisigSimulator;
+let multisig: ShieldedMultiSigV3Simulator;
 
 // A fresh multisig-token instance. Mutating groups build one per test
 // (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
 // live deploy tx.
 const freshMultisig = () =>
-  NativeShieldedTokenMultisigSimulator.create(
+  ShieldedMultiSigV3Simulator.create(
     INSTANCE_SALT,
     INIT_COIN_NONCE,
     TOKEN_DOMAIN,
     SIGNER_COMMITMENTS,
   );
 
-describe('NativeShieldedTokenMultisig', () => {
+describe('ShieldedMultiSigV3', () => {
   describe('constructor', () => {
     it('should initialize', async () => {
-      multisig = await NativeShieldedTokenMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV3Simulator.create(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -87,7 +87,7 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     it('should register all signer commitments', async () => {
-      multisig = await NativeShieldedTokenMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV3Simulator.create(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -99,7 +99,7 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     it('should reject a non-signer commitment', async () => {
-      multisig = await NativeShieldedTokenMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV3Simulator.create(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -114,7 +114,7 @@ describe('NativeShieldedTokenMultisig', () => {
 
     it('should fail with duplicate signer commitments', async () => {
       await expect(
-        NativeShieldedTokenMultisigSimulator.create(
+        ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,
@@ -124,7 +124,7 @@ describe('NativeShieldedTokenMultisig', () => {
     });
 
     it('should store token domain', async () => {
-      multisig = await NativeShieldedTokenMultisigSimulator.create(
+      multisig = await ShieldedMultiSigV3Simulator.create(
         INSTANCE_SALT,
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
@@ -452,7 +452,7 @@ describe('NativeShieldedTokenMultisig', () => {
         const altDomain = new Uint8Array(32);
         Buffer.from('alt:token:').copy(altDomain);
 
-        const alt = await NativeShieldedTokenMultisigSimulator.create(
+        const alt = await ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           altDomain,
@@ -493,7 +493,7 @@ describe('NativeShieldedTokenMultisig', () => {
       });
 
       it('should derive different message hashes for different instances', async () => {
-        const instance2 = await NativeShieldedTokenMultisigSimulator.create(
+        const instance2 = await ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,

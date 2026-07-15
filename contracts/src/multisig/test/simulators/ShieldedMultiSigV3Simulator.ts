@@ -6,28 +6,28 @@ import {
   type ContractAddress,
   type Either,
   ledger,
-  Contract as NativeShieldedTokenMultisigContract,
   pureCircuits,
+  Contract as ShieldedMultiSigV3Contract,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/NativeShieldedTokenMultisig/contract/index.js';
+} from '../../../../artifacts/ShieldedMultiSigV3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type NativeShieldedTokenMultisigArgs = readonly [
+type ShieldedMultiSigV3Args = readonly [
   instanceSalt: Uint8Array,
   initCoinNonce: Uint8Array,
   tokenDomain: Uint8Array,
   signerCommitments: Uint8Array[],
 ];
 
-const NativeShieldedTokenMultisigSimulatorBase = createSimulator<
+const ShieldedMultiSigV3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  NativeShieldedTokenMultisigContract<EmptyPrivateState>,
-  NativeShieldedTokenMultisigArgs
+  ShieldedMultiSigV3Contract<EmptyPrivateState>,
+  ShieldedMultiSigV3Args
 >({
   contractFactory: (witnesses) =>
-    new NativeShieldedTokenMultisigContract<EmptyPrivateState>(witnesses),
+    new ShieldedMultiSigV3Contract<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
@@ -37,10 +37,10 @@ const NativeShieldedTokenMultisigSimulatorBase = createSimulator<
   ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'NativeShieldedTokenMultisig',
+  artifactName: 'ShieldedMultiSigV3',
 });
 
-export class NativeShieldedTokenMultisigSimulator extends NativeShieldedTokenMultisigSimulatorBase {
+export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     initCoinNonce: Uint8Array,
@@ -50,12 +50,12 @@ export class NativeShieldedTokenMultisigSimulator extends NativeShieldedTokenMul
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<NativeShieldedTokenMultisigSimulator> {
+  ): Promise<ShieldedMultiSigV3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
       options,
-    ) as Promise<NativeShieldedTokenMultisigSimulator>;
+    ) as Promise<ShieldedMultiSigV3Simulator>;
   }
 
   public _calculateSignerId(
