@@ -6,8 +6,8 @@ import {
   type Ledger,
   ledger,
   pureCircuits,
-  Contract as ShieldedMultiSigV2,
-} from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
+  Contract as ShieldedStatelessMultisig,
+} from '../../../../artifacts/ShieldedStatelessMultisig/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
@@ -23,21 +23,21 @@ type ShieldedSendResult = {
   sent: ShieldedCoinInfo;
 };
 
-type ShieldedMultiSigV2Args = readonly [
+type ShieldedStatelessMultisigArgs = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   thresh: bigint,
 ];
 
-const ShieldedMultiSigV2SimulatorBase = createSimulator<
+const ShieldedStatelessMultisigSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ShieldedMultiSigV2<EmptyPrivateState>,
-  ShieldedMultiSigV2Args
+  ShieldedStatelessMultisig<EmptyPrivateState>,
+  ShieldedStatelessMultisigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV2<EmptyPrivateState>(witnesses),
+    new ShieldedStatelessMultisig<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (instanceSalt, signerCommitments, thresh) => [
     instanceSalt,
@@ -46,10 +46,10 @@ const ShieldedMultiSigV2SimulatorBase = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedMultiSigV2',
+  artifactName: 'ShieldedStatelessMultisig',
 });
 
-export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
+export class ShieldedStatelessMultisigSimulator extends ShieldedStatelessMultisigSimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
@@ -58,12 +58,12 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigV2Simulator> {
+  ): Promise<ShieldedStatelessMultisigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [instanceSalt, signerCommitments, thresh],
       options,
-    ) as Promise<ShieldedMultiSigV2Simulator>;
+    ) as Promise<ShieldedStatelessMultisigSimulator>;
   }
 
   public static calculateSignerId(

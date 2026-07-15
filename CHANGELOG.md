@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add EcdhMask (#655)
 
+### Changed
+
+- Rename the shielded multisig presets by capability: `ShieldedMultiSig` → `ShieldedProposalMultisig`, `ShieldedMultiSigV2` → `ShieldedStatelessMultisig`, and `ShieldedMultiSigV3` → `NativeShieldedTokenMultisig`. (#682)
+
 ## 0.3.0-alpha (2026-06-30)
 
 ### Added
