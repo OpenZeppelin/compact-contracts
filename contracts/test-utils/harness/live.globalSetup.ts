@@ -44,7 +44,7 @@ const MAX_SCAN_BLOCKS = Number(
 const SCAN_CHUNK = 32;
 const SCAN_CONCURRENCY = 8;
 
-const ENV_UP_HINT = "run 'corepack yarn env:up' to reset the local stack";
+const ENV_UP_HINT = "run 'yarn env:up' to reset the local stack";
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));

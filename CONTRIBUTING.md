@@ -159,24 +159,24 @@ While the prerequisites above must be satisfied prior to having your pull reques
 
 ## Running Tests
 
-Run all commands from the repository root, and always invoke Yarn through `corepack`.
+Run all commands from the repository root. Enable Corepack once (`corepack enable`) so `yarn` resolves to the version pinned in `package.json`.
 
 ### Unit Tests
 
 Unit tests run against an in-process mock backend (no network, ZK proving skipped):
 
 ```bash
-corepack yarn test
+yarn test
 ```
 
 ### Live Tests
 
-Live tests run against a local Midnight network (node, indexer, and proof server) defined in [`local-env.yml`](./local-env.yml). They require [Docker](https://docs.docker.com/get-docker/) and a completed `corepack yarn install`.
+Live tests run against a local Midnight network (node, indexer, and proof server) defined in [`local-env.yml`](./local-env.yml). They require [Docker](https://docs.docker.com/get-docker/) and a completed `yarn install`.
 
 One command runs everything — it compiles, resets the stack, runs a quick harness smoke, then each live-ready category sequentially on a freshly reset node:
 
 ```bash
-corepack yarn test:live
+yarn test:live
 ```
 
 Currently `multisig` is the only live-ready category; the others still assume dry-only semantics and are skipped (listed in the run banner). Each category joins the run — with its own `test:live:<category>` script — as its specs are refactored for the live backend.
@@ -192,19 +192,19 @@ name to run just that file on the live backend — the fast loop while iterating
 on one feature, instead of waiting for the whole category:
 
 ```bash
-corepack yarn test:live:multisig                     # the whole category
-corepack yarn test:live:multisig -- ShieldedTreasury # just that one file
-corepack yarn test:live:multisig -- Forwarder        # any file matching "Forwarder"
+yarn test:live:multisig                     # the whole category
+yarn test:live:multisig -- ShieldedTreasury # just that one file
+yarn test:live:multisig -- Forwarder        # any file matching "Forwarder"
 ```
 
 The two-round flake check still applies to a single-file run, so a green result
 means the same thing it does for the full suite.
 
-Stop the network when done: `corepack yarn env:down`. (No manual `env:up` is needed — the runner resets the stack itself.)
+Stop the network when done: `yarn env:down`. (No manual `env:up` is needed — the runner resets the stack itself.)
 
 > **Note:** The live tests all run against one shared node, so state left by an earlier run can make a later one fail. Two rules keep them reliable, both enforced by a guard that fails fast, before any wallet build:
 >
-> 1. **Start from a fresh node.** State left by a previous run makes shielded spends fail with node `Custom error: 103`. The guard aborts if it finds any shielded coin event beyond genesis. The `test:live*` runner resets for you; reset manually with `corepack yarn env:up`.
+> 1. **Start from a fresh node.** State left by a previous run makes shielded spends fail with node `Custom error: 103`. The guard aborts if it finds any shielded coin event beyond genesis. The `test:live*` runner resets for you; reset manually with `yarn env:up`.
 > 2. **One live run at a time.** A pid-stamped lock (`contracts/logs/.live-run.lock`) makes a second concurrent run abort.
 
 Environment knobs:
@@ -221,7 +221,7 @@ Environment knobs:
 > **Tip:** to save the run to a colored, readable log, force color and pipe to `tee`. Piping (stdout is no longer a TTY) makes vitest print one clean line per result instead of an animated spinner, and `FORCE_COLOR=1` keeps the color. Write it to a `.ansi` file:
 >
 > ```bash
-> FORCE_COLOR=1 corepack yarn test:live:multisig 2>&1 | tee logs/live-multisig.ansi
+> FORCE_COLOR=1 yarn test:live:multisig 2>&1 | tee logs/live-multisig.ansi
 > ```
 >
 > The file stores ANSI color codes, so render them rather than reading them raw. In VS Code, an ANSI extension such as [`iliazeus.vscode-ansi`](https://marketplace.visualstudio.com/items?itemName=iliazeus.vscode-ansi) renders a `.ansi` file via **"ANSI Text: Open Preview"**. In a terminal, use `less -R logs/live-multisig.ansi`. On Linux, prefix `systemd-inhibit --why="live tests"` for a long run.
