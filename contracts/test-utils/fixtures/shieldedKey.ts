@@ -4,10 +4,7 @@
 // `Either<ZswapCoinPublicKey, ContractAddress>`; its `.left` is the coin public
 // key (`EncodedCoinPublicKey`) that callers needing a bare key read directly.
 import type { EncodedRecipient } from '@midnight-ntwrk/compact-runtime';
-import {
-  createEitherTestUser,
-  eitherUserFromCoinPublicKey,
-} from './address.js';
+import { eitherUserFromCoinPublicKey, toHexPadded } from './address.js';
 
 /**
  * Backend-aware shielded coin-public-key fixture, so one spec runs unchanged on
@@ -34,8 +31,9 @@ const coinPkEnvVar = (alias: string): string =>
  * backends. On live it resolves to the named wallet's own coin public key
  * (published by the harness as `MIDNIGHT_<ALIAS>_COIN_PK`), so `.as(alias)`
  * submits from that wallet and the circuit's `ownPublicKey()` matches it; on dry
- * it is the deterministic synthetic key `createEitherTestUser(alias)`, exactly
- * what the dry backend resolves `.as(alias)` to. Callers needing a bare
+ * it is the deterministic synthetic key
+ * `eitherUserFromCoinPublicKey(toHexPadded(alias))`, exactly what the dry
+ * backend resolves `.as(alias)` to. Callers needing a bare
  * `EncodedCoinPublicKey` (not an `Either`) read `.left`.
  *
  * The `deployer` default suits a send recipient / drain parent: on live that key
@@ -49,5 +47,7 @@ const coinPkEnvVar = (alias: string): string =>
  */
 export const shieldedTestKey = (alias = 'deployer'): EncodedRecipient => {
   const pk = process.env[coinPkEnvVar(alias)];
-  return pk ? eitherUserFromCoinPublicKey(pk) : createEitherTestUser(alias);
+  return pk
+    ? eitherUserFromCoinPublicKey(pk)
+    : eitherUserFromCoinPublicKey(toHexPadded(alias));
 };
