@@ -28,17 +28,18 @@ describe('Signer', () => {
       ['getThreshold', []],
     ];
 
-    it.each(
-      circuitsRequiringInit,
-    )('%s should fail', async (circuitName, args) => {
-      await expect(
-        (
-          contract[circuitName as keyof SignerSimulator] as (
-            ...a: unknown[]
-          ) => Promise<unknown>
-        )(...args),
-      ).rejects.toThrow('Signer: contract not initialized');
-    });
+    it.each(circuitsRequiringInit)(
+      '%s should fail',
+      async (circuitName, args) => {
+        await expect(
+          (
+            contract[circuitName as keyof SignerSimulator] as (
+              ...a: unknown[]
+            ) => Promise<unknown>
+          )(...args),
+        ).rejects.toThrow('Signer: contract not initialized');
+      },
+    );
 
     it('isSigner should succeed (no init guard)', async () => {
       expect(await contract.isSigner(SIGNER)).toEqual(false);

@@ -78,13 +78,14 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       ],
     ];
 
-    it.each(
-      circuitsToFail,
-    )('should revert %s before initialize', async (method, args) => {
-      await expect(
-        (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
-      ).rejects.toThrow('NativeShieldedToken: contract not initialized');
-    });
+    it.each(circuitsToFail)(
+      'should revert %s before initialize',
+      async (method, args) => {
+        await expect(
+          (token[method] as (...a: unknown[]) => Promise<unknown>)(...args),
+        ).rejects.toThrow('NativeShieldedToken: contract not initialized');
+      },
+    );
   });
 
   describe('_mint (per domain)', () => {
