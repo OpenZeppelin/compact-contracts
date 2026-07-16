@@ -122,17 +122,18 @@ describe('ShieldedAccessControl', () => {
       ['_setRoleAdmin', [ROLE_ADMIN, ROLE_ADMIN]],
     ];
 
-    it.each(
-      circuitsRequiringInit,
-    )('%s should fail', async (circuitName, args) => {
-      await expect(
-        (
-          contract[circuitName as keyof ShieldedAccessControlSimulator] as (
-            ...a: unknown[]
-          ) => Promise<unknown>
-        )(...args),
-      ).rejects.toThrow('ShieldedAccessControl: contract not initialized');
-    });
+    it.each(circuitsRequiringInit)(
+      '%s should fail',
+      async (circuitName, args) => {
+        await expect(
+          (
+            contract[circuitName as keyof ShieldedAccessControlSimulator] as (
+              ...a: unknown[]
+            ) => Promise<unknown>
+          )(...args),
+        ).rejects.toThrow('ShieldedAccessControl: contract not initialized');
+      },
+    );
 
     it('_grantRole should independently check initialization', async () => {
       await expect(
@@ -154,15 +155,16 @@ describe('ShieldedAccessControl', () => {
       ['computeAccountId', [ADMIN_SK, INSTANCE_SALT]],
     ];
 
-    it.each(
-      circuitsNotRequiringInit,
-    )('%s should succeed', async (circuitName, args) => {
-      await (
-        contract[circuitName as keyof ShieldedAccessControlSimulator] as (
-          ...a: unknown[]
-        ) => Promise<unknown>
-      )(...args);
-    });
+    it.each(circuitsNotRequiringInit)(
+      '%s should succeed',
+      async (circuitName, args) => {
+        await (
+          contract[circuitName as keyof ShieldedAccessControlSimulator] as (
+            ...a: unknown[]
+          ) => Promise<unknown>
+        )(...args);
+      },
+    );
 
     it('should fail with zero instanceSalt', async () => {
       await expect(

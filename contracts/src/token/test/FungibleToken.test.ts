@@ -354,66 +354,70 @@ describe('FungibleToken', () => {
     });
 
     describe('_unsafeTransfer', () => {
-      describe.each(
-        recipientTypes,
-      )('when the recipient is a %s', (_, recipient) => {
-        beforeEach(async () => {
-          await token._mint(OWNER.either, AMOUNT);
-          expect(await token.balanceOf(OWNER.either)).toEqual(AMOUNT);
-          expect(await token.balanceOf(recipient)).toEqual(0n);
-        });
+      describe.each(recipientTypes)(
+        'when the recipient is a %s',
+        (_, recipient) => {
+          beforeEach(async () => {
+            await token._mint(OWNER.either, AMOUNT);
+            expect(await token.balanceOf(OWNER.either)).toEqual(AMOUNT);
+            expect(await token.balanceOf(recipient)).toEqual(0n);
+          });
 
-        afterEach(async () => {
-          expect(await token.totalSupply()).toEqual(AMOUNT);
-        });
+          afterEach(async () => {
+            expect(await token.totalSupply()).toEqual(AMOUNT);
+          });
 
-        it('should transfer partial', async () => {
-          await token.privateState.injectSecretKey(OWNER.secretKey);
+          it('should transfer partial', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
 
-          const partialAmt = AMOUNT - 1n;
-          const txSuccess = await token._unsafeTransfer(recipient, partialAmt);
+            const partialAmt = AMOUNT - 1n;
+            const txSuccess = await token._unsafeTransfer(
+              recipient,
+              partialAmt,
+            );
 
-          expect(txSuccess).toBe(true);
-          expect(await token.balanceOf(OWNER.either)).toEqual(1n);
-          expect(await token.balanceOf(recipient)).toEqual(partialAmt);
-        });
+            expect(txSuccess).toBe(true);
+            expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+            expect(await token.balanceOf(recipient)).toEqual(partialAmt);
+          });
 
-        it('should transfer full', async () => {
-          await token.privateState.injectSecretKey(OWNER.secretKey);
+          it('should transfer full', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
 
-          const txSuccess = await token._unsafeTransfer(recipient, AMOUNT);
+            const txSuccess = await token._unsafeTransfer(recipient, AMOUNT);
 
-          expect(txSuccess).toBe(true);
-          expect(await token.balanceOf(OWNER.either)).toEqual(0n);
-          expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
-        });
+            expect(txSuccess).toBe(true);
+            expect(await token.balanceOf(OWNER.either)).toEqual(0n);
+            expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
+          });
 
-        it('should fail with insufficient balance', async () => {
-          await token.privateState.injectSecretKey(OWNER.secretKey);
+          it('should fail with insufficient balance', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
 
-          await expect(
-            token._unsafeTransfer(recipient, AMOUNT + 1n),
-          ).rejects.toThrow('FungibleToken: insufficient balance');
-        });
+            await expect(
+              token._unsafeTransfer(recipient, AMOUNT + 1n),
+            ).rejects.toThrow('FungibleToken: insufficient balance');
+          });
 
-        it('should allow transfer of 0 tokens', async () => {
-          await token.privateState.injectSecretKey(OWNER.secretKey);
+          it('should allow transfer of 0 tokens', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
 
-          const txSuccess = await token._unsafeTransfer(recipient, 0n);
+            const txSuccess = await token._unsafeTransfer(recipient, 0n);
 
-          expect(txSuccess).toBe(true);
-          expect(await token.balanceOf(OWNER.either)).toEqual(AMOUNT);
-          expect(await token.balanceOf(recipient)).toEqual(0n);
-        });
+            expect(txSuccess).toBe(true);
+            expect(await token.balanceOf(OWNER.either)).toEqual(AMOUNT);
+            expect(await token.balanceOf(recipient)).toEqual(0n);
+          });
 
-        it('should handle transfer with empty _balances', async () => {
-          await token.privateState.injectSecretKey(SPENDER.secretKey);
+          it('should handle transfer with empty _balances', async () => {
+            await token.privateState.injectSecretKey(SPENDER.secretKey);
 
-          await expect(token._unsafeTransfer(recipient, 1n)).rejects.toThrow(
-            'FungibleToken: insufficient balance',
-          );
-        });
-      });
+            await expect(token._unsafeTransfer(recipient, 1n)).rejects.toThrow(
+              'FungibleToken: insufficient balance',
+            );
+          });
+        },
+      );
 
       it('should fail with transfer to zero (accountId)', async () => {
         await token._mint(OWNER.either, AMOUNT);
@@ -637,89 +641,90 @@ describe('FungibleToken', () => {
         expect(await token.totalSupply()).toEqual(AMOUNT);
       });
 
-      describe.each(
-        recipientTypes,
-      )('when the recipient is a %s', (_, recipient) => {
-        it('should transferFrom spender (partial)', async () => {
-          await token.privateState.injectSecretKey(SPENDER.secretKey);
+      describe.each(recipientTypes)(
+        'when the recipient is a %s',
+        (_, recipient) => {
+          it('should transferFrom spender (partial)', async () => {
+            await token.privateState.injectSecretKey(SPENDER.secretKey);
 
-          const partialAmt = AMOUNT - 1n;
-          const txSuccess = await token._unsafeTransferFrom(
-            OWNER.either,
-            recipient,
-            partialAmt,
-          );
-          expect(txSuccess).toBe(true);
+            const partialAmt = AMOUNT - 1n;
+            const txSuccess = await token._unsafeTransferFrom(
+              OWNER.either,
+              recipient,
+              partialAmt,
+            );
+            expect(txSuccess).toBe(true);
 
-          expect(await token.balanceOf(OWNER.either)).toEqual(1n);
-          expect(await token.balanceOf(recipient)).toEqual(partialAmt);
-          expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
-            1n,
-          );
-        });
+            expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+            expect(await token.balanceOf(recipient)).toEqual(partialAmt);
+            expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
+              1n,
+            );
+          });
 
-        it('should transferFrom spender (full)', async () => {
-          await token.privateState.injectSecretKey(SPENDER.secretKey);
+          it('should transferFrom spender (full)', async () => {
+            await token.privateState.injectSecretKey(SPENDER.secretKey);
 
-          const txSuccess = await token._unsafeTransferFrom(
-            OWNER.either,
-            recipient,
-            AMOUNT,
-          );
-          expect(txSuccess).toBe(true);
+            const txSuccess = await token._unsafeTransferFrom(
+              OWNER.either,
+              recipient,
+              AMOUNT,
+            );
+            expect(txSuccess).toBe(true);
 
-          expect(await token.balanceOf(OWNER.either)).toEqual(0n);
-          expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
-          expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
-            0n,
-          );
-        });
+            expect(await token.balanceOf(OWNER.either)).toEqual(0n);
+            expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
+            expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
+              0n,
+            );
+          });
 
-        it('should transferFrom and not consume infinite allowance', async () => {
-          await token.privateState.injectSecretKey(OWNER.secretKey);
-          await token.approve(SPENDER.either, MAX_UINT128);
+          it('should transferFrom and not consume infinite allowance', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
+            await token.approve(SPENDER.either, MAX_UINT128);
 
-          await token.privateState.injectSecretKey(SPENDER.secretKey);
-          const txSuccess = await token._unsafeTransferFrom(
-            OWNER.either,
-            recipient,
-            AMOUNT,
-          );
-          expect(txSuccess).toBe(true);
+            await token.privateState.injectSecretKey(SPENDER.secretKey);
+            const txSuccess = await token._unsafeTransferFrom(
+              OWNER.either,
+              recipient,
+              AMOUNT,
+            );
+            expect(txSuccess).toBe(true);
 
-          expect(await token.balanceOf(OWNER.either)).toEqual(0n);
-          expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
-          expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
-            MAX_UINT128,
-          );
-        });
+            expect(await token.balanceOf(OWNER.either)).toEqual(0n);
+            expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
+            expect(await token.allowance(OWNER.either, SPENDER.either)).toEqual(
+              MAX_UINT128,
+            );
+          });
 
-        it('should fail when transfer amount exceeds allowance', async () => {
-          await token.privateState.injectSecretKey(SPENDER.secretKey);
+          it('should fail when transfer amount exceeds allowance', async () => {
+            await token.privateState.injectSecretKey(SPENDER.secretKey);
 
-          await expect(
-            token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT + 1n),
-          ).rejects.toThrow('FungibleToken: insufficient allowance');
-        });
+            await expect(
+              token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT + 1n),
+            ).rejects.toThrow('FungibleToken: insufficient allowance');
+          });
 
-        it('should fail when transfer amount exceeds balance', async () => {
-          await token.privateState.injectSecretKey(OWNER.secretKey);
-          await token.approve(SPENDER.either, AMOUNT + 1n);
+          it('should fail when transfer amount exceeds balance', async () => {
+            await token.privateState.injectSecretKey(OWNER.secretKey);
+            await token.approve(SPENDER.either, AMOUNT + 1n);
 
-          await token.privateState.injectSecretKey(SPENDER.secretKey);
-          await expect(
-            token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT + 1n),
-          ).rejects.toThrow('FungibleToken: insufficient balance');
-        });
+            await token.privateState.injectSecretKey(SPENDER.secretKey);
+            await expect(
+              token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT + 1n),
+            ).rejects.toThrow('FungibleToken: insufficient balance');
+          });
 
-        it('should fail when spender does not have allowance', async () => {
-          await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
+          it('should fail when spender does not have allowance', async () => {
+            await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
 
-          await expect(
-            token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT),
-          ).rejects.toThrow('FungibleToken: insufficient allowance');
-        });
-      });
+            await expect(
+              token._unsafeTransferFrom(OWNER.either, recipient, AMOUNT),
+            ).rejects.toThrow('FungibleToken: insufficient allowance');
+          });
+        },
+      );
 
       it('should fail to transfer to the zero address (accountId)', async () => {
         await token.privateState.injectSecretKey(SPENDER.secretKey);
@@ -771,44 +776,49 @@ describe('FungibleToken', () => {
         expect(await token.totalSupply()).toEqual(AMOUNT);
       });
 
-      describe.each(
-        recipientTypes,
-      )('when the recipient is a %s', (_, recipient) => {
-        it('should update balances (partial)', async () => {
-          const partialAmt = AMOUNT - 1n;
-          await token._unsafeUncheckedTransfer(
-            OWNER.either,
-            recipient,
-            partialAmt,
-          );
-
-          expect(await token.balanceOf(OWNER.either)).toEqual(1n);
-          expect(await token.balanceOf(recipient)).toEqual(partialAmt);
-        });
-
-        it('should update balances (full)', async () => {
-          await token._unsafeUncheckedTransfer(OWNER.either, recipient, AMOUNT);
-
-          expect(await token.balanceOf(OWNER.either)).toEqual(0n);
-          expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
-        });
-
-        it('should fail when transfer amount exceeds balance', async () => {
-          await expect(
-            token._unsafeUncheckedTransfer(
+      describe.each(recipientTypes)(
+        'when the recipient is a %s',
+        (_, recipient) => {
+          it('should update balances (partial)', async () => {
+            const partialAmt = AMOUNT - 1n;
+            await token._unsafeUncheckedTransfer(
               OWNER.either,
               recipient,
-              AMOUNT + 1n,
-            ),
-          ).rejects.toThrow('FungibleToken: insufficient balance');
-        });
+              partialAmt,
+            );
 
-        it('should fail when transfer from zero', async () => {
-          await expect(
-            token._unsafeUncheckedTransfer(ZERO_CONTRACT, recipient, AMOUNT),
-          ).rejects.toThrow('FungibleToken: invalid sender');
-        });
-      });
+            expect(await token.balanceOf(OWNER.either)).toEqual(1n);
+            expect(await token.balanceOf(recipient)).toEqual(partialAmt);
+          });
+
+          it('should update balances (full)', async () => {
+            await token._unsafeUncheckedTransfer(
+              OWNER.either,
+              recipient,
+              AMOUNT,
+            );
+
+            expect(await token.balanceOf(OWNER.either)).toEqual(0n);
+            expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
+          });
+
+          it('should fail when transfer amount exceeds balance', async () => {
+            await expect(
+              token._unsafeUncheckedTransfer(
+                OWNER.either,
+                recipient,
+                AMOUNT + 1n,
+              ),
+            ).rejects.toThrow('FungibleToken: insufficient balance');
+          });
+
+          it('should fail when transfer from zero', async () => {
+            await expect(
+              token._unsafeUncheckedTransfer(ZERO_CONTRACT, recipient, AMOUNT),
+            ).rejects.toThrow('FungibleToken: invalid sender');
+          });
+        },
+      );
 
       it('should fail when transfer to zero (accountId)', async () => {
         await expect(
@@ -917,31 +927,32 @@ describe('FungibleToken', () => {
     });
 
     describe('_unsafeMint', () => {
-      describe.each(
-        recipientTypes,
-      )('when the recipient is a %s', (_, recipient) => {
-        it('should mint and update supply', async () => {
-          expect(await token.totalSupply()).toEqual(0n);
+      describe.each(recipientTypes)(
+        'when the recipient is a %s',
+        (_, recipient) => {
+          it('should mint and update supply', async () => {
+            expect(await token.totalSupply()).toEqual(0n);
 
-          await token._unsafeMint(recipient, AMOUNT);
-          expect(await token.totalSupply()).toEqual(AMOUNT);
-          expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
-        });
+            await token._unsafeMint(recipient, AMOUNT);
+            expect(await token.totalSupply()).toEqual(AMOUNT);
+            expect(await token.balanceOf(recipient)).toEqual(AMOUNT);
+          });
 
-        it('should catch mint overflow', async () => {
-          await token._unsafeMint(recipient, MAX_UINT128);
+          it('should catch mint overflow', async () => {
+            await token._unsafeMint(recipient, MAX_UINT128);
 
-          await expect(token._unsafeMint(recipient, 1n)).rejects.toThrow(
-            'FungibleToken: arithmetic overflow',
-          );
-        });
+            await expect(token._unsafeMint(recipient, 1n)).rejects.toThrow(
+              'FungibleToken: arithmetic overflow',
+            );
+          });
 
-        it('should allow mint of 0 tokens', async () => {
-          await token._unsafeMint(recipient, 0n);
-          expect(await token.totalSupply()).toEqual(0n);
-          expect(await token.balanceOf(recipient)).toEqual(0n);
-        });
-      });
+          it('should allow mint of 0 tokens', async () => {
+            await token._unsafeMint(recipient, 0n);
+            expect(await token.totalSupply()).toEqual(0n);
+            expect(await token.balanceOf(recipient)).toEqual(0n);
+          });
+        },
+      );
 
       it('should not mint to zero (accountId)', async () => {
         await expect(token._unsafeMint(ZERO_ACCOUNT, AMOUNT)).rejects.toThrow(

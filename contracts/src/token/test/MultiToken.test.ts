@@ -668,134 +668,139 @@ describe('MultiToken', () => {
           await token.privateState.injectSecretKey(caller.secretKey);
         });
 
-        describe.each(
-          recipientTypes,
-        )('when the recipient is a %s', (_, recipient) => {
-          it('should transfer whole', async () => {
-            await token._unsafeTransferFrom(
-              OWNER.either,
-              recipient,
-              TOKEN_ID,
-              AMOUNT,
-            );
-
-            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
-          });
-
-          it('should transfer partial', async () => {
-            const partialAmt = AMOUNT - 1n;
-            await token._unsafeTransferFrom(
-              OWNER.either,
-              recipient,
-              TOKEN_ID,
-              partialAmt,
-            );
-
-            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
-              AMOUNT - partialAmt,
-            );
-            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
-              partialAmt,
-            );
-          });
-
-          it('should allow transfer of 0 tokens', async () => {
-            await token._unsafeTransferFrom(
-              OWNER.either,
-              recipient,
-              TOKEN_ID,
-              0n,
-            );
-
-            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
-              AMOUNT,
-            );
-            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
-          });
-
-          it('should handle self-transfer', async () => {
-            await token._unsafeTransferFrom(
-              OWNER.either,
-              OWNER.either,
-              TOKEN_ID,
-              AMOUNT,
-            );
-            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
-              AMOUNT,
-            );
-          });
-
-          it('should handle MAX_UINT128 transfer amount', async () => {
-            await token._mint(OWNER.either, TOKEN_ID, MAX_UINT128 - AMOUNT);
-
-            await token._unsafeTransferFrom(
-              OWNER.either,
-              recipient,
-              TOKEN_ID,
-              MAX_UINT128,
-            );
-            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
-              MAX_UINT128,
-            );
-          });
-
-          it('should handle rapid state changes', async () => {
-            await token.privateState.injectSecretKey(OWNER.secretKey);
-            await token.setApprovalForAll(SPENDER.either, true);
-
-            await token._unsafeTransferFrom(
-              OWNER.either,
-              recipient,
-              TOKEN_ID,
-              AMOUNT,
-            );
-            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
-
-            await token.setApprovalForAll(SPENDER.either, false);
-            expect(
-              await token.isApprovedForAll(OWNER.either, SPENDER.either),
-            ).toBe(false);
-
-            await token.setApprovalForAll(SPENDER.either, true);
-            expect(
-              await token.isApprovedForAll(OWNER.either, SPENDER.either),
-            ).toBe(true);
-          });
-
-          it('should fail with insufficient balance', async () => {
-            await expect(
-              token._unsafeTransferFrom(
+        describe.each(recipientTypes)(
+          'when the recipient is a %s',
+          (_, recipient) => {
+            it('should transfer whole', async () => {
+              await token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
                 TOKEN_ID,
-                AMOUNT + 1n,
-              ),
-            ).rejects.toThrow('MultiToken: insufficient balance');
-          });
+                AMOUNT,
+              );
 
-          it('should fail with nonexistent id', async () => {
-            await expect(
-              token._unsafeTransferFrom(
+              expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+              expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+                AMOUNT,
+              );
+            });
+
+            it('should transfer partial', async () => {
+              const partialAmt = AMOUNT - 1n;
+              await token._unsafeTransferFrom(
                 OWNER.either,
                 recipient,
-                NONEXISTENT_ID,
-                AMOUNT,
-              ),
-            ).rejects.toThrow('MultiToken: insufficient balance');
-          });
+                TOKEN_ID,
+                partialAmt,
+              );
 
-          it('should fail with transfer from zero', async () => {
-            await expect(
-              token._unsafeTransferFrom(
-                ZERO_ACCOUNT,
+              expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+                AMOUNT - partialAmt,
+              );
+              expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+                partialAmt,
+              );
+            });
+
+            it('should allow transfer of 0 tokens', async () => {
+              await token._unsafeTransferFrom(
+                OWNER.either,
+                recipient,
+                TOKEN_ID,
+                0n,
+              );
+
+              expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+                AMOUNT,
+              );
+              expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
+            });
+
+            it('should handle self-transfer', async () => {
+              await token._unsafeTransferFrom(
+                OWNER.either,
+                OWNER.either,
+                TOKEN_ID,
+                AMOUNT,
+              );
+              expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+                AMOUNT,
+              );
+            });
+
+            it('should handle MAX_UINT128 transfer amount', async () => {
+              await token._mint(OWNER.either, TOKEN_ID, MAX_UINT128 - AMOUNT);
+
+              await token._unsafeTransferFrom(
+                OWNER.either,
+                recipient,
+                TOKEN_ID,
+                MAX_UINT128,
+              );
+              expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+                MAX_UINT128,
+              );
+            });
+
+            it('should handle rapid state changes', async () => {
+              await token.privateState.injectSecretKey(OWNER.secretKey);
+              await token.setApprovalForAll(SPENDER.either, true);
+
+              await token._unsafeTransferFrom(
+                OWNER.either,
                 recipient,
                 TOKEN_ID,
                 AMOUNT,
-              ),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
-        });
+              );
+              expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+                AMOUNT,
+              );
+
+              await token.setApprovalForAll(SPENDER.either, false);
+              expect(
+                await token.isApprovedForAll(OWNER.either, SPENDER.either),
+              ).toBe(false);
+
+              await token.setApprovalForAll(SPENDER.either, true);
+              expect(
+                await token.isApprovedForAll(OWNER.either, SPENDER.either),
+              ).toBe(true);
+            });
+
+            it('should fail with insufficient balance', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  TOKEN_ID,
+                  AMOUNT + 1n,
+                ),
+              ).rejects.toThrow('MultiToken: insufficient balance');
+            });
+
+            it('should fail with nonexistent id', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  NONEXISTENT_ID,
+                  AMOUNT,
+                ),
+              ).rejects.toThrow('MultiToken: insufficient balance');
+            });
+
+            it('should fail with transfer from zero', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  ZERO_ACCOUNT,
+                  recipient,
+                  TOKEN_ID,
+                  AMOUNT,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
+          },
+        );
 
         it('should fail with transfer to zero (id)', async () => {
           await expect(
@@ -921,75 +926,81 @@ describe('MultiToken', () => {
           await token.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
         });
 
-        describe.each(
-          recipientTypes,
-        )('when recipient is %s', (_, recipient) => {
-          it('should fail when transfer whole', async () => {
-            await expect(
-              token._unsafeTransferFrom(
-                OWNER.either,
-                recipient,
-                TOKEN_ID,
-                AMOUNT,
-              ),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
+        describe.each(recipientTypes)(
+          'when recipient is %s',
+          (_, recipient) => {
+            it('should fail when transfer whole', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  TOKEN_ID,
+                  AMOUNT,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
 
-          it('should fail when transfer partial', async () => {
-            const partialAmt = AMOUNT - 1n;
-            await expect(
-              token._unsafeTransferFrom(
-                OWNER.either,
-                recipient,
-                TOKEN_ID,
-                partialAmt,
-              ),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
+            it('should fail when transfer partial', async () => {
+              const partialAmt = AMOUNT - 1n;
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  TOKEN_ID,
+                  partialAmt,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
 
-          it('should fail when transfer zero', async () => {
-            await expect(
-              token._unsafeTransferFrom(OWNER.either, recipient, TOKEN_ID, 0n),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
+            it('should fail when transfer zero', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  TOKEN_ID,
+                  0n,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
 
-          it('should fail with insufficient balance', async () => {
-            await expect(
-              token._unsafeTransferFrom(
-                OWNER.either,
-                recipient,
-                TOKEN_ID,
-                AMOUNT + 1n,
-              ),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
+            it('should fail with insufficient balance', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  TOKEN_ID,
+                  AMOUNT + 1n,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
 
-          it('should fail with nonexistent id', async () => {
-            await expect(
-              token._unsafeTransferFrom(
-                OWNER.either,
-                recipient,
-                NONEXISTENT_ID,
-                AMOUNT,
-              ),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
+            it('should fail with nonexistent id', async () => {
+              await expect(
+                token._unsafeTransferFrom(
+                  OWNER.either,
+                  recipient,
+                  NONEXISTENT_ID,
+                  AMOUNT,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
 
-          it('should fail with transfer from zero', async () => {
-            // With witness-based identity, the caller is H(sk) which is
-            // always non-zero. Transferring from ZERO_ACCOUNT means
-            // canonFrom != caller → isApprovedForAll(zeroAccount, caller) → false
-            // → "unauthorized operator"
-            await expect(
-              token._unsafeTransferFrom(
-                ZERO_ACCOUNT,
-                recipient,
-                TOKEN_ID,
-                AMOUNT,
-              ),
-            ).rejects.toThrow('MultiToken: unauthorized operator');
-          });
-        });
+            it('should fail with transfer from zero', async () => {
+              // With witness-based identity, the caller is H(sk) which is
+              // always non-zero. Transferring from ZERO_ACCOUNT means
+              // canonFrom != caller → isApprovedForAll(zeroAccount, caller) → false
+              // → "unauthorized operator"
+              await expect(
+                token._unsafeTransferFrom(
+                  ZERO_ACCOUNT,
+                  recipient,
+                  TOKEN_ID,
+                  AMOUNT,
+                ),
+              ).rejects.toThrow('MultiToken: unauthorized operator');
+            });
+          },
+        );
       });
     });
 
@@ -1120,79 +1131,82 @@ describe('MultiToken', () => {
         expect(await token.balanceOf(RECIPIENT.either, TOKEN_ID)).toEqual(0n);
       });
 
-      describe.each(
-        recipientTypes,
-      )('when the recipient is a %s', (_, recipient) => {
-        it('should transfer whole', async () => {
-          await token._unsafeTransfer(
-            OWNER.either,
-            recipient,
-            TOKEN_ID,
-            AMOUNT,
-          );
-
-          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
-          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
-        });
-
-        it('should transfer partial', async () => {
-          const partialAmt = AMOUNT - 1n;
-          await token._unsafeTransfer(
-            OWNER.either,
-            recipient,
-            TOKEN_ID,
-            partialAmt,
-          );
-
-          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
-            AMOUNT - partialAmt,
-          );
-          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
-            partialAmt,
-          );
-        });
-
-        it('should allow transfer of 0 tokens', async () => {
-          await token._unsafeTransfer(OWNER.either, recipient, TOKEN_ID, 0n);
-
-          expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(AMOUNT);
-          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
-        });
-
-        it('should fail with insufficient balance', async () => {
-          await expect(
-            token._unsafeTransfer(
+      describe.each(recipientTypes)(
+        'when the recipient is a %s',
+        (_, recipient) => {
+          it('should transfer whole', async () => {
+            await token._unsafeTransfer(
               OWNER.either,
               recipient,
               TOKEN_ID,
-              AMOUNT + 1n,
-            ),
-          ).rejects.toThrow('MultiToken: insufficient balance');
-        });
+              AMOUNT,
+            );
 
-        it('should fail with nonexistent id', async () => {
-          await expect(
-            token._unsafeTransfer(
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(0n);
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+          });
+
+          it('should transfer partial', async () => {
+            const partialAmt = AMOUNT - 1n;
+            await token._unsafeTransfer(
               OWNER.either,
               recipient,
-              NONEXISTENT_ID,
+              TOKEN_ID,
+              partialAmt,
+            );
+
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
+              AMOUNT - partialAmt,
+            );
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(
+              partialAmt,
+            );
+          });
+
+          it('should allow transfer of 0 tokens', async () => {
+            await token._unsafeTransfer(OWNER.either, recipient, TOKEN_ID, 0n);
+
+            expect(await token.balanceOf(OWNER.either, TOKEN_ID)).toEqual(
               AMOUNT,
-            ),
-          ).rejects.toThrow('MultiToken: insufficient balance');
-        });
+            );
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(0n);
+          });
 
-        it('should fail when transfer from 0 (id)', async () => {
-          await expect(
-            token._unsafeTransfer(ZERO_ACCOUNT, recipient, TOKEN_ID, AMOUNT),
-          ).rejects.toThrow('MultiToken: invalid sender');
-        });
+          it('should fail with insufficient balance', async () => {
+            await expect(
+              token._unsafeTransfer(
+                OWNER.either,
+                recipient,
+                TOKEN_ID,
+                AMOUNT + 1n,
+              ),
+            ).rejects.toThrow('MultiToken: insufficient balance');
+          });
 
-        it('should fail when transfer from 0 (contract address)', async () => {
-          await expect(
-            token._unsafeTransfer(ZERO_CONTRACT, recipient, TOKEN_ID, AMOUNT),
-          ).rejects.toThrow('MultiToken: invalid sender');
-        });
-      });
+          it('should fail with nonexistent id', async () => {
+            await expect(
+              token._unsafeTransfer(
+                OWNER.either,
+                recipient,
+                NONEXISTENT_ID,
+                AMOUNT,
+              ),
+            ).rejects.toThrow('MultiToken: insufficient balance');
+          });
+
+          it('should fail when transfer from 0 (id)', async () => {
+            await expect(
+              token._unsafeTransfer(ZERO_ACCOUNT, recipient, TOKEN_ID, AMOUNT),
+            ).rejects.toThrow('MultiToken: invalid sender');
+          });
+
+          it('should fail when transfer from 0 (contract address)', async () => {
+            await expect(
+              token._unsafeTransfer(ZERO_CONTRACT, recipient, TOKEN_ID, AMOUNT),
+            ).rejects.toThrow('MultiToken: invalid sender');
+          });
+        },
+      );
 
       it('should handle non-canonical fromAddress (id)', async () => {
         const nonCanonical = nonCanonicalLeft(OWNER.accountId);
@@ -1363,31 +1377,32 @@ describe('MultiToken', () => {
     });
 
     describe('_unsafeMint', () => {
-      describe.each(
-        recipientTypes,
-      )('when the recipient is a %s', (_, recipient) => {
-        it('should update balance when minting', async () => {
-          await token._unsafeMint(recipient, TOKEN_ID, AMOUNT);
+      describe.each(recipientTypes)(
+        'when the recipient is a %s',
+        (_, recipient) => {
+          it('should update balance when minting', async () => {
+            await token._unsafeMint(recipient, TOKEN_ID, AMOUNT);
 
-          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
-        });
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(AMOUNT);
+          });
 
-        it('should update balance with multiple mints', async () => {
-          for (let i = 0; i < 3; i++) {
-            await token._unsafeMint(recipient, TOKEN_ID, 1n);
-          }
+          it('should update balance with multiple mints', async () => {
+            for (let i = 0; i < 3; i++) {
+              await token._unsafeMint(recipient, TOKEN_ID, 1n);
+            }
 
-          expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(3n);
-        });
+            expect(await token.balanceOf(recipient, TOKEN_ID)).toEqual(3n);
+          });
 
-        it('should fail when overflowing uint128', async () => {
-          await token._unsafeMint(recipient, TOKEN_ID, MAX_UINT128);
+          it('should fail when overflowing uint128', async () => {
+            await token._unsafeMint(recipient, TOKEN_ID, MAX_UINT128);
 
-          await expect(
-            token._unsafeMint(recipient, TOKEN_ID, 1n),
-          ).rejects.toThrow('MultiToken: arithmetic overflow');
-        });
-      });
+            await expect(
+              token._unsafeMint(recipient, TOKEN_ID, 1n),
+            ).rejects.toThrow('MultiToken: arithmetic overflow');
+          });
+        },
+      );
 
       it('should fail when minting to zero address (id)', async () => {
         await expect(
