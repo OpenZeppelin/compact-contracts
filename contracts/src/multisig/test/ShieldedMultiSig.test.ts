@@ -159,8 +159,12 @@ describe('ShieldedMultiSig', () => {
         expect(await multisig.getSentTotal(COLOR)).toEqual(0n);
       });
 
-      it('getReceivedMinusSent should equal balance', async () => {
-        expect(await multisig.getReceivedMinusSent(COLOR)).toEqual(AMOUNT);
+      it('received minus sent should equal balance', async () => {
+        // The preset dropped getReceivedMinusSent to fit the deploy block limit;
+        // derive it from the totals the preset does expose.
+        const received = await multisig.getReceivedTotal(COLOR);
+        const sent = await multisig.getSentTotal(COLOR);
+        expect(received - sent).toEqual(AMOUNT);
       });
     });
 
@@ -235,7 +239,7 @@ describe('ShieldedMultiSig', () => {
             .as('SIGNER1')
             .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
           expect(id).toEqual(1n);
-          expect((await multisig.getProposalRecipient(id)).kind).toEqual(
+          expect((await multisig.getProposal(id)).to.kind).toEqual(
             RecipientKind.Contract,
           );
         });
@@ -473,7 +477,7 @@ describe('ShieldedMultiSig', () => {
         });
       });
 
-      describe('view - proposal delegation', () => {
+      describe('view - proposal fields', () => {
         let proposalId: bigint;
 
         beforeAll(async () => {
@@ -484,20 +488,14 @@ describe('ShieldedMultiSig', () => {
             .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
         });
 
-        it('getProposalRecipient should return recipient', async () => {
-          const recipient = await multisig.getProposalRecipient(proposalId);
-          expect(recipient.kind).toEqual(RecipientKind.ShieldedUser);
-          expect(recipient.address).toEqual(Z_RECIPIENT_PK.bytes);
-        });
-
-        it('getProposalAmount should return amount', async () => {
-          expect(await multisig.getProposalAmount(proposalId)).toEqual(
-            PROPOSAL_AMOUNT,
-          );
-        });
-
-        it('getProposalColor should return color', async () => {
-          expect(await multisig.getProposalColor(proposalId)).toEqual(COLOR);
+        // The preset dropped getProposalRecipient/Amount/Color to fit the deploy
+        // block limit; the fields are read off getProposal, the getter it exposes.
+        it('getProposal should expose recipient, amount, and color', async () => {
+          const proposal = await multisig.getProposal(proposalId);
+          expect(proposal.to.kind).toEqual(RecipientKind.ShieldedUser);
+          expect(proposal.to.address).toEqual(Z_RECIPIENT_PK.bytes);
+          expect(proposal.amount).toEqual(PROPOSAL_AMOUNT);
+          expect(proposal.color).toEqual(COLOR);
         });
       });
 
@@ -531,9 +529,9 @@ describe('ShieldedMultiSig', () => {
           expect(await multisig.getTokenBalance(COLOR)).toEqual(
             AMOUNT - PROPOSAL_AMOUNT,
           );
-          expect(await multisig.getReceivedMinusSent(COLOR)).toEqual(
-            AMOUNT - PROPOSAL_AMOUNT,
-          );
+          const received = await multisig.getReceivedTotal(COLOR);
+          const sent = await multisig.getSentTotal(COLOR);
+          expect(received - sent).toEqual(AMOUNT - PROPOSAL_AMOUNT);
         });
 
         it('should handle multiple proposals concurrently', async () => {

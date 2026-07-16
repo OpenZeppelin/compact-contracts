@@ -107,21 +107,6 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     return this.circuits.impure.getProposal(id);
   }
 
-  // getProposalRecipient / getProposalAmount / getProposalColor were dropped from
-  // the contract (redundant with getProposal; removed to fit the deploy block
-  // limit). Derive them here so specs are unchanged.
-  public async getProposalRecipient(id: bigint): Promise<Recipient> {
-    return (await this.getProposal(id)).to;
-  }
-
-  public async getProposalAmount(id: bigint): Promise<bigint> {
-    return (await this.getProposal(id)).amount;
-  }
-
-  public async getProposalColor(id: bigint): Promise<Uint8Array> {
-    return (await this.getProposal(id)).color;
-  }
-
   public getProposalStatus(id: bigint): Promise<number> {
     return this.circuits.impure.getProposalStatus(id);
   }
@@ -137,17 +122,6 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
 
   public getSentTotal(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getSentTotal(color);
-  }
-
-  // getReceivedMinusSent was dropped from the contract (redundant; removed to fit
-  // the deploy block limit). Derive it from the two tracked totals.
-  public async getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
-    // Await sequentially: on live each impure getter submits a tx, and two
-    // concurrent submissions balance against the same wallet snapshot and
-    // trigger a stale-UTXO rejection.
-    const received = await this.getReceivedTotal(color);
-    const sent = await this.getSentTotal(color);
-    return received - sent;
   }
 
   // View - Signers
