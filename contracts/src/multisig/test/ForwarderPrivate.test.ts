@@ -32,7 +32,9 @@ import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivate
 // stays a synthetic key: it only exercises the commitment gate, which rejects it
 // before any send.
 const PARENT_BYTES = shieldedTestParentKey().bytes;
-const WRONG_BYTES = utils.createEitherTestUser('WRONG').left.bytes;
+const WRONG_BYTES = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('WRONG'),
+).left.bytes;
 const OP_SECRET = new Uint8Array(32).fill(0xaa);
 const WRONG_OP_SECRET = new Uint8Array(32).fill(0xbb);
 const ZERO = new Uint8Array(32);
@@ -445,7 +447,9 @@ describe('ForwarderPrivate module', () => {
   describe.skipIf(isLiveBackend())(
     'drain — implementing contract routes the change onward (dry only)',
     () => {
-      const CHANGE_DEST = utils.createEitherTestUser('CHANGE_DEST');
+      const CHANGE_DEST = utils.eitherUserFromCoinPublicKey(
+        utils.toHexPadded('CHANGE_DEST'),
+      );
 
       it('should let the caller send the change to a different recipient using the drain result', async () => {
         const { mock, coin } = await freshMock(PARENT_BYTES);
@@ -511,7 +515,9 @@ describe('ForwarderPrivate module', () => {
           {
             is_left: true,
             left: key(PARENT_BYTES),
-            right: utils.createEitherTestUser('CHANGE_DEST').right,
+            right: utils.eitherUserFromCoinPublicKey(
+              utils.toHexPadded('CHANGE_DEST'),
+            ).right,
           },
         );
         expect(routed.change.is_some).toBe(false);

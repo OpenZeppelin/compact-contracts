@@ -7,9 +7,9 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  createEitherTestUser,
   eitherUserFromCoinPublicKey,
   encodeToPK,
+  toHexPadded,
 } from './address.js';
 
 /**
@@ -37,7 +37,7 @@ export const shieldedTestRecipient = (
   const deployerPk = process.env.MIDNIGHT_DEPLOYER_COIN_PK;
   return deployerPk
     ? eitherUserFromCoinPublicKey(deployerPk)
-    : createEitherTestUser(label);
+    : eitherUserFromCoinPublicKey(toHexPadded(label));
 };
 
 /**
@@ -65,7 +65,7 @@ export const shieldedTestParentKey = (
  * wallet's own coin public key — published by the harness as
  * `MIDNIGHT_<ALIAS>_COIN_PK` — so `.as(alias)` submits from that wallet and the
  * circuit's `ownPublicKey()` matches this key. On dry it is the deterministic
- * synthetic key `createEitherTestUser(alias)`, which is exactly what the dry
+ * synthetic key `eitherUserFromCoinPublicKey(toHexPadded(alias))`, which is exactly what the dry
  * backend resolves `.as(alias)` to. Read at module scope: the keys are published
  * by the live setup before any spec loads.
  *
@@ -73,5 +73,7 @@ export const shieldedTestParentKey = (
  */
 export const shieldedTestSigner = (alias: string): EncodedRecipient => {
   const pk = process.env[`MIDNIGHT_${alias}_COIN_PK`];
-  return pk ? eitherUserFromCoinPublicKey(pk) : createEitherTestUser(alias);
+  return pk
+    ? eitherUserFromCoinPublicKey(pk)
+    : eitherUserFromCoinPublicKey(toHexPadded(alias));
 };

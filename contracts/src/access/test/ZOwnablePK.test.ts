@@ -133,7 +133,9 @@ describe('ZOwnablePK', () => {
     });
 
     it('should allow pure computeOwnerId', async () => {
-      const eitherOwner = utils.createEitherTestUser('OWNER');
+      const eitherOwner = utils.eitherUserFromCoinPublicKey(
+        utils.toHexPadded('OWNER'),
+      );
 
       const ownerId = await ownable._computeOwnerId(
         eitherOwner,
@@ -418,17 +420,23 @@ describe('ZOwnablePK', () => {
       const testCases = [
         ...Array.from({ length: 10 }, (_, i) => ({
           label: `User${i}`,
-          eitherOwner: utils.createEitherTestUser(`User${i}`),
+          eitherOwner: utils.eitherUserFromCoinPublicKey(
+            utils.toHexPadded(`User${i}`),
+          ),
           nonce: new Uint8Array(32).fill(i),
         })),
         {
           label: 'All-zero nonce',
-          eitherOwner: utils.createEitherTestUser('ZeroUser'),
+          eitherOwner: utils.eitherUserFromCoinPublicKey(
+            utils.toHexPadded('ZeroUser'),
+          ),
           nonce: new Uint8Array(32).fill(0),
         },
         {
           label: 'Max nonce',
-          eitherOwner: utils.createEitherTestUser('MaxUser'),
+          eitherOwner: utils.eitherUserFromCoinPublicKey(
+            utils.toHexPadded('MaxUser'),
+          ),
           nonce: new Uint8Array(32).fill(255),
         },
       ];

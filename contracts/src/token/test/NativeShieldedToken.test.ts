@@ -13,9 +13,13 @@ const b32 = (label: string): Uint8Array => {
 };
 
 // Users / recipients
-const RECIPIENT = utils.createEitherTestUser('RECIPIENT');
+const RECIPIENT = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('RECIPIENT'),
+);
 const RECIPIENT_CONTRACT = utils.createEitherTestContractAddress('RECIPIENT_C');
-const REFUND_TO = utils.createEitherTestUser('REFUND_TO');
+const REFUND_TO = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('REFUND_TO'),
+);
 const { ZERO_KEY, ZERO_ADDRESS } = utils;
 
 // Metadata
