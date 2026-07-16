@@ -959,23 +959,8 @@ module ConfidentialFungibleTokenCore {
    * MAX_TRANSFER_VALUE() at approve time). The (owner, spender) slot is ensured
    * present and on-curve before the read (a fresh slot is `encryptZero()`, an
    * identity that adds as an exact no-op), so a first approve refunds nothing.
-   *
-   * @notice This shape also avoids the prover codegen fault that decrypting a
-   * nested-map read triggers under composition (see the module header); the
-   * homomorphic add uses point addition, not the scalar-mult a decrypt needs.
    */
   circuit _refundPriorEscrow(ownerId: Bytes<32>, spender: Bytes<32>): [] {
-    // Homomorphic-refund workaround for a Compact prover codegen bug: reading a
-    // nested-Map ElGamal point and SCALAR-MULTIPLYING it (an ElGamal decrypt)
-    // inside `approve` faults at preprocess with a Jubjub subgroup assertion,
-    // even when the value is on-curve and the identical op proves standalone
-    // (bisection-pinned; see the compiler-issue writeup). So refund WITHOUT a
-    // decrypt: the escrow's `ownerCt` already encrypts the unspent amount under
-    // the owner's key, so add it straight back to the balance with a ciphertext
-    // ADD (`ElGamal_add` = point addition, NOT scalar-mult). No witness and no
-    // plaintext claim, so this is strictly more trustworthy than the old decrypt
-    // path (nothing for a wallet to lie about).
-    //
     // Ensure the slot is present + on-curve first so the read is never a default:
     // a fresh slot is `encryptZero()` (identity), and adding identity is an EXACT
     // no-op, so a first approve refunds nothing and leaves the balance ciphertext
