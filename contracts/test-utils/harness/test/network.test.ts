@@ -36,6 +36,35 @@ describe('network config', () => {
         proofServer: 16300,
       });
     });
+
+    // The `port()` guard is meant to reject a malformed override at load time
+    // (module eval), naming the responsible env var, so a bad value never
+    // surfaces later as a `NaN`/`0` URL. Each case re-imports so PORTS re-runs.
+    it('should throw, naming the env var, on a non-numeric override', async () => {
+      vi.stubEnv('MIDNIGHT_INDEXER_PORT', 'abc');
+      vi.resetModules();
+      await expect(import('../network.js')).rejects.toThrow(
+        'MIDNIGHT_INDEXER_PORT must be an integer between 1 and 65535',
+      );
+    });
+
+    it('should throw on an out-of-range override', async () => {
+      vi.stubEnv('MIDNIGHT_NODE_PORT', '70000');
+      vi.resetModules();
+      await expect(import('../network.js')).rejects.toThrow(
+        'MIDNIGHT_NODE_PORT must be an integer between 1 and 65535',
+      );
+    });
+
+    it('should throw on an empty override rather than falling back', async () => {
+      // An empty string is not nullish, so `?? fallback` does not apply;
+      // `Number('')` is `0`, which the range check rejects.
+      vi.stubEnv('MIDNIGHT_PROOF_SERVER_PORT', '');
+      vi.resetModules();
+      await expect(import('../network.js')).rejects.toThrow(
+        'MIDNIGHT_PROOF_SERVER_PORT must be an integer between 1 and 65535',
+      );
+    });
   });
 
   describe('localEnv', () => {
