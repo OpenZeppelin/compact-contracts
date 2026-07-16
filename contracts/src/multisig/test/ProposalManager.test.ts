@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import * as utils from '#test-utils/fixtures/address.js';
 import { ProposalManagerSimulator } from './simulators/ProposalManagerSimulator.js';
 
 // Enum values matching ProposalStatus and RecipientKind
@@ -16,12 +16,16 @@ const Z_CONTRACT_RECIPIENT = utils.encodeToAddress('CONTRACT_RECIPIENT');
 
 let contract: ProposalManagerSimulator;
 
-describe('ProposalManager', () => {
-  beforeEach(async () => {
-    contract = await ProposalManagerSimulator.create();
-  });
+// A fresh ProposalManager. Mutating groups build one per test (`beforeEach`);
+// read-only groups build one per group (`beforeAll`) to save a live deploy tx.
+const fresh = () => ProposalManagerSimulator.create();
 
+describe('ProposalManager', () => {
   describe('recipient helpers (pure)', () => {
+    beforeAll(async () => {
+      contract = await fresh();
+    });
+
     it('should create shielded user recipient', () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       expect(recipient.kind).toEqual(RecipientKind.ShieldedUser);
@@ -89,6 +93,10 @@ describe('ProposalManager', () => {
   });
 
   describe('_createProposal', () => {
+    beforeEach(async () => {
+      contract = await fresh();
+    });
+
     it('should create a proposal and return id', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       const id = await contract._createProposal(recipient, COLOR, AMOUNT);
@@ -135,6 +143,10 @@ describe('ProposalManager', () => {
   });
 
   describe('assertProposalExists', () => {
+    beforeEach(async () => {
+      contract = await fresh();
+    });
+
     it('should pass for existing proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       const id = await contract._createProposal(recipient, COLOR, AMOUNT);
@@ -149,6 +161,10 @@ describe('ProposalManager', () => {
   });
 
   describe('assertProposalActive', () => {
+    beforeEach(async () => {
+      contract = await fresh();
+    });
+
     it('should pass for active proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       const id = await contract._createProposal(recipient, COLOR, AMOUNT);
@@ -181,6 +197,10 @@ describe('ProposalManager', () => {
   });
 
   describe('_cancelProposal', () => {
+    beforeEach(async () => {
+      contract = await fresh();
+    });
+
     it('should cancel an active proposal', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       const id = await contract._createProposal(recipient, COLOR, AMOUNT);
@@ -230,6 +250,10 @@ describe('ProposalManager', () => {
   });
 
   describe('_markExecuted', () => {
+    beforeEach(async () => {
+      contract = await fresh();
+    });
+
     it('should mark an active proposal as executed', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       const id = await contract._createProposal(recipient, COLOR, AMOUNT);
@@ -270,7 +294,9 @@ describe('ProposalManager', () => {
   describe('view circuits', () => {
     let proposalId: bigint;
 
-    beforeEach(async () => {
+    // All read-only, so deploy once and seed a single proposal for the group.
+    beforeAll(async () => {
+      contract = await fresh();
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       proposalId = await contract._createProposal(recipient, COLOR, AMOUNT);
     });
@@ -324,6 +350,10 @@ describe('ProposalManager', () => {
   });
 
   describe('lifecycle transitions', () => {
+    beforeEach(async () => {
+      contract = await fresh();
+    });
+
     it('should handle create -> cancel flow', async () => {
       const recipient = contract.shieldedUserRecipient(Z_RECIPIENT);
       const id = await contract._createProposal(recipient, COLOR, AMOUNT);

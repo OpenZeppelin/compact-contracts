@@ -5,7 +5,7 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
 
 // Helpers

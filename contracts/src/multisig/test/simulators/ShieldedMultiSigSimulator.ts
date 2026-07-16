@@ -7,10 +7,7 @@ import {
   ledger,
   Contract as ShieldedMultiSig,
 } from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
-import {
-  ShieldedMultiSigPrivateState,
-  ShieldedMultiSigWitnesses,
-} from '../witnesses/ShieldedMultiSigWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -36,18 +33,18 @@ type ShieldedMultiSigArgs = readonly [
 ];
 
 const ShieldedMultiSigSimulatorBase = createSimulator<
-  ShieldedMultiSigPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigWitnesses>,
-  ShieldedMultiSig<ShieldedMultiSigPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ShieldedMultiSig<EmptyPrivateState>,
   ShieldedMultiSigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSig<ShieldedMultiSigPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigPrivateState,
+    new ShieldedMultiSig<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'ShieldedMultiSig',
 });
 
@@ -56,8 +53,8 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     signers: EitherPKAddress[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedMultiSigPrivateState,
-      ReturnType<typeof ShieldedMultiSigWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedMultiSigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
@@ -110,16 +107,19 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     return this.circuits.impure.getProposal(id);
   }
 
-  public getProposalRecipient(id: bigint): Promise<Recipient> {
-    return this.circuits.impure.getProposalRecipient(id);
+  // getProposalRecipient / getProposalAmount / getProposalColor were dropped from
+  // the contract (redundant with getProposal; removed to fit the deploy block
+  // limit). Derive them here so specs are unchanged.
+  public async getProposalRecipient(id: bigint): Promise<Recipient> {
+    return (await this.getProposal(id)).to;
   }
 
-  public getProposalAmount(id: bigint): Promise<bigint> {
-    return this.circuits.impure.getProposalAmount(id);
+  public async getProposalAmount(id: bigint): Promise<bigint> {
+    return (await this.getProposal(id)).amount;
   }
 
-  public getProposalColor(id: bigint): Promise<Uint8Array> {
-    return this.circuits.impure.getProposalColor(id);
+  public async getProposalColor(id: bigint): Promise<Uint8Array> {
+    return (await this.getProposal(id)).color;
   }
 
   public getProposalStatus(id: bigint): Promise<number> {
@@ -139,8 +139,15 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     return this.circuits.impure.getSentTotal(color);
   }
 
-  public getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
-    return this.circuits.impure.getReceivedMinusSent(color);
+  // getReceivedMinusSent was dropped from the contract (redundant; removed to fit
+  // the deploy block limit). Derive it from the two tracked totals.
+  public async getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
+    // Await sequentially: on live each impure getter submits a tx, and two
+    // concurrent submissions balance against the same wallet snapshot and
+    // trigger a stale-UTXO rejection.
+    const received = await this.getReceivedTotal(color);
+    const sent = await this.getSentTotal(color);
+    return received - sent;
   }
 
   // View - Signers

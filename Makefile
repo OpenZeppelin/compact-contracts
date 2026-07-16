@@ -6,7 +6,10 @@ SERVICES := proof-server indexer node
 
 ## Start local environment and stream logs to logs/
 env-up: env-down
-	docker compose -f $(COMPOSE_FILE) up -d --wait
+	docker compose -f $(COMPOSE_FILE) up -d
+	@# proof-server has no healthcheck, so a blanket `--wait` is not portable
+	@# across Docker Compose versions; wait only on the services that expose one.
+	docker compose -f $(COMPOSE_FILE) up -d --wait node indexer
 	@mkdir -p $(LOGS_DIR)
 	@for svc in $(SERVICES); do \
 		docker compose -f $(COMPOSE_FILE) logs -f --no-log-prefix $$svc > $(LOGS_DIR)/$$svc.log 2>&1 & \

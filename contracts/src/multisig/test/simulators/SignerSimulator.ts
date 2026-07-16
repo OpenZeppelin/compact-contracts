@@ -6,10 +6,7 @@ import {
   ledger,
   Contract as MockSigner,
 } from '../../../../artifacts/MockSigner/contract/index.js';
-import {
-  SignerPrivateState,
-  SignerWitnesses,
-} from '../witnesses/SignerWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 /**
  * Type constructor args
@@ -21,17 +18,17 @@ type SignerArgs = readonly [
 ];
 
 const SignerSimulatorBase = createSimulator<
-  SignerPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof SignerWitnesses>,
-  MockSigner<SignerPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockSigner<EmptyPrivateState>,
   SignerArgs
 >({
-  contractFactory: (witnesses) => new MockSigner<SignerPrivateState>(witnesses),
-  defaultPrivateState: () => SignerPrivateState,
+  contractFactory: (witnesses) => new MockSigner<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh, isInit) => [signers, thresh, isInit],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => SignerWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'MockSigner',
 });
 
@@ -44,8 +41,8 @@ export class SignerSimulator extends SignerSimulatorBase {
     thresh: bigint,
     isInit: boolean,
     options: SimulatorOptions<
-      SignerPrivateState,
-      ReturnType<typeof SignerWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<SignerSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`

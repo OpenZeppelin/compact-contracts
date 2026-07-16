@@ -12,14 +12,26 @@
     "compact:access": "turbo run compact:access --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:archive": "turbo run compact:archive --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:crypto": "turbo run compact:crypto --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compact:multisig": "turbo run compact:multisig --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:security": "turbo run compact:security --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:token": "turbo run compact:token --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compact:utils": "turbo run compact:utils --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compact:integration": "turbo run compact:integration --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "build": "turbo run build --log-prefix=none",
-    "test": "turbo run test --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "test": "SKIP_ZK=true turbo run test --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:coverage": "SKIP_ZK=true turbo run test:coverage --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts",
+    "test:integration": "SKIP_ZK=true turbo run test:integration --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:harness": "turbo run test:harness --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:harness:live": "turbo run test:harness:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "fmt-and-lint": "biome check .",
     "fmt-and-lint:fix": "biome check . --write",
     "fmt-and-lint:ci": "biome ci . --no-errors-on-unmatched",
+    "env:up": "make env-up",
+    "env:down": "make env-down",
+    "env:status": "make env-status",
+    "env:logs": "make env-logs",
+    "env:logs:clean": "make env-logs-clean",
     "types": "turbo run types",
     "clean": "turbo run clean"
   },
@@ -30,7 +42,8 @@
     "minimatch": "9.0.6",
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
-    "ip-address": "10.1.1"
+    "ip-address": "10.1.1",
+    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0"

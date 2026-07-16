@@ -21,11 +21,9 @@
   "homepage": "https://docs.openzeppelin.com/contracts-compact/",
   "type": "module",
   "imports": {
-    "#test-utils/address.js": "./test-utils/address.js",
-    "#test-utils/zswap.js": "./test-utils/zswap.js"
+    "#test-utils/*": "./test-utils/*"
   },
   "scripts": {
-    "compact": "compact-compiler --exclude '*/archive/*'",
     "compact:access": "compact-compiler --dir access",
     "compact:archive": "compact-compiler --dir archive",
     "compact:crypto": "compact-compiler --dir crypto",
@@ -33,12 +31,13 @@
     "compact:security": "compact-compiler --dir security",
     "compact:token": "compact-compiler --dir token",
     "compact:utils": "compact-compiler --dir utils",
+    "compact:integration": "SKIP_ZK=true compact-compiler --src test/integration/_mocks",
     "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
-    "test": "SKIP_ZK=true yarn run compact && vitest run",
-    "test:coverage": "SKIP_ZK=true yarn run compact && vitest run --coverage",
-    "test:live": "yarn run compact && MIDNIGHT_BACKEND=live vitest run --config vitest.live.config.ts",
-    "compact:integration": "SKIP_ZK=true compact compile test/integration/_mocks/SharedInitCollision.compact artifacts/SharedInitCollision && SKIP_ZK=true compact compile test/integration/_mocks/ComposedTokens.compact artifacts/ComposedTokens",
-    "test:integration": "yarn run compact:integration && vitest run --config vitest.integration.config.ts",
+    "test": "vitest run --project unit",
+    "test:coverage": "vitest run --project unit --coverage",
+    "test:integration": "vitest run --project integration",
+    "test:harness": "vitest run --project harness",
+    "test:harness:live": "MIDNIGHT_BACKEND=live vitest run --project harness-live",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
@@ -49,6 +48,17 @@
     "@openzeppelin/compact-cli": "^0.0.2"
   },
   "devDependencies": {
+    "@midnight-ntwrk/compact-js": "2.5.1",
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/testkit-js": "4.1.1",
     "@openzeppelin/compact-simulator": "^0.2.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "25.9.3",

@@ -4,11 +4,15 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as contractUtils from '#test-utils/address.js';
+import * as contractUtils from '#test-utils/fixtures/address.js';
 import { UtilsSimulator } from './simulators/UtilsSimulator.js';
 
-const Z_SOME_KEY = contractUtils.createEitherTestUser('SOME_KEY');
-const Z_OTHER_KEY = contractUtils.createEitherTestUser('OTHER_KEY');
+const Z_SOME_KEY = contractUtils.eitherUserFromCoinPublicKey(
+  contractUtils.toHexPadded('SOME_KEY'),
+);
+const Z_OTHER_KEY = contractUtils.eitherUserFromCoinPublicKey(
+  contractUtils.toHexPadded('OTHER_KEY'),
+);
 const SOME_CONTRACT =
   contractUtils.createEitherTestContractAddress('SOME_CONTRACT');
 const OTHER_CONTRACT =

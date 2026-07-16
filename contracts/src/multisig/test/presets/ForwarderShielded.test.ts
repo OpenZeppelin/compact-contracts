@@ -1,19 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
+import {
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
 import { ForwarderShieldedSimulator } from '../simulators/presets/ForwarderShieldedSimulator.js';
 
 // The constructor takes a `ZswapCoinPublicKey` (the supported arm). The
 // `_parent` ledger field stays a generic `Either`; `initialize` stores the key
 // in the `left` arm, which is what `getParent` reads back. A contract-address
 // parent is not expressible today (see the module header).
-const PARENT = utils.createEitherTestUser('PARENT').left;
+//
+// Live: the parent is the deployer's own key (the deposit forwards the coin to
+// it, so its encryption key must resolve on-chain).
+const PARENT = shieldedTestParentKey();
 const ZERO_KEY = utils.ZERO_KEY.left;
-const COLOR = new Uint8Array(32).fill(1);
+// A shielded token type the deployer wallet holds on live (genesis-minted).
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
-
-function makeCoin(color: Uint8Array, value: bigint) {
-  return { nonce: new Uint8Array(32), color, value };
-}
 
 describe('ForwarderShielded preset', () => {
   it('should store the parent passed to the constructor in the left arm', async () => {
