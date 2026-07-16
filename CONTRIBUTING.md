@@ -186,19 +186,20 @@ If any files fail, a second round re-runs just those files on a fresh node with 
 * Fails round 1, passes round 2 → **FLAKY** (exit 0, reported loudly).
 * Fails both rounds → **REAL** (exit non-zero).
 
-Scope the same mechanism to one category, or to a single file within it. The
-first argument names the category; any further argument is a filename substring
-(vitest matches it), so pass a spec name to run just that file on the live
-backend — the fast loop while iterating on one feature, instead of waiting for
-the whole category:
+Scope the same mechanism to one category, or to a subset within it. The first
+argument names the category; any further argument is a filename substring
+(vitest matches it), so pass a spec name to run every file whose name matches it
+on the live backend — the fast loop while iterating on one feature, instead of
+waiting for the whole category. The match is a substring, not an exact file, so
+a name that prefixes others runs all of them:
 
 ```bash
 yarn test:live multisig                  # the whole category
-yarn test:live multisig ShieldedTreasury # just that one file
-yarn test:live multisig Forwarder        # any file matching "Forwarder"
+yarn test:live multisig ShieldedTreasury # any file matching "ShieldedTreasury"
+yarn test:live token NativeShieldedToken # every "NativeShieldedToken*" spec
 ```
 
-The two-round flake check still applies to a single-file run, so a green result
+The two-round flake check still applies to a scoped run, so a green result
 means the same thing it does for the full suite.
 
 Stop the network when done: `yarn env:down`. (No manual `env:up` is needed — the runner resets the stack itself.)
