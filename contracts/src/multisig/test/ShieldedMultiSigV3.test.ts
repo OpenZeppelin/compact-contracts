@@ -341,38 +341,47 @@ describe('ShieldedMultiSigV3', () => {
         multisig = await freshMultisig();
       });
 
-      it.skipIf(isLiveBackend())(
-        'should burn with valid coin and signers 0 and 1',
-        async () => {
+      // Happy-path burns execute a real spend, so they are dry-only until the
+      // live harness can fund and track the burned coin.
+      describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
+        it('should burn with valid coin and signers 0 and 1', async () => {
           const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
           await multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
-        },
-      );
+        });
 
-      it.skipIf(isLiveBackend())(
-        'should burn with signers 0 and 2',
-        async () => {
+        it('should burn with signers 0 and 2', async () => {
           const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
           await multisig.burn(coin, 100n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
-        },
-      );
+        });
 
-      it.skipIf(isLiveBackend())(
-        'should burn with signers 1 and 2',
-        async () => {
+        it('should burn with signers 1 and 2', async () => {
           const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
           await multisig.burn(coin, 100n, [PK2, PK3], [DUMMY_SIG, DUMMY_SIG]);
-        },
-      );
+        });
 
-      it.skipIf(isLiveBackend())('should burn partial amount', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 50n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
-      });
+        it('should burn partial amount', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 50n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        });
 
-      it.skipIf(isLiveBackend())('should handle zero burn amount', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 0n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        it('should handle zero burn amount', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 0n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        });
+
+        it('should share nonce across mint and burn', async () => {
+          await multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [PK1, PK2],
+            [DUMMY_SIG, DUMMY_SIG],
+          );
+          expect(await multisig.getNonce()).toEqual(1n);
+
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 50n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
+          expect(await multisig.getNonce()).toEqual(2n);
+        });
       });
 
       it('should reject duplicate signer', async () => {
@@ -415,23 +424,6 @@ describe('ShieldedMultiSigV3', () => {
           multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]),
         ).rejects.toThrow('Multisig: insufficient coin value');
       });
-
-      it.skipIf(isLiveBackend())(
-        'should share nonce across mint and burn',
-        async () => {
-          await multisig.mint(
-            100n,
-            USER_RECIPIENT,
-            [PK1, PK2],
-            [DUMMY_SIG, DUMMY_SIG],
-          );
-          expect(await multisig.getNonce()).toEqual(1n);
-
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 50n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
-          expect(await multisig.getNonce()).toEqual(2n);
-        },
-      );
     });
 
     describe('domain separation', () => {
