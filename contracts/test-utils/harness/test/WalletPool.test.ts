@@ -41,16 +41,25 @@ function recordingBuilder(): {
   build: WalletBuilder;
   built: string[];
   created: Map<string, FakeWallet>;
+  stats: { maxConcurrent: number };
 } {
   const built: string[] = [];
   const created = new Map<string, FakeWallet>();
+  const stats = { maxConcurrent: 0 };
+  let active = 0;
   const build: WalletBuilder = async (alias) => {
+    active += 1;
+    stats.maxConcurrent = Math.max(stats.maxConcurrent, active);
+    // A real suspension point: if ensureReady built concurrently, the next
+    // build would enter here before this one resolves, so maxConcurrent > 1.
+    await Promise.resolve();
     built.push(alias);
     const w = fakeWallet(alias);
     created.set(alias, w);
+    active -= 1;
     return w;
   };
-  return { build, built, created };
+  return { build, built, created, stats };
 }
 
 const providerAlias = (p: PooledWallet['provider']): string =>
@@ -66,11 +75,15 @@ afterEach(() => {
 
 describe('WalletPool', () => {
   describe('ensureReady', () => {
-    it('should build every seed once and publish each coin public key', async () => {
-      const { build, built } = recordingBuilder();
+    it('should build every seed once, serially, and publish each coin public key', async () => {
+      const { build, built, stats } = recordingBuilder();
       await new WalletPool(SEEDS, build).ensureReady();
 
-      expect([...built].sort()).toEqual(['SIGNER1', 'SIGNER2', 'deployer']);
+      // Serial, in declaration order: the live builder funds each empty signer
+      // from the deployer, so builds must not overlap. Assert the exact order
+      // (not a sorted set) and that no two builds were ever in flight at once.
+      expect(built).toEqual(['deployer', 'SIGNER1', 'SIGNER2']);
+      expect(stats.maxConcurrent).toBe(1);
       expect(process.env[coinPkEnv('deployer')]).toBe('pk-deployer');
       expect(process.env[coinPkEnv('SIGNER1')]).toBe('pk-SIGNER1');
       expect(process.env[coinPkEnv('SIGNER2')]).toBe('pk-SIGNER2');

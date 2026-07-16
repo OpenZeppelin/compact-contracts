@@ -84,7 +84,7 @@ export const coinPkEnv = (alias: string): string =>
   `MIDNIGHT_${alias === 'deployer' ? 'DEPLOYER' : alias}_COIN_PK`;
 
 /**
- * Owns the pooled wallets for a worker. Builds each seed once (concurrently) via
+ * Owns the pooled wallets for a worker. Builds each seed once (serially) via
  * the injected builder, publishes each coin public key, resolves a wallet per
  * caller alias (unknown alias → deployer fallback), and tears them all down.
  */
