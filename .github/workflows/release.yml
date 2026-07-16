@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write # Write SLSA build provenance to the attestation store
 
     steps:
       - name: Harden Runner
@@ -99,6 +100,14 @@ jobs:
             echo "❌ Tarball contains private: true - cannot publish"
             exit 1
           fi
+
+      - name: Attest build provenance
+        # Signed SLSA v1 provenance over the exact tarball, stored in the
+        # GitHub attestation store (verifiable with `gh attestation verify`).
+        # Complements the npm-registry provenance from NPM_CONFIG_PROVENANCE.
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
 
       - name: Publish to npm
         run: |
