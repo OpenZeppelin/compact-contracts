@@ -1,9 +1,9 @@
 import { encodeCoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  createEitherTestUser,
   eitherUserFromCoinPublicKey,
   encodeToPK,
+  toHexPadded,
 } from '../address.js';
 import {
   shieldedTestParentKey,
@@ -31,7 +31,7 @@ describe('shielded key fixtures', () => {
     it('should build a synthetic recipient when no deployer key is published', () => {
       vi.stubEnv('MIDNIGHT_DEPLOYER_COIN_PK', undefined);
       expect(shieldedTestRecipient('BOB')).toStrictEqual(
-        createEitherTestUser('BOB'),
+        eitherUserFromCoinPublicKey(toHexPadded('BOB')),
       );
     });
 
@@ -63,7 +63,7 @@ describe('shielded key fixtures', () => {
     it("should build a synthetic key from the alias when the signer's key is unpublished", () => {
       vi.stubEnv('MIDNIGHT_SIGNER1_COIN_PK', undefined);
       expect(shieldedTestSigner('SIGNER1')).toStrictEqual(
-        createEitherTestUser('SIGNER1'),
+        eitherUserFromCoinPublicKey(toHexPadded('SIGNER1')),
       );
     });
 
