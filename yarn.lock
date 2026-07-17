@@ -333,7 +333,7 @@ __metadata:
     "@tsconfig/node24": "npm:^24.0.4"
     "@types/node": "npm:26.1.1"
     "@vitest/coverage-v8": "npm:^4.1.10"
-    fast-check: "npm:^4.8.0"
+    fast-check: "npm:^4.9.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.10"
@@ -1020,12 +1020,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-check@npm:^4.8.0":
-  version: 4.8.0
-  resolution: "fast-check@npm:4.8.0"
+"fast-check@npm:^4.9.0":
+  version: 4.9.0
+  resolution: "fast-check@npm:4.9.0"
   dependencies:
     pure-rand: "npm:^8.0.0"
-  checksum: 10/32101d27e69f7f0a3ea486f1a6feee6b34c824ba14bf3efce2ad1741fcd412817ac3ed14f53ef57a55d6fe2e00038e399c4a9c62444446a6e7a1a4b04bc6b88d
+  checksum: 10/b549435b29f7b60bc93cb2b19c194c35804bff15aaeb723bc94c65fef5b06fb2c3652bcd98379e3257d461cb61c40d2f4b0001fcb6b515f1085ebbcc6163d1e5
   languageName: node
   linkType: hard
 
