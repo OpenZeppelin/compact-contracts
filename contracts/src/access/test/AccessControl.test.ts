@@ -391,19 +391,20 @@ describe('AccessControl', () => {
       await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, OP1_CONTRACT);
     });
 
-    describe.each(
-      operatorTypes,
-    )('when the operator is a %s', (_operatorType, _operator) => {
-      it('admin should revoke role', async () => {
-        // Set admin SK
-        await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+    describe.each(operatorTypes)(
+      'when the operator is a %s',
+      (_operatorType, _operator) => {
+        it('admin should revoke role', async () => {
+          // Set admin SK
+          await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
 
-        await accessControl.revokeRole(OPERATOR_ROLE_1, _operator);
-        expect(await accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
-          false,
-        );
-      });
-    });
+          await accessControl.revokeRole(OPERATOR_ROLE_1, _operator);
+          expect(await accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
+            false,
+          );
+        });
+      },
+    );
 
     it('should fail if unauthorized revokes role', async () => {
       await accessControl.privateState.injectSecretKey(UNAUTHORIZED.secretKey);
@@ -754,19 +755,20 @@ describe('AccessControl', () => {
   });
 
   describe('_revokeRole', () => {
-    describe.each(
-      operatorTypes,
-    )('when the operator is a %s', (_, _operator) => {
-      it('should revoke role', async () => {
-        await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
-        expect(
-          await accessControl._revokeRole(OPERATOR_ROLE_1, _operator),
-        ).toBe(true);
-        expect(await accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
-          false,
-        );
-      });
-    });
+    describe.each(operatorTypes)(
+      'when the operator is a %s',
+      (_, _operator) => {
+        it('should revoke role', async () => {
+          await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, _operator);
+          expect(
+            await accessControl._revokeRole(OPERATOR_ROLE_1, _operator),
+          ).toBe(true);
+          expect(await accessControl.hasRole(OPERATOR_ROLE_1, _operator)).toBe(
+            false,
+          );
+        });
+      },
+    );
 
     it('should return false if account does not have role', async () => {
       expect(await accessControl._revokeRole(OPERATOR_ROLE_1, OP1.either)).toBe(
