@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Compile contracts
-        run: yarn compact
+        run: yarn compile
 
       - name: Run type checks
         run: yarn types
