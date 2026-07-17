@@ -12,6 +12,7 @@
     "compile:access": "turbo run compile:access --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:archive": "turbo run compile:archive --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:crypto": "turbo run compile:crypto --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:multisig": "turbo run compile:multisig --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:security": "turbo run compile:security --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:token": "turbo run compile:token --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:utils": "turbo run compile:utils --filter=@openzeppelin/compact-contracts --log-prefix=none",
