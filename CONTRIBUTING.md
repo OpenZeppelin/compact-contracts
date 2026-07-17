@@ -196,7 +196,6 @@ a name that prefixes others runs all of them:
 ```bash
 yarn test:live multisig                  # the whole category
 yarn test:live multisig ShieldedTreasury # any file matching "ShieldedTreasury"
-yarn test:live token NativeShieldedToken # every "NativeShieldedToken*" spec
 ```
 
 The two-round flake check still applies to a scoped run, so a green result
