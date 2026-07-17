@@ -960,9 +960,9 @@ __metadata:
     "@openzeppelin/compact-cli": "npm:^0.0.2"
     "@openzeppelin/compact-simulator": "npm:^0.2.0"
     "@tsconfig/node24": "npm:^24.0.4"
-    "@types/node": "npm:26.1.0"
+    "@types/node": "npm:26.1.1"
     "@vitest/coverage-v8": "npm:^4.1.10"
-    fast-check: "npm:^4.8.0"
+    fast-check: "npm:^4.9.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.10"
@@ -1934,12 +1934,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:26.1.0, @types/node@npm:>=13.7.0":
+"@types/node@npm:*, @types/node@npm:>=13.7.0":
   version: 26.1.0
   resolution: "@types/node@npm:26.1.0"
   dependencies:
     undici-types: "npm:~8.3.0"
   checksum: 10/fee720e8ddf8aa66a22bc5cf3209347f8dcc07cbf7475f966761684f04fb34b819739a311edbf87271d6c7f9f50b1f015d3ff9e36d67d04264aafe18ac9a3796
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:26.1.1":
+  version: 26.1.1
+  resolution: "@types/node@npm:26.1.1"
+  dependencies:
+    undici-types: "npm:~8.3.0"
+  checksum: 10/df6555a94c6b4cf74e6238373e2881e72dc91058cf2ba173be77ea3974aaa8f459c2f10fbb7eb644fb1e5189dd8407097f5d39506fad39c89bde18acb3b90316
   languageName: node
   linkType: hard
 
@@ -3013,12 +3022,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-check@npm:^4.8.0":
-  version: 4.8.0
-  resolution: "fast-check@npm:4.8.0"
+"fast-check@npm:^4.9.0":
+  version: 4.9.0
+  resolution: "fast-check@npm:4.9.0"
   dependencies:
     pure-rand: "npm:^8.0.0"
-  checksum: 10/32101d27e69f7f0a3ea486f1a6feee6b34c824ba14bf3efce2ad1741fcd412817ac3ed14f53ef57a55d6fe2e00038e399c4a9c62444446a6e7a1a4b04bc6b88d
+  checksum: 10/b549435b29f7b60bc93cb2b19c194c35804bff15aaeb723bc94c65fef5b06fb2c3652bcd98379e3257d461cb61c40d2f4b0001fcb6b515f1085ebbcc6163d1e5
   languageName: node
   linkType: hard
 
@@ -4202,7 +4211,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@types/node": "npm:26.1.0"
+    "@types/node": "npm:26.1.1"
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.10.0"
     typescript: "npm:^6.0.3"

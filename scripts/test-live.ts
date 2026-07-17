@@ -245,7 +245,7 @@ const truncatedKeys = (): string[] =>
  * after the rebuild.
  */
 function compileVerified(): boolean {
-  if (run('yarn', ['compact']) !== 0) {
+  if (run('yarn', ['compile']) !== 0) {
     console.log('compile failed — a compile error is real, not a flake.');
     return false;
   }
@@ -265,7 +265,7 @@ function compileVerified(): boolean {
     recursive: true,
     force: true,
   });
-  if (run('yarn', ['compact', '--concurrency=1']) !== 0) {
+  if (run('yarn', ['compile', '--concurrency=1']) !== 0) {
     console.log('serial recompile failed.');
     return false;
   }
