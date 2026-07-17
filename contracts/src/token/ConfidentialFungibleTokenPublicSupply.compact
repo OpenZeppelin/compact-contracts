@@ -91,7 +91,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * supply delta; gate this to an issuer in the composing contract, or mint
    * only in the constructor for a fixed-supply token.
    *
-   * @circuitInfo k=15, rows=30130
+   * @circuitInfo k=15, rows=30135
    *
    * Requirements:
    *
@@ -142,7 +142,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * Mirrors `transferFrom`, except the spent value is removed from `totalSupply`
    * instead of credited to a recipient.
    *
-   * @circuitInfo k=15, rows=22354
+   * @circuitInfo k=16, rows=36360
    *
    * Requirements:
    *

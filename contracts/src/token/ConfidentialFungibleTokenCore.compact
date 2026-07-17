@@ -94,9 +94,13 @@ pragma language_version >= 0.23.0;
  * move value with no memo and a hidden amount, so summing memos OVERCOUNTS a
  * balance that has ever been spent from. The wallet's running plaintext cache,
  * not memo replay, is the authoritative balance; replay-from-chain alone only
- * reconstructs a never-spent account. (2) The owner self-refund in
- * `_refundPriorEscrow` (re-approve) credits the owner with no memo; the owner
- * observes it by initiating that transaction.
+ * reconstructs a never-spent account. (2) A spender drawing on an escrow
+ * (`transferFrom`/`burnFrom`) reduces the owner's escrow copy with no balance
+ * memo; the owner instead learns the new remaining from the escrow entry's
+ * `ownerMemo` (refreshed on every spend), which is what lets them prove the
+ * post-refund balance on a later re-approve or revoke. Without that memo a
+ * partial spend would strand the escrow, since the owner cannot know the
+ * remainder folded back into their balance.
  *
  * @dev Residual griefing. The dual-balance split (see `sweep`) stops dust
  * credits from churning a victim's spendable ciphertext, but every `_credit`
@@ -183,6 +187,17 @@ module ConfidentialFungibleTokenCore {
   export struct EscrowEntry {
     spenderCt: ElGamal_Ciphertext;
     ownerCt:   ElGamal_Ciphertext;
+    // Owner-readable copy of the CURRENT remaining allowance, delivered as an
+    // ECDH one-time-pad memo (see `crypto/EcdhMask`). `spenderCt`/`ownerCt` are
+    // exponential ElGamal (g^value), so neither party can cheaply recover the
+    // amount by discrete log; this memo lets the OWNER read the live remaining
+    // directly with their EK. Without it, a partial `transferFrom`/`burnFrom`
+    // leaves the owner unable to learn how much is left, so they cannot prove the
+    // post-refund balance on re-approve/revoke and the escrow strands (a spender
+    // could grief by spending 1). Refreshed on `approve` (= cap) and on every
+    // spend (= remaining). Owner-scoped: an auditor/viewing-key layer adds its own
+    // reader copy in layer state rather than extending this struct.
+    ownerMemo: EcdhMask_Ciphertext;
   }
 
   // ---------------------------------------------------------------------------
@@ -402,7 +417,7 @@ module ConfidentialFungibleTokenCore {
    * granted `spender`, or the default entry if none exists. The cap is
    * encrypted, not public.
    *
-   * @circuitInfo k=10, rows=873
+   * @circuitInfo k=10, rows=938
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
@@ -560,7 +575,7 @@ module ConfidentialFungibleTokenCore {
    * a reused seed cannot cause a mask/randomness collision (critical for the
    * memo's one-time pad; see `crypto/EcdhMask`).
    *
-   * @circuitInfo k=15, rows=29915
+   * @circuitInfo k=15, rows=29920
    *
    * @warning Does not adjust any supply total. Called outside a supply-accounted
    * flow, `_credit` mints unbacked value (inflation) and breaks the
@@ -627,7 +642,7 @@ module ConfidentialFungibleTokenCore {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @circuitInfo k=16, rows=44390
+   * @circuitInfo k=16, rows=44395
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -663,7 +678,7 @@ module ConfidentialFungibleTokenCore {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @circuitInfo k=16, rows=44379
+   * @circuitInfo k=16, rows=44384
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -727,9 +742,16 @@ module ConfidentialFungibleTokenCore {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @circuitInfo k=15, rows=28528
+   * @circuitInfo k=16, rows=43101
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
+   *
+   * @dev Also stores an owner-readable `ownerMemo` (ECDH one-time pad; see
+   * `crypto/EcdhMask`) in the escrow entry, carrying the current remaining
+   * allowance (= `value` here, refreshed to the reduced remaining on every
+   * spend). This is what lets the owner prove the post-refund balance on a later
+   * re-approve or revoke after a partial spend; without it a partial spend would
+   * strand the escrow. See the `EscrowEntry` field doc.
    *
    * Requirements:
    *
@@ -773,6 +795,10 @@ module ConfidentialFungibleTokenCore {
     const rDebit   = ElGamal_expandRandomness(seed, pad(32, "approve_debit"));
     const rSpender = ElGamal_expandRandomness(seed, pad(32, "approve_spender_ct"));
     const rOwner   = ElGamal_expandRandomness(seed, pad(32, "approve_owner_ct"));
+    // Ephemeral for the owner-readable remaining memo. Shares the escrow
+    // ciphertexts' seed-freshness dependency (a reused seed reuses this pad, just
+    // as it reuses rSpender/rOwner); the wallet MUST supply a fresh seed.
+    const eOwnerMemo = ElGamal_expandRandomness(seed, pad(32, "approve_owner_memo"));
 
     const newOwnerCt = ElGamal_subEncrypted(ownerCt, ownerPk, value, rDebit);
     _balances.insert(disclose(ownerId), disclose(newOwnerCt));
@@ -780,6 +806,9 @@ module ConfidentialFungibleTokenCore {
     const spenderPk = _encryptionKeys.lookup(disclose(spender));
     const spenderCt        = ElGamal_encrypt(spenderPk, value, rSpender);
     const ownerCtForRefund = ElGamal_encrypt(ownerPk,   value, rOwner);
+    // Right after approve, the remaining allowance is the full cap (`value`).
+    const ownerMemo = EcdhMask_encrypt(ownerPk, value, eOwnerMemo,
+                                       pad(32, "OZ_CFT_escrow_owner_v1"));
 
     if (!_escrow.member(disclose(ownerId))) {
       _escrow.insert(disclose(ownerId),
@@ -787,7 +816,11 @@ module ConfidentialFungibleTokenCore {
     }
     _escrow.lookup(disclose(ownerId)).insert(
       disclose(spender),
-      disclose(EscrowEntry { spenderCt: spenderCt, ownerCt: ownerCtForRefund })
+      disclose(EscrowEntry {
+        spenderCt: spenderCt,
+        ownerCt: ownerCtForRefund,
+        ownerMemo: ownerMemo
+      })
     );
     return disclose(ownerId);
   }
@@ -797,7 +830,7 @@ module ConfidentialFungibleTokenCore {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=16, rows=51974
+   * @circuitInfo k=16, rows=65526
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -911,6 +944,13 @@ module ConfidentialFungibleTokenCore {
    * approve-time invariant that both copies encrypt the same amount, so the
    * owner's copy needs no separate bound check.
    *
+   * @dev Refreshes the escrow entry's `ownerMemo` with the new remaining
+   * (`escrowPlaintext - value`, computed in-circuit from the verified spender
+   * plaintext, so the spender cannot forge it). This is the owner's only channel
+   * for learning how much a partial spend left them; without it the owner could
+   * not prove the post-refund balance on a later re-approve/revoke. See the
+   * `EscrowEntry` field doc.
+   *
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
    */
@@ -935,14 +975,27 @@ module ConfidentialFungibleTokenCore {
     const seed = wit_RandomnessSeed();
     const rSpender = ElGamal_expandRandomness(seed, pad(32, "spend_escrow_spender"));
     const rOwner   = ElGamal_expandRandomness(seed, pad(32, "spend_escrow_owner"));
+    const eOwnerMemo = ElGamal_expandRandomness(seed, pad(32, "spend_owner_memo"));
 
     const ownerPk = _encryptionKeys.lookup(disclose(fromAddress));
     const newSpenderCt = ElGamal_subEncrypted(entry.spenderCt, spenderPk, value, rSpender);
     const newOwnerCt   = ElGamal_subEncrypted(entry.ownerCt,   ownerPk,   value, rOwner);
 
+    // Notify the owner of the new remaining allowance so a partial spend never
+    // blinds them (`escrowPlaintext >= value` is asserted above, so no underflow).
+    // Refreshes the owner-scoped memo set at approve; this is what lets the owner
+    // prove the post-refund balance on a later re-approve/revoke.
+    const remaining = (escrowPlaintext - value) as Uint<128>;
+    const ownerMemo = EcdhMask_encrypt(ownerPk, remaining, eOwnerMemo,
+                                       pad(32, "OZ_CFT_escrow_owner_v1"));
+
     _escrow.lookup(disclose(fromAddress)).insert(
       disclose(spenderId),
-      disclose(EscrowEntry { spenderCt: newSpenderCt, ownerCt: newOwnerCt })
+      disclose(EscrowEntry {
+        spenderCt: newSpenderCt,
+        ownerCt: newOwnerCt,
+        ownerMemo: ownerMemo
+      })
     );
     return disclose(spenderId);
   }
@@ -973,7 +1026,15 @@ module ConfidentialFungibleTokenCore {
         disclose(spender),
         disclose(EscrowEntry {
           spenderCt: ElGamal_encryptZero(),
-          ownerCt:   ElGamal_encryptZero()
+          ownerCt:   ElGamal_encryptZero(),
+          // Transient placeholder: this slot exists only so the refund reads an
+          // on-curve no-op, and it is removed immediately below, so the memo is
+          // never decrypted. Use an on-curve identity point (never a `default`,
+          // which is off-curve).
+          ownerMemo: EcdhMask_Ciphertext {
+            ephemeralPk: ecMulGenerator(0 as Field),
+            ct: 0 as Field
+          }
         })
       );
     }

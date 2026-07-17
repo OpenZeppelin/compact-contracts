@@ -534,8 +534,8 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     // owner-copy ciphertext (Enc(40)) straight onto Alice's balance (Enc(60))
     // via `ElGamal_add`, with no decrypt. Predict that exact post-refund
     // ciphertext (Enc(100)) and cache its plaintext so approve's subsequent debit
-    // decrypt resolves it. No cache is needed for the escrow copy itself — the
-    // refund never decrypts it.
+    // decrypt resolves it. No cache is needed for the escrow copy itself. The
+    // refund never decrypts it
     const escrowOwnerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
       .ownerCt;
     const refunded = elgamal.add(
@@ -558,6 +558,72 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
       'ConfidentialFungibleToken: insufficient balance',
     );
     await cft._debit(70n);
+  });
+
+  it('lets the owner re-approve after a PARTIAL spend by decrypting the ownerMemo', async () => {
+    const OWNER_MEMO_DOMAIN = padTag('OZ_CFT_escrow_owner_v1');
+
+    await approveBob(100n, 40n); // Alice: spendable 100 -> 60; escrow(Alice,Bob) = 40.
+
+    // Bob partially spends 25 to Charlie (remaining allowance -> 15)
+    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+    await cft.privateState.cachePlaintext(
+      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+      40n,
+    );
+    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+    // Alice (owner) learns the remaining allowance ONLY by decrypting the memo
+    // the spend refreshed
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+    const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
+    const remaining = ecdhMask.decrypt(
+      escrow.ownerMemo,
+      aliceEk,
+      OWNER_MEMO_DOMAIN,
+    );
+    expect(remaining).toBe(15n);
+
+    // She proves the post-refund balance (spendable 60 + refunded remaining 15 =
+    // 75) using the decrypted remaining, then re-approves Bob for 20
+    const refunded = elgamal.add(
+      await cft.balanceOf(ALICE.accountId),
+      escrow.ownerCt,
+    );
+    await cft.privateState.cachePlaintext(refunded, 60n + remaining);
+    await cft.approve(BOB.accountId, 20n);
+
+    // Post-state: Alice holds 75 - 20 = 55; a fresh escrow of 20 exists.
+    await cft.privateState.cachePlaintext(
+      await cft.balanceOf(ALICE.accountId),
+      55n,
+    );
+    await cft._debit(55n);
+  });
+
+  it('re-approve after a partial spend fails if the owner assumes the escrow is untouched', async () => {
+    await approveBob(100n, 40n);
+
+    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+    await cft.privateState.cachePlaintext(
+      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+      40n,
+    );
+    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+    // Alice wrongly assumes remaining == cap == 40, predicting 60 + 40 = 100.
+    // The real post-refund balance is 60 + 15 = 75, so the claim is rejected
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+    const refunded = elgamal.add(
+      await cft.balanceOf(ALICE.accountId),
+      escrow.ownerCt,
+    );
+    await cft.privateState.cachePlaintext(refunded, 100n); // wrong: should be 75
+    await expect(cft.approve(BOB.accountId, 20n)).rejects.toThrow(
+      'ElGamal: plaintext mismatch',
+    );
   });
 });
 
