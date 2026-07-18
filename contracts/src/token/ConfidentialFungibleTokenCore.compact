@@ -574,9 +574,11 @@ module ConfidentialFungibleTokenCore {
    * account's balance ciphertext and pushes an ECDH one-time-pad memo that
    * delivers `value` directly to the recipient (no discrete-log recovery, so no
    * `2^48` bound). All per-credit randomness is derived internally from the
-   * witness seed and a per-recipient monotonic nonce (the memo-list length), so
-   * a reused seed cannot cause a mask/randomness collision (critical for the
-   * memo's one-time pad; see `crypto/EcdhMask`).
+   * witness seed and a per-recipient monotonic nonce (the memo-list length),
+   * which keeps randomness distinct WITHIN a memo epoch (defense in depth for
+   * the memo's one-time pad; see `crypto/EcdhMask`). That nonce RESETS on
+   * `clearMemos`, so it is an in-epoch backstop only, never a substitute for
+   * seed freshness (see the module header and the section note above `_debit`).
    *
    * @circuitInfo k=15, rows=27142
    *
