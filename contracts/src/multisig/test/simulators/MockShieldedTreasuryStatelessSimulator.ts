@@ -6,10 +6,7 @@ import {
   ledger,
   Contract as MockShieldedTreasuryStateless,
 } from '../../../../artifacts/MockShieldedTreasuryStateless/contract/index.js';
-import {
-  ShieldedTreasuryPrivateState,
-  ShieldedTreasuryWitnesses,
-} from '../witnesses/ShieldedTreasuryWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
 type QualifiedShieldedCoinInfo = ShieldedCoinInfo & { mt_index: bigint };
@@ -21,26 +18,26 @@ type ShieldedSendResult = {
 type ShieldedTreasuryStatelessArgs = readonly [];
 
 const MockShieldedTreasuryStatelessSimulatorBase = createSimulator<
-  ShieldedTreasuryPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedTreasuryWitnesses>,
-  MockShieldedTreasuryStateless<ShieldedTreasuryPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  MockShieldedTreasuryStateless<EmptyPrivateState>,
   ShieldedTreasuryStatelessArgs
 >({
   contractFactory: (witnesses) =>
-    new MockShieldedTreasuryStateless<ShieldedTreasuryPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedTreasuryPrivateState,
+    new MockShieldedTreasuryStateless<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedTreasuryWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'MockShieldedTreasuryStateless',
 });
 
 export class MockShieldedTreasuryStatelessSimulator extends MockShieldedTreasuryStatelessSimulatorBase {
   static async create(
     options: SimulatorOptions<
-      ShieldedTreasuryPrivateState,
-      ReturnType<typeof ShieldedTreasuryWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<MockShieldedTreasuryStatelessSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
