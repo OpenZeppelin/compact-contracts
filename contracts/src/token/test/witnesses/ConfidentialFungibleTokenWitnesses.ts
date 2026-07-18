@@ -135,9 +135,9 @@ export interface IConfidentialFungibleTokenWitnesses<L, P> {
  * values. The cache is populated by the wallet whenever:
  *   - it constructs a ciphertext locally (sending), in which case the
  *     plaintext is known directly;
- *   - it decrypts an incoming memo (receiving), in which case the
- *     plaintext is recovered via discrete-log search and cached against
- *     the resulting balance ciphertext.
+ *   - it decrypts an incoming memo (receiving), in which case the plaintext
+ *     is recovered by directly decrypting the EcdhMask one-time-pad memo (no
+ *     discrete-log search) and cached against the balance ciphertext.
  *
  * The cache is keyed by a canonical serialization of the ciphertext, not
  * by call order or position. This matches the circuit-side witness
@@ -288,34 +288,3 @@ export const ConfidentialFungibleTokenWitnesses = <
     return [context.privateState, context.privateState.randomnessSeed];
   },
 });
-
-// ---------------------------------------------------------------------------
-// Discrete-log recovery (stub)
-// ---------------------------------------------------------------------------
-
-/**
- * @description Recovers the plaintext value from a memo ciphertext by
- * computing the discrete log of the recovered group element.
- *
- * STUBBED: this is not implemented. The production version would use
- * baby-step giant-step (BSGS) over the bounded plaintext range [0, 2^48)
- * with a precomputed table of ~16MB and millisecond lookups. For tests
- * that need to exercise the receive-and-decrypt flow, callers can either:
- *   (a) skip the recovery and cache the plaintext directly via
- *       `ConfidentialFungibleTokenPrivateState.cachePlaintext` if the
- *       value is known by construction, or
- *   (b) implement a small brute-force recovery limited to small values
- *       for use in tests only.
- *
- * @throws Always. Replace with a real implementation when memo decryption
- * is needed end-to-end.
- */
-export function recoverMemoPlaintext(
-  _memo: Ciphertext,
-  _ek: Uint8Array,
-): bigint {
-  throw new Error(
-    'recoverMemoPlaintext is not implemented. ' +
-      'For tests, cache plaintexts directly via ConfidentialFungibleTokenPrivateState.cachePlaintext.',
-  );
-}
