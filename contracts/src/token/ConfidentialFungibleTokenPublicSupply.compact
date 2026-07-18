@@ -201,8 +201,8 @@ module ConfidentialFungibleTokenPublicSupply {
     return CFT_sweep();
   }
 
-  export circuit allowance(account: Bytes<32>, spender: Bytes<32>): EscrowEntry {
-    return CFT_allowance(account, spender);
+  export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
+    return CFT_allowance(owner, spender);
   }
 
   export circuit isRegistered(account: Bytes<32>): Boolean {

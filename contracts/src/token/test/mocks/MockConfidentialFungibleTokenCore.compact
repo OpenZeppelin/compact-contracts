@@ -58,8 +58,8 @@ export circuit sweep(): Bytes<32> {
   return CFT_sweep();
 }
 
-export circuit allowance(account: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
-  return CFT_allowance(account, spender);
+export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
+  return CFT_allowance(owner, spender);
 }
 
 export circuit isRegistered(account: Bytes<32>): Boolean {

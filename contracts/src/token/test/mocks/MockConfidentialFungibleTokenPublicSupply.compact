@@ -59,8 +59,8 @@ export circuit sweep(): Bytes<32> {
   return Token_sweep();
 }
 
-export circuit allowance(account: Bytes<32>, spender: Bytes<32>): Token_EscrowEntry {
-  return Token_allowance(account, spender);
+export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): Token_EscrowEntry {
+  return Token_allowance(owner, spender);
 }
 
 export circuit isRegistered(account: Bytes<32>): Boolean {
