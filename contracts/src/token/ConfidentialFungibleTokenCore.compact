@@ -575,7 +575,7 @@ module ConfidentialFungibleTokenCore {
    * a reused seed cannot cause a mask/randomness collision (critical for the
    * memo's one-time pad; see `crypto/EcdhMask`).
    *
-   * @circuitInfo k=15, rows=29920
+   * @circuitInfo k=15, rows=27142
    *
    * @warning Does not adjust any supply total. Called outside a supply-accounted
    * flow, `_credit` mints unbacked value (inflation) and breaks the
@@ -613,7 +613,13 @@ module ConfidentialFungibleTokenCore {
     // repeats (essential for the memo OTP). This inlines the tag + expansion into
     // a single hash per scalar. The residual persistentHash cost is poseidon-gated
     // (a stable cheap hasher would cheapen it), same as the memo KDF.
-    const countHash = persistentHash<JubjubPoint>(ecMulGenerator(count));
+    // Encode the count nonce as Bytes<32> by hashing the Field directly. An
+    // earlier version hashed `ecMulGenerator(count)`, but that scalar-mul was
+    // pure Field-to-Bytes plumbing with no cryptographic role (the nonce only
+    // needs an injective, deterministic encoding of `count`), and it was wasted
+    // rows on the hot credit path. `countHash` is in-circuit only; nothing
+    // reproduces it off chain, so this is a free saving.
+    const countHash = persistentHash<Field>(count);
     const rBalance = degradeToTransient(
       persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_balance"), account, countHash])
     );
@@ -642,7 +648,7 @@ module ConfidentialFungibleTokenCore {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @circuitInfo k=16, rows=44395
+   * @circuitInfo k=16, rows=41617
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -680,7 +686,7 @@ module ConfidentialFungibleTokenCore {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @circuitInfo k=16, rows=44384
+   * @circuitInfo k=16, rows=41606
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -842,7 +848,7 @@ module ConfidentialFungibleTokenCore {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=16, rows=65526
+   * @circuitInfo k=16, rows=63207
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
