@@ -833,10 +833,6 @@ module ConfidentialFungibleTokenCore {
     const ownerMemo = EcdhMask_encrypt(ownerPk, value, eOwnerMemo,
                                        pad(32, "OZ_CFT_escrow_owner_v1"));
 
-    if (!_escrow.member(disclose(ownerId))) {
-      _escrow.insert(disclose(ownerId),
-                     default<Map<Bytes<32>, EscrowEntry>>);
-    }
     _escrow.lookup(disclose(ownerId)).insert(
       disclose(spender),
       disclose(EscrowEntry {
