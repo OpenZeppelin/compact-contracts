@@ -476,7 +476,8 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
 
     // Revoke (approve 0): the refund adds the owner copy back to the balance.
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    const ownerCt = (await cft.allowance(ALICE.accountId, BOB.accountId)).ownerCt;
+    const ownerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
+      .ownerCt;
     const refunded = elgamal.add(await cft.balanceOf(ALICE.accountId), ownerCt);
     await cft.privateState.cachePlaintext(refunded, 75n); // 60 + 15
     await cft.approve(BOB.accountId, 0n);
