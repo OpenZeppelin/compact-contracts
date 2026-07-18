@@ -461,6 +461,36 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 15n);
   });
 
+  it('keeps the owner escrow copy in lockstep with the spender copy', async () => {
+    // `_spendEscrow` bound-checks only the SPENDER copy and reduces the OWNER
+    // copy by the same value, relying on the two staying equal (its @notice).
+    // The test above pins the spender side; this pins the owner side.
+    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+    await cft.privateState.cachePlaintext(
+      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+      40n,
+    );
+    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+    // Revoke (approve 0): the refund adds the owner copy back to the balance.
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    const ownerCt = (await cft.allowance(ALICE.accountId, BOB.accountId)).ownerCt;
+    const refunded = elgamal.add(await cft.balanceOf(ALICE.accountId), ownerCt);
+    await cft.privateState.cachePlaintext(refunded, 75n); // 60 + 15
+    await cft.approve(BOB.accountId, 0n);
+
+    // Balance is EXACTLY 75 (= 60 + 15): the refund was exactly the remainder,
+    // so the owner copy tracked the spender copy through the partial spend.
+    await cft.privateState.cachePlaintext(
+      await cft.balanceOf(ALICE.accountId),
+      75n,
+    );
+    await expect(cft._debit(76n)).rejects.toThrow(
+      'ConfidentialFungibleToken: insufficient balance',
+    );
+    await cft._debit(75n);
+  });
+
   it('rejects transferFrom with no escrow', async () => {
     await registerAll();
     // Bob never received an approval from Alice.
