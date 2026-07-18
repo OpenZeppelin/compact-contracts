@@ -187,17 +187,12 @@ export circuit getProposal(id: Uint<64>): Proposal_Proposal {
   return Proposal_getProposal(id);
 }
 
-export circuit getProposalRecipient(id: Uint<64>): Proposal_Recipient {
-  return Proposal_getProposalRecipient(id);
-}
-
-export circuit getProposalAmount(id: Uint<64>): Uint<128> {
-  return Proposal_getProposalAmount(id);
-}
-
-export circuit getProposalColor(id: Uint<64>): Bytes<32> {
-  return Proposal_getProposalColor(id);
-}
+// NOTE: the per-field proposal getters (getProposalRecipient / getProposalAmount
+// / getProposalColor) and getReceivedMinusSent were dropped to bring the deploy
+// transaction under the block-weight limit (the full 19-circuit deploy is
+// rejected with "Transaction would exhaust the block limits"). They are all
+// redundant: read the proposal fields via `getProposal(id).to / .amount / .color`,
+// and the net balance via `getReceivedTotal(color) - getSentTotal(color)`.
 
 export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
   return Proposal_getProposalStatus(id);
@@ -215,10 +210,6 @@ export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
 
 export circuit getSentTotal(color: Bytes<32>): Uint<128> {
   return Treasury_getSentTotal(color);
-}
-
-export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
-  return Treasury_getReceivedMinusSent(color);
 }
 
 // ISignerManager

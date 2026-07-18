@@ -23,6 +23,11 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Compa
 * [Pull Requests](#pull-requests)
 * [Opening an Issue](#opening-an-issue)
 
+[Running Tests](#running-tests)
+
+* [Unit Tests](#unit-tests)
+* [Live Tests](#live-tests)
+
 [Styleguides](#styleguides)
 
 * [Git Commit Messages](#git-commit-messages)
@@ -152,13 +157,83 @@ A maintainer will re-run the status check for you. If we conclude that the failu
 
 While the prerequisites above must be satisfied prior to having your pull request reviewed, the reviewer(s) may ask you to complete additional design work, tests, or other changes before your pull request can be ultimately accepted.
 
+## Running Tests
+
+Run all commands from the repository root. Enable Corepack once (`corepack enable`) so `yarn` resolves to the version pinned in `package.json`.
+
+### Unit Tests
+
+Unit tests run against an in-process mock backend (no network, ZK proving skipped):
+
+```bash
+yarn test
+```
+
+### Live Tests
+
+Live tests run against a local Midnight network (node, indexer, and proof server) defined in [`local-env.yml`](./local-env.yml). They require [Docker](https://docs.docker.com/get-docker/) and a completed `yarn install`.
+
+One command runs everything — it compiles, resets the stack, runs a quick harness smoke, then each live-ready category sequentially on a freshly reset node:
+
+```bash
+yarn test:live
+```
+
+Currently `multisig` is the only live-ready category; the others still assume dry-only semantics and are skipped (listed in the run banner). Each category joins the run — with its own `test:live:<category>` script — as its specs are refactored for the live backend.
+
+If any files fail, a second round re-runs just those files on a fresh node with one worker, to separate a real failure from an environment flake:
+
+* Fails round 1, passes round 2 → **FLAKY** (exit 0, reported loudly).
+* Fails both rounds → **REAL** (exit non-zero).
+
+Scope the same mechanism to one category, or to a subset within it. The first
+argument names the category; any further argument is a filename substring
+(vitest matches it), so pass a spec name to run every file whose name matches it
+on the live backend — the fast loop while iterating on one feature, instead of
+waiting for the whole category. The match is a substring, not an exact file, so
+a name that prefixes others runs all of them:
+
+```bash
+yarn test:live multisig                  # the whole category
+yarn test:live multisig ShieldedTreasury # any file matching "ShieldedTreasury"
+```
+
+The two-round flake check still applies to a scoped run, so a green result
+means the same thing it does for the full suite.
+
+Stop the network when done: `yarn env:down`. (No manual `env:up` is needed — the runner resets the stack itself.)
+
+> **Note:** The live tests all run against one shared node, so state left by an earlier run can make a later one fail. Two rules keep them reliable, both enforced by a guard that fails fast, before any wallet build:
+>
+> 1. **Start from a fresh node.** State left by a previous run makes shielded spends fail with node `Custom error: 103`. The guard aborts if it finds any shielded coin event beyond genesis. The `test:live*` runner resets for you; reset manually with `yarn env:up`.
+> 2. **One live run at a time.** A pid-stamped lock (`contracts/logs/.live-run.lock`) makes a second concurrent run abort.
+
+Environment knobs:
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `MIDNIGHT_LIVE_WORKERS` | 3 | Parallel spec files (max 3 — one genesis-funded deployer each). |
+| `MIDNIGHT_LIVE_ALLOW_DIRTY` | unset | `1` skips the freshness check (run against a dirty node). |
+| `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0 | Coin events beyond genesis tolerated before "not fresh". |
+| `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600 | Above this indexer head, the guard asks you to `env:up` rather than scan. |
+
+`unit-live` runs up to 3 workers in parallel, so their output interleaves. It is tagged per worker: a `▶ live worker N/3 ready` banner when a worker's wallets are funded, a `[wN] ❯ <file>` line as each spec file starts, and a `[wN] ✓ <test> (<ms>) [done/total]` line per test — showing the worker, the result, and overall progress through the run. Each worker also writes a detailed log to `logs/live-harness-wN.log`.
+
+> **Tip:** to save the run to a colored, readable log, force color and pipe to `tee`. Piping (stdout is no longer a TTY) makes vitest print one clean line per result instead of an animated spinner, and `FORCE_COLOR=1` keeps the color. Write it to a `.ansi` file:
+>
+> ```bash
+> FORCE_COLOR=1 yarn test:live multisig 2>&1 | tee logs/live-multisig.ansi
+> ```
+>
+> The file stores ANSI color codes, so render them rather than reading them raw. In VS Code, an ANSI extension such as [`iliazeus.vscode-ansi`](https://marketplace.visualstudio.com/items?itemName=iliazeus.vscode-ansi) renders a `.ansi` file via **"ANSI Text: Open Preview"**. In a terminal, use `less -R logs/live-multisig.ansi`. On Linux, prefix `systemd-inhibit --why="live tests"` for a long run.
+
 ## Styleguides
 
 ### TypeScript Styleguide
 
 All TypeScript code is linted with [Biomejs](https://biomejs.dev/).
 
-Quickly fix all formatting and linting errors with the `yarn fmt-and-lint:fix` command.
+Quickly fix all formatting and linting errors with the `yarn lint:fix` command.
 
 ## Opening an issue
 

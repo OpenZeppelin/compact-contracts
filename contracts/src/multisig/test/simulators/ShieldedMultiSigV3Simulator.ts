@@ -10,10 +10,7 @@ import {
   Contract as ShieldedMultiSigV3Contract,
   type ZswapCoinPublicKey,
 } from '../../../../artifacts/ShieldedMultiSigV3/contract/index.js';
-import {
-  ShieldedMultiSigV3PrivateState,
-  ShieldedMultiSigV3Witnesses,
-} from '../witnesses/ShieldedMultiSigV3Witnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type ShieldedMultiSigV3Args = readonly [
   instanceSalt: Uint8Array,
@@ -23,15 +20,15 @@ type ShieldedMultiSigV3Args = readonly [
 ];
 
 const ShieldedMultiSigV3SimulatorBase = createSimulator<
-  ShieldedMultiSigV3PrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigV3Witnesses>,
-  ShieldedMultiSigV3Contract<ShieldedMultiSigV3PrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ShieldedMultiSigV3Contract<EmptyPrivateState>,
   ShieldedMultiSigV3Args
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV3Contract<ShieldedMultiSigV3PrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigV3PrivateState,
+    new ShieldedMultiSigV3Contract<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
     initCoinNonce,
@@ -39,7 +36,7 @@ const ShieldedMultiSigV3SimulatorBase = createSimulator<
     signerCommitments,
   ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigV3Witnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'ShieldedMultiSigV3',
 });
 
@@ -50,8 +47,8 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     tokenDomain: Uint8Array,
     signerCommitments: Uint8Array[],
     options: SimulatorOptions<
-      ShieldedMultiSigV3PrivateState,
-      ReturnType<typeof ShieldedMultiSigV3Witnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedMultiSigV3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`

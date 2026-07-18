@@ -4,7 +4,7 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import * as utils from '#test-utils/fixtures/address.js';
 import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 
 // Helpers
@@ -90,15 +90,16 @@ describe('Ownable', () => {
       ).rejects.toThrow('Ownable: unsafe ownership transfer');
     });
 
-    it.each(
-      zeroTypes,
-    )('should fail to initialize when owner is zero (%s)', async (_, _zero) => {
-      await expect(
-        OwnableSimulator.create(_zero, isInit, {
-          privateState: { secretKey: OWNER.secretKey },
-        }),
-      ).rejects.toThrow('Ownable: invalid initial owner');
-    });
+    it.each(zeroTypes)(
+      'should fail to initialize when owner is zero (%s)',
+      async (_, _zero) => {
+        await expect(
+          OwnableSimulator.create(_zero, isInit, {
+            privateState: { secretKey: OWNER.secretKey },
+          }),
+        ).rejects.toThrow('Ownable: invalid initial owner');
+      },
+    );
 
     type FailingCircuits = [method: keyof OwnableSimulator, args: unknown[]];
     const circuitsToFail: FailingCircuits[] = [
@@ -110,18 +111,19 @@ describe('Ownable', () => {
       ['_transferOwnership', [OWNER.either]],
       ['_unsafeUncheckedTransferOwnership', [OWNER.either]],
     ];
-    it.each(
-      circuitsToFail,
-    )('should fail when calling circuit "%s"', async (circuitName, args) => {
-      ownable = await OwnableSimulator.create(OWNER.either, isBadInit, {
-        privateState: { secretKey: OWNER.secretKey },
-      });
-      await expect(
-        (ownable[circuitName] as (...args: unknown[]) => Promise<unknown>)(
-          ...args,
-        ),
-      ).rejects.toThrow('Ownable: contract not initialized');
-    });
+    it.each(circuitsToFail)(
+      'should fail when calling circuit "%s"',
+      async (circuitName, args) => {
+        ownable = await OwnableSimulator.create(OWNER.either, isBadInit, {
+          privateState: { secretKey: OWNER.secretKey },
+        });
+        await expect(
+          (ownable[circuitName] as (...args: unknown[]) => Promise<unknown>)(
+            ...args,
+          ),
+        ).rejects.toThrow('Ownable: contract not initialized');
+      },
+    );
 
     it('should canonicalize initial owner', async () => {
       const nonCanonical = {

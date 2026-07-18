@@ -1,3 +1,7 @@
+# Publishes to npm via OIDC trusted publishing — no NPM_TOKEN.
+# Prerequisite: this repo + this workflow must be registered as a Trusted
+# Publisher for the package on npmjs.org (package → Settings → Trusted
+# Publishers), otherwise the publish step fails with an auth error.
 name: Publish Package on Release
 
 on:
@@ -13,24 +17,32 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write # Write SLSA build provenance to the attestation store
 
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          # No git writes here (publish goes through the npm token), so don't persist creds.
+          # No git writes here (publish uses npm OIDC, not git creds), so don't persist creds.
           persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: ".nvmrc"
+          registry-url: https://registry.npmjs.org
           package-manager-cache: false # Prevent cache poisoning issues
+
+      - name: Ensure npm supports trusted publishing
+        # OIDC trusted publishing requires npm >= 11.5.1. The .nvmrc Node may
+        # bundle an older npm, so pin the floor explicitly: stays on the
+        # vetted 11.x major, avoids a surprise npm major in a release run.
+        run: npm install -g npm@^11.5.1
 
       - name: Enable Corepack
         run: corepack enable
@@ -55,11 +67,6 @@ jobs:
             exit 1
           fi
           echo "✅ Version consistency validated: $RELEASE_VERSION"
-
-      - name: Setup npm registry
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          registry-url: "https://registry.npmjs.org"
 
       - name: Pack tarball
         id: pack
@@ -100,14 +107,21 @@ jobs:
             exit 1
           fi
 
+      - name: Attest build provenance
+        # Signed SLSA v1 provenance over the exact tarball, stored in the
+        # GitHub attestation store (verifiable with `gh attestation verify`).
+        # Complements the npm-registry provenance from NPM_CONFIG_PROVENANCE.
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
       - name: Publish to npm
         run: |
           # Publish the tarball with appropriate tag
           npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.pack.outputs.tag }}" --access public
         env:
+          # No NODE_AUTH_TOKEN — OIDC trusted publishing mints per-run credentials.
           NPM_CONFIG_PROVENANCE: true
-          # Token required for actions/setup-node
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Log success
         run: |

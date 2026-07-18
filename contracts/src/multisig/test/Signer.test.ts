@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SignerSimulator } from './simulators/SignerSimulator.js';
 
 const THRESHOLD = 2n;
@@ -14,6 +14,11 @@ const OTHER2 = new Uint8Array(32).fill(5);
 
 let contract: SignerSimulator;
 
+// A fresh initialized 2-of-3 Signer. Mutating groups build one per test
+// (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
+// live deploy tx.
+const freshInit = () => SignerSimulator.create(SIGNERS, THRESHOLD, IS_INIT);
+
 describe('Signer', () => {
   describe('when not initialized', () => {
     beforeEach(async () => {
@@ -28,17 +33,18 @@ describe('Signer', () => {
       ['getThreshold', []],
     ];
 
-    it.each(
-      circuitsRequiringInit,
-    )('%s should fail', async (circuitName, args) => {
-      await expect(
-        (
-          contract[circuitName as keyof SignerSimulator] as (
-            ...a: unknown[]
-          ) => Promise<unknown>
-        )(...args),
-      ).rejects.toThrow('Signer: contract not initialized');
-    });
+    it.each(circuitsRequiringInit)(
+      '%s should fail',
+      async (circuitName, args) => {
+        await expect(
+          (
+            contract[circuitName as keyof SignerSimulator] as (
+              ...a: unknown[]
+            ) => Promise<unknown>
+          )(...args),
+        ).rejects.toThrow('Signer: contract not initialized');
+      },
+    );
 
     it('isSigner should succeed (no init guard)', async () => {
       expect(await contract.isSigner(SIGNER)).toEqual(false);
@@ -92,11 +98,11 @@ describe('Signer', () => {
     });
   });
 
-  beforeEach(async () => {
-    contract = await SignerSimulator.create(SIGNERS, THRESHOLD, IS_INIT);
-  });
-
   describe('assertSigner', () => {
+    beforeAll(async () => {
+      contract = await freshInit();
+    });
+
     it('should pass with good signer', async () => {
       await contract.assertSigner(SIGNER);
     });
@@ -109,6 +115,10 @@ describe('Signer', () => {
   });
 
   describe('assertThresholdMet', () => {
+    beforeAll(async () => {
+      contract = await freshInit();
+    });
+
     it('should pass when approvals equal threshold', async () => {
       await contract.assertThresholdMet(THRESHOLD);
     });
@@ -131,6 +141,12 @@ describe('Signer', () => {
   });
 
   describe('getSignerCount', () => {
+    // Mixed: one read plus two mutating (`_addSigner`/`_removeSigner`) tests, so
+    // each test needs its own fresh contract.
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should return the initial signer count', async () => {
       expect(await contract.getSignerCount()).toEqual(BigInt(SIGNERS.length));
     });
@@ -151,6 +167,12 @@ describe('Signer', () => {
   });
 
   describe('getThreshold', () => {
+    // Mixed: one read plus two mutating (`_changeThreshold`/`_setThreshold`)
+    // tests, so each test needs its own fresh contract.
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should return the initial threshold', async () => {
       expect(await contract.getThreshold()).toEqual(THRESHOLD);
     });
@@ -167,6 +189,10 @@ describe('Signer', () => {
   });
 
   describe('isSigner', () => {
+    beforeAll(async () => {
+      contract = await freshInit();
+    });
+
     it('should return true for an active signer', async () => {
       expect(await contract.isSigner(SIGNER)).toEqual(true);
     });
@@ -177,6 +203,10 @@ describe('Signer', () => {
   });
 
   describe('_addSigner', () => {
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should add a new signer', async () => {
       await contract._addSigner(OTHER);
 
@@ -217,6 +247,10 @@ describe('Signer', () => {
   });
 
   describe('_removeSigner', () => {
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should remove an existing signer', async () => {
       await contract._removeSigner(SIGNER3);
 
@@ -267,6 +301,10 @@ describe('Signer', () => {
   });
 
   describe('_changeThreshold', () => {
+    beforeEach(async () => {
+      contract = await freshInit();
+    });
+
     it('should update the threshold', async () => {
       await contract._changeThreshold(3n);
 
