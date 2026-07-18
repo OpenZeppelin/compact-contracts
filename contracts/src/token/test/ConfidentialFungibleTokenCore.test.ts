@@ -340,6 +340,12 @@ describe('ConfidentialFungibleToken: transfer', () => {
       'ConfidentialFungibleToken: insufficient balance',
     );
   });
+
+  it('rejects a debit when the witness EK does not match the registered pk', async () => {
+    await fundAlice(100n);
+    await cft.privateState.injectEncryptionKey(BOB.encryptionKey);
+    await expect(cft._debit(10n)).rejects.toThrow('ElGamal: ek/pk mismatch');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -624,6 +630,28 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     await expect(cft.approve(BOB.accountId, 20n)).rejects.toThrow(
       'ElGamal: plaintext mismatch',
     );
+  });
+
+  it('revokes an allowance via approve(spender, 0)', async () => {
+    await approveBob(100n, 40n);
+
+    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+    const refunded = elgamal.add(
+      await cft.balanceOf(ALICE.accountId),
+      escrow.ownerCt,
+    );
+    await cft.privateState.cachePlaintext(refunded, 100n);
+    await cft.approve(BOB.accountId, 0n);
+
+    // The escrow now encrypts 0.
+    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+    await cft.privateState.cachePlaintext(
+      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+      0n,
+    );
+    await expect(
+      cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 1n),
+    ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
   });
 });
 
