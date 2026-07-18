@@ -765,7 +765,7 @@ module ConfidentialFungibleTokenCore {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @circuitInfo k=16, rows=43101
+   * @circuitInfo k=16, rows=43067
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
