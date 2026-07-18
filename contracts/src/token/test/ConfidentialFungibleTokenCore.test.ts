@@ -269,7 +269,7 @@ describe('ConfidentialFungibleToken: registration', () => {
 // Confidential balances can't be read directly, so "X holds exactly N" is
 // proven behaviorally: cache N and `_debit(N)`. The debit's in-circuit
 // `ElGamal_assertDecryptsTo` only passes if the balance truly encrypts >= N, so
-// `_debit(N)` succeeding (and `_debit(N+1)` failing) pins the balance to N — no
+// `_debit(N)` succeeding (and `_debit(N+1)` failing) pins the balance to N; no
 // supply total needed. `_debit`/`_credit` are the base's own supply-free
 // primitives, so this suite never touches mint/burn/totalSupply.
 // ---------------------------------------------------------------------------
@@ -708,7 +708,7 @@ describe('ConfidentialFungibleToken: metadata & views', () => {
 
   it('balanceOf returns Enc(0) for an unregistered account', async () => {
     // Unregistered accounts hold zero: balanceOf returns a well-formed Enc(0)
-    // (identity, identity) — identical for any unregistered account and
+    // (identity, identity), identical for any unregistered account and
     // matching a registered account's fresh balance.
     const bal = await cft.balanceOf(ALICE.accountId);
     const identity = identityPoint();
@@ -910,7 +910,7 @@ describe('ConfidentialFungibleToken: memo value delivery', () => {
     await cft.transfer(BOB.accountId, 250n);
 
     // Bob reads his newest on-chain memo (pushFront => index 0) and decrypts it
-    // with his EK scalar — recovering the value directly, no BSGS.
+    // with his EK scalar, recovering the value directly, no BSGS.
     const memoList = (await cft.getPublicState()).CFT__memos.lookup(
       BOB.accountId,
     );

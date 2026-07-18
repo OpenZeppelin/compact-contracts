@@ -71,7 +71,7 @@ describe('ConfidentialFungibleTokenPublicSupply', () => {
     // Note: mint and burn are supply-layer operations, intended to be called
     // from privileged contract contexts (e.g. gated by an Ownable or
     // AccessControl companion module). In these unit tests we don't model that
-    // gating — we call them directly and treat the active identity as both "the
+    // gating; we call them directly and treat the active identity as both "the
     // minter" and "the account being minted to." This keeps the cache updates
     // straightforward, since the test identity is the one whose plaintext-cache
     // the witness reads.

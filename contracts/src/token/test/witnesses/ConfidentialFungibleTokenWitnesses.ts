@@ -3,7 +3,7 @@
 // off-chain tests. Not shipped as a consumable artifact. Production
 // consumers must author and audit their own witnesses.
 //
-// SECURITY — randomness: `wit_RandomnessSeed` below returns a FIXED seed from
+// SECURITY (randomness): `wit_RandomnessSeed` below returns a FIXED seed from
 // private state so tests are reproducible. A production wallet MUST return a
 // fresh, cryptographically-random, unpredictable 32-byte seed per circuit
 // invocation. A fixed or predictable seed does NOT affect integrity (balances,
@@ -114,7 +114,7 @@ export interface IConfidentialFungibleTokenWitnesses<L, P> {
   /**
    * Returns the 32-byte randomness seed for the circuit invocation. The seed
    * is held in private state and returned unchanged on every call, so it is
-   * stable within (and across) invocations — the module relies on a single
+   * stable within (and across) invocations; the module relies on a single
    * seed per invocation, expanded in-circuit with distinct tags. Holding it in
    * state also keeps it predictable to the wallet, which is required for flows
    * that re-query a ciphertext the same circuit just produced (e.g. `approve`
@@ -195,7 +195,7 @@ export const ConfidentialFungibleTokenPrivateState = {
 
   /**
    * @description Records a known plaintext for a ciphertext in the cache.
-   * Called by the wallet whenever it learns a ciphertext's plaintext —
+   * Called by the wallet whenever it learns a ciphertext's plaintext:
    * either by constructing the ciphertext locally or by decrypting an
    * incoming memo.
    */
@@ -231,7 +231,7 @@ export const ConfidentialFungibleTokenPrivateState = {
  * ConfidentialFungibleToken module.
  *
  * @notice The plaintext balance witness throws if the requested ciphertext
- * is not in the cache. In production this would indicate a wallet bug —
+ * is not in the cache. In production this would indicate a wallet bug;
  * the wallet should always know the plaintext of any ciphertext the
  * contract asks it about, because every such ciphertext is either:
  *   (a) one the wallet constructed (and so knows by construction), or

@@ -124,21 +124,21 @@ pragma language_version >= 0.23.0;
  * @dev Caller-identity gating (composability). This module is unopinionated
  * about compliance policy (freeze, KYC, pause); a composing contract layers
  * that on top. Gating a circuit on an EXPLICIT argument (e.g. the recipient
- * `to`) is straightforward — the wrapper and this module see the same value.
+ * `to`) is straightforward; the wrapper and this module see the same value.
  * Gating on the CALLER, however, is not: the caller is derived from
  * `wit_ConfidentialTokenSK`, and a separate witness call in the wrapper could
  * return a different secret than the one this module authenticates with,
  * letting a frozen account slip a clean id past the gate. To make caller-side
  * gates sound, every caller-authenticating circuit (`register`, `_debit`,
  * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_spendEscrow`)
- * RETURNS the caller's `accountId` — the principal it authenticated from the
+ * RETURNS the caller's `accountId`, the principal it authenticated from the
  * witness. A
  * wrapper gates on that returned value; since an assert failing anywhere in a
  * Compact circuit invalidates the whole transaction, a post-call check still
  * prevents the operation.
  *
  * Invariant: the returned id is ALWAYS the caller (the sender / approver /
- * spender / registrant, depending on the circuit) — it is never the recipient
+ * spender / registrant, depending on the circuit); it is never the recipient
  * `to` nor the `fromAddress` argument. Those are explicit arguments a wrapper
  * gates directly. A supply layer's `mint` is not caller-authenticating (its
  * recipient is an explicit argument), so it returns nothing.
@@ -147,7 +147,7 @@ pragma language_version >= 0.23.0;
  * externally-owned: identity is `accountId = persistentHash(SK)` and spending
  * requires the holder to prove a balance plaintext under a secret encryption
  * key (`EK`) supplied via witness. A contract has no private state, so it
- * cannot custody such a key — it could be blindly credited (the homomorphic
+ * cannot custody such a key; it could be blindly credited (the homomorphic
  * add needs no key) but could never spend, decrypt its balance, or scan memos.
  * This is a cryptographic limitation, NOT a missing interface: adding a
  * `ContractAddress` account variant would not make a contract able to hold a
@@ -159,7 +159,7 @@ pragma language_version >= 0.23.0;
  * not assume EOAs. If a contract key-custody scheme ever lands alongside c2c
  * (e.g. a designated operator, threshold/MPC decryption, or a viewing-key
  * arrangement), a contract obtains a `Bytes<32>` accountId via that scheme and
- * the value logic is unchanged — only registration/authentication would. Until
+ * the value logic is unchanged; only registration/authentication would. Until
  * c2c exists AND such a custody design is defined, c2c is intentionally
  * deferred. Interim: a protocol that needs to "hold" these tokens uses an
  * EOA-custodied account it controls (supported today via `approve` /
