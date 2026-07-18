@@ -465,6 +465,8 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     // `_spendEscrow` bound-checks only the SPENDER copy and reduces the OWNER
     // copy by the same value, relying on the two staying equal (its @notice).
     // The test above pins the spender side; this pins the owner side.
+    await approveBob(100n, 40n); // Alice spendable 100 -> 60; both copies = 40.
+
     await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
     await cft.privateState.cachePlaintext(
       (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
