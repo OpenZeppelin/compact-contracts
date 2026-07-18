@@ -495,11 +495,14 @@ module ConfidentialFungibleTokenCore {
   //
   // DANGER: `export circuit` means callable on the deployed contract, and
   // Compact cannot restrict a re-export. A consumer that re-exports `_credit`
-  // turns it into a permissionless mint, and `_debit` into a permissionless
-  // burn. This base is a module, not independently deployable; a consuming
-  // contract MUST expose only the conserving surface (`transfer`, `_move`,
-  // `approve`/`transferFrom`, `sweep`) plus a supply layer's gated `mint`/`burn`,
-  // and MUST NEVER re-export `_credit` or `_debit`.
+  // turns it into a permissionless mint, `_debit` into a permissionless burn,
+  // and `_spendEscrow` into a permissionless escrow-burn (an approved spender
+  // destroys escrowed value with no supply decrement, so a supply layer's
+  // totalSupply overstates circulation). This base is a module, not
+  // independently deployable; a consuming contract MUST expose only the
+  // conserving surface (`transfer`, `_move`, `approve`/`transferFrom`, `sweep`)
+  // plus a supply layer's gated `mint`/`burn`, and MUST NEVER re-export
+  // `_credit`, `_debit`, or `_spendEscrow`.
   //
   // WARNING: neither `_debit` nor `_credit` adjusts any supply total. They only
   // move value into/out of a single account's balance ciphertext. A supply layer
@@ -956,6 +959,13 @@ module ConfidentialFungibleTokenCore {
    * owner's escrow ciphertexts by `value`. Shared by `transferFrom` and a
    * supply layer's `burnFrom`; the caller supplies the post-spend disposition
    * (credit a recipient, or decrement total supply).
+   *
+   * @warning Does not adjust any supply total. Re-exported raw, `_spendEscrow`
+   * is a permissionless escrow-burn: it destroys the escrowed value with no
+   * corresponding burn, breaking `sum(balances) == totalSupply` (the total then
+   * overstates circulation). A supply layer MUST pair it with a burn (as
+   * `burnFrom` does) or a credit (as `transferFrom` does); never re-export it
+   * raw (see the DANGER note above the primitives).
    *
    * @notice Only the spender's escrow copy is decrypted and checked
    * `>= value`. The owner's copy is reduced by the same `value`, preserving the
