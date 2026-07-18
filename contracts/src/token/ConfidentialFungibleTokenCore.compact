@@ -664,6 +664,8 @@ module ConfidentialFungibleTokenCore {
     // Derive the sender from the same authentication `_debit` uses, so the
     // returned id is exactly the account whose funds moved.
     const senderId = _debit(value);
+    // A self-transfer would debit the caller's spendable and re-credit their own pending,
+    // forcing a sweep with no foreseeable benefit.
     assert(senderId != to, "ConfidentialFungibleToken: self-transfer");
 
     _credit(to, value);
@@ -682,6 +684,16 @@ module ConfidentialFungibleTokenCore {
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
+   *
+   * @dev Self-move (`to` == caller) is PERMITTED here, unlike `transfer`, which
+   * rejects it. A self-move is conserving and safe: it debits the caller's
+   * spendable and credits the caller's own pending (net zero, distinct ledger
+   * cells; the value is recovered with `sweep`). `transfer`'s self-transfer guard
+   * is therefore a UX choice, not a safety requirement: it spares users a
+   * self-transfer with no foreseeable benefit (a shuffle of spendable into
+   * pending plus a self-memo). This primitive stays permissive so a composer can
+   * set its own policy; add a `to != caller` check in the wrapper to reject a
+   * self-move.
    *
    * Requirements:
    *
