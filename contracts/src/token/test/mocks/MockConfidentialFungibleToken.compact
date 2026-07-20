@@ -10,7 +10,7 @@
 // would be a permissionless mint/burn. DO NOT deploy this mock.
 pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
-import "../../ConfidentialFungibleTokenCore" prefix CFT_;
+import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;
 
 export { CFT_EscrowEntry, ElGamal_Ciphertext };

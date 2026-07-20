@@ -7,7 +7,7 @@ import {
   type ElGamal_Ciphertext,
   ledger,
   Contract as MockCFT,
-} from '../../../../artifacts/MockConfidentialFungibleTokenCore/contract/index.js';
+} from '../../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
   ConfidentialFungibleTokenWitnesses,
@@ -23,7 +23,7 @@ type ConfidentialFungibleTokenArgs = readonly [
   decimals: bigint,
 ];
 
-const ConfidentialFungibleTokenCoreSimulatorBase = createSimulator<
+const ConfidentialFungibleTokenSimulatorBase = createSimulator<
   ConfidentialFungibleTokenPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof ConfidentialFungibleTokenWitnesses>,
@@ -36,13 +36,13 @@ const ConfidentialFungibleTokenCoreSimulatorBase = createSimulator<
   contractArgs: (name, symbol, decimals) => [name, symbol, decimals],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialFungibleTokenWitnesses(),
-  artifactName: 'MockConfidentialFungibleTokenCore',
+  artifactName: 'MockConfidentialFungibleToken',
 });
 
 /**
  * ConfidentialFungibleToken Simulator
  */
-export class ConfidentialFungibleTokenCoreSimulator extends ConfidentialFungibleTokenCoreSimulatorBase {
+export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleTokenSimulatorBase {
   static async create(
     name: string,
     symbol: string,
@@ -51,12 +51,12 @@ export class ConfidentialFungibleTokenCoreSimulator extends ConfidentialFungible
       ConfidentialFungibleTokenPrivateState,
       ReturnType<typeof ConfidentialFungibleTokenWitnesses>
     > = {},
-  ): Promise<ConfidentialFungibleTokenCoreSimulator> {
+  ): Promise<ConfidentialFungibleTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [name, symbol, decimals],
       options,
-    ) as Promise<ConfidentialFungibleTokenCoreSimulator>;
+    ) as Promise<ConfidentialFungibleTokenSimulator>;
   }
   /**
    * @description Returns the token name.

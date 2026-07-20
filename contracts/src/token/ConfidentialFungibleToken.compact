@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (token/ConfidentialFungibleTokenCore.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/ConfidentialFungibleToken.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialFungibleTokenCore
+ * @module ConfidentialFungibleToken
  * @description An account-based confidential fungible token module.
  *
  * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity
@@ -165,7 +165,7 @@ pragma language_version >= 0.23.0;
  * EOA-custodied account it controls (supported today via `approve` /
  * `transferFrom`), not the contract itself.
  */
-module ConfidentialFungibleTokenCore {
+module ConfidentialFungibleToken {
   import CompactStandardLibrary;
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;

@@ -5,7 +5,7 @@ pragma language_version >= 0.23.0;
 
 /**
  * @module ConfidentialFungibleTokenPublicSupply
- * @description A supply layer over the supply-free `ConfidentialFungibleTokenCore`
+ * @description A supply layer over the supply-free `ConfidentialFungibleToken`
  * base.
  *
  * The base holds only the conserving, spend-sound value surface (transfer,
@@ -34,7 +34,7 @@ pragma language_version >= 0.23.0;
  */
 module ConfidentialFungibleTokenPublicSupply {
   import CompactStandardLibrary;
-  import "./ConfidentialFungibleTokenCore" prefix CFT_;
+  import "./ConfidentialFungibleToken" prefix CFT_;
   import "../crypto/ElGamal" prefix ElGamal_;
 
   // Re-export the base ledger and the escrow struct unprefixed (see the
@@ -52,7 +52,7 @@ module ConfidentialFungibleTokenPublicSupply {
     _symbol,
     _decimals,
     EscrowEntry
-  } from "./ConfidentialFungibleTokenCore";
+  } from "./ConfidentialFungibleToken";
   export {
     _balances,
     _pending,
