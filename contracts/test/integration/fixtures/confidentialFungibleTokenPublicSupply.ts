@@ -1,18 +1,24 @@
 import {
+  CompactTypeBytes,
+  CompactTypeVector,
+  ecMulGenerator,
+  persistentHash,
+} from '@midnight-ntwrk/compact-runtime';
+import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
   type ElGamal_Ciphertext,
   ledger,
-  Contract as MockCFT,
+  Contract as CFTPublicSupply,
   type Token_EscrowEntry,
-} from '../../../../artifacts/MockConfidentialFungibleTokenPublicSupply/contract/index.js';
+} from '../../../artifacts/ConfidentialFungibleTokenPublicSupply/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
   ConfidentialFungibleTokenWitnesses,
   DEFAULT_RANDOMNESS_SEED,
-} from '../witnesses/ConfidentialFungibleTokenWitnesses.js';
+} from '../../../src/token/test/witnesses/ConfidentialFungibleTokenWitnesses.js';
 
 /**
  * Type constructor args
@@ -27,20 +33,22 @@ const ConfidentialFungibleTokenPublicSupplySimulatorBase = createSimulator<
   ConfidentialFungibleTokenPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof ConfidentialFungibleTokenWitnesses>,
-  MockCFT<ConfidentialFungibleTokenPrivateState>,
+  CFTPublicSupply<ConfidentialFungibleTokenPrivateState>,
   ConfidentialFungibleTokenArgs
 >({
   contractFactory: (witnesses) =>
-    new MockCFT<ConfidentialFungibleTokenPrivateState>(witnesses),
+    new CFTPublicSupply<ConfidentialFungibleTokenPrivateState>(witnesses),
   defaultPrivateState: () => ConfidentialFungibleTokenPrivateState.generate(),
   contractArgs: (name, symbol, decimals) => [name, symbol, decimals],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialFungibleTokenWitnesses(),
-  artifactName: 'MockConfidentialFungibleTokenPublicSupply',
+  artifactName: 'ConfidentialFungibleTokenPublicSupply',
 });
 
 /**
- * ConfidentialFungibleToken Simulator
+ * Drives the ConfidentialFungibleTokenPublicSupply integration contract: the
+ * production ConfidentialFungibleToken module composed with the
+ * ConfidentialFungibleTokenSupply extension.
  */
 export class ConfidentialFungibleTokenPublicSupplySimulator extends ConfidentialFungibleTokenPublicSupplySimulatorBase {
   static async create(
@@ -370,4 +378,90 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Confidential
       return this.circuits.pure.computeAccountId(sk);
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Shared spec helpers (specs/confidentialFungibleToken)
+// ---------------------------------------------------------------------------
+
+const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
+  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
+  return persistentHash(rt_type, [sk]);
+};
+
+/**
+ * @description The identity element on Jubjub, produced by ecMulGenerator(0).
+ * Used as both c1 and c2 of Enc(0).
+ */
+export const identityPoint = () => ecMulGenerator(0n);
+
+const createTestKey = (label: string): Uint8Array => {
+  const key = new Uint8Array(32);
+  const encoded = new TextEncoder().encode(label);
+  key.set(encoded.slice(0, 32));
+  return key;
+};
+
+export const makeUser = (label: string) => {
+  const secretKey = createTestKey(`${label}_SK`);
+  const encryptionKey = createTestKey(`${label}_EK`);
+  const accountId = buildAccountIdHash(secretKey);
+  return { secretKey, encryptionKey, accountId };
+};
+
+export type TestUser = ReturnType<typeof makeUser>;
+
+// Users
+export const ALICE = makeUser('ALICE');
+export const BOB = makeUser('BOB');
+
+// Token metadata
+export const TOKEN_NAME = 'ConfidentialToken';
+export const TOKEN_SYMBOL = 'CT';
+export const TOKEN_DECIMALS = 6n;
+
+/** Deploys a fresh composed token with the shared metadata. */
+export function deployCft(): Promise<ConfidentialFungibleTokenPublicSupplySimulator> {
+  return ConfidentialFungibleTokenPublicSupplySimulator.create(
+    TOKEN_NAME,
+    TOKEN_SYMBOL,
+    TOKEN_DECIMALS,
+  );
+}
+
+/** Switches the active identity to `user` (assumed already registered). */
+export async function actAs(
+  cft: ConfidentialFungibleTokenPublicSupplySimulator,
+  user: TestUser,
+): Promise<void> {
+  await cft.privateState.switchIdentity(user.secretKey, user.encryptionKey);
+}
+
+/** Switches the active identity to `user` and registers their account. */
+export async function registerAs(
+  cft: ConfidentialFungibleTokenPublicSupplySimulator,
+  user: TestUser,
+): Promise<void> {
+  await actAs(cft, user);
+  await cft.register();
+}
+
+/**
+ * Funds a FRESH account: as `user`, mints `amount` to self, sweeps it into
+ * spendable, and caches the plaintext so a later debit's witness matches.
+ * Only valid while the user's spendable balance is 0 (it caches `amount` as
+ * the whole balance, not a running total).
+ */
+export async function fundAs(
+  cft: ConfidentialFungibleTokenPublicSupplySimulator,
+  user: TestUser,
+  amount: bigint,
+): Promise<void> {
+  await actAs(cft, user);
+  await cft.mint(user.accountId, amount);
+  await cft.sweep();
+  await cft.privateState.cachePlaintext(
+    await cft.balanceOf(user.accountId),
+    amount,
+  );
 }

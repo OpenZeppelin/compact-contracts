@@ -18,8 +18,8 @@ pragma language_version >= 0.23.0;
  *
  * @notice Pairs with `ConfidentialFungibleToken`. The consuming contract
  * composes the pieces, calling the accounting block alongside the matching
- * token op (see `presets/ConfidentialFungibleTokenPublicSupply` for the
- * assembled version):
+ * token op (the integration suite drives an assembled example,
+ * `test/integration/_mocks/ConfidentialFungibleTokenPublicSupply`):
  *
  *   export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
  *     Supply__addSupply(value);
