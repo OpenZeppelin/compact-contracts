@@ -6,7 +6,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
-import { shieldedTestSigner } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import type { ZswapCoinPublicKey } from '../../../artifacts/MockOwnable/contract/index.js';
 import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import { ZOwnablePKPrivateState } from './witnesses/ZOwnablePKWitnesses.js';
@@ -30,8 +30,8 @@ const UNAUTHORIZED = 'SIGNER3';
 // live each is the pooled wallet's own key (published as
 // `MIDNIGHT_<ALIAS>_COIN_PK`); on dry it is the deterministic synthetic key the
 // dry backend also derives for `.as(alias)`.
-const Z_OWNER = shieldedTestSigner(OWNER).left;
-const Z_NEW_OWNER = shieldedTestSigner(NEW_OWNER).left;
+const Z_OWNER = shieldedTestKey(OWNER).left;
+const Z_NEW_OWNER = shieldedTestKey(NEW_OWNER).left;
 
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));

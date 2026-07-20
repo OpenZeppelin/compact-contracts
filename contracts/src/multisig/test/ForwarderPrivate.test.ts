@@ -7,7 +7,7 @@ import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   bytesToHex,
   isNonceSpent,
@@ -31,7 +31,7 @@ import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivate
 // none). Published by the live setup, so safe to read at module scope. `WRONG`
 // stays a synthetic key: it only exercises the commitment gate, which rejects it
 // before any send.
-const PARENT_BYTES = shieldedTestParentKey().bytes;
+const PARENT_BYTES = shieldedTestKey().left.bytes;
 const WRONG_BYTES = utils.createEitherTestUser('WRONG').left.bytes;
 const OP_SECRET = new Uint8Array(32).fill(0xaa);
 const WRONG_OP_SECRET = new Uint8Array(32).fill(0xbb);

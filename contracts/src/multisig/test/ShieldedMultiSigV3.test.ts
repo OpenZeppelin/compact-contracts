@@ -1,7 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
-import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   calculateSignerId,
   ShieldedMultiSigV3Simulator,
@@ -39,7 +39,7 @@ const CONTRACT_RECIPIENT = utils.createEitherTestContractAddress('TARGET');
 // live it resolves to the deployer's own coin public key (whose encryption key
 // the node can resolve), so the minted coin is deliverable; dry → a synthetic
 // user.
-let USER_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
+let USER_RECIPIENT: ReturnType<typeof shieldedTestKey>;
 
 function makeQualifiedCoin(
   color: Uint8Array,
@@ -141,7 +141,7 @@ describe('ShieldedMultiSigV3', () => {
     // mutating groups below build their own fresh instance per test.
     beforeAll(async () => {
       multisig = await freshMultisig();
-      USER_RECIPIENT = shieldedTestRecipient();
+      USER_RECIPIENT = shieldedTestKey();
     });
 
     describe('view', () => {

@@ -2,7 +2,7 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import { encodeShieldedCoinInfo } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   NativeShieldedTokenSimulator,
   type NativeShieldedTokenSimulator as Sim,
@@ -42,7 +42,7 @@ let token: NativeShieldedTokenSimulator;
 // coin public key (an encryption key the node can resolve as a mint recipient /
 // refund target); on dry it is the synthetic `createEitherTestUser('RECIPIENT')`,
 // identical to the un-gated tests' `RECIPIENT`.
-let Z_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
+let Z_RECIPIENT: ReturnType<typeof shieldedTestKey>;
 
 // A backend-aware mint nonce, delegated to the shared coin builder: on live every
 // coin gets a fresh random nonce (the local node persists nullifiers/commitments
@@ -57,7 +57,7 @@ describe('NativeShieldedToken (Fungible profile)', () => {
   // synthetic. Mutating groups still deploy a fresh token per test in `beforeEach`.
   beforeAll(async () => {
     token = await deploy(INIT);
-    Z_RECIPIENT = shieldedTestRecipient();
+    Z_RECIPIENT = shieldedTestKey();
   });
 
   describe('initialization', () => {
