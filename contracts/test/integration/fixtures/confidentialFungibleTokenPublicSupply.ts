@@ -9,9 +9,9 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
+  Contract as CFTPublicSupply,
   type ElGamal_Ciphertext,
   ledger,
-  Contract as CFTPublicSupply,
   type Token_EscrowEntry,
 } from '../../../artifacts/ConfidentialFungibleTokenPublicSupply/contract/index.js';
 import {
@@ -183,8 +183,8 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Confidential
 
   /**
    * @description Creates a `value` amount of tokens and credits them to
-   * `account`, increasing the public total supply. Supply layer operation
-   * (`ConfidentialFungibleTokenPublicSupply`), not part of the supply-free base.
+   * `account`, increasing the public total supply (the composed
+   * `_addSupply` + `_mint` pairing).
    * @param account The recipient of tokens minted.
    * @param value The amount of tokens minted.
    */
@@ -194,7 +194,8 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Confidential
 
   /**
    * @description Destroys a `value` amount of tokens from the caller's balance,
-   * lowering the public total supply. Supply layer operation.
+   * lowering the public total supply (the composed `_burn` + `_subSupply`
+   * pairing).
    * @param value The amount of tokens to burn.
    */
   public burn(value: bigint): Promise<Uint8Array> {
