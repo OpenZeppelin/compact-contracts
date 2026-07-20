@@ -6,13 +6,32 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { shieldedTestSigner } from '#test-utils/fixtures/shieldedKey.js';
 import type { ZswapCoinPublicKey } from '../../../artifacts/MockOwnable/contract/index.js';
 import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import { ZOwnablePKPrivateState } from './witnesses/ZOwnablePKWitnesses.js';
 
-// PKs
-const [, Z_OWNER] = utils.generatePubKeyPair('OWNER');
-const [, Z_NEW_OWNER] = utils.generatePubKeyPair('NEW_OWNER');
+// The three owner identities this spec authorizes by. ZOwnablePK is the one
+// access contract that authorizes by the caller's REAL coin public key:
+// `assertOnlyOwner` recomputes `id = SHA256(ownPublicKey(), nonce)` and matches
+// its commitment against the stored one. So the PK used to build the expected
+// commitment off-chain MUST equal the key `.as(alias)` makes `ownPublicKey()`
+// return, and the three roles must resolve to distinct wallets or the negative
+// "caller is not the owner" checks false-pass. The live wallet pool exposes
+// fixed slots (`SIGNER1`–`SIGNER3`, within the 3-signer cap); any other alias
+// collapses to the deployer wallet. So bind each role to its own slot here and
+// refer to it by these names throughout.
+const OWNER = 'SIGNER1';
+const NEW_OWNER = 'SIGNER2';
+const UNAUTHORIZED = 'SIGNER3';
+
+// The owner / new-owner coin public keys — the `.left` (user) arm of the shared
+// signer fixture, i.e. exactly what `ownPublicKey()` returns for that alias. On
+// live each is the pooled wallet's own key (published as
+// `MIDNIGHT_<ALIAS>_COIN_PK`); on dry it is the deterministic synthetic key the
+// dry backend also derives for `.as(alias)`.
+const Z_OWNER = shieldedTestSigner(OWNER).left;
+const Z_NEW_OWNER = shieldedTestSigner(NEW_OWNER).left;
 
 const INSTANCE_SALT = new Uint8Array(32).fill(8675309);
 const BAD_NONCE = Buffer.from(Buffer.alloc(32, 'BAD_NONCE'));
@@ -196,36 +215,36 @@ describe('ZOwnablePK', () => {
       });
 
       it('should transfer ownership', async () => {
-        await ownable.as('OWNER').transferOwnership(newIdHash);
+        await ownable.as(OWNER).transferOwnership(newIdHash);
         expect(await ownable.owner()).toEqual(newOwnerCommitment);
 
         // Old owner
-        await expect(ownable.as('OWNER').assertOnlyOwner()).rejects.toThrow(
+        await expect(ownable.as(OWNER).assertOnlyOwner()).rejects.toThrow(
           'ZOwnablePK: caller is not the owner',
         );
 
         // Unauthorized
         await expect(
-          ownable.as('UNAUTHORIZED').assertOnlyOwner(),
+          ownable.as(UNAUTHORIZED).assertOnlyOwner(),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
 
         // New owner
         await ownable.privateState.injectSecretNonce(
           Buffer.from(newOwnerNonce),
         );
-        await ownable.as('NEW_OWNER').assertOnlyOwner();
+        await ownable.as(NEW_OWNER).assertOnlyOwner();
       });
 
       it('should fail when transferring to id zero', async () => {
         const badId = new Uint8Array(32).fill(0);
         await expect(
-          ownable.as('OWNER').transferOwnership(badId),
+          ownable.as(OWNER).transferOwnership(badId),
         ).rejects.toThrow('ZOwnablePK: invalid id');
       });
 
       it('should fail when unauthorized transfers ownership', async () => {
         await expect(
-          ownable.as('UNAUTHORIZED').transferOwnership(newIdHash),
+          ownable.as(UNAUTHORIZED).transferOwnership(newIdHash),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
       });
 
@@ -237,7 +256,7 @@ describe('ZOwnablePK', () => {
           .ZOwnablePK__counter;
 
         // Transfer
-        await ownable.as('OWNER').transferOwnership(newIdHash);
+        await ownable.as(OWNER).transferOwnership(newIdHash);
 
         // Check counter
         const afterInstance = (await ownable.getPublicState())
@@ -257,7 +276,7 @@ describe('ZOwnablePK', () => {
         expect(initCommitment).toEqual(expInitCommitment);
 
         // Transfer ownership to self with the same id -> `H(pk, nonce)`
-        await ownable.as('OWNER').transferOwnership(repeatedId);
+        await ownable.as(OWNER).transferOwnership(repeatedId);
 
         // Check commitments don't match
         const newCommitment = await ownable.owner();
@@ -273,32 +292,32 @@ describe('ZOwnablePK', () => {
         expect(newCommitment).toEqual(expNewCommitment);
 
         // Check same owner maintains permissions after transfer
-        await ownable.as('OWNER').assertOnlyOwner();
+        await ownable.as(OWNER).assertOnlyOwner();
       });
     });
 
     describe('renounceOwnership', () => {
       it('should renounce ownership', async () => {
-        await ownable.as('OWNER').renounceOwnership();
+        await ownable.as(OWNER).renounceOwnership();
 
         // Check owner is reset
         expect(await ownable.owner()).toEqual(new Uint8Array(32).fill(0));
 
         // Check revoked permissions
-        await expect(ownable.as('OWNER').assertOnlyOwner()).rejects.toThrow(
+        await expect(ownable.as(OWNER).assertOnlyOwner()).rejects.toThrow(
           'ZOwnablePK: caller is not the owner',
         );
       });
 
       it('should fail when renouncing from unauthorized', async () => {
         await expect(
-          ownable.as('UNAUTHORIZED').renounceOwnership(),
+          ownable.as(UNAUTHORIZED).renounceOwnership(),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
       });
 
       it('should fail when renouncing from authorized with bad nonce', async () => {
         await ownable.privateState.injectSecretNonce(BAD_NONCE);
-        await expect(ownable.as('OWNER').renounceOwnership()).rejects.toThrow(
+        await expect(ownable.as(OWNER).renounceOwnership()).rejects.toThrow(
           'ZOwnablePK: caller is not the owner',
         );
       });
@@ -306,7 +325,7 @@ describe('ZOwnablePK', () => {
       it('should fail when renouncing from unauthorized with bad nonce', async () => {
         await ownable.privateState.injectSecretNonce(BAD_NONCE);
         await expect(
-          ownable.as('UNAUTHORIZED').renounceOwnership(),
+          ownable.as(UNAUTHORIZED).renounceOwnership(),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
       });
     });
@@ -318,7 +337,7 @@ describe('ZOwnablePK', () => {
           secretNonce,
         );
 
-        await ownable.as('OWNER').assertOnlyOwner();
+        await ownable.as(OWNER).assertOnlyOwner();
       });
 
       it('should fail when the authorized caller has the wrong nonce', async () => {
@@ -331,7 +350,7 @@ describe('ZOwnablePK', () => {
         );
 
         // Set caller and call circuit
-        await expect(ownable.as('OWNER').assertOnlyOwner()).rejects.toThrow(
+        await expect(ownable.as(OWNER).assertOnlyOwner()).rejects.toThrow(
           'ZOwnablePK: caller is not the owner',
         );
       });
@@ -343,7 +362,7 @@ describe('ZOwnablePK', () => {
         );
 
         await expect(
-          ownable.as('UNAUTHORIZED').assertOnlyOwner(),
+          ownable.as(UNAUTHORIZED).assertOnlyOwner(),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
       });
 
@@ -358,7 +377,7 @@ describe('ZOwnablePK', () => {
 
         // Set unauthorized caller and call circuit
         await expect(
-          ownable.as('UNAUTHORIZED').assertOnlyOwner(),
+          ownable.as(UNAUTHORIZED).assertOnlyOwner(),
         ).rejects.toThrow('ZOwnablePK: caller is not the owner');
       });
     });
@@ -495,9 +514,9 @@ describe('ZOwnablePK', () => {
 
       it('should allow anyone to transfer', async () => {
         const id = createIdHash(Z_OWNER, secretNonce);
-        await ownable.as('OWNER')._transferOwnership(id);
+        await ownable.as(OWNER)._transferOwnership(id);
 
-        await ownable.as('UNAUTHORIZED')._transferOwnership(id);
+        await ownable.as(UNAUTHORIZED)._transferOwnership(id);
       });
     });
   });
