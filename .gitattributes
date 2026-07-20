@@ -1,1 +1,7 @@
+# Compact (.compact) is not a language GitHub Linguist knows, so map it to
+# TypeScript: this both syntax-highlights blobs/diffs and lets the files count
+# in the repository language bar (under the "TypeScript" slice).
 *.compact linguist-language=TypeScript
+# Force the files into the language statistics so .compact source is represented
+# on the language bar, not just highlighted.
+*.compact linguist-detectable=true
