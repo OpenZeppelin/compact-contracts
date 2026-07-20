@@ -336,6 +336,19 @@ async function main(): Promise<number> {
   // A first arg naming a category scopes the run to it; everything else is a
   // vitest file filter.
   const scoped = args.length > 0 && allCategories.includes(args[0]);
+  // The first positional arg always names the category (CONTRIBUTING.md). If it
+  // is present but not an active live category — an excluded one like `archive`,
+  // or a typo — fail fast with the valid set, BEFORE the expensive compile /
+  // env-up / harness-smoke setup below (no args = every category, the default).
+  if (args.length > 0 && !scoped) {
+    const reason = EXCLUDED_CATEGORIES.has(args[0])
+      ? `'${args[0]}' is excluded from live runs (see EXCLUDED_CATEGORIES)`
+      : `'${args[0]}' is not a live category`;
+    console.log(
+      `${reason}.\nLive-runnable categories: ${allCategories.join(', ')}`,
+    );
+    return 2;
+  }
   const categories = scoped ? [args[0]] : allCategories;
   const fileFilters = scoped ? args.slice(1) : args;
 
