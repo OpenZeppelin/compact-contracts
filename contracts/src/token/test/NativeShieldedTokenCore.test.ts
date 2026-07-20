@@ -345,14 +345,15 @@ describe('NativeShieldedTokenCore (bare base)', () => {
       });
     });
 
-    describe.runIf(isLiveBackend())('happy path on live', () => {
+    // Skipped, not `runIf(isLiveBackend())`: `_burnFromSelf` spends a coin the
+    // CONTRACT already holds (a Merkle-tree entry with a valid `mt_index`). Such
+    // a coin must be minted to this contract and its `mt_index` recovered from
+    // the global zswap ledger-events stream (ShieldedCoinTracker) once the mint
+    // finalizes — it cannot be known from the spec alone. The mint-to-deployer +
+    // `mt_index: 0n` below is a placeholder that reverts on a real node; unskip
+    // once the tracker capture is wired in.
+    describe.skip('happy path on live (pending real mt_index capture)', () => {
       it('should return change on a partial burn and none on a full burn', async () => {
-        // LIVE: `_burnFromSelf` spends a coin the CONTRACT already holds (a
-        // Merkle-tree entry with a valid `mt_index`). Such a coin must be minted to
-        // this contract and its `mt_index` recovered from the global zswap
-        // ledger-events stream (ShieldedCoinTracker) once the mint finalizes — it
-        // cannot be known from the spec alone. The `mt_index: 0n` below is a
-        // placeholder; wire the real index in when running against a node.
         const partialCoin = await token._mint(
           DOMAIN_A,
           Z_RECIPIENT,

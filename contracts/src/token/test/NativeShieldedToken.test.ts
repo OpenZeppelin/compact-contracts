@@ -292,13 +292,14 @@ describe('NativeShieldedToken (Fungible profile)', () => {
       });
     });
 
-    describe.runIf(isLiveBackend())('happy paths on live', () => {
-      // LIVE: `_burnFromSelf` spends a coin the CONTRACT already holds (a
-      // Merkle-tree entry with a valid `mt_index`). Such a coin must be minted to
-      // this contract and its `mt_index` recovered from the global zswap
-      // ledger-events stream (ShieldedCoinTracker) once the mint finalizes — it
-      // cannot be known from the spec alone. The `mt_index: 0n` below is a
-      // placeholder; wire the real index in when running against a node.
+    // Skipped, not `runIf(isLiveBackend())`: `_burnFromSelf` spends a coin the
+    // CONTRACT already holds (a Merkle-tree entry with a valid `mt_index`). Such
+    // a coin must be minted to this contract and its `mt_index` recovered from
+    // the global zswap ledger-events stream (ShieldedCoinTracker) once the mint
+    // finalizes — it cannot be known from the spec alone. The mint-to-deployer +
+    // `mt_index: 0n` below is a placeholder that reverts on a real node; unskip
+    // once the tracker capture is wired in.
+    describe.skip('happy paths on live (pending real mt_index capture)', () => {
       it('should return change on a partial burn', async () => {
         const coin = await token._mint(Z_RECIPIENT, AMOUNT, mintNonce());
         const res = await token._burnFromSelf({ ...coin, mt_index: 0n }, 600n);
