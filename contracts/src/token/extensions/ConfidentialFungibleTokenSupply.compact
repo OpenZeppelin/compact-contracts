@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/extensions/ConfidentialFungibleTokenSupply.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialFungibleTokenSupply
+ * @description Optional standalone extension that adds public supply
+ * accounting to a `ConfidentialFungibleToken`. It exposes the scalar
+ * `_addSupply` / `_subSupply` building blocks plus the `totalSupply` getter.
+ * It imports no token module.
+ *
+ * "Public" supply means the total, and therefore each mint/burn delta, is
+ * disclosed on chain. Balances stay confidential; only the aggregate is
+ * visible. This is the right default for issuers who must attest to a public
+ * circulating supply (stablecoins, tokenized funds). A confidential-supply
+ * extension (ElGamal supply cell + auditor viewing key) is a separate variant.
+ *
+ * @notice Pairs with `ConfidentialFungibleToken`. The consuming contract
+ * composes the pieces, calling the accounting block alongside the matching
+ * token op (the integration suite drives an assembled example,
+ * `test/integration/_mocks/ConfidentialFungibleTokenPublicSupply`):
+ *
+ *   export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
+ *     Supply__addSupply(value);
+ *     Token__mint(account, value);
+ *   }
+ *
+ * The pairing is the consuming contract's responsibility: a token op called
+ * without its accounting block (or vice versa) breaks the
+ * `sum(balances) == totalSupply` invariant this extension exists to attest.
+ */
+module ConfidentialFungibleTokenSupply {
+  import CompactStandardLibrary;
+
+  // The public circulating supply. Mint and burn disclose their amounts
+  // through the delta on this value.
+  export ledger _totalSupply: Uint<128>;
+
+  /**
+   * @description Increases `totalSupply` by `value`. Call alongside the token
+   * module's `_mint`. The added amount is disclosed via the supply delta.
+   *
+   * Requirements:
+   *
+   * - `totalSupply + value` does not overflow `Uint<128>`.
+   *
+   * @param {Uint<128>} value - The amount added to the supply.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _addSupply(value: Uint<128>): [] {
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - _totalSupply >= value,
+           "ConfidentialFungibleToken: overflow");
+    _totalSupply = disclose(_totalSupply + value as Uint<128>);
+  }
+
+  /**
+   * @description Decreases `totalSupply` by `value`. Call alongside the token
+   * module's `_burn` or `_burnFrom`. The removed amount is disclosed via the
+   * supply delta.
+   *
+   * Requirements:
+   *
+   * - `totalSupply` is at least `value`.
+   *
+   * @param {Uint<128>} value - The amount removed from the supply.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _subSupply(value: Uint<128>): [] {
+    assert(_totalSupply >= value,
+           "ConfidentialFungibleToken: supply underflow");
+    _totalSupply = disclose(_totalSupply - value as Uint<128>);
+  }
+
+  /**
+   * @description Returns the public total token supply.
+   *
+   * @circuitInfo k=6, rows=26
+   *
+   * @return {Uint<128>} - The total supply.
+   */
+  export circuit totalSupply(): Uint<128> {
+    return _totalSupply;
+  }
+}
