@@ -21,10 +21,12 @@ import {
 /**
  * The env var carrying a wallet alias's coin public key, mirroring the harness's
  * `coinPkEnv` (`deployer` → `MIDNIGHT_DEPLOYER_COIN_PK`). Inlined so this fixture
- * does not import the harness.
+ * does not import the harness. Uppercases uniformly, so it stays in lockstep with
+ * the harness for any alias casing (a divergence would silently resolve a live
+ * alias to a dry synthetic key); keep the two in sync.
  */
 const coinPkEnvVar = (alias: string): string =>
-  `MIDNIGHT_${alias === 'deployer' ? 'DEPLOYER' : alias}_COIN_PK`;
+  `MIDNIGHT_${alias.toUpperCase()}_COIN_PK`;
 
 /**
  * The `Either<ZswapCoinPublicKey, ContractAddress>` for a shielded identity — a
