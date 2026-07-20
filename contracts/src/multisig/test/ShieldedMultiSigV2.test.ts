@@ -1,10 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
 import { ShieldedMultiSigV2Simulator } from './simulators/ShieldedMultiSigV2Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 
 const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
-const COLOR = new Uint8Array(32).fill(1);
+// A shielded token type the deployer wallet holds on live (genesis-minted);
+// `fill(1)` would be unfunded on live. On dry the color is arbitrary.
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
 const PK1 = new Uint8Array(64).fill(0x11);
@@ -26,6 +32,10 @@ const COMMITMENT3 = ShieldedMultiSigV2Simulator.calculateSignerId(
 );
 const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
 
+// ECDSA verification is stubbed in the contract (`stubVerifySignature` returns
+// true), so any 64-byte value passes. Authorization is enforced only by
+// signer-commitment membership and duplicate detection — both caller-agnostic,
+// so this spec runs unchanged on live (no `ownPublicKey`-based caller identity).
 const DUMMY_SIG = new Uint8Array(64).fill(0xff);
 
 function makeRecipient(address: Uint8Array): {
@@ -33,18 +43,6 @@ function makeRecipient(address: Uint8Array): {
   address: Uint8Array;
 } {
   return { kind: RecipientKind.ShieldedUser, address };
-}
-
-function makeCoin(
-  color: Uint8Array,
-  value: bigint,
-  nonce?: Uint8Array,
-): { nonce: Uint8Array; color: Uint8Array; value: bigint } {
-  return {
-    nonce: nonce ?? new Uint8Array(32).fill(0),
-    color,
-    value,
-  };
 }
 
 function makeQualifiedCoin(
@@ -67,6 +65,11 @@ function makeQualifiedCoin(
 }
 
 let multisig: ShieldedMultiSigV2Simulator;
+
+// A fresh 2-of-3 stateless multisig. Mutating groups build one per test
+// (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
+const freshMultisig = () =>
+  ShieldedMultiSigV2Simulator.create(INSTANCE_SALT, SIGNER_COMMITMENTS, 2n);
 
 describe('ShieldedMultiSigV2', () => {
   describe('constructor', () => {
@@ -137,15 +140,11 @@ describe('ShieldedMultiSigV2', () => {
   });
 
   describe('when initialized', () => {
-    beforeEach(async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
-        INSTANCE_SALT,
-        SIGNER_COMMITMENTS,
-        2n,
-      );
-    });
-
     describe('view', () => {
+      beforeAll(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('getNonce should start at 0', async () => {
         expect(await multisig.getNonce()).toEqual(0n);
       });
@@ -160,12 +159,20 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     describe('deposit', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should accept deposits without reverting', async () => {
         await multisig.deposit(makeCoin(COLOR, AMOUNT));
       });
     });
 
     describe('execute', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should reject duplicate signer', async () => {
         const to = makeRecipient(new Uint8Array(32).fill(7));
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);

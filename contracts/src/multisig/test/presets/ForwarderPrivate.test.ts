@@ -1,24 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import {
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
+import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
 import { ForwarderPrivateSimulator } from '../simulators/presets/ForwarderPrivateSimulator.js';
-
-const PARENT_BYTES = utils.createEitherTestUser('PARENT').left.bytes;
-const OP_SECRET = new Uint8Array(32).fill(0xaa);
-const COLOR = new Uint8Array(32).fill(1);
-const AMOUNT = 1000n;
 
 // The drain parent is a `ZswapCoinPublicKey` (`{ bytes }`); the commitment is
 // over its raw 32 bytes (`calculateParentCommitment(parent.bytes, opSecret)`).
+// On live it is the deployer's own key (the drain sends the note to it, so its
+// encryption key must resolve on-chain).
+const PARENT_BYTES = shieldedTestParentKey().bytes;
+const OP_SECRET = new Uint8Array(32).fill(0xaa);
+// A shielded token type the deployer wallet holds on live (genesis-minted).
+const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
+const AMOUNT = 1000n;
+
 function key(bytes: Uint8Array) {
   return { bytes };
-}
-
-function makeCoin(color: Uint8Array, value: bigint) {
-  return { nonce: new Uint8Array(32), color, value };
-}
-
-function makeQualifiedCoin(color: Uint8Array, value: bigint, mtIndex: bigint) {
-  return { nonce: new Uint8Array(32), color, value, mt_index: mtIndex };
 }
 
 function commitment(parent: Uint8Array, opSecret: Uint8Array): Uint8Array {
@@ -43,13 +46,15 @@ describe('ForwarderPrivate preset', () => {
     const fwd = await ForwarderPrivateSimulator.create(
       commitment(PARENT_BYTES, OP_SECRET),
     );
-    await fwd.deposit(makeCoin(COLOR, AMOUNT));
-    const result = await fwd.drain(
-      makeQualifiedCoin(COLOR, AMOUNT, 0n),
-      key(PARENT_BYTES),
-      OP_SECRET,
-      AMOUNT,
+    // Deposit a real coin, then recover its `mt_index` from the coin tracker
+    // (the contract keeps no record of it) before spending it.
+    const deposited = makeCoin(COLOR, AMOUNT);
+    await fwd.deposit(deposited);
+    const coin = await getQualifiedShieldedCoinInfo(
+      contractOwner(fwd),
+      deposited,
     );
+    const result = await fwd.drain(coin, key(PARENT_BYTES), OP_SECRET, AMOUNT);
     expect(result.sent.value).toEqual(AMOUNT);
   });
 

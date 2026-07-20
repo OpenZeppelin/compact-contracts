@@ -214,7 +214,7 @@ git clone git@github.com:OpenZeppelin/compact-contracts.git
 ```bash
 nvm install && \
 yarn && \
-yarn compact
+yarn compile
 ```
 
 ### Run tests
@@ -226,8 +226,8 @@ yarn test
 ### Check/apply Biome formatter
 
 ```bash
-yarn fmt-and-lint
-yarn fmt-and-lint:fix
+yarn lint
+yarn lint:fix
 ```
 
 ### Advanced
@@ -235,8 +235,8 @@ yarn fmt-and-lint:fix
 #### Targeted compilation
 
 ```bash
-yarn compact:access
-yarn compact:archive
+yarn compile:access
+yarn compile:archive
 ...
 ```
 
@@ -246,10 +246,10 @@ ZK key generation is slow and usually unnecessary during development.
 
 ```bash
 # Full compilation with skip-zk (use environment variable)
-SKIP_ZK=true yarn compact
+SKIP_ZK=true yarn compile
 
 # Access compilation with skip-zk (this compiles security first as a dependency)
-SKIP_ZK=true yarn compact:access
+SKIP_ZK=true yarn compile:access
 ```
 
 #### Clean environment

@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import * as utils from '#test-utils/address.js';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import * as utils from '#test-utils/fixtures/address.js';
+import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
 import {
   calculateSignerId,
   ShieldedMultiSigV3Simulator,
@@ -12,6 +14,10 @@ const INIT_COIN_NONCE = new Uint8Array(32).fill(0xbb);
 const TOKEN_DOMAIN = new Uint8Array(32);
 Buffer.from('smt:token:').copy(TOKEN_DOMAIN);
 
+// Signer identity is a commitment (`calculateSignerId(pk, salt)`) passed to
+// `mint`/`burn` explicitly, and ECDSA verification is stubbed (`DUMMY_SIG`
+// passes), so authorization is caller-agnostic — this spec's signer logic runs
+// unchanged on live (no `ownPublicKey`-based identity).
 const PK1 = new Uint8Array(64).fill(0x11);
 const PK2 = new Uint8Array(64).fill(0x22);
 const PK3 = new Uint8Array(64).fill(0x33);
@@ -24,8 +30,16 @@ const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
 
 const DUMMY_SIG = new Uint8Array(64).fill(0xff);
 
-const USER_RECIPIENT = utils.createEitherTestUser('ALICE');
+// A contract recipient for `mint`. Dry-only: minting to a non-participating
+// contract publishes an output no one claims, which a live node rejects (the
+// same unclaimed-output limit that blocks atomic contract-recipient sends).
 const CONTRACT_RECIPIENT = utils.createEitherTestContractAddress('TARGET');
+
+// The user recipient for `mint`. Assigned in `beforeEach` after `create()`: on
+// live it resolves to the deployer's own coin public key (whose encryption key
+// the node can resolve), so the minted coin is deliverable; dry → a synthetic
+// user.
+let USER_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
 
 function makeQualifiedCoin(
   color: Uint8Array,
@@ -47,6 +61,17 @@ function makeQualifiedCoin(
 }
 
 let multisig: ShieldedMultiSigV3Simulator;
+
+// A fresh multisig-token instance. Mutating groups build one per test
+// (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
+// live deploy tx.
+const freshMultisig = () =>
+  ShieldedMultiSigV3Simulator.create(
+    INSTANCE_SALT,
+    INIT_COIN_NONCE,
+    TOKEN_DOMAIN,
+    SIGNER_COMMITMENTS,
+  );
 
 describe('ShieldedMultiSigV3', () => {
   describe('constructor', () => {
@@ -110,13 +135,13 @@ describe('ShieldedMultiSigV3', () => {
   });
 
   describe('when initialized', () => {
-    beforeEach(async () => {
-      multisig = await ShieldedMultiSigV3Simulator.create(
-        INSTANCE_SALT,
-        INIT_COIN_NONCE,
-        TOKEN_DOMAIN,
-        SIGNER_COMMITMENTS,
-      );
+    // USER_RECIPIENT is stable (deployer key on live, synthetic on dry), so
+    // resolve it once after the first deploy. The read-only `view` and
+    // `_calculateSignerId` groups run first and reuse this shared deploy;
+    // mutating groups below build their own fresh instance per test.
+    beforeAll(async () => {
+      multisig = await freshMultisig();
+      USER_RECIPIENT = shieldedTestRecipient();
     });
 
     describe('view', () => {
@@ -177,6 +202,10 @@ describe('ShieldedMultiSigV3', () => {
     });
 
     describe('mint', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should mint to a user recipient with signers 0 and 1', async () => {
         await multisig.mint(
           100n,
@@ -204,14 +233,19 @@ describe('ShieldedMultiSigV3', () => {
         );
       });
 
-      it('should mint to a contract recipient', async () => {
-        await multisig.mint(
-          100n,
-          CONTRACT_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-      });
+      // Live: a mint to a non-participating contract leaves an unclaimed output
+      // the node rejects (no atomic cross-contract receive today).
+      it.skipIf(isLiveBackend())(
+        'should mint to a contract recipient',
+        async () => {
+          await multisig.mint(
+            100n,
+            CONTRACT_RECIPIENT,
+            [PK1, PK2],
+            [DUMMY_SIG, DUMMY_SIG],
+          );
+        },
+      );
 
       it('should reject duplicate signer', async () => {
         await expect(
@@ -261,7 +295,7 @@ describe('ShieldedMultiSigV3', () => {
         );
         await multisig.mint(
           300n,
-          CONTRACT_RECIPIENT,
+          USER_RECIPIENT,
           [PK2, PK3],
           [DUMMY_SIG, DUMMY_SIG],
         );
@@ -296,30 +330,58 @@ describe('ShieldedMultiSigV3', () => {
       });
     });
 
+    // A successful burn spends a real coin of the contract's own token. Its
+    // nonce is derived inside the mint circuit, so the spec cannot reconstruct
+    // it to recover the coin's `mt_index` on live (that is the wallet SDK's
+    // ciphertext-discovery job, out of scope for the coin tracker). The
+    // rejection paths below throw before the receive/spend, so they run on both
+    // backends; the success paths are dry-only.
     describe('burn', () => {
-      it('should burn with valid coin and signers 0 and 1', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+      beforeEach(async () => {
+        multisig = await freshMultisig();
       });
 
-      it('should burn with signers 0 and 2', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 100n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
-      });
+      // Happy-path burns execute a real spend, so they are dry-only until the
+      // live harness can fund and track the burned coin.
+      describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
+        it('should burn with valid coin and signers 0 and 1', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        });
 
-      it('should burn with signers 1 and 2', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 100n, [PK2, PK3], [DUMMY_SIG, DUMMY_SIG]);
-      });
+        it('should burn with signers 0 and 2', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 100n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
+        });
 
-      it('should burn partial amount', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 50n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
-      });
+        it('should burn with signers 1 and 2', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 100n, [PK2, PK3], [DUMMY_SIG, DUMMY_SIG]);
+        });
 
-      it('should handle zero burn amount', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 0n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        it('should burn partial amount', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 50n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        });
+
+        it('should handle zero burn amount', async () => {
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 0n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+        });
+
+        it('should share nonce across mint and burn', async () => {
+          await multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [PK1, PK2],
+            [DUMMY_SIG, DUMMY_SIG],
+          );
+          expect(await multisig.getNonce()).toEqual(1n);
+
+          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+          await multisig.burn(coin, 50n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
+          expect(await multisig.getNonce()).toEqual(2n);
+        });
       });
 
       it('should reject duplicate signer', async () => {
@@ -362,23 +424,15 @@ describe('ShieldedMultiSigV3', () => {
           multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]),
         ).rejects.toThrow('Multisig: insufficient coin value');
       });
-
-      it('should share nonce across mint and burn', async () => {
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-        expect(await multisig.getNonce()).toEqual(1n);
-
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-        await multisig.burn(coin, 50n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
-        expect(await multisig.getNonce()).toEqual(2n);
-      });
     });
 
     describe('domain separation', () => {
+      // Read-only on `multisig`, but runs after the mutating groups above, so
+      // deploy a clean shared instance for the group.
+      beforeAll(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should isolate signers across instances with different salts', async () => {
         const salt2 = new Uint8Array(32).fill(0xcc);
         const c1 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
@@ -404,6 +458,10 @@ describe('ShieldedMultiSigV3', () => {
     });
 
     describe('nonce', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should start at 0', async () => {
         expect(await multisig.getNonce()).toEqual(0n);
       });
@@ -422,6 +480,10 @@ describe('ShieldedMultiSigV3', () => {
     });
 
     describe('cross-instance replay', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
       it('should derive different message hashes for different instances', async () => {
         const instance2 = await ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,

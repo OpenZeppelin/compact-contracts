@@ -8,10 +8,7 @@ import {
   pureCircuits,
   Contract as ShieldedMultiSigV2,
 } from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
-import {
-  ShieldedMultiSigV2PrivateState,
-  ShieldedMultiSigV2Witnesses,
-} from '../witnesses/ShieldedMultiSigV2Witnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
@@ -33,22 +30,22 @@ type ShieldedMultiSigV2Args = readonly [
 ];
 
 const ShieldedMultiSigV2SimulatorBase = createSimulator<
-  ShieldedMultiSigV2PrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigV2Witnesses>,
-  ShieldedMultiSigV2<ShieldedMultiSigV2PrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ShieldedMultiSigV2<EmptyPrivateState>,
   ShieldedMultiSigV2Args
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV2<ShieldedMultiSigV2PrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigV2PrivateState,
+    new ShieldedMultiSigV2<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (instanceSalt, signerCommitments, thresh) => [
     instanceSalt,
     signerCommitments,
     thresh,
   ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigV2Witnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'ShieldedMultiSigV2',
 });
 
@@ -58,8 +55,8 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     signerCommitments: Uint8Array[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedMultiSigV2PrivateState,
-      ReturnType<typeof ShieldedMultiSigV2Witnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedMultiSigV2Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`

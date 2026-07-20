@@ -7,10 +7,7 @@ import {
   ledger,
   Contract as ShieldedMultiSig,
 } from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
-import {
-  ShieldedMultiSigPrivateState,
-  ShieldedMultiSigWitnesses,
-} from '../witnesses/ShieldedMultiSigWitnesses.js';
+import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -36,18 +33,18 @@ type ShieldedMultiSigArgs = readonly [
 ];
 
 const ShieldedMultiSigSimulatorBase = createSimulator<
-  ShieldedMultiSigPrivateState,
+  EmptyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedMultiSigWitnesses>,
-  ShieldedMultiSig<ShieldedMultiSigPrivateState>,
+  ReturnType<typeof emptyWitnesses>,
+  ShieldedMultiSig<EmptyPrivateState>,
   ShieldedMultiSigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSig<ShieldedMultiSigPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedMultiSigPrivateState,
+    new ShieldedMultiSig<EmptyPrivateState>(witnesses),
+  defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh) => [signers, thresh],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ShieldedMultiSigWitnesses(),
+  witnessesFactory: () => emptyWitnesses(),
   artifactName: 'ShieldedMultiSig',
 });
 
@@ -56,8 +53,8 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     signers: EitherPKAddress[],
     thresh: bigint,
     options: SimulatorOptions<
-      ShieldedMultiSigPrivateState,
-      ReturnType<typeof ShieldedMultiSigWitnesses>
+      EmptyPrivateState,
+      ReturnType<typeof emptyWitnesses>
     > = {},
   ): Promise<ShieldedMultiSigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
@@ -110,18 +107,6 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     return this.circuits.impure.getProposal(id);
   }
 
-  public getProposalRecipient(id: bigint): Promise<Recipient> {
-    return this.circuits.impure.getProposalRecipient(id);
-  }
-
-  public getProposalAmount(id: bigint): Promise<bigint> {
-    return this.circuits.impure.getProposalAmount(id);
-  }
-
-  public getProposalColor(id: bigint): Promise<Uint8Array> {
-    return this.circuits.impure.getProposalColor(id);
-  }
-
   public getProposalStatus(id: bigint): Promise<number> {
     return this.circuits.impure.getProposalStatus(id);
   }
@@ -137,10 +122,6 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
 
   public getSentTotal(color: Uint8Array): Promise<bigint> {
     return this.circuits.impure.getSentTotal(color);
-  }
-
-  public getReceivedMinusSent(color: Uint8Array): Promise<bigint> {
-    return this.circuits.impure.getReceivedMinusSent(color);
   }
 
   // View - Signers
