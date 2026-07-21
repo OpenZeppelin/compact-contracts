@@ -5,6 +5,7 @@ import {
   ecMulGenerator,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 // The ElGamal pure circuits double as an off-circuit "mirror." They let a test
@@ -13,6 +14,7 @@ import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contra
 // witness query. They are pure (no proof), so this is cheap.
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
+import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
 
 // Mirrors Compact's `pad(32, s)`: UTF-8 bytes of `s`, zero-padded to 32 bytes.
 const padTag = (s: string): Uint8Array => {
@@ -80,188 +82,191 @@ const DECIMALS = 6n;
 
 let cft: ConfidentialFungibleTokenSimulator;
 
-describe('ConfidentialFungibleToken: registration', () => {
-  beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-    );
-  });
-
-  describe('register', () => {
-    it('should register a fresh account', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-
-      expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
-
-      await cft.register();
-
-      expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
-    });
-
-    it('should fail when re-registering the same account', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      await expect(cft.register()).rejects.toThrow(
-        'ConfidentialFungibleToken: already registered',
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: registration',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
       );
     });
 
-    it('should allow distinct users to register independently', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-      await cft.register();
-
-      await cft.privateState.switchIdentity(
-        CHARLIE.secretKey,
-        CHARLIE.encryptionKey,
-      );
-      await cft.register();
-
-      expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
-      expect(await cft.isRegistered(BOB.accountId)).toBe(true);
-      expect(await cft.isRegistered(CHARLIE.accountId)).toBe(true);
-    });
-
-    it('should store the expected pk for the registered EK', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      const ledger = await cft.getPublicState();
-      const storedPk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
-      const expectedPk = derivePk(ALICE.encryptionKey);
-
-      expect(storedPk).toEqual(expectedPk);
-    });
-
-    it('should store distinct pks for distinct EKs', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-      await cft.register();
-
-      const ledger = await cft.getPublicState();
-      const alicePk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
-      const bobPk = ledger.CFT__encryptionKeys.lookup(BOB.accountId);
-
-      expect(alicePk).not.toEqual(bobPk);
-    });
-
-    it('should initialize the balance to Enc(0)', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      const balance = await cft.balanceOf(ALICE.accountId);
-      const identity = identityPoint();
-
-      expect(balance.c1).toEqual(identity);
-      expect(balance.c2).toEqual(identity);
-    });
-
-    it('should fail to transfer from an unregistered account', async () => {
-      // Registration is a prerequisite for transfer. _debit asserts the
-      // sender is registered.
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-
-      await expect(cft.transfer(BOB.accountId, 100n)).rejects.toThrow();
-    });
-
-    it('should fail to transfer to an unregistered account', async () => {
-      // Alice registers, Bob doesn't. Alice tries to transfer to Bob.
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      await expect(cft.transfer(BOB.accountId, 100n)).rejects.toThrow();
-    });
-  });
-
-  describe('isRegistered', () => {
-    it('should return false for an unregistered account', async () => {
-      expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
-    });
-
-    it('should return true after registration', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
-    });
-
-    it('should return false for an account that has not registered, even when others have', async () => {
-      await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
-      );
-      await cft.register();
-
-      expect(await cft.isRegistered(BOB.accountId)).toBe(false);
-    });
-  });
-
-  describe('computeAccountId', () => {
-    it('should match the test helper derivation', async () => {
-      const users = [ALICE, BOB, CHARLIE];
-
-      for (const user of users) {
-        expect(await cft.computeAccountId(user.secretKey)).toEqual(
-          user.accountId,
+    describe('register', () => {
+      it('should register a fresh account', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
         );
-      }
+
+        expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
+
+        await cft.register();
+
+        expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
+      });
+
+      it('should fail when re-registering the same account', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        await expect(cft.register()).rejects.toThrow(
+          'ConfidentialFungibleToken: already registered',
+        );
+      });
+
+      it('should allow distinct users to register independently', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+        await cft.register();
+
+        await cft.privateState.switchIdentity(
+          CHARLIE.secretKey,
+          CHARLIE.encryptionKey,
+        );
+        await cft.register();
+
+        expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
+        expect(await cft.isRegistered(BOB.accountId)).toBe(true);
+        expect(await cft.isRegistered(CHARLIE.accountId)).toBe(true);
+      });
+
+      it('should store the expected pk for the registered EK', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        const ledger = await cft.getPublicState();
+        const storedPk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
+        const expectedPk = derivePk(ALICE.encryptionKey);
+
+        expect(storedPk).toEqual(expectedPk);
+      });
+
+      it('should store distinct pks for distinct EKs', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+        await cft.register();
+
+        const ledger = await cft.getPublicState();
+        const alicePk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
+        const bobPk = ledger.CFT__encryptionKeys.lookup(BOB.accountId);
+
+        expect(alicePk).not.toEqual(bobPk);
+      });
+
+      it('should initialize the balance to Enc(0)', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        const balance = await cft.balanceOf(ALICE.accountId);
+        const identity = identityPoint();
+
+        expect(balance.c1).toEqual(identity);
+        expect(balance.c2).toEqual(identity);
+      });
+
+      it('should fail to transfer from an unregistered account', async () => {
+        // Registration is a prerequisite for transfer. _debit asserts the
+        // sender is registered.
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+
+        await expect(cft.transfer(BOB.accountId, 100n)).rejects.toThrow();
+      });
+
+      it('should fail to transfer to an unregistered account', async () => {
+        // Alice registers, Bob doesn't. Alice tries to transfer to Bob.
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        await expect(cft.transfer(BOB.accountId, 100n)).rejects.toThrow();
+      });
     });
 
-    it('should produce distinct identifiers for distinct keys', async () => {
-      const users = [ALICE, BOB, CHARLIE];
-      const ids = await Promise.all(
-        users.map((u) => cft.computeAccountId(u.secretKey)),
-      );
+    describe('isRegistered', () => {
+      it('should return false for an unregistered account', async () => {
+        expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
+      });
 
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          expect(ids[i]).not.toEqual(ids[j]);
+      it('should return true after registration', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
+      });
+
+      it('should return false for an account that has not registered, even when others have', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+        await cft.register();
+
+        expect(await cft.isRegistered(BOB.accountId)).toBe(false);
+      });
+    });
+
+    describe('computeAccountId', () => {
+      it('should match the test helper derivation', async () => {
+        const users = [ALICE, BOB, CHARLIE];
+
+        for (const user of users) {
+          expect(await cft.computeAccountId(user.secretKey)).toEqual(
+            user.accountId,
+          );
         }
-      }
-    });
+      });
 
-    it('should be deterministic for the same secret key', async () => {
-      const id1 = await cft.computeAccountId(ALICE.secretKey);
-      const id2 = await cft.computeAccountId(ALICE.secretKey);
+      it('should produce distinct identifiers for distinct keys', async () => {
+        const users = [ALICE, BOB, CHARLIE];
+        const ids = await Promise.all(
+          users.map((u) => cft.computeAccountId(u.secretKey)),
+        );
 
-      expect(id1).toEqual(id2);
+        for (let i = 0; i < ids.length; i++) {
+          for (let j = i + 1; j < ids.length; j++) {
+            expect(ids[i]).not.toEqual(ids[j]);
+          }
+        }
+      });
+
+      it('should be deterministic for the same secret key', async () => {
+        const id1 = await cft.computeAccountId(ALICE.secretKey);
+        const id2 = await cft.computeAccountId(ALICE.secretKey);
+
+        expect(id1).toEqual(id2);
+      });
     });
-  });
-});
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Transfers
@@ -274,7 +279,7 @@ describe('ConfidentialFungibleToken: registration', () => {
 // building blocks, so this suite never touches the composed mint/burn/totalSupply.
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: transfer', () => {
+describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: transfer', () => {
   beforeEach(async () => {
     cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
@@ -352,385 +357,419 @@ describe('ConfidentialFungibleToken: transfer', () => {
 // Escrow allowances: approve / transferFrom / burnFrom
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: escrow allowance', () => {
-  beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-    );
-  });
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: escrow allowance',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
 
-  const registerAll = async () => {
-    for (const u of [ALICE, BOB, CHARLIE]) {
-      await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+    const registerAll = async () => {
+      for (const u of [ALICE, BOB, CHARLIE]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+    };
+
+    // Alice (owner) funds with `amount` and approves Bob (spender) for `cap`.
+    // Leaves Alice active.
+    const approveBob = async (amount: bigint, cap: bigint) => {
+      await registerAll();
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, amount);
+      // Dual-balance: sweep the minted value into spendable so approve can debit it.
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        amount,
+      );
+      await cft.approve(BOB.accountId, cap);
+    };
+
+    it('records an allowance and debits the owner balance', async () => {
+      await approveBob(100n, 40n);
+
+      // An escrow entry now exists for (Alice, Bob).
+      const ledger = await cft.getPublicState();
+      expect(
+        ledger.CFT__escrow.lookup(ALICE.accountId).member(BOB.accountId),
+      ).toBe(true);
+
+      // Alice's main balance was debited by the cap: she now holds 60.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        60n,
+      );
+      await cft._burn(60n);
+    });
+
+    it('lets the spender transferFrom up to the allowance', async () => {
+      await approveBob(100n, 40n);
+
+      // Bob decrypts his escrow copy (value 40) and caches it, then spends 25
+      // to Charlie.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
+
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+      // Charlie holds exactly 25 (sweep his received value into spendable first).
+      await cft.privateState.switchIdentity(
+        CHARLIE.secretKey,
+        CHARLIE.encryptionKey,
+      );
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(CHARLIE.accountId),
+        25n,
+      );
+      await cft._burn(25n);
+    });
+
+    it('transferFrom pushes a memo to the recipient', async () => {
+      await approveBob(100n, 40n);
+
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        40n,
+      );
+
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+      const charlieMemos = (await cft.getPublicState()).CFT__memos.lookup(
+        CHARLIE.accountId,
+      );
+      expect(charlieMemos.length()).toBe(1n);
+    });
+
+    it('reduces the allowance by the spent amount on a partial transferFrom', async () => {
+      await approveBob(100n, 40n);
+
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      let escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
+
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+      // Remaining allowance is 15: cache the reduced spender copy.
+      escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.cachePlaintext(escrow.spenderCt, 15n);
+
+      // Spending 16 (over the remaining 15) fails; exactly 15 succeeds.
+      await expect(
+        cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 16n),
+      ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 15n);
+    });
+
+    it('keeps the owner escrow copy in lockstep with the spender copy', async () => {
+      // `_spendEscrow` bound-checks only the SPENDER copy and reduces the OWNER
+      // copy by the same value, relying on the two staying equal (its @notice).
+      // The test above pins the spender side; this pins the owner side.
+      await approveBob(100n, 40n); // Alice spendable 100 -> 60; both copies = 40.
+
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        40n,
+      );
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+
+      // Revoke (approve 0): the refund adds the owner copy back to the balance.
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      const ownerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
+        .ownerCt;
+      const refunded = elgamal.add(
+        await cft.balanceOf(ALICE.accountId),
+        ownerCt,
+      );
+      await cft.privateState.cachePlaintext(refunded, 75n); // 60 + 15
+      await cft.approve(BOB.accountId, 0n);
+
+      // Balance is EXACTLY 75 (= 60 + 15): the refund was exactly the remainder,
+      // so the owner copy tracked the spender copy through the partial spend.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        75n,
+      );
+      await expect(cft._burn(76n)).rejects.toThrow(
+        'ConfidentialFungibleToken: insufficient balance',
+      );
+      await cft._burn(75n);
+    });
+
+    it('rejects transferFrom with no escrow', async () => {
+      await registerAll();
+      // Bob never received an approval from Alice.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await expect(
+        cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 10n),
+      ).rejects.toThrow('ConfidentialFungibleToken: no escrow');
+    });
+
+    it('rejects transferFrom exceeding the allowance', async () => {
+      await approveBob(100n, 40n);
+
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
+
+      await expect(
+        cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 41n),
+      ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
+    });
+
+    it('rejects a self-approval', async () => {
+      await registerAll();
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await expect(cft.approve(ALICE.accountId, 10n)).rejects.toThrow(
+        'ConfidentialFungibleToken: self-approval',
+      );
+    });
+
+    it('rejects approving an unregistered spender', async () => {
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
       await cft.register();
-    }
-  };
+      // Bob is not registered.
+      await expect(cft.approve(BOB.accountId, 10n)).rejects.toThrow(
+        'ConfidentialFungibleToken: spender not registered',
+      );
+    });
 
-  // Alice (owner) funds with `amount` and approves Bob (spender) for `cap`.
-  // Leaves Alice active.
-  const approveBob = async (amount: bigint, cap: bigint) => {
-    await registerAll();
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._mint(ALICE.accountId, amount);
-    // Dual-balance: sweep the minted value into spendable so approve can debit it.
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      amount,
-    );
-    await cft.approve(BOB.accountId, cap);
-  };
+    it('rejects approving the zero account', async () => {
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft.register();
+      await expect(cft.approve(new Uint8Array(32), 10n)).rejects.toThrow(
+        'ConfidentialFungibleToken: invalid spender',
+      );
+    });
 
-  it('records an allowance and debits the owner balance', async () => {
-    await approveBob(100n, 40n);
+    it('rejects transferFrom to the zero account', async () => {
+      await approveBob(100n, 40n);
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        40n,
+      );
+      await expect(
+        cft.transferFrom(ALICE.accountId, new Uint8Array(32), 10n),
+      ).rejects.toThrow('ConfidentialFungibleToken: invalid receiver');
+    });
 
-    // An escrow entry now exists for (Alice, Bob).
-    const ledger = await cft.getPublicState();
-    expect(
-      ledger.CFT__escrow.lookup(ALICE.accountId).member(BOB.accountId),
-    ).toBe(true);
+    it('re-approve refunds the prior escrow to the owner before setting the new cap', async () => {
+      // _refundPriorEscrow is the one flow that re-queries a ciphertext the same
+      // circuit just produced (the post-refund main balance). We predict that
+      // ciphertext via the ElGamal pure circuits and cache its plaintext before
+      // the second approve queries it.
+      await registerAll();
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
 
-    // Alice's main balance was debited by the cap: she now holds 60.
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      60n,
-    );
-    await cft._burn(60n);
-  });
+      // First approve: 40 to Bob. Alice's main balance 100 -> 60.
+      await cft.approve(BOB.accountId, 40n);
 
-  it('lets the spender transferFrom up to the allowance', async () => {
-    await approveBob(100n, 40n);
+      // The refund is now HOMOMORPHIC: `_refundPriorEscrow` adds the escrow's
+      // owner-copy ciphertext (Enc(40)) straight onto Alice's balance (Enc(60))
+      // via `ElGamal_add`, with no decrypt. Predict that exact post-refund
+      // ciphertext (Enc(100)) and cache its plaintext so approve's subsequent debit
+      // decrypt resolves it. No cache is needed for the escrow copy itself. The
+      // refund never decrypts it
+      const escrowOwnerCt = (
+        await cft.allowance(ALICE.accountId, BOB.accountId)
+      ).ownerCt;
+      const refunded = elgamal.add(
+        await cft.balanceOf(ALICE.accountId),
+        escrowOwnerCt,
+      );
+      await cft.privateState.cachePlaintext(refunded, 100n);
 
-    // Bob decrypts his escrow copy (value 40) and caches it, then spends 25
-    // to Charlie.
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
+      // Second approve: 30 to Bob. Refund 40 (main 60 -> 100), then debit 30 (-> 70).
+      await cft.approve(BOB.accountId, 30n);
 
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+      // Refund proof: Alice holds 70 (= 100 - 30), NOT 30 (= 100 - 40 - 30 without
+      // the refund). Caching 70 and burning it only succeeds if the balance truly
+      // decrypts to 70.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        70n,
+      );
+      await expect(cft._burn(71n)).rejects.toThrow(
+        'ConfidentialFungibleToken: insufficient balance',
+      );
+      await cft._burn(70n);
+    });
 
-    // Charlie holds exactly 25 (sweep his received value into spendable first).
-    await cft.privateState.switchIdentity(
-      CHARLIE.secretKey,
-      CHARLIE.encryptionKey,
-    );
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(CHARLIE.accountId),
-      25n,
-    );
-    await cft._burn(25n);
-  });
+    it('lets the owner re-approve after a PARTIAL spend by decrypting the ownerMemo', async () => {
+      const OWNER_MEMO_DOMAIN = padTag('OZ_CFT_escrow_owner_v1');
 
-  it('transferFrom pushes a memo to the recipient', async () => {
-    await approveBob(100n, 40n);
+      await approveBob(100n, 40n); // Alice: spendable 100 -> 60; escrow(Alice,Bob) = 40.
 
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
-      40n,
-    );
+      // Bob partially spends 25 to Charlie (remaining allowance -> 15)
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        40n,
+      );
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
 
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+      // Alice (owner) learns the remaining allowance ONLY by decrypting the memo
+      // the spend refreshed
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
+      const remaining = ecdhMask.decrypt(
+        escrow.ownerMemo,
+        aliceEk,
+        OWNER_MEMO_DOMAIN,
+      );
+      expect(remaining).toBe(15n);
 
-    const charlieMemos = (await cft.getPublicState()).CFT__memos.lookup(
-      CHARLIE.accountId,
-    );
-    expect(charlieMemos.length()).toBe(1n);
-  });
+      // She proves the post-refund balance (spendable 60 + refunded remaining 15 =
+      // 75) using the decrypted remaining, then re-approves Bob for 20
+      const refunded = elgamal.add(
+        await cft.balanceOf(ALICE.accountId),
+        escrow.ownerCt,
+      );
+      await cft.privateState.cachePlaintext(refunded, 60n + remaining);
+      await cft.approve(BOB.accountId, 20n);
 
-  it('reduces the allowance by the spent amount on a partial transferFrom', async () => {
-    await approveBob(100n, 40n);
+      // Post-state: Alice holds 75 - 20 = 55; a fresh escrow of 20 exists.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        55n,
+      );
+      await cft._burn(55n);
+    });
 
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    let escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
+    it('re-approve after a partial spend fails if the owner assumes the escrow is untouched', async () => {
+      await approveBob(100n, 40n);
 
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        40n,
+      );
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
 
-    // Remaining allowance is 15: cache the reduced spender copy.
-    escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    await cft.privateState.cachePlaintext(escrow.spenderCt, 15n);
+      // Alice wrongly assumes remaining == cap == 40, predicting 60 + 40 = 100.
+      // The real post-refund balance is 60 + 15 = 75, so the claim is rejected
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const refunded = elgamal.add(
+        await cft.balanceOf(ALICE.accountId),
+        escrow.ownerCt,
+      );
+      await cft.privateState.cachePlaintext(refunded, 100n); // wrong: should be 75
+      await expect(cft.approve(BOB.accountId, 20n)).rejects.toThrow(
+        'ElGamal: plaintext mismatch',
+      );
+    });
 
-    // Spending 16 (over the remaining 15) fails; exactly 15 succeeds.
-    await expect(
-      cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 16n),
-    ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 15n);
-  });
+    it('revokes an allowance via approve(spender, 0)', async () => {
+      await approveBob(100n, 40n);
 
-  it('keeps the owner escrow copy in lockstep with the spender copy', async () => {
-    // `_spendEscrow` bound-checks only the SPENDER copy and reduces the OWNER
-    // copy by the same value, relying on the two staying equal (its @notice).
-    // The test above pins the spender side; this pins the owner side.
-    await approveBob(100n, 40n); // Alice spendable 100 -> 60; both copies = 40.
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const refunded = elgamal.add(
+        await cft.balanceOf(ALICE.accountId),
+        escrow.ownerCt,
+      );
+      await cft.privateState.cachePlaintext(refunded, 100n);
+      await cft.approve(BOB.accountId, 0n);
 
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
-      40n,
-    );
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
-
-    // Revoke (approve 0): the refund adds the owner copy back to the balance.
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    const ownerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
-      .ownerCt;
-    const refunded = elgamal.add(await cft.balanceOf(ALICE.accountId), ownerCt);
-    await cft.privateState.cachePlaintext(refunded, 75n); // 60 + 15
-    await cft.approve(BOB.accountId, 0n);
-
-    // Balance is EXACTLY 75 (= 60 + 15): the refund was exactly the remainder,
-    // so the owner copy tracked the spender copy through the partial spend.
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      75n,
-    );
-    await expect(cft._burn(76n)).rejects.toThrow(
-      'ConfidentialFungibleToken: insufficient balance',
-    );
-    await cft._burn(75n);
-  });
-
-  it('rejects transferFrom with no escrow', async () => {
-    await registerAll();
-    // Bob never received an approval from Alice.
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await expect(
-      cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 10n),
-    ).rejects.toThrow('ConfidentialFungibleToken: no escrow');
-  });
-
-  it('rejects transferFrom exceeding the allowance', async () => {
-    await approveBob(100n, 40n);
-
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    await cft.privateState.cachePlaintext(escrow.spenderCt, 40n);
-
-    await expect(
-      cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 41n),
-    ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
-  });
-
-  it('rejects a self-approval', async () => {
-    await registerAll();
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await expect(cft.approve(ALICE.accountId, 10n)).rejects.toThrow(
-      'ConfidentialFungibleToken: self-approval',
-    );
-  });
-
-  it('rejects approving an unregistered spender', async () => {
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft.register();
-    // Bob is not registered.
-    await expect(cft.approve(BOB.accountId, 10n)).rejects.toThrow(
-      'ConfidentialFungibleToken: spender not registered',
-    );
-  });
-
-  it('rejects approving the zero account', async () => {
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft.register();
-    await expect(cft.approve(new Uint8Array(32), 10n)).rejects.toThrow(
-      'ConfidentialFungibleToken: invalid spender',
-    );
-  });
-
-  it('rejects transferFrom to the zero account', async () => {
-    await approveBob(100n, 40n);
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
-      40n,
-    );
-    await expect(
-      cft.transferFrom(ALICE.accountId, new Uint8Array(32), 10n),
-    ).rejects.toThrow('ConfidentialFungibleToken: invalid receiver');
-  });
-
-  it('re-approve refunds the prior escrow to the owner before setting the new cap', async () => {
-    // _refundPriorEscrow is the one flow that re-queries a ciphertext the same
-    // circuit just produced (the post-refund main balance). We predict that
-    // ciphertext via the ElGamal pure circuits and cache its plaintext before
-    // the second approve queries it.
-    await registerAll();
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._mint(ALICE.accountId, 100n);
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      100n,
-    );
-
-    // First approve: 40 to Bob. Alice's main balance 100 -> 60.
-    await cft.approve(BOB.accountId, 40n);
-
-    // The refund is now HOMOMORPHIC: `_refundPriorEscrow` adds the escrow's
-    // owner-copy ciphertext (Enc(40)) straight onto Alice's balance (Enc(60))
-    // via `ElGamal_add`, with no decrypt. Predict that exact post-refund
-    // ciphertext (Enc(100)) and cache its plaintext so approve's subsequent debit
-    // decrypt resolves it. No cache is needed for the escrow copy itself. The
-    // refund never decrypts it
-    const escrowOwnerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
-      .ownerCt;
-    const refunded = elgamal.add(
-      await cft.balanceOf(ALICE.accountId),
-      escrowOwnerCt,
-    );
-    await cft.privateState.cachePlaintext(refunded, 100n);
-
-    // Second approve: 30 to Bob. Refund 40 (main 60 -> 100), then debit 30 (-> 70).
-    await cft.approve(BOB.accountId, 30n);
-
-    // Refund proof: Alice holds 70 (= 100 - 30), NOT 30 (= 100 - 40 - 30 without
-    // the refund). Caching 70 and burning it only succeeds if the balance truly
-    // decrypts to 70.
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      70n,
-    );
-    await expect(cft._burn(71n)).rejects.toThrow(
-      'ConfidentialFungibleToken: insufficient balance',
-    );
-    await cft._burn(70n);
-  });
-
-  it('lets the owner re-approve after a PARTIAL spend by decrypting the ownerMemo', async () => {
-    const OWNER_MEMO_DOMAIN = padTag('OZ_CFT_escrow_owner_v1');
-
-    await approveBob(100n, 40n); // Alice: spendable 100 -> 60; escrow(Alice,Bob) = 40.
-
-    // Bob partially spends 25 to Charlie (remaining allowance -> 15)
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
-      40n,
-    );
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
-
-    // Alice (owner) learns the remaining allowance ONLY by decrypting the memo
-    // the spend refreshed
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
-    const remaining = ecdhMask.decrypt(
-      escrow.ownerMemo,
-      aliceEk,
-      OWNER_MEMO_DOMAIN,
-    );
-    expect(remaining).toBe(15n);
-
-    // She proves the post-refund balance (spendable 60 + refunded remaining 15 =
-    // 75) using the decrypted remaining, then re-approves Bob for 20
-    const refunded = elgamal.add(
-      await cft.balanceOf(ALICE.accountId),
-      escrow.ownerCt,
-    );
-    await cft.privateState.cachePlaintext(refunded, 60n + remaining);
-    await cft.approve(BOB.accountId, 20n);
-
-    // Post-state: Alice holds 75 - 20 = 55; a fresh escrow of 20 exists.
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      55n,
-    );
-    await cft._burn(55n);
-  });
-
-  it('re-approve after a partial spend fails if the owner assumes the escrow is untouched', async () => {
-    await approveBob(100n, 40n);
-
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
-      40n,
-    );
-    await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 25n);
-
-    // Alice wrongly assumes remaining == cap == 40, predicting 60 + 40 = 100.
-    // The real post-refund balance is 60 + 15 = 75, so the claim is rejected
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    const refunded = elgamal.add(
-      await cft.balanceOf(ALICE.accountId),
-      escrow.ownerCt,
-    );
-    await cft.privateState.cachePlaintext(refunded, 100n); // wrong: should be 75
-    await expect(cft.approve(BOB.accountId, 20n)).rejects.toThrow(
-      'ElGamal: plaintext mismatch',
-    );
-  });
-
-  it('revokes an allowance via approve(spender, 0)', async () => {
-    await approveBob(100n, 40n);
-
-    const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-    const refunded = elgamal.add(
-      await cft.balanceOf(ALICE.accountId),
-      escrow.ownerCt,
-    );
-    await cft.privateState.cachePlaintext(refunded, 100n);
-    await cft.approve(BOB.accountId, 0n);
-
-    // The escrow now encrypts 0.
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.privateState.cachePlaintext(
-      (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
-      0n,
-    );
-    await expect(
-      cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 1n),
-    ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
-  });
-});
+      // The escrow now encrypts 0.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        0n,
+      );
+      await expect(
+        cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 1n),
+      ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
+    });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Metadata & default views
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: metadata & views', () => {
-  beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-    );
-  });
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: metadata & views',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
 
-  it('exposes the constructor metadata', async () => {
-    const state = await cft.getPublicState();
-    expect(state.CFT__name).toBe(NAME);
-    expect(state.CFT__symbol).toBe(SYMBOL);
-    expect(state.CFT__decimals).toBe(DECIMALS);
-  });
+    it('exposes the constructor metadata', async () => {
+      const state = await cft.getPublicState();
+      expect(state.CFT__name).toBe(NAME);
+      expect(state.CFT__symbol).toBe(SYMBOL);
+      expect(state.CFT__decimals).toBe(DECIMALS);
+    });
 
-  it('balanceOf returns Enc(0) for an unregistered account', async () => {
-    // Unregistered accounts hold zero: balanceOf returns a well-formed Enc(0)
-    // (identity, identity), identical for any unregistered account and
-    // matching a registered account's fresh balance.
-    const bal = await cft.balanceOf(ALICE.accountId);
-    const identity = identityPoint();
-    expect(bal.c1).toEqual(identity);
-    expect(bal.c2).toEqual(identity);
-    expect(bal).toEqual(await cft.balanceOf(BOB.accountId));
-  });
+    it('balanceOf returns Enc(0) for an unregistered account', async () => {
+      // Unregistered accounts hold zero: balanceOf returns a well-formed Enc(0)
+      // (identity, identity), identical for any unregistered account and
+      // matching a registered account's fresh balance.
+      const bal = await cft.balanceOf(ALICE.accountId);
+      const identity = identityPoint();
+      expect(bal.c1).toEqual(identity);
+      expect(bal.c2).toEqual(identity);
+      expect(bal).toEqual(await cft.balanceOf(BOB.accountId));
+    });
 
-  it('allowance returns the default entry when no escrow exists', async () => {
-    expect(await cft.allowance(ALICE.accountId, BOB.accountId)).toEqual(
-      await cft.allowance(BOB.accountId, CHARLIE.accountId),
-    );
-  });
-});
+    it('allowance returns the default entry when no escrow exists', async () => {
+      expect(await cft.allowance(ALICE.accountId, BOB.accountId)).toEqual(
+        await cft.allowance(BOB.accountId, CHARLIE.accountId),
+      );
+    });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Memos
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: memos', () => {
+describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
   beforeEach(async () => {
     cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
@@ -772,212 +811,348 @@ describe('ConfidentialFungibleToken: memos', () => {
 // Dual-balance grief fix (spendable vs pending; owner-only sweep)
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
-  beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-    );
-  });
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: dual-balance grief fix',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
 
-  const registerBoth = async () => {
-    for (const u of [ALICE, BOB]) {
-      await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
-      await cft.register();
-    }
-  };
+    const registerBoth = async () => {
+      for (const u of [ALICE, BOB]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+    };
 
-  it('credits land in pending, and only sweep() moves them into spendable', async () => {
-    const id = identityPoint();
-    await registerBoth();
+    it('credits land in pending, and only sweep() moves them into spendable', async () => {
+      const id = identityPoint();
+      await registerBoth();
 
-    // Mint to Alice: value lands in PENDING; spendable stays Enc(0).
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._mint(ALICE.accountId, 1000n);
-    expect((await cft.balanceOf(ALICE.accountId)).c1).toEqual(id); // spendable Enc(0)
-    expect((await cft.pendingOf(ALICE.accountId)).c1).not.toEqual(id); // pending funded
+      // Mint to Alice: value lands in PENDING; spendable stays Enc(0).
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 1000n);
+      expect((await cft.balanceOf(ALICE.accountId)).c1).toEqual(id); // spendable Enc(0)
+      expect((await cft.pendingOf(ALICE.accountId)).c1).not.toEqual(id); // pending funded
 
-    // Alice sweeps: pending -> spendable, pending reset to Enc(0).
-    await cft.sweep();
-    expect((await cft.pendingOf(ALICE.accountId)).c1).toEqual(id); // pending reset
-    expect((await cft.balanceOf(ALICE.accountId)).c1).not.toEqual(id); // spendable funded
+      // Alice sweeps: pending -> spendable, pending reset to Enc(0).
+      await cft.sweep();
+      expect((await cft.pendingOf(ALICE.accountId)).c1).toEqual(id); // pending reset
+      expect((await cft.balanceOf(ALICE.accountId)).c1).not.toEqual(id); // spendable funded
 
-    // The swept balance is genuinely spendable: a transfer whose _debit asserts
-    // the cached plaintext decrypts the spendable ciphertext must succeed.
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      1000n,
-    );
-    await cft.transfer(BOB.accountId, 400n);
+      // The swept balance is genuinely spendable: a transfer whose _debit asserts
+      // the cached plaintext decrypts the spendable ciphertext must succeed.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        1000n,
+      );
+      await cft.transfer(BOB.accountId, 400n);
 
-    // Bob's received value is in PENDING, not spendable.
-    expect((await cft.balanceOf(BOB.accountId)).c1).toEqual(id);
-    expect((await cft.pendingOf(BOB.accountId)).c1).not.toEqual(id);
+      // Bob's received value is in PENDING, not spendable.
+      expect((await cft.balanceOf(BOB.accountId)).c1).toEqual(id);
+      expect((await cft.pendingOf(BOB.accountId)).c1).not.toEqual(id);
 
-    // Bob sweeps and can spend it (a successful transfer back proves it).
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft.sweep();
-    expect((await cft.pendingOf(BOB.accountId)).c1).toEqual(id);
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(BOB.accountId),
-      400n,
-    );
-    await cft.transfer(ALICE.accountId, 400n); // succeeds => spendable
-  });
+      // Bob sweeps and can spend it (a successful transfer back proves it).
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.sweep();
+      expect((await cft.pendingOf(BOB.accountId)).c1).toEqual(id);
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(BOB.accountId),
+        400n,
+      );
+      await cft.transfer(ALICE.accountId, 400n); // succeeds => spendable
+    });
 
-  it('an incoming credit never changes the victim’s spendable ciphertext', async () => {
-    // The grief-resistance invariant: a third party pushing value to you lands
-    // in pending, so your spendable ciphertext is byte-identical and any
-    // in-flight spend proof against it stays valid.
-    await registerBoth();
+    it('an incoming credit never changes the victim’s spendable ciphertext', async () => {
+      // The grief-resistance invariant: a third party pushing value to you lands
+      // in pending, so your spendable ciphertext is byte-identical and any
+      // in-flight spend proof against it stays valid.
+      await registerBoth();
 
-    // Fund Alice's spendable, and fund Bob so he can push a dust credit.
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._mint(ALICE.accountId, 500n);
-    await cft.sweep();
-    const spendableBefore = await cft.balanceOf(ALICE.accountId);
+      // Fund Alice's spendable, and fund Bob so he can push a dust credit.
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 500n);
+      await cft.sweep();
+      const spendableBefore = await cft.balanceOf(ALICE.accountId);
 
-    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft._mint(BOB.accountId, 10n);
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(BOB.accountId),
-      10n,
-    );
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft._mint(BOB.accountId, 10n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(BOB.accountId),
+        10n,
+      );
 
-    // Bob spams a dust credit to Alice.
-    await cft.transfer(ALICE.accountId, 1n);
+      // Bob spams a dust credit to Alice.
+      await cft.transfer(ALICE.accountId, 1n);
 
-    // Alice's spendable is unchanged; the dust sits in her pending.
-    const spendableAfter = await cft.balanceOf(ALICE.accountId);
-    expect(spendableAfter).toEqual(spendableBefore);
-    expect((await cft.pendingOf(ALICE.accountId)).c1).not.toEqual(
-      identityPoint(),
-    );
-  });
+      // Alice's spendable is unchanged; the dust sits in her pending.
+      const spendableAfter = await cft.balanceOf(ALICE.accountId);
+      expect(spendableAfter).toEqual(spendableBefore);
+      expect((await cft.pendingOf(ALICE.accountId)).c1).not.toEqual(
+        identityPoint(),
+      );
+    });
 
-  it('_move conserves: debits caller, credits recipient pending, net zero', async () => {
-    const id = identityPoint();
-    await registerBoth();
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._mint(ALICE.accountId, 1000n);
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      1000n,
-    );
+    it('_move conserves: debits caller, credits recipient pending, net zero', async () => {
+      const id = identityPoint();
+      await registerBoth();
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 1000n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        1000n,
+      );
 
-    await cft._move(BOB.accountId, 400n);
+      await cft._move(BOB.accountId, 400n);
 
-    // Recipient credited into pending, spendable untouched (dual-balance).
-    expect((await cft.balanceOf(BOB.accountId)).c1).toEqual(id); // spendable still 0
-    expect((await cft.pendingOf(BOB.accountId)).c1).not.toEqual(id); // pending funded
+      // Recipient credited into pending, spendable untouched (dual-balance).
+      expect((await cft.balanceOf(BOB.accountId)).c1).toEqual(id); // spendable still 0
+      expect((await cft.pendingOf(BOB.accountId)).c1).not.toEqual(id); // pending funded
 
-    // Caller debited by exactly 400 (1000 -> 600): proves net-zero conservation
-    // without a supply total to read.
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      600n,
-    );
-    await cft._burn(600n);
-  });
-});
+      // Caller debited by exactly 400 (1000 -> 600): proves net-zero conservation
+      // without a supply total to read.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        600n,
+      );
+      await cft._burn(600n);
+    });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Memo value delivery (ECDH one-time pad; no discrete-log recovery)
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: memo value delivery', () => {
-  beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-    );
-  });
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: memo value delivery',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
 
-  it('recipient recovers the transferred value from the on-chain memo', async () => {
-    for (const u of [ALICE, BOB]) {
-      await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
-      await cft.register();
-    }
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._mint(ALICE.accountId, 1000n);
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      1000n,
-    );
-    await cft.transfer(BOB.accountId, 250n);
+    it('recipient recovers the transferred value from the on-chain memo', async () => {
+      for (const u of [ALICE, BOB]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 1000n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        1000n,
+      );
+      await cft.transfer(BOB.accountId, 250n);
 
-    // Bob reads his newest on-chain memo (pushFront => index 0) and decrypts it
-    // with his EK scalar, recovering the value directly, no BSGS.
-    const memoList = (await cft.getPublicState()).CFT__memos.lookup(
-      BOB.accountId,
-    );
-    const memos = [...memoList];
-    expect(memos.length).toBe(1);
+      // Bob reads his newest on-chain memo (pushFront => index 0) and decrypts it
+      // with his EK scalar, recovering the value directly, no BSGS.
+      const memoList = (await cft.getPublicState()).CFT__memos.lookup(
+        BOB.accountId,
+      );
+      const memos = [...memoList];
+      expect(memos.length).toBe(1);
 
-    const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
-    expect(
-      ecdhMask.decrypt(memos[0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
-    ).toBe(250n);
-  });
+      const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
+      expect(
+        ecdhMask.decrypt(memos[0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
+      ).toBe(250n);
+    });
 
-  it('delivers a value far above 2^48 via the memo (no discrete-log bound)', async () => {
-    for (const u of [ALICE, BOB]) {
-      await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
-      await cft.register();
-    }
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    const big = 1n << 80n;
-    await cft._mint(ALICE.accountId, big);
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      big,
-    );
-    await cft.transfer(BOB.accountId, big);
+    it('delivers a value far above 2^48 via the memo (no discrete-log bound)', async () => {
+      for (const u of [ALICE, BOB]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      const big = 1n << 80n;
+      await cft._mint(ALICE.accountId, big);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        big,
+      );
+      await cft.transfer(BOB.accountId, big);
 
-    const memoList = (await cft.getPublicState()).CFT__memos.lookup(
-      BOB.accountId,
-    );
-    const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
-    expect(
-      ecdhMask.decrypt([...memoList][0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
-    ).toBe(big);
-  });
-});
+      const memoList = (await cft.getPublicState()).CFT__memos.lookup(
+        BOB.accountId,
+      );
+      const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
+      expect(
+        ecdhMask.decrypt(
+          [...memoList][0],
+          bobEk,
+          padTag('OZ_CFT_ecdh_memo_v1'),
+        ),
+      ).toBe(big);
+    });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Per-operation value bound (boundary)
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialFungibleToken: value bound', () => {
-  beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenSimulator.create(
-      NAME,
-      SYMBOL,
-      DECIMALS,
-    );
-  });
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: value bound',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
 
-  it('accepts values above the former 2^48 cap (ECDH memo removes the bound)', async () => {
-    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft.register();
+    it('accepts values above the former 2^48 cap (ECDH memo removes the bound)', async () => {
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft.register();
 
-    const large = 1n << 100n; // far above the old 2^48 cap
-    await cft._mint(ALICE.accountId, large);
+      const large = 1n << 100n; // far above the old 2^48 cap
+      await cft._mint(ALICE.accountId, large);
 
-    // The full value round-trips with no discrete-log bound: sweep it into
-    // spendable and burn it back out. `_burn`'s in-circuit decrypt only
-    // passes if the balance truly encrypts `large`.
-    await cft.sweep();
-    await cft.privateState.cachePlaintext(
-      await cft.balanceOf(ALICE.accountId),
-      large,
-    );
-    await cft._burn(large);
-  });
+      // The full value round-trips with no discrete-log bound: sweep it into
+      // spendable and burn it back out. `_burn`'s in-circuit decrypt only
+      // passes if the balance truly encrypts `large`.
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        large,
+      );
+      await cft._burn(large);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Receive-path smoke. The wallet identity is seeded ONCE at deploy via
+// `options.privateState` and never mutated (no switchIdentity / cachePlaintext /
+// inject), so nothing here relies on the private-state mutation the live backend
+// forbids — that is why everything above, which does mutate, is dry-only.
+//
+// Backend split:
+//   - DRY: exercise the receive path end-to-end (deploy, register, credit,
+//     memo-decrypt, sweep). A spend is omitted on purpose — a debit needs a
+//     cached plaintext, i.e. a mutation, so spends stay in the dry suites.
+//   - LIVE: the deploy itself cannot land — the base bundles four k=16 circuits'
+//     IR into one deploy tx, which overruns this ledger's per-tx block byte
+//     budget (node `1010 ... would exhaust the block limits`). Rather than skip
+//     and hide that, we ASSERT the rejection: a live-verified canary that flips
+//     red the day a staged deploy or a looser ledger lets the full base through.
+// ---------------------------------------------------------------------------
+
+describe('ConfidentialFungibleToken: receive-path smoke', () => {
+  const deploy = () =>
+    ConfidentialFungibleTokenSimulator.create(NAME, SYMBOL, DECIMALS, {
+      privateState: ConfidentialFungibleTokenPrivateState.withSecrets(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      ),
+    });
+
+  it.skipIf(isLiveBackend())(
+    'registers, receives a credit, decrypts the memo, and sweeps',
+    async () => {
+      cft = await deploy();
+      const identity = identityPoint();
+
+      // Register the deploy-seeded identity (Alice), and confirm the pk landed.
+      await cft.register();
+      expect(
+        (await cft.getPublicState()).CFT__encryptionKeys.member(
+          ALICE.accountId,
+        ),
+      ).toBe(true);
+
+      // A freshly-registered balance is Enc(0).
+      const initial = await cft.balanceOf(ALICE.accountId);
+      expect(initial.c1).toEqual(identity);
+      expect(initial.c2).toEqual(identity);
+
+      // Receive 100 into pending; recover the amount from the on-chain memo (the
+      // ECDH one-time-pad channel: direct decrypt, no discrete-log search).
+      await cft._mint(ALICE.accountId, 100n);
+      const memoList = (await cft.getPublicState()).CFT__memos.lookup(
+        ALICE.accountId,
+      );
+      const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
+      expect(
+        ecdhMask.decrypt(
+          [...memoList][0],
+          aliceEk,
+          padTag('OZ_CFT_ecdh_memo_v1'),
+        ),
+      ).toBe(100n);
+
+      // Dual-balance: the credit is in pending (c1 != identity), spendable is
+      // still Enc(0) until the owner sweeps.
+      const pendingBefore = await cft.pendingOf(ALICE.accountId);
+      expect(pendingBefore.c1).not.toEqual(identity);
+      const spendableBefore = await cft.balanceOf(ALICE.accountId);
+      expect(spendableBefore.c1).toEqual(identity);
+
+      // Sweep moves pending -> spendable: pending resets to Enc(0), spendable
+      // becomes non-zero.
+      await cft.sweep();
+      const pendingAfter = await cft.pendingOf(ALICE.accountId);
+      expect(pendingAfter.c1).toEqual(identity);
+      expect(pendingAfter.c2).toEqual(identity);
+      const spendableAfter = await cft.balanceOf(ALICE.accountId);
+      expect(spendableAfter.c1).not.toEqual(identity);
+    },
+  );
+
+  it.runIf(isLiveBackend())(
+    'deploy is rejected for exceeding the ledger block byte budget',
+    async () => {
+      // Fresh funded node, well-formed tx: the only reason the deploy can be
+      // rejected here is the block byte budget (the k=16 IR bundle). Assert it.
+      let error: unknown;
+      try {
+        await deploy();
+      } catch (e) {
+        error = e;
+      }
+      expect(
+        error,
+        'expected the node to reject the oversized deploy',
+      ).toBeDefined();
+      const detail = [
+        (error as Error)?.message,
+        (error as { cause?: unknown })?.cause,
+        String(error),
+      ]
+        .map((x) => String(x ?? ''))
+        .join(' | ');
+      expect(detail).toMatch(/block limits|exhaust the block/i);
+    },
+  );
 });
