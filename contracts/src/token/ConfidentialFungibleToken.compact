@@ -116,9 +116,8 @@ pragma language_version >= 0.23.0;
  * result lands in the Jubjub scalar field. The memo mask KDF (`crypto/EcdhMask`) is
  * also `persistentHash`, and MUST stay persistent: the recipient reproduces it to
  * decrypt, possibly across a platform upgrade. These `persistentHash` (SHA256)
- * calls dominate the credit-path row counts; Midnight's roadmap includes a
- * cheaper stable (Poseidon-class) hasher, which would cut those counts
- * substantially with no source changes.
+ * calls dominate the credit-path row counts; there is currently no cheaper,
+ * upgrade-safe hasher available.
  *
  * @dev Caller-identity gating (composability). This module is unopinionated
  * about compliance policy (freeze, KYC, pause); a composing contract layers
@@ -128,8 +127,8 @@ pragma language_version >= 0.23.0;
  * `wit_ConfidentialTokenSK`, and a separate witness call in the wrapper could
  * return a different secret than the one this module authenticates with,
  * letting a frozen account slip a clean id past the gate. To make caller-side
- * gates sound, every caller-authenticating circuit (`register`, `_debit`,
- * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_spendEscrow`)
+ * gates sound, every caller-authenticating circuit (`register`, `_burn`,
+ * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_burnFrom`)
  * RETURNS the caller's `accountId`, the principal it authenticated from the
  * witness. A
  * wrapper gates on that returned value; since an assert failing anywhere in a
@@ -148,12 +147,18 @@ pragma language_version >= 0.23.0;
  * conflict. Documented limitation; acceptable for the v1 target use case
  * (tokenized deposits).
  *
- * Block weight. A large composite deployment (notably the public-supply
- * variant, which layers the supply extension on the full token surface) can
- * exceed the node's per-block weight limit and fail to deploy with a
- * `BlockLimitExceeded` error. Keep the deployed circuit surface small (drop
+ * Block weight. A deploy bundles every exported entry point's on-chain IR into
+ * one transaction, and the value circuits are SHA256-heavy (k=16), so a
+ * full-surface deployment can exceed the node's per-transaction block byte
+ * budget and be rejected (`1010: Transaction would exhaust the block limits`).
+ * The full token surface exceeds it; a reduced surface (e.g. receive +
+ * transfer, dropping allowances and supply accounting) fits, as measured on the
+ * local ledger-8 dev stack. The lever is dropping the k=16 value operations a
+ * deployment does not need, not just trimming getters. The limit is a
+ * governance-configurable, node-side ledger parameter, so confirm against the
+ * target network. Keep the deployed circuit surface small (drop
  * unused getters, split oversized composites); raising the limit is a
- * node-side change, not a contract one. Tracked upstream:
+ * node-side change which is tracked upstream:
  * https://github.com/midnightntwrk/midnight-node/issues/1202.
  *
  * Residual griefing. The dual-balance split (see `sweep`) stops dust
