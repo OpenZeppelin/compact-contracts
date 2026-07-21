@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../extensions/ConfidentialFungibleTokenSupply" prefix ConfidentialFungibleTokenSupply_;
+
+// Surface the supply ledger cell unprefixed so tests can read it via
+// `getPublicState()` and assert the getter returns it verbatim.
+import { _totalSupply } from "../../extensions/ConfidentialFungibleTokenSupply";
+export { _totalSupply };
+
+// Unit mock for the ConfidentialFungibleTokenSupply extension in isolation. The
+// extension imports no token module, so the accounting blocks and getter are
+// driven directly here. The extension needs no initialization.
+
+export circuit _addSupply(value: Uint<128>): [] {
+  ConfidentialFungibleTokenSupply__addSupply(value);
+}
+
+export circuit _subSupply(value: Uint<128>): [] {
+  ConfidentialFungibleTokenSupply__subSupply(value);
+}
+
+export circuit totalSupply(): Uint<128> {
+  return ConfidentialFungibleTokenSupply_totalSupply();
+}
