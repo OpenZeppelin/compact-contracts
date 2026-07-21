@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (multisig/ForwarderUnshielded.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.1 (multisig/ForwarderUnshielded.compact)
 
 pragma language_version >= 0.23.0;
 
