@@ -11,7 +11,10 @@ import {
  * The supply extension declares no witnesses, so the private state is empty and
  * the witnesses object is `{}`.
  */
-export type ConfidentialFungibleTokenPublicSupplyPrivateState = Record<string, never>;
+export type ConfidentialFungibleTokenPublicSupplyPrivateState = Record<
+  string,
+  never
+>;
 export const ConfidentialFungibleTokenPublicSupplyPrivateState: ConfidentialFungibleTokenPublicSupplyPrivateState =
   {};
 export const ConfidentialFungibleTokenPublicSupplyWitnesses = () => ({});
