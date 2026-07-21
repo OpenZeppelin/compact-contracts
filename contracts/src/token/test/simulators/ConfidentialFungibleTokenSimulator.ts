@@ -165,6 +165,21 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     return this.circuits.impure._burn(value);
   }
 
+  /**
+   * @description Test-only escrow-burn: consumes `value` from the allowance
+   * `fromAddress` granted the caller, with no recipient credit (the base's
+   * `_spendEscrow` under its burn-intent name). Its in-circuit checks only pass
+   * if a sufficient escrow exists, so it doubles as the behavioural allowance check.
+   * @param fromAddress The owner whose escrow the caller (spender) draws on.
+   * @param value The amount to burn from the allowance.
+   */
+  public _burnFrom(
+    fromAddress: Uint8Array,
+    value: bigint,
+  ): Promise<Uint8Array> {
+    return this.circuits.impure._burnFrom(fromAddress, value);
+  }
+
   public clearMemos() {
     return this.circuits.impure.clearMemos();
   }

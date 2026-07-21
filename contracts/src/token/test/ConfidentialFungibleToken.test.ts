@@ -531,6 +531,39 @@ describe.skipIf(isLiveBackend())(
       ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
     });
 
+    it('burns an allowance via _burnFrom, reducing it in lockstep with no recipient credit', async () => {
+      await approveBob(100n, 40n);
+
+      // Bob (spender) decrypts his escrow copy (40) and burns 25 of it. Unlike
+      // transferFrom there is no recipient: the value is destroyed, only the
+      // allowance is consumed (`_burnFrom` is `_spendEscrow` with no credit).
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        40n,
+      );
+      await cft._burnFrom(ALICE.accountId, 25n);
+
+      // Remaining allowance is 15: burning 16 (over it) fails, exactly 15 drains it.
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        15n,
+      );
+      await expect(cft._burnFrom(ALICE.accountId, 16n)).rejects.toThrow(
+        'ConfidentialFungibleToken: insufficient allowance',
+      );
+      await cft._burnFrom(ALICE.accountId, 15n);
+    });
+
+    it('rejects _burnFrom with no escrow', async () => {
+      await registerAll();
+      // Bob never received an approval from Alice.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await expect(cft._burnFrom(ALICE.accountId, 10n)).rejects.toThrow(
+        'ConfidentialFungibleToken: no escrow',
+      );
+    });
+
     it('rejects a self-approval', async () => {
       await registerAll();
       await cft.privateState.switchIdentity(
