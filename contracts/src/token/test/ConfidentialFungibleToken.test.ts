@@ -12,7 +12,7 @@ import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contra
 // post-refund balance in `approve`) so its plaintext can be cached ahead of the
 // witness query. They are pure (no proof), so this is cheap.
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
-import { ConfidentialFungibleTokenCoreSimulator } from './simulators/ConfidentialFungibleTokenCoreSimulator.js';
+import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 
 // Mirrors Compact's `pad(32, s)`: UTF-8 bytes of `s`, zero-padded to 32 bytes.
 const padTag = (s: string): Uint8Array => {
@@ -78,11 +78,11 @@ const NAME = 'ConfidentialToken';
 const SYMBOL = 'CT';
 const DECIMALS = 6n;
 
-let cft: ConfidentialFungibleTokenCoreSimulator;
+let cft: ConfidentialFungibleTokenSimulator;
 
 describe('ConfidentialFungibleToken: registration', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -276,7 +276,7 @@ describe('ConfidentialFungibleToken: registration', () => {
 
 describe('ConfidentialFungibleToken: transfer', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -354,7 +354,7 @@ describe('ConfidentialFungibleToken: transfer', () => {
 
 describe('ConfidentialFungibleToken: escrow allowance', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -694,7 +694,7 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
 
 describe('ConfidentialFungibleToken: metadata & views', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -731,7 +731,7 @@ describe('ConfidentialFungibleToken: metadata & views', () => {
 
 describe('ConfidentialFungibleToken: memos', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -773,7 +773,7 @@ describe('ConfidentialFungibleToken: memos', () => {
 
 describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -889,7 +889,7 @@ describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
 
 describe('ConfidentialFungibleToken: memo value delivery', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,
@@ -955,7 +955,7 @@ describe('ConfidentialFungibleToken: memo value delivery', () => {
 
 describe('ConfidentialFungibleToken: value bound', () => {
   beforeEach(async () => {
-    cft = await ConfidentialFungibleTokenCoreSimulator.create(
+    cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
       SYMBOL,
       DECIMALS,

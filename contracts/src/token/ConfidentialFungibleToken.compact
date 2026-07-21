@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (token/ConfidentialFungibleTokenCore.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/ConfidentialFungibleToken.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialFungibleTokenCore
+ * @module ConfidentialFungibleToken
  * @description An account-based confidential fungible token module.
  *
  * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity
@@ -13,13 +13,16 @@ pragma language_version >= 0.23.0;
  * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
  * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
  *
- * @notice Single-receiver, supply-free layout. Supply (mint/burn), auditor
- * support, freeze, and admin-style seize are deliberately left to companion
- * layers/modules or to a future multi-receiver variant. The escrow-spend
- * primitive here (`_spendEscrow`) lets a supply layer offer user-consenting
- * redemption (`burnFrom`); admin-style seize against a non-cooperating owner
- * requires authority visibility into balances and is therefore out of scope
- * for the single-receiver base.
+ * @notice Single-receiver, supply-neutral layout. The mint/burn building
+ * blocks live here (`_mint`/`_burn`/`_burnFrom`); total-supply tracking is an
+ * optional add-on (`extensions/ConfidentialFungibleTokenSupply`) a composing
+ * contract pairs with them if it wants a tracked supply. Auditor support,
+ * freeze, and admin-style seize are deliberately left to companion modules or
+ * to a future multi-receiver variant. The escrow-spend primitive here
+ * (`_spendEscrow`) enables user-consenting redemption (`_burnFrom`);
+ * admin-style seize against a non-cooperating owner requires authority
+ * visibility into balances and is therefore out of scope for the
+ * single-receiver base.
  *
  * @notice Concurrency: two transfers to the same recipient in the same block
  * conflict. Documented limitation; acceptable for the v1 target use case
@@ -165,7 +168,7 @@ pragma language_version >= 0.23.0;
  * EOA-custodied account it controls (supported today via `approve` /
  * `transferFrom`), not the contract itself.
  */
-module ConfidentialFungibleTokenCore {
+module ConfidentialFungibleToken {
   import CompactStandardLibrary;
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
@@ -483,9 +486,11 @@ module ConfidentialFungibleTokenCore {
   // ---------------------------------------------------------------------------
   // Internal value primitives: _debit and _credit
   //
-  // These are exported ONLY so a supply layer in a separate module can compose
-  // them (see `ConfidentialFungibleTokenPublicSupply`); they are NOT a general external
-  // surface. Exposing the asymmetric halves on a deployed contract cannot
+  // These are exported ONLY as building blocks for supply-changing composition
+  // (their intent-named aliases `_mint`/`_burn` are defined right below, and a
+  // composing contract pairs them with the optional
+  // `extensions/ConfidentialFungibleTokenSupply` tracker); they are NOT a
+  // general external surface. Exposing the asymmetric halves on a deployed contract cannot
   // preserve `sum(balances) == totalSupply`: a caller could `_credit` without a
   // matching `_debit`/mint (inflation), and the module has no way to compel the
   // pairing (Compact has no end-of-transaction settlement hook). The conserving
@@ -501,8 +506,8 @@ module ConfidentialFungibleTokenCore {
   // totalSupply overstates circulation). This base is a module, not
   // independently deployable; a consuming contract MUST expose only the
   // conserving surface (`transfer`, `_move`, `approve`/`transferFrom`, `sweep`)
-  // plus a supply layer's gated `mint`/`burn`, and MUST NEVER re-export
-  // `_credit`, `_debit`, or `_spendEscrow`.
+  // plus its own gated `mint`/`burn` wrappers, and MUST NEVER re-export
+  // `_credit`/`_mint`, `_debit`/`_burn`, or `_spendEscrow`/`_burnFrom` raw.
   //
   // WARNING: neither `_debit` nor `_credit` adjusts any supply total. They only
   // move value into/out of a single account's balance ciphertext. A supply layer
@@ -642,6 +647,51 @@ module ConfidentialFungibleTokenCore {
     // its EK, no discrete-log search).
     const memo = EcdhMask_encrypt(recipientPk, value, e, pad(32, "OZ_CFT_ecdh_memo_v1"));
     _memos.lookup(disclose(account)).pushFront(disclose(memo));
+  }
+
+  /**
+   * @description Mints `value` to `account`: `_credit` under its intent name.
+   * The building block for a composing contract's gated `mint`; it performs no
+   * supply accounting. Pair it with a supply tracker (see
+   * `extensions/ConfidentialFungibleTokenSupply`) if the deployment tracks
+   * `totalSupply`.
+   *
+   * @circuitInfo k=15, rows=27142
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `account` is registered.
+   *
+   * @param {Bytes<32>} account - The recipient of the minted tokens.
+   * @param {Uint<128>} value - The amount to mint.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+    _credit(account, value);
+  }
+
+  /**
+   * @description Burns `value` from the caller's own balance: `_debit` under
+   * its intent name. The building block for a composing contract's `burn`; it
+   * performs no supply accounting. Pair it with a supply tracker (see
+   * `extensions/ConfidentialFungibleTokenSupply`) if the deployment tracks
+   * `totalSupply`.
+   *
+   * @circuitInfo k=14, rows=14673
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered and has a balance of at least `value`.
+   *
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  export circuit _burn(value: Uint<128>): Bytes<32> {
+    return _debit(value);
   }
 
   // ---------------------------------------------------------------------------
@@ -954,16 +1004,16 @@ module ConfidentialFungibleTokenCore {
   /**
    * @description Validates and consumes `value` from the escrow that
    * `fromAddress` granted to the caller, reducing both the spender's and the
-   * owner's escrow ciphertexts by `value`. Shared by `transferFrom` and a
-   * supply layer's `burnFrom`; the caller supplies the post-spend disposition
-   * (credit a recipient, or decrement total supply).
+   * owner's escrow ciphertexts by `value`. Shared by `transferFrom` and
+   * `_burnFrom`; the caller supplies the post-spend disposition (credit a
+   * recipient, or none for a burn).
    *
    * @warning Does not adjust any supply total. Re-exported raw, `_spendEscrow`
    * is a permissionless escrow-burn: it destroys the escrowed value with no
    * corresponding burn, breaking `sum(balances) == totalSupply` (the total then
-   * overstates circulation). A supply layer MUST pair it with a burn (as
-   * `burnFrom` does) or a credit (as `transferFrom` does); never re-export it
-   * raw (see the DANGER note above the primitives).
+   * overstates circulation). A composing contract MUST pair it with a supply
+   * decrement (as a tracked `burnFrom` does) or a credit (as `transferFrom`
+   * does); never re-export it raw (see the DANGER note above the primitives).
    *
    * @notice Only the spender's escrow copy is decrypted and checked
    * `>= value`. The owner's copy is reduced by the same `value`, preserving the
@@ -1024,6 +1074,26 @@ module ConfidentialFungibleTokenCore {
       })
     );
     return disclose(spenderId);
+  }
+
+  /**
+   * @description Burns `value` from `fromAddress` by consuming an escrow that
+   * owner granted to the caller: `_spendEscrow` under its intent name, with no
+   * recipient credit. The building block for a composing contract's
+   * `burnFrom`; it performs no supply accounting (see `_burn`).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   *
+   * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   */
+  export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+    return _spendEscrow(fromAddress, value);
   }
 
   /**
