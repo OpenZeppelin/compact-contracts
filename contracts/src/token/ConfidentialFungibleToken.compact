@@ -13,20 +13,17 @@ pragma language_version >= 0.23.0;
  * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
  * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
  *
- * @notice Single-receiver, supply-neutral layout. The mint/burn building
- * blocks live here (`_mint`/`_burn`/`_burnFrom`); total-supply tracking is an
- * optional add-on (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing
- * contract pairs with them if it wants a tracked supply. Auditor support,
- * freeze, and admin-style seize are deliberately left to companion modules or
- * to a future multi-receiver variant. The escrow-spend primitive here
- * (`_spendEscrow`) enables user-consenting redemption (`_burnFrom`);
- * admin-style seize against a non-cooperating owner requires authority
- * visibility into balances and is therefore out of scope for the
- * single-receiver base.
+ * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
+ * live here; total-supply tracking is an optional add-on
+ * (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing contract pairs
+ * with them if it wants a tracked supply.
  *
- * @notice Concurrency: two transfers to the same recipient in the same block
- * conflict. Documented limitation; acceptable for the v1 target use case
- * (tokenized deposits).
+ * @notice Single-receiver. Auditor support, freeze, and admin-style seize are
+ * deliberately left to companion modules or a future multi-receiver variant.
+ * The escrow-spend primitive here (`_spendEscrow`) enables user-consenting
+ * redemption (`_burnFrom`); admin-style seize against a non-cooperating owner
+ * requires authority visibility into balances and is therefore out of scope
+ * for the single-receiver base.
  *
  * @dev Trust model for witnesses.
  *
@@ -52,23 +49,26 @@ pragma language_version >= 0.23.0;
  *    for the specific ciphertext being verified, rather than relying on
  *    call-order conventions.
  *
- *  - `wit_RandomnessSeed`: the wallet supplies a single 32-byte seed per
- *    circuit invocation, from which all per-operation randomness (and each
- *    memo's ephemeral) is derived in-circuit. Seed freshness is load-bearing
- *    for confidentiality on EVERY path. The seed-to-randomness expansion is
- *    deterministic and public, so an observer who knows the seed can strip a
- *    memo's mask and read the exact delivered amount (of any size), and can
- *    recover a balance or escrow amount from its public ciphertext by discrete
- *    log. The seed MUST be fresh, high-entropy, and secret for every invocation.
+ *  - `wit_RandomnessSeed`: supplies the single 32-byte seed all per-operation
+ *    randomness is derived from. Unlike the witnesses above, it is NOT verified
+ *    in-circuit; its freshness is load-bearing for confidentiality. See the
+ *    Seed freshness @warning below.
  *
- *    Seed REUSE leaks plaintext differences, and the circuit does NOT prevent
- *    it. The debit and escrow ciphertexts (`_debit`, `approve`, `_spendEscrow`,
- *    and the re-approve refund) derive randomness from a static domain tag with
- *    no per-operation nonce, so two operations under one seed share randomness
- *    and their public ciphertext deltas reveal the amount difference. The credit
- *    path folds the recipient's memo-list length in as a nonce (defense in
- *    depth), but that counter RESETS on `clearMemos`, so it is an in-epoch
- *    backstop only, never a substitute for freshness.
+ * @warning Seed freshness. Seed freshness is load-bearing for confidentiality
+ * on EVERY path. The seed-to-randomness expansion is deterministic and public,
+ * so an observer who knows the seed can strip a memo's mask and read the exact
+ * delivered amount (of any size), and can recover a balance or escrow amount
+ * from its public ciphertext by discrete log. The seed MUST be fresh,
+ * high-entropy, and secret for every invocation.
+ *
+ * Seed REUSE leaks plaintext differences, and the circuit does NOT prevent
+ * it. The debit and escrow ciphertexts (`_debit`, `approve`, `_spendEscrow`,
+ * and the re-approve refund) derive randomness from a static domain tag with
+ * no per-operation nonce, so two operations under one seed share randomness
+ * and their public ciphertext deltas reveal the amount difference. The credit
+ * path folds the recipient's memo-list length in as a nonce (defense in
+ * depth), but that counter RESETS on `clearMemos`, so it is an in-epoch
+ * backstop only, never a substitute for freshness.
  *
  * @dev Plaintext disclosures (what reaches the public ledger):
  *  - This base discloses no amounts; supply accounting lives in a layer.
@@ -93,25 +93,21 @@ pragma language_version >= 0.23.0;
  * encryption secret (no discrete-log search, no bounded-value table), updating
  * its local plaintext balance cache.
  *
- * Two caveats. (1) Memos record CREDITS only: debits (sends, approvals, burns)
- * move value with no memo and a hidden amount, so summing memos OVERCOUNTS a
- * balance that has ever been spent from. The wallet's running plaintext cache,
- * not memo replay, is the authoritative balance; replay-from-chain alone only
- * reconstructs a never-spent account. (2) A spender drawing on an escrow
- * (`transferFrom`/`burnFrom`) reduces the owner's escrow copy with no balance
- * memo; the owner instead learns the new remaining from the escrow entry's
- * `ownerMemo` (refreshed on every spend), which is what lets them prove the
- * post-refund balance on a later re-approve or revoke. Without that memo a
- * partial spend would strand the escrow, since the owner cannot know the
- * remainder folded back into their balance.
+ * Two caveats:
  *
- * @dev Residual griefing. The dual-balance split (see `sweep`) stops dust
- * credits from churning a victim's spendable ciphertext, but every `_credit`
- * still appends a memo, and only the recipient can `clearMemos`. An attacker
- * can spam value-1 credits to grow a victim's memo list without bound; the
- * victim pays the storage, the wallet scan cost, and the clear gas. Rejecting
- * value == 0 does not help (dust at value == 1 defeats it). A real fix is
- * architectural (event-based delivery, a memo cap, or a bond) and is deferred.
+ *  (1) Memos record CREDITS only: debits (sends, approvals, burns) move
+ *      value with no memo and a hidden amount, so summing memos OVERCOUNTS
+ *      a balance that has ever been spent from. The wallet's running
+ *      plaintext cache, not memo replay, is the authoritative balance;
+ *      replay-from-chain alone only reconstructs a never-spent account.
+ *
+ *  (2) A spender drawing on an escrow (`transferFrom`/`burnFrom`) reduces
+ *      the owner's escrow copy with no balance memo; the owner instead
+ *      learns the new remaining from the escrow entry's `ownerMemo`
+ *      (refreshed on every spend), which is what lets them prove the
+ *      post-refund balance on a later re-approve or revoke. Without that
+ *      memo a partial spend would strand the escrow, since the owner cannot
+ *      know the remainder folded back into their balance.
  *
  * @dev Hash function discipline. Every hash is built on `persistentHash` (no
  * direct use of `transientHash`). `accountId` is a raw `persistentHash` map key.
@@ -146,7 +142,29 @@ pragma language_version >= 0.23.0;
  * gates directly. A supply layer's `mint` is not caller-authenticating (its
  * recipient is an explicit argument), so it returns nothing.
  *
- * @dev EOA-only; contract-to-contract (c2c) is out of scope. Accounts here are
+ * @warning Known limitations.
+ *
+ * Concurrency. Two transfers to the same recipient in the same block
+ * conflict. Documented limitation; acceptable for the v1 target use case
+ * (tokenized deposits).
+ *
+ * Block weight. A large composite deployment (notably the public-supply
+ * variant, which layers the supply extension on the full token surface) can
+ * exceed the node's per-block weight limit and fail to deploy with a
+ * `BlockLimitExceeded` error. Keep the deployed circuit surface small (drop
+ * unused getters, split oversized composites); raising the limit is a
+ * node-side change, not a contract one. Tracked upstream:
+ * https://github.com/midnightntwrk/midnight-node/issues/1202.
+ *
+ * Residual griefing. The dual-balance split (see `sweep`) stops dust
+ * credits from churning a victim's spendable ciphertext, but every `_credit`
+ * still appends a memo, and only the recipient can `clearMemos`. An attacker
+ * can spam value-1 credits to grow a victim's memo list without bound; the
+ * victim pays the storage, the wallet scan cost, and the clear gas. Rejecting
+ * value == 0 does not help (dust at value == 1 defeats it). A real fix is
+ * architectural (event-based delivery, a memo cap, or a bond) and is deferred.
+ *
+ * EOA-only. Contract-to-contract (c2c) is out of scope. Accounts here are
  * externally-owned: identity is `accountId = persistentHash(SK)` and spending
  * requires the holder to prove a balance plaintext under a secret encryption
  * key (`EK`) supplied via witness. A contract has no private state, so it
