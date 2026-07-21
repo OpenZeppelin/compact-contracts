@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (token/extensions/ConfidentialFungibleTokenSupply.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/extensions/ConfidentialFungibleTokenPublicSupply.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialFungibleTokenSupply
+ * @module ConfidentialFungibleTokenPublicSupply
  * @description Optional standalone extension that adds public supply
  * accounting to a `ConfidentialFungibleToken`. It exposes the scalar
  * `_addSupply` / `_subSupply` building blocks plus the `totalSupply` getter.
@@ -30,7 +30,7 @@ pragma language_version >= 0.23.0;
  * without its accounting block (or vice versa) breaks the
  * `sum(balances) == totalSupply` invariant this extension exists to attest.
  */
-module ConfidentialFungibleTokenSupply {
+module ConfidentialFungibleTokenPublicSupply {
   import CompactStandardLibrary;
 
   // The public circulating supply. Mint and burn disclose their amounts
@@ -51,7 +51,7 @@ module ConfidentialFungibleTokenSupply {
   export circuit _addSupply(value: Uint<128>): [] {
     const MAX_UINT128 = 340282366920938463463374607431768211455;
     assert(MAX_UINT128 - _totalSupply >= value,
-           "ConfidentialFungibleToken: overflow");
+           "ConfidentialFungibleTokenPublicSupply: overflow");
     _totalSupply = disclose(_totalSupply + value as Uint<128>);
   }
 
@@ -69,7 +69,7 @@ module ConfidentialFungibleTokenSupply {
    */
   export circuit _subSupply(value: Uint<128>): [] {
     assert(_totalSupply >= value,
-           "ConfidentialFungibleToken: supply underflow");
+           "ConfidentialFungibleTokenPublicSupply: supply underflow");
     _totalSupply = disclose(_totalSupply - value as Uint<128>);
   }
 

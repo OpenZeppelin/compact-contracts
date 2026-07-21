@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ConfidentialFungibleTokenSupplySimulator } from '../simulators/ConfidentialFungibleTokenSupplySimulator.js';
+import { ConfidentialFungibleTokenPublicSupplySimulator } from '../simulators/ConfidentialFungibleTokenPublicSupplySimulator.js';
 
 // The supply extension imports no token module, so it is unit-tested by driving
 // its accounting blocks (`_addSupply` / `_subSupply`) and the `totalSupply`
@@ -8,11 +8,11 @@ import { ConfidentialFungibleTokenSupplySimulator } from '../simulators/Confiden
 
 const MAX_UINT128 = 340282366920938463463374607431768211455n;
 
-let supply: ConfidentialFungibleTokenSupplySimulator;
+let supply: ConfidentialFungibleTokenPublicSupplySimulator;
 
-describe('ConfidentialFungibleTokenSupply (extension)', () => {
+describe('ConfidentialFungibleTokenPublicSupply (extension)', () => {
   beforeEach(async () => {
-    supply = await ConfidentialFungibleTokenSupplySimulator.create();
+    supply = await ConfidentialFungibleTokenPublicSupplySimulator.create();
   });
 
   describe('initial state', () => {
@@ -37,7 +37,7 @@ describe('ConfidentialFungibleTokenSupply (extension)', () => {
     it('should revert when the add overflows Uint<128>', async () => {
       await supply._addSupply(MAX_UINT128);
       await expect(supply._addSupply(1n)).rejects.toThrow(
-        'ConfidentialFungibleToken: overflow',
+        'ConfidentialFungibleTokenPublicSupply: overflow',
       );
       // The rejected add left the total unchanged.
       expect(await supply.totalSupply()).toBe(MAX_UINT128);
@@ -59,14 +59,14 @@ describe('ConfidentialFungibleTokenSupply (extension)', () => {
 
     it('should revert an unpaired sub (from zero supply)', async () => {
       await expect(supply._subSupply(1n)).rejects.toThrow(
-        'ConfidentialFungibleToken: supply underflow',
+        'ConfidentialFungibleTokenPublicSupply: supply underflow',
       );
     });
 
     it('should revert a sub that exceeds the current supply', async () => {
       await supply._addSupply(1_000n);
       await expect(supply._subSupply(1_001n)).rejects.toThrow(
-        'ConfidentialFungibleToken: supply underflow',
+        'ConfidentialFungibleTokenPublicSupply: supply underflow',
       );
       // The rejected sub left the total unchanged.
       expect(await supply.totalSupply()).toBe(1_000n);

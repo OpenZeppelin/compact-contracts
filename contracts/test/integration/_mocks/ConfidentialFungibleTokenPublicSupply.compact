@@ -8,7 +8,7 @@
 
 // Top-level contract composing the production `ConfidentialFungibleToken`
 // module (the conserving surface plus the `_mint`/`_burn`/`_burnFrom` building
-// blocks) with the `ConfidentialFungibleTokenSupply` extension, pairing every
+// blocks) with the `ConfidentialFungibleTokenPublicSupply` extension, pairing every
 // supply-changing op with its accounting block so
 // `sum(balances) == totalSupply` holds by construction. The
 // `specs/confidentialFungibleToken` suite drives this contract to assert
@@ -22,7 +22,7 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
-import "../../../src/token/extensions/ConfidentialFungibleTokenSupply" prefix Supply_;
+import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
 import "../../../src/crypto/ElGamal" prefix ElGamal_;
 
 export { Token_EscrowEntry, ElGamal_Ciphertext };

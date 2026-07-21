@@ -15,7 +15,7 @@ pragma language_version >= 0.23.0;
  *
  * @notice Single-receiver, supply-neutral layout. The mint/burn building
  * blocks live here (`_mint`/`_burn`/`_burnFrom`); total-supply tracking is an
- * optional add-on (`extensions/ConfidentialFungibleTokenSupply`) a composing
+ * optional add-on (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing
  * contract pairs with them if it wants a tracked supply. Auditor support,
  * freeze, and admin-style seize are deliberately left to companion modules or
  * to a future multi-receiver variant. The escrow-spend primitive here
@@ -456,7 +456,7 @@ module ConfidentialFungibleToken {
   // These are exported ONLY as building blocks for supply-changing composition
   // (their intent-named aliases `_mint`/`_burn` are defined right below, and a
   // composing contract pairs them with the optional
-  // `extensions/ConfidentialFungibleTokenSupply` tracker); they are NOT a
+  // `extensions/ConfidentialFungibleTokenPublicSupply` tracker); they are NOT a
   // general external surface. Exposing the asymmetric halves on a deployed contract cannot
   // preserve `sum(balances) == totalSupply`: a caller could `_credit` without a
   // matching `_debit`/mint (inflation), and the module has no way to compel the
@@ -620,7 +620,7 @@ module ConfidentialFungibleToken {
    * @description Mints `value` to `account`: `_credit` under its intent name.
    * The building block for a composing contract's gated `mint`; it performs no
    * supply accounting. Pair it with a supply tracker (see
-   * `extensions/ConfidentialFungibleTokenSupply`) if the deployment tracks
+   * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
    * @circuitInfo k=15, rows=27142
@@ -643,7 +643,7 @@ module ConfidentialFungibleToken {
    * @description Burns `value` from the caller's own balance: `_debit` under
    * its intent name. The building block for a composing contract's `burn`; it
    * performs no supply accounting. Pair it with a supply tracker (see
-   * `extensions/ConfidentialFungibleTokenSupply`) if the deployment tracks
+   * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
    * @circuitInfo k=14, rows=14673
