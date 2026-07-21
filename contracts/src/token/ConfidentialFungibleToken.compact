@@ -466,20 +466,25 @@ module ConfidentialFungibleToken {
   // supply-free; supply changes live in the layer that imports it.
   //
   // DANGER: `export circuit` means callable on the deployed contract, and
-  // Compact cannot restrict a re-export. A consumer that re-exports `_credit`
-  // turns it into a permissionless mint, `_debit` into a permissionless burn,
-  // and `_spendEscrow` into a permissionless escrow-burn (an approved spender
-  // destroys escrowed value with no supply decrement, so a supply layer's
-  // totalSupply overstates circulation). This base is a module, not
-  // independently deployable; a consuming contract MUST expose only the
+  // Compact cannot restrict a re-export. The raw value primitives
+  // `_credit`/`_debit`/`_spendEscrow` are therefore kept NON-exported (module-
+  // private): the compiler makes them impossible to re-export or deploy. What IS
+  // exported for composition is the `_mint`/`_burn`/`_burnFrom` building blocks,
+  // which a supply layer pairs with its accounting. Those remain unbalanced: a
+  // consumer that re-exports `_mint` turns it into a permissionless mint, `_burn`
+  // into a permissionless burn, and `_burnFrom` into a permissionless escrow-burn
+  // (an approved spender destroys escrowed value with no supply decrement, so a
+  // supply layer's totalSupply overstates circulation). This base is a module,
+  // not independently deployable; a consuming contract MUST expose only the
   // conserving surface (`transfer`, `_move`, `approve`/`transferFrom`, `sweep`)
-  // plus its own gated `mint`/`burn` wrappers, and MUST NEVER re-export
-  // `_credit`/`_mint`, `_debit`/`_burn`, or `_spendEscrow`/`_burnFrom` raw.
+  // plus its own gated `mint`/`burn` wrappers, and MUST NEVER re-export `_mint`,
+  // `_burn`, or `_burnFrom` raw.
   //
-  // WARNING: neither `_debit` nor `_credit` adjusts any supply total. They only
+  // WARNING: none of the value primitives adjust any supply total. They only
   // move value into/out of a single account's balance ciphertext. A supply layer
-  // pairs them with supply accounting where required (its `mint` increments the
-  // total before crediting; its `burn` decrements it after debiting).
+  // pairs the exposed `_mint`/`_burn`/`_burnFrom` blocks with supply accounting
+  // (its `mint` increments the total before crediting; its `burn` decrements it
+  // after debiting).
   //
   // Randomness: `_credit` folds a per-recipient nonce (the memo-list length)
   // into its seed-derived randomness as defense in depth. This helps only
@@ -495,8 +500,6 @@ module ConfidentialFungibleToken {
    * @description Debits `value` from the caller's own balance. A low-level
    * internal primitive; the external path for custom value flows will be a
    * conserving `_move` (see the section note above).
-   *
-   * @circuitInfo k=14, rows=14673
    *
    * @warning Does not adjust any supply total. Called outside a supply-accounted
    * flow, `_debit` destroys the caller's value with no corresponding burn,
@@ -516,7 +519,7 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to debit.
    * @return {Bytes<32>} - The caller's accountId.
    */
-  export circuit _debit(value: Uint<128>): Bytes<32> {
+  circuit _debit(value: Uint<128>): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
 
@@ -552,8 +555,6 @@ module ConfidentialFungibleToken {
    * `clearMemos`, so it is an in-epoch backstop only, never a substitute for
    * seed freshness (see the module header and the section note above `_debit`).
    *
-   * @circuitInfo k=15, rows=27142
-   *
    * @warning Does not adjust any supply total. Called outside a supply-accounted
    * flow, `_credit` mints unbacked value (inflation) and breaks the
    * `sum(balances) == totalSupply` invariant. Pair it with a debit (as `transfer`
@@ -562,7 +563,7 @@ module ConfidentialFungibleToken {
    * @param account - The recipient account id.
    * @param value - The amount to credit.
    */
-  export circuit _credit(account: Bytes<32>, value: Uint<128>): [] {
+  circuit _credit(account: Bytes<32>, value: Uint<128>): [] {
     assertInitialized();
     _assertValueInBound(value);
     assert(account != default<Bytes<32>>,
@@ -997,7 +998,7 @@ module ConfidentialFungibleToken {
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
    */
-  export circuit _spendEscrow(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  circuit _spendEscrow(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
 

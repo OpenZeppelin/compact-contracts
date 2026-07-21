@@ -1,13 +1,14 @@
 // TEST-ONLY. Mock for the supply-free ConfidentialFungibleToken BASE. Exposes
-// the conserving surface plus the base's own `_credit` / `_debit` primitives, so
-// the base suite can seed and prove balances using ONLY base primitives (no
-// supply layer). Mint / burn / burnFrom / totalSupply live in the separate
-// MockConfidentialFungibleTokenPublicSupply.
+// the conserving surface plus the base's exposed `_mint` / `_burn` building
+// blocks, so the base suite can seed and prove balances using ONLY base
+// primitives (no supply layer). The composed mint / burn / burnFrom / totalSupply
+// live in the separate MockConfidentialFungibleTokenPublicSupply.
 //
-// `_credit`/`_debit` are exposed here purely as a test affordance: they are the
-// base's supply-free value primitives (mint/burn wrap them). A PRODUCTION
-// contract must NEVER re-export them (see the base's DANGER note). Doing so
-// would be a permissionless mint/burn. DO NOT deploy this mock.
+// `_mint`/`_burn` are exposed here purely as a test affordance: they are the
+// base's supply-free value building blocks (the raw `_credit`/`_debit` they wrap
+// are non-exported in the base and cannot leak). A PRODUCTION contract must NEVER
+// re-export them (see the base's DANGER note). Doing so would be a permissionless
+// mint/burn. DO NOT deploy this mock.
 pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 import "../../ConfidentialFungibleToken" prefix CFT_;
@@ -78,15 +79,15 @@ export circuit transferFrom(
   return CFT_transferFrom(fromAddress, to, value);
 }
 
-// Test-only funding / draining. `_credit` seeds a balance (mint minus supply
-// bookkeeping); `_debit` proves a balance behaviourally (its in-circuit
+// Test-only funding / draining. `_mint` seeds a balance (a raw credit, no supply
+// bookkeeping); `_burn` proves a balance behaviourally (its in-circuit
 // assertDecryptsTo only passes if the balance truly encrypts >= value).
-export circuit _credit(account: Bytes<32>, value: Uint<128>): [] {
-  return CFT__credit(account, value);
+export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+  return CFT__mint(account, value);
 }
 
-export circuit _debit(value: Uint<128>): Bytes<32> {
-  return CFT__debit(value);
+export circuit _burn(value: Uint<128>): Bytes<32> {
+  return CFT__burn(value);
 }
 
 export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {

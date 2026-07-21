@@ -267,11 +267,11 @@ describe('ConfidentialFungibleToken: registration', () => {
 // Transfers
 //
 // Confidential balances can't be read directly, so "X holds exactly N" is
-// proven behaviorally: cache N and `_debit(N)`. The debit's in-circuit
+// proven behaviorally: cache N and `_burn(N)`. The burn's in-circuit
 // `ElGamal_assertDecryptsTo` only passes if the balance truly encrypts >= N, so
-// `_debit(N)` succeeding (and `_debit(N+1)` failing) pins the balance to N; no
-// supply total needed. `_debit`/`_credit` are the base's own supply-free
-// primitives, so this suite never touches mint/burn/totalSupply.
+// `_burn(N)` succeeding (and `_burn(N+1)` failing) pins the balance to N; no
+// supply total needed. `_mint`/`_burn` are the base's exposed supply-free
+// building blocks, so this suite never touches the composed mint/burn/totalSupply.
 // ---------------------------------------------------------------------------
 
 describe('ConfidentialFungibleToken: transfer', () => {
@@ -290,13 +290,13 @@ describe('ConfidentialFungibleToken: transfer', () => {
     }
   };
 
-  // Registers everyone, credits `amount` to Alice via the base's supply-free
-  // `_credit`, and leaves Alice active with her balance cached.
+  // Registers everyone, mints `amount` to Alice via the base's supply-free
+  // `_mint`, and leaves Alice active with her balance cached.
   const fundAlice = async (amount: bigint) => {
     await registerAll();
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, amount);
-    // Dual-balance: `_credit` lands in `pending`; sweep it into `spendable` so
+    await cft._mint(ALICE.accountId, amount);
+    // Dual-balance: `_mint` lands in `pending`; sweep it into `spendable` so
     // the amount is debitable, then cache the swept spendable ciphertext.
     await cft.sweep();
     await cft.privateState.cachePlaintext(
@@ -315,7 +315,7 @@ describe('ConfidentialFungibleToken: transfer', () => {
       await cft.balanceOf(ALICE.accountId),
       70n,
     );
-    await cft._debit(70n);
+    await cft._burn(70n);
 
     // Bob holds exactly 30 (sweep his received value into spendable first).
     await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
@@ -324,7 +324,7 @@ describe('ConfidentialFungibleToken: transfer', () => {
       await cft.balanceOf(BOB.accountId),
       30n,
     );
-    await cft._debit(30n);
+    await cft._burn(30n);
   });
 
   it('rejects a self-transfer', async () => {
@@ -344,7 +344,7 @@ describe('ConfidentialFungibleToken: transfer', () => {
   it('rejects a debit when the witness EK does not match the registered pk', async () => {
     await fundAlice(100n);
     await cft.privateState.injectEncryptionKey(BOB.encryptionKey);
-    await expect(cft._debit(10n)).rejects.toThrow('ElGamal: ek/pk mismatch');
+    await expect(cft._burn(10n)).rejects.toThrow('ElGamal: ek/pk mismatch');
   });
 });
 
@@ -373,7 +373,7 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
   const approveBob = async (amount: bigint, cap: bigint) => {
     await registerAll();
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, amount);
+    await cft._mint(ALICE.accountId, amount);
     // Dual-balance: sweep the minted value into spendable so approve can debit it.
     await cft.sweep();
     await cft.privateState.cachePlaintext(
@@ -397,7 +397,7 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
       await cft.balanceOf(ALICE.accountId),
       60n,
     );
-    await cft._debit(60n);
+    await cft._burn(60n);
   });
 
   it('lets the spender transferFrom up to the allowance', async () => {
@@ -421,7 +421,7 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
       await cft.balanceOf(CHARLIE.accountId),
       25n,
     );
-    await cft._debit(25n);
+    await cft._burn(25n);
   });
 
   it('transferFrom pushes a memo to the recipient', async () => {
@@ -488,10 +488,10 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
       await cft.balanceOf(ALICE.accountId),
       75n,
     );
-    await expect(cft._debit(76n)).rejects.toThrow(
+    await expect(cft._burn(76n)).rejects.toThrow(
       'ConfidentialFungibleToken: insufficient balance',
     );
-    await cft._debit(75n);
+    await cft._burn(75n);
   });
 
   it('rejects transferFrom with no escrow', async () => {
@@ -559,7 +559,7 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
     // the second approve queries it.
     await registerAll();
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, 100n);
+    await cft._mint(ALICE.accountId, 100n);
     await cft.sweep();
     await cft.privateState.cachePlaintext(
       await cft.balanceOf(ALICE.accountId),
@@ -593,10 +593,10 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
       await cft.balanceOf(ALICE.accountId),
       70n,
     );
-    await expect(cft._debit(71n)).rejects.toThrow(
+    await expect(cft._burn(71n)).rejects.toThrow(
       'ConfidentialFungibleToken: insufficient balance',
     );
-    await cft._debit(70n);
+    await cft._burn(70n);
   });
 
   it('lets the owner re-approve after a PARTIAL spend by decrypting the ownerMemo', async () => {
@@ -638,7 +638,7 @@ describe('ConfidentialFungibleToken: escrow allowance', () => {
       await cft.balanceOf(ALICE.accountId),
       55n,
     );
-    await cft._debit(55n);
+    await cft._burn(55n);
   });
 
   it('re-approve after a partial spend fails if the owner assumes the escrow is untouched', async () => {
@@ -743,8 +743,8 @@ describe('ConfidentialFungibleToken: memos', () => {
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
     await cft.register();
 
-    await cft._credit(ALICE.accountId, 10n);
-    await cft._credit(ALICE.accountId, 20n);
+    await cft._mint(ALICE.accountId, 10n);
+    await cft._mint(ALICE.accountId, 20n);
 
     const memos = (await cft.getPublicState()).CFT__memos.lookup(
       ALICE.accountId,
@@ -755,7 +755,7 @@ describe('ConfidentialFungibleToken: memos', () => {
   it('clearMemos empties the caller’s memo list', async () => {
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
     await cft.register();
-    await cft._credit(ALICE.accountId, 10n);
+    await cft._mint(ALICE.accountId, 10n);
     expect(
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(1n);
@@ -794,7 +794,7 @@ describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
 
     // Mint to Alice: value lands in PENDING; spendable stays Enc(0).
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, 1000n);
+    await cft._mint(ALICE.accountId, 1000n);
     expect((await cft.balanceOf(ALICE.accountId)).c1).toEqual(id); // spendable Enc(0)
     expect((await cft.pendingOf(ALICE.accountId)).c1).not.toEqual(id); // pending funded
 
@@ -834,12 +834,12 @@ describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
 
     // Fund Alice's spendable, and fund Bob so he can push a dust credit.
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, 500n);
+    await cft._mint(ALICE.accountId, 500n);
     await cft.sweep();
     const spendableBefore = await cft.balanceOf(ALICE.accountId);
 
     await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-    await cft._credit(BOB.accountId, 10n);
+    await cft._mint(BOB.accountId, 10n);
     await cft.sweep();
     await cft.privateState.cachePlaintext(
       await cft.balanceOf(BOB.accountId),
@@ -861,7 +861,7 @@ describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
     const id = identityPoint();
     await registerBoth();
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, 1000n);
+    await cft._mint(ALICE.accountId, 1000n);
     await cft.sweep();
     await cft.privateState.cachePlaintext(
       await cft.balanceOf(ALICE.accountId),
@@ -880,7 +880,7 @@ describe('ConfidentialFungibleToken: dual-balance grief fix', () => {
       await cft.balanceOf(ALICE.accountId),
       600n,
     );
-    await cft._debit(600n);
+    await cft._burn(600n);
   });
 });
 
@@ -903,7 +903,7 @@ describe('ConfidentialFungibleToken: memo value delivery', () => {
       await cft.register();
     }
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
-    await cft._credit(ALICE.accountId, 1000n);
+    await cft._mint(ALICE.accountId, 1000n);
     await cft.sweep();
     await cft.privateState.cachePlaintext(
       await cft.balanceOf(ALICE.accountId),
@@ -932,7 +932,7 @@ describe('ConfidentialFungibleToken: memo value delivery', () => {
     }
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
     const big = 1n << 80n;
-    await cft._credit(ALICE.accountId, big);
+    await cft._mint(ALICE.accountId, big);
     await cft.sweep();
     await cft.privateState.cachePlaintext(
       await cft.balanceOf(ALICE.accountId),
@@ -968,16 +968,16 @@ describe('ConfidentialFungibleToken: value bound', () => {
     await cft.register();
 
     const large = 1n << 100n; // far above the old 2^48 cap
-    await cft._credit(ALICE.accountId, large);
+    await cft._mint(ALICE.accountId, large);
 
     // The full value round-trips with no discrete-log bound: sweep it into
-    // spendable and debit it back out. `_debit`'s in-circuit decrypt only
+    // spendable and burn it back out. `_burn`'s in-circuit decrypt only
     // passes if the balance truly encrypts `large`.
     await cft.sweep();
     await cft.privateState.cachePlaintext(
       await cft.balanceOf(ALICE.accountId),
       large,
     );
-    await cft._debit(large);
+    await cft._burn(large);
   });
 });

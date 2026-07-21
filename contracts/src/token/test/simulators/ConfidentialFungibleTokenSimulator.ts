@@ -142,28 +142,27 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   }
 
   /**
-   * @description Test-only funding: credits `value` to `account` via the base's
-   * own supply-free `_credit` primitive (what mint wraps, minus the supply
-   * bookkeeping). Lands in the recipient's pending pool, so sweep before
-   * spending. The supply-free base suite funds accounts with this instead of
-   * mint.
+   * @description Test-only funding: mints `value` to `account` via the base's
+   * exposed `_mint` building block (a raw credit, no supply bookkeeping). Lands
+   * in the recipient's pending pool, so sweep before spending. The supply-free
+   * base suite funds accounts with this.
    * @param account The recipient account id.
-   * @param value The amount to credit.
+   * @param value The amount to mint.
    */
-  public _credit(account: Uint8Array, value: bigint): Promise<[]> {
-    return this.circuits.impure._credit(account, value);
+  public _mint(account: Uint8Array, value: bigint): Promise<[]> {
+    return this.circuits.impure._mint(account, value);
   }
 
   /**
-   * @description Test-only balance proof / drain: debits `value` from the
-   * caller's spendable balance via the base's `_debit`. Its in-circuit
-   * assertDecryptsTo only passes if the balance truly encrypts >= value, so it
-   * doubles as the behavioural "holds exactly N" check the supply-free suite
-   * uses in place of burn.
-   * @param value The amount to debit.
+   * @description Test-only balance proof / drain: burns `value` from the
+   * caller's spendable balance via the base's `_burn` building block. Its
+   * in-circuit assertDecryptsTo only passes if the balance truly encrypts
+   * >= value, so it doubles as the behavioural "holds at least N" check the
+   * supply-free suite uses.
+   * @param value The amount to burn.
    */
-  public _debit(value: bigint): Promise<Uint8Array> {
-    return this.circuits.impure._debit(value);
+  public _burn(value: bigint): Promise<Uint8Array> {
+    return this.circuits.impure._burn(value);
   }
 
   public clearMemos() {
