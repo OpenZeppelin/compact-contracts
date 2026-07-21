@@ -384,19 +384,37 @@ module ConfidentialFungibleToken {
 
   /**
    * @description Returns the escrow entry (the encrypted allowance) that `owner`
-   * granted `spender`, or the default entry if none exists. The cap is
-   * encrypted, not public.
+   * granted `spender`. When no allowance exists, returns a well-formed
+   * encrypted-zero entry (its encrypted amounts decrypt to 0, analogous to an
+   * ERC-20 zero allowance) rather than `default<EscrowEntry>`: the returned
+   * Jubjub points are on-curve, so the view is safe to prove (e.g. through a
+   * contract-to-contract call) and safe for a wallet to decrypt, whereas a zeroed
+   * default holds off-curve points. The cap is encrypted, not public.
+   *
+   * @notice "No allowance" and "an allowance of 0" both read as encrypted-zero;
+   * a caller that must distinguish them reads `_escrow` membership off-chain. This
+   * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
+   * `_escrow` membership independently, so a non-existent allowance is unspendable.
    *
    * @circuitInfo k=10, rows=938
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
-   * @return {EscrowEntry} - The encrypted escrow entry.
+   * @return {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
    */
   export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
     if (!_escrow.member(disclose(owner)) ||
         !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
-      return default<EscrowEntry>;
+      const id = constructJubjubPoint(0 as Field, 1 as Field);
+      const zeroCt = ElGamal_Ciphertext { c1: id, c2: id };
+      return EscrowEntry {
+        spenderCt: zeroCt,
+        ownerCt:   zeroCt,
+        ownerMemo: EcdhMask_Ciphertext {
+          ephemeralPk: id,
+          ct: 0 as Field
+        }
+      };
     }
     return _escrow.lookup(disclose(owner)).lookup(disclose(spender));
   }
@@ -1049,6 +1067,8 @@ module ConfidentialFungibleToken {
    * owner granted to the caller: `_spendEscrow` under its intent name, with no
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
+   *
+   * @circuitInfo k=16, rows=36274
    *
    * Requirements:
    *
