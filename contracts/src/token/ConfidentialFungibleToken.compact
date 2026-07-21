@@ -1,0 +1,1180 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha (token/ConfidentialFungibleToken.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialFungibleToken
+ * @description An account-based confidential fungible token module.
+ *
+ * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity
+ * follows the same pattern as `FungibleToken`: a witness-derived
+ * `accountId = persistentHash(secretKey)`. Encryption uses a separate witness
+ * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
+ * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
+ *
+ * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
+ * live here; total-supply tracking is an optional add-on
+ * (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing contract pairs
+ * with them if it wants a tracked supply.
+ *
+ * @notice Single-receiver. Auditor support, freeze, and admin-style seize are
+ * deliberately left to companion modules or a future multi-receiver variant.
+ * The escrow-spend primitive here (`_spendEscrow`) enables user-consenting
+ * redemption (`_burnFrom`); admin-style seize against a non-cooperating owner
+ * requires authority visibility into balances and is therefore out of scope
+ * for the single-receiver base.
+ *
+ * @dev Trust model for witnesses.
+ *
+ * Witness implementations live in the user's wallet (TypeScript frontend) and
+ * must NEVER be trusted to behave correctly. Every witness in this module is
+ * either bound to publicly verifiable state (and the binding is checked by the
+ * circuit) or used in a way where a hostile value cannot break the security
+ * property the module claims.
+ *
+ * Witness audit:
+ *
+ *  - `wit_ConfidentialTokenSK`: verified by binding
+ *    `accountId = persistentHash(SK)` to the on-chain account identifier used
+ *    elsewhere in the circuit. A wrong SK produces a different accountId and
+ *    the transaction fails at lookup.
+ *
+ *  - `wit_ConfidentialTokenEK`: verified by `ElGamal_assertDecryptsTo`,
+ *    which re-derives `pk` and asserts it equals the on-chain stored pk.
+ *
+ *  - `wit_PlaintextBalance(ct)`: verified by `ElGamal_assertDecryptsTo`,
+ *    which asserts `Dec(ct, EK) == claimedValue`. The ciphertext is passed
+ *    as an argument so the wallet can look up the right cached plaintext
+ *    for the specific ciphertext being verified, rather than relying on
+ *    call-order conventions.
+ *
+ *  - `wit_RandomnessSeed`: supplies the single 32-byte seed all per-operation
+ *    randomness is derived from. Unlike the witnesses above, it is NOT verified
+ *    in-circuit; its freshness is load-bearing for confidentiality. See the
+ *    Seed freshness @warning below.
+ *
+ * @warning Seed freshness. Seed freshness is load-bearing for confidentiality
+ * on EVERY path. The seed-to-randomness expansion is deterministic and public,
+ * so an observer who knows the seed can strip a memo's mask and read the exact
+ * delivered amount (of any size), and can recover a balance or escrow amount
+ * from its public ciphertext by discrete log. The seed MUST be fresh,
+ * high-entropy, and secret for every invocation.
+ *
+ * Seed REUSE leaks plaintext differences, and the circuit does NOT prevent
+ * it. The debit and escrow ciphertexts (`_debit`, `approve`, `_spendEscrow`,
+ * and the re-approve refund) derive randomness from a static domain tag with
+ * no per-operation nonce, so two operations under one seed share randomness
+ * and their public ciphertext deltas reveal the amount difference. The credit
+ * path folds the recipient's memo-list length in as a nonce (defense in
+ * depth), but that counter RESETS on `clearMemos`, so it is an in-epoch
+ * backstop only, never a substitute for freshness.
+ *
+ * @dev Plaintext disclosures (what reaches the public ledger):
+ *  - This base discloses no amounts; supply accounting lives in a layer.
+ *  - A public-supply layer reveals each mint/burn amount via the totalSupply
+ *    delta (a confidential-supply layer would not).
+ *  - transfer / transferFrom reveal no amounts.
+ *  - approve does not disclose the cap (private-cap escrow design).
+ *  - Counterparty graph (sender_id, recipient_id) is public on every
+ *    transfer.
+ *
+ * @dev Per-transfer value bound. Value-bearing circuits check
+ * `value <= MAX_TRANSFER_VALUE()`, which is now the `Uint<128>` maximum: the ECDH
+ * memo delivers the amount directly (no discrete-log recovery), so the former
+ * `2^48` cap that kept wallet-side BSGS tractable is gone. Amounts stay well under
+ * the Jubjub scalar-field order, so the homomorphic balance sums (and the
+ * `g^value` encoding) do not wrap. Balances remain Uint<128>.
+ *
+ * @dev Value delivery via memo channel. Every credit made through `_credit`
+ * (mint / transfer / transferFrom) pushes an ECDH one-time-pad memo (see
+ * `crypto/EcdhMask`) to the recipient's per-account memo list. The recipient's
+ * wallet scans only its own list and decrypts each new entry DIRECTLY with its
+ * encryption secret (no discrete-log search, no bounded-value table), updating
+ * its local plaintext balance cache.
+ *
+ * Two caveats:
+ *
+ *  (1) Memos record CREDITS only: debits (sends, approvals, burns) move
+ *      value with no memo and a hidden amount, so summing memos OVERCOUNTS
+ *      a balance that has ever been spent from. The wallet's running
+ *      plaintext cache, not memo replay, is the authoritative balance;
+ *      replay-from-chain alone only reconstructs a never-spent account.
+ *
+ *  (2) A spender drawing on an escrow (`transferFrom`/`burnFrom`) reduces
+ *      the owner's escrow copy with no balance memo; the owner instead
+ *      learns the new remaining from the escrow entry's `ownerMemo`
+ *      (refreshed on every spend), which is what lets them prove the
+ *      post-refund balance on a later re-approve or revoke. Without that
+ *      memo a partial spend would strand the escrow, since the owner cannot
+ *      know the remainder folded back into their balance.
+ *
+ * @dev Hash function discipline. Every hash is built on `persistentHash` (no
+ * direct use of `transientHash`). `accountId` is a raw `persistentHash` map key.
+ * Deriving Jubjub scalars (pk derivation, the decryption check, and per-credit
+ * randomness) applies `degradeToTransient` to a `persistentHash` output so the
+ * result lands in the Jubjub scalar field. The memo mask KDF (`crypto/EcdhMask`) is
+ * also `persistentHash`, and MUST stay persistent: the recipient reproduces it to
+ * decrypt, possibly across a platform upgrade. These `persistentHash` (SHA256)
+ * calls dominate the credit-path row counts; there is currently no cheaper,
+ * upgrade-safe hasher available.
+ *
+ * @dev Caller-identity gating (composability). This module is unopinionated
+ * about compliance policy (freeze, KYC, pause); a composing contract layers
+ * that on top. Gating a circuit on an EXPLICIT argument (e.g. the recipient
+ * `to`) is straightforward; the wrapper and this module see the same value.
+ * Gating on the CALLER, however, is not: the caller is derived from
+ * `wit_ConfidentialTokenSK`, and a separate witness call in the wrapper could
+ * return a different secret than the one this module authenticates with,
+ * letting a frozen account slip a clean id past the gate. To make caller-side
+ * gates sound, every caller-authenticating circuit (`register`, `_burn`,
+ * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_burnFrom`)
+ * RETURNS the caller's `accountId`, the principal it authenticated from the
+ * witness. A
+ * wrapper gates on that returned value; since an assert failing anywhere in a
+ * Compact circuit invalidates the whole transaction, a post-call check still
+ * prevents the operation.
+ *
+ * Invariant: the returned id is ALWAYS the caller (the sender / approver /
+ * spender / registrant, depending on the circuit); it is never the recipient
+ * `to` nor the `fromAddress` argument. Those are explicit arguments a wrapper
+ * gates directly. A supply layer's `mint` is not caller-authenticating (its
+ * recipient is an explicit argument), so it returns nothing.
+ *
+ * @warning Known limitations.
+ *
+ * Concurrency. Two transfers to the same recipient in the same block
+ * conflict. Documented limitation; acceptable for the v1 target use case
+ * (tokenized deposits).
+ *
+ * Block weight. A deploy bundles every exported entry point's on-chain IR into
+ * one transaction, and the value circuits are SHA256-heavy (k=16), so a
+ * full-surface deployment can exceed the node's per-transaction block byte
+ * budget and be rejected (`1010: Transaction would exhaust the block limits`).
+ * The full token surface exceeds it; a reduced surface (e.g. receive +
+ * transfer, dropping allowances and supply accounting) fits, as measured on the
+ * local ledger-8 dev stack. The lever is dropping the k=16 value operations a
+ * deployment does not need, not just trimming getters. The limit is a
+ * governance-configurable, node-side ledger parameter, so confirm against the
+ * target network. Keep the deployed circuit surface small (drop
+ * unused getters, split oversized composites); raising the limit is a
+ * node-side change which is tracked upstream:
+ * https://github.com/midnightntwrk/midnight-node/issues/1202.
+ *
+ * Residual griefing. The dual-balance split (see `sweep`) stops dust
+ * credits from churning a victim's spendable ciphertext, but every `_credit`
+ * still appends a memo, and only the recipient can `clearMemos`. An attacker
+ * can spam value-1 credits to grow a victim's memo list without bound; the
+ * victim pays the storage, the wallet scan cost, and the clear gas. Rejecting
+ * value == 0 does not help (dust at value == 1 defeats it). A real fix is
+ * architectural (event-based delivery, a memo cap, or a bond) and is deferred.
+ *
+ * EOA-only. Contract-to-contract (c2c) is out of scope. Accounts here are
+ * externally-owned: identity is `accountId = persistentHash(SK)` and spending
+ * requires the holder to prove a balance plaintext under a secret encryption
+ * key (`EK`) supplied via witness. A contract has no private state, so it
+ * cannot custody such a key; it could be blindly credited (the homomorphic
+ * add needs no key) but could never spend, decrypt its balance, or scan memos.
+ * This is a cryptographic limitation, NOT a missing interface: adding a
+ * `ContractAddress` account variant would not make a contract able to hold a
+ * confidential balance, and clear contract addresses would also leak into the
+ * otherwise-pseudonymous counterparty graph.
+ *
+ * Importantly, the value layer (balances / escrow / supply, all keyed by an
+ * abstract `Bytes<32>` accountId) is already account-model-agnostic: it does
+ * not assume EOAs. If a contract key-custody scheme ever lands alongside c2c
+ * (e.g. a designated operator, threshold/MPC decryption, or a viewing-key
+ * arrangement), a contract obtains a `Bytes<32>` accountId via that scheme and
+ * the value logic is unchanged; only registration/authentication would. Until
+ * c2c exists AND such a custody design is defined, c2c is intentionally
+ * deferred. Interim: a protocol that needs to "hold" these tokens uses an
+ * EOA-custodied account it controls (supported today via `approve` /
+ * `transferFrom`), not the contract itself.
+ */
+module ConfidentialFungibleToken {
+  import CompactStandardLibrary;
+  import "../crypto/ElGamal" prefix ElGamal_;
+  import "../crypto/EcdhMask" prefix EcdhMask_;
+
+  // ---------------------------------------------------------------------------
+  // Types
+  //
+  // The single-receiver ElGamal ciphertext (`ElGamal_Ciphertext`) and all the
+  // crypto operating on it live in the `crypto/ElGamal` module. This module
+  // owns only the token-domain composition: ledger layout, witnesses, and the
+  // balance/escrow/supply business logic.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Per-(owner, spender) encrypted escrow. Stored as two
+   * ciphertexts of the same value: one to the spender, one to the owner.
+   * No public cap.
+   */
+  export struct EscrowEntry {
+    spenderCt: ElGamal_Ciphertext;
+    ownerCt:   ElGamal_Ciphertext;
+    // Owner-readable copy of the CURRENT remaining allowance, delivered as an
+    // ECDH one-time-pad memo (see `crypto/EcdhMask`). `spenderCt`/`ownerCt` are
+    // exponential ElGamal (g^value), so neither party can cheaply recover the
+    // amount by discrete log; this memo lets the OWNER read the live remaining
+    // directly with their EK. Without it, a partial `transferFrom`/`burnFrom`
+    // leaves the owner unable to learn how much is left, so they cannot prove the
+    // post-refund balance on re-approve/revoke and the escrow strands (a spender
+    // could grief by spending 1). Refreshed on `approve` (= cap) and on every
+    // spend (= remaining). Owner-scoped: an auditor/viewing-key layer adds its own
+    // reader copy in layer state rather than extending this struct.
+    ownerMemo: EcdhMask_Ciphertext;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ledger state
+  // ---------------------------------------------------------------------------
+
+  // Dual-balance grief fix. `_balances` is the SPENDABLE (confirmed) balance that
+  // debits draw from; `_pending` is the incoming pool that credits land in. Only
+  // the owner moves pending -> spendable, via `sweep()`. So a third party spamming
+  // dust credits cannot churn a victim's spendable ciphertext and invalidate the
+  // victim's in-flight spend proofs (a liveness grief). A wallet's total balance
+  // is `balanceOf` (spendable) + `pendingOf` (pending).
+  export ledger _balances: Map<Bytes<32>, ElGamal_Ciphertext>;
+  export ledger _pending: Map<Bytes<32>, ElGamal_Ciphertext>;
+  export ledger _encryptionKeys: Map<Bytes<32>, JubjubPoint>;
+  export ledger _memos: Map<Bytes<32>, List<EcdhMask_Ciphertext>>;
+  export ledger _escrow: Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>;
+
+  export ledger _isInitialized: Boolean;
+
+  export sealed ledger _name: Opaque<"string">;
+  export sealed ledger _symbol: Opaque<"string">;
+  export sealed ledger _decimals: Uint<8>;
+
+
+  // ---------------------------------------------------------------------------
+  // Constants (Compact does not support module-level constants, so these are
+  // exposed as pure circuits returning a literal.)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Maximum allowed value per single transfer / mint / burn /
+   * approve: the `Uint<128>` maximum. The prior `2^48` cap existed only to keep
+   * wallet-side discrete-log recovery tractable; with the ECDH memo delivering
+   * values directly (see `crypto/EcdhMask`), that constraint is gone. Values stay
+   * well under the Jubjub scalar-field order, so homomorphic sums do not wrap.
+   *
+   * @notice This equals the argument type's own maximum, so the per-op check is
+   * effectively a no-op, retained as a single explicit ceiling / documentation
+   * point. Removing the now-vestigial check entirely is a follow-up cleanup.
+   */
+  export pure circuit MAX_TRANSFER_VALUE(): Uint<128> {
+    return 340282366920938463463374607431768211455; // 2^128 - 1
+  }
+
+  // ---------------------------------------------------------------------------
+  // Witnesses
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @witness wit_ConfidentialTokenSK
+   * @description Returns the caller's account secret. Verified in-circuit by
+   * matching `persistentHash(SK)` against the public accountId.
+   */
+  witness wit_ConfidentialTokenSK(): Bytes<32>;
+
+  /**
+   * @witness wit_ConfidentialTokenEK
+   * @description Returns the caller's ElGamal secret. Verified in-circuit by
+   * `ElGamal_assertDecryptsTo`, which re-derives the pk and compares
+   * against the stored pk.
+   */
+  witness wit_ConfidentialTokenEK(): Bytes<32>;
+
+  /**
+   * @witness wit_PlaintextBalance
+   * @description Returns the wallet's cached plaintext for the given
+   * ciphertext. Called whenever the circuit needs to verify a ciphertext's
+   * plaintext value (sender's main balance, escrow ciphertext during spend,
+   * prior escrow during refund, etc.).
+   *
+   * The ciphertext is passed explicitly so the wallet can route to the right
+   * cached plaintext by ciphertext identity. This avoids call-order
+   * conventions (which would be brittle to circuit refactors) and lets the
+   * wallet maintain a `Map<ElGamal_Ciphertext, Uint128>` lookup.
+   *
+   * Verified in-circuit by `ElGamal_assertDecryptsTo`: a wrong plaintext
+   * fails the assertion `Dec(ct, EK) == claimedValue`.
+   *
+   * @param ct - The ciphertext whose plaintext is being requested.
+   * @returns The wallet's cached plaintext for `ct`.
+   */
+  witness wit_PlaintextBalance(ct: ElGamal_Ciphertext): Uint<128>;
+
+  /**
+   * @witness wit_RandomnessSeed
+   * @description Returns a single 32-byte seed from which all per-operation
+   * randomness (and each memo's ephemeral) is derived in-circuit.
+   *
+   * Seed freshness is load-bearing for confidentiality on EVERY path (see the
+   * module header). The derivation is deterministic and public, so an observer
+   * who knows the seed can strip a memo's mask and read the delivered amount, and
+   * recover balance/escrow amounts from the public ciphertexts. Seed REUSE leaks
+   * plaintext differences and the circuit does NOT prevent it: only the credit
+   * path folds a per-recipient nonce (the memo-list length) in as defense in
+   * depth, and even that resets on `clearMemos`. The seed MUST be fresh,
+   * high-entropy, and secret for every invocation.
+   */
+  witness wit_RandomnessSeed(): Bytes<32>;
+
+  // ---------------------------------------------------------------------------
+  // Initialization & metadata
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Initializes the token's name, symbol, and decimals. Intended to
+   * be called once, from the deploying contract's constructor.
+   *
+   * Requirements:
+   *
+   * - Contract is not already initialized.
+   *
+   * @param {Opaque<"string">} name_ - The token name.
+   * @param {Opaque<"string">} symbol_ - The token symbol.
+   * @param {Uint<8>} decimals_ - The number of display decimals.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>
+                   ): [] {
+    assertNotInitialized();
+    _isInitialized = true;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
+    _decimals = disclose(decimals_);
+  }
+
+  // ---------------------------------------------------------------------------
+  // View circuits
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Returns `account`'s balance ciphertext, or the default (zero)
+   * ciphertext if the account is unregistered. The amount is encrypted; only the
+   * account (or an authorized viewer) can decrypt it.
+   *
+   * @circuitInfo k=10, rows=989
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {ElGamal_Ciphertext} - The encrypted balance.
+   */
+  export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+    assertInitialized();
+    if (!_balances.member(disclose(account))) {
+      // Unregistered accounts hold zero. Return a well-formed Enc(0) rather than
+      // `default<ElGamal_Ciphertext>`, whose zeroed points are not guaranteed to
+      // be valid curve points; this matches a registered account's fresh balance.
+      return ElGamal_encryptZero();
+    }
+    return _balances.lookup(disclose(account));
+  }
+
+  /**
+   * @description Returns `account`'s PENDING balance ciphertext (incoming credits
+   * not yet swept into spendable), or Enc(0) if unregistered. The spendable
+   * balance is `balanceOf`; a wallet's total is the sum of the two. See the
+   * dual-balance note on the ledger declarations.
+   *
+   * @circuitInfo k=10, rows=986
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {ElGamal_Ciphertext} - The encrypted pending balance.
+   */
+  export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
+    assertInitialized();
+    if (!_pending.member(disclose(account))) {
+      return ElGamal_encryptZero();
+    }
+    return _pending.lookup(disclose(account));
+  }
+
+  /**
+   * @description Returns the escrow entry (the encrypted allowance) that `owner`
+   * granted `spender`. When no allowance exists, returns a well-formed
+   * encrypted-zero entry (its encrypted amounts decrypt to 0, analogous to an
+   * ERC-20 zero allowance) rather than `default<EscrowEntry>`: the returned
+   * Jubjub points are on-curve, so the view is safe to prove (e.g. through a
+   * contract-to-contract call) and safe for a wallet to decrypt, whereas a zeroed
+   * default holds off-curve points. The cap is encrypted, not public.
+   *
+   * @notice "No allowance" and "an allowance of 0" both read as encrypted-zero;
+   * a caller that must distinguish them reads `_escrow` membership off-chain. This
+   * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
+   * `_escrow` membership independently, so a non-existent allowance is unspendable.
+   *
+   * @circuitInfo k=10, rows=938
+   *
+   * @param {Bytes<32>} owner - The account that granted the allowance.
+   * @param {Bytes<32>} spender - The approved spender.
+   * @return {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
+   */
+  export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
+    if (!_escrow.member(disclose(owner)) ||
+        !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
+      const id = constructJubjubPoint(0 as Field, 1 as Field);
+      const zeroCt = ElGamal_Ciphertext { c1: id, c2: id };
+      return EscrowEntry {
+        spenderCt: zeroCt,
+        ownerCt:   zeroCt,
+        ownerMemo: EcdhMask_Ciphertext {
+          ephemeralPk: id,
+          ct: 0 as Field
+        }
+      };
+    }
+    return _escrow.lookup(disclose(owner)).lookup(disclose(spender));
+  }
+
+  /**
+   * @description Returns whether `account` has registered an encryption key.
+   *
+   * @circuitInfo k=9, rows=305
+   *
+   * @param {Bytes<32>} account - The account to query.
+   * @return {Boolean} - True if `account` is registered.
+   */
+  export circuit isRegistered(account: Bytes<32>): Boolean {
+    return _encryptionKeys.member(disclose(account));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Registration
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Registers the caller: derives their encryption public key from
+   * `wit_ConfidentialTokenEK` and initializes their balance to an encryption of
+   * zero. Registration is a prerequisite for sending or receiving.
+   *
+   * @circuitInfo k=13, rows=6203
+   *
+   * @notice Returns the caller's `accountId`. A composing contract can gate on
+   * the returned value (e.g. assert it is KYC-approved) to restrict who may
+   * register. See the module header note on caller-identity gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is not already registered.
+   *
+   * @return {Bytes<32>} - The registered (caller's) accountId.
+   */
+  export circuit register(): Bytes<32> {
+    assertInitialized();
+    const accountId = _computeAccountId();
+    assert(!_encryptionKeys.member(disclose(accountId)),
+           "ConfidentialFungibleToken: already registered");
+
+    const ek = wit_ConfidentialTokenEK();
+    const pk = ElGamal_derivePk(ek);
+
+    _encryptionKeys.insert(disclose(accountId), disclose(pk));
+    _balances.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
+    _pending.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
+    return disclose(accountId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal value primitives: _debit and _credit
+  //
+  // These are exported ONLY as building blocks for supply-changing composition
+  // (their intent-named aliases `_mint`/`_burn` are defined right below, and a
+  // composing contract pairs them with the optional
+  // `extensions/ConfidentialFungibleTokenPublicSupply` tracker); they are NOT a
+  // general external surface. Exposing the asymmetric halves on a deployed contract cannot
+  // preserve `sum(balances) == totalSupply`: a caller could `_credit` without a
+  // matching `_debit`/mint (inflation), and the module has no way to compel the
+  // pairing (Compact has no end-of-transaction settlement hook). The conserving
+  // primitive for custom value flow is `_move` (it always pairs a debit with an
+  // equal credit), which holds the invariant by construction. This base is
+  // supply-free; supply changes live in the layer that imports it.
+  //
+  // DANGER: `export circuit` means callable on the deployed contract, and
+  // Compact cannot restrict a re-export. The raw value primitives
+  // `_credit`/`_debit`/`_spendEscrow` are therefore kept NON-exported (module-
+  // private): the compiler makes them impossible to re-export or deploy. What IS
+  // exported for composition is the `_mint`/`_burn`/`_burnFrom` building blocks,
+  // which a supply layer pairs with its accounting. Those remain unbalanced: a
+  // consumer that re-exports `_mint` turns it into a permissionless mint, `_burn`
+  // into a permissionless burn, and `_burnFrom` into a permissionless escrow-burn
+  // (an approved spender destroys escrowed value with no supply decrement, so a
+  // supply layer's totalSupply overstates circulation). This base is a module,
+  // not independently deployable; a consuming contract MUST expose only the
+  // conserving surface (`transfer`, `_move`, `approve`/`transferFrom`, `sweep`)
+  // plus its own gated `mint`/`burn` wrappers, and MUST NEVER re-export `_mint`,
+  // `_burn`, or `_burnFrom` raw.
+  //
+  // WARNING: none of the value primitives adjust any supply total. They only
+  // move value into/out of a single account's balance ciphertext. A supply layer
+  // pairs the exposed `_mint`/`_burn`/`_burnFrom` blocks with supply accounting
+  // (its `mint` increments the total before crediting; its `burn` decrements it
+  // after debiting).
+  //
+  // Randomness: `_credit` folds a per-recipient nonce (the memo-list length)
+  // into its seed-derived randomness as defense in depth. This helps only
+  // within a memo epoch: `clearMemos` resets the counter, and it is NOT a
+  // substitute for seed freshness (see the header note); seed reuse still leaks
+  // credited-amount differences. Within an epoch the nonce keeps a single
+  // circuit's multi-party credits distinct (each recipient's count is
+  // independent). The debit side has no such nonce, so seed freshness is the
+  // only defense there.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Debits `value` from the caller's own balance. A low-level
+   * internal primitive; the external path for custom value flows will be a
+   * conserving `_move` (see the section note above).
+   *
+   * @warning Does not adjust any supply total. Called outside a supply-accounted
+   * flow, `_debit` destroys the caller's value with no corresponding burn,
+   * breaking the `sum(balances) == totalSupply` invariant. Pair it with a burn
+   * (as a supply layer does) or a matching credit (as `transfer` does).
+   *
+   * @notice Returns the caller's `accountId` (the account debited), so a
+   * composing contract can gate on it (e.g. assert the sender is not frozen).
+   * See the module header note on caller-identity gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered and has a balance of at least `value`.
+   *
+   * @param {Uint<128>} value - The amount to debit.
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  circuit _debit(value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+
+    const accountId = _computeAccountId();
+    assert(_encryptionKeys.member(disclose(accountId)),
+           "ConfidentialFungibleToken: sender not registered");
+
+    const ek = wit_ConfidentialTokenEK();
+    const pk = _encryptionKeys.lookup(disclose(accountId));
+
+    const ct = _balances.lookup(disclose(accountId));
+    const plaintextBalance = wit_PlaintextBalance(ct);
+    ElGamal_assertDecryptsTo(ct, pk, ek, plaintextBalance);
+
+    assert(plaintextBalance >= value,
+           "ConfidentialFungibleToken: insufficient balance");
+
+    const seed = wit_RandomnessSeed();
+    const r = ElGamal_expandRandomness(seed, pad(32, "debit_balance"));
+    const newCt = ElGamal_subEncrypted(ct, pk, value, r);
+    _balances.insert(disclose(accountId), disclose(newCt));
+    return disclose(accountId);
+  }
+
+  /**
+   * @description Credits `value` to `account`: homomorphically adds it to the
+   * account's balance ciphertext and pushes an ECDH one-time-pad memo that
+   * delivers `value` directly to the recipient (no discrete-log recovery, so no
+   * `2^48` bound). All per-credit randomness is derived internally from the
+   * witness seed and a per-recipient monotonic nonce (the memo-list length),
+   * which keeps randomness distinct WITHIN a memo epoch (defense in depth for
+   * the memo's one-time pad; see `crypto/EcdhMask`). That nonce RESETS on
+   * `clearMemos`, so it is an in-epoch backstop only, never a substitute for
+   * seed freshness (see the module header and the section note above `_debit`).
+   *
+   * @warning Does not adjust any supply total. Called outside a supply-accounted
+   * flow, `_credit` mints unbacked value (inflation) and breaks the
+   * `sum(balances) == totalSupply` invariant. Pair it with a debit (as `transfer`
+   * does) or a supply increase (as a supply layer's `mint` does).
+   *
+   * @param account - The recipient account id.
+   * @param value - The amount to credit.
+   */
+  circuit _credit(account: Bytes<32>, value: Uint<128>): [] {
+    assertInitialized();
+    _assertValueInBound(value);
+    assert(account != default<Bytes<32>>,
+           "ConfidentialFungibleToken: invalid receiver");
+    assert(_encryptionKeys.member(disclose(account)),
+           "ConfidentialFungibleToken: receiver not registered");
+
+    const recipientPk = _encryptionKeys.lookup(disclose(account));
+
+    // Ensure the recipient's memo list exists; its length is a per-recipient
+    // monotonic nonce that makes this credit's randomness unique even if the
+    // wallet reuses its seed. Freshness is essential for the memo OTP: a repeated
+    // ephemeral to the same recipient would reuse the pad.
+    if (!_memos.member(disclose(account))) {
+      _memos.insert(disclose(account), default<List<EcdhMask_Ciphertext>>);
+    }
+    const count = _memos.lookup(disclose(account)).length() as Field;
+    const seed = wit_RandomnessSeed();
+
+    // Randomness must be a VALID Jubjub scalar. `transientHash`'s raw Field output
+    // can exceed the Jubjub scalar-field order and fault `ecMulGenerator`, so each
+    // scalar is derived via `degradeToTransient(persistentHash(...))`, which
+    // truncates into the scalar field. The per-recipient count, folded into a
+    // Bytes<32> nonce, keeps each credit's randomness unique even if the seed
+    // repeats (essential for the memo OTP). This inlines the tag + expansion into
+    // a single hash per scalar. The residual persistentHash cost is poseidon-gated
+    // (a stable cheap hasher would cheapen it), same as the memo KDF.
+    // Encode the count nonce as Bytes<32> by hashing the Field directly. An
+    // earlier version hashed `ecMulGenerator(count)`, but that scalar-mul was
+    // pure Field-to-Bytes plumbing with no cryptographic role (the nonce only
+    // needs an injective, deterministic encoding of `count`), and it was wasted
+    // rows on the hot credit path. `countHash` is in-circuit only; nothing
+    // reproduces it off chain, so this is a free saving.
+    const countHash = persistentHash<Field>(count);
+    const rBalance = degradeToTransient(
+      persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_balance"), account, countHash])
+    );
+    const e = degradeToTransient(
+      persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_memo"), account, countHash])
+    );
+
+    // Credit lands in the recipient's PENDING pool (not spendable), so incoming
+    // value never churns their spendable ciphertext; they sweep it when ready.
+    const oldCt = _pending.lookup(disclose(account));
+    const newCt = ElGamal_addEncrypted(oldCt, recipientPk, value, rBalance);
+    _pending.insert(disclose(account), disclose(newCt));
+
+    // Push the ECDH-OTP memo (delivers `value` directly; recipient decrypts with
+    // its EK, no discrete-log search).
+    const memo = EcdhMask_encrypt(recipientPk, value, e, pad(32, "OZ_CFT_ecdh_memo_v1"));
+    _memos.lookup(disclose(account)).pushFront(disclose(memo));
+  }
+
+  /**
+   * @description Mints `value` to `account`: `_credit` under its intent name.
+   * The building block for a composing contract's gated `mint`; it performs no
+   * supply accounting. Pair it with a supply tracker (see
+   * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
+   * `totalSupply`.
+   *
+   * @circuitInfo k=15, rows=27142
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `account` is registered.
+   *
+   * @param {Bytes<32>} account - The recipient of the minted tokens.
+   * @param {Uint<128>} value - The amount to mint.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+    _credit(account, value);
+  }
+
+  /**
+   * @description Burns `value` from the caller's own balance: `_debit` under
+   * its intent name. The building block for a composing contract's `burn`; it
+   * performs no supply accounting. Pair it with a supply tracker (see
+   * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
+   * `totalSupply`.
+   *
+   * @circuitInfo k=14, rows=14673
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered and has a balance of at least `value`.
+   *
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  export circuit _burn(value: Uint<128>): Bytes<32> {
+    return _debit(value);
+  }
+
+  // ---------------------------------------------------------------------------
+  // transfer / approve / transferFrom
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Transfers `value` from the caller to `to`: debits the caller,
+   * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
+   * the (sender, recipient) pair is public.
+   *
+   * @circuitInfo k=16, rows=41617
+   *
+   * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
+   * The sender is derived from the same authentication `_debit` performs, so the
+   * returned id is exactly the account whose funds moved.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - The caller is registered with a balance of at least `value`.
+   * - `to` is registered and is not the caller (no self-transfer).
+   *
+   * @param {Bytes<32>} to - The recipient account.
+   * @param {Uint<128>} value - The amount to transfer.
+   * @return {Bytes<32>} - The caller's (sender's) accountId.
+   */
+  export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    // Derive the sender from the same authentication `_debit` uses, so the
+    // returned id is exactly the account whose funds moved.
+    const senderId = _debit(value);
+    // A self-transfer would debit the caller's spendable and re-credit their own pending,
+    // forcing a sweep with no foreseeable benefit.
+    assert(senderId != to, "ConfidentialFungibleToken: self-transfer");
+
+    _credit(to, value);
+    return senderId;
+  }
+
+  /**
+   * @description The conserving value-movement primitive: debits the caller and
+   * credits `to` by the same `value`, net zero. It NEVER changes supply, so it is
+   * the safe surface for composition and the primitive this supply-free base
+   * exposes. `transfer` is `_move` plus a self-transfer guard; supply-changing
+   * operations (`mint`/`burn`) live in a separate layer outside this conserving
+   * surface, and only they may break conservation.
+   *
+   * @circuitInfo k=16, rows=41606
+   *
+   * @notice Like `transfer`, the credit lands in the recipient's pending pool
+   * (see the dual-balance note); the caller sweeps their own incoming value.
+   *
+   * @dev Self-move (`to` == caller) is PERMITTED here, unlike `transfer`, which
+   * rejects it. A self-move is conserving and safe: it debits the caller's
+   * spendable and credits the caller's own pending (net zero, distinct ledger
+   * cells; the value is recovered with `sweep`). `transfer`'s self-transfer guard
+   * is therefore a UX choice, not a safety requirement: it spares users a
+   * self-transfer with no foreseeable benefit (a shuffle of spendable into
+   * pending plus a self-memo). This primitive stays permissive so a composer can
+   * set its own policy; add a `to != caller` check in the wrapper to reject a
+   * self-move.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is registered with a spendable balance of at least `value`.
+   * - `to` is registered.
+   *
+   * @param {Bytes<32>} to - The recipient account id.
+   * @param {Uint<128>} value - The amount to move.
+   * @return {Bytes<32>} - The caller's accountId (for caller-side gating).
+   */
+  export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    const senderId = _debit(value);
+    _credit(to, value);
+    return senderId;
+  }
+
+  /**
+   * @description Sweeps the caller's incoming `pending` pool into their
+   * `spendable` balance. Credits land in `pending` (see the dual-balance note);
+   * this `sweep` is the ONLY path from pending into spendable, and only the owner
+   * can invoke it (the account is derived from the caller's witness secret). So a
+   * third party spamming credits cannot force a victim's spendable ciphertext to
+   * change, which is what would otherwise invalidate the victim's in-flight spend
+   * proofs (a liveness grief).
+   *
+   * @circuitInfo k=13, rows=2879
+   *
+   * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
+   * pending to Enc(0). No plaintext is needed; the wallet already learned the
+   * pending amounts from its memos.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is registered.
+   *
+   * @return {Bytes<32>} - The caller's accountId.
+   */
+  export circuit sweep(): Bytes<32> {
+    assertInitialized();
+    const accountId = _computeAccountId();
+    assert(_encryptionKeys.member(disclose(accountId)),
+           "ConfidentialFungibleToken: not registered");
+    const newSpendable = ElGamal_add(
+      _balances.lookup(disclose(accountId)),
+      _pending.lookup(disclose(accountId)));
+    _balances.insert(disclose(accountId), disclose(newSpendable));
+    _pending.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
+    return disclose(accountId);
+  }
+
+  /**
+   * @description Sets `spender`'s allowance over the caller's balance to `value`
+   * via an escrow: the caller's main balance is debited by `value`, and matching
+   * encryptions are stored for the spender and the owner. Re-approving first
+   * refunds any prior escrow, so allowances replace rather than stack. The cap
+   * is not public.
+   *
+   * @circuitInfo k=16, rows=43067
+   *
+   * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
+   *
+   * @dev Also stores an owner-readable `ownerMemo` (ECDH one-time pad; see
+   * `crypto/EcdhMask`) in the escrow entry, carrying the current remaining
+   * allowance (= `value` here, refreshed to the reduced remaining on every
+   * spend). This is what lets the owner prove the post-refund balance on a later
+   * re-approve or revoke after a partial spend; without it a partial spend would
+   * strand the escrow. See the `EscrowEntry` field doc.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `spender` is registered, is not the zero account, and is not the caller.
+   * - The caller is registered with a balance of at least `value`.
+   *
+   * @param {Bytes<32>} spender - The account being approved.
+   * @param {Uint<128>} value - The allowance amount.
+   * @return {Bytes<32>} - The caller's (approver's) accountId.
+   */
+  export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+    assert(spender != default<Bytes<32>>,
+           "ConfidentialFungibleToken: invalid spender");
+
+    const ownerId = _computeAccountId();
+    assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
+    assert(_encryptionKeys.member(disclose(spender)),
+           "ConfidentialFungibleToken: spender not registered");
+    assert(_encryptionKeys.member(disclose(ownerId)),
+           "ConfidentialFungibleToken: owner not registered");
+
+    const ek = wit_ConfidentialTokenEK();
+    const ownerPk = _encryptionKeys.lookup(disclose(ownerId));
+
+    // Refund any prior escrow back to owner's main balance first.
+    _refundPriorEscrow(ownerId, spender);
+
+    // Debit the owner's main balance by `value`.
+    const ownerCt = _balances.lookup(disclose(ownerId));
+    const plaintextBalance = wit_PlaintextBalance(ownerCt);
+    ElGamal_assertDecryptsTo(ownerCt, ownerPk, ek, plaintextBalance);
+
+    assert(plaintextBalance >= value,
+           "ConfidentialFungibleToken: insufficient balance");
+
+    const seed = wit_RandomnessSeed();
+    const rDebit   = ElGamal_expandRandomness(seed, pad(32, "approve_debit"));
+    const rSpender = ElGamal_expandRandomness(seed, pad(32, "approve_spender_ct"));
+    const rOwner   = ElGamal_expandRandomness(seed, pad(32, "approve_owner_ct"));
+    // Ephemeral for the owner-readable remaining memo. Shares the escrow
+    // ciphertexts' seed-freshness dependency (a reused seed reuses this pad, just
+    // as it reuses rSpender/rOwner); the wallet MUST supply a fresh seed.
+    const eOwnerMemo = ElGamal_expandRandomness(seed, pad(32, "approve_owner_memo"));
+
+    const newOwnerCt = ElGamal_subEncrypted(ownerCt, ownerPk, value, rDebit);
+    _balances.insert(disclose(ownerId), disclose(newOwnerCt));
+
+    const spenderPk = _encryptionKeys.lookup(disclose(spender));
+    const spenderCt        = ElGamal_encrypt(spenderPk, value, rSpender);
+    const ownerCtForRefund = ElGamal_encrypt(ownerPk,   value, rOwner);
+    // Right after approve, the remaining allowance is the full cap (`value`).
+    const ownerMemo = EcdhMask_encrypt(ownerPk, value, eOwnerMemo,
+                                       pad(32, "OZ_CFT_escrow_owner_v1"));
+
+    _escrow.lookup(disclose(ownerId)).insert(
+      disclose(spender),
+      disclose(EscrowEntry {
+        spenderCt: spenderCt,
+        ownerCt: ownerCtForRefund,
+        ownerMemo: ownerMemo
+      })
+    );
+    return disclose(ownerId);
+  }
+
+  /**
+   * @description Spends `value` from `fromAddress`'s escrow (granted to the
+   * caller via `approve`) and credits it to `to`, reducing both escrow copies by
+   * `value`. The amount is hidden.
+   *
+   * @circuitInfo k=16, rows=63207
+   *
+   * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `to` is registered and is not the zero account.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   *
+   * @param {Bytes<32>} fromAddress - The owner whose escrow is drawn on.
+   * @param {Bytes<32>} to - The recipient account.
+   * @param {Uint<128>} value - The amount to transfer.
+   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   */
+  export circuit transferFrom(
+                   fromAddress: Bytes<32>,
+                   to: Bytes<32>,
+                   value: Uint<128>
+                   ): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+    assert(to != default<Bytes<32>>,
+           "ConfidentialFungibleToken: invalid receiver");
+
+    const spenderId = _spendEscrow(fromAddress, value);
+
+    _credit(to, value);
+    return spenderId;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Memo housekeeping
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Clears the caller's memo list, letting a wallet that has folded
+   * its memos into its local balance cache prune on-chain memo storage.
+   *
+   * @circuitInfo k=13, rows=2316
+   *
+   * @warning Clearing memos is destructive and can permanently lock funds. The
+   * on-chain balance ciphertext is not directly decryptable (discrete-log
+   * bound), so a wallet reconstructs its balance by replaying memos. Clearing
+   * them without a durable off-chain record of the balance loses the ability to
+   * recover it; and because spending requires proving the balance plaintext, the
+   * funds become unspendable, not merely undisplayable. Clear only memos already
+   * folded into a durable cache/backup (see §7 of the design doc).
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  export circuit clearMemos(): [] {
+    assertInitialized();
+    const accountId = _computeAccountId();
+    if (_memos.member(disclose(accountId))) {
+      _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  //
+  // Token-domain helpers only; the ElGamal crypto lives in `crypto/ElGamal`.
+  // The escrow-spend / refund helpers are placed last alongside the
+  // higher-level circuits they compose.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Asserts `value` is within the per-operation bound. Centralizes
+   * the bound check shared by every value-bearing circuit.
+   */
+  circuit _assertValueInBound(value: Uint<128>): [] {
+    assert(value <= MAX_TRANSFER_VALUE(),
+           "ConfidentialFungibleToken: value exceeds bound");
+  }
+
+  /**
+   * @description Derives the on-chain accountId from the witness-supplied SK.
+   * Uses `persistentHash` because `accountId` is used as a Map key
+   * throughout the ledger state.
+   */
+  circuit _computeAccountId(): Bytes<32> {
+    return computeAccountId(wit_ConfidentialTokenSK());
+  }
+
+  /**
+   * @description Derives the public `accountId` from a secret key, as
+   * `persistentHash(sk)`. Pure, so a wallet can compute its own account
+   * identifier off-chain (no proof) before transacting.
+   *
+   * @param {Bytes<32>} sk - The account secret key.
+   * @return {Bytes<32>} - The derived accountId.
+   */
+  export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<1, Bytes<32>>>([sk]);
+  }
+
+  /**
+   * @description Validates and consumes `value` from the escrow that
+   * `fromAddress` granted to the caller, reducing both the spender's and the
+   * owner's escrow ciphertexts by `value`. Shared by `transferFrom` and
+   * `_burnFrom`; the caller supplies the post-spend disposition (credit a
+   * recipient, or none for a burn).
+   *
+   * @warning Does not adjust any supply total. Re-exported raw, `_spendEscrow`
+   * is a permissionless escrow-burn: it destroys the escrowed value with no
+   * corresponding burn, breaking `sum(balances) == totalSupply` (the total then
+   * overstates circulation). A composing contract MUST pair it with a supply
+   * decrement (as a tracked `burnFrom` does) or a credit (as `transferFrom`
+   * does); never re-export it raw (see the DANGER note above the primitives).
+   *
+   * @notice Only the spender's escrow copy is decrypted and checked
+   * `>= value`. The owner's copy is reduced by the same `value`, preserving the
+   * approve-time invariant that both copies encrypt the same amount, so the
+   * owner's copy needs no separate bound check.
+   *
+   * @dev Refreshes the escrow entry's `ownerMemo` with the new remaining
+   * (`escrowPlaintext - value`, computed in-circuit from the verified spender
+   * plaintext, so the spender cannot forge it). This is the owner's only channel
+   * for learning how much a partial spend left them; without it the owner could
+   * not prove the post-refund balance on a later re-approve/revoke. See the
+   * `EscrowEntry` field doc.
+   *
+   * @param fromAddress - The owner whose escrow the caller (spender) draws on.
+   * @param value - The amount to consume from the allowance.
+   */
+  circuit _spendEscrow(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+    assertInitialized();
+    _assertValueInBound(value);
+
+    const spenderId = _computeAccountId();
+    assert(_escrow.member(disclose(fromAddress)) &&
+           _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
+           "ConfidentialFungibleToken: no escrow");
+
+    const entry = _escrow.lookup(disclose(fromAddress)).lookup(disclose(spenderId));
+
+    const ek = wit_ConfidentialTokenEK();
+    const spenderPk = _encryptionKeys.lookup(disclose(spenderId));
+    const escrowPlaintext = wit_PlaintextBalance(entry.spenderCt);
+    ElGamal_assertDecryptsTo(entry.spenderCt, spenderPk, ek, escrowPlaintext);
+    assert(escrowPlaintext >= value,
+           "ConfidentialFungibleToken: insufficient allowance");
+
+    const seed = wit_RandomnessSeed();
+    const rSpender = ElGamal_expandRandomness(seed, pad(32, "spend_escrow_spender"));
+    const rOwner   = ElGamal_expandRandomness(seed, pad(32, "spend_escrow_owner"));
+    const eOwnerMemo = ElGamal_expandRandomness(seed, pad(32, "spend_owner_memo"));
+
+    const ownerPk = _encryptionKeys.lookup(disclose(fromAddress));
+    const newSpenderCt = ElGamal_subEncrypted(entry.spenderCt, spenderPk, value, rSpender);
+    const newOwnerCt   = ElGamal_subEncrypted(entry.ownerCt,   ownerPk,   value, rOwner);
+
+    // Notify the owner of the new remaining allowance so a partial spend never
+    // blinds them (`escrowPlaintext >= value` is asserted above, so no underflow).
+    // Refreshes the owner-scoped memo set at approve; this is what lets the owner
+    // prove the post-refund balance on a later re-approve/revoke.
+    const remaining = (escrowPlaintext - value) as Uint<128>;
+    const ownerMemo = EcdhMask_encrypt(ownerPk, remaining, eOwnerMemo,
+                                       pad(32, "OZ_CFT_escrow_owner_v1"));
+
+    _escrow.lookup(disclose(fromAddress)).insert(
+      disclose(spenderId),
+      disclose(EscrowEntry {
+        spenderCt: newSpenderCt,
+        ownerCt: newOwnerCt,
+        ownerMemo: ownerMemo
+      })
+    );
+    return disclose(spenderId);
+  }
+
+  /**
+   * @description Burns `value` from `fromAddress` by consuming an escrow that
+   * owner granted to the caller: `_spendEscrow` under its intent name, with no
+   * recipient credit. The building block for a composing contract's
+   * `burnFrom`; it performs no supply accounting (see `_burn`).
+   *
+   * @circuitInfo k=16, rows=36274
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   *
+   * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
+   * @param {Uint<128>} value - The amount to burn.
+   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   */
+  export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+    return _spendEscrow(fromAddress, value);
+  }
+
+  /**
+   * @description Refunds any prior escrow for (ownerId, spender) to the owner's
+   * main balance and clears the slot, so re-approving replaces rather than
+   * stacks the escrow. Called at the start of `approve`.
+   *
+   * @notice Homomorphic refund: it adds the escrow's owner-copy ciphertext
+   * straight onto the balance with `ElGamal_add`, never decrypting it. So there
+   * is no plaintext claim to trust and no overflow to check (the refunded amount
+   * is exactly what the owner previously escrowed, itself bounded by
+   * MAX_TRANSFER_VALUE() at approve time). The (owner, spender) slot is ensured
+   * present and on-curve before the read (a fresh slot is `encryptZero()`, an
+   * identity that adds as an exact no-op), so a first approve refunds nothing.
+   */
+  circuit _refundPriorEscrow(ownerId: Bytes<32>, spender: Bytes<32>): [] {
+    // Ensure the slot is present + on-curve first so the read is never a default:
+    // a fresh slot is `encryptZero()` (identity), and adding identity is an EXACT
+    // no-op, so a first approve refunds nothing and leaves the balance ciphertext
+    // byte-identical (no re-randomization -> no new wallet-cache burden).
+    if (!_escrow.member(disclose(ownerId))) {
+      _escrow.insert(disclose(ownerId), default<Map<Bytes<32>, EscrowEntry>>);
+    }
+    if (!_escrow.lookup(disclose(ownerId)).member(disclose(spender))) {
+      _escrow.lookup(disclose(ownerId)).insert(
+        disclose(spender),
+        disclose(EscrowEntry {
+          spenderCt: ElGamal_encryptZero(),
+          ownerCt:   ElGamal_encryptZero(),
+          // Transient placeholder: this slot exists only so the refund reads an
+          // on-curve no-op, and it is removed immediately below, so the memo is
+          // never decrypted. Use an on-curve identity point (never a `default`,
+          // which is off-curve).
+          ownerMemo: EcdhMask_Ciphertext {
+            ephemeralPk: ecMulGenerator(0 as Field),
+            ct: 0 as Field
+          }
+        })
+      );
+    }
+
+    const entry = _escrow.lookup(disclose(ownerId)).lookup(disclose(spender));
+    const refunded = ElGamal_add(_balances.lookup(disclose(ownerId)), entry.ownerCt);
+    _balances.insert(disclose(ownerId), disclose(refunded));
+    _escrow.lookup(disclose(ownerId)).remove(disclose(spender));
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized, throwing an error if not.
+   *
+   * Requirements:
+   *
+   * - Contract must be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialFungibleToken: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized, throwing an error if it has.
+   *
+   * Requirements:
+   *
+   * - Contract must not be initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ConfidentialFungibleToken: contract already initialized");
+  }
+}

@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes ungated supply operations (mint / burn / burnFrom) and
+// the raw `_move` primitive. DO NOT deploy or use it in any production
+// application; a production deployment gates the supply entry points per its
+// issuance policy.
+
+// Top-level contract composing the production `ConfidentialFungibleToken`
+// module (the conserving surface plus the `_mint`/`_burn`/`_burnFrom` building
+// blocks) with the `ConfidentialFungibleTokenPublicSupply` extension, pairing every
+// supply-changing op with its accounting block so
+// `sum(balances) == totalSupply` holds by construction. The
+// `specs/confidentialFungibleToken` suite drives this contract to assert
+// exactly that pairing.
+//
+// "Public" supply means the total, and therefore each mint/burn delta, is
+// disclosed on chain. Balances stay confidential; only the aggregate is
+// visible.
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
+import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
+import "../../../src/crypto/ElGamal" prefix ElGamal_;
+
+export { Token_EscrowEntry, ElGamal_Ciphertext };
+
+// ─── State ───────────────────────────────────────────────────────────────
+
+// The token module's ledger surfaces here under a single `Token_` prefix; the
+// extension's supply cell chains a single `Supply_` prefix the same way.
+export {
+  Token__balances,
+  Token__pending,
+  Token__encryptionKeys,
+  Token__memos,
+  Token__escrow,
+  Token__name,
+  Token__symbol,
+  Token__decimals,
+  Supply__totalSupply
+};
+
+// ─── Constructor ─────────────────────────────────────────────────────────
+
+constructor(
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
+) {
+  Token_initialize(name_, symbol_, decimals_);
+}
+
+// ─── Metadata and views ──────────────────────────────────────────────────
+
+// Metadata (name/symbol/decimals) is stored by the constructor but read off the
+// ledger, not via getter circuits: the base exposes no such getters (they were
+// dropped to keep the on-chain IR within the deploy byte budget). `totalSupply`
+// is the one metadata value that must be a circuit — the supply extension
+// discloses it, and consumers/auditors attest to it on chain.
+export circuit totalSupply(): Uint<128> {
+  return Supply_totalSupply();
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return Token_balanceOf(account);
+}
+
+export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return Token_pendingOf(account);
+}
+
+export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): Token_EscrowEntry {
+  return Token_allowance(owner, spender);
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return Token_isRegistered(account);
+}
+
+export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+  return Token_computeAccountId(sk);
+}
+
+// ─── Registration and wallet maintenance ─────────────────────────────────
+
+export circuit register(): Bytes<32> {
+  return Token_register();
+}
+
+export circuit sweep(): Bytes<32> {
+  return Token_sweep();
+}
+
+export circuit clearMemos(): [] {
+  return Token_clearMemos();
+}
+
+// ─── Conserving value operations ─────────────────────────────────────────
+
+export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token_transfer(to, value);
+}
+
+export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token__move(to, value);
+}
+
+export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return Token_approve(spender, value);
+}
+
+export circuit transferFrom(
+    fromAddress: Bytes<32>,
+    to: Bytes<32>,
+    value: Uint<128>
+): Bytes<32> {
+  return Token_transferFrom(fromAddress, to, value);
+}
+
+// ─── Supply operations (token op paired with its accounting block) ───────
+
+export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
+  Supply__addSupply(value);
+  Token__mint(account, value);
+}
+
+export circuit burn(value: Uint<128>): Bytes<32> {
+  const accountId = Token__burn(value);
+  Supply__subSupply(value);
+  return accountId;
+}
+
+export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  const spenderId = Token__burnFrom(fromAddress, value);
+  Supply__subSupply(value);
+  return spenderId;
+}
