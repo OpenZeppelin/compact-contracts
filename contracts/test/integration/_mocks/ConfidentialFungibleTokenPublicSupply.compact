@@ -55,18 +55,11 @@ constructor(
 
 // ─── Metadata and views ──────────────────────────────────────────────────
 
-export circuit name(): Opaque<"string"> {
-  return Token_name();
-}
-
-export circuit symbol(): Opaque<"string"> {
-  return Token_symbol();
-}
-
-export circuit decimals(): Uint<8> {
-  return Token_decimals();
-}
-
+// Metadata (name/symbol/decimals) is stored by the constructor but read off the
+// ledger, not via getter circuits: the base exposes no such getters (they were
+// dropped to keep the on-chain IR within the deploy byte budget). `totalSupply`
+// is the one metadata value that must be a circuit — the supply extension
+// discloses it, and consumers/auditors attest to it on chain.
 export circuit totalSupply(): Uint<128> {
   return Supply_totalSupply();
 }
