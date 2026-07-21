@@ -330,39 +330,6 @@ module ConfidentialFungibleToken {
     _decimals = disclose(decimals_);
   }
 
-  /**
-   * @description Returns the token name.
-   *
-   * @circuitInfo k=6, rows=26
-   *
-   * @return {Opaque<"string">} - The token name.
-   */
-  export circuit name(): Opaque<"string"> {
-    return _name;
-  }
-
-  /**
-   * @description Returns the token symbol.
-   *
-   * @circuitInfo k=6, rows=26
-   *
-   * @return {Opaque<"string">} - The token symbol.
-   */
-  export circuit symbol(): Opaque<"string"> {
-    return _symbol;
-  }
-
-  /**
-   * @description Returns the number of display decimals.
-   *
-   * @circuitInfo k=6, rows=26
-   *
-   * @return {Uint<8>} - The display decimals.
-   */
-  export circuit decimals(): Uint<8> {
-    return _decimals;
-  }
-
   // ---------------------------------------------------------------------------
   // View circuits
   // ---------------------------------------------------------------------------

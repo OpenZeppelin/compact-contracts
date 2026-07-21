@@ -59,30 +59,6 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     ) as Promise<ConfidentialFungibleTokenSimulator>;
   }
   /**
-   * @description Returns the token name.
-   * @returns The token name.
-   */
-  public name(): Promise<string> {
-    return this.circuits.impure.name();
-  }
-
-  /**
-   * @description Returns the symbol of the token.
-   * @returns The token name.
-   */
-  public symbol(): Promise<string> {
-    return this.circuits.impure.symbol();
-  }
-
-  /**
-   * @description Returns the number of decimals used to get its user representation.
-   * @returns The account's token balance.
-   */
-  public decimals(): Promise<bigint> {
-    return this.circuits.impure.decimals();
-  }
-
-  /**
    * @description Returns the value of tokens owned by `account`.
    * @param account The public key or contract address to query.
    * @returns The account's token balance.

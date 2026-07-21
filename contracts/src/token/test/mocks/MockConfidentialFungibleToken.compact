@@ -34,18 +34,6 @@ constructor(
   CFT_initialize(name_, symbol_, decimals_);
 }
 
-export circuit name(): Opaque<"string"> {
-  return CFT_name();
-}
-
-export circuit symbol(): Opaque<"string"> {
-  return CFT_symbol();
-}
-
-export circuit decimals(): Uint<8> {
-  return CFT_decimals();
-}
-
 export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
   return CFT_balanceOf(account);
 }

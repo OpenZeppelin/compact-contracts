@@ -702,9 +702,10 @@ describe('ConfidentialFungibleToken: metadata & views', () => {
   });
 
   it('exposes the constructor metadata', async () => {
-    expect(await cft.name()).toBe(NAME);
-    expect(await cft.symbol()).toBe(SYMBOL);
-    expect(await cft.decimals()).toBe(DECIMALS);
+    const state = await cft.getPublicState();
+    expect(state.CFT__name).toBe(NAME);
+    expect(state.CFT__symbol).toBe(SYMBOL);
+    expect(state.CFT__decimals).toBe(DECIMALS);
   });
 
   it('balanceOf returns Enc(0) for an unregistered account', async () => {
