@@ -49,7 +49,7 @@
     "@midnight-ntwrk/compact-runtime": "0.16.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.2",
+    "@biomejs/biome": "^2.5.5",
     "@midnight-ntwrk/ledger-v8": "8.1.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@types/node": "26.1.1",
