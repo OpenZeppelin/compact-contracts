@@ -227,6 +227,16 @@ Environment knobs:
 >
 > The file stores ANSI color codes, so render them rather than reading them raw. In VS Code, an ANSI extension such as [`iliazeus.vscode-ansi`](https://marketplace.visualstudio.com/items?itemName=iliazeus.vscode-ansi) renders a `.ansi` file via **"ANSI Text: Open Preview"**. In a terminal, use `less -R logs/live-multisig.ansi`. On Linux, prefix `systemd-inhibit --why="live tests"` for a long run.
 
+#### Live tests in CI
+
+The live suite is too slow for the regular PR checks (hours, not minutes), so [`live.yml`](./.github/workflows/live.yml) runs it separately and is never a required check:
+
+* **Nightly** on `main` — the regression safety net. A failed nightly opens (or comments on) a `live-nightly` tracking issue, which closes automatically on the next green run.
+* **On demand** — trigger `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `category` / `filter` inputs.
+* **On a PR** — apply the `live-tests` label. Re-apply it (or re-run the workflow) for a fresh run after new pushes.
+
+A plan job reads the live-ready list from the runner (`yarn test:live --list`) and fans out one job per category (`live-multisig`, ...), so each category gets its own runner, stack, and 6-hour job budget. Every job runs the same `yarn test:live` runner as a local run, so the two-round flake semantics apply unchanged. Each job's verdict (with any flaky files) lands in its GitHub job summary, the JSON verdict reports upload as a `live-reports-<category>` artifact on every run, and service/worker logs as `live-logs-<category>` on failure.
+
 ## Styleguides
 
 ### TypeScript Styleguide
