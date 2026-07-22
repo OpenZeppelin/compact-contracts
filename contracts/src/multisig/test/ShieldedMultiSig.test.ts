@@ -3,10 +3,7 @@ import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import {
-  shieldedTestParentKey,
-  shieldedTestSigner,
-} from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import { ShieldedMultiSigSimulator } from './simulators/ShieldedMultiSigSimulator.js';
 
 const ProposalStatus = { Inactive: 0, Active: 1, Executed: 2, Cancelled: 3 };
@@ -24,16 +21,16 @@ const PROPOSAL_AMOUNT = 400n;
 // `ownPublicKey()` matches — the only way to exercise multi-signer authorization
 // on a real node. On dry these are the deterministic synthetic keys `.as(...)`
 // resolves to. `OTHER` is not a pooled wallet, so it acts as a non-signer.
-const Z_SIGNER1 = shieldedTestSigner('SIGNER1');
-const Z_SIGNER2 = shieldedTestSigner('SIGNER2');
-const Z_SIGNER3 = shieldedTestSigner('SIGNER3');
+const Z_SIGNER1 = shieldedTestKey('SIGNER1');
+const Z_SIGNER2 = shieldedTestKey('SIGNER2');
+const Z_SIGNER3 = shieldedTestKey('SIGNER3');
 const SIGNERS = [Z_SIGNER1, Z_SIGNER2, Z_SIGNER3];
 
-const Z_NON_SIGNER = shieldedTestSigner('OTHER');
-// Proposal payout recipient. On live `executeShieldedProposal` sends the treasury
-// coins here, so it must be a node-resolvable key (the deployer's own); on dry a
-// synthetic key.
-const Z_RECIPIENT_PK = shieldedTestParentKey('RECIPIENT');
+const Z_NON_SIGNER = shieldedTestKey('OTHER');
+// Proposal payout recipient (bare coin public key). On live
+// `executeShieldedProposal` sends the treasury coins here, so it must be a
+// node-resolvable key (the deployer's own); on dry a synthetic key.
+const Z_RECIPIENT_PK = shieldedTestKey().left;
 
 function makeRecipient(pk: { bytes: Uint8Array }): {
   kind: number;
@@ -172,7 +169,7 @@ describe('ShieldedMultiSig', () => {
     // witness the dry sim sets from `.as('SIGNER1')`). On live each alias is
     // backed by its own prefunded wallet (the harness pool), so `.as('SIGNER1')`
     // submits from that wallet and `ownPublicKey()` is that signer's key — the
-    // synthetic set is replaced by the pooled wallets' keys (see `shieldedTestSigner`),
+    // synthetic set is replaced by the pooled wallets' keys (see `shieldedTestKey`),
     // so these run on both backends.
     describe('caller-gated proposal flows', () => {
       describe('createShieldedProposal', () => {

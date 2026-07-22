@@ -69,14 +69,12 @@ const PROGRESS_REPORTER = path.join(
 );
 const VERIFY_LOCK = path.join(LOGS, '.live-verify.lock');
 
-// `archive` is excluded from the unit/unit-live projects (see vitest.config).
+// The live suite runs every `src/<category>` that has tests (see
+// `liveCategories`) — there is no separate live-ready allowlist to keep in sync,
+// since all current categories are backend-aware. A category that must NOT run
+// live is an explicit opt-out here (only legacy `archive` today, which the
+// unit/unit-live vitest projects also exclude — see vitest.config).
 const EXCLUDED_CATEGORIES = new Set(['archive']);
-
-// Categories whose specs have been refactored for the live backend. The others
-// still assume dry-only semantics (e.g. `.as()` identities derived from alias
-// labels, which the live wallet pool cannot impersonate) and join this list as
-// they are refactored, PR by PR.
-const LIVE_READY = new Set(['multisig']);
 
 interface JsonTestResult {
   readonly name: string;
@@ -326,31 +324,32 @@ function reportVerdict(flaky: string[], real: string[]): number {
 }
 
 async function main(): Promise<number> {
-  // `--list` prints the live-ready categories as JSON and exits — CI derives
-  // its per-category matrix from this, so LIVE_READY stays the single source
-  // of truth.
+  // `--list` prints the live categories as JSON and exits — CI derives its
+  // per-category matrix from this, so `liveCategories()` is the single source
+  // of truth (every category with tests, minus the excluded ones).
   if (process.argv.includes('--list')) {
-    console.log(
-      JSON.stringify(liveCategories().filter((c) => LIVE_READY.has(c))),
-    );
+    console.log(JSON.stringify(liveCategories()));
     return 0;
   }
   const args = process.argv.slice(2).filter((a) => a !== '--');
   const allCategories = liveCategories();
-  // First arg naming a category (the test:live:<category> scripts pass one)
-  // scopes the run; everything else is a vitest file filter.
+  // A first arg naming a category scopes the run to it; everything else is a
+  // vitest file filter.
   const scoped = args.length > 0 && allCategories.includes(args[0]);
-  if (scoped && !LIVE_READY.has(args[0])) {
+  // The first positional arg always names the category (CONTRIBUTING.md). If it
+  // is present but not an active live category — an excluded one like `archive`,
+  // or a typo — fail fast with the valid set, BEFORE the expensive compile /
+  // env-up / harness-smoke setup below (no args = every category, the default).
+  if (args.length > 0 && !scoped) {
+    const reason = EXCLUDED_CATEGORIES.has(args[0])
+      ? `'${args[0]}' is excluded from live runs (see EXCLUDED_CATEGORIES)`
+      : `'${args[0]}' is not a live category`;
     console.log(
-      `'${args[0]}' is not live-ready yet — its specs still assume dry-only ` +
-        `semantics. Ready categories: ${[...LIVE_READY].join(', ')}.`,
+      `${reason}.\nLive-runnable categories: ${allCategories.join(', ')}`,
     );
     return 2;
   }
-  const categories = scoped
-    ? [args[0]]
-    : allCategories.filter((c) => LIVE_READY.has(c));
-  const skipped = scoped ? [] : allCategories.filter((c) => !LIVE_READY.has(c));
+  const categories = scoped ? [args[0]] : allCategories;
   const fileFilters = scoped ? args.slice(1) : args;
 
   acquireVerifyLock();
@@ -368,9 +367,6 @@ async function main(): Promise<number> {
       `ROUND 1 — categories: ${categories.join(', ')}` +
         (fileFilters.length ? ` (filter: ${fileFilters.join(' ')})` : ''),
     );
-    if (skipped.length > 0) {
-      console.log(`skipped (not yet live-ready): ${skipped.join(', ')}`);
-    }
     if (!compileVerified()) return 2;
     if (run('make', ['env-up']) !== 0) {
       console.log('env-up failed — cannot start the live stack.');
