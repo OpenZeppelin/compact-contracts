@@ -1,12 +1,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { NativeShieldedTokenFamilySupplySimulator } from '../simulators/NativeShieldedTokenFamilySupplySimulator.js';
-import { NativeShieldedTokenSupplySimulator } from '../simulators/NativeShieldedTokenSupplySimulator.js';
+import { NativeShieldedTokenFamilyPublicSupplySimulator } from '../simulators/NativeShieldedTokenFamilyPublicSupplySimulator.js';
+import { NativeShieldedTokenPublicSupplySimulator } from '../simulators/NativeShieldedTokenPublicSupplySimulator.js';
 
 // Property-based invariant fuzzing over random mint/burn op sequences for the
 // supply extension. Both flavors are covered in one file: the scalar
-// `NativeShieldedTokenSupply` and the per-domain `NativeShieldedTokenFamilySupply`.
-// Both delegate to the shared `NativeShieldedTokenSupplyCore`, so the core
+// `NativeShieldedTokenPublicSupply` and the per-domain `NativeShieldedTokenFamilyPublicSupply`.
+// Both delegate to the shared `NativeShieldedTokenPublicSupplyCore`, so the core
 // accounting is exercised transitively through each.
 //
 // Conservation (burned <= minted) is respected by construction: each op burns
@@ -24,13 +24,14 @@ const opArb = fc.record({
   burnPct: fc.integer({ min: 0, max: 100 }),
 });
 
-describe('NativeShieldedTokenSupply(Core/Family) — property: supply invariants under random op sequences', () => {
+describe('NativeShieldedTokenPublicSupply(Core/Family) — property: supply invariants under random op sequences', () => {
   it('should keep totalMinted exact, totalSupply = minted - burned, and burned <= minted (scalar)', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(opArb, { minLength: 1, maxLength: 6 }),
         async (ops) => {
-          const supply = await NativeShieldedTokenSupplySimulator.create();
+          const supply =
+            await NativeShieldedTokenPublicSupplySimulator.create();
           let expectedMinted = 0n;
           let expectedBurned = 0n;
 
@@ -71,7 +72,7 @@ describe('NativeShieldedTokenSupply(Core/Family) — property: supply invariants
         ),
         async (ops) => {
           const supply =
-            await NativeShieldedTokenFamilySupplySimulator.create();
+            await NativeShieldedTokenFamilyPublicSupplySimulator.create();
           const expectedMinted = DOMAINS.map(() => 0n);
           const expectedBurned = DOMAINS.map(() => 0n);
 
