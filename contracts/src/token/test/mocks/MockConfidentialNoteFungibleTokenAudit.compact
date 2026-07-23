@@ -5,7 +5,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../extensions/ConfidentialNoteTokenAudit" prefix Audit_;
+import "../../extensions/ConfidentialNoteFungibleTokenAudit" prefix Audit_;
 
 export { Audit_AuditRecord, Audit_AuditView }
 
@@ -19,6 +19,10 @@ export circuit _emitAuditedOutput(ownerPk: Field, value: Uint<128>, slot: Bytes<
   // Exported-boundary marker: the derived nonce returns only to the local
   // caller, which in a real composition commits it in the same proof.
   return disclose(Audit__emitAuditedOutput(ownerPk, value, slot));
+}
+
+export circuit _rotateAuditKey(newKey: JubjubPoint): [] {
+  return Audit__rotateAuditKey(newKey);
 }
 
 export pure circuit recoverAuditRecord(record: Audit_AuditRecord, auditSk: Field): Audit_AuditView {

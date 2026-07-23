@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteTokenDelivery.compact)
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenDelivery.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialNoteTokenDelivery
+ * @module ConfidentialNoteFungibleTokenDelivery
  * @description Optional standalone extension that delivers each output note's
  * `(value, nonce)` to its owner's encryption key on-chain, so a recipient
  * discovers incoming notes from chain data alone — no out-of-band channel.
@@ -14,8 +14,8 @@ pragma language_version >= 0.23.0;
  * encryption secret (`crypto/NoteDelivery.recoverNote`), and keep the notes
  * whose recomputed commitment exists in the token core's tree.
  *
- * @notice Pairs with `ConfidentialNoteToken`. The consuming contract calls
- * `_deliver` alongside every `_createNote` whose owner should be able to find
+ * @notice Pairs with `ConfidentialNoteFungibleToken`. The consuming contract calls
+ * `_deliver` alongside every `_mintNote` whose owner should be able to find
  * the note by scanning (skipping it makes the note reachable only out of
  * band — the funds still exist, but only the creator knows the nonce).
  *
@@ -32,7 +32,7 @@ pragma language_version >= 0.23.0;
  *
  * @dev NOT audited, NOT production.
  */
-module ConfidentialNoteTokenDelivery {
+module ConfidentialNoteFungibleTokenDelivery {
   import CompactStandardLibrary;
   import "../../crypto/NoteDelivery" prefix NoteDelivery_;
 

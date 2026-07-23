@@ -1,0 +1,333 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/presets/RegulatedConfidentialNoteFungibleToken.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module RegulatedConfidentialNoteFungibleToken
+ * @description DRAFT ready-to-use module: the tier-4 confidential note token
+ * wired for a regulated deployment. A consuming contract imports it, binds
+ * every role key via `initialize` (typically from its constructor), and
+ * exposes the circuits it wants public:
+ *
+ *   import "./presets/RegulatedConfidentialNoteFungibleToken" prefix Token_;
+ *
+ *   constructor(issuerPk: Field, authorityPk: Field, auditKey: JubjubPoint, supplyKey: JubjubPoint) {
+ *     Token_initialize(issuerPk, authorityPk, auditKey, supplyKey);
+ *   }
+ *
+ *   export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint<128>): [] {
+ *     return Token_mint(recipientPk, recipientEncPk, value);
+ *   }
+ *   // ...and likewise for transfer, burn, seize, attestSupply.
+ *
+ * Guarantees: full graph privacy for users (amounts — including issuance and
+ * burns — senders, and recipients hidden), complete visibility for a
+ * designated auditor, escrow-free seizure for a designated authority, and
+ * confidential-but-attestable supply.
+ *
+ * Composition (each piece is independently reusable):
+ *
+ * - `ConfidentialNoteFungibleToken` — the role-free token core (conservation,
+ *   single-spend); this preset drives its `_`-building blocks so output nonces
+ *   come from the audit channel instead of the core default,
+ * - `extensions/ConfidentialNoteFungibleTokenIssuer` — the single-issuer gate
+ *   in front of value creation,
+ * - `extensions/ConfidentialNoteFungibleTokenAudit` — mandatory auditor viewing; each
+ *   output nonce derives from the audit ECDH, so every note this contract
+ *   creates is auditor-recoverable BY CONSTRUCTION,
+ * - `extensions/ConfidentialNoteFungibleTokenDelivery` — on-chain note delivery, so
+ *   recipients discover funds from chain data alone (no out-of-band channel),
+ * - `extensions/ConfidentialNoteFungibleTokenPrivateSupply` — homomorphic encrypted supply
+ *   with proof-backed public attestation.
+ *
+ * Roles: the ISSUER may mint, the AUTHORITY may seize, the AUDIT key reads
+ * everything (never spends), the SUPPLY key attests totals. All four bind in
+ * one `initialize` call, and each can later SELF-ROTATE by proving its
+ * current secret (`rotateIssuer` / `rotateAuthority` / `rotateAuditKey` /
+ * `rotateSupplyKey`); production deployments gate rotation behind governance
+ * too.
+ *
+ * No state-changing circuit is usable before `initialize`: mint asserts the
+ * issuer extension's initialization, every output emission asserts the audit
+ * extension's, supply updates assert the supply extension's, and the zero
+ * authority key has no known preimage.
+ *
+ * Seizure needs no key escrow: the core nullifier depends only on the nonce,
+ * so the owner and the authority derive the SAME nullifier, making owner-spend
+ * and seizure mutually exclusive (first to land wins). The authority learns
+ * the target note from the audit trail and re-mints its value to a recovery
+ * owner, itself audited and delivered.
+ *
+ * What the public sees: commitment inserts, nullifiers, ciphertexts, the
+ * seizure counter, and attested supply totals. Amounts, senders, and
+ * recipients stay hidden.
+ *
+ * See `token/docs/confidential-note-token.md` for the full design and the
+ * auditor/compliance rationale.
+ *
+ * @dev The module re-exports the composed modules' observable ledger state
+ * and artifact types under stable bare names (`Note`, `AuditRecord`,
+ * `AuditView`, `FullDelivery`), so a consuming contract surfaces them with a
+ * single selective import + export.
+ *
+ * @dev The randomness witnesses (`wit_AuditRandomness`,
+ * `wit_DeliveryRandomness`, `wit_SupplyRandomness`) MUST each return a fresh,
+ * secret seed per invocation (see `crypto/EcdhMask` freshness rules).
+ *
+ * @dev NOT audited, NOT production.
+ */
+module RegulatedConfidentialNoteFungibleToken {
+  import CompactStandardLibrary;
+  import "../ConfidentialNoteFungibleToken" prefix Core_;
+  import "../extensions/ConfidentialNoteFungibleTokenIssuer" prefix Issuer_;
+  import "../extensions/ConfidentialNoteFungibleTokenAudit" prefix Audit_;
+  import "../extensions/ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
+  import "../extensions/ConfidentialNoteFungibleTokenPrivateSupply" prefix Supply_;
+  import "../../crypto/NoteDelivery" prefix NoteDelivery_;
+
+  // Surface the composed modules' observable state and artifact types under
+  // stable bare names, for wallets (commitment tree, deliveries), auditors
+  // (audit trail), and indexers (issuer key, supply): a prefix-only import
+  // would keep them out of a consumer's generated ledger reader.
+  import { Note, _commitments, _nullifiers } from "../ConfidentialNoteFungibleToken";
+  import { _issuerPk } from "../extensions/ConfidentialNoteFungibleTokenIssuer";
+  import {
+    AuditRecord,
+    AuditView,
+    _auditKey,
+    _auditTrail
+  } from "../extensions/ConfidentialNoteFungibleTokenAudit";
+  import { _deliveries } from "../extensions/ConfidentialNoteFungibleTokenDelivery";
+  import {
+    _supplyKey,
+    _encSupply,
+    _attestedSupply,
+    _attestationCount
+  } from "../extensions/ConfidentialNoteFungibleTokenPrivateSupply";
+  import { FullDelivery } from "../../crypto/NoteDelivery";
+  export { Note, AuditRecord, AuditView, FullDelivery };
+  export {
+    _issuerPk,
+    _commitments,
+    _nullifiers,
+    _auditKey,
+    _auditTrail,
+    _deliveries,
+    _supplyKey,
+    _encSupply,
+    _attestedSupply,
+    _attestationCount
+  };
+
+  export ledger _isInitialized: Boolean;
+  // Global seizure authority (`Hf(authoritySecret)`; governance-gated in a real
+  // deployment) and an auditable count of seizures performed.
+  export ledger _authorityPk: Field;
+  export ledger _seizureCount: Uint<64>;
+
+  // The seizure authority's secret (authorityPk = Hf(authoritySecret)).
+  witness wit_AuthoritySecret(): Bytes<32>;
+
+  /**
+   * @description One-shot initialization binding all four roles: the issuer
+   * (may mint), the seizure authority (may claw back), the audit key
+   * (decrypt-only viewing), and the supply key (attestation). A consuming
+   * contract typically calls this from its constructor, so the deployed token
+   * never exists ungoverned.
+   *
+   * Requirements:
+   *
+   * - Module is not already initialized.
+   */
+  export circuit initialize(
+    issuerPk: Field,
+    authorityPk: Field,
+    auditKey: JubjubPoint,
+    supplyKey: JubjubPoint
+  ): [] {
+    assert(!_isInitialized, "RegulatedConfidentialNoteFungibleToken: already initialized");
+    Issuer_initialize(issuerPk);
+    Audit_initialize(auditKey);
+    Supply_initialize(supplyKey);
+    _authorityPk = disclose(authorityPk);
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Mints a note of `value` to `recipientPk`, audited and
+   * delivered. The minted amount is NOT written to public state — issuance
+   * stays hidden (unlike native shielded tokens, whose `shieldedMints` effect
+   * publishes it); the encrypted supply absorbs it homomorphically and the
+   * auditor reads it from the audit record.
+   *
+   * Requirements:
+   *
+   * - The caller proves the issuer secret.
+   *
+   * @circuitInfo k=17, rows=69322
+   */
+  export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint<128>): [] {
+    Issuer__assertIssuer();
+    const note = emitOutput(recipientPk, recipientEncPk, value, pad(32, "OZ:cnt:out"));
+    Core__mintNote(note, recipientPk);
+    Supply__addMinted(value);
+  }
+
+  /**
+   * @description Fully-private transfer: consumes the caller's input note and
+   * creates a recipient note of `value` plus a change note back to the sender,
+   * conserving value — both audited and delivered. Sender and recipient are
+   * hidden; the public ledger gains one nullifier, two commitments, and their
+   * ciphertexts.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `value <= input.value`.
+   *
+   * @circuitInfo k=18, rows=135775
+   */
+  export circuit transfer(
+    recipientPk: Field,
+    recipientEncPk: JubjubPoint,
+    senderEncPk: JubjubPoint,
+    value: Uint<128>
+  ): [] {
+    const pk = Core__spenderPk();
+
+    // Peek at the input to size the change; the core re-reads the same witness
+    // and enforces conservation against it.
+    const input = Core__inputNote();
+    assert(input.value >= value,
+           "RegulatedConfidentialNoteFungibleToken: insufficient note value");
+    const changeValue = (input.value - value) as Uint<128>;
+
+    const outNote = emitOutput(recipientPk, recipientEncPk, value, pad(32, "OZ:cnt:out"));
+    const changeNote = emitOutput(pk, senderEncPk, changeValue, pad(32, "OZ:cnt:chg"));
+    Core__transfer(pk, recipientPk, outNote, changeNote);
+  }
+
+  /**
+   * @description Burns `value` from the caller's input note: consumes the note
+   * and re-issues only the change (audited and delivered), so `value` leaves
+   * circulation. Both the burned amount and the burner stay hidden; publicly a
+   * burn looks like any other spend. The encrypted supply absorbs the decrease.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `value <= input.value`.
+   *
+   * @circuitInfo k=17, rows=82803
+   */
+  export circuit burn(senderEncPk: JubjubPoint, value: Uint<128>): [] {
+    const pk = Core__spenderPk();
+
+    const input = Core__inputNote();
+    assert(input.value >= value,
+           "RegulatedConfidentialNoteFungibleToken: insufficient note value");
+    const changeValue = (input.value - value) as Uint<128>;
+
+    const changeNote = emitOutput(pk, senderEncPk, changeValue, pad(32, "OZ:cnt:chg"));
+    Core__burn(pk, value, changeNote);
+    Supply__addBurned(value);
+  }
+
+  /**
+   * @description Regulated clawback: the authority consumes a target note it
+   * learned from the audit trail (supplied as the core's input-note witness)
+   * and re-mints the full value to `recoveryPk`, with the recovery note itself
+   * audited + delivered. Owner-spend and seizure race on the SAME nullifier, so
+   * they are mutually exclusive; the authority never needs the owner's spend
+   * secret. Value is conserved, and `_seizureCount` records the action
+   * publicly.
+   *
+   * In production the authority key is governance-gated (multisig), and
+   * per-user recovery keys would replace this single global key for least
+   * privilege.
+   *
+   * Requirements:
+   *
+   * - The caller proves the authority secret (`Hf(secret) == _authorityPk`).
+   * - The target note (owner pk + value + nonce) is committed and unspent.
+   *
+   * @circuitInfo k=17, rows=75043
+   */
+  export circuit seize(targetOwnerPk: Field, recoveryPk: Field, recoveryEncPk: JubjubPoint): [] {
+    assert(Core_derivePk(wit_AuthoritySecret()) == _authorityPk,
+           "RegulatedConfidentialNoteFungibleToken: not the authority");
+
+    const target = Core__consumeNote(targetOwnerPk);
+    const recoveryNote = emitOutput(recoveryPk, recoveryEncPk, target.value, pad(32, "OZ:cnt:out"));
+    Core__mintNote(recoveryNote, recoveryPk);
+
+    _seizureCount = disclose(_seizureCount + 1 as Uint<64>);
+  }
+
+  /**
+   * @description Publishes a proof-backed public supply total (see
+   * `ConfidentialNoteFungibleTokenPrivateSupply`). Run at a chosen cadence for public,
+   * non-inflatable supply while per-transaction amounts stay hidden.
+   *
+   * Requirements:
+   *
+   * - The caller proves the supply-key secret and the exact total.
+   *
+   * @circuitInfo k=13, rows=4720
+   */
+  export circuit attestSupply(total: Uint<128>): [] {
+    Supply_attestSupply(total);
+  }
+
+  /**
+   * @description Rotates the issuer key: the current issuer proves their
+   * secret and binds `newIssuerPk` (see the Issuer extension).
+   */
+  export circuit rotateIssuer(newIssuerPk: Field): [] {
+    Issuer__rotateIssuer(newIssuerPk);
+  }
+
+  /**
+   * @description Rotates the seizure authority: the current authority proves
+   * their secret and binds `newAuthorityPk`.
+   *
+   * Requirements:
+   *
+   * - The caller proves the CURRENT authority secret.
+   */
+  export circuit rotateAuthority(newAuthorityPk: Field): [] {
+    assert(Core_derivePk(wit_AuthoritySecret()) == _authorityPk,
+           "RegulatedConfidentialNoteFungibleToken: not the authority");
+    _authorityPk = disclose(newAuthorityPk);
+  }
+
+  /**
+   * @description Rotates the audit key: the current holder proves the audit
+   * secret scalar and binds `newKey`. Prior records stay readable by the old
+   * key; later outputs derive nonces from the new one (see the Audit
+   * extension).
+   */
+  export circuit rotateAuditKey(newKey: JubjubPoint): [] {
+    Audit__rotateAuditKey(newKey);
+  }
+
+  /**
+   * @description Rotates the supply key: the current holder proves the secret
+   * and the exact (undisclosed) running total, and `_encSupply` is
+   * re-encrypted under `newKey` in the same proof (see the PrivateSupply
+   * extension).
+   */
+  export circuit rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
+    Supply__rotateSupplyKey(newKey, total);
+  }
+
+  // Emission policy for one output note: the audit record derives the nonce,
+  // the delivery makes the note discoverable. Returns the note for the core to
+  // commit.
+  circuit emitOutput(ownerPk: Field, encPk: JubjubPoint, value: Uint<128>, slot: Bytes<32>): Core_Note {
+    const nonce = Audit__emitAuditedOutput(ownerPk, value, slot);
+    Delivery__deliver(encPk, value, nonce, slot);
+    return Core_Note { value: value, nonce: nonce };
+  }
+}

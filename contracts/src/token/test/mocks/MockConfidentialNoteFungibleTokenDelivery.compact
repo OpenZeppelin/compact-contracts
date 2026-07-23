@@ -5,7 +5,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../extensions/ConfidentialNoteTokenDelivery" prefix Delivery_;
+import "../../extensions/ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
 import "../../../crypto/NoteDelivery" prefix NoteDelivery_;
 
 export { NoteDelivery_FullDelivery, NoteDelivery_Recovered }

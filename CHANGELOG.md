@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add EcdhMask (#655)
 - Add NoteDelivery: an encrypted note-delivery channel with a derived-nonce variant (`deliver`/`recover`) and an explicit-nonce variant (`deliverNote`/`recoverNote`)
-- Add ConfidentialNoteToken (draft): a note-based confidential token with full graph privacy (amounts — including issuance and burns — sender, and recipient hidden), with extensions for mandatory auditor viewing (audit-derived nonces) and on-chain recipient note deliveries, plus the RegulatedConfidentialNoteToken preset wiring issuer-gated mint, burn, and shared-nullifier seizure. See `contracts/src/token/docs/hybrid-confidential-token.md`
-- Add ConfidentialNoteTokenSupply (draft): a standalone extension keeping supply as a homomorphic ElGamal ciphertext updated alongside mint/burn, with `attestSupply` publishing a proof-backed public total at a chosen cadence
+- Add ConfidentialNoteFungibleToken (draft): a note-based confidential token with full graph privacy (amounts — including issuance and burns — sender, and recipient hidden), with extensions for mandatory auditor viewing (audit-derived nonces) and on-chain recipient note deliveries, plus the RegulatedConfidentialNoteFungibleToken preset wiring issuer-gated mint, burn, and shared-nullifier seizure. See `contracts/src/token/docs/hybrid-confidential-token.md`
+- Add ConfidentialNoteFungibleTokenPrivateSupply (draft): a standalone extension keeping supply as a homomorphic ElGamal ciphertext updated alongside mint/burn, with `attestSupply` publishing a proof-backed public total at a chosen cadence
 
 ## 0.3.0-alpha (2026-06-30)
 

@@ -1,12 +1,12 @@
 // TEST-ONLY WITNESS. NOT FOR PRODUCTION USE.
-// Drives ConfidentialNoteTokenDelivery (note delivery) circuits in off-chain
+// Drives ConfidentialNoteFungibleTokenDelivery (note delivery) circuits in off-chain
 // tests.
 
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../../artifacts/MockConfidentialNoteTokenDelivery/contract/index.js';
+import type { Ledger } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 
-export type ConfidentialNoteTokenDeliveryPrivateState = {
+export type ConfidentialNoteFungibleTokenDeliveryPrivateState = {
   /**
    * Optional fixed randomness seed. Leave undefined for the production-correct
    * behavior (a fresh secret seed per witness call).
@@ -14,16 +14,16 @@ export type ConfidentialNoteTokenDeliveryPrivateState = {
   randomnessSeed?: Uint8Array;
 };
 
-export const ConfidentialNoteTokenDeliveryPrivateState = {
-  generate: (): ConfidentialNoteTokenDeliveryPrivateState => ({}),
+export const ConfidentialNoteFungibleTokenDeliveryPrivateState = {
+  generate: (): ConfidentialNoteFungibleTokenDeliveryPrivateState => ({}),
 };
 
-export interface IConfidentialNoteTokenDeliveryWitnesses<P> {
+export interface IConfidentialNoteFungibleTokenDeliveryWitnesses<P> {
   wit_DeliveryRandomness(context: WitnessContext<Ledger, P>): [P, Uint8Array];
 }
 
-export const ConfidentialNoteTokenDeliveryWitnesses =
-  (): IConfidentialNoteTokenDeliveryWitnesses<ConfidentialNoteTokenDeliveryPrivateState> => ({
+export const ConfidentialNoteFungibleTokenDeliveryWitnesses =
+  (): IConfidentialNoteFungibleTokenDeliveryWitnesses<ConfidentialNoteFungibleTokenDeliveryPrivateState> => ({
     // Fresh + secret per call, as the extension requires; a fixed seed is only
     // honored when a test explicitly plants one.
     wit_DeliveryRandomness(context) {

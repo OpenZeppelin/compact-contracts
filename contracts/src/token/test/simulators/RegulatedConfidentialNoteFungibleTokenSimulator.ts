@@ -5,31 +5,33 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
-  Contract as RegulatedCNT,
-} from '../../../../artifacts/RegulatedConfidentialNoteToken/contract/index.js';
+  Contract as RegulatedToken,
+} from '../../../../artifacts/MockRegulatedConfidentialNoteFungibleToken/contract/index.js';
 import {
   type Note,
-  RegulatedConfidentialNoteTokenPrivateState as PrivateState,
-  type RegulatedConfidentialNoteTokenPrivateState,
-  RegulatedConfidentialNoteTokenWitnesses,
-} from '../witnesses/RegulatedConfidentialNoteTokenWitnesses.js';
+  RegulatedConfidentialNoteFungibleTokenPrivateState as PrivateState,
+  type RegulatedConfidentialNoteFungibleTokenPrivateState,
+  RegulatedConfidentialNoteFungibleTokenWitnesses,
+} from '../witnesses/RegulatedConfidentialNoteFungibleTokenWitnesses.js';
 
-type RegulatedConfidentialNoteTokenArgs = readonly [
+type RegulatedConfidentialNoteFungibleTokenArgs = readonly [
   issuerPk: bigint,
   authorityPk: bigint,
   auditKey: JubjubPoint,
   supplyKey: JubjubPoint,
 ];
 
-const RegulatedConfidentialNoteTokenSimulatorBase = createSimulator<
-  RegulatedConfidentialNoteTokenPrivateState,
+const RegulatedConfidentialNoteFungibleTokenSimulatorBase = createSimulator<
+  RegulatedConfidentialNoteFungibleTokenPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof RegulatedConfidentialNoteTokenWitnesses>,
-  RegulatedCNT<RegulatedConfidentialNoteTokenPrivateState>,
-  RegulatedConfidentialNoteTokenArgs
+  ReturnType<typeof RegulatedConfidentialNoteFungibleTokenWitnesses>,
+  RegulatedToken<RegulatedConfidentialNoteFungibleTokenPrivateState>,
+  RegulatedConfidentialNoteFungibleTokenArgs
 >({
   contractFactory: (witnesses) =>
-    new RegulatedCNT<RegulatedConfidentialNoteTokenPrivateState>(witnesses),
+    new RegulatedToken<RegulatedConfidentialNoteFungibleTokenPrivateState>(
+      witnesses,
+    ),
   defaultPrivateState: () => PrivateState.generate(),
   contractArgs: (issuerPk, authorityPk, auditKey, supplyKey) => [
     issuerPk,
@@ -38,26 +40,26 @@ const RegulatedConfidentialNoteTokenSimulatorBase = createSimulator<
     supplyKey,
   ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => RegulatedConfidentialNoteTokenWitnesses(),
-  artifactName: 'RegulatedConfidentialNoteToken',
+  witnessesFactory: () => RegulatedConfidentialNoteFungibleTokenWitnesses(),
+  artifactName: 'MockRegulatedConfidentialNoteFungibleToken',
 });
 
-export class RegulatedConfidentialNoteTokenSimulator extends RegulatedConfidentialNoteTokenSimulatorBase {
+export class RegulatedConfidentialNoteFungibleTokenSimulator extends RegulatedConfidentialNoteFungibleTokenSimulatorBase {
   static async create(
     issuerPk: bigint,
     authorityPk: bigint,
     auditKey: JubjubPoint,
     supplyKey: JubjubPoint,
     options: SimulatorOptions<
-      RegulatedConfidentialNoteTokenPrivateState,
-      ReturnType<typeof RegulatedConfidentialNoteTokenWitnesses>
+      RegulatedConfidentialNoteFungibleTokenPrivateState,
+      ReturnType<typeof RegulatedConfidentialNoteFungibleTokenWitnesses>
     > = {},
-  ): Promise<RegulatedConfidentialNoteTokenSimulator> {
+  ): Promise<RegulatedConfidentialNoteFungibleTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create keeps subclass `this`
     return super.create(
       [issuerPk, authorityPk, auditKey, supplyKey],
       options,
-    ) as Promise<RegulatedConfidentialNoteTokenSimulator>;
+    ) as Promise<RegulatedConfidentialNoteFungibleTokenSimulator>;
   }
 
   public mint(
@@ -98,11 +100,27 @@ export class RegulatedConfidentialNoteTokenSimulator extends RegulatedConfidenti
     return this.circuits.impure.attestSupply(total);
   }
 
+  public rotateIssuer(newIssuerPk: bigint): Promise<[]> {
+    return this.circuits.impure.rotateIssuer(newIssuerPk);
+  }
+
+  public rotateAuthority(newAuthorityPk: bigint): Promise<[]> {
+    return this.circuits.impure.rotateAuthority(newAuthorityPk);
+  }
+
+  public rotateAuditKey(newKey: JubjubPoint): Promise<[]> {
+    return this.circuits.impure.rotateAuditKey(newKey);
+  }
+
+  public rotateSupplyKey(newKey: JubjubPoint, total: bigint): Promise<[]> {
+    return this.circuits.impure.rotateSupplyKey(newKey, total);
+  }
+
   public readonly privateState = {
     // Configure the caller's identity and the note being spent next.
     set: async (
-      partial: Partial<RegulatedConfidentialNoteTokenPrivateState>,
-    ): Promise<RegulatedConfidentialNoteTokenPrivateState> => {
+      partial: Partial<RegulatedConfidentialNoteFungibleTokenPrivateState>,
+    ): Promise<RegulatedConfidentialNoteFungibleTokenPrivateState> => {
       const updated = { ...(await this.getPrivateState()), ...partial };
       this.setPrivateState(updated);
       return updated;

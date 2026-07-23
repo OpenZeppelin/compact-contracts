@@ -1,18 +1,19 @@
 // TEST-ONLY WITNESS. NOT FOR PRODUCTION USE.
-// Drives the RegulatedConfidentialNoteToken preset contract in off-chain
-// tests: the union of the composed modules' witnesses.
+// Drives the RegulatedConfidentialNoteFungibleToken preset module (via its
+// mock contract) in off-chain tests: the union of the composed modules'
+// witnesses.
 
 import { getRandomValues } from 'node:crypto';
 import type {
   MerkleTreePath,
   WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../../artifacts/RegulatedConfidentialNoteToken/contract/index.js';
+import type { Ledger } from '../../../../artifacts/MockRegulatedConfidentialNoteFungibleToken/contract/index.js';
 
 /** A note as the circuits see it: value + field-typed nonce. */
 export type Note = { value: bigint; nonce: bigint };
 
-export type RegulatedConfidentialNoteTokenPrivateState = {
+export type RegulatedConfidentialNoteFungibleTokenPrivateState = {
   /** Owner spend secret; pk = Hf(sk). */
   secretKey: Uint8Array;
   /** Issuer secret (issuerPk = Hf(issuerSecret)). */
@@ -21,12 +22,18 @@ export type RegulatedConfidentialNoteTokenPrivateState = {
   authoritySecret: Uint8Array;
   /** Supply-key secret (supplyKey = derivePk(secret)); consumed by attestSupply. */
   supplyKeySecret: Uint8Array;
+  /**
+   * Audit secret scalar (auditKey = g^auditSk); consumed only by
+   * `rotateAuditKey`. Defaults to 0n, which fails the rotation gate — tests
+   * exercising rotation must set it.
+   */
+  auditKeySecret?: bigint;
   /** The input note being spent in a transfer/burn (or seize target). */
   inputNote: Note;
 };
 
-export const RegulatedConfidentialNoteTokenPrivateState = {
-  generate: (): RegulatedConfidentialNoteTokenPrivateState => ({
+export const RegulatedConfidentialNoteFungibleTokenPrivateState = {
+  generate: (): RegulatedConfidentialNoteFungibleTokenPrivateState => ({
     secretKey: new Uint8Array(getRandomValues(Buffer.alloc(32))),
     issuerSecret: new Uint8Array(getRandomValues(Buffer.alloc(32))),
     authoritySecret: new Uint8Array(getRandomValues(Buffer.alloc(32))),
@@ -38,7 +45,7 @@ export const RegulatedConfidentialNoteTokenPrivateState = {
 const freshSeed = (): Uint8Array =>
   new Uint8Array(getRandomValues(Buffer.alloc(32)));
 
-export interface IRegulatedConfidentialNoteTokenWitnesses<P> {
+export interface IRegulatedConfidentialNoteFungibleTokenWitnesses<P> {
   wit_SecretKey(context: WitnessContext<Ledger, P>): [P, Uint8Array];
   wit_IssuerSecret(context: WitnessContext<Ledger, P>): [P, Uint8Array];
   wit_AuthoritySecret(context: WitnessContext<Ledger, P>): [P, Uint8Array];
@@ -49,12 +56,13 @@ export interface IRegulatedConfidentialNoteTokenWitnesses<P> {
     cm: Uint8Array,
   ): [P, MerkleTreePath<Uint8Array>];
   wit_AuditRandomness(context: WitnessContext<Ledger, P>): [P, Uint8Array];
+  wit_AuditKeySecret(context: WitnessContext<Ledger, P>): [P, bigint];
   wit_DeliveryRandomness(context: WitnessContext<Ledger, P>): [P, Uint8Array];
   wit_SupplyRandomness(context: WitnessContext<Ledger, P>): [P, Uint8Array];
 }
 
-export const RegulatedConfidentialNoteTokenWitnesses =
-  (): IRegulatedConfidentialNoteTokenWitnesses<RegulatedConfidentialNoteTokenPrivateState> => ({
+export const RegulatedConfidentialNoteFungibleTokenWitnesses =
+  (): IRegulatedConfidentialNoteFungibleTokenWitnesses<RegulatedConfidentialNoteFungibleTokenPrivateState> => ({
     wit_SecretKey(context) {
       return [context.privateState, context.privateState.secretKey];
     },
@@ -83,6 +91,9 @@ export const RegulatedConfidentialNoteTokenWitnesses =
     // require.
     wit_AuditRandomness(context) {
       return [context.privateState, freshSeed()];
+    },
+    wit_AuditKeySecret(context) {
+      return [context.privateState, context.privateState.auditKeySecret ?? 0n];
     },
     wit_DeliveryRandomness(context) {
       return [context.privateState, freshSeed()];

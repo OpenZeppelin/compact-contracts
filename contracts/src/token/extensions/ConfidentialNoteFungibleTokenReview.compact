@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenReview.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenReview
+ * @description Optional standalone extension adding SELECTIVE disclosure to a
+ * `ConfidentialNoteFungibleToken` pool: per-output encrypted records to an
+ * approved REVIEWER key (a custodian or FIU), alongside — not replacing — the
+ * global audit channel. Where the audit key sees everything, a reviewer sees
+ * only the outputs explicitly addressed to it. It imports no token module.
+ *
+ * The composing contract gates `_addReviewer` / `_removeReviewer` (admin) and
+ * emits a review record next to its emission policy where its deployment
+ * rules require one (a compile-time variant — in ZK an optional emission
+ * still pays its constraints, so it cannot be a runtime flag):
+ *
+ *   const nonce = Audit__emitAuditedOutput(ownerPk, value, slot);
+ *   Review__emitReviewRecord(reviewerKey, ownerPk, value, nonce, slot);
+ *   Core__mintNote(Core_Note { value: value, nonce: nonce }, ownerPk);
+ *
+ * Unlike the audit channel, the note's nonce is NOT derived here (the audit
+ * ECDH owns nonce derivation); it rides an explicit ciphertext, so the
+ * reviewer recovers `(value, ownerPk, nonce)` and can recompute the note's
+ * commitment and nullifier — full visibility over exactly the outputs
+ * addressed to it.
+ *
+ * @dev Disclosure caveat (draft): each record publishes WHICH approved
+ * reviewer can open it (`reviewerKeyHash`), so custodian affiliation is
+ * public per output. Hiding the reviewer behind a Merkle membership proof is
+ * the known Phase-2 refinement, pending the selective-disclosure design
+ * review.
+ *
+ * @dev `wit_ReviewRandomness` MUST return a fresh, secret seed per
+ * invocation; ephemerals expand from it (see `crypto/EcdhMask` freshness
+ * rules). `slot` domain-separates ephemerals when one transaction emits
+ * several outputs.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenReview {
+  import CompactStandardLibrary;
+  import "../../crypto/EcdhMask" prefix EcdhMask_;
+
+  // Per-output review ciphertext: the note's value, owner, and nonce
+  // encrypted to one approved reviewer key.
+  export struct ReviewRecord {
+    reviewerKeyHash: Bytes<32>;
+    ephemeralPk: JubjubPoint;
+    valueCt: Field;
+    ownerCt: Field;
+    nonceCt: Field;
+  }
+
+  // The reviewer's recovered view of one output (see `recoverReviewRecord`).
+  export struct ReviewView {
+    value: Field;
+    ownerPk: Field;
+    nonce: Field;
+  }
+
+  // Approved reviewer keys, stored as point hashes (see `reviewerKeyHashOf`).
+  export ledger _reviewers: Set<Bytes<32>>;
+  // Per-output records, for observation: reviewers scan this list filtering
+  // by their own key hash. It is this extension's event substitute.
+  export ledger _reviewTrail: List<ReviewRecord>;
+
+  // Randomness seed for review ephemerals. MUST be fresh + secret per
+  // invocation (see module doc).
+  witness wit_ReviewRandomness(): Bytes<32>;
+
+  /**
+   * @description Registry key for a reviewer: `H(reviewerKey)`. Exported so
+   * admins and reviewers derive registry entries and scan filters the way the
+   * circuits do.
+   */
+  export pure circuit reviewerKeyHashOf(reviewerKey: JubjubPoint): Bytes<32> {
+    return persistentHash<JubjubPoint>(reviewerKey);
+  }
+
+  /**
+   * @description UNGATED building block: approves a reviewer key. The
+   * composer gates who may administer the registry.
+   *
+   * Requirements:
+   *
+   * - `reviewerKey` is not the identity point.
+   * - `reviewerKey` is not already approved.
+   */
+  export circuit _addReviewer(reviewerKey: JubjubPoint): [] {
+    assert(reviewerKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenReview: identity reviewer key");
+    const keyHash = reviewerKeyHashOf(reviewerKey);
+    assert(!_reviewers.member(disclose(keyHash)),
+           "ConfidentialNoteFungibleTokenReview: already a reviewer");
+    _reviewers.insert(disclose(keyHash));
+  }
+
+  /**
+   * @description UNGATED building block: revokes a reviewer key. Existing
+   * records stay readable by the revoked key (published ciphertexts cannot be
+   * clawed back); revocation only stops NEW records. The composer gates who
+   * may administer the registry.
+   *
+   * Requirements:
+   *
+   * - `reviewerKey` is an approved reviewer.
+   */
+  export circuit _removeReviewer(reviewerKey: JubjubPoint): [] {
+    const keyHash = reviewerKeyHashOf(reviewerKey);
+    assert(_reviewers.member(disclose(keyHash)),
+           "ConfidentialNoteFungibleTokenReview: not a reviewer");
+    _reviewers.remove(disclose(keyHash));
+  }
+
+  /**
+   * @description Emits one output's review record to `reviewerKey`: value,
+   * owner, and nonce one-time-padded to an ECDH shared secret with the
+   * reviewer key. The record is only accepted for an APPROVED reviewer.
+   *
+   * Requirements:
+   *
+   * - `reviewerKey` is an approved reviewer.
+   */
+  export circuit _emitReviewRecord(
+    reviewerKey: JubjubPoint,
+    ownerPk: Field,
+    value: Uint<128>,
+    nonce: Field,
+    slot: Bytes<32>
+  ): [] {
+    const keyHash = reviewerKeyHashOf(reviewerKey);
+    assert(_reviewers.member(disclose(keyHash)),
+           "ConfidentialNoteFungibleTokenReview: not a reviewer");
+
+    const er = degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
+      [wit_ReviewRandomness(), pad(32, "OZ:cnt:er"), slot]));
+    const erPk = ecMulGenerator(er);
+    // Point guard subsumes `er != 0` (see crypto/EcdhMask weak-inputs note);
+    // the registry's identity-key guard covers the other weak input.
+    assert(erPk != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenReview: zero review ephemeral");
+    const shared = ecMul(reviewerKey, er);
+
+    _reviewTrail.pushFront(disclose(ReviewRecord {
+      reviewerKeyHash: keyHash,
+      ephemeralPk: erPk,
+      valueCt: (value as Field) + EcdhMask_kdf(shared, pad(32, "OZ:cnt:r:value")),
+      ownerCt: ownerPk + EcdhMask_kdf(shared, pad(32, "OZ:cnt:r:owner")),
+      nonceCt: nonce + EcdhMask_kdf(shared, pad(32, "OZ:cnt:r:nonce"))
+    }));
+  }
+
+  /**
+   * @description Reviewer-side: recover one output's `(value, ownerPk, nonce)`
+   * from a ReviewRecord using the reviewer secret scalar
+   * (`reviewerKey = g^reviewSk`). Pure and off-chain; feeding the result to
+   * the token core's `commitOf` / `nullifierOf` reconstructs the note's
+   * lifecycle.
+   */
+  export pure circuit recoverReviewRecord(record: ReviewRecord, reviewSk: Field): ReviewView {
+    const shared = ecMul(record.ephemeralPk, reviewSk);
+    return ReviewView {
+      value: record.valueCt - EcdhMask_kdf(shared, pad(32, "OZ:cnt:r:value")),
+      ownerPk: record.ownerCt - EcdhMask_kdf(shared, pad(32, "OZ:cnt:r:owner")),
+      nonce: record.nonceCt - EcdhMask_kdf(shared, pad(32, "OZ:cnt:r:nonce"))
+    };
+  }
+}

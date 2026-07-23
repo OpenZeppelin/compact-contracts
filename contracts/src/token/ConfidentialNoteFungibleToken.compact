@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts (token/ConfidentialNoteToken.compact)
+// OpenZeppelin Compact Contracts (token/ConfidentialNoteFungibleToken.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialNoteToken
+ * @module ConfidentialNoteFungibleToken
  * @description DRAFT tier-4 core: a self-contained note-based confidential
  * token with FULL graph privacy (amounts, sender, and recipient hidden).
  *
@@ -15,27 +15,33 @@ pragma language_version >= 0.23.0;
  * `nf = H(domain, nonce)` marks the note spent. Spending proves membership of
  * the note's commitment without revealing which leaf.
  *
- * The core is a complete token on its own: `initialize` binds the issuer,
- * `mint` (issuer-gated), `transfer`, and `burn` work out of the box, deriving
- * output nonces from the caller's own randomness witness. Created notes are
- * returned to the caller (a local, private result — nothing extra goes
- * on-chain), who hands them to recipients out of band.
+ * The core is deliberately barebones: the note machinery and nothing else. It
+ * holds NO roles and needs NO initialization — the ledger is just the
+ * commitment tree and the nullifier set. `transfer` and `burn` work out of the
+ * box because they are self-gated (spending requires the owner's secret via
+ * `wit_SecretKey`), deriving output nonces from the caller's own randomness
+ * witness. Created notes are returned to the caller (a local, private result —
+ * nothing extra goes on-chain), who hands them to recipients out of band.
  *
- * Compliance and UX are layered on top, not baked in:
+ * Value creation carries no default gate: `_mint` / `_mintNote` are ungated
+ * building blocks, and the composing contract decides who may create value.
+ * Roles, compliance, and UX are layered on top, not baked in:
  *
- * - auditor viewing — `extensions/ConfidentialNoteTokenAudit`,
+ * - issuer gating (the single-issuer shape) —
+ *   `extensions/ConfidentialNoteFungibleTokenIssuer`,
+ * - auditor viewing — `extensions/ConfidentialNoteFungibleTokenAudit`,
  * - on-chain note delivery (recipients discover funds by scanning) —
- *   `extensions/ConfidentialNoteTokenDelivery`,
+ *   `extensions/ConfidentialNoteFungibleTokenDelivery`,
  * - confidential supply + public attestation —
- *   `extensions/ConfidentialNoteTokenSupply`,
+ *   `extensions/ConfidentialNoteFungibleTokenPrivateSupply`,
  * - the wired-together deployable token —
- *   `presets/RegulatedConfidentialNoteToken`.
+ *   `presets/RegulatedConfidentialNoteFungibleToken`.
  *
- * For that wiring, the `_`-prefixed building blocks (`_mint`, `_transfer`,
+ * For that wiring, the `_`-prefixed building blocks (`_mintNote`, `_transfer`,
  * `_burn`, `_consumeNote`) accept caller-built notes, so a composing contract
- * can source nonces from its emission policy (e.g. audit-derived) instead of
- * the core default. Like all `_` circuits, they carry no authorization —
- * the composer gates them.
+ * can source nonces from its emission policy (e.g. audit-derived); `_mint`
+ * instead derives the core-default nonce. Like all `_` circuits, they carry
+ * no authorization — the composer gates them.
  *
  * @dev Nonces are spend-critical: the nullifier preimage is the nonce alone
  * (no owner secret), so any party that knows a nonce derives the SAME
@@ -46,7 +52,7 @@ pragma language_version >= 0.23.0;
  *
  * @dev NOT audited, NOT production.
  */
-module ConfidentialNoteToken {
+module ConfidentialNoteFungibleToken {
   import CompactStandardLibrary;
 
   // A note's value and its unique nonce. Ownership is a separate pk.
@@ -67,16 +73,11 @@ module ConfidentialNoteToken {
     nonce: Field;
   }
 
-  export ledger _isInitialized: Boolean;
-  // Mint authorization: `Hf(issuerSecret)`.
-  export ledger _issuerPk: Field;
   export ledger _commitments: HistoricMerkleTree<32, Bytes<32>>;
   export ledger _nullifiers: Set<Bytes<32>>;
 
   // Owner's spend secret (pk = Hf(sk)).
   witness wit_SecretKey(): Bytes<32>;
-  // The issuer's secret (issuerPk = Hf(issuerSecret)).
-  witness wit_IssuerSecret(): Bytes<32>;
   // The note being consumed, and its Merkle path.
   witness wit_InputNote(): Note;
   witness wit_Path(cm: Bytes<32>): MerkleTreePath<32, Bytes<32>>;
@@ -117,44 +118,6 @@ module ConfidentialNoteToken {
   }
 
   /**
-   * @description One-shot initialization binding the issuer (the only role
-   * the core itself needs).
-   *
-   * Requirements:
-   *
-   * - Module is not already initialized.
-   *
-   * @circuitInfo k=6, rows=31
-   */
-  export circuit initialize(issuerPk: Field): [] {
-    assert(!_isInitialized, "ConfidentialNoteToken: already initialized");
-    _issuerPk = disclose(issuerPk);
-    _isInitialized = true;
-  }
-
-  /**
-   * @description Mints a note of `value` to `recipientPk` and returns it (a
-   * local private result) so the issuer can hand it to the recipient out of
-   * band. The amount is NOT written to public state — issuance stays hidden;
-   * only the hiding commitment appears on-chain.
-   *
-   * Requirements:
-   *
-   * - Module is initialized.
-   * - The caller proves the issuer secret (`Hf(secret) == _issuerPk`).
-   *
-   * @circuitInfo k=14, rows=13217
-   */
-  export circuit mint(recipientPk: Field, value: Uint<128>): Note {
-    _assertIssuer();
-    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:cnt:out")) };
-    _mint(note, recipientPk);
-    // The note returns only to the local caller; revealing it on-chain would
-    // expose the nonce (spend-critical) and the amount.
-    return disclose(note);
-  }
-
-  /**
    * @description Fully-private transfer: spends the caller's input note and
    * creates a recipient note of `value` plus a change note back to the
    * caller, conserving value. Returns `[outNote, changeNote]` (a local
@@ -172,7 +135,7 @@ module ConfidentialNoteToken {
   export circuit transfer(recipientPk: Field, value: Uint<128>): [Note, Note] {
     const pk = _spenderPk();
     const input = _inputNote();
-    assert(input.value >= value, "ConfidentialNoteToken: insufficient note value");
+    assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
 
     const outNote = Note { value: value, nonce: freshNonce(pad(32, "OZ:cnt:out")) };
     const changeNote = Note {
@@ -199,7 +162,7 @@ module ConfidentialNoteToken {
   export circuit burn(value: Uint<128>): Note {
     const pk = _spenderPk();
     const input = _inputNote();
-    assert(input.value >= value, "ConfidentialNoteToken: insufficient note value");
+    assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
 
     const changeNote = Note {
       value: (input.value - value) as Uint<128>,
@@ -216,22 +179,6 @@ module ConfidentialNoteToken {
    */
   export circuit _spenderPk(): Field {
     return derivePk(wit_SecretKey());
-  }
-
-  /**
-   * @description Building block: asserts the caller proves the issuer secret.
-   *
-   * Requirements:
-   *
-   * - Module is initialized.
-   * - `Hf(wit_IssuerSecret()) == _issuerPk`.
-   *
-   * @circuitInfo k=13, rows=2277
-   */
-  export circuit _assertIssuer(): [] {
-    assert(_isInitialized, "ConfidentialNoteToken: contract not initialized");
-    assert(derivePk(wit_IssuerSecret()) == _issuerPk,
-           "ConfidentialNoteToken: not the issuer");
   }
 
   /**
@@ -252,9 +199,28 @@ module ConfidentialNoteToken {
    *
    * @circuitInfo k=13, rows=6766
    */
-  export circuit _mint(note: Note, ownerPk: Field): [] {
+  export circuit _mintNote(note: Note, ownerPk: Field): [] {
     // Only the hiding commitment crosses to public state.
     _commitments.insert(disclose(commitOf(note, ownerPk)));
+  }
+
+  /**
+   * @description UNGATED building block: mints a note of `value` to
+   * `recipientPk` with a core-derived fresh nonce and returns it (a local
+   * private result) so the caller can hand it to the recipient out of band.
+   * The amount is NOT written to public state — issuance stays hidden; only
+   * the hiding commitment appears on-chain. The composer gates who may call
+   * this (see `extensions/ConfidentialNoteFungibleTokenIssuer` for the
+   * single-issuer shape).
+   *
+   * @circuitInfo k=14, rows=10964
+   */
+  export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
+    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:cnt:out")) };
+    _mintNote(note, recipientPk);
+    // The note returns only to the local caller; revealing it on-chain would
+    // expose the nonce (spend-critical) and the amount.
+    return disclose(note);
   }
 
   /**
@@ -272,9 +238,9 @@ module ConfidentialNoteToken {
   export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: Note, changeNote: Note): [] {
     const input = _consumeNote(spenderPk);
     assert(input.value == outNote.value + changeNote.value,
-           "ConfidentialNoteToken: transfer does not conserve value");
-    _mint(outNote, recipientPk);
-    _mint(changeNote, spenderPk);
+           "ConfidentialNoteFungibleToken: transfer does not conserve value");
+    _mintNote(outNote, recipientPk);
+    _mintNote(changeNote, spenderPk);
   }
 
   /**
@@ -292,8 +258,8 @@ module ConfidentialNoteToken {
   export circuit _burn(spenderPk: Field, value: Uint<128>, changeNote: Note): [] {
     const input = _consumeNote(spenderPk);
     assert(input.value == value + changeNote.value,
-           "ConfidentialNoteToken: burn does not conserve value");
-    _mint(changeNote, spenderPk);
+           "ConfidentialNoteFungibleToken: burn does not conserve value");
+    _mintNote(changeNote, spenderPk);
   }
 
   /**
@@ -319,14 +285,14 @@ module ConfidentialNoteToken {
     const path = wit_Path(cm);
     const root = disclose(merkleTreePathRoot<32, Bytes<32>>(path));
     assert(_commitments.checkRoot(root),
-           "ConfidentialNoteToken: input root not recognized");
+           "ConfidentialNoteFungibleToken: input root not recognized");
     assert(cm == path.leaf,
-           "ConfidentialNoteToken: path does not match input commitment");
+           "ConfidentialNoteFungibleToken: path does not match input commitment");
 
     // Single-spend: the shared nullifier can be consumed exactly once.
     const nf = nullifierOf(input);
     assert(!_nullifiers.member(disclose(nf)),
-           "ConfidentialNoteToken: note already spent");
+           "ConfidentialNoteFungibleToken: note already spent");
     _nullifiers.insert(disclose(nf));
 
     return input;

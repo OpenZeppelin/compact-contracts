@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteFungibleTokenReview" prefix Review_;
+
+export { Review_ReviewRecord, Review_ReviewView }
+
+export { Review__reviewers, Review__reviewTrail };
+
+export circuit _addReviewer(reviewerKey: JubjubPoint): [] {
+  return Review__addReviewer(reviewerKey);
+}
+
+export circuit _removeReviewer(reviewerKey: JubjubPoint): [] {
+  return Review__removeReviewer(reviewerKey);
+}
+
+export circuit _emitReviewRecord(
+  reviewerKey: JubjubPoint,
+  ownerPk: Field,
+  value: Uint<128>,
+  nonce: Field,
+  slot: Bytes<32>
+): [] {
+  return Review__emitReviewRecord(reviewerKey, ownerPk, value, nonce, slot);
+}
+
+export pure circuit reviewerKeyHashOf(reviewerKey: JubjubPoint): Bytes<32> {
+  return Review_reviewerKeyHashOf(reviewerKey);
+}
+
+export pure circuit recoverReviewRecord(record: Review_ReviewRecord, reviewSk: Field): Review_ReviewView {
+  return Review_recoverReviewRecord(record, reviewSk);
+}

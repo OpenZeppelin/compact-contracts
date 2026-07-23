@@ -5,7 +5,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../extensions/ConfidentialNoteTokenSupply" prefix Supply_;
+import "../../extensions/ConfidentialNoteFungibleTokenPrivateSupply" prefix Supply_;
 import "../../../crypto/ElGamal" prefix ElGamal_;
 
 export { ElGamal_Ciphertext }
@@ -32,6 +32,10 @@ export circuit _addBurned(value: Uint<128>): [] {
 
 export circuit attestSupply(total: Uint<128>): [] {
   return Supply_attestSupply(total);
+}
+
+export circuit _rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
+  return Supply__rotateSupplyKey(newKey, total);
 }
 
 // Off-chain helper surfaced for tests: derive the supply public key from its

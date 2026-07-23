@@ -1,12 +1,12 @@
 // TEST-ONLY WITNESS. NOT FOR PRODUCTION USE.
-// Drives ConfidentialNoteTokenSupply (confidential supply) circuits in
+// Drives ConfidentialNoteFungibleTokenPrivateSupply (confidential supply) circuits in
 // off-chain tests.
 
 import { getRandomValues } from 'node:crypto';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../../artifacts/MockConfidentialNoteTokenSupply/contract/index.js';
+import type { Ledger } from '../../../../artifacts/MockConfidentialNoteFungibleTokenPrivateSupply/contract/index.js';
 
-export type ConfidentialNoteTokenSupplyPrivateState = {
+export type ConfidentialNoteFungibleTokenPrivateSupplyPrivateState = {
   /** Supply-key secret (supplyKey = derivePk(secret)); consumed by attestSupply. */
   supplyKeySecret: Uint8Array;
   /**
@@ -16,19 +16,19 @@ export type ConfidentialNoteTokenSupplyPrivateState = {
   randomnessSeed?: Uint8Array;
 };
 
-export const ConfidentialNoteTokenSupplyPrivateState = {
-  generate: (): ConfidentialNoteTokenSupplyPrivateState => ({
+export const ConfidentialNoteFungibleTokenPrivateSupplyPrivateState = {
+  generate: (): ConfidentialNoteFungibleTokenPrivateSupplyPrivateState => ({
     supplyKeySecret: new Uint8Array(getRandomValues(Buffer.alloc(32))),
   }),
 };
 
-export interface IConfidentialNoteTokenSupplyWitnesses<P> {
+export interface IConfidentialNoteFungibleTokenPrivateSupplyWitnesses<P> {
   wit_SupplyRandomness(context: WitnessContext<Ledger, P>): [P, Uint8Array];
   wit_SupplyKeySecret(context: WitnessContext<Ledger, P>): [P, Uint8Array];
 }
 
-export const ConfidentialNoteTokenSupplyWitnesses =
-  (): IConfidentialNoteTokenSupplyWitnesses<ConfidentialNoteTokenSupplyPrivateState> => ({
+export const ConfidentialNoteFungibleTokenPrivateSupplyWitnesses =
+  (): IConfidentialNoteFungibleTokenPrivateSupplyWitnesses<ConfidentialNoteFungibleTokenPrivateSupplyPrivateState> => ({
     // Fresh + secret per call, as the extension requires; a fixed seed is only
     // honored when a test explicitly plants one.
     wit_SupplyRandomness(context) {

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteTokenSupply.compact)
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenPrivateSupply.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialNoteTokenSupply
+ * @module ConfidentialNoteFungibleTokenPrivateSupply
  * @description Optional standalone extension that adds CONFIDENTIAL supply
- * accounting to a `ConfidentialNoteToken`. It imports no token module.
+ * accounting to a `ConfidentialNoteFungibleToken`. It imports no token module.
  *
  * The base token deliberately writes no public supply: a disclosed counter
  * would leak every mint and burn amount as a public delta. This extension
@@ -24,7 +24,7 @@ pragma language_version >= 0.23.0;
  *   only that total. Between attestations, individual amounts stay hidden;
  *   batching gives issuance amounts k-anonymity at the attestation cadence.
  *
- * @notice Pairs with `ConfidentialNoteToken`. The consuming contract
+ * @notice Pairs with `ConfidentialNoteFungibleToken`. The consuming contract
  * composes the pieces, calling the accounting block alongside the matching
  * token op:
  *
@@ -58,7 +58,7 @@ pragma language_version >= 0.23.0;
  *
  * @dev NOT audited, NOT production.
  */
-module ConfidentialNoteTokenSupply {
+module ConfidentialNoteFungibleTokenPrivateSupply {
   import CompactStandardLibrary;
   import "../../crypto/ElGamal" prefix ElGamal_;
 
@@ -89,9 +89,9 @@ module ConfidentialNoteTokenSupply {
    * @circuitInfo k=11, rows=1167
    */
   export circuit initialize(supplyKey: JubjubPoint): [] {
-    assert(!_isInitialized, "ConfidentialNoteTokenSupply: already initialized");
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenPrivateSupply: already initialized");
     assert(supplyKey != ecMulGenerator(0 as Field),
-           "ConfidentialNoteTokenSupply: identity supply key");
+           "ConfidentialNoteFungibleTokenPrivateSupply: identity supply key");
     _supplyKey = disclose(supplyKey);
     _encSupply = ElGamal_encryptZero();
     _isInitialized = true;
@@ -155,7 +155,33 @@ module ConfidentialNoteTokenSupply {
     _attestationCount = disclose(_attestationCount + 1 as Uint<64>);
   }
 
+  /**
+   * @description Building block: self-rotation — the current supply-key
+   * holder proves the secret AND the exact running total, and the encrypted
+   * supply is re-encrypted under the new key in the same proof (a ciphertext
+   * under the old key cannot be updated homomorphically by the new holder).
+   * `total` is a private circuit argument: it is never disclosed, only bound
+   * into the new ciphertext. Production deployments gate this behind
+   * governance too.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - `newKey` is not the identity point.
+   * - The caller proves the CURRENT supply-key secret and `_encSupply`
+   *   decrypts to `total`.
+   */
+  export circuit _rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
+    assertInitialized();
+    assert(newKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenPrivateSupply: identity supply key");
+    ElGamal_assertDecryptsTo(_encSupply, _supplyKey, wit_SupplyKeySecret(), total);
+    const r = ElGamal_expandRandomness(wit_SupplyRandomness(), pad(32, "OZ:cnt:supply:rot"));
+    _encSupply = disclose(ElGamal_encrypt(newKey, total, r));
+    _supplyKey = disclose(newKey);
+  }
+
   circuit assertInitialized(): [] {
-    assert(_isInitialized, "ConfidentialNoteTokenSupply: extension not initialized");
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenPrivateSupply: extension not initialized");
   }
 }

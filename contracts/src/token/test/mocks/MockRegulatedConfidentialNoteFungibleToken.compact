@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../presets/RegulatedConfidentialNoteFungibleToken" prefix Token_;
+
+// Surface the preset module's re-exported observable state and artifact types
+// under their stable bare names (exercising the module's own re-export path).
+import {
+  Note,
+  AuditRecord,
+  AuditView,
+  FullDelivery,
+  _isInitialized,
+  _issuerPk,
+  _authorityPk,
+  _seizureCount,
+  _commitments,
+  _nullifiers,
+  _auditKey,
+  _auditTrail,
+  _deliveries,
+  _supplyKey,
+  _encSupply,
+  _attestedSupply,
+  _attestationCount
+} from "../../presets/RegulatedConfidentialNoteFungibleToken";
+
+export { Note, AuditRecord, AuditView, FullDelivery }
+
+export {
+  _isInitialized,
+  _issuerPk,
+  _authorityPk,
+  _seizureCount,
+  _commitments,
+  _nullifiers,
+  _auditKey,
+  _auditTrail,
+  _deliveries,
+  _supplyKey,
+  _encSupply,
+  _attestedSupply,
+  _attestationCount
+};
+
+constructor(
+  issuerPk: Field,
+  authorityPk: Field,
+  auditKey: JubjubPoint,
+  supplyKey: JubjubPoint
+) {
+  Token_initialize(issuerPk, authorityPk, auditKey, supplyKey);
+}
+
+export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint<128>): [] {
+  return Token_mint(recipientPk, recipientEncPk, value);
+}
+
+export circuit transfer(
+  recipientPk: Field,
+  recipientEncPk: JubjubPoint,
+  senderEncPk: JubjubPoint,
+  value: Uint<128>
+): [] {
+  return Token_transfer(recipientPk, recipientEncPk, senderEncPk, value);
+}
+
+export circuit burn(senderEncPk: JubjubPoint, value: Uint<128>): [] {
+  return Token_burn(senderEncPk, value);
+}
+
+export circuit seize(targetOwnerPk: Field, recoveryPk: Field, recoveryEncPk: JubjubPoint): [] {
+  return Token_seize(targetOwnerPk, recoveryPk, recoveryEncPk);
+}
+
+export circuit attestSupply(total: Uint<128>): [] {
+  return Token_attestSupply(total);
+}
+
+export circuit rotateIssuer(newIssuerPk: Field): [] {
+  return Token_rotateIssuer(newIssuerPk);
+}
+
+export circuit rotateAuthority(newAuthorityPk: Field): [] {
+  return Token_rotateAuthority(newAuthorityPk);
+}
+
+export circuit rotateAuditKey(newKey: JubjubPoint): [] {
+  return Token_rotateAuditKey(newKey);
+}
+
+export circuit rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
+  return Token_rotateSupplyKey(newKey, total);
+}
