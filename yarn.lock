@@ -1830,44 +1830,44 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@turbo/darwin-64@npm:2.10.5":
-  version: 2.10.5
-  resolution: "@turbo/darwin-64@npm:2.10.5"
+"@turbo/darwin-64@npm:2.10.6":
+  version: 2.10.6
+  resolution: "@turbo/darwin-64@npm:2.10.6"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@turbo/darwin-arm64@npm:2.10.5":
-  version: 2.10.5
-  resolution: "@turbo/darwin-arm64@npm:2.10.5"
+"@turbo/darwin-arm64@npm:2.10.6":
+  version: 2.10.6
+  resolution: "@turbo/darwin-arm64@npm:2.10.6"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@turbo/linux-64@npm:2.10.5":
-  version: 2.10.5
-  resolution: "@turbo/linux-64@npm:2.10.5"
+"@turbo/linux-64@npm:2.10.6":
+  version: 2.10.6
+  resolution: "@turbo/linux-64@npm:2.10.6"
   conditions: os=linux & cpu=x64
   languageName: node
   linkType: hard
 
-"@turbo/linux-arm64@npm:2.10.5":
-  version: 2.10.5
-  resolution: "@turbo/linux-arm64@npm:2.10.5"
+"@turbo/linux-arm64@npm:2.10.6":
+  version: 2.10.6
+  resolution: "@turbo/linux-arm64@npm:2.10.6"
   conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
-"@turbo/windows-64@npm:2.10.5":
-  version: 2.10.5
-  resolution: "@turbo/windows-64@npm:2.10.5"
+"@turbo/windows-64@npm:2.10.6":
+  version: 2.10.6
+  resolution: "@turbo/windows-64@npm:2.10.6"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
-"@turbo/windows-arm64@npm:2.10.5":
-  version: 2.10.5
-  resolution: "@turbo/windows-arm64@npm:2.10.5"
+"@turbo/windows-arm64@npm:2.10.6":
+  version: 2.10.6
+  resolution: "@turbo/windows-arm64@npm:2.10.6"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
@@ -4213,7 +4213,7 @@ __metadata:
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:26.1.1"
     ts-node: "npm:^10.9.2"
-    turbo: "npm:^2.10.0"
+    turbo: "npm:^2.10.6"
     typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.10"
   languageName: unknown
@@ -5195,16 +5195,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.10.0":
-  version: 2.10.5
-  resolution: "turbo@npm:2.10.5"
+"turbo@npm:^2.10.6":
+  version: 2.10.6
+  resolution: "turbo@npm:2.10.6"
   dependencies:
-    "@turbo/darwin-64": "npm:2.10.5"
-    "@turbo/darwin-arm64": "npm:2.10.5"
-    "@turbo/linux-64": "npm:2.10.5"
-    "@turbo/linux-arm64": "npm:2.10.5"
-    "@turbo/windows-64": "npm:2.10.5"
-    "@turbo/windows-arm64": "npm:2.10.5"
+    "@turbo/darwin-64": "npm:2.10.6"
+    "@turbo/darwin-arm64": "npm:2.10.6"
+    "@turbo/linux-64": "npm:2.10.6"
+    "@turbo/linux-arm64": "npm:2.10.6"
+    "@turbo/windows-64": "npm:2.10.6"
+    "@turbo/windows-arm64": "npm:2.10.6"
   dependenciesMeta:
     "@turbo/darwin-64":
       optional: true
@@ -5220,7 +5220,7 @@ __metadata:
       optional: true
   bin:
     turbo: bin/turbo
-  checksum: 10/90480b731ce0394e77db1358b84c09dc074a5518d1816cd26dc2fda54a61e1cdbeee55caf7e2375c0fc5d62728b0f50a598fdee1e4b9a6d2c6f546fb7e1820d7
+  checksum: 10/08ea1e9ba9e7b8a7702f3036a2787eb5090b925d56ac6bf0f41df74e241bbc72f76b8e24dc630720961bd958b3b7e1d08711213755af78debd721766ff250e6b
   languageName: node
   linkType: hard
 
