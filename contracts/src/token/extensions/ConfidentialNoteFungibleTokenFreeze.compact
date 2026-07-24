@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenFreeze.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenFreeze
+ * @description Optional standalone extension adding freeze-before-seize to a
+ * `ConfidentialNoteFungibleToken` pool: a frozen-nullifier set checked at the
+ * owner-spend chokepoint. It imports no token module and holds no roles; the
+ * composing contract gates `_freeze` / `_unfreeze` (typically behind the same
+ * authority that may seize) and wires `_assertNotFrozen` into every
+ * owner-spend path.
+ *
+ * A note is frozen by its NULLIFIER: `nf = H(domain, nonce)` depends only on
+ * the nonce, so an authority armed by the audit trail derives the target's
+ * nullifier without consuming the note — freezing is non-destructive and
+ * reversible, unlike seizure. Wiring, at the spend chokepoint:
+ *
+ *   export circuit transfer(...): [] {
+ *     Freeze__assertNotFrozen(Core_nullifierOf(Core__inputNote()));
+ *     // ...the core re-reads the same witness, so the checked note IS the
+ *     // spent note...
+ *   }
+ *
+ * Do NOT wire the check into `seize`: seizure of a frozen note is the whole
+ * point of freeze-then-seize.
+ *
+ * @dev What freezing publishes: the nullifier itself. Observers learn "some
+ * specific note is frozen" (and can later link its spend or seizure), but not
+ * the note's owner or value — the nullifier preimage stays hidden. The size
+ * of the frozen set is public.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenFreeze {
+  import CompactStandardLibrary;
+
+  // Frozen nullifiers: notes whose owner-spend is administratively blocked.
+  export ledger _frozen: Set<Bytes<32>>;
+
+  /**
+   * @description UNGATED building block: freezes the note behind `nf`. The
+   * composer gates who may freeze (typically the seizure authority, armed
+   * with the note's nonce from the audit trail).
+   *
+   * Requirements:
+   *
+   * - `nf` is not already frozen.
+   */
+  export circuit _freeze(nf: Bytes<32>): [] {
+    assert(!_frozen.member(disclose(nf)),
+           "ConfidentialNoteFungibleTokenFreeze: already frozen");
+    _frozen.insert(disclose(nf));
+  }
+
+  /**
+   * @description UNGATED building block: lifts the freeze on `nf`. The
+   * composer gates who may unfreeze.
+   *
+   * Requirements:
+   *
+   * - `nf` is frozen.
+   */
+  export circuit _unfreeze(nf: Bytes<32>): [] {
+    assert(_frozen.member(disclose(nf)),
+           "ConfidentialNoteFungibleTokenFreeze: not frozen");
+    _frozen.remove(disclose(nf));
+  }
+
+  /**
+   * @description Building block: asserts the note behind `nf` is not frozen.
+   * Place it at every owner-spend chokepoint (and nowhere near `seize`).
+   */
+  export circuit _assertNotFrozen(nf: Bytes<32>): [] {
+    assert(!_frozen.member(disclose(nf)),
+           "ConfidentialNoteFungibleTokenFreeze: note is frozen");
+  }
+}

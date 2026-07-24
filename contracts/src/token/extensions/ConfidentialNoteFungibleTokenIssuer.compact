@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenIssuer.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenIssuer
+ * @description Optional standalone extension binding a single ISSUER role for
+ * a `ConfidentialNoteFungibleToken` pool: the issuer is whoever proves the
+ * secret behind `_issuerPk = Hf(issuerSecret)` in-circuit. It imports no
+ * token module.
+ *
+ * The core is deliberately role-free: its `_mint` / `_mintNote` building
+ * blocks are ungated, and the composing contract decides who may create
+ * value. This extension is the out-of-the-box answer for the single-issuer
+ * shape:
+ *
+ *   export circuit mint(recipientPk: Field, value: Uint<128>): Core_Note {
+ *     Issuer__assertIssuer();
+ *     return Core__mint(recipientPk, value);
+ *   }
+ *
+ * Alternative issuance policies (multisig-gated, role sets, or none at all
+ * for a fixed-supply genesis mint) compose against the same blocks the same
+ * way.
+ *
+ * @dev Identity derivation matches the token core's `derivePk`
+ * (`pk = Hf(sk)`, field-typed), so one keypair works across both modules and
+ * off-chain code can derive the issuer identity with the core's exported
+ * circuit.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenIssuer {
+  import CompactStandardLibrary;
+
+  export ledger _isInitialized: Boolean;
+  // Mint authorization: `Hf(issuerSecret)`.
+  export ledger _issuerPk: Field;
+
+  // The issuer's secret (issuerPk = Hf(issuerSecret)).
+  witness wit_IssuerSecret(): Bytes<32>;
+
+  /**
+   * @description One-shot initialization binding the issuer.
+   *
+   * Requirements:
+   *
+   * - Extension is not already initialized.
+   *
+   * @circuitInfo k=6, rows=31
+   */
+  export circuit initialize(issuerPk: Field): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenIssuer: already initialized");
+    _issuerPk = disclose(issuerPk);
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Building block: asserts the caller proves the issuer secret.
+   * Place it before any ungated value-creation block the deployment reserves
+   * for the issuer.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - `Hf(wit_IssuerSecret()) == _issuerPk`.
+   *
+   * @circuitInfo k=13, rows=2277
+   */
+  export circuit _assertIssuer(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenIssuer: extension not initialized");
+    assert(derivePk(wit_IssuerSecret()) == _issuerPk,
+           "ConfidentialNoteFungibleTokenIssuer: not the issuer");
+  }
+
+  /**
+   * @description Building block: self-rotation — the current issuer proves
+   * their secret and binds a new issuer key. Same semantics as an
+   * `Ownable`-style ownership transfer: a compromised key can rotate itself
+   * away, so production deployments gate this behind governance too.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - The caller proves the CURRENT issuer secret.
+   */
+  export circuit _rotateIssuer(newIssuerPk: Field): [] {
+    _assertIssuer();
+    _issuerPk = disclose(newIssuerPk);
+  }
+
+  // Same construction as the token core's `derivePk`, duplicated so this
+  // extension stays free of token imports (a module import would share the
+  // token's ledger state into any consumer of this extension).
+  circuit derivePk(sk: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Bytes<32>>(sk));
+  }
+}

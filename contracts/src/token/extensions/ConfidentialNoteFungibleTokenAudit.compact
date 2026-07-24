@@ -1,0 +1,174 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenAudit.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenAudit
+ * @description Optional standalone extension that gives a designated auditor
+ * COMPLETE visibility over a `ConfidentialNoteFungibleToken` pool while the public
+ * sees nothing. It imports no token module.
+ *
+ * For each output note, `_emitAuditedOutput`:
+ *
+ * - DERIVES the note's nonce from an ECDH shared secret with the audit key
+ *   and returns it (the consumer commits exactly this nonce), and
+ * - pushes an `AuditRecord` encrypting the note's value and owner to the
+ *   audit key.
+ *
+ * Because the nonce comes from the audit ECDH, the auditor recovers
+ * `(owner, value, nonce)` for every output BY CONSTRUCTION — an output the
+ * auditor cannot open cannot exist in a pool that routes all note creation
+ * through this circuit. From the recovered fields the auditor recomputes each
+ * commitment and nullifier, reconstructing the full transaction graph:
+ * amounts, counterparties (spends attribute to the consumed note's owner),
+ * and note lifecycles. The audit key holds no spend authority... with one
+ * caveat: knowing every nonce means the auditor can derive every nullifier
+ * preimage, so in a seizure-enabled preset the audit trail is exactly what
+ * arms the seizure authority (see the preset).
+ *
+ * @notice Pairs with `ConfidentialNoteFungibleToken`. The consuming contract wires
+ * every note-creation path through this extension:
+ *
+ *   circuit emitOutput(ownerPk: Field, value: Uint<128>, slot: Bytes<32>): [] {
+ *     const nonce = Audit__emitAuditedOutput(ownerPk, value, slot);
+ *     Core__mintNote(Core_Note { value: value, nonce: nonce }, ownerPk);
+ *   }
+ *
+ * @warning Audit completeness is a property of the CONSUMER's wiring: a note
+ * created without `_emitAuditedOutput` is invisible to the auditor. Route
+ * every `_mintNote` through it.
+ *
+ * @dev `wit_AuditRandomness` MUST return a fresh, secret seed per invocation;
+ * ephemerals expand from it (see `crypto/EcdhMask` freshness rules). `slot`
+ * domain-separates ephemerals when one transaction emits several outputs.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenAudit {
+  import CompactStandardLibrary;
+  import "../../crypto/EcdhMask" prefix EcdhMask_;
+
+  // Per-output audit ciphertext: the note's value and owner encrypted to the
+  // audit key. The note's nonce is derived from the same ECDH shared secret,
+  // so it needs no ciphertext field.
+  export struct AuditRecord {
+    ephemeralPk: JubjubPoint;
+    valueCt: Field;
+    ownerCt: Field;
+  }
+
+  // The auditor's recovered view of one output (see `recoverAuditRecord`).
+  export struct AuditView {
+    value: Field;
+    nonce: Field;
+    ownerPk: Field;
+  }
+
+  export ledger _isInitialized: Boolean;
+  // Mandatory viewing key: every audited output is readable by its holder
+  // (and no one else).
+  export ledger _auditKey: JubjubPoint;
+  // Per-output records, for observation: auditors scan this list. It is this
+  // extension's event substitute.
+  export ledger _auditTrail: List<AuditRecord>;
+
+  // Randomness seed for audit ephemerals. MUST be fresh + secret per
+  // invocation (see module doc).
+  witness wit_AuditRandomness(): Bytes<32>;
+  // The audit secret scalar (`_auditKey = g^auditSk`); only `_rotateAuditKey`
+  // consumes it.
+  witness wit_AuditKeySecret(): Field;
+
+  /**
+   * @description One-shot initialization binding the audit key.
+   *
+   * Requirements:
+   *
+   * - Extension is not already initialized.
+   * - `auditKey` is not the identity point.
+   *
+   * @circuitInfo k=10, rows=615
+   */
+  export circuit initialize(auditKey: JubjubPoint): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenAudit: already initialized");
+    assert(auditKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenAudit: identity audit key");
+    _auditKey = disclose(auditKey);
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Emits the audit record for one output note and returns the
+   * note's DERIVED nonce, which the consumer must commit verbatim. See the
+   * module doc for the completeness argument.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   *
+   * @circuitInfo k=15, rows=31599
+   */
+  export circuit _emitAuditedOutput(ownerPk: Field, value: Uint<128>, slot: Bytes<32>): Field {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenAudit: extension not initialized");
+
+    const ea = degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
+      [wit_AuditRandomness(), pad(32, "OZ:cnt:ea"), slot]));
+    const eaPk = ecMulGenerator(ea);
+    // Point guard subsumes `ea != 0` (see crypto/EcdhMask weak-inputs note).
+    assert(eaPk != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenAudit: zero audit ephemeral");
+    const shared = ecMul(_auditKey, ea);
+
+    // The nonce is DERIVED from the audit shared secret: an output the auditor
+    // cannot open cannot exist, and nonce freshness reduces to ephemeral
+    // freshness.
+    const nonce = EcdhMask_kdf(shared, pad(32, "OZ:cnt:nonce"));
+
+    // Audit record: value + owner one-time-padded to the audit key.
+    _auditTrail.pushFront(disclose(AuditRecord {
+      ephemeralPk: eaPk,
+      valueCt: (value as Field) + EcdhMask_kdf(shared, pad(32, "OZ:cnt:a:value")),
+      ownerCt: ownerPk + EcdhMask_kdf(shared, pad(32, "OZ:cnt:a:owner"))
+    }));
+
+    return nonce;
+  }
+
+  /**
+   * @description Building block: self-rotation — the current audit-key holder
+   * proves the secret scalar and binds a new audit key. Records already
+   * published stay readable by the OLD key (ciphertexts cannot be clawed
+   * back); outputs emitted after rotation derive their nonces from the new
+   * key. Production deployments gate this behind governance too.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - `newKey` is not the identity point.
+   * - The caller proves the CURRENT audit secret (`g^secret == _auditKey`).
+   */
+  export circuit _rotateAuditKey(newKey: JubjubPoint): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenAudit: extension not initialized");
+    assert(newKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenAudit: identity audit key");
+    assert(ecMulGenerator(wit_AuditKeySecret()) == _auditKey,
+           "ConfidentialNoteFungibleTokenAudit: not the audit key holder");
+    _auditKey = disclose(newKey);
+  }
+
+  /**
+   * @description Auditor-side: recover one output's `(value, nonce, ownerPk)`
+   * from an AuditRecord using the audit secret scalar (`auditKey = g^auditSk`).
+   * Pure and off-chain; feeding the result to the token core's `commitOf` /
+   * `nullifierOf` reconstructs the note's full lifecycle.
+   */
+  export pure circuit recoverAuditRecord(record: AuditRecord, auditSk: Field): AuditView {
+    const shared = ecMul(record.ephemeralPk, auditSk);
+    return AuditView {
+      value: record.valueCt - EcdhMask_kdf(shared, pad(32, "OZ:cnt:a:value")),
+      nonce: EcdhMask_kdf(shared, pad(32, "OZ:cnt:nonce")),
+      ownerPk: record.ownerCt - EcdhMask_kdf(shared, pad(32, "OZ:cnt:a:owner"))
+    };
+  }
+}

@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteFungibleTokenAllowlist" prefix Allow_;
+
+export { Allow__allowed };
+
+export circuit _addAllowed(pk: Field): [] {
+  return Allow__addAllowed(pk);
+}
+
+export circuit _removeAllowed(index: Uint<64>): [] {
+  return Allow__removeAllowed(index);
+}
+
+export circuit _assertAllowed(pk: Field): [] {
+  return Allow__assertAllowed(pk);
+}
+
+export pure circuit leafOf(pk: Field): Bytes<32> {
+  return Allow_leafOf(pk);
+}

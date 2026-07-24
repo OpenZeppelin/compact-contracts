@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenAllowlist.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenAllowlist
+ * @description Optional standalone extension adding a KYC allowlist to a
+ * `ConfidentialNoteFungibleToken` pool. Because spenders are HIDDEN, a plain
+ * `Set` lookup is unusable (it would disclose who is transacting); membership
+ * is instead proven in zero knowledge against a Merkle tree of identity
+ * leaves — an observer learns only "an allowed party", never which one. It
+ * imports no token module; the composing contract gates `_addAllowed` /
+ * `_removeAllowed` (admin) and wires `_assertAllowed` at its chokepoints:
+ *
+ *   export circuit transfer(recipientPk: Field, ...): [] {
+ *     Allowlist__assertAllowed(Core__spenderPk());   // hidden-spender KYC
+ *     Allowlist__assertAllowed(recipientPk);         // recipient KYC
+ *     // ...
+ *   }
+ *
+ * The tree is PLAIN (not historic) on purpose: `checkRoot` accepts only the
+ * CURRENT root, so any update — including a tombstone removal — invalidates
+ * every previously fetched path, making revocation immediate. Wallets must
+ * refetch their path when the tree changes.
+ *
+ * @dev Removal is by leaf index (`_removeAllowed` overwrites the slot with
+ * the default leaf), which trusts the composer's off-chain index
+ * bookkeeping. Fail-closed hardening (prove the leaf at `index` matches the
+ * pk being removed) is a known follow-up.
+ *
+ * @dev `wit_AllowlistPath` supplies the prover's own membership path; the
+ * path stays witness, so which leaf proved membership is never revealed.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenAllowlist {
+  import CompactStandardLibrary;
+
+  // Allowlist leaf preimage (domain-separated identity commitment).
+  struct AllowLeafPreimage {
+    domain: Bytes<32>;
+    pk: Field;
+  }
+
+  // Identity commitments of allowed parties. Plain tree: current-root proofs
+  // only, so updates revoke stale paths.
+  export ledger _allowed: MerkleTree<16, Bytes<32>>;
+
+  // The prover's own membership path (fetched from the public tree).
+  witness wit_AllowlistPath(leaf: Bytes<32>): MerkleTreePath<16, Bytes<32>>;
+
+  /**
+   * @description Identity leaf: `H(domain, pk)`. Exported so admins and
+   * wallets derive leaves the way `_assertAllowed` does.
+   */
+  export pure circuit leafOf(pk: Field): Bytes<32> {
+    return persistentHash<AllowLeafPreimage>(AllowLeafPreimage {
+      domain: pad(32, "OZ:cnt:allow"),
+      pk: pk
+    });
+  }
+
+  /**
+   * @description UNGATED building block: adds `pk` to the allowlist. The
+   * composer gates who may administer the list.
+   */
+  export circuit _addAllowed(pk: Field): [] {
+    _allowed.insert(disclose(leafOf(pk)));
+  }
+
+  /**
+   * @description UNGATED building block: removes the leaf at `index` by
+   * overwriting it with the default leaf (a tombstone no identity can match).
+   * Every outstanding path proof is invalidated by the root change. The
+   * composer gates who may administer the list; see the module doc for the
+   * index-bookkeeping caveat.
+   */
+  export circuit _removeAllowed(index: Uint<64>): [] {
+    _allowed.insertIndexDefault(disclose(index));
+  }
+
+  /**
+   * @description Building block: proves `pk` is on the allowlist without
+   * revealing which leaf. Place it at the composer's chokepoints (hidden
+   * spender, disclosed-to-circuit recipient).
+   *
+   * Requirements:
+   *
+   * - `leafOf(pk)` is a leaf of the CURRENT tree (stale paths fail).
+   */
+  export circuit _assertAllowed(pk: Field): [] {
+    const leaf = leafOf(pk);
+    const path = wit_AllowlistPath(leaf);
+    assert(_allowed.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(path))),
+           "ConfidentialNoteFungibleTokenAllowlist: not allowed");
+    assert(leaf == path.leaf,
+           "ConfidentialNoteFungibleTokenAllowlist: path does not match identity");
+  }
+}

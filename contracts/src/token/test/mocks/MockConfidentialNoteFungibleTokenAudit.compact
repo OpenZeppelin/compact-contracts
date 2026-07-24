@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteFungibleTokenAudit" prefix Audit_;
+
+export { Audit_AuditRecord, Audit_AuditView }
+
+export { Audit__isInitialized, Audit__auditKey, Audit__auditTrail };
+
+export circuit initialize(auditKey: JubjubPoint): [] {
+  return Audit_initialize(auditKey);
+}
+
+export circuit _emitAuditedOutput(ownerPk: Field, value: Uint<128>, slot: Bytes<32>): Field {
+  // Exported-boundary marker: the derived nonce returns only to the local
+  // caller, which in a real composition commits it in the same proof.
+  return disclose(Audit__emitAuditedOutput(ownerPk, value, slot));
+}
+
+export circuit _rotateAuditKey(newKey: JubjubPoint): [] {
+  return Audit__rotateAuditKey(newKey);
+}
+
+export pure circuit recoverAuditRecord(record: Audit_AuditRecord, auditSk: Field): Audit_AuditView {
+  return Audit_recoverAuditRecord(record, auditSk);
+}

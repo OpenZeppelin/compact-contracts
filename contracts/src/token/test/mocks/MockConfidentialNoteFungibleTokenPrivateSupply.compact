@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteFungibleTokenPrivateSupply" prefix Supply_;
+import "../../../crypto/ElGamal" prefix ElGamal_;
+
+export { ElGamal_Ciphertext }
+
+export {
+  Supply__isInitialized,
+  Supply__supplyKey,
+  Supply__encSupply,
+  Supply__attestedSupply,
+  Supply__attestationCount
+};
+
+export circuit initialize(supplyKey: JubjubPoint): [] {
+  return Supply_initialize(supplyKey);
+}
+
+export circuit _addMinted(value: Uint<128>): [] {
+  return Supply__addMinted(value);
+}
+
+export circuit _addBurned(value: Uint<128>): [] {
+  return Supply__addBurned(value);
+}
+
+export circuit attestSupply(total: Uint<128>): [] {
+  return Supply_attestSupply(total);
+}
+
+export circuit _rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
+  return Supply__rotateSupplyKey(newKey, total);
+}
+
+// Off-chain helper surfaced for tests: derive the supply public key from its
+// secret the way the extension's attestation does.
+export pure circuit derivePk(ek: Bytes<32>): JubjubPoint {
+  return ElGamal_derivePk(ek);
+}

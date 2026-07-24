@@ -1,0 +1,187 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenPrivateSupply.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenPrivateSupply
+ * @description Optional standalone extension that adds CONFIDENTIAL supply
+ * accounting to a `ConfidentialNoteFungibleToken`. It imports no token module.
+ *
+ * The base token deliberately writes no public supply: a disclosed counter
+ * would leak every mint and burn amount as a public delta. This extension
+ * answers "what is the total supply?" without that leak:
+ *
+ * - `_encSupply` holds the outstanding supply as an exponential-ElGamal
+ *   ciphertext under `_supplyKey`. `_addMinted` / `_addBurned` update it
+ *   HOMOMORPHICALLY in the same transaction as the token op, so the ciphertext
+ *   is trustlessly the true running total — yet no per-transaction amount is
+ *   ever public. Homomorphic update needs no knowledge of the running
+ *   plaintext, so user-initiated burns can update it too.
+ * - `attestSupply` lets the supply-key holder (typically the auditor) publish
+ *   a PROOF-BACKED public total at a chosen cadence: the circuit verifies
+ *   in-proof that `_encSupply` decrypts to the claimed total, then disclose
+ *   only that total. Between attestations, individual amounts stay hidden;
+ *   batching gives issuance amounts k-anonymity at the attestation cadence.
+ *
+ * @notice Pairs with `ConfidentialNoteFungibleToken`. The consuming contract
+ * composes the pieces, calling the accounting block alongside the matching
+ * token op:
+ *
+ *   export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint<128>): [] {
+ *     HCT_mint(recipientPk, recipientEncPk, value);
+ *     Supply__addMinted(value);
+ *   }
+ *
+ *   export circuit burn(senderEncPk: JubjubPoint, value: Uint<128>): [] {
+ *     HCT_burn(senderEncPk, value);
+ *     Supply__addBurned(value);
+ *   }
+ *
+ * @warning Pair every mint with `_addMinted` and every burn with `_addBurned`
+ * on every path; mis-wiring is a security-critical, undetectable error (the
+ * ciphertext would silently drift from the pool's true value and attestation
+ * would publish a wrong-but-proven total). Correct wiring also guarantees the
+ * plaintext never underflows on `_addBurned` (a burn never exceeds the
+ * outstanding supply), which `ElGamal_subEncrypted` cannot check itself.
+ *
+ * @dev The supply key is an ElGamal keypair (`_supplyKey = derivePk(ek)`),
+ * separate from the token's audit key; a deployment may hand both to the same
+ * auditor. The attester learns the plaintext total off-chain (e.g. by summing
+ * the token's audit trail) — exponential-ElGamal decryption via discrete log
+ * is not required.
+ *
+ * @dev `wit_SupplyRandomness` MUST return a fresh, secret seed per invocation
+ * (ElGamal encryption-randomness rules). `_encSupply` starts as the canonical
+ * `Enc(0)`, which is publicly recognizable until the first update — supply is
+ * genuinely 0 at that point, so nothing leaks.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenPrivateSupply {
+  import CompactStandardLibrary;
+  import "../../crypto/ElGamal" prefix ElGamal_;
+
+  export ledger _isInitialized: Boolean;
+  // ElGamal public key the supply is encrypted under (attester holds the secret).
+  export ledger _supplyKey: JubjubPoint;
+  // Outstanding supply, homomorphically maintained. Hides every delta.
+  export ledger _encSupply: ElGamal_Ciphertext;
+  // Last publicly attested total and an attestation counter for indexers.
+  export ledger _attestedSupply: Uint<128>;
+  export ledger _attestationCount: Uint<64>;
+
+  // Randomness seed for encryption updates. MUST be fresh + secret per
+  // invocation (see module doc).
+  witness wit_SupplyRandomness(): Bytes<32>;
+  // The supply-key secret (only `attestSupply` consumes it).
+  witness wit_SupplyKeySecret(): Bytes<32>;
+
+  /**
+   * @description One-shot initialization: binds the supply key and starts the
+   * encrypted supply at the canonical `Enc(0)`.
+   *
+   * Requirements:
+   *
+   * - Extension is not already initialized.
+   * - `supplyKey` is not the identity point.
+   *
+   * @circuitInfo k=11, rows=1167
+   */
+  export circuit initialize(supplyKey: JubjubPoint): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenPrivateSupply: already initialized");
+    assert(supplyKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenPrivateSupply: identity supply key");
+    _supplyKey = disclose(supplyKey);
+    _encSupply = ElGamal_encryptZero();
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Homomorphically adds a minted `value` to the encrypted
+   * supply. Call once, with the exact minted amount, alongside every token
+   * mint. The public ledger sees only a re-randomized ciphertext.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   *
+   * @circuitInfo k=13, rows=6569
+   */
+  export circuit _addMinted(value: Uint<128>): [] {
+    assertInitialized();
+    const r = ElGamal_expandRandomness(wit_SupplyRandomness(), pad(32, "OZ:cnt:supply:add"));
+    _encSupply = disclose(ElGamal_addEncrypted(_encSupply, _supplyKey, value, r));
+  }
+
+  /**
+   * @description Homomorphically subtracts a burned `value` from the encrypted
+   * supply. Call once, with the exact burned amount, alongside every token
+   * burn. Correct pairing with the token op guarantees no plaintext underflow
+   * (see the mis-wiring warning).
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   *
+   * @circuitInfo k=13, rows=7683
+   */
+  export circuit _addBurned(value: Uint<128>): [] {
+    assertInitialized();
+    const r = ElGamal_expandRandomness(wit_SupplyRandomness(), pad(32, "OZ:cnt:supply:sub"));
+    _encSupply = disclose(ElGamal_subEncrypted(_encSupply, _supplyKey, value, r));
+  }
+
+  /**
+   * @description Publishes a proof-backed public supply total: verifies
+   * in-circuit that `_encSupply` decrypts to `total` under the supply key,
+   * then disclose only the total. Run at a chosen cadence (e.g. daily) for
+   * public, non-inflatable supply while per-transaction amounts stay hidden.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - The caller proves the supply-key secret (`derivePk(secret) == _supplyKey`).
+   * - `_encSupply` decrypts to `total`.
+   *
+   * @circuitInfo k=13, rows=4720
+   */
+  export circuit attestSupply(total: Uint<128>): [] {
+    assertInitialized();
+    ElGamal_assertDecryptsTo(_encSupply, _supplyKey, wit_SupplyKeySecret(), total);
+    // Only the attested total crosses to public state; the per-transaction
+    // deltas behind it stay encrypted.
+    _attestedSupply = disclose(total);
+    _attestationCount = disclose(_attestationCount + 1 as Uint<64>);
+  }
+
+  /**
+   * @description Building block: self-rotation — the current supply-key
+   * holder proves the secret AND the exact running total, and the encrypted
+   * supply is re-encrypted under the new key in the same proof (a ciphertext
+   * under the old key cannot be updated homomorphically by the new holder).
+   * `total` is a private circuit argument: it is never disclosed, only bound
+   * into the new ciphertext. Production deployments gate this behind
+   * governance too.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - `newKey` is not the identity point.
+   * - The caller proves the CURRENT supply-key secret and `_encSupply`
+   *   decrypts to `total`.
+   */
+  export circuit _rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
+    assertInitialized();
+    assert(newKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenPrivateSupply: identity supply key");
+    ElGamal_assertDecryptsTo(_encSupply, _supplyKey, wit_SupplyKeySecret(), total);
+    const r = ElGamal_expandRandomness(wit_SupplyRandomness(), pad(32, "OZ:cnt:supply:rot"));
+    _encSupply = disclose(ElGamal_encrypt(newKey, total, r));
+    _supplyKey = disclose(newKey);
+  }
+
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenPrivateSupply: extension not initialized");
+  }
+}
