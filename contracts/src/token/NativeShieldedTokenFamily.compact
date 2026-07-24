@@ -53,7 +53,7 @@ pragma language_version >= 0.23.0;
  * output, at the cost of making those mints recipient-public.
  *
  * @notice Supply accounting is opt-in: this module tracks NO supply totals.
- * Compose the optional `NativeShieldedTokenFamilySupply` extension only if you
+ * Compose the optional `NativeShieldedTokenFamilyPublicSupply` extension only if you
  * need an on-chain `totalSupply(domain)`; see it for the privacy trade-off it
  * introduces (it makes contract-mediated burn amounts public).
  *

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NativeShieldedTokenFamilySupplySimulator } from '../simulators/NativeShieldedTokenFamilySupplySimulator.js';
+import { NativeShieldedTokenFamilyPublicSupplySimulator } from '../simulators/NativeShieldedTokenFamilyPublicSupplySimulator.js';
 
 const b32 = (label: string): Uint8Array => {
   const u = new Uint8Array(32);
@@ -13,11 +13,11 @@ const DOMAIN_B = b32('domain-B');
 // The per-domain supply extension imports no token module, so it is unit-tested
 // by driving its accounting blocks and getters directly.
 
-let supply: NativeShieldedTokenFamilySupplySimulator;
+let supply: NativeShieldedTokenFamilyPublicSupplySimulator;
 
-describe('NativeShieldedTokenFamilySupply (extension)', () => {
+describe('NativeShieldedTokenFamilyPublicSupply (extension)', () => {
   beforeEach(async () => {
-    supply = await NativeShieldedTokenFamilySupplySimulator.create();
+    supply = await NativeShieldedTokenFamilyPublicSupplySimulator.create();
   });
 
   describe('initial state', () => {
@@ -65,14 +65,14 @@ describe('NativeShieldedTokenFamilySupply (extension)', () => {
       await supply._addMinted(DOMAIN_A, 1_000n);
       // DOMAIN_B was never minted; burning under it must revert.
       await expect(supply._addBurned(DOMAIN_B, 1n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burn exceeds available supply',
+        'NativeShieldedTokenPublicSupply: burn exceeds available supply',
       );
     });
 
     it('should revert a burn that exceeds the domain minted total', async () => {
       await supply._addMinted(DOMAIN_A, 1_000n);
       await expect(supply._addBurned(DOMAIN_A, 1_001n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burn exceeds available supply',
+        'NativeShieldedTokenPublicSupply: burn exceeds available supply',
       );
     });
 
@@ -82,7 +82,7 @@ describe('NativeShieldedTokenFamilySupply (extension)', () => {
       // available-supply check) is what fires.
       await supply.unsafeSetBurned(DOMAIN_A, 1_500n);
       await expect(supply._addBurned(DOMAIN_A, 1n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned total exceeds minted',
+        'NativeShieldedTokenPublicSupply: burned total exceeds minted',
       );
     });
   });

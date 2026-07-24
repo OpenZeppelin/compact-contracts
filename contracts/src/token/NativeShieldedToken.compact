@@ -45,7 +45,7 @@ pragma language_version >= 0.23.0;
  * recipient-public.
  *
  * @notice Supply accounting is opt-in: this module tracks NO supply totals.
- * Compose the optional `NativeShieldedTokenSupply` extension only if you need an
+ * Compose the optional `NativeShieldedTokenPublicSupply` extension only if you need an
  * on-chain `totalSupply()`; see it for the privacy trade-off it introduces (it
  * makes contract-mediated burn amounts public).
  *
