@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (utils/concurrency/RevocableMembershipTree.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module RevocableMembershipTree
+ * @description Concurrency building block: a ZK membership set whose ADDITIONS
+ * do not invalidate in-flight proofs, while REMOVALS still revoke instantly.
+ * A plain `MerkleTree` chokepoint couples admin tempo to user liveness (its
+ * `checkRoot` pins the CURRENT root, so every admin write aborts every
+ * in-flight proof); a bare `HistoricMerkleTree` tolerates concurrent inserts
+ * but keeps removed members provable against old roots. This module composes
+ * the two semantics deliberately: membership is proven against the historic
+ * root set, `_add` appends (old roots stay valid — onboarding stops hurting
+ * users), and `_removeAt` tombstones the leaf THEN calls `resetHistory()`, so
+ * only the post-removal root remains valid and every stale proof dies at
+ * once. See the repo-root `concurrency.md` (§9.4).
+ *
+ *   // admin (composer-gated)
+ *   Members__add(leafOf(pk));          // in-flight proofs keep verifying
+ *   Members__removeAt(index);          // instant revocation, on purpose
+ *
+ *   // prover chokepoint
+ *   Members__assertMember(leafOf(pk)); // which leaf proved it stays hidden
+ *
+ * @dev Leaf derivation stays consumer-side (identity commitments are domain
+ * business); salt leaves where dictionary-testing the set contents matters.
+ *
+ * @dev Removal is by leaf index, trusting the composer's off-chain index
+ * bookkeeping (fail-closed hardening — proving the leaf at `index` matches
+ * the member being removed — is a known follow-up, same as the token
+ * allowlist's).
+ *
+ * @dev History grows with every `_add` until the next removal resets it;
+ * `_resetHistory` is exposed for explicit pruning windows — calling it
+ * invalidates every in-flight proof, so treat it as an announced operational
+ * action, never routine hygiene.
+ *
+ * @dev Tree depth is fixed at 16 (65k members): Compact module state is a
+ * per-file singleton, so the depth cannot be a consumer choice without a
+ * generic-module instantiation this library deliberately avoids.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module RevocableMembershipTree {
+  import CompactStandardLibrary;
+
+  // Membership leaves. Historic on purpose: proofs verify against any root
+  // recorded since the last removal/reset.
+  export ledger _members: HistoricMerkleTree<16, Bytes<32>>;
+
+  // The prover's own membership path (fetched from the public tree).
+  witness wit_RevocableMembershipPath(leaf: Bytes<32>): MerkleTreePath<16, Bytes<32>>;
+
+  /**
+   * @description UNGATED building block: adds a member leaf. Appends to the
+   * root history, so proofs built before this add KEEP verifying — concurrent
+   * with every in-flight `_assertMember`. The composer gates who may
+   * administer the set.
+   *
+   * @circuitInfo k=13, rows=2299
+   */
+  export circuit _add(leaf: Bytes<32>): [] {
+    _members.insert(disclose(leaf));
+  }
+
+  /**
+   * @description UNGATED building block: removes the leaf at `index` by
+   * overwriting it with the default leaf, then RESETS the root history so
+   * only the post-removal root verifies — every outstanding membership proof
+   * (including the removed member's) is invalidated immediately. That
+   * in-flight abort is the point: removal is revocation. The composer gates
+   * who may administer the set; see the module doc for the index-bookkeeping
+   * caveat.
+   *
+   * @circuitInfo k=13, rows=2086
+   */
+  export circuit _removeAt(index: Uint<64>): [] {
+    _members.insertIndexDefault(disclose(index));
+    _members.resetHistory();
+  }
+
+  /**
+   * @description Building block: proves `leaf` is in the tree without
+   * revealing which position. Verifies against the historic root set, so it
+   * survives concurrent `_add`s and dies on any removal/reset since the
+   * prover fetched their path.
+   *
+   * Requirements:
+   *
+   * - `leaf` is a member at some root recorded since the last removal/reset.
+   *
+   * @circuitInfo k=13, rows=3063
+   */
+  export circuit _assertMember(leaf: Bytes<32>): [] {
+    const path = wit_RevocableMembershipPath(leaf);
+    assert(_members.checkRoot(disclose(merkleTreePathRoot<16, Bytes<32>>(path))),
+           "RevocableMembershipTree: not a member");
+    assert(leaf == path.leaf,
+           "RevocableMembershipTree: path does not match leaf");
+  }
+
+  /**
+   * @description UNGATED building block: prunes the root history to the
+   * current root only. Maintenance valve for history growth — invalidates
+   * every in-flight membership proof, so gate it and schedule it.
+   *
+   * @circuitInfo k=5, rows=24
+   */
+  export circuit _resetHistory(): [] {
+    _members.resetHistory();
+  }
+}

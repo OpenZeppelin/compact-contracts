@@ -32,6 +32,12 @@ pragma language_version >= 0.23.0;
  * @dev `wit_AllowlistPath` supplies the prover's own membership path; the
  * path stays witness, so which leaf proved membership is never revealed.
  *
+ * @dev Privacy caveat: leaves are UNSALTED (`leafOf(pk)` is deterministic),
+ * so anyone holding a candidate pk can test list membership and removal
+ * against the public inserts. Spend-time anonymity within the list is
+ * unaffected; the list's CONTENTS are dictionary-testable. Salted leaves are
+ * a known follow-up.
+ *
  * @dev NOT audited, NOT production.
  */
 module ConfidentialNoteFungibleTokenAllowlist {
@@ -64,6 +70,8 @@ module ConfidentialNoteFungibleTokenAllowlist {
   /**
    * @description UNGATED building block: adds `pk` to the allowlist. The
    * composer gates who may administer the list.
+   *
+   * @circuitInfo k=13, rows=6237
    */
   export circuit _addAllowed(pk: Field): [] {
     _allowed.insert(disclose(leafOf(pk)));
@@ -75,6 +83,8 @@ module ConfidentialNoteFungibleTokenAllowlist {
    * Every outstanding path proof is invalidated by the root change. The
    * composer gates who may administer the list; see the module doc for the
    * index-bookkeeping caveat.
+   *
+   * @circuitInfo k=13, rows=2086
    */
   export circuit _removeAllowed(index: Uint<64>): [] {
     _allowed.insertIndexDefault(disclose(index));
@@ -88,6 +98,8 @@ module ConfidentialNoteFungibleTokenAllowlist {
    * Requirements:
    *
    * - `leafOf(pk)` is a leaf of the CURRENT tree (stale paths fail).
+   *
+   * @circuitInfo k=13, rows=7001
    */
   export circuit _assertAllowed(pk: Field): [] {
     const leaf = leafOf(pk);

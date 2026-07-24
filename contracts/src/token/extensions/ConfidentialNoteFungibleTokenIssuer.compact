@@ -47,11 +47,15 @@ module ConfidentialNoteFungibleTokenIssuer {
    * Requirements:
    *
    * - Extension is not already initialized.
+   * - `issuerPk` is nonzero (zero has no known preimage, which would brick
+   *   minting permanently).
    *
-   * @circuitInfo k=6, rows=31
+   * @circuitInfo k=6, rows=37
    */
   export circuit initialize(issuerPk: Field): [] {
     assert(!_isInitialized, "ConfidentialNoteFungibleTokenIssuer: already initialized");
+    assert(issuerPk != 0 as Field,
+           "ConfidentialNoteFungibleTokenIssuer: zero issuer key");
     _issuerPk = disclose(issuerPk);
     _isInitialized = true;
   }
@@ -84,9 +88,16 @@ module ConfidentialNoteFungibleTokenIssuer {
    *
    * - Extension is initialized.
    * - The caller proves the CURRENT issuer secret.
+   * - `newIssuerPk` is nonzero (renounce-by-zero is deliberately NOT
+   *   supported: it would brick minting silently; a renounce design is a
+   *   separate decision).
+   *
+   * @circuitInfo k=13, rows=2285
    */
   export circuit _rotateIssuer(newIssuerPk: Field): [] {
     _assertIssuer();
+    assert(newIssuerPk != 0 as Field,
+           "ConfidentialNoteFungibleTokenIssuer: zero issuer key");
     _issuerPk = disclose(newIssuerPk);
   }
 

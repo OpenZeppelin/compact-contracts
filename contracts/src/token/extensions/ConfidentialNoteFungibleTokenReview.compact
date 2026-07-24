@@ -26,6 +26,18 @@ pragma language_version >= 0.23.0;
  * commitment and nullifier — full visibility over exactly the outputs
  * addressed to it.
  *
+ * @warning Record correctness is a property of the CONSUMER's wiring: this
+ * circuit cannot verify that `(ownerPk, value, nonce)` match a committed
+ * note. Emit the record in the SAME circuit that commits the note, from the
+ * same values, or the published record silently diverges from the pool — an
+ * undetectable-on-chain error, same class as the PrivateSupply mis-wiring
+ * warning.
+ *
+ * @dev Reviewer selection is the SENDER's: with hidden identities the
+ * circuit can enforce "an approved reviewer", never "the right custodian for
+ * this user". Per-user reviewer policy is deployment/Phase-2 design, out of
+ * scope of this draft.
+ *
  * @dev Disclosure caveat (draft): each record publishes WHICH approved
  * reviewer can open it (`reviewerKeyHash`), so custodian affiliation is
  * public per output. Hiding the reviewer behind a Merkle membership proof is
@@ -87,6 +99,8 @@ module ConfidentialNoteFungibleTokenReview {
    *
    * - `reviewerKey` is not the identity point.
    * - `reviewerKey` is not already approved.
+   *
+   * @circuitInfo k=13, rows=5159
    */
   export circuit _addReviewer(reviewerKey: JubjubPoint): [] {
     assert(reviewerKey != ecMulGenerator(0 as Field),
@@ -106,6 +120,8 @@ module ConfidentialNoteFungibleTokenReview {
    * Requirements:
    *
    * - `reviewerKey` is an approved reviewer.
+   *
+   * @circuitInfo k=13, rows=4593
    */
   export circuit _removeReviewer(reviewerKey: JubjubPoint): [] {
     const keyHash = reviewerKeyHashOf(reviewerKey);
@@ -122,6 +138,8 @@ module ConfidentialNoteFungibleTokenReview {
    * Requirements:
    *
    * - `reviewerKey` is an approved reviewer.
+   *
+   * @circuitInfo k=16, rows=36165
    */
   export circuit _emitReviewRecord(
     reviewerKey: JubjubPoint,

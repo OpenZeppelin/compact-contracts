@@ -1,0 +1,103 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (utils/concurrency/ShardedCounter.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ShardedCounter
+ * @description Concurrency building block: an add-only `Uint<128>` total
+ * split across shards, for high-write counters that the kernel `Counter`
+ * cannot carry (its increment is capped at `Uint<16>` per call). Each `_add`
+ * is a read-modify-write of ONE shard cell, so two concurrent writers
+ * conflict only when they pick the same shard — a 1/N collision instead of
+ * certainty. Probabilistic, not eliminative: prefer a delta inbox
+ * (`UintDeltaInbox`) when a folder role is acceptable; sharding is for
+ * folderless deployments. See the repo-root `concurrency.md` (§9.3).
+ *
+ *   // writer: shard chosen from the writer's OWN randomness
+ *   const shard = (wit_Randomness() ...) % 8;
+ *   Sharded__add(domain, shard as Uint<8>, amount);
+ *
+ * The total is the sum over shards: indexers read the map off-chain; a
+ * circuit needing the exact total must look up every shard it trusts to be
+ * populated, pinning them all (such a reader conflicts with every concurrent
+ * writer — same as before sharding, which is why exact-total reads should be
+ * rare or move to an inbox design).
+ *
+ * @dev The shard index MUST derive from the writer's own randomness witness —
+ * NEVER from a ledger read (that would pin the read and defeat the shape).
+ * The consumer fixes the shard-space size by bounding the index it passes
+ * (e.g. `% 8`); smaller spaces mean fewer cells to sum but more collisions.
+ *
+ * @dev Add-only on purpose: a subtraction can underflow one shard even when
+ * the cross-shard total is sufficient, so decrements need global knowledge
+ * that sharding is designed to avoid. Track decreasing quantities as a second
+ * domain (`minted` / `burned`) and net off-chain or at a fold point.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ShardedCounter {
+  import CompactStandardLibrary;
+
+  // Shard-key hash preimage (domain-separated).
+  struct ShardKeyPreimage {
+    tag: Bytes<32>;
+    domain: Bytes<32>;
+    shard: Uint<8>;
+  }
+
+  // Shard cells, keyed by `shardKeyOf(domain, shard)`.
+  export ledger _shards: Map<Bytes<32>, Uint<128>>;
+
+  /**
+   * @description Registry key for one shard: `H(tag, domain, shard)`.
+   * Exported so indexers sum totals the way the circuits write them.
+   */
+  export pure circuit shardKeyOf(domain: Bytes<32>, shard: Uint<8>): Bytes<32> {
+    return persistentHash<ShardKeyPreimage>(ShardKeyPreimage {
+      tag: pad(32, "OZ:concurrency:shard"),
+      domain: domain,
+      shard: shard
+    });
+  }
+
+  /**
+   * @description UNGATED building block: adds `amount` to one shard of
+   * `domain`'s total. Pins only the chosen shard cell.
+   *
+   * Requirements:
+   *
+   * - The shard's running total does not overflow `Uint<128>`.
+   *
+   * @param domain - Which total to add to.
+   * @param shard - Writer-chosen shard index (from the writer's randomness).
+   * @param amount - The amount to add.
+   *
+   * @circuitInfo k=13, rows=4634
+   */
+  export circuit _add(domain: Bytes<32>, shard: Uint<8>, amount: Uint<128>): [] {
+    const shardKey = shardKeyOf(domain, shard);
+    const current = shardValue(shardKey);
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - current >= amount, "ShardedCounter: arithmetic overflow");
+    _shards.insert(disclose(shardKey), disclose((current + amount) as Uint<128>));
+  }
+
+  /**
+   * @description Reads one shard's running total (0 if never written). A
+   * circuit summing shards for an exact total pins every shard it reads.
+   *
+   * @circuitInfo k=13, rows=4261
+   */
+  export circuit _shardTotal(domain: Bytes<32>, shard: Uint<8>): Uint<128> {
+    return shardValue(shardKeyOf(domain, shard));
+  }
+
+  // Missing shard reads as zero.
+  circuit shardValue(shardKey: Bytes<32>): Uint<128> {
+    if (!_shards.member(disclose(shardKey))) {
+      return 0;
+    }
+    return _shards.lookup(disclose(shardKey));
+  }
+}

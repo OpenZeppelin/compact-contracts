@@ -20,6 +20,7 @@ import {
   _seizureCount,
   _commitments,
   _nullifiers,
+  _frozen,
   _auditKey,
   _auditTrail,
   _deliveries,
@@ -38,6 +39,7 @@ export {
   _seizureCount,
   _commitments,
   _nullifiers,
+  _frozen,
   _auditKey,
   _auditTrail,
   _deliveries,
@@ -95,4 +97,12 @@ export circuit rotateAuditKey(newKey: JubjubPoint): [] {
 
 export circuit rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
   return Token_rotateSupplyKey(newKey, total);
+}
+
+export circuit freeze(nf: Bytes<32>): [] {
+  return Token_freeze(nf);
+}
+
+export circuit unfreeze(nf: Bytes<32>): [] {
+  return Token_unfreeze(nf);
 }

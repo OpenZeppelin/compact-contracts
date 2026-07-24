@@ -77,7 +77,9 @@ module ConfidentialNoteFungibleTokenAudit {
   // invocation (see module doc).
   witness wit_AuditRandomness(): Bytes<32>;
   // The audit secret scalar (`_auditKey = g^auditSk`); only `_rotateAuditKey`
-  // consumes it.
+  // consumes it. MUST be a canonical Jubjub scalar (below the subgroup
+  // order): an out-of-range value faults `ecMulGenerator` at proving time
+  // (same range assumption as `recoverAuditRecord`'s `auditSk`).
   witness wit_AuditKeySecret(): Field;
 
   /**
@@ -147,6 +149,8 @@ module ConfidentialNoteFungibleTokenAudit {
    * - Extension is initialized.
    * - `newKey` is not the identity point.
    * - The caller proves the CURRENT audit secret (`g^secret == _auditKey`).
+   *
+   * @circuitInfo k=11, rows=1175
    */
   export circuit _rotateAuditKey(newKey: JubjubPoint): [] {
     assert(_isInitialized, "ConfidentialNoteFungibleTokenAudit: extension not initialized");

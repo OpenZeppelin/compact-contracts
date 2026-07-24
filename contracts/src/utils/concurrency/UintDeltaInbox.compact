@@ -1,0 +1,200 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (utils/concurrency/UintDeltaInbox.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module UintDeltaInbox
+ * @description Concurrency building block: a pending-delta inbox for `Uint`
+ * accumulators. Splits a hot read-modify-write cell into *credit* (hot, must
+ * commute) and *absorb* (cold, may serialize): writers blind-insert deltas
+ * into a map keyed by their own fresh randomness — no ledger value is read,
+ * so concurrent credits NEVER conflict with each other or with a concurrent
+ * consume — and a fold step drains up to `8` entries per call, returning the
+ * netted delta for the CONSUMER to absorb into its own accumulator cell.
+ * Only the fold conflicts, and only with itself. See the repo-root
+ * `concurrency.md` (§9.2) for the conflict model and why this shape commutes.
+ *
+ *   // hot path (e.g. per mint): commutes with everything
+ *   Inbox__credit(domain, wit_FreshId(), UintInbox_Delta { add: v, sub: 0 });
+ *
+ *   // cold path (folder role, composer-gated): serializes with itself only
+ *   const net = Inbox__consume(domain);
+ *   assert(_total + net.add >= net.sub, "underflow");
+ *   _total = disclose(((_total + net.add) - net.sub) as Uint<128>);
+ *
+ * One module instance serves many accumulators in one contract: entries are
+ * keyed by `(domain, id)`, so consumers separate concerns with domain tags
+ * (module ledger state is a singleton per module file, so double-importing
+ * does NOT create a second inbox).
+ *
+ * @dev `id` MUST be fresh per credit and derived from the writer's own
+ * randomness witness — NEVER from a ledger read (that would pin the read and
+ * reintroduce the conflict this module removes). A reused `(domain, id)` is
+ * rejected rather than silently overwritten.
+ *
+ * @dev Trust model of the fold: the witness picks only WHICH entries to
+ * drain (ids); amounts come from the ledger, existence is asserted, and
+ * drained entries are removed — a lying witness can never invent, alter, or
+ * double-count value. The one thing it could do is SKIP entries (delay their
+ * absorption), and that is (a) harmless to safety — skipped deltas stay in
+ * `_pending`, public and forever drainable, (b) measurable — `_pendingCounts`
+ * tracks each domain's backlog on-chain, and (c) PROVABLE-ABSENT in-circuit —
+ * a checkpoint fold follows `_consume` with `_assertEmpty`, which fails
+ * unless every pending entry of the domain was drained:
+ *
+ *   const net = Inbox__consume(domain);
+ *   Inbox__assertEmpty(domain);   // in-circuit proof: nothing was skipped
+ *
+ * Because the fold cannot corrupt value, composers MAY leave it
+ * permissionless: then a skipping indexer is routed around by any honest
+ * party, and censorship requires all folders to collude.
+ *
+ * @dev Inbox growth is bounded by folding cadence; entries and backlog
+ * counts are visible to indexers via the generated ledger reader.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module UintDeltaInbox {
+  import CompactStandardLibrary;
+
+  // One pending delta. Both directions are carried so writers need no
+  // in-circuit branch: a credit sets one side and zeroes the other.
+  export struct Delta {
+    add: Uint<128>;
+    sub: Uint<128>;
+  }
+
+  // The netted result of one consume batch. The consumer applies
+  // `acc + add - sub` with its own bounds checks.
+  export struct Net {
+    add: Uint<128>;
+    sub: Uint<128>;
+  }
+
+  // Pending deltas, keyed by `entryKeyOf(domain, id)`.
+  export ledger _pending: Map<Bytes<32>, Delta>;
+  // Per-domain backlog counts. `Counter` increments/decrements are relative
+  // VM ops, so maintaining the count does NOT reintroduce pinning; reading it
+  // (only `_assertEmpty` does) is the deliberate completeness barrier.
+  export ledger _pendingCounts: Map<Bytes<32>, Counter>;
+
+  // Up to 8 pending ids to drain this call; `default<Bytes<32>>` marks an
+  // empty slot. Supplied by the folder's indexer.
+  witness wit_UintInboxPendingIds(domain: Bytes<32>): Vector<8, Bytes<32>>;
+
+  /**
+   * @description Registry key for one pending entry: `H(tag, domain, id)`.
+   * Exported so indexers and folders derive keys the way the circuits do.
+   */
+  export pure circuit entryKeyOf(domain: Bytes<32>, id: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<3, Bytes<32>>>(
+      [pad(32, "OZ:concurrency:uint-inbox"), domain, id]);
+  }
+
+  /**
+   * @description UNGATED building block: records a pending delta. Reads no
+   * ledger value, so concurrent credits commute with each other and with a
+   * concurrent `_consume` (which only touches ALREADY-EXISTING keys).
+   *
+   * Requirements:
+   *
+   * - `id` is nonzero (the zero id is the empty-slot sentinel).
+   * - `(domain, id)` is not already pending.
+   *
+   * @param domain - Which accumulator this delta belongs to.
+   * @param id - Fresh writer-chosen entry id (from the writer's randomness).
+   * @param delta - The delta to record.
+   *
+   * @circuitInfo k=13, rows=4829
+   */
+  export circuit _credit(domain: Bytes<32>, id: Bytes<32>, delta: Delta): [] {
+    assert(id != default<Bytes<32>>, "UintDeltaInbox: zero id");
+    const entryKey = entryKeyOf(domain, id);
+    assert(!_pending.member(disclose(entryKey)), "UintDeltaInbox: id already pending");
+    _pending.insert(disclose(entryKey), disclose(delta));
+    // Bootstrap the domain's counter once (the member pin is FALSE only for a
+    // domain's first-ever credit, then TRUE and stable forever); the increment
+    // itself is relative and commutes.
+    if (disclose(!_pendingCounts.member(disclose(domain)))) {
+      _pendingCounts.insertDefault(disclose(domain));
+    }
+    _pendingCounts.lookup(disclose(domain)).increment(1);
+  }
+
+  /**
+   * @description UNGATED building block: drains up to 8 pending entries of
+   * `domain` (chosen by the folder's witness) and returns their netted sums
+   * for the consumer to absorb. Pins exactly the drained entries plus nothing
+   * else, so it conflicts only with another concurrent `_consume` — never
+   * with credits. Call repeatedly to drain a deep inbox.
+   *
+   * @param domain - Which accumulator to fold.
+   * @return The summed `add` and `sub` across the drained entries.
+   *
+   * @circuitInfo k=16, rows=38139
+   */
+  export circuit _consume(domain: Bytes<32>): Net {
+    const ids = wit_UintInboxPendingIds(domain);
+    const d0 = consumeSlot(domain, ids[0]);
+    const d1 = consumeSlot(domain, ids[1]);
+    const d2 = consumeSlot(domain, ids[2]);
+    const d3 = consumeSlot(domain, ids[3]);
+    const d4 = consumeSlot(domain, ids[4]);
+    const d5 = consumeSlot(domain, ids[5]);
+    const d6 = consumeSlot(domain, ids[6]);
+    const d7 = consumeSlot(domain, ids[7]);
+    return Net {
+      add: addCapped(addCapped(addCapped(d0.add, d1.add), addCapped(d2.add, d3.add)),
+                     addCapped(addCapped(d4.add, d5.add), addCapped(d6.add, d7.add))),
+      sub: addCapped(addCapped(addCapped(d0.sub, d1.sub), addCapped(d2.sub, d3.sub)),
+                     addCapped(addCapped(d4.sub, d5.sub), addCapped(d6.sub, d7.sub)))
+    };
+  }
+
+  // Drains one slot; the zero id is an empty slot contributing nothing and
+  // touching no state. The branch condition derives from the folder's witness,
+  // so it is disclosed (it gates ledger operations).
+  circuit consumeSlot(domain: Bytes<32>, id: Bytes<32>): Delta {
+    if (disclose(id == default<Bytes<32>>)) {
+      return Delta { add: 0, sub: 0 };
+    }
+    const entryKey = entryKeyOf(domain, id);
+    assert(_pending.member(disclose(entryKey)), "UintDeltaInbox: unknown pending id");
+    const delta = _pending.lookup(disclose(entryKey));
+    _pending.remove(disclose(entryKey));
+    _pendingCounts.lookup(disclose(domain)).decrement(1);
+    return delta;
+  }
+
+  /**
+   * @description Building block: proves in-circuit that `domain` has NO
+   * pending entries — the completeness checkpoint. A fold that runs
+   * `_consume` then `_assertEmpty` in one circuit proves its witness skipped
+   * nothing; an exact-total consumer (attestation, cap check) composes it the
+   * same way before trusting the folded value.
+   *
+   * @dev This read PINS the domain's count, so a checkpoint fold conflicts
+   * with concurrent credits — necessarily: "nothing is outstanding" is only
+   * meaningful at a serialization point. Keep routine folds on plain
+   * `_consume` (commutes with credits) and pay this barrier only where
+   * completeness is the claim.
+   *
+   * @circuitInfo k=9, rows=340
+   */
+  export circuit _assertEmpty(domain: Bytes<32>): [] {
+    // A domain with no counter never received a credit: trivially empty.
+    if (disclose(!_pendingCounts.member(disclose(domain)))) {
+      return;
+    }
+    assert(_pendingCounts.lookup(disclose(domain)).read() == 0,
+           "UintDeltaInbox: entries still pending");
+  }
+
+  // Overflow-guarded Uint<128> addition.
+  circuit addCapped(a: Uint<128>, b: Uint<128>): Uint<128> {
+    const MAX_UINT128 = 340282366920938463463374607431768211455;
+    assert(MAX_UINT128 - a >= b, "UintDeltaInbox: arithmetic overflow");
+    return (a + b) as Uint<128>;
+  }
+}

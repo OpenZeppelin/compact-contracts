@@ -16,12 +16,22 @@ Missing pieces identified while hardening the draft, grouped by driver. Complian
 - [ ] **Metadata extension** — no `name`/`symbol`/`decimals` anywhere in the family; NST and CFT both have it. Sealed fields + getters.
 - [ ] **Batch outputs** — pay N recipients in one proof (one nullifier, N+1 commitments). Compile-time variant; also reduces transaction-shape leakage.
 
-**Compliance (in progress on this branch)**
+**Compliance (landed on this branch)**
 
-- [ ] **Freeze extension** — freeze-before-seize: a frozen-nullifier set checked at the owner-spend chokepoint; seizure of frozen notes still works.
-- [ ] **KYC allowlist extension** — Merkle allowlist proven in-circuit at spend time (hidden spender ⇒ ZK membership, not a `Set` lookup); tombstone removal against the current root.
-- [ ] **Review (selective disclosure) extension** — per-output encrypted records to an approved reviewer key (custodian/FIU), alongside the global audit channel; final shape pending BitGo FIU feedback.
-- [ ] **Role rotation** — self-rotation blocks in Issuer/Audit/Supply (prove the current secret, bind the new key; supply rotation re-encrypts `_encSupply` under the new key in-proof) and `rotateAuthority` in the preset.
+- [x] **Freeze extension** — freeze-before-seize: a frozen-nullifier set checked at the owner-spend chokepoint; seizure of frozen notes still works.
+- [x] **KYC allowlist extension** — Merkle allowlist proven in-circuit at spend time (hidden spender ⇒ ZK membership, not a `Set` lookup); tombstone removal against the current root.
+- [x] **Review (selective disclosure) extension** — per-output encrypted records to an approved reviewer key (custodian/FIU), alongside the global audit channel; final shape pending BitGo FIU feedback.
+- [x] **Role rotation** — self-rotation blocks in Issuer/Authority/Audit/Supply (prove the current secret, bind the new key; supply rotation re-encrypts `_encSupply` under the new key in-proof), all surfaced in the preset.
+- [x] **Authority role extension** — seizure-authority gate split out of the preset (mirrors Issuer: key, secret witness, `_assertAuthority`, self-rotation); the seize flow and `_seizureCount` stay preset wiring.
+
+**Concurrency (from the §14 analysis)**
+
+- [ ] **`Counter` for `_seizureCount` / `_attestationCount`** — the in-circuit `+ 1` pins the read and serializes seizes/attestations; `Counter.increment` is a relative VM op and commutes. Cheap swap.
+- [x] **Mint/burn serialization on `_encSupply`** — solved via the delta inbox: `extensions/…ConcurrentSupply` (credits commute; permissionless fold; `attestSupply` proves the inbox empty in-circuit) + demo preset `presets/ConcurrentConfidentialNoteFungibleToken`. Re-basing the REGULATED preset onto it is a separate open decision (its emission policy must credit the inbox inside `emitOutput`).
+- [ ] **Allowlist admin-vs-spend liveness** — every `_addAllowed` aborts all in-flight KYC spends (current-root pin). Evaluate `HistoricMerkleTree` + `resetHistory` on removal: adds stop hurting, removals keep instant revocation.
+- [ ] **Commitment-tree history growth** — the past-roots map is append-only and unbounded (no protocol pruning for contract trees, unlike Zswap's 1h window); decide a `resetHistory` cadence + operational window (each reset invalidates in-flight spends).
+- [ ] **Freeze/seize race docs** — freeze wins only if it lands first; document the authority sequence freeze → finality → seize in the preset doc.
+- [ ] **Live contention experiment** — confirm the §14 matrix empirically on the testkit live stack: two concurrent transfers (expect both land) vs. two concurrent mints (expect one rejected with a read mismatch).
 
 **Supply**
 
@@ -73,7 +83,7 @@ The terms this document relies on, defined by primary sources rather than restat
 - **Note.** "A note is a representation of value held in a shielded pool. … It represents that a value v is spendable by the recipient who holds the spending key corresponding to a given shielded payment address." — Zcash protocol specification, §3.2 [[3]](#ref-3). Here a note is the struct `Note { value: Uint<128>, nonce: Field }`, owned by whoever's public key `pk` was bound into its commitment.
 - **Note commitment.** "When a note is created as an output of a transaction, only a commitment … to the note contents is disclosed publically … This allows the value and recipient to be kept private, while the commitment is used by the zk-SNARK proof when the note is spent, to check that it exists on the block chain." — Zcash protocol specification, §3.2.2 [[4]](#ref-4). Here: `cm = H(domain, value, nonce, pk)` with a SHA-256-class `persistentHash`; the 256-bit nonce provides the hiding entropy.
 - **Note commitment tree.** "A note commitment tree is an incremental Merkle tree, of fixed depth …, used to store note commitments … Just as the UTXO (unspent transaction output) set used in Bitcoin, it is used to express the existence of value and the capability to spend it. However, unlike the UTXO set, it is not the job of this tree to protect against double-spending, as it is append-only." — Zcash protocol specification, §3.8 [[5]](#ref-5).
-- **Nullifier.** "Nullifiers are enforced to be unique within a valid block chain, in order to prevent double-spends." — Zcash protocol specification, §3.9 [[6]](#ref-6). Zcash's design rationale requires that the "nullifier deterministically depends only on values committed to (directly or indirectly) by the note commitment" [[7]](#ref-7) — a requirement this design satisfies with the *minimal* preimage `nf = H(domain, nonce)`, deliberately omitting any owner secret (§14 explains the trade-off).
+- **Nullifier.** "Nullifiers are enforced to be unique within a valid block chain, in order to prevent double-spends." — Zcash protocol specification, §3.9 [[6]](#ref-6). Zcash's design rationale requires that the "nullifier deterministically depends only on values committed to (directly or indirectly) by the note commitment" [[7]](#ref-7) — a requirement this design satisfies with the *minimal* preimage `nf = H(domain, nonce)`, deliberately omitting any owner secret (§15 explains the trade-off).
 - **Graph privacy.** The property Zerocash introduced: "the corresponding transaction hides the payment's origin, destination, and transferred amount." — Ben-Sasson et al., *Zerocash: Decentralized Anonymous Payments from Bitcoin* [[8]](#ref-8). "Graph" refers to the who-paid-whom transaction graph, which stays hidden even though every transaction is public.
 - **Witness (Compact).** "A circuit can also access or update private state as it operates via *witnesses*. Witnesses are callback functions provided by the TypeScript driver." — Compact language reference [[9]](#ref-9). Witnesses are how secrets (spend keys, input notes, randomness seeds) enter a circuit without touching the chain.
 - **Disclosure (Compact).** "Disclosure of private data (exported circuit arguments, witness return values, and anything derived from private data) must be acknowledged by wrapping an expression whose value contains private data in a `disclose()` wrapper before storing it in the public state." — Compact language reference [[10]](#ref-10). Every `disclose()` in this code marks a deliberate crossing of the privacy boundary; §10 justifies each one.
@@ -213,7 +223,7 @@ The identity hash `pk = Hf(sk)`. `persistentHash` is the SHA-256-class hash; `de
 
 **`nullifierOf(note: Note): Bytes<32>`** ([source](https://github.com/OpenZeppelin/compact-contracts/blob/878aa438b98879088f13f0ef96e10311ff020257/contracts/src/token/ConfidentialNoteToken.compact#L112-L117))
 
-`nf = H("OZ:cnt:null", nonce)`. Derivable by anyone who knows the nonce, and by design *only* from the nonce. Compare Zcash, where nullifier derivation involves a per-account nullifier key, so knowing a note's contents does not let third parties track its spend. Here it does, deliberately: the auditor watches consumption, and the authority seizes, through exactly this property. The cost is that nonce secrecy carries all spend protection (§14).
+`nf = H("OZ:cnt:null", nonce)`. Derivable by anyone who knows the nonce, and by design *only* from the nonce. Compare Zcash, where nullifier derivation involves a per-account nullifier key, so knowing a note's contents does not let third parties track its spend. Here it does, deliberately: the auditor watches consumption, and the authority seizes, through exactly this property. The cost is that nonce secrecy carries all spend protection (§15).
 
 Both hashes are domain-separated (`OZ:cnt:commit` vs `OZ:cnt:null`), so a commitment can never be replayed as a nullifier or vice versa.
 
@@ -553,7 +563,73 @@ Two structural facts explain the numbers. First, the dominant cost everywhere is
 
 For calibration: the pure note spend (~20.5k rows in the spike) is about *half* the account-model CFT transfer (~43.8k). Graph privacy via notes is not intrinsically the expensive option; the compliance channels are what cost.
 
-# 14. Design decisions
+# 14. Concurrency
+
+How the design behaves when several transactions race on one deployment. The Midnight docs cover this only at a high level, so the mechanics below are verified against the compiler's op table and the ledger sources [[21]](#ref-21)[[22]](#ref-22)[[23]](#ref-23).
+
+## 14.1 The conflict model
+
+A contract call ships a fixed *public transcript* — an Impact VM program built at proof time against a snapshot of the contract state — plus the proof. "Kachina uses transcripts to record state operations and related queries." [[20]](#ref-20) On-chain the program is re-executed against the *current* state, and exactly two things couple it to the snapshot it was built on:
+
+- **Pinned reads.** Every ledger read a circuit performs is emitted as a `popeq` op with the expected value baked into the transcript; at application the VM compares baked vs. live and rejects the transaction on mismatch (`ReadMismatch`) [[22]](#ref-22)[[23]](#ref-23).
+- **Declared effects.** The transcript declares its effects up front; the ledger recomputes and requires equality [[23]](#ref-23).
+
+Nothing else binds the transcript to its snapshot: ops that stay inside the VM program are re-executed against live state and succeed regardless of interleaving. This is the official guidance's distinction, stated for counters: "the `increment` will (almost) always succeed, while the read-add-write sequence is prone to failure." [[21]](#ref-21)
+
+Which Compact ledger operation pins what is mechanical, from the compiler's op table [[22]](#ref-22):
+
+| Operation | Pins into the transcript? |
+| --- | --- |
+| Ledger cell read (value used in-circuit) | **yes** — the value |
+| Cell write (`x = ...`) | no — blind overwrite |
+| `Counter.increment` | no — relative `addi` on live state |
+| `Set.member` / `Map.lookup` | **yes** — the result |
+| `Set.insert` / `Set.remove` / `Map.insert` | no — per-key blind write |
+| `List.pushFront` | no — length bump is relative |
+| `MerkleTree.insert` / `HistoricMerkleTree.insert` | no — appends at the **live** first-free index (relative bump); two concurrent inserts land at successive indices |
+| `MerkleTree.checkRoot` | **yes** — `currentRoot == r` |
+| `HistoricMerkleTree.checkRoot` | **yes** — `r ∈ history`; inserts only ever *add* to the history map, so the pinned `true` survives concurrent inserts |
+
+Two consequences to internalize: conflicts are read-vs-write (a pinned read breaks only when another transaction *writes* that cell or key; concurrent reads never collide), and the note machinery's writes — tree append, per-key set insert, list push — are exactly the non-pinning kind. The commitment/nullifier design is the concurrency-friendly shape for this VM, not by luck: it is append-only state addressed by content, the same pattern the ledger itself uses for Zswap.
+
+## 14.2 The conflict matrix
+
+Verdicts for the regulated preset, per racing pair:
+
+| Race | Verdict | Mechanism |
+| --- | --- | --- |
+| `transfer` ∥ `transfer` (different input notes) | ✅ commute | appends and per-key inserts pin nothing; the historic root check survives new inserts |
+| `transfer` ∥ `mint` / `burn` / `seize` (different notes) | ✅ commute | `transfer` touches no supply or counter cell |
+| `mint`/`burn` ∥ `mint`/`burn` | ❌ conflict | `_encSupply` is a pinned read + write: the homomorphic add runs in-circuit (the VM has no EC ops), so the old ciphertext is baked into the transcript |
+| `seize` ∥ `seize` | ❌ conflict | `_seizureCount + 1` is an in-circuit read (pinned) + write |
+| `attestSupply` / `rotateSupplyKey` ∥ `mint`/`burn` | ❌ conflict | both pin `_encSupply`; the mint/burn writes it |
+| any rotation ∥ that role's in-flight circuits | ❌ conflict | the gate assert pins the role-key cell — intended: rotation instantly invalidates the old key's pending work |
+| two spends of the same note (owner ∥ owner, owner ∥ `seize`) | ❌ first lands, second fails | both pin `nf ∉ _nullifiers`; this is the single-spend / seizure mutual exclusion working as designed |
+| `freeze(nf)` ∥ spend of that note | ❌ first lands | the spend pins `nf ∉ _frozen`; freeze wins only if it lands first — the safe authority sequence is freeze → finality → seize |
+| `freeze` ∥ `freeze` (different `nf`) | ✅ commute | per-key set writes |
+| allowlist `_addAllowed`/`_removeAllowed` ∥ any allowlist-proven spend | ❌ conflict | plain-tree `checkRoot` pins the **current** root and any admin write changes it — intended for removals (instant revocation), collateral for adds (onboarding one user aborts every in-flight KYC spend) |
+| audit / delivery / review trail appends among themselves | ✅ commute | `pushFront` pins nothing |
+
+Summary: **payments scale; the compliance and supply layers serialize.** The core's transfers are structurally concurrent. The serialization points are `_encSupply` (issuance and redemption are effectively one-at-a-time), the two in-circuit counters (`_seizureCount`, `_attestationCount` — fixable with `Counter`), and the plain allowlist tree (admin tempo couples to user liveness). The `_isInitialized` flags are pinned everywhere but written once, so they never conflict after deployment.
+
+## 14.3 What losing a race costs
+
+All circuits here run in the transaction's guaranteed segment (no `Kernel.checkpoint`), and a guaranteed-segment failure rejects the whole transaction **before fees are taken** [[23]](#ref-23). A losing racer pays nothing on-chain; the cost is wallet-side — rebuild the transcript against fresh state, re-prove, resubmit, and wait finality again. Under sustained contention a conflicting class (say, bursty mints) degrades to one landed transaction per retry cycle. Native Zswap coins avoid this for transfers because the protocol merges shielded offers itself; a contract-level pool buys its extra properties (§3.2) at the price of these in-contract races.
+
+## 14.4 Root-history growth
+
+Every insert appends the new root to the historic tree's history map and nothing ever evicts it — contract trees get no protocol pruning (the ledger's own Zswap tree time-prunes its root history after one hour; a contract's `HistoricMerkleTree` grows forever) [[22]](#ref-22)[[23]](#ref-23). `resetHistory` exists, but calling it invalidates every in-flight spend (their pinned `r ∈ history` flips to false), so pruning must be an announced operational window, not routine hygiene. Until then the history map is unbounded state growth, same class as the `_auditTrail` concern (§16).
+
+## 14.5 Fixing the serialization points
+
+The fixes are general (the same hotspot shape recurs in the account-model and native shielded families) and are designed in the standalone doc [`concurrency.md`](./concurrency.md) §9. For this token, the mapping is:
+
+- `_seizureCount` / `_attestationCount` → `Counter` (commutative increment; `concurrency.md` §9.1).
+- `_encSupply` mint/burn serialization → pending-delta inbox + fold: mints/burns append encrypted deltas to a map keyed by writer randomness (commutes); a fold circuit absorbs them; `attestSupply` becomes fold-then-attest (§9.2). IMPLEMENTED as `extensions/ConfidentialNoteFungibleTokenConcurrentSupply` (PrivateSupply untouched) with the `ConcurrentConfidentialNoteFungibleToken` demo preset; attestation proves the inbox empty in-circuit, so a skipped delta cannot hide.
+- Allowlist admin-vs-spend → `HistoricMerkleTree` with `resetHistory` only on removal: adds stop aborting in-flight spends, revocation stays instant (§9.4).
+- Not fixed on purpose: same-note races and rotation-vs-in-flight are the intended mutual-exclusion semantics (§9.6 of the same doc explains why).
+
+# 15. Design decisions
 
 - **Notes, not accounts.** Sender privacy requires an unindexed commitment set with ZK membership; no account-model trick avoids it (§3.1).
 - **A contract-level pool, not Zswap coins.** Buys hidden issuance amounts, evasion-proof auditor viewing, and seizure, none of which native coins can express today (§3.2). Costs: big circuits and a self-managed tree.
@@ -567,7 +643,7 @@ For calibration: the pure note spend (~20.5k rows in the spike) is about *half* 
 - **`HistoricMerkleTree` over a plain tree.** Proofs built against a recent root still verify after later inserts; without history, every insert would invalidate every in-flight proof.
 - **Domain separation everywhere.** Commit vs nullifier, core vs audit nonces, out vs change slots, value vs owner pads: every hash and pad carries a distinct `OZ:cnt:*` tag, so no derived value can be replayed in another role.
 
-# 15. Limitations and open questions
+# 16. Limitations and open questions
 
 - **The audit key is all-seeing and global.** Selective or request-based disclosure (per-custodian review keys, or an issuer-run re-encryption service) is the known Phase-2 design question. Until then, audit-key compromise is total visibility compromise.
 - **One global authority key.** Production wants governance gating (compose with `multisig/`) and per-user recovery keys for least privilege.
@@ -577,7 +653,7 @@ For calibration: the pure note spend (~20.5k rows in the spike) is about *half* 
 - **Wallet UX is real work**: scanning, trial decryption, note management, and change tracking all live off-chain.
 - **Naming.** Adopted renames (see the header note): `ConfidentialNoteFungibleToken` family, supply extension as `ConfidentialNoteFungibleTokenPrivateSupply`. Applied across the branch code (modules, mocks, simulators, witnesses, CHANGELOG). Still to sweep: the in-repo design doc carries the earlier working name `HybridConfidentialToken`, and the preset header cites a doc path that predates it.
 
-# 16. FAQ
+# 17. FAQ
 
 **What does the public ledger actually contain?**<br>Commitment inserts, nullifiers, ciphertexts (audit + delivery), supply ciphertext updates, the seizure counter, attested totals, and the role keys. No amounts, no senders, no recipients, no balances.
 
@@ -597,7 +673,7 @@ For calibration: the pure note spend (~20.5k rows in the spike) is about *half* 
 
 **Why `Uint<128>` values?**<br>Headroom, and no protocol coupling: unlike native mints (capped at `Uint<64>` by the ledger's effect encoding), note values never touch a protocol effect.
 
-# 17. Implementation status
+# 18. Implementation status
 
 | Component | Status |
 | --- | --- |
@@ -631,3 +707,7 @@ Pinned commits: compact-contracts PR #679 [`878aa43`](https://github.com/OpenZep
 17. <a id="ref-17"></a>[`compact compiler/standard-library.compact:47`](https://github.com/LFDT-Minokawa/compact/blob/c06961eb661942f7689c6509d0913326f264e848/compiler/standard-library.compact#L47) — `export new type JubjubPoint`.
 18. <a id="ref-18"></a>[`contracts/privacy_readme.md`](https://github.com/OpenZeppelin/compact-contracts/blob/878aa438b98879088f13f0ef96e10311ff020257/contracts/privacy_readme.md) — the four-tier exploration, benchmarks, and findings behind the model choice.
 19. <a id="ref-19"></a>[`contracts/src/token/docs/hybrid-confidential-token.md`](https://github.com/OpenZeppelin/compact-contracts/blob/878aa438b98879088f13f0ef96e10311ff020257/contracts/src/token/docs/hybrid-confidential-token.md) — the in-PR design doc (compliance mapping, disclosure boundary, open questions).
+20. <a id="ref-20"></a>[Midnight docs: Kachina](https://docs.midnight.network/concepts/kachina) — transcripts as recorded state operations; concurrency via reordering. Background: Kerber, Kiayias, Kohlweiss, [*Kachina — Foundations of Private Smart Contracts*](https://eprint.iacr.org/2020/543).
+21. <a id="ref-21"></a>[Midnight docs: Smart contracts on Midnight](https://docs.midnight.network/concepts/how-midnight-works/smart-contracts) — the `increment` vs. read-add-write concurrency guidance.
+22. <a id="ref-22"></a>[`compact compiler/midnight-ledger.ss`](https://github.com/LFDT-Minokawa/compact/blob/main/compiler/midnight-ledger.ss) — the ADT-method → VM-op table (ground truth for what pins): `MerkleTree.insert` bumps `first_free` with a relative `addi`; `HistoricMerkleTree.checkRoot` is `member` over the history map + `popeq`; `Counter.increment` is a relative `addi`; cell reads end in `popeq`. Verified against the repo at 2026-07-24; line refs drift with main.
+23. <a id="ref-23"></a>[`midnightntwrk/midnight-ledger`](https://github.com/midnightntwrk/midnight-ledger) — transcript re-execution and rejection: `popeq` mismatch (`onchain-vm/src/result_mode.rs`, `ReadMismatch`), declared-vs-recomputed effects equality and guaranteed/fallible fee semantics (`ledger/src/semantics.rs`), Zswap root-history time-pruning (`zswap/src/ledger.rs`).

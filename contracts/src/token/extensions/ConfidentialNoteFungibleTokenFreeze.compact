@@ -47,6 +47,8 @@ module ConfidentialNoteFungibleTokenFreeze {
    * Requirements:
    *
    * - `nf` is not already frozen.
+   *
+   * @circuitInfo k=9, rows=308
    */
   export circuit _freeze(nf: Bytes<32>): [] {
     assert(!_frozen.member(disclose(nf)),
@@ -61,6 +63,8 @@ module ConfidentialNoteFungibleTokenFreeze {
    * Requirements:
    *
    * - `nf` is frozen.
+   *
+   * @circuitInfo k=9, rows=305
    */
   export circuit _unfreeze(nf: Bytes<32>): [] {
     assert(_frozen.member(disclose(nf)),
@@ -71,6 +75,8 @@ module ConfidentialNoteFungibleTokenFreeze {
   /**
    * @description Building block: asserts the note behind `nf` is not frozen.
    * Place it at every owner-spend chokepoint (and nowhere near `seize`).
+   *
+   * @circuitInfo k=9, rows=308
    */
   export circuit _assertNotFrozen(nf: Bytes<32>): [] {
     assert(!_frozen.member(disclose(nf)),

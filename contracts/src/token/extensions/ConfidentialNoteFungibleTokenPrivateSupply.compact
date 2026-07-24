@@ -164,12 +164,19 @@ module ConfidentialNoteFungibleTokenPrivateSupply {
    * into the new ciphertext. Production deployments gate this behind
    * governance too.
    *
+   * WARNING: rotating to a key whose secret is lost or unheld makes the
+   * encrypted supply unattestable and unrotatable FOREVER — the identity
+   * point is rejected below, but no circuit can check that someone holds the
+   * scalar behind `newKey`. Verify key custody before rotating.
+   *
    * Requirements:
    *
    * - Extension is initialized.
    * - `newKey` is not the identity point.
    * - The caller proves the CURRENT supply-key secret and `_encSupply`
    *   decrypts to `total`.
+   *
+   * @circuitInfo k=14, rows=11624
    */
   export circuit _rotateSupplyKey(newKey: JubjubPoint, total: Uint<128>): [] {
     assertInitialized();
