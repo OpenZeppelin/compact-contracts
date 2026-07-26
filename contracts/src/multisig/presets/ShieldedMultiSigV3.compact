@@ -33,9 +33,9 @@ pragma language_version >= 0.23.0;
  * hash prevent signatures for one operation type from being replayed as
  * the other.
  *
- * @notice ECDSA verification is stubbed. Replace `stubVerifySignature` with
- * `ecdsaVerify`, and `persistentHash` with `keccak256`, once the Compact
- * ECDSA and Keccak primitives are available.
+ * @notice Threshold authorization is enforced with secp256k1 ECDSA
+ * verification (`secp256k1EcdsaVerify`), and all operation/commitment hashing
+ * uses `keccak256`.
  */
 
 import CompactStandardLibrary;
@@ -59,12 +59,14 @@ struct VerificationState {
 }
 
 /**
- * @description Input to persistentHash for computing signer commitments.
- * Combines the ECDSA public key with an instance-specific salt and
- * domain separator to produce a unique, unlinkable commitment.
+ * @description Input to keccak256 for computing signer commitments.
+ * Combines the signer's secp256k1 public-key coordinates (X,Y) with an
+ * instance-specific salt and domain separator to produce a unique,
+ * unlinkable commitment.
  */
 struct SignerCommitmentInput {
-  pk: Bytes<64>,
+  pkX: Bytes<32>,
+  pkY: Bytes<32>,
   salt: Bytes<32>,
   domain: Bytes<32>
 }
@@ -83,8 +85,10 @@ export sealed ledger _tokenDomain: Bytes<32>;
  * a threshold of 2.
  *
  * Each commitment is computed off-chain as:
- *   `persistentHash(SignerCommitmentInput { pk, instanceSalt, domain })`
- * where domain is `pad(32, "multisig:signer:")`.
+ *   `keccak256(SignerCommitmentInput { pkX, pkY, instanceSalt, domain })`
+ * where `pkX`/`pkY` are the signer's secp256k1 public-key coordinates and
+ * domain is `pad(32, "multisig:signer:")`. Use the exported `_calculateSignerId`
+ * circuit to derive these consistently with in-circuit verification.
  *
  * `tokenDomain` is used with `kernel.self()` to derive the token color
  * via `tokenType(_tokenDomain, kernel.self())`. Only coins of this color
@@ -136,9 +140,8 @@ constructor(
  * after the counter has been incremented, binding each mint's nonce to a
  * distinct counter value.
  *
- * @notice Replace `persistentHash` with `keccak256` and `stubVerifySignature`
- * with `ecdsaVerify` once the Compact ECDSA and Keccak primitives are
- * available, to match the custodian's HSM signing format.
+ * @notice The message hash is computed with `keccak256` and each
+ * signature is checked with `secp256k1EcdsaVerify`.
  *
  * Requirements:
  *
@@ -149,23 +152,23 @@ constructor(
  *
  * @param {Uint<64>} amount - The token amount to mint.
  * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The address to receive the minted tokens.
- * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
- * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the mint hash.
+ * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+ * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
  */
 export circuit mint(
   amount: Uint<64>,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-  pubkeys: Vector<2, Bytes<64>>,
-  signatures: Vector<2, Bytes<64>>
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
 ): [] {
   const opNonce = _counter;
   _counter.increment(1);
 
   // Canonicalize recipient to ensure garbage values don't sully the hash
   const canonRecipient = Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(recipient);
-  const recipientHash = persistentHash<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient);
+  const recipientHash = keccak256<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient);
 
-  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+  const msgHash = keccak256<Vector<5, Bytes<32>>>([
     pad(32, "multisig:mint:"),
     kernel.self().bytes,
     recipientHash,
@@ -211,9 +214,8 @@ export circuit mint(
  * The "multisig:burn:" domain prefix ensures burn signatures cannot be replayed
  * as mint operations for the same parameters.
  *
- * @notice Replace `persistentHash` with `keccak256` and `stubVerifySignature`
- * with `ecdsaVerify` once the Compact ECDSA and Keccak primitives are
- * available, to match the custodian's HSM signing format.
+ * @notice The message hash is computed with `keccak256` and each
+ * signature is checked with `secp256k1EcdsaVerify`.
  *
  * Requirements:
  *
@@ -226,19 +228,19 @@ export circuit mint(
  *
  * @param {QualifiedShieldedCoinInfo} coin - The coin to burn (from operator's UTXO pool).
  * @param {Uint<64>} amount - The token amount to burn.
- * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
- * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the burn hash.
+ * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+ * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
  */
 export circuit burn(
   coin: QualifiedShieldedCoinInfo,
   amount: Uint<64>,
-  pubkeys: Vector<2, Bytes<64>>,
-  signatures: Vector<2, Bytes<64>>
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
 ): [] {
   const opNonce = _counter;
   _counter.increment(1);
 
-  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+  const msgHash = keccak256<Vector<4, Bytes<32>>>([
     pad(32, "multisig:burn:"),
     kernel.self().bytes,
     opNonce as Bytes<32>,
@@ -277,14 +279,14 @@ export circuit burn(
  * different duplicate-detection mechanism (sorted commitments or bitmap).
  *
  * @param {VerificationState} state - Accumulator threaded through fold.
- * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
- * @param {Bytes<64>} signature - The signer's signature over msgHash.
+ * @param {Secp256k1Point} pubkey - The signer's secp256k1 public key.
+ * @param {Secp256k1EcdsaSignature} signature - The signer's ECDSA signature over msgHash.
  * @returns {VerificationState} Updated accumulator.
  */
 circuit verifySignature(
   state: VerificationState,
-  pubkey: Bytes<64>,
-  signature: Bytes<64>
+  pubkey: Secp256k1Point,
+  signature: Secp256k1EcdsaSignature
 ): VerificationState {
   const commitment = _calculateSignerId(pubkey, _instanceSalt);
 
@@ -293,8 +295,7 @@ circuit verifySignature(
 
   Signer_assertSigner(commitment);
 
-  // TODO: Replace with ecdsaVerify + keccak256 when primitives are available
-  assert(stubVerifySignature(pubkey, state.msgHash, signature), "Multisig: invalid signature");
+  assert(secp256k1EcdsaVerify(state.msgHash, signature, pubkey), "Multisig: invalid signature");
 
   return VerificationState {
     validCount: state.validCount + 1 as Uint<8>,
@@ -304,41 +305,30 @@ circuit verifySignature(
 }
 
 /**
- * @description Computes a signer commitment from an ECDSA public key.
+ * @description Computes a signer commitment from a secp256k1 public key.
  *
- * The commitment is persistentHash(pk, salt, domain) where:
- * - pk: the signer's ECDSA public key (64 bytes)
+ * The commitment is keccak256(pkX, pkY, salt, domain) where:
+ * - pkX/pkY: the signer's secp256k1 public-key coordinates (32 bytes each)
  * - salt: instance-specific random value (prevents cross-contract correlation)
  * - domain: "multisig:signer:" (domain separation)
  *
  * Pure circuit — callable off-chain by the deployer to compute
  * commitments for the constructor.
  *
- * @param {Bytes<64>} pk - The ECDSA public key.
+ * @param {Secp256k1Point} pk - The secp256k1 public key.
  * @param {Bytes<32>} salt - The instance salt.
  * @returns {Bytes<32>} The signer commitment.
  */
 export pure circuit _calculateSignerId(
-  pk: Bytes<64>,
+  pk: Secp256k1Point,
   salt: Bytes<32>
 ): Bytes<32> {
-  return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
-    pk: pk,
+  return keccak256<SignerCommitmentInput>(SignerCommitmentInput {
+    pkX: secp256k1PointX(pk) as Bytes<32>,
+    pkY: secp256k1PointY(pk) as Bytes<32>,
     salt: salt,
     domain: pad(32, "multisig:signer:")
   });
-}
-
-/**
- * @description Stub for ECDSA signature verification.
- * Always returns true. MUST be replaced before any non-test deployment.
- */
-circuit stubVerifySignature(
-  pubkey: Bytes<64>,
-  msgHash: Bytes<32>,
-  signature: Bytes<64>
-): Boolean {
-  return true;
 }
 
 // ─── View ───────────────────────────────────────────────────────

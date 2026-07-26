@@ -1,5 +1,4 @@
 import {
-  convertFieldToBytes,
   type EncodedContractAddress,
   encodeCoinPublicKey,
   isContractAddress,
@@ -116,8 +115,7 @@ export const generateEitherPubKeyPair = (str: string) =>
     Either<ZswapCoinPublicKey, ContractAddress>,
   ];
 
-export const zeroUint8Array = (length = 32) =>
-  convertFieldToBytes(length, 0n, '');
+export const zeroUint8Array = (length = 32) => new Uint8Array(length);
 
 export const ZERO_KEY = {
   is_left: true,

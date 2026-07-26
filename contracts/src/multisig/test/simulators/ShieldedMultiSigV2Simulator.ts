@@ -1,3 +1,4 @@
+import type { Secp256k1Point } from '@midnight-ntwrk/compact-runtime';
 import {
   createSimulator,
   type SimulatorOptions,
@@ -8,6 +9,7 @@ import {
   pureCircuits,
   Contract as ShieldedMultiSigV2,
 } from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
+import type { EcdsaSignature } from '../EcdsaTestUtils.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
@@ -67,7 +69,7 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
   }
 
   public static calculateSignerId(
-    pk: Uint8Array,
+    pk: Secp256k1Point,
     salt: Uint8Array,
   ): Uint8Array {
     return pureCircuits._calculateSignerId(pk, salt);
@@ -81,8 +83,8 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     to: Recipient,
     amount: bigint,
     coin: QualifiedShieldedCoinInfo,
-    pubkeys: Uint8Array[],
-    signatures: Uint8Array[],
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
   ): Promise<ShieldedSendResult> {
     return this.circuits.impure.execute(to, amount, coin, pubkeys, signatures);
   }

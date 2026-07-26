@@ -41,11 +41,13 @@ export struct VerificationState {
 
 /**
  * @description Input to persistentHash for computing signer commitments.
- * Combines the ECDSA public key with an instance-specific salt and
- * domain separator to produce a unique, unlinkable commitment.
+ * Combines the signer's secp256k1 public-key coordinates (X,Y) with an
+ * instance-specific salt and domain separator to produce a unique,
+ * unlinkable commitment.
  */
 export struct SignerCommitmentInput {
-  pk: Bytes<64>,
+  pkX: Bytes<32>,
+  pkY: Bytes<32>,
   salt: Bytes<32>,
   domain: Bytes<32>
 }
@@ -62,8 +64,10 @@ ledger _instanceSalt: Bytes<32>;
  * a threshold.
  *
  * Each commitment is computed off-chain as:
- * persistentHash(SignerCommitmentInput { pk, instanceSalt, domain })
- * where domain is pad(32, "MultiSig:signer:").
+ * persistentHash(SignerCommitmentInput { pkX, pkY, instanceSalt, domain })
+ * where pkX/pkY are the signer's secp256k1 public-key coordinates and
+ * domain is pad(32, "MultiSig:signer:"). Use the exported `_calculateSignerId`
+ * circuit to derive these consistently with in-circuit verification.
  *
  * The instanceSalt should be a random value to prevent the same public
  * key from producing the same commitment across different multisig
@@ -127,8 +131,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * is verified against the message hash. Duplicate signers are rejected
  * via inequality check on adjacent commitments.
  *
- * @notice ECDSA verification is stubbed. Replace stubVerifySignature
- * with ecdsaVerify when Compact ECDSA primitives are available.
+ * @notice Signatures are verified with secp256k1 ECDSA
+ * (`secp256k1EcdsaVerify`) over the persistentHash message digest.
  *
  * @notice Duplicate detection via != only works for exactly 2 signers.
  * Production contracts with larger signer sets need a different
@@ -144,8 +148,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * @param {Proposal_Recipient} to - The recipient.
  * @param {Uint<128>} amount - The amount to send.
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
- * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
- * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the operation.
+ * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+ * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the operation.
  *
  * @returns {ShieldedSendResult} The send result including any change.
  */
@@ -153,8 +157,8 @@ export circuit execute(
   to: Proposal_Recipient,
   amount: Uint<128>,
   coin: QualifiedShieldedCoinInfo,
-  pubkeys: Vector<2, Bytes<64>>,
-  signatures: Vector<2, Bytes<64>>
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
 ): ShieldedSendResult {
   // Increment nonce
   const currentNonce = _nonce;
@@ -193,15 +197,15 @@ export circuit execute(
  * verifies registry membership, and validates the ECDSA signature.
  *
  * @param {VerificationState} state - Accumulator threaded through fold.
- * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
- * @param {Bytes<64>} signature - The signer's signature over msgHash.
+ * @param {Secp256k1Point} pubkey - The signer's secp256k1 public key.
+ * @param {Secp256k1EcdsaSignature} signature - The signer's ECDSA signature over msgHash.
  *
  * @returns {VerificationState} Updated accumulator.
  */
 circuit verifySignature(
   state: VerificationState,
-  pubkey: Bytes<64>,
-  signature: Bytes<64>
+  pubkey: Secp256k1Point,
+  signature: Secp256k1EcdsaSignature
 ): VerificationState {
   const commitment = _calculateSignerId(pubkey, _instanceSalt);
 
@@ -211,9 +215,7 @@ circuit verifySignature(
   // Verify this commitment is a registered signer
   Signer_assertSigner(commitment);
 
-  // TODO: Replace with actual ECDSA primitive when available
-  // assert(ecdsaVerify(pubkey, state.msgHash, signature), "Multisig: invalid signature");
-  assert(stubVerifySignature(pubkey, state.msgHash, signature), "Multisig: invalid signature");
+  assert(secp256k1EcdsaVerify(state.msgHash, signature, pubkey), "Multisig: invalid signature");
 
   return VerificationState {
     validCount: state.validCount + 1 as Uint<8>,
@@ -223,42 +225,31 @@ circuit verifySignature(
 }
 
 /**
- * @description Computes a signer commitment from an ECDSA public key.
+ * @description Computes a signer commitment from a secp256k1 public key.
  *
- * The commitment is persistentHash(pk, salt, domain) where:
- * - pk: the signer's ECDSA public key (64 bytes)
+ * The commitment is persistentHash(pkX, pkY, salt, domain) where:
+ * - pkX/pkY: the signer's secp256k1 public-key coordinates
  * - salt: instance-specific random value (prevents cross-contract correlation)
  * - domain: "MultiSig:signer:" (domain separation)
  *
  * This is a pure circuit. It can be called off-chain by the deployer
  * to compute commitments for the constructor.
  *
- * @param {Bytes<64>} pk - The ECDSA public key.
+ * @param {Secp256k1Point} pk - The secp256k1 public key.
  * @param {Bytes<32>} salt - The instance salt.
  *
  * @returns {Bytes<32>} The signer commitment.
  */
 export pure circuit _calculateSignerId(
-  pk: Bytes<64>,
+  pk: Secp256k1Point,
   salt: Bytes<32>
 ): Bytes<32> {
   return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
-    pk: pk,
+    pkX: secp256k1PointX(pk) as Bytes<32>,
+    pkY: secp256k1PointY(pk) as Bytes<32>,
     salt: salt,
     domain: pad(32, "MultiSig:signer:")
   });
-}
-
-/**
- * @description Stub for ECDSA signature verification.
- * Always returns true. MUST be replaced before any non-test deployment.
- */
-circuit stubVerifySignature(
-  pubkey: Bytes<64>,
-  msgHash: Bytes<32>,
-  signature: Bytes<64>
-): Boolean {
-  return true;
 }
 
 // ─── View ───────────────────────────────────────────────────────

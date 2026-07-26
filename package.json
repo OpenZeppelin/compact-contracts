@@ -43,7 +43,8 @@
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
     "ip-address": "10.1.1",
-    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1"
+    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1",
+    "@midnight-ntwrk/compact-runtime": "portal:../minokawa-compact/compact/runtime"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0"
