@@ -41,6 +41,7 @@ import {
   CircuitContextManager,
   isLiveBackend,
 } from '@openzeppelin/compact-simulator';
+import fc from 'fast-check';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   awaitPublishedTxs,
@@ -71,10 +72,8 @@ const secretKey = (label: string): Uint8Array => {
 
 const ALICE_SK = secretKey('ALICE');
 const BOB_SK = secretKey('BOB');
-const CAROL_SK = secretKey('CAROL');
 const ALICE = core.derivePk(ALICE_SK);
 const BOB = core.derivePk(BOB_SK);
-const CAROL = core.derivePk(CAROL_SK);
 
 // Planted so two probes derive byte-identical notes; the differential tests
 // need every input equal except the one secret under study.
@@ -207,14 +206,19 @@ const shapeOf = (transcript: Op<AlignedValue>[]): string[] =>
 const encodingsOf = (value: bigint): string[] => bigIntToValue(value).map(hex);
 
 /**
- * Hex width below which a value is too small to be a digest.
+ * The digest-width values a transcript publishes: hashes, roots, nullifiers.
  *
- * Not 64. The runtime trims leading zero bytes, so a 32-byte digest arrives 31
- * bytes wide about 1 in 256 times, and an exact-width filter silently drops it.
+ * NOT an exact 32 bytes. The runtime zero-trims leading zero bytes, so a digest
+ * beginning `0x00` arrives 31 bytes wide, roughly one time in 256. Filtering on
+ * exactly 64 hex characters therefore drops real digests at random, which is how
+ * this layer became flaky once its inputs were generated rather than chosen.
+ *
+ * The bound below keeps every plausibly-trimmed digest while still excluding the
+ * small tags and indices a transcript also carries: misclassifying a digest now
+ * needs five leading zero bytes, about one in a trillion.
  */
 const DIGEST_MIN_HEX = 56;
 
-/** The 32-byte values a transcript publishes: hashes, roots, nullifiers. */
 const digestsIn = (trace: Trace): string[] =>
   bytesIn(trace.transcript).filter((b) => b.length >= DIGEST_MIN_HEX);
 
@@ -342,31 +346,81 @@ describe.skipIf(isLiveBackend())(
       return probe.mint(recipientPk, value)[1];
     };
 
+    /**
+     * Inputs are GENERATED here rather than chosen.
+     *
+     * These claims are the ones a hand-picked pair is weakest at: a planted
+     * `disclose(value)` survived this layer once because both probes happened to
+     * mint the same amount. Generating both sides of every comparison removes
+     * that whole class of coincidence.
+     *
+     * Run counts are small on purpose. Each case drives two full circuit
+     * executions, so a default 100 runs would add tens of seconds to a suite
+     * that is otherwise instant.
+     */
+    const UINT128_MAX = (1n << 128n) - 1n;
+
+    /**
+     * Any `Uint<128>`. Spanning the full width matters: an amount that leaked
+     * would most likely surface as a CHANGE IN BYTE LENGTH, which only shows up
+     * when the generated values straddle encoding boundaries.
+     */
+    const anyAmount = () => fc.bigInt({ min: 0n, max: UINT128_MAX });
+
+    /** An amount the 1000-value input note below can actually pay. */
+    const payableAmount = () => fc.bigInt({ min: 0n, max: 1000n });
+
+    /** A recipient, derived from a generated secret so it is a valid `Field`. */
+    const anyRecipientPk = () =>
+      fc
+        .uint8Array({ minLength: 32, maxLength: 32 })
+        .map((sk) => core.derivePk(sk));
+
     it('should mint with the same transcript shape for any amount', () => {
-      expect(shapeOf(mintTrace(ALICE, 1n).transcript)).toStrictEqual(
-        shapeOf(mintTrace(ALICE, 10n ** 30n).transcript),
+      fc.assert(
+        fc.property(anyAmount(), anyAmount(), (a, b) => {
+          expect(shapeOf(mintTrace(ALICE, a).transcript)).toStrictEqual(
+            shapeOf(mintTrace(ALICE, b).transcript),
+          );
+        }),
+        { numRuns: 15 },
       );
     });
 
     it('should transfer with the same transcript shape for any amount', () => {
-      expect(shapeOf(transferTrace(BOB, 1n).transcript)).toStrictEqual(
-        shapeOf(transferTrace(BOB, 999n).transcript),
+      fc.assert(
+        fc.property(payableAmount(), payableAmount(), (a, b) => {
+          expect(shapeOf(transferTrace(BOB, a).transcript)).toStrictEqual(
+            shapeOf(transferTrace(BOB, b).transcript),
+          );
+        }),
+        { numRuns: 10 },
       );
     });
 
     it('should transfer with the same transcript shape for any recipient', () => {
-      expect(shapeOf(transferTrace(BOB, 300n).transcript)).toStrictEqual(
-        shapeOf(transferTrace(CAROL, 300n).transcript),
+      fc.assert(
+        fc.property(anyRecipientPk(), anyRecipientPk(), (first, second) => {
+          expect(shapeOf(transferTrace(first, 300n).transcript)).toStrictEqual(
+            shapeOf(transferTrace(second, 300n).transcript),
+          );
+        }),
+        { numRuns: 10 },
       );
     });
 
     it('should transfer with the same transcript length for any amount', () => {
-      const small = bytesIn(transferTrace(BOB, 1n).transcript);
-      const large = bytesIn(transferTrace(BOB, 999n).transcript);
+      fc.assert(
+        fc.property(payableAmount(), payableAmount(), (a, b) => {
+          const left = bytesIn(transferTrace(BOB, a).transcript);
+          const right = bytesIn(transferTrace(BOB, b).transcript);
 
-      expect(small.length).toBe(large.length);
-      expect(small.map((b) => b.length)).toStrictEqual(
-        large.map((b) => b.length),
+          expect(left.length).toBe(right.length);
+          expect(left.map((bytes) => bytes.length)).toStrictEqual(
+            right.map((bytes) => bytes.length),
+          );
+        }),
+        { numRuns: 10 },
       );
     });
 
@@ -378,10 +432,17 @@ describe.skipIf(isLiveBackend())(
       return left.filter((value, i) => value !== right[i]);
     };
 
-    /** Nothing that moved is anything but an opaque 32-byte digest. */
+    /**
+     * Nothing that moved is anything but an opaque digest.
+     *
+     * The substantive claim is the non-containment: whatever moved is not the
+     * encoding of any secret the two runs differed in. Width is only a
+     * structural sanity bound, and deliberately not an equality: a digest whose
+     * leading byte is zero is published one byte shorter, so requiring exactly
+     * 64 hex characters would fail on roughly one draw in 256.
+     */
     const expectOpaque = (moved: string[], secrets: bigint[]): void => {
       for (const value of moved) {
-        // Upper bound only: a zero-trimmed digest is legitimately narrower.
         expect(value.length).toBeLessThanOrEqual(64);
         for (const secret of secrets) {
           expect(encodingsOf(secret)).not.toContain(value);
@@ -390,68 +451,108 @@ describe.skipIf(isLiveBackend())(
     };
 
     it('should move only one digest when the minted amount differs', () => {
-      const traceSmall = mintTrace(ALICE, 1n);
-      const traceLarge = mintTrace(ALICE, 10n ** 30n);
+      fc.assert(
+        fc.property(anyAmount(), anyAmount(), (a, b) => {
+          fc.pre(a !== b);
 
-      const moved = drift(traceSmall, traceLarge);
-      expect(moved).toHaveLength(1);
-      expectOpaque(moved, [1n, 10n ** 30n, ALICE]);
+          const moved = drift(mintTrace(ALICE, a), mintTrace(ALICE, b));
+
+          expect(moved).toHaveLength(1);
+          expectOpaque(moved, [a, b, ALICE]);
+        }),
+        { numRuns: 15 },
+      );
     });
 
     it('should move only one digest when the mint recipient differs', () => {
-      const moved = drift(mintTrace(BOB, 500n), mintTrace(CAROL, 500n));
+      fc.assert(
+        fc.property(
+          payableAmount(),
+          anyRecipientPk(),
+          anyRecipientPk(),
+          (value, first, second) => {
+            fc.pre(first !== second);
 
-      expect(moved).toHaveLength(1);
-      expectOpaque(moved, [500n, BOB, CAROL]);
+            const moved = drift(
+              mintTrace(first, value),
+              mintTrace(second, value),
+            );
+
+            expect(moved).toHaveLength(1);
+            expectOpaque(moved, [value, first, second]);
+          },
+        ),
+        { numRuns: 15 },
+      );
     });
 
     // The strongest claim in the file. Two transfers of wildly different
     // amounts publish byte-identical transactions except for the two output
     // leaf digests, and those are hashes.
     it('should move only the two output digests when the amount differs', () => {
-      const probeA = new Probe();
-      const [inputA] = probeA.mint(ALICE, 1000n);
-      probeA.spend(ALICE_SK, inputA);
-      const [notesA, traceA] = probeA.transfer(BOB, 1n);
+      fc.assert(
+        fc.property(payableAmount(), payableAmount(), (a, b) => {
+          fc.pre(a !== b);
 
-      const probeB = new Probe();
-      const [inputB] = probeB.mint(ALICE, 1000n);
-      probeB.spend(ALICE_SK, inputB);
-      const [notesB, traceB] = probeB.transfer(BOB, 999n);
+          const probeA = new Probe();
+          const [inputA] = probeA.mint(ALICE, 1000n);
+          probeA.spend(ALICE_SK, inputA);
+          const [notesA, traceA] = probeA.transfer(BOB, a);
 
-      // Same starting note, so the spend half of the transaction is identical.
-      expect(inputA).toStrictEqual(inputB);
-      // Sanity: the two runs really did carry different amounts.
-      expect(notesA[0].value).not.toBe(notesB[0].value);
+          const probeB = new Probe();
+          const [inputB] = probeB.mint(ALICE, 1000n);
+          probeB.spend(ALICE_SK, inputB);
+          const [notesB, traceB] = probeB.transfer(BOB, b);
 
-      const moved = drift(traceA, traceB);
-      expect(moved).toHaveLength(2); // the output note and the change note
-      expectOpaque(moved, [
-        1n,
-        999n,
-        notesA[0].nonce,
-        notesA[1].nonce,
-        ALICE,
-        BOB,
-      ]);
+          // Same starting note, so the spend half of the transaction is
+          // identical.
+          expect(inputA).toStrictEqual(inputB);
+          // Sanity: the two runs really did carry different amounts.
+          expect(notesA[0].value).not.toBe(notesB[0].value);
+
+          const moved = drift(traceA, traceB);
+          expect(moved).toHaveLength(2); // the output note and the change note
+          expectOpaque(moved, [
+            a,
+            b,
+            notesA[0].nonce,
+            notesA[1].nonce,
+            ALICE,
+            BOB,
+          ]);
+        }),
+        { numRuns: 10 },
+      );
     });
 
     // Only the recipient's own digest moves. The change note's digest does not,
     // so a watcher cannot even tell that the recipient changed.
     it('should move only one digest when the recipient differs', () => {
-      const probeA = new Probe();
-      const [inputA] = probeA.mint(ALICE, 1000n);
-      probeA.spend(ALICE_SK, inputA);
-      const [, traceA] = probeA.transfer(BOB, 300n);
+      fc.assert(
+        fc.property(
+          payableAmount(),
+          anyRecipientPk(),
+          anyRecipientPk(),
+          (value, first, second) => {
+            fc.pre(first !== second);
 
-      const probeB = new Probe();
-      const [inputB] = probeB.mint(ALICE, 1000n);
-      probeB.spend(ALICE_SK, inputB);
-      const [, traceB] = probeB.transfer(CAROL, 300n);
+            const probeA = new Probe();
+            const [inputA] = probeA.mint(ALICE, 1000n);
+            probeA.spend(ALICE_SK, inputA);
+            const [, traceA] = probeA.transfer(first, value);
 
-      const moved = drift(traceA, traceB);
-      expect(moved).toHaveLength(1);
-      expectOpaque(moved, [300n, ALICE, BOB, CAROL]);
+            const probeB = new Probe();
+            const [inputB] = probeB.mint(ALICE, 1000n);
+            probeB.spend(ALICE_SK, inputB);
+            const [, traceB] = probeB.transfer(second, value);
+
+            const moved = drift(traceA, traceB);
+            expect(moved).toHaveLength(1);
+            expectOpaque(moved, [value, ALICE, first, second]);
+          },
+        ),
+        { numRuns: 10 },
+      );
     });
 
     // The nullifier depends on the nonce alone, so a caller who never held the
