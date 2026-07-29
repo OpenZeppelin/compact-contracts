@@ -206,9 +206,17 @@ const shapeOf = (transcript: Op<AlignedValue>[]): string[] =>
 /** Byte encodings a field-typed secret could plausibly appear as. */
 const encodingsOf = (value: bigint): string[] => bigIntToValue(value).map(hex);
 
+/**
+ * Hex width below which a value is too small to be a digest.
+ *
+ * Not 64. The runtime trims leading zero bytes, so a 32-byte digest arrives 31
+ * bytes wide about 1 in 256 times, and an exact-width filter silently drops it.
+ */
+const DIGEST_MIN_HEX = 56;
+
 /** The 32-byte values a transcript publishes: hashes, roots, nullifiers. */
 const digestsIn = (trace: Trace): string[] =>
-  bytesIn(trace.transcript).filter((b) => b.length === 64);
+  bytesIn(trace.transcript).filter((b) => b.length >= DIGEST_MIN_HEX);
 
 const CORE_SOURCE = readFileSync(
   new URL('../ConfidentialNoteFungibleToken.compact', import.meta.url),
@@ -373,7 +381,8 @@ describe.skipIf(isLiveBackend())(
     /** Nothing that moved is anything but an opaque 32-byte digest. */
     const expectOpaque = (moved: string[], secrets: bigint[]): void => {
       for (const value of moved) {
-        expect(value).toHaveLength(64);
+        // Upper bound only: a zero-trimmed digest is legitimately narrower.
+        expect(value.length).toBeLessThanOrEqual(64);
         for (const secret of secrets) {
           expect(encodingsOf(secret)).not.toContain(value);
         }
