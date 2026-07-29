@@ -73,9 +73,14 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
     return simulator;
   }
 
-  /** Spends the caller's input note into a recipient note plus change. */
-  public transfer(recipientPk: bigint, value: bigint): Promise<[Note, Note]> {
-    return this.circuits.impure.transfer(recipientPk, value);
+  /** Mints `value` to `recipientPk` with a core-derived nonce. Ungated. */
+  public _mint(recipientPk: bigint, value: bigint): Promise<Note> {
+    return this.circuits.impure._mint(recipientPk, value);
+  }
+
+  /** Commits a caller-built note to `ownerPk`. Ungated. */
+  public _mintNote(note: Note, ownerPk: bigint): Promise<[]> {
+    return this.circuits.impure._mintNote(note, ownerPk);
   }
 
   /** Spends the caller's input note, re-issuing only the change. */
@@ -93,14 +98,23 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
     return this.circuits.impure._inputNote();
   }
 
-  /** Commits a caller-built note to `ownerPk`. Ungated. */
-  public _mintNote(note: Note, ownerPk: bigint): Promise<[]> {
-    return this.circuits.impure._mintNote(note, ownerPk);
+  /** Consumes the input note, re-issuing only `changeNote`. Ungated. */
+  public _burn(
+    spenderPk: bigint,
+    value: bigint,
+    changeNote: Note,
+  ): Promise<[]> {
+    return this.circuits.impure._burn(spenderPk, value, changeNote);
   }
 
-  /** Mints `value` to `recipientPk` with a core-derived nonce. Ungated. */
-  public _mint(recipientPk: bigint, value: bigint): Promise<Note> {
-    return this.circuits.impure._mint(recipientPk, value);
+  /** Nullifies the input note owned by `ownerPk`. Ungated. */
+  public _consumeNote(ownerPk: bigint): Promise<Note> {
+    return this.circuits.impure._consumeNote(ownerPk);
+  }
+
+  /** Spends the caller's input note into a recipient note plus change. */
+  public transfer(recipientPk: bigint, value: bigint): Promise<[Note, Note]> {
+    return this.circuits.impure.transfer(recipientPk, value);
   }
 
   /** Consumes the input note and commits `outNote` + `changeNote`. Ungated. */
@@ -116,19 +130,5 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
       outNote,
       changeNote,
     );
-  }
-
-  /** Consumes the input note, re-issuing only `changeNote`. Ungated. */
-  public _burn(
-    spenderPk: bigint,
-    value: bigint,
-    changeNote: Note,
-  ): Promise<[]> {
-    return this.circuits.impure._burn(spenderPk, value, changeNote);
-  }
-
-  /** Nullifies the input note owned by `ownerPk`. Ungated. */
-  public _consumeNote(ownerPk: bigint): Promise<Note> {
-    return this.circuits.impure._consumeNote(ownerPk);
   }
 }
