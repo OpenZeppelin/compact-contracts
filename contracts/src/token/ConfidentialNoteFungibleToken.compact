@@ -147,14 +147,62 @@ module ConfidentialNoteFungibleToken {
   witness wit_NonceRandomness(): Bytes<32>;
 
   /**
-   * @description Field-typed identity hash: `pk = Hf(sk)`. Exported so
-   * wallets, auditors, and tests derive identities the way the circuits do.
+   * @description UNGATED building block: mints a note of `value` to
+   * `recipientPk` with a core-derived fresh nonce and returns it, so the caller
+   * can hand it to the recipient out of band.
    *
-   * @param {Bytes<32>} sk - The owner's spend secret.
-   * @return {Field} - The spend identity that owns notes.
+   * @circuitInfo k=14, rows=10964
+   *
+   * @notice The amount is NOT written to public state — issuance stays hidden
+   * and only the hiding commitment appears on-chain. This is the property an
+   * account-based token cannot offer.
+   *
+   * @warning No authorization. The composer gates who may create value.
+   *
+   * @param {Field} recipientPk - The identity receiving the note.
+   * @param {Uint<128>} value - The amount to create.
+   * @return {Note} - The new note, returned as a local private result.
    */
-  export pure circuit derivePk(sk: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<Bytes<32>>(sk));
+  export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
+    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:out")) };
+    _mintNote(note, recipientPk);
+    // The note returns only to the local caller; revealing it on-chain would
+    // expose the nonce (spend-critical) and the amount.
+    return disclose(note);
+  }
+
+  /**
+   * @description Derives one output nonce from the caller's randomness witness.
+   *
+   * @dev The `slot` tag separates the nonces of several outputs created in one
+   * invocation, which share a single witness call: without it, a transfer's
+   * output and change would collide on one nonce, hence one nullifier.
+   *
+   * @param {Bytes<32>} slot - The per-output domain tag.
+   * @return {Field} - The output note's nonce.
+   */
+  circuit freshNonce(slot: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
+      [wit_NonceRandomness(), pad(32, "OZ:note:nonce:core"), slot]));
+  }
+
+  /**
+   * @description UNGATED building block: commits a caller-built note to
+   * `ownerPk`. The composer decides who may create value, how the nonce was
+   * produced, and how the note reaches its owner.
+   *
+   * @circuitInfo k=13, rows=6766
+   *
+   * @warning No authorization and no value accounting. Re-exporting this from a
+   * deployed contract is a permissionless mint.
+   *
+   * @param {Note} note - The note to commit.
+   * @param {Field} ownerPk - The identity that will own it.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _mintNote(note: Note, ownerPk: Field): [] {
+    // Only the hiding commitment crosses to public state.
+    _commitments.insert(disclose(commitOf(note, ownerPk)));
   }
 
   /**
@@ -176,61 +224,6 @@ module ConfidentialNoteFungibleToken {
       nonce: note.nonce,
       pk: pk
     });
-  }
-
-  /**
-   * @description `nf = H(domain, nonce)` — derivable by anyone who knows the
-   * nonce. Exported so off-chain viewers can watch a note's consumption.
-   *
-   * @dev The preimage omits any owner secret by design. Every party that learns
-   * a nonce derives the same nullifier and races the owner for the single
-   * spend, which is what makes clawback escrow-free in a composing contract.
-   *
-   * @param {Note} note - The note to nullify.
-   * @return {Bytes<32>} - The nullifier published in `_nullifiers` when the
-   * note is spent.
-   */
-  export pure circuit nullifierOf(note: Note): Bytes<32> {
-    return persistentHash<NullifierPreimage>(NullifierPreimage {
-      domain: pad(32, "OZ:note:null"),
-      nonce: note.nonce
-    });
-  }
-
-  /**
-   * @description Fully-private transfer: spends the caller's input note and
-   * creates a recipient note of `value` plus a change note back to the
-   * caller, conserving value. Sender and recipient are both hidden; the public
-   * ledger gains one nullifier and two commitments.
-   *
-   * @circuitInfo k=16, rows=36394
-   *
-   * @notice Both notes return to the caller as a local private result, so the
-   * wallet can hand the recipient note over out of band and track its own
-   * change. Nothing beyond the two commitments reaches the ledger.
-   *
-   * Requirements:
-   *
-   * - The input note is committed in the tree and unspent.
-   * - The caller owns the input note (its commitment binds `Hf(wit_SecretKey())`).
-   * - `value <= input.value`.
-   *
-   * @param {Field} recipientPk - The identity receiving the output note.
-   * @param {Uint<128>} value - The amount to send.
-   * @return {[Note, Note]} - The recipient's note and the caller's change note.
-   */
-  export circuit transfer(recipientPk: Field, value: Uint<128>): [Note, Note] {
-    const pk = _spenderPk();
-    const input = _inputNote();
-    assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
-
-    const outNote = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:out")) };
-    const changeNote = Note {
-      value: (input.value - value) as Uint<128>,
-      nonce: freshNonce(pad(32, "OZ:note:chg"))
-    };
-    _transfer(pk, recipientPk, outNote, changeNote);
-    return [disclose(outNote), disclose(changeNote)];
   }
 
   /**
@@ -278,6 +271,17 @@ module ConfidentialNoteFungibleToken {
   }
 
   /**
+   * @description Field-typed identity hash: `pk = Hf(sk)`. Exported so
+   * wallets, auditors, and tests derive identities the way the circuits do.
+   *
+   * @param {Bytes<32>} sk - The owner's spend secret.
+   * @return {Field} - The spend identity that owns notes.
+   */
+  export pure circuit derivePk(sk: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Bytes<32>>(sk));
+  }
+
+  /**
    * @description Building block: peek at the input note about to be consumed
    * (the same witness `_consumeNote` reads), so a composing contract can size
    * the change and run its emission policy BEFORE the spend.
@@ -290,84 +294,6 @@ module ConfidentialNoteFungibleToken {
    */
   export circuit _inputNote(): Note {
     return wit_InputNote();
-  }
-
-  /**
-   * @description UNGATED building block: commits a caller-built note to
-   * `ownerPk`. The composer decides who may create value, how the nonce was
-   * produced, and how the note reaches its owner.
-   *
-   * @circuitInfo k=13, rows=6766
-   *
-   * @warning No authorization and no value accounting. Re-exporting this from a
-   * deployed contract is a permissionless mint.
-   *
-   * @param {Note} note - The note to commit.
-   * @param {Field} ownerPk - The identity that will own it.
-   * @return {[]} - Empty tuple.
-   */
-  export circuit _mintNote(note: Note, ownerPk: Field): [] {
-    // Only the hiding commitment crosses to public state.
-    _commitments.insert(disclose(commitOf(note, ownerPk)));
-  }
-
-  /**
-   * @description UNGATED building block: mints a note of `value` to
-   * `recipientPk` with a core-derived fresh nonce and returns it, so the caller
-   * can hand it to the recipient out of band.
-   *
-   * @circuitInfo k=14, rows=10964
-   *
-   * @notice The amount is NOT written to public state — issuance stays hidden
-   * and only the hiding commitment appears on-chain. This is the property an
-   * account-based token cannot offer.
-   *
-   * @warning No authorization. The composer gates who may create value.
-   *
-   * @param {Field} recipientPk - The identity receiving the note.
-   * @param {Uint<128>} value - The amount to create.
-   * @return {Note} - The new note, returned as a local private result.
-   */
-  export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
-    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:out")) };
-    _mintNote(note, recipientPk);
-    // The note returns only to the local caller; revealing it on-chain would
-    // expose the nonce (spend-critical) and the amount.
-    return disclose(note);
-  }
-
-  /**
-   * @description UNGATED building block: consumes the input note owned by
-   * `spenderPk` and commits `outNote` to `recipientPk` plus `changeNote` back
-   * to the spender, conserving value exactly.
-   *
-   * @circuitInfo k=15, rows=25732
-   *
-   * @notice Taking both output notes as parameters is what lets a composing
-   * contract own its emission policy (audit-derived nonces, delivery records,
-   * supply accounting) while the core still enforces conservation.
-   *
-   * @warning No authorization. Whoever supplies a valid input note and its path
-   * can spend it; the composer decides who may call this.
-   *
-   * Requirements:
-   *
-   * - The input note is committed in the tree and unspent.
-   * - The input note's commitment binds `spenderPk`.
-   * - `input.value == outNote.value + changeNote.value`.
-   *
-   * @param {Field} spenderPk - The identity that owns the input note.
-   * @param {Field} recipientPk - The identity receiving `outNote`.
-   * @param {Note} outNote - The recipient's output note.
-   * @param {Note} changeNote - The spender's change note.
-   * @return {[]} - Empty tuple.
-   */
-  export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: Note, changeNote: Note): [] {
-    const input = _consumeNote(spenderPk);
-    assert(input.value == outNote.value + changeNote.value,
-           "ConfidentialNoteFungibleToken: transfer does not conserve value");
-    _mintNote(outNote, recipientPk);
-    _mintNote(changeNote, spenderPk);
   }
 
   /**
@@ -444,17 +370,91 @@ module ConfidentialNoteFungibleToken {
   }
 
   /**
-   * @description Derives one output nonce from the caller's randomness witness.
+   * @description `nf = H(domain, nonce)` — derivable by anyone who knows the
+   * nonce. Exported so off-chain viewers can watch a note's consumption.
    *
-   * @dev The `slot` tag separates the nonces of several outputs created in one
-   * invocation, which share a single witness call: without it, a transfer's
-   * output and change would collide on one nonce, hence one nullifier.
+   * @dev The preimage omits any owner secret by design. Every party that learns
+   * a nonce derives the same nullifier and races the owner for the single
+   * spend, which is what makes clawback escrow-free in a composing contract.
    *
-   * @param {Bytes<32>} slot - The per-output domain tag.
-   * @return {Field} - The output note's nonce.
+   * @param {Note} note - The note to nullify.
+   * @return {Bytes<32>} - The nullifier published in `_nullifiers` when the
+   * note is spent.
    */
-  circuit freshNonce(slot: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
-      [wit_NonceRandomness(), pad(32, "OZ:note:nonce:core"), slot]));
+  export pure circuit nullifierOf(note: Note): Bytes<32> {
+    return persistentHash<NullifierPreimage>(NullifierPreimage {
+      domain: pad(32, "OZ:note:null"),
+      nonce: note.nonce
+    });
+  }
+
+  /**
+   * @description Fully-private transfer: spends the caller's input note and
+   * creates a recipient note of `value` plus a change note back to the
+   * caller, conserving value. Sender and recipient are both hidden; the public
+   * ledger gains one nullifier and two commitments.
+   *
+   * @circuitInfo k=16, rows=36394
+   *
+   * @notice Both notes return to the caller as a local private result, so the
+   * wallet can hand the recipient note over out of band and track its own
+   * change. Nothing beyond the two commitments reaches the ledger.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - The caller owns the input note (its commitment binds `Hf(wit_SecretKey())`).
+   * - `value <= input.value`.
+   *
+   * @param {Field} recipientPk - The identity receiving the output note.
+   * @param {Uint<128>} value - The amount to send.
+   * @return {[Note, Note]} - The recipient's note and the caller's change note.
+   */
+  export circuit transfer(recipientPk: Field, value: Uint<128>): [Note, Note] {
+    const pk = _spenderPk();
+    const input = _inputNote();
+    assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
+
+    const outNote = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:out")) };
+    const changeNote = Note {
+      value: (input.value - value) as Uint<128>,
+      nonce: freshNonce(pad(32, "OZ:note:chg"))
+    };
+    _transfer(pk, recipientPk, outNote, changeNote);
+    return [disclose(outNote), disclose(changeNote)];
+  }
+
+  /**
+   * @description UNGATED building block: consumes the input note owned by
+   * `spenderPk` and commits `outNote` to `recipientPk` plus `changeNote` back
+   * to the spender, conserving value exactly.
+   *
+   * @circuitInfo k=15, rows=25732
+   *
+   * @notice Taking both output notes as parameters is what lets a composing
+   * contract own its emission policy (audit-derived nonces, delivery records,
+   * supply accounting) while the core still enforces conservation.
+   *
+   * @warning No authorization. Whoever supplies a valid input note and its path
+   * can spend it; the composer decides who may call this.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - The input note's commitment binds `spenderPk`.
+   * - `input.value == outNote.value + changeNote.value`.
+   *
+   * @param {Field} spenderPk - The identity that owns the input note.
+   * @param {Field} recipientPk - The identity receiving `outNote`.
+   * @param {Note} outNote - The recipient's output note.
+   * @param {Note} changeNote - The spender's change note.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: Note, changeNote: Note): [] {
+    const input = _consumeNote(spenderPk);
+    assert(input.value == outNote.value + changeNote.value,
+           "ConfidentialNoteFungibleToken: transfer does not conserve value");
+    _mintNote(outNote, recipientPk);
+    _mintNote(changeNote, spenderPk);
   }
 }
