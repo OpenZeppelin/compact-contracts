@@ -28,23 +28,24 @@ const SharedInitCollisionSimulatorBase = createSimulator<
  * collision.
  */
 export class SharedInitCollisionSimulator extends SharedInitCollisionSimulatorBase {
-  constructor() {
-    super([], {});
+  static async create(): Promise<SharedInitCollisionSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create([], {}) as Promise<SharedInitCollisionSimulator>;
   }
 
-  public initA(): void {
-    this.circuits.impure.initA();
+  public initA(): Promise<[]> {
+    return this.circuits.impure.initA();
   }
 
-  public initB(): void {
-    this.circuits.impure.initB();
+  public initB(): Promise<[]> {
+    return this.circuits.impure.initB();
   }
 
-  public checkA(): void {
-    this.circuits.impure.checkA();
+  public checkA(): Promise<[]> {
+    return this.circuits.impure.checkA();
   }
 
-  public checkB(): void {
-    this.circuits.impure.checkB();
+  public checkB(): Promise<[]> {
+    return this.circuits.impure.checkB();
   }
 }
