@@ -958,7 +958,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "npm:4.1.1"
     "@midnight-ntwrk/testkit-js": "npm:4.1.1"
     "@openzeppelin/compact-cli": "npm:^0.0.2"
-    "@openzeppelin/compact-simulator": "npm:^0.2.0"
+    "@openzeppelin/compact-simulator": "npm:^0.3.1"
     "@tsconfig/node24": "npm:^24.0.4"
     "@types/node": "npm:26.1.1"
     "@vitest/coverage-v8": "npm:^4.1.10"
@@ -969,9 +969,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@openzeppelin/compact-simulator@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "@openzeppelin/compact-simulator@npm:0.2.0"
+"@openzeppelin/compact-simulator@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "@openzeppelin/compact-simulator@npm:0.3.1"
   dependencies:
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
@@ -983,7 +983,7 @@ __metadata:
       optional: true
     "@midnight-ntwrk/midnight-js-types":
       optional: true
-  checksum: 10/294e53a3eaade37ae679be8aaff764239d8cb645eae0e69ceb56587b36614ed67b9a38ad641633d91a6ee65d96920475ccedec40c1f1dd734d26a86b0382ce90
+  checksum: 10/022f4414dd286abc14fd35c544c63e2615623997f27eebc1c3245c214a51c25b88275be1b5580de72a8e499dca08a5f12eda99c76728f3c8d589c62f7197e8d8
   languageName: node
   linkType: hard
 
