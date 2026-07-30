@@ -46,3 +46,9 @@ jobs:
 
       - name: Run tests
         run: yarn test
+
+      - name: Run integration tests
+        run: yarn test:integration
+
+      - name: Run harness tests
+        run: yarn test:harness

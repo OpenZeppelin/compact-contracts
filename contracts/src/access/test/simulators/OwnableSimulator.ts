@@ -129,13 +129,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: async (
-      newSK: Uint8Array,
-    ): Promise<OwnablePrivateState> => {
-      const updated = OwnablePrivateState.withSecretKey(newSK);
-      this.setPrivateState(updated);
-      return updated;
-    },
+    injectSecretKey: (newSK: Uint8Array): Promise<OwnablePrivateState> =>
+      this.updatePrivateState(OwnablePrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

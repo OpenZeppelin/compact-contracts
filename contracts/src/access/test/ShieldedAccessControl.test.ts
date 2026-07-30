@@ -6,10 +6,17 @@ import {
   persistentHash,
   type WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
+
+/**
+ * Witnesses bind at deploy on a live node, so a spec that swaps one mid-test
+ * with `overrideWitness` is dry-only. Private-state mutation runs on both.
+ */
+const itDryOnly = it.skipIf(isLiveBackend());
 
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
 const COMMITMENT_DOMAIN = 'ShieldedAccessControl:commitment';
@@ -275,21 +282,24 @@ describe('ShieldedAccessControl', () => {
       });
 
       describe('should fail', () => {
-        it('when witness returns path for a different commitment', async () => {
-          await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
-          contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
-            const path =
-              ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
-                OP1_ROLE_COMMITMENT,
-              );
-            if (path) return [ctx.privateState, path];
-            throw new Error('Path should be defined');
-          });
+        itDryOnly(
+          'when witness returns path for a different commitment',
+          async () => {
+            await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+            contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
+              const path =
+                ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
+                  OP1_ROLE_COMMITMENT,
+                );
+              if (path) return [ctx.privateState, path];
+              throw new Error('Path should be defined');
+            });
 
-          await expect(contract.assertOnlyRole(ROLE_ADMIN)).rejects.toThrow(
-            'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
-          );
-        });
+            await expect(contract.assertOnlyRole(ROLE_ADMIN)).rejects.toThrow(
+              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+            );
+          },
+        );
 
         it('when caller has wrong secret key', async () => {
           await contract.privateState.injectSecretKey(UNAUTHORIZED_SK);
@@ -298,7 +308,7 @@ describe('ShieldedAccessControl', () => {
           );
         });
 
-        it('when witness provides invalid path', async () => {
+        itDryOnly('when witness provides invalid path', async () => {
           contract.overrideWitness(
             'wit_getRoleCommitmentPath',
             RETURN_BAD_PATH,
@@ -356,21 +366,24 @@ describe('ShieldedAccessControl', () => {
         await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
       });
 
-      it('should fail when witness returns path for a different commitment', async () => {
-        await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
-        contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
-          const path =
-            ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
-              OP1_ROLE_COMMITMENT,
-            );
-          if (path) return [ctx.privateState, path];
-          throw new Error('Path should be defined');
-        });
+      itDryOnly(
+        'should fail when witness returns path for a different commitment',
+        async () => {
+          await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+          contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
+            const path =
+              ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
+                OP1_ROLE_COMMITMENT,
+              );
+            if (path) return [ctx.privateState, path];
+            throw new Error('Path should be defined');
+          });
 
-        await expect(contract.canProveRole(ROLE_ADMIN)).rejects.toThrow(
-          'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
-        );
-      });
+          await expect(contract.canProveRole(ROLE_ADMIN)).rejects.toThrow(
+            'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+          );
+        },
+      );
 
       describe('should return true', () => {
         it('when caller has role', async () => {
@@ -436,7 +449,7 @@ describe('ShieldedAccessControl', () => {
           expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
         });
 
-        it('when witness provides invalid path', async () => {
+        itDryOnly('when witness provides invalid path', async () => {
           contract.overrideWitness(
             'wit_getRoleCommitmentPath',
             RETURN_BAD_PATH,
@@ -444,14 +457,17 @@ describe('ShieldedAccessControl', () => {
           expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
         });
 
-        it('when invalid witness path is provided for a revoked role', async () => {
-          await contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
-          contract.overrideWitness(
-            'wit_getRoleCommitmentPath',
-            RETURN_BAD_PATH,
-          );
-          expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
-        });
+        itDryOnly(
+          'when invalid witness path is provided for a revoked role',
+          async () => {
+            await contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+            contract.overrideWitness(
+              'wit_getRoleCommitmentPath',
+              RETURN_BAD_PATH,
+            );
+            expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
+          },
+        );
       });
     });
 
@@ -484,7 +500,7 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
-        it('when admin provides invalid witness path', async () => {
+        itDryOnly('when admin provides invalid witness path', async () => {
           contract.overrideWitness(
             'wit_getRoleCommitmentPath',
             RETURN_BAD_PATH,
@@ -502,23 +518,26 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
-        it('when witness returns path for a different commitment', async () => {
-          await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
-          contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
-            const path =
-              ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
-                OP1_ROLE_COMMITMENT,
-              );
-            if (path) return [ctx.privateState, path];
-            throw new Error('Path should be defined');
-          });
+        itDryOnly(
+          'when witness returns path for a different commitment',
+          async () => {
+            await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+            contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
+              const path =
+                ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
+                  OP1_ROLE_COMMITMENT,
+                );
+              if (path) return [ctx.privateState, path];
+              throw new Error('Path should be defined');
+            });
 
-          await expect(
-            contract.grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
-          ).rejects.toThrow(
-            'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
-          );
-        });
+            await expect(
+              contract.grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
+            ).rejects.toThrow(
+              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+            );
+          },
+        );
 
         it('when admin with duplicate grants is revoked', async () => {
           await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID); // duplicate
@@ -739,7 +758,7 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
-        it('when admin provides invalid witness path', async () => {
+        itDryOnly('when admin provides invalid witness path', async () => {
           contract.overrideWitness(
             'wit_getRoleCommitmentPath',
             RETURN_BAD_PATH,
@@ -749,22 +768,25 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
-        it('when witness returns path for a different commitment', async () => {
-          contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
-            const path =
-              ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
-                OP1_ROLE_COMMITMENT,
-              );
-            if (path) return [ctx.privateState, path];
-            throw new Error('Path should be defined');
-          });
+        itDryOnly(
+          'when witness returns path for a different commitment',
+          async () => {
+            contract.overrideWitness('wit_getRoleCommitmentPath', (ctx) => {
+              const path =
+                ctx.ledger.ShieldedAccessControl__operatorRoles.findPathForLeaf(
+                  OP1_ROLE_COMMITMENT,
+                );
+              if (path) return [ctx.privateState, path];
+              throw new Error('Path should be defined');
+            });
 
-          await expect(
-            contract.revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
-          ).rejects.toThrow(
-            'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
-          );
-        });
+            await expect(
+              contract.revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
+            ).rejects.toThrow(
+              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+            );
+          },
+        );
       });
 
       describe('should succeed', () => {

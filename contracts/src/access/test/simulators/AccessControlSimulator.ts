@@ -188,17 +188,8 @@ export class AccessControlSimulator extends AccessControlSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: async (
-      newSK: Uint8Array,
-    ): Promise<AccessControlPrivateState> => {
-      const cur = await this.getPrivateState();
-      const updated = {
-        ...cur,
-        ...AccessControlPrivateState.withSecretKey(newSK),
-      };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    injectSecretKey: (newSK: Uint8Array): Promise<AccessControlPrivateState> =>
+      this.updatePrivateState(AccessControlPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

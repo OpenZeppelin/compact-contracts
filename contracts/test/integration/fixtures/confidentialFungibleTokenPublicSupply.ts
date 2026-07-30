@@ -125,38 +125,31 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
      * @description Replaces SK, EK, and clears the plaintext cache atomically,
      * to switch between user identities mid-test.
      */
-    switchIdentity: async (
+    switchIdentity: (
       newSK: Uint8Array,
       newEK: Uint8Array,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const updated = {
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState((current) => ({
         secretKey: newSK,
         encryptionKey: newEK,
         plaintextCache: new Map<string, bigint>(),
-        randomnessSeed:
-          (await this.getPrivateState()).randomnessSeed ??
-          DEFAULT_RANDOMNESS_SEED,
-      };
-      this.setPrivateState(updated);
-      return updated;
-    },
+        randomnessSeed: current.randomnessSeed ?? DEFAULT_RANDOMNESS_SEED,
+      })),
 
     /**
      * @description Records a known plaintext for a ciphertext in the wallet's
      * cache (what a real wallet does when it constructs or decrypts a value).
      */
-    cachePlaintext: async (
+    cachePlaintext: (
       ct: ElGamal_Ciphertext,
       plaintext: bigint,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const current = await this.getPrivateState();
-      const updated = ConfidentialFungibleTokenPrivateState.cachePlaintext(
-        current,
-        ct,
-        plaintext,
-      );
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState((current) =>
+        ConfidentialFungibleTokenPrivateState.cachePlaintext(
+          current,
+          ct,
+          plaintext,
+        ),
+      ),
   };
 }
