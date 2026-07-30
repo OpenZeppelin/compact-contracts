@@ -47,15 +47,22 @@ const ComposedTokensSimulatorBase = createSimulator<
  * are independent (the #556 fix).
  */
 export class ComposedTokensSimulator extends ComposedTokensSimulatorBase {
-  constructor(initFT: boolean, initNFT: boolean) {
-    super(['FT', 'FTK', 18n, 'NFT', 'NFTK', initFT, initNFT], {});
+  static async create(
+    initFT: boolean,
+    initNFT: boolean,
+  ): Promise<ComposedTokensSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      ['FT', 'FTK', 18n, 'NFT', 'NFTK', initFT, initNFT],
+      {},
+    ) as Promise<ComposedTokensSimulator>;
   }
 
-  public ftName(): string {
+  public ftName(): Promise<string> {
     return this.circuits.impure.ftName();
   }
 
-  public nftName(): string {
+  public nftName(): Promise<string> {
     return this.circuits.impure.nftName();
   }
 }

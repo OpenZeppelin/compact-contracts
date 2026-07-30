@@ -251,13 +251,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: async (
-      newSK: Uint8Array,
-    ): Promise<MultiTokenPrivateState> => {
-      const updatedState = MultiTokenPrivateState.withSecretKey(newSK);
-      this.setPrivateState(updatedState);
-      return updatedState;
-    },
+    injectSecretKey: (newSK: Uint8Array): Promise<MultiTokenPrivateState> =>
+      this.updatePrivateState(MultiTokenPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

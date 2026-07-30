@@ -462,13 +462,12 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: async (
+    injectSecretKey: (
       newSK: Uint8Array,
-    ): Promise<NonFungibleTokenPrivateState> => {
-      const updatedState = NonFungibleTokenPrivateState.withSecretKey(newSK);
-      this.setPrivateState(updatedState);
-      return updatedState;
-    },
+    ): Promise<NonFungibleTokenPrivateState> =>
+      this.updatePrivateState(
+        NonFungibleTokenPrivateState.withSecretKey(newSK),
+      ),
 
     /**
      * @description Returns the current secret key from the private state.

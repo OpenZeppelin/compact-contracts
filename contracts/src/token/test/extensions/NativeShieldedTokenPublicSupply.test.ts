@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NativeShieldedTokenSupplySimulator } from '../simulators/NativeShieldedTokenSupplySimulator.js';
+import { NativeShieldedTokenPublicSupplySimulator } from '../simulators/NativeShieldedTokenPublicSupplySimulator.js';
 
 // The supply extension imports no token module, so it is unit-tested by driving
 // its accounting blocks (`_addMinted` / `_addBurned`) and getters directly.
 
-let supply: NativeShieldedTokenSupplySimulator;
+let supply: NativeShieldedTokenPublicSupplySimulator;
 
-describe('NativeShieldedTokenSupply (extension)', () => {
+describe('NativeShieldedTokenPublicSupply (extension)', () => {
   beforeEach(async () => {
-    supply = await NativeShieldedTokenSupplySimulator.create();
+    supply = await NativeShieldedTokenPublicSupplySimulator.create();
   });
 
   describe('initial state', () => {
@@ -37,14 +37,14 @@ describe('NativeShieldedTokenSupply (extension)', () => {
 
     it('should revert an unpaired burn (burned exceeds minted from zero)', async () => {
       await expect(supply._addBurned(1n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burn exceeds available supply',
+        'NativeShieldedTokenPublicSupply: burn exceeds available supply',
       );
     });
 
     it('should revert a burn that exceeds the minted total', async () => {
       await supply._addMinted(1_000n);
       await expect(supply._addBurned(1_001n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burn exceeds available supply',
+        'NativeShieldedTokenPublicSupply: burn exceeds available supply',
       );
     });
 
@@ -52,7 +52,7 @@ describe('NativeShieldedTokenSupply (extension)', () => {
       await supply._addMinted(1_000n);
       await supply._addBurned(600n);
       await expect(supply._addBurned(600n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burn exceeds available supply',
+        'NativeShieldedTokenPublicSupply: burn exceeds available supply',
       );
       // The rejected burn left the total unchanged.
       expect(await supply.totalBurned()).toBe(600n);
@@ -64,7 +64,7 @@ describe('NativeShieldedTokenSupply (extension)', () => {
       // first guard (not the available-supply check) is what fires.
       await supply.unsafeSetBurned(1_500n);
       await expect(supply._addBurned(1n)).rejects.toThrow(
-        'NativeShieldedTokenSupply: burned total exceeds minted',
+        'NativeShieldedTokenPublicSupply: burned total exceeds minted',
       );
     });
   });

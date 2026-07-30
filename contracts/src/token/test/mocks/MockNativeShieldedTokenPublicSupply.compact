@@ -9,37 +9,37 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../extensions/NativeShieldedTokenSupply" prefix NativeShieldedTokenSupply_;
+import "../../extensions/NativeShieldedTokenPublicSupply" prefix NativeShieldedTokenPublicSupply_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 // Surface the core supply ledger state unprefixed so tests can read it via
 // `getPublicState()` and assert the accounting getters return it verbatim.
-import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenSupply";
+import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenPublicSupply";
 export { _totalMinted, _totalBurned };
 
-// Unit mock for the NativeShieldedTokenSupply extension in isolation. The
+// Unit mock for the NativeShieldedTokenPublicSupply extension in isolation. The
 // extension imports no token module, so the accounting blocks and getters are
 // driven directly here. The extension needs no initialization.
 
 export circuit _addMinted(amount: Uint<64>): [] {
-  NativeShieldedTokenSupply__addMinted(amount);
+  NativeShieldedTokenPublicSupply__addMinted(amount);
 }
 
 export circuit _addBurned(amount: Uint<128>): [] {
-  NativeShieldedTokenSupply__addBurned(amount);
+  NativeShieldedTokenPublicSupply__addBurned(amount);
 }
 
 export circuit totalMinted(): Uint<128> {
-  return NativeShieldedTokenSupply_totalMinted();
+  return NativeShieldedTokenPublicSupply_totalMinted();
 }
 
 export circuit totalBurned(): Uint<128> {
-  return NativeShieldedTokenSupply_totalBurned();
+  return NativeShieldedTokenPublicSupply_totalBurned();
 }
 
 export circuit totalSupply(): Uint<128> {
-  return NativeShieldedTokenSupply_totalSupply();
+  return NativeShieldedTokenPublicSupply_totalSupply();
 }
 
 // Test-only: force `_totalBurned` past `_totalMinted` to reach the otherwise

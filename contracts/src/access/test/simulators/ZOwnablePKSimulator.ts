@@ -150,14 +150,10 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
      * @param newNonce The secret nonce.
      * @returns The ZOwnablePK private state after setting the new nonce.
      */
-    injectSecretNonce: async (
+    injectSecretNonce: (
       newNonce: Buffer<ArrayBufferLike>,
-    ): Promise<ZOwnablePKPrivateState> => {
-      const cur = await this.getPrivateState();
-      const updated = { ...cur, secretNonce: newNonce };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ZOwnablePKPrivateState> =>
+      this.updatePrivateState({ secretNonce: newNonce }),
 
     /**
      * @description Returns the secret nonce given the context.

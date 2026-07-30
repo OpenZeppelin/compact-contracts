@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenSupplyCore.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenPublicSupplyCore.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module NativeShieldedTokenSupplyCore
+ * @module NativeShieldedTokenPublicSupplyCore
  * @description Shared, domain-keyed core of the optional supply-accounting
  * extension. It owns the per-domain minted/burned maps and exposes the
  * `_addMinted` / `_addBurned` building blocks plus the `totalMinted` /
@@ -13,12 +13,12 @@ pragma language_version >= 0.23.0;
  * This module is NOT meant to be composed directly. It is the de-duplicated
  * base behind the two user-facing flavors:
  *
- * - `NativeShieldedTokenSupply` — pairs with `NativeShieldedToken`; forwards a
+ * - `NativeShieldedTokenPublicSupply` — pairs with `NativeShieldedToken`; forwards a
  *   single fixed key (the contract has one token type).
- * - `NativeShieldedTokenFamilySupply` — pairs with `NativeShieldedTokenFamily`;
+ * - `NativeShieldedTokenFamilyPublicSupply` — pairs with `NativeShieldedTokenFamily`;
  *   forwards the caller's per-call `domain`.
  *
- * @dev Assertion messages use the generic `NativeShieldedTokenSupply:` prefix
+ * @dev Assertion messages use the generic `NativeShieldedTokenPublicSupply:` prefix
  * so they read sensibly from either flavor. There is no initialization: an
  * absent domain key reads as 0, and the getters do not gate on the paired token
  * module's init flag (a counter reading 0 before init is correct), so init
@@ -51,7 +51,7 @@ pragma language_version >= 0.23.0;
  *   overstates circulating supply.
  * Call the matching accounting block on every mint and burn path, same domain.
  */
-module NativeShieldedTokenSupplyCore {
+module NativeShieldedTokenPublicSupplyCore {
   import CompactStandardLibrary;
   import "../../utils/Utils" prefix Utils_;
 
@@ -79,7 +79,7 @@ module NativeShieldedTokenSupplyCore {
    */
   export circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
     const current = totalMinted(domain);
-    assert(Utils_UINT128_MAX() - current >= amount, "NativeShieldedTokenSupply: arithmetic overflow");
+    assert(Utils_UINT128_MAX() - current >= amount, "NativeShieldedTokenPublicSupply: arithmetic overflow");
     _totalMinted.insert(disclose(domain), disclose((current + amount) as Uint<128>));
   }
 
@@ -103,8 +103,8 @@ module NativeShieldedTokenSupplyCore {
     // First guards the subtraction below from underflowing on an already-corrupt
     // state (stored burned past minted); the second is the reachable per-call
     // check that this burn does not push the domain past its minted total.
-    assert(minted >= current, "NativeShieldedTokenSupply: burned total exceeds minted");
-    assert(minted - current >= amount, "NativeShieldedTokenSupply: burn exceeds available supply");
+    assert(minted >= current, "NativeShieldedTokenPublicSupply: burned total exceeds minted");
+    assert(minted - current >= amount, "NativeShieldedTokenPublicSupply: burn exceeds available supply");
     _totalBurned.insert(disclose(domain), disclose((current + amount) as Uint<128>));
   }
 

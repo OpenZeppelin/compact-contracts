@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha (multisig/test/EmptyWitnesses.ts)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.1 (multisig/test/EmptyWitnesses.ts)
 
 /**
  * Shared empty private state and witnesses for the multisig test simulators.

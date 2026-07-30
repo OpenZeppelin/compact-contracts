@@ -4,57 +4,57 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
-  Contract as MockNativeShieldedTokenSupply,
-} from '../../../../artifacts/MockNativeShieldedTokenSupply/contract/index.js';
+  Contract as MockNativeShieldedTokenPublicSupply,
+} from '../../../../artifacts/MockNativeShieldedTokenPublicSupply/contract/index.js';
 
 /**
  * The supply extension declares no witnesses, so the private state is empty and
  * the witnesses object is `{}`.
  */
-export type NativeShieldedTokenSupplyPrivateState = Record<string, never>;
-export const NativeShieldedTokenSupplyPrivateState: NativeShieldedTokenSupplyPrivateState =
+export type NativeShieldedTokenPublicSupplyPrivateState = Record<string, never>;
+export const NativeShieldedTokenPublicSupplyPrivateState: NativeShieldedTokenPublicSupplyPrivateState =
   {};
-export const NativeShieldedTokenSupplyWitnesses = () => ({});
+export const NativeShieldedTokenPublicSupplyWitnesses = () => ({});
 
 /** The supply extension needs no initialization, so the constructor is nullary. */
-type NativeShieldedTokenSupplyArgs = readonly [];
+type NativeShieldedTokenPublicSupplyArgs = readonly [];
 
-const NativeShieldedTokenSupplySimulatorBase = createSimulator<
-  NativeShieldedTokenSupplyPrivateState,
+const NativeShieldedTokenPublicSupplySimulatorBase = createSimulator<
+  NativeShieldedTokenPublicSupplyPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof NativeShieldedTokenSupplyWitnesses>,
-  MockNativeShieldedTokenSupply<NativeShieldedTokenSupplyPrivateState>,
-  NativeShieldedTokenSupplyArgs
+  ReturnType<typeof NativeShieldedTokenPublicSupplyWitnesses>,
+  MockNativeShieldedTokenPublicSupply<NativeShieldedTokenPublicSupplyPrivateState>,
+  NativeShieldedTokenPublicSupplyArgs
 >({
   contractFactory: (witnesses) =>
-    new MockNativeShieldedTokenSupply<NativeShieldedTokenSupplyPrivateState>(
+    new MockNativeShieldedTokenPublicSupply<NativeShieldedTokenPublicSupplyPrivateState>(
       witnesses,
     ),
-  defaultPrivateState: () => NativeShieldedTokenSupplyPrivateState,
+  defaultPrivateState: () => NativeShieldedTokenPublicSupplyPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => NativeShieldedTokenSupplyWitnesses(),
-  artifactName: 'MockNativeShieldedTokenSupply',
+  witnessesFactory: () => NativeShieldedTokenPublicSupplyWitnesses(),
+  artifactName: 'MockNativeShieldedTokenPublicSupply',
 });
 
 /**
- * NativeShieldedTokenSupply (extension) Simulator.
+ * NativeShieldedTokenPublicSupply (extension) Simulator.
  *
  * Drives the scalar accounting blocks (`_addMinted` / `_addBurned`) and getters
  * directly; the extension imports no token module.
  */
-export class NativeShieldedTokenSupplySimulator extends NativeShieldedTokenSupplySimulatorBase {
+export class NativeShieldedTokenPublicSupplySimulator extends NativeShieldedTokenPublicSupplySimulatorBase {
   static async create(
     options: SimulatorOptions<
-      NativeShieldedTokenSupplyPrivateState,
-      ReturnType<typeof NativeShieldedTokenSupplyWitnesses>
+      NativeShieldedTokenPublicSupplyPrivateState,
+      ReturnType<typeof NativeShieldedTokenPublicSupplyWitnesses>
     > = {},
-  ): Promise<NativeShieldedTokenSupplySimulator> {
+  ): Promise<NativeShieldedTokenPublicSupplySimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [],
       options,
-    ) as Promise<NativeShieldedTokenSupplySimulator>;
+    ) as Promise<NativeShieldedTokenPublicSupplySimulator>;
   }
 
   /** @description Adds `amount` to the exact minted total. */

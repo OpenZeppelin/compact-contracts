@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenSupply.compact)
+// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenPublicSupply.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
- * @module NativeShieldedTokenSupply
+ * @module NativeShieldedTokenPublicSupply
  * @description Optional standalone extension that adds on-chain supply
  * accounting to a `NativeShieldedToken`. It exposes scalar `_addMinted` /
  * `_addBurned` building blocks plus the `totalMinted` / `totalBurned` /
  * `totalSupply` getters. It imports no token module.
  *
- * It is a thin wrapper over `NativeShieldedTokenSupplyCore`, forwarding a
+ * It is a thin wrapper over `NativeShieldedTokenPublicSupplyCore`, forwarding a
  * single fixed key (the paired contract has exactly one token type), so the
  * accounting logic and guarantees live in the shared core.
  *
@@ -48,24 +48,24 @@ pragma language_version >= 0.23.0;
  *
  * @dev Mint amounts are already public via the protocol's `shieldedMints`
  * effect, so `_addMinted` adds accounting, not disclosure. See
- * `NativeShieldedTokenSupplyCore` for the exact / lower-bound / upper-bound
+ * `NativeShieldedTokenPublicSupplyCore` for the exact / lower-bound / upper-bound
  * guarantees, the `burned <= minted` invariant, and the mint-side drift caveat.
  *
  * @warning Pair every mint with `_addMinted` and every burn with `_addBurned` on
  * every path; mis-wiring is a security-critical, undetectable error (e.g. an
  * undercounted mint makes `_addBurned` reject legitimate burns). See
- * `NativeShieldedTokenSupplyCore`.
+ * `NativeShieldedTokenPublicSupplyCore`.
  */
-module NativeShieldedTokenSupply {
+module NativeShieldedTokenPublicSupply {
   import CompactStandardLibrary;
-  import "./NativeShieldedTokenSupplyCore" prefix Core_;
+  import "./NativeShieldedTokenPublicSupplyCore" prefix Core_;
 
   // Circuits use the `Core_` prefix above. The named import/re-export below is
   // only for the core supply ledger keys, so the implementing contract's ledger
   // keys read as `_totalMinted` / `_totalBurned` rather than
-  // `NativeShieldedTokenSupplyCore__totalMinted`. The circuit names are
+  // `NativeShieldedTokenPublicSupplyCore__totalMinted`. The circuit names are
   // intentionally NOT imported unprefixed, to avoid potential clashes.
-  import { _totalMinted, _totalBurned } from "./NativeShieldedTokenSupplyCore";
+  import { _totalMinted, _totalBurned } from "./NativeShieldedTokenPublicSupplyCore";
   export { _totalMinted, _totalBurned };
 
   /**

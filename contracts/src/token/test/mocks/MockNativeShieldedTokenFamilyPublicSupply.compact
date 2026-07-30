@@ -9,37 +9,37 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../extensions/NativeShieldedTokenFamilySupply" prefix NativeShieldedTokenFamilySupply_;
+import "../../extensions/NativeShieldedTokenFamilyPublicSupply" prefix NativeShieldedTokenFamilyPublicSupply_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 
 // Surface the core supply ledger state unprefixed so tests can read it via
 // `getPublicState()` and assert the per-domain accounting getters return it verbatim.
-import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenFamilySupply";
+import { _totalMinted, _totalBurned } from "../../extensions/NativeShieldedTokenFamilyPublicSupply";
 export { _totalMinted, _totalBurned };
 
-// Unit mock for the NativeShieldedTokenFamilySupply extension in isolation. The
+// Unit mock for the NativeShieldedTokenFamilyPublicSupply extension in isolation. The
 // extension imports no token module, so the per-domain accounting blocks and
 // getters are driven directly here. The extension needs no initialization.
 
 export circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
-  NativeShieldedTokenFamilySupply__addMinted(domain, amount);
+  NativeShieldedTokenFamilyPublicSupply__addMinted(domain, amount);
 }
 
 export circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
-  NativeShieldedTokenFamilySupply__addBurned(domain, amount);
+  NativeShieldedTokenFamilyPublicSupply__addBurned(domain, amount);
 }
 
 export circuit totalMinted(domain: Bytes<32>): Uint<128> {
-  return NativeShieldedTokenFamilySupply_totalMinted(domain);
+  return NativeShieldedTokenFamilyPublicSupply_totalMinted(domain);
 }
 
 export circuit totalBurned(domain: Bytes<32>): Uint<128> {
-  return NativeShieldedTokenFamilySupply_totalBurned(domain);
+  return NativeShieldedTokenFamilyPublicSupply_totalBurned(domain);
 }
 
 export circuit totalSupply(domain: Bytes<32>): Uint<128> {
-  return NativeShieldedTokenFamilySupply_totalSupply(domain);
+  return NativeShieldedTokenFamilyPublicSupply_totalSupply(domain);
 }
 
 // Test-only: force `_totalBurned(domain)` past `_totalMinted(domain)` to reach
