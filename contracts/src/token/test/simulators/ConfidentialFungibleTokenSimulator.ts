@@ -208,64 +208,45 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
      * between different user identities or inject incorrect keys to test
      * failure paths.
      */
-    injectSecretKey: async (
+    injectSecretKey: (
       newSK: Uint8Array,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const current = await this.getPrivateState();
-      const updated = { ...current, secretKey: newSK };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState({ secretKey: newSK }),
 
     /**
      * @description Replaces EK in the private state. Used in tests to inject
      * a wrong EK and verify the decryption-consistency assertion catches it.
      */
-    injectEncryptionKey: async (
+    injectEncryptionKey: (
       newEK: Uint8Array,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const current = await this.getPrivateState();
-      const updated = { ...current, encryptionKey: newEK };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState({ encryptionKey: newEK }),
 
     /**
      * @description Replaces SK, EK, and clears the plaintext cache atomically.
      * Used to switch between user identities mid-test (e.g., Alice -> Bob)
      * without leaving Alice's cached plaintexts in Bob's state.
      */
-    switchIdentity: async (
+    switchIdentity: (
       newSK: Uint8Array,
       newEK: Uint8Array,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const updated = {
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState((current) => ({
         secretKey: newSK,
         encryptionKey: newEK,
         plaintextCache: new Map<string, bigint>(),
-        randomnessSeed:
-          (await this.getPrivateState()).randomnessSeed ??
-          DEFAULT_RANDOMNESS_SEED,
-      };
-      this.setPrivateState(updated);
-      return updated;
-    },
+        randomnessSeed: current.randomnessSeed ?? DEFAULT_RANDOMNESS_SEED,
+      })),
 
     /**
      * @description Sets the randomness seed returned by `wit_RandomnessSeed`.
      * Use to vary randomness between transactions (e.g. to avoid producing
      * identical ciphertexts when repeating the same operation).
      */
-    setRandomnessSeed: async (
+    setRandomnessSeed: (
       seed: Uint8Array,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const updated = {
-        ...(await this.getPrivateState()),
-        randomnessSeed: seed,
-      };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState({ randomnessSeed: seed }),
 
     /**
      * @description Returns the current SK.
@@ -295,19 +276,17 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
      * ciphertext, since the wallet would normally do this automatically as
      * part of constructing the transaction.
      */
-    cachePlaintext: async (
+    cachePlaintext: (
       ct: ElGamal_Ciphertext,
       plaintext: bigint,
-    ): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const current = await this.getPrivateState();
-      const updated = ConfidentialFungibleTokenPrivateState.cachePlaintext(
-        current,
-        ct,
-        plaintext,
-      );
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState((current) =>
+        ConfidentialFungibleTokenPrivateState.cachePlaintext(
+          current,
+          ct,
+          plaintext,
+        ),
+      ),
 
     /**
      * @description Looks up a cached plaintext by ciphertext. Returns
@@ -334,12 +313,8 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
      * @description Clears the plaintext cache without changing SK/EK. Used in
      * tests that simulate cache loss while preserving identity.
      */
-    clearCache: async (): Promise<ConfidentialFungibleTokenPrivateState> => {
-      const current = await this.getPrivateState();
-      const updated = { ...current, plaintextCache: new Map<string, bigint>() };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    clearCache: (): Promise<ConfidentialFungibleTokenPrivateState> =>
+      this.updatePrivateState({ plaintextCache: new Map<string, bigint>() }),
 
     /**
      * @description Returns the accountId derived from the current SK. Wraps

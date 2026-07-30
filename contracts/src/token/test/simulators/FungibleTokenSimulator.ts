@@ -306,13 +306,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: async (
-      newSK: Uint8Array,
-    ): Promise<FungibleTokenPrivateState> => {
-      const updatedState = FungibleTokenPrivateState.withSecretKey(newSK);
-      this.setPrivateState(updatedState);
-      return updatedState;
-    },
+    injectSecretKey: (newSK: Uint8Array): Promise<FungibleTokenPrivateState> =>
+      this.updatePrivateState(FungibleTokenPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

@@ -132,13 +132,10 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: async (
+    injectSecretKey: (
       newSK: Buffer<ArrayBufferLike>,
-    ): Promise<ShieldedAccessControlPrivateState> => {
-      const updated = { secretKey: newSK };
-      this.setPrivateState(updated);
-      return updated;
-    },
+    ): Promise<ShieldedAccessControlPrivateState> =>
+      this.updatePrivateState({ secretKey: newSK }),
 
     /**
      * @description Returns the current secret key from the private state.
