@@ -5,7 +5,7 @@ import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import { MockForwarderShieldedSimulator } from './simulators/MockForwarderShieldedSimulator.js';
 import { MockForwarderUnshieldedSimulator } from './simulators/MockForwarderUnshieldedSimulator.js';
 
@@ -22,7 +22,7 @@ import { MockForwarderUnshieldedSimulator } from './simulators/MockForwarderUnsh
 // coin to it, so its encryption key must resolve on-chain). The unshielded
 // parent stays synthetic — an unshielded recipient is a public address, no
 // encryption key needed.
-const SHIELDED_PARENT = shieldedTestParentKey();
+const SHIELDED_PARENT = shieldedTestKey().left;
 const SHIELDED_ZERO = utils.ZERO_KEY.left;
 const UNSHIELDED_PARENT = utils.createEitherTestUserAddress('PARENT').right;
 const UNSHIELDED_ZERO = utils.ZERO_USER_ADDRESS.right;

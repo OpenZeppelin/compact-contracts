@@ -6,7 +6,7 @@ import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   bytesToHex,
   isNonceSpent,
@@ -31,7 +31,7 @@ const TREASURY_ADDRESS = '5c'.repeat(32);
 // Assigned in `beforeEach` after `create()` syncs the wallet: on live this
 // resolves to the deployer's own coin public key (an encryption key the node can
 // resolve); dry → a synthetic user.
-let Z_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
+let Z_RECIPIENT: ReturnType<typeof shieldedTestKey>;
 
 // Delegates to the backend-aware builder: live gets a fresh random nonce per run
 // (the local node persists nullifiers, so a fixed nonce would replay a spent
@@ -51,7 +51,7 @@ describe('ShieldedTreasuryStateless', () => {
     treasury = await MockShieldedTreasuryStatelessSimulator.create({
       contractAddress: TREASURY_ADDRESS,
     });
-    Z_RECIPIENT = shieldedTestRecipient();
+    Z_RECIPIENT = shieldedTestKey();
     const deposited = makeCoin(COLOR, AMOUNT);
     await treasury._deposit(deposited);
     coin = await getQualifiedShieldedCoinInfo(
@@ -257,7 +257,7 @@ describe('ShieldedTreasuryStateless', () => {
     '_send — implementing contract routes the change onward on live',
     () => {
       it('should let the caller send the change to a different recipient using the send result', async () => {
-        const changeDest = shieldedTestRecipient();
+        const changeDest = shieldedTestKey();
         const routed = await treasury._sendAndRouteChange(
           coin,
           Z_RECIPIENT,

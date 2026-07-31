@@ -3,7 +3,7 @@ import {
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
@@ -14,7 +14,7 @@ import { ForwarderPrivateSimulator } from '../simulators/presets/ForwarderPrivat
 // over its raw 32 bytes (`calculateParentCommitment(parent.bytes, opSecret)`).
 // On live it is the deployer's own key (the drain sends the note to it, so its
 // encryption key must resolve on-chain).
-const PARENT_BYTES = shieldedTestParentKey().bytes;
+const PARENT_BYTES = shieldedTestKey().left.bytes;
 const OP_SECRET = new Uint8Array(32).fill(0xaa);
 // A shielded token type the deployer wallet holds on live (genesis-minted).
 const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;

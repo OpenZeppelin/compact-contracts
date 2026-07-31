@@ -19,6 +19,13 @@ import { configDefaults, defineConfig } from 'vitest/config';
 const NODE = { globals: true, environment: 'node' as const };
 const ARCHIVE_EXCLUDE = [...configDefaults.exclude, 'src/archive/**'];
 
+// `unit-live` additionally drops the `test/witnesses/**` specs: they build a
+// fabricated `WitnessContext` and assert on the private-state / `wit_*`
+// helpers directly — no simulator, no deploy, no backend surface — so
+// `MIDNIGHT_BACKEND=live` changes nothing about them. Running them on the node
+// would only burn a worker slot; the dry `unit` project still covers them.
+const LIVE_EXCLUDE = [...ARCHIVE_EXCLUDE, 'src/**/test/witnesses/**'];
+
 // Generous timeouts every live project shares (real proofs + on-chain finality
 // are slow). Split out from the sequential/parallel knobs below.
 const LIVE_TIMEOUTS = {
@@ -105,7 +112,7 @@ export default defineConfig({
           ...LIVE_TIMEOUTS,
           name: 'unit-live',
           include: ['src/**/*.test.ts'],
-          exclude: ARCHIVE_EXCLUDE,
+          exclude: LIVE_EXCLUDE,
           // Fail fast (before any wallet build) if the node is dirty or another
           // live run holds the lock. See `live.globalSetup`.
           globalSetup: ['./test-utils/harness/live.globalSetup.ts'],

@@ -4,7 +4,7 @@ import {
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestParentKey } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import { ForwarderShieldedSimulator } from '../simulators/presets/ForwarderShieldedSimulator.js';
 
 // The constructor takes a `ZswapCoinPublicKey` (the supported arm). The
@@ -14,7 +14,7 @@ import { ForwarderShieldedSimulator } from '../simulators/presets/ForwarderShiel
 //
 // Live: the parent is the deployer's own key (the deposit forwards the coin to
 // it, so its encryption key must resolve on-chain).
-const PARENT = shieldedTestParentKey();
+const PARENT = shieldedTestKey().left;
 const ZERO_KEY = utils.ZERO_KEY.left;
 // A shielded token type the deployer wallet holds on live (genesis-minted).
 const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
