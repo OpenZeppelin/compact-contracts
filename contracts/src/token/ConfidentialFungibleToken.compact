@@ -70,6 +70,14 @@ pragma language_version >= 0.23.0;
  * depth), but that counter RESETS on `clearMemos`, so it is an in-epoch
  * backstop only, never a substitute for freshness.
  *
+ * Seed generation is a WALLET responsibility and OUT OF SCOPE for this
+ * contract, which cannot enforce it. The witness shipped in this repo
+ * (`test/witnesses/ConfidentialFungibleTokenWitnesses.ts`) is TEST-ONLY and
+ * returns a FIXED seed for reproducibility; it is NOT a production wallet. A
+ * production integration MUST supply a fresh, high-entropy, secret 32-byte seed
+ * per invocation from a CSPRNG; there is no production reference witness here, so
+ * confidentiality is only as strong as that external, not-yet-built wallet layer.
+ *
  * @dev Plaintext disclosures (what reaches the public ledger):
  *  - This base discloses no amounts; supply accounting lives in a layer.
  *  - A public-supply layer reveals each mint/burn amount via the totalSupply
@@ -119,6 +127,17 @@ pragma language_version >= 0.23.0;
  * calls dominate the credit-path row counts; there is currently no cheaper,
  * upgrade-safe hasher available.
  *
+ * @dev Runtime trust boundary. Confidentiality and integrity rest on the
+ * Midnight runtime enforcing two curve invariants this module does NOT re-check:
+ * every JubjubPoint reaching a curve op is cofactor-cleared into the prime-order
+ * subgroup (so off-curve, low-order, or mixed-order points make the circuit
+ * unsatisfiable), and `ecMul` faults on a scalar >= the subgroup order. These are
+ * regression-pinned with adversarial inputs in
+ * `crypto/test/CurveRuntimeInvariants.test.ts`, which fails loudly if a future
+ * runtime stops enforcing them. That is behavioral verification of the shipped
+ * runtime, NOT a formal audit of its circuit implementation (`midnight-circuits`),
+ * which remains an external trust assumption.
+ *
  * @dev Caller-identity gating (composability). This module is unopinionated
  * about compliance policy (freeze, KYC, pause); a composing contract layers
  * that on top. Gating a circuit on an EXPLICIT argument (e.g. the recipient
@@ -147,18 +166,27 @@ pragma language_version >= 0.23.0;
  * conflict. Documented limitation; acceptable for the v1 target use case
  * (tokenized deposits).
  *
+ * Domain separation. The memo KDF and per-operation randomness are
+ * domain-separated by a version tag but NOT bound to a chain id or
+ * contract-instance identifier, so cross-DEPLOYMENT isolation (the same wallet
+ * seed reused against two instances or two chains) relies on the seed-freshness
+ * requirement above rather than on the derivation itself. Binding `kernel.self()`
+ * into the derivations is a possible defense-in-depth hardening; under review, deferred.
+ *
  * Block weight. A deploy bundles every exported entry point's on-chain IR into
  * one transaction, and the value circuits are SHA256-heavy (k=16), so a
- * full-surface deployment can exceed the node's per-transaction block byte
- * budget and be rejected (`1010: Transaction would exhaust the block limits`).
- * The full token surface exceeds it; a reduced surface (e.g. receive +
- * transfer, dropping allowances and supply accounting) fits, as measured on the
- * local ledger-8 dev stack. The lever is dropping the k=16 value operations a
- * deployment does not need, not just trimming getters. The limit is a
- * governance-configurable, node-side ledger parameter, so confirm against the
- * target network. Keep the deployed circuit surface small (drop
- * unused getters, split oversized composites); raising the limit is a
- * node-side change which is tracked upstream:
+ * full-surface deployment is byte-heavy. Whether it fits is a property of the
+ * target network, not the contract: the per-transaction block byte budget is a
+ * governance-configurable, node-side ledger parameter. On the local ledger-8 dev
+ * stack the full surface exceeded it and was rejected (`1010: Transaction would
+ * exhaust the block limits`), while a reduced surface (e.g. receive + transfer,
+ * dropping allowances and supply accounting) fit. So confirm deployability
+ * against the target network; if a deployment is over budget there, the lever is
+ * exposing only the k=16 value operations it needs, not just trimming getters.
+ * A deployed contract can also be upgraded by its Contract Maintenance Authority
+ * (CMA), so an over-budget deployment can start with a lean surface and add
+ * operations by upgrade instead of fitting the whole surface into one deploy.
+ * Raising the limit itself is a node-side change, tracked upstream:
  * https://github.com/midnightntwrk/midnight-node/issues/1202.
  *
  * Residual griefing. The dual-balance split (see `sweep`) stops dust
