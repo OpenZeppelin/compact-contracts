@@ -7,7 +7,7 @@ import {
   ledger,
   Contract as MockConfidentialFungibleTokenPublicSupply,
   type Token_EscrowEntry,
-} from '../../../artifacts/ConfidentialFungibleTokenPublicSupply/contract/index.js';
+} from '../../../artifacts/ComposedConfidentialFungibleTokenPublicSupply/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
   ConfidentialFungibleTokenWitnesses,
@@ -16,7 +16,8 @@ import {
 
 /**
  * Integration fixture for the assembled ConfidentialFungibleToken + PublicSupply
- * contract (`test/integration/_mocks/ConfidentialFungibleTokenPublicSupply`).
+ * contract
+ * (`test/integration/_mocks/ComposedConfidentialFungibleTokenPublicSupply`).
  *
  * It reuses the base token's confidential-token witnesses and private state (SK,
  * EK, plaintext cache, randomness seed) verbatim — the assembled contract's
@@ -45,7 +46,7 @@ const Base = createSimulator<
   contractArgs: (name, symbol, decimals) => [name, symbol, decimals],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialFungibleTokenWitnesses(),
-  artifactName: 'ConfidentialFungibleTokenPublicSupply',
+  artifactName: 'ComposedConfidentialFungibleTokenPublicSupply',
 });
 
 export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {

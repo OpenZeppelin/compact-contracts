@@ -1,6 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"],
+  "globalPassThroughEnv": [
+    "GITHUB_ACTIONS",
+    "GITHUB_STEP_SUMMARY",
+    "MIDNIGHT_LIVE_KEEP_ENV"
+  ],
   "tasks": {
     "compile:crypto": {
       "dependsOn": ["^build"],
@@ -66,7 +70,11 @@
         "compile:access",
         "compile:multisig",
         "compile:token"
-      ]
+      ],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/**/*.compact", "!src/archive/**"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
     },
     "test": {
       "dependsOn": ["compile"],

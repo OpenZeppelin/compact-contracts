@@ -26,6 +26,7 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Compa
 [Running Tests](#running-tests)
 
 * [Unit Tests](#unit-tests)
+* [Integration Tests](#integration-tests)
 * [Live Tests](#live-tests)
 
 [Styleguides](#styleguides)
@@ -169,6 +170,14 @@ Unit tests run against an in-process mock backend (no network, ZK proving skippe
 yarn test
 ```
 
+### Integration Tests
+
+Composed-contract specs (`contracts/test/integration/specs`): several modules assembled into one contract under `test/integration/_mocks`, then deployed and driven as a unit. Same mock backend as the unit tests.
+
+```bash
+yarn test:integration
+```
+
 ### Live Tests
 
 Live tests run against a local Midnight network (node, indexer, and proof server) defined in [`local-env.yml`](./local-env.yml). They require [Docker](https://docs.docker.com/get-docker/) and a completed `yarn install`.
@@ -179,29 +188,37 @@ One command runs everything — it compiles, resets the stack, runs a quick harn
 yarn test:live
 ```
 
-Currently `multisig` is the only live-ready category; the others still assume dry-only semantics and are skipped (listed in the run banner). Each category joins the run — with its own `test:live:<category>` script — as its specs are refactored for the live backend.
+Currently `multisig` is the only live-ready category. The others still assume dry-only semantics and are skipped, and the run banner lists them. Each joins the run as its specs are refactored for the live backend, with its own `test:live:<category>` script.
+
+`integration` is a target of its own, not a category, so an unscoped run skips it. Ask for it by name. Only one live target runs per invocation, since both live projects draw wallets from the same genesis-funded pool.
+
+```bash
+yarn test:live integration   # or: yarn test:integration:live
+yarn test:live --list        # the live targets, as the CI matrix reads them
+```
+
+> **Note:** the `integration` live target is the harness capability plus a boundary check, not functional coverage. As of ledger v8 the composed contract does not deploy: its circuits' IR overruns the per-tx block byte budget, and the spec asserts that rejection rather than skipping. A ledger bump can move the budget, so a red spec there means the deploy now fits and the functional specs are worth porting to live.
 
 If any files fail, a second round re-runs just those files on a fresh node with one worker, to separate a real failure from an environment flake:
 
 * Fails round 1, passes round 2 → **FLAKY** (exit 0, reported loudly).
 * Fails both rounds → **REAL** (exit non-zero).
 
-Scope the same mechanism to one category, or to a subset within it. The first
-argument names the category; any further argument is a filename substring
-(vitest matches it), so pass a spec name to run every file whose name matches it
-on the live backend — the fast loop while iterating on one feature, instead of
-waiting for the whole category. The match is a substring, not an exact file, so
-a name that prefixes others runs all of them:
+Scope the same mechanism to one target, or a subset within it. The first argument
+names the target (a category, or `integration`). Any further argument is a
+filename substring vitest matches, which is the fast loop while iterating on one
+feature. Being a substring, a name that prefixes others runs all of them:
 
 ```bash
 yarn test:live multisig                  # the whole category
 yarn test:live multisig ShieldedTreasury # any file matching "ShieldedTreasury"
+yarn test:live integration ConfidentialFungibleToken # one integration spec
 ```
 
 The two-round flake check still applies to a scoped run, so a green result
 means the same thing it does for the full suite.
 
-Stop the network when done: `yarn env:down`. (No manual `env:up` is needed — the runner resets the stack itself.)
+The runner owns the stack: it starts it (`make env-up`, itself a reset) and stops it on every exit path, Ctrl-C included. No manual `env:up` or `env:down` needed. To inspect a run afterwards, set `MIDNIGHT_LIVE_KEEP_ENV=1` and stop it yourself. Container logs land in `logs/` either way.
 
 > **Note:** The live tests all run against one shared node, so state left by an earlier run can make a later one fail. Two rules keep them reliable, both enforced by a guard that fails fast, before any wallet build:
 >
@@ -212,12 +229,13 @@ Environment knobs:
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `MIDNIGHT_LIVE_WORKERS` | 3 | Parallel spec files (max 3 — one genesis-funded deployer each). |
+| `MIDNIGHT_LIVE_WORKERS` | 3 | Parallel spec files under `unit-live` (max 3, one genesis-funded deployer each). |
 | `MIDNIGHT_LIVE_ALLOW_DIRTY` | unset | `1` skips the freshness check (run against a dirty node). |
 | `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0 | Coin events beyond genesis tolerated before "not fresh". |
 | `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600 | Above this indexer head, the guard asks you to `env:up` rather than scan. |
+| `MIDNIGHT_LIVE_KEEP_ENV` | unset | `1` leaves the stack running after the run instead of tearing it down. |
 
-`unit-live` runs up to 3 workers in parallel, so their output interleaves. It is tagged per worker: a `▶ live worker N/3 ready` banner when a worker's wallets are funded, a `[wN] ❯ <file>` line as each spec file starts, and a `[wN] ✓ <test> (<ms>) [done/total]` line per test — showing the worker, the result, and overall progress through the run. Each worker also writes a detailed log to `logs/live-harness-wN.log`.
+`integration-live` runs one worker (only the deployer wallet is in play). `unit-live` runs up to 3 workers in parallel, so their output interleaves. It is tagged per worker: a `▶ live worker N/3 ready` banner when a worker's wallets are funded, a `[wN] ❯ <file>` line as each spec file starts, and a `[wN] ✓ <test> (<ms>) [done/total]` line per test — showing the worker, the result, and overall progress through the run. Each worker also writes a detailed log to `logs/live-harness-wN.log`.
 
 > **Tip:** to save the run to a colored, readable log, force color and pipe to `tee`. Piping (stdout is no longer a TTY) makes vitest print one clean line per result instead of an animated spinner, and `FORCE_COLOR=1` keeps the color. Write it to a `.ansi` file:
 >

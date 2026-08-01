@@ -2,12 +2,11 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Recursively collect `<Contract>` basenames of every `.compact` under `root`.
+/** Recursively collect `<Contract>` basenames of every `.compact` under `roots`.
  * The compiler names each artifact dir after the source file's basename, so this
  * is the set of contract names the current tree can legitimately produce. */
-function compactContractNames(root: string): Set<string> {
+function compactContractNames(...roots: string[]): Set<string> {
   const names = new Set<string>();
-  if (!existsSync(root)) return names;
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, entry.name);
@@ -16,7 +15,7 @@ function compactContractNames(root: string): Set<string> {
         names.add(entry.name.slice(0, -'.compact'.length));
     }
   };
-  walk(root);
+  for (const root of roots) if (existsSync(root)) walk(root);
   return names;
 }
 
@@ -44,20 +43,27 @@ function collectEmptyKeys(dir: string, out: string[]): void {
  * real deploy fail in `beforeAll`, which vitest turns into a silent whole-suite
  * skip. Callers check this before starting the live stack.
  *
- * When `sourceRoot` is given, only contracts that still have a `.compact` source
- * under it are checked, so stale orphan artifact dirs (source deleted, keys never
- * rebuilt) do not false-positive. Omit it to scan every contract dir.
+ * When `sourceRoots` are given, only contracts that still have a `.compact`
+ * source under one of them are checked, so stale orphan artifact dirs (source
+ * deleted, keys never rebuilt) do not false-positive. Pass none to scan every
+ * contract dir.
+ *
+ * More than one root matters because sources outside `src/` also compile into the
+ * same `artifacts/` tree: the integration mocks live under
+ * `test/integration/_mocks`, so a `src`-only scan silently skips them — the live
+ * integration target passes both roots.
  *
  * @param artifactsRoot - artifact tree to scan (e.g. `contracts/artifacts`)
- * @param sourceRoot - optional source tree to scope by (e.g. `contracts/src`)
+ * @param sourceRoots - source trees to scope by (e.g. `contracts/src`)
  * @returns absolute paths of empty key files; empty array means all good
  */
 export function emptyKeyArtifacts(
   artifactsRoot: string,
-  sourceRoot?: string,
+  ...sourceRoots: string[]
 ): string[] {
   if (!existsSync(artifactsRoot)) return [];
-  const live = sourceRoot ? compactContractNames(sourceRoot) : undefined;
+  const live =
+    sourceRoots.length > 0 ? compactContractNames(...sourceRoots) : undefined;
   const empty: string[] = [];
   for (const contract of readdirSync(artifactsRoot, { withFileTypes: true })) {
     if (!contract.isDirectory()) continue;
@@ -68,7 +74,8 @@ export function emptyKeyArtifacts(
 }
 
 // Standalone CLI: `node scripts/keyIntegrity.ts` checks the repo's artifacts
-// against its sources and exits 1 if any live contract has a truncated key.
+// against its sources — `src` plus the integration mocks, the two trees that
+// compile into `artifacts/` — and exits 1 if any has a truncated key.
 const selfPath = fileURLToPath(import.meta.url);
 if (process.argv[1] && path.resolve(process.argv[1]) === selfPath) {
   const repoRoot = path.resolve(path.dirname(selfPath), '..');
@@ -76,6 +83,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === selfPath) {
   const bad = emptyKeyArtifacts(
     path.join(contracts, 'artifacts'),
     path.join(contracts, 'src'),
+    path.join(contracts, 'test/integration/_mocks'),
   );
   if (bad.length === 0) {
     console.log('ZK keys OK — no truncated (0-byte) .verifier/.prover files.');
