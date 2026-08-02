@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenAuthority.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenAuthority
+ * @description Optional standalone extension binding a single AUTHORITY role
+ * for a `ConfidentialNoteFungibleToken` pool: the authority is whoever proves
+ * the secret behind `_authorityPk = Hf(authoritySecret)` in-circuit. It
+ * imports no token module.
+ *
+ * The role is a gate, not a mechanism: this extension knows nothing about
+ * seizing or freezing. The composing contract places `_assertAuthority` in
+ * front of whichever administrative blocks its deployment reserves for the
+ * authority (seizure, freeze/unfreeze, ...):
+ *
+ *   export circuit seize(...): [] {
+ *     Authority__assertAuthority();
+ *     // ...consume the target note and re-mint to a recovery owner...
+ *   }
+ *
+ * A deployment with different powers (freeze-only, no seizure at all) reuses
+ * the same gate; in production the authority key is governance-gated
+ * (multisig).
+ *
+ * @dev Identity derivation matches the token core's `derivePk`
+ * (`pk = Hf(sk)`, field-typed), so one keypair works across both modules and
+ * off-chain code can derive the authority identity with the core's exported
+ * circuit.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenAuthority {
+  import CompactStandardLibrary;
+
+  export ledger _isInitialized: Boolean;
+  // Authority authorization: `Hf(authoritySecret)`.
+  export ledger _authorityPk: Field;
+
+  // The authority's secret (authorityPk = Hf(authoritySecret)).
+  witness wit_AuthoritySecret(): Bytes<32>;
+
+  /**
+   * @description One-shot initialization binding the authority.
+   *
+   * Requirements:
+   *
+   * - Extension is not already initialized.
+   * - `authorityPk` is nonzero (zero has no known preimage, which would brick
+   *   every authority-gated action permanently).
+   */
+  export circuit initialize(authorityPk: Field): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenAuthority: already initialized");
+    assert(authorityPk != 0 as Field,
+           "ConfidentialNoteFungibleTokenAuthority: zero authority key");
+    _authorityPk = disclose(authorityPk);
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Building block: asserts the caller proves the authority
+   * secret. Place it before any administrative block the deployment reserves
+   * for the authority.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - `Hf(wit_AuthoritySecret()) == _authorityPk`.
+   */
+  export circuit _assertAuthority(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenAuthority: extension not initialized");
+    assert(derivePk(wit_AuthoritySecret()) == _authorityPk,
+           "ConfidentialNoteFungibleTokenAuthority: not the authority");
+  }
+
+  /**
+   * @description Building block: self-rotation — the current authority proves
+   * their secret and binds a new authority key. Same semantics as an
+   * `Ownable`-style ownership transfer: a compromised key can rotate itself
+   * away, so production deployments gate this behind governance too.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - The caller proves the CURRENT authority secret.
+   * - `newAuthorityPk` is nonzero (renounce-by-zero is deliberately NOT
+   *   supported: it would brick authority actions silently; a renounce design
+   *   is a separate decision).
+   */
+  export circuit _rotateAuthority(newAuthorityPk: Field): [] {
+    _assertAuthority();
+    assert(newAuthorityPk != 0 as Field,
+           "ConfidentialNoteFungibleTokenAuthority: zero authority key");
+    _authorityPk = disclose(newAuthorityPk);
+  }
+
+  // Same construction as the token core's `derivePk`, duplicated so this
+  // extension stays free of token imports (a module import would share the
+  // token's ledger state into any consumer of this extension).
+  circuit derivePk(sk: Bytes<32>): Field {
+    return degradeToTransient(persistentHash<Bytes<32>>(sk));
+  }
+}

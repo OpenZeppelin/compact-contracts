@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../NoteDelivery" prefix ND_;
+
+export { ND_Note, ND_Delivery, ND_FullDelivery, ND_Recovered }
+
+export pure circuit deliver(recipientEncPk: JubjubPoint, value: Uint<128>, e: Field): [ND_Note, ND_Delivery] {
+  return ND_deliver(recipientEncPk, value, e);
+}
+
+export pure circuit recover(delivery: ND_Delivery, encSk: Field): ND_Recovered {
+  return ND_recover(delivery, encSk);
+}
+
+export pure circuit deliverNote(recipientEncPk: JubjubPoint, note: ND_Note, e: Field): ND_FullDelivery {
+  return ND_deliverNote(recipientEncPk, note, e);
+}
+
+export pure circuit recoverNote(delivery: ND_FullDelivery, encSk: Field): ND_Recovered {
+  return ND_recoverNote(delivery, encSk);
+}

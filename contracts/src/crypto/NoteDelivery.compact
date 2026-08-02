@@ -1,0 +1,127 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha (crypto/NoteDelivery.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module NoteDelivery
+ * @description EXPLORATORY tier-4 primitive: the encrypted note-delivery channel for
+ * a shielded pool. A sender delivers a note's `(value, nonce)` to a recipient's
+ * ENCRYPTION key `encPk = g^encSk` via one ECDH shared secret, so the recipient
+ * can detect and spend the note without any out-of-band data. Both fields ride the
+ * same shared secret, domain-separated: the nonce is DERIVED from it (so it needs
+ * no separate ciphertext) and the value is one-time-padded.
+ *
+ * Construction (sender picks a fresh ephemeral `e`):
+ *   E       = g^e
+ *   S       = encPk^e = g^{encSk*e}     (ECDH shared secret point)
+ *   nonce   = KDF(S, "note:nonce")      (the note's nonce; deterministic)
+ *   valueCt = value + KDF(S, "note:value")
+ * Recipient recovers with `encSk`: S = E^encSk, then the same nonce and value.
+ *
+ * @dev This is the note-scheme counterpart to a Zcash note ciphertext. It uses the
+ * recipient's ENCRYPTION key (a Jubjub point), which is separate from the note's
+ * spend/ownership key `H(spendSk)`; wiring it into the token means each account
+ * publishes both. `e` must be fresh + secret (same one-time-pad rule as EcdhMask).
+ *
+ * @dev No ledger state, no witnesses. Pure circuits for sender + recipient use.
+ */
+module NoteDelivery {
+  import CompactStandardLibrary;
+
+  // A note's spent value and its (derived) nonce.
+  export struct Note {
+    value: Uint<128>;
+    nonce: Field;
+  }
+
+  // The on-chain delivery: announcement ephemeral + the value one-time-pad.
+  export struct Delivery {
+    ephemeral: JubjubPoint;
+    valueCt: Field;
+  }
+
+  // A delivery for a note whose nonce is fixed elsewhere (e.g. derived from a
+  // separate audit channel): both fields ride explicit one-time pads.
+  export struct FullDelivery {
+    ephemeral: JubjubPoint;
+    valueCt: Field;
+    nonceCt: Field;
+  }
+
+  // The recipient's recovered view (raw fields; caller checks value < 2^128).
+  export struct Recovered {
+    value: Field;
+    nonce: Field;
+  }
+
+  // Domain-separated KDF from the shared secret point to a Field.
+  circuit kdf(shared: JubjubPoint, domain: Bytes<32>): Field {
+    return degradeToTransient(
+      persistentHash<Vector<2, Bytes<32>>>([persistentHash<JubjubPoint>(shared), domain]));
+  }
+
+  /**
+   * @description Sender-side: derive the note `(value, nonce)` and its delivery for
+   * `recipientEncPk` under a fresh ephemeral `e`. The nonce is derived from the
+   * shared secret, so it is committed by the sender and recovered by the recipient
+   * without a separate ciphertext.
+   */
+  export pure circuit deliver(recipientEncPk: JubjubPoint, value: Uint<128>, e: Field): [Note, Delivery] {
+    const shared = ecMul(recipientEncPk, e);
+    const nonce = kdf(shared, pad(32, "note:nonce"));
+    const valueCt = (value as Field) + kdf(shared, pad(32, "note:value"));
+    return [
+      Note { value: value, nonce: nonce },
+      Delivery { ephemeral: ecMulGenerator(e), valueCt: valueCt }
+    ];
+  }
+
+  /**
+   * @description Recipient-side: recover `(value, nonce)` from a delivery using the
+   * encryption secret `encSk` (the scalar with `encPk = g^encSk`).
+   */
+  export pure circuit recover(delivery: Delivery, encSk: Field): Recovered {
+    const shared = ecMul(delivery.ephemeral, encSk);
+    return Recovered {
+      value: delivery.valueCt - kdf(shared, pad(32, "note:value")),
+      nonce: kdf(shared, pad(32, "note:nonce"))
+    };
+  }
+
+  /**
+   * @description Sender-side variant for a note whose nonce already exists (it
+   * was derived elsewhere, e.g. from a mandatory audit channel): encrypts BOTH
+   * `value` and `nonce` to `recipientEncPk` under a fresh ephemeral `e`.
+   *
+   * Requirements:
+   *
+   * - `recipientEncPk` is not the identity point.
+   * - `e` is fresh, secret, and non-zero (same one-time-pad rules as `deliver`).
+   */
+  export pure circuit deliverNote(recipientEncPk: JubjubPoint, note: Note, e: Field): FullDelivery {
+    const identity = ecMulGenerator(0 as Field);
+    assert(recipientEncPk != identity, "NoteDelivery: identity pk");
+    const ephemeral = ecMulGenerator(e);
+    // Point guard subsumes `e != 0` (see crypto/EcdhMask weak-inputs note).
+    assert(ephemeral != identity, "NoteDelivery: zero ephemeral");
+    const shared = ecMul(recipientEncPk, e);
+    return FullDelivery {
+      ephemeral: ephemeral,
+      valueCt: (note.value as Field) + kdf(shared, pad(32, "note:value")),
+      nonceCt: note.nonce + kdf(shared, pad(32, "note:nonce:ct"))
+    };
+  }
+
+  /**
+   * @description Recipient-side: recover `(value, nonce)` from a `FullDelivery`
+   * using the encryption secret `encSk`.
+   */
+  export pure circuit recoverNote(delivery: FullDelivery, encSk: Field): Recovered {
+    const shared = ecMul(delivery.ephemeral, encSk);
+    return Recovered {
+      value: delivery.valueCt - kdf(shared, pad(32, "note:value")),
+      nonce: delivery.nonceCt - kdf(shared, pad(32, "note:nonce:ct"))
+    };
+  }
+}

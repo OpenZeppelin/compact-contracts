@@ -1,0 +1,174 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/presets/ConcurrentConfidentialNoteFungibleToken.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConcurrentConfidentialNoteFungibleToken
+ * @description DRAFT minimal preset demonstrating the concurrency-hardened
+ * supply path: the note-token core + single-issuer gate + a
+ * `ConcurrentSupply` extension whose mint/burn accounting goes through an
+ * `ElGamalDeltaInbox` (see `concurrency.md` §9.2). It is deliberately NOT the
+ * regulated composition — no audit, delivery, freeze, or seizure — so the
+ * concurrency shape stands alone: created notes return to the caller and move
+ * out of band (the future Basic preset's style).
+ *
+ *   import "./presets/ConcurrentConfidentialNoteFungibleToken" prefix Token_;
+ *
+ *   constructor(issuerPk: Field, supplyKey: JubjubPoint) {
+ *     Token_initialize(issuerPk, supplyKey);
+ *   }
+ *
+ * What the delta inbox buys, per racing pair (contrast the Regulated preset,
+ * where every mint/burn pair conflicts on `_encSupply`):
+ *
+ * - mint ∥ mint, mint ∥ burn, burn ∥ burn — ✅ commute: tree appends,
+ *   per-key nullifier inserts, and inbox credits pin nothing shared.
+ * - transfer ∥ anything (different notes) — ✅ commute, as in the core.
+ * - foldSupply ∥ foldSupply — ❌ folder self-serializes (safely
+ *   permissionless: folding cannot corrupt value).
+ * - attestSupply ∥ mint/burn — ❌ deliberate checkpoint: attestation proves
+ *   the inbox EMPTY in-circuit, so the published total provably includes
+ *   every mint and burn. Fold-to-empty, then attest.
+ *
+ * @dev The module re-exports the composed modules' observable ledger state
+ * and types under bare names, including the inbox's `_pending` /
+ * `_pendingCounts` — folders and indexers enumerate pending deltas and watch
+ * backlog depth through the consumer's generated ledger reader.
+ *
+ * @dev `wit_NonceRandomness` (core) and `wit_ConcurrentSupplyRandomness`
+ * (supply) MUST each return a fresh, secret seed per invocation.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConcurrentConfidentialNoteFungibleToken {
+  import CompactStandardLibrary;
+  import "../ConfidentialNoteFungibleToken" prefix Core_;
+  import "../extensions/ConfidentialNoteFungibleTokenIssuer" prefix Issuer_;
+  import "../extensions/ConfidentialNoteFungibleTokenConcurrentSupply" prefix Supply_;
+
+  // Surface the composed modules' observable state and types under stable
+  // bare names (a prefix-only import would keep them out of a consumer's
+  // generated ledger reader).
+  import { Note, _commitments, _nullifiers } from "../ConfidentialNoteFungibleToken";
+  import { _issuerPk } from "../extensions/ConfidentialNoteFungibleTokenIssuer";
+  import {
+    _supplyKey,
+    _encSupply,
+    _attestedSupply,
+    _attestationCount
+  } from "../extensions/ConfidentialNoteFungibleTokenConcurrentSupply";
+  import { _pending, _pendingCounts } from "../../utils/concurrency/ElGamalDeltaInbox";
+  export { Note };
+  export {
+    _issuerPk,
+    _commitments,
+    _nullifiers,
+    _supplyKey,
+    _encSupply,
+    _attestedSupply,
+    _attestationCount,
+    _pending,
+    _pendingCounts
+  };
+
+  export ledger _isInitialized: Boolean;
+
+  /**
+   * @description One-shot initialization binding the issuer (may mint) and
+   * the supply key (attests totals). A consuming contract typically calls
+   * this from its constructor.
+   *
+   * Requirements:
+   *
+   * - Module is not already initialized.
+   * - Each sub-module initializer guards its own key.
+   */
+  export circuit initialize(issuerPk: Field, supplyKey: JubjubPoint): [] {
+    assert(!_isInitialized, "ConcurrentConfidentialNoteFungibleToken: already initialized");
+    Issuer_initialize(issuerPk);
+    Supply_initialize(supplyKey);
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Mints a note of `value` to `recipientPk` and returns it (a
+   * local, private result the caller hands over out of band). The supply
+   * delta is credited to the inbox, so concurrent mints/burns do NOT
+   * conflict.
+   *
+   * Requirements:
+   *
+   * - The caller proves the issuer secret.
+   *
+   * @circuitInfo k=15, rows=27464
+   */
+  export circuit mint(recipientPk: Field, value: Uint<128>): Note {
+    Issuer__assertIssuer();
+    const note = Core__mint(recipientPk, value);
+    Supply__addMinted(value);
+    return note;
+  }
+
+  /**
+   * @description Fully-private transfer, straight from the core: consumes the
+   * caller's input note, returns `[outNote, changeNote]`. Touches no supply
+   * state — transfers commute with everything but a spend of the same note.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `value <= input.value`.
+   *
+   * @circuitInfo k=16, rows=36394
+   */
+  export circuit transfer(recipientPk: Field, value: Uint<128>): [Note, Note] {
+    return Core_transfer(recipientPk, value);
+  }
+
+  /**
+   * @description Burns `value` from the caller's input note and returns the
+   * change note. The supply decrease is credited to the inbox as a negated
+   * encryption, so burns commute with mints and with each other.
+   *
+   * Requirements:
+   *
+   * - The input note is committed in the tree and unspent.
+   * - `value <= input.value`.
+   *
+   * @circuitInfo k=16, rows=40945
+   */
+  export circuit burn(value: Uint<128>): Note {
+    const changeNote = Core_burn(value);
+    Supply__addBurned(value);
+    return changeNote;
+  }
+
+  /**
+   * @description Absorbs up to 8 pending supply deltas into `_encSupply`.
+   * Deliberately UNGATED — folding cannot corrupt value, so any party may
+   * drain the backlog (a censoring indexer is routed around, not trusted).
+   * Call repeatedly to drain a deep inbox.
+   *
+   * @circuitInfo k=16, rows=39462
+   */
+  export circuit foldSupply(): [] {
+    Supply__foldSupply();
+  }
+
+  /**
+   * @description Publishes a proof-backed public supply total. Proves the
+   * inbox empty in-circuit first, so the total provably includes every mint
+   * and burn (see the ConcurrentSupply extension).
+   *
+   * Requirements:
+   *
+   * - The supply inbox has no pending entries (fold-to-empty first).
+   * - The caller proves the supply-key secret and the exact total.
+   *
+   * @circuitInfo k=13, rows=4694
+   */
+  export circuit attestSupply(total: Uint<128>): [] {
+    Supply_attestSupply(total);
+  }
+}

@@ -1,0 +1,185 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts (token/extensions/ConfidentialNoteFungibleTokenConcurrentSupply.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenConcurrentSupply
+ * @description Concurrency-hardened sibling of
+ * `ConfidentialNoteFungibleTokenPrivateSupply`: the same confidential,
+ * attestable supply, but mint/burn accounting goes through an
+ * `ElGamalDeltaInbox` instead of updating `_encSupply` in-circuit. The direct
+ * update pins the old ciphertext into every mint/burn transcript, so
+ * concurrent mints/burns reject each other (`concurrency.md` §8.1); here they
+ * only APPEND encrypted deltas (commutes with everything), and a separate
+ * fold absorbs the backlog:
+ *
+ *   - `_addMinted` / `_addBurned` — hot path, conflict-free: encrypt the
+ *     delta (negated for burns) and credit the inbox.
+ *   - `_foldSupply` — cold path: drain up to 8 pending deltas into
+ *     `_encSupply`. Conflicts only with itself; safely permissionless.
+ *   - `attestSupply` — checkpoint: proves the inbox is EMPTY in-circuit
+ *     (`_assertEmpty`), so the attested total provably includes every mint
+ *     and burn ever credited. The emptiness read is a deliberate barrier
+ *     (see the inbox module doc).
+ *
+ * Conflict profile: mint ∥ mint, burn ∥ burn, mint ∥ burn all commute;
+ * fold ∥ fold and attest ∥ credit conflict (folder/checkpoint semantics).
+ * Compare PrivateSupply, where every pair above conflicts.
+ *
+ * @dev Same 1:1 wiring warning as PrivateSupply: pair every token mint/burn
+ * with exactly one `_addMinted`/`_addBurned` in the SAME circuit, or the
+ * encrypted supply silently diverges from the pool.
+ *
+ * @dev Plaintext range: the folded supply lives in the exponent, so burns
+ * exceeding mints (possible only when mis-wired) land at `g^(-v)` and make
+ * every future attestation unsatisfiable. Correct pairing rules this out.
+ *
+ * @dev `wit_ConcurrentSupplyRandomness` MUST return a fresh, secret seed per
+ * invocation: it derives both the delta's encryption randomness and the
+ * inbox entry id (a repeated seed leaks plaintext relations AND collides the
+ * id, rejecting the credit).
+ *
+ * @dev This extension shares the `ElGamalDeltaInbox` module instance with
+ * any other inbox user in the composing contract (module state is a per-file
+ * singleton); its entries live under the `OZ:cnt:csupply` domain.
+ *
+ * @dev NOT audited, NOT production.
+ */
+module ConfidentialNoteFungibleTokenConcurrentSupply {
+  import CompactStandardLibrary;
+  import "../../crypto/ElGamal" prefix ElGamal_;
+  import "../../utils/concurrency/ElGamalDeltaInbox" prefix Inbox_;
+
+  export ledger _isInitialized: Boolean;
+  // ElGamal public key the supply is encrypted under (attester holds the secret).
+  export ledger _supplyKey: JubjubPoint;
+  // FOLDED outstanding supply. The live total is this plus the pending inbox
+  // deltas; `attestSupply` proves the inbox empty so the two coincide.
+  export ledger _encSupply: ElGamal_Ciphertext;
+  // Last publicly attested total and an attestation counter for indexers
+  // (a `Counter`, so the bump never pins — see concurrency.md §9.1).
+  export ledger _attestedSupply: Uint<128>;
+  export ledger _attestationCount: Counter;
+
+  // Randomness seed for delta encryption + inbox id. MUST be fresh + secret
+  // per invocation (see module doc).
+  witness wit_ConcurrentSupplyRandomness(): Bytes<32>;
+  // The supply-key secret (only `attestSupply` consumes it).
+  witness wit_ConcurrentSupplyKeySecret(): Bytes<32>;
+
+  /**
+   * @description One-shot initialization: binds the supply key and starts the
+   * folded supply at the canonical `Enc(0)`.
+   *
+   * Requirements:
+   *
+   * - Extension is not already initialized.
+   * - `supplyKey` is not the identity point.
+   */
+  export circuit initialize(supplyKey: JubjubPoint): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenConcurrentSupply: already initialized");
+    assert(supplyKey != ecMulGenerator(0 as Field),
+           "ConfidentialNoteFungibleTokenConcurrentSupply: identity supply key");
+    _supplyKey = disclose(supplyKey);
+    _encSupply = ElGamal_encryptZero();
+    _isInitialized = true;
+  }
+
+  /**
+   * @description Records a minted `value` as a pending encrypted delta. Call
+   * once, with the exact minted amount, alongside every token mint. Touches
+   * no shared cell, so concurrent mints/burns never conflict.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   */
+  export circuit _addMinted(value: Uint<128>): [] {
+    assertInitialized();
+    const seed = wit_ConcurrentSupplyRandomness();
+    const r = ElGamal_expandRandomness(seed, pad(32, "OZ:cnt:csupply:add"));
+    Inbox__credit(supplyDomain(), creditIdOf(seed, pad(32, "OZ:cnt:csupply:id:add")),
+                  ElGamal_encrypt(_supplyKey, value, r));
+  }
+
+  /**
+   * @description Records a burned `value` as a pending encrypted delta — a
+   * NEGATED encryption, so one homomorphic fold nets mints and burns alike
+   * (and a pending entry does not reveal its direction). Call once, with the
+   * exact burned amount, alongside every token burn.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   */
+  export circuit _addBurned(value: Uint<128>): [] {
+    assertInitialized();
+    const seed = wit_ConcurrentSupplyRandomness();
+    const r = ElGamal_expandRandomness(seed, pad(32, "OZ:cnt:csupply:sub"));
+    Inbox__credit(supplyDomain(), creditIdOf(seed, pad(32, "OZ:cnt:csupply:id:sub")),
+                  ElGamal_negate(ElGamal_encrypt(_supplyKey, value, r)));
+  }
+
+  /**
+   * @description Absorbs up to 8 pending deltas into the folded supply. The
+   * only circuit here that pins `_encSupply`, so folds conflict only with
+   * each other — and folding cannot corrupt value (amounts come from the
+   * ledger), so the composer MAY expose it permissionlessly. Call repeatedly
+   * to drain a deep backlog.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   */
+  export circuit _foldSupply(): [] {
+    assertInitialized();
+    const net = Inbox__consume(supplyDomain());
+    _encSupply = disclose(ElGamal_add(_encSupply, net));
+  }
+
+  /**
+   * @description Publishes a proof-backed public supply total. Beyond
+   * PrivateSupply's guarantees, this variant FIRST proves in-circuit that no
+   * delta is still pending (`_assertEmpty`), so the attested total provably
+   * reflects every mint and burn — a skipping fold witness cannot fake a
+   * complete picture. The emptiness read makes attestation a serialization
+   * point against concurrent mints/burns; fold-to-empty, then attest.
+   *
+   * Requirements:
+   *
+   * - Extension is initialized.
+   * - The supply inbox domain has no pending entries.
+   * - The caller proves the supply-key secret (`derivePk(secret) == _supplyKey`).
+   * - `_encSupply` decrypts to `total`.
+   */
+  export circuit attestSupply(total: Uint<128>): [] {
+    assertInitialized();
+    Inbox__assertEmpty(supplyDomain());
+    ElGamal_assertDecryptsTo(_encSupply, _supplyKey, wit_ConcurrentSupplyKeySecret(), total);
+    // Only the attested total crosses to public state; the per-transaction
+    // deltas behind it stay encrypted.
+    _attestedSupply = disclose(total);
+    _attestationCount.increment(1);
+  }
+
+  /**
+   * @description The inbox domain this extension's deltas live under.
+   * Exported so indexers and folders enumerate/derive entries the way the
+   * circuits do.
+   */
+  export pure circuit supplyDomain(): Bytes<32> {
+    return pad(32, "OZ:cnt:csupply");
+  }
+
+  // Fresh inbox entry id from the caller's randomness seed, domain-separated
+  // from the encryption randomness expanded off the same seed.
+  circuit creditIdOf(seed: Bytes<32>, tag: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([seed, tag]);
+  }
+
+  circuit assertInitialized(): [] {
+    assert(_isInitialized,
+           "ConfidentialNoteFungibleTokenConcurrentSupply: extension not initialized");
+  }
+}

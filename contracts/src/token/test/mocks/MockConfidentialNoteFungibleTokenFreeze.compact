@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteFungibleTokenFreeze" prefix Freeze_;
+
+export { Freeze__frozen };
+
+export circuit _freeze(nf: Bytes<32>): [] {
+  return Freeze__freeze(nf);
+}
+
+export circuit _unfreeze(nf: Bytes<32>): [] {
+  return Freeze__unfreeze(nf);
+}
+
+export circuit _assertNotFrozen(nf: Bytes<32>): [] {
+  return Freeze__assertNotFrozen(nf);
+}
