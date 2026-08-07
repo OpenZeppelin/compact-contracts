@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../extensions/NativeShieldedTokenDerivedNonce" prefix NativeShieldedTokenDerivedNonce_;
+import { _counter, _deriveNonce } from "../../extensions/NativeShieldedTokenDerivedNonce" prefix NativeShieldedTokenDerivedNonce_;
 
 // Unit mock for the NativeShieldedTokenDerivedNonce extension in isolation. It
 // imports no token module and needs no initialization (counter-only). The

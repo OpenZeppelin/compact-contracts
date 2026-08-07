@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../ElGamal" prefix ElGamal_;
+import { Ciphertext, add, addEncrypted, assertDecryptsTo, assertDecryptsToPoint, assertKeyPair, derivePk, encrypt, encryptPoint, encryptZero, expandRandomness, negate, rerandomize, scalarMul, secretToScalar, sub, subEncrypted } from "../../ElGamal" prefix ElGamal_;
 
 export { ElGamal_Ciphertext }
 

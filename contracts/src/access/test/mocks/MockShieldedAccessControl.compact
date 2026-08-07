@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+import { AccountIdentifier, DEFAULT_ADMIN_ROLE, RoleCommitment, RoleIdentifier, RoleNullifier, _adminRoles, _grantRole, _operatorRoles, _revokeRole, _roleCommitmentNullifiers, _setRoleAdmin, assertOnlyRole, canProveRole, computeAccountId, computeNullifier, computeRoleCommitment, getRoleAdmin, grantRole, initialize, renounceRole, revokeRole } from "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
 
 export { MerkleTreePath,
          ShieldedAccessControl__operatorRoles,

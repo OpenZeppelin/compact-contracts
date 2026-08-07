@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../Ownable" prefix Ownable_;
+import { _transferOwnership, _unsafeTransferOwnership, _unsafeUncheckedTransferOwnership, assertOnlyOwner, initialize, owner, renounceOwnership, transferOwnership } from "../../Ownable" prefix Ownable_;
 
 export { ContractAddress, Either, Maybe };
 

@@ -27,9 +27,9 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../ProposalManager" prefix Proposal_;
-import "../ShieldedTreasury" prefix Treasury_;
-import "../Signer"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
+import { Proposal, ProposalStatus, Recipient, RecipientKind, _createProposal, _markExecuted, assertProposalActive, getProposal, getProposalStatus, toShieldedRecipient } from "../ProposalManager" prefix Proposal_;
+import { _deposit, _send, getReceivedTotal, getSentTotal, getTokenBalance } from "../ShieldedTreasury" prefix Treasury_;
+import { assertSigner, assertThresholdMet, getSignerCount, getThreshold, initialize, isSigner } from "../Signer"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
 
 // ─── State ───────────────────────────────────────────────────────────────
 

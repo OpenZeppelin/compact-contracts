@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../extensions/ConfidentialFungibleTokenPublicSupply" prefix ConfidentialFungibleTokenPublicSupply_;
+import { _addSupply, _subSupply, totalSupply } from "../../extensions/ConfidentialFungibleTokenPublicSupply" prefix ConfidentialFungibleTokenPublicSupply_;
 
 // Surface the supply ledger cell unprefixed so tests can read it via
 // `getPublicState()` and assert the getter returns it verbatim.

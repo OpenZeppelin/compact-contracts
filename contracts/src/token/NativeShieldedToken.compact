@@ -65,7 +65,7 @@ pragma language_version >= 0.23.0;
  */
 module NativeShieldedToken {
   import CompactStandardLibrary;
-  import "./NativeShieldedTokenCore" prefix Core_;
+  import { _burn, _burnFromSelf, _mint, decimals, initialize, isInitialized, name, symbol, tokenColor } from "./NativeShieldedTokenCore" prefix Core_;
 
   // Circuits use the `Core_` prefix above. The named import/re-export below is
   // only for the core state variables, so the implementing contract's ledger

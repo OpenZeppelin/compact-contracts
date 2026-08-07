@@ -8,7 +8,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../Blocklist" prefix Blocklist_;
+import { _block, _blocked, _unblock, assertNotBlocked, isBlocked } from "../../Blocklist" prefix Blocklist_;
 
 export { Blocklist__blocked };
 

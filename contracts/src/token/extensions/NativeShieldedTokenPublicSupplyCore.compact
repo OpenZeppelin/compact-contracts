@@ -53,7 +53,7 @@ pragma language_version >= 0.23.0;
  */
 module NativeShieldedTokenPublicSupplyCore {
   import CompactStandardLibrary;
-  import "../../utils/Utils" prefix Utils_;
+  import { UINT128_MAX } from "../../utils/Utils" prefix Utils_;
 
   /**
    * @description Exact amount minted per domain. See "Accounting guarantees".

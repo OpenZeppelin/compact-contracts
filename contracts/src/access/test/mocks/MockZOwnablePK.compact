@@ -8,7 +8,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../ZOwnablePK" prefix ZOwnablePK_;
+import { _computeOwnerCommitment, _computeOwnerId, _counter, _ownerCommitment, _transferOwnership, assertOnlyOwner, initialize, owner, renounceOwnership, transferOwnership } from "../../ZOwnablePK" prefix ZOwnablePK_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ZOwnablePK__ownerCommitment, ZOwnablePK__counter };

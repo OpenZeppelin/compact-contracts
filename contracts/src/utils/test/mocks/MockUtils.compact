@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../Utils" prefix Utils_;
+import { UINT128_MAX, canonicalize, computeAccountId, emptyString, isContractAddress, isKeyOrAddressEqual, isKeyOrAddressZero, isKeyZero, isTargetZero, selfAsRecipient, zeroAccount } from "../../Utils" prefix Utils_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either };
 

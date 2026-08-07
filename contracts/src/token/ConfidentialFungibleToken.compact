@@ -221,8 +221,8 @@ pragma language_version >= 0.23.0;
  */
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
-  import "../crypto/ElGamal" prefix ElGamal_;
-  import "../crypto/EcdhMask" prefix EcdhMask_;
+  import { Ciphertext, add, addEncrypted, assertDecryptsTo, derivePk, encrypt, encryptZero, expandRandomness, subEncrypted } from "../crypto/ElGamal" prefix ElGamal_;
+  import { Ciphertext, encrypt } from "../crypto/EcdhMask" prefix EcdhMask_;
 
   // ---------------------------------------------------------------------------
   // Types

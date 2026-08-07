@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../Signer"<Bytes<32>> prefix Signer_;
+import { _addSigner, _changeThreshold, _removeSigner, _setThreshold, assertSigner, assertThresholdMet, getSignerCount, getThreshold, initialize, isSigner } from "../../Signer"<Bytes<32>> prefix Signer_;
 import "../../Signer"<Bytes<32>>;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };

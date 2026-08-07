@@ -83,7 +83,7 @@ pragma language_version >= 0.23.0;
 
 module NonFungibleToken {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
+  import { canonicalize, computeAccountId, emptyString, isTargetZero, zeroAccount } from "../utils/Utils" prefix Utils_;
 
   /// Public state
   export sealed ledger _name: Opaque<"string">;
