@@ -85,7 +85,7 @@ pragma language_version >= 0.23.0;
  */
 module Ownable {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
+  import { canonicalize, computeAccountId, isTargetZero } from "../utils/Utils" prefix Utils_;
 
   /**
    * @description Initialization flag, tracked per-module to avoid the compiler's

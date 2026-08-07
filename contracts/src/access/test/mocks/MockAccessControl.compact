@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../AccessControl" prefix AccessControl_;
+import { DEFAULT_ADMIN_ROLE, _checkRole, _grantRole, _revokeRole, _setRoleAdmin, _unsafeGrantRole, assertOnlyRole, getRoleAdmin, grantRole, hasRole, renounceRole, revokeRole } from "../../AccessControl" prefix AccessControl_;
 
 export { ContractAddress, Either, Maybe };
 

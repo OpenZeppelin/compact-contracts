@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../NativeShieldedToken" prefix NativeShieldedToken_;
+import { _burn, _burnFromSelf, _mint, decimals, initialize, isInitialized, name, symbol, tokenColor } from "../../NativeShieldedToken" prefix NativeShieldedToken_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };

@@ -12,8 +12,8 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "./sharedInit/ModuleA" prefix A_;
-import "./sharedInit/ModuleB" prefix B_;
+import { checkA, initA } from "./sharedInit/ModuleA" prefix A_;
+import { checkB, initB } from "./sharedInit/ModuleB" prefix B_;
 
 export circuit initA(): [] { A_initA(); }
 export circuit initB(): [] { B_initB(); }

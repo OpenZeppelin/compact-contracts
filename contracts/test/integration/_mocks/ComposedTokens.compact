@@ -16,8 +16,8 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../../src/token/FungibleToken" prefix FungibleToken_;
-import "../../../src/token/NonFungibleToken" prefix NonFungibleToken_;
+import { initialize, name } from "../../../src/token/FungibleToken" prefix FungibleToken_;
+import { initialize, name } from "../../../src/token/NonFungibleToken" prefix NonFungibleToken_;
 
 export { ContractAddress, Either, Maybe };
 

@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../NonFungibleToken" prefix NonFungibleToken_;
+import { _approve, _burn, _checkAuthorized, _getApproved, _isAuthorized, _mint, _ownerOf, _requireOwned, _setApprovalForAll, _setTokenURI, _transfer, _unsafeMint, _unsafeTransfer, _unsafeTransferFrom, approve, balanceOf, getApproved, initialize, isApprovedForAll, name, ownerOf, setApprovalForAll, symbol, tokenURI, transferFrom } from "../../NonFungibleToken" prefix NonFungibleToken_;
 
 export { ContractAddress, Either, Maybe };
 

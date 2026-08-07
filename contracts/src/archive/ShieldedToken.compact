@@ -33,7 +33,7 @@ pragma language_version >= 0.23.0;
  */
 module ShieldedToken { // DO NOT USE IN PRODUCTION!
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
+  import { isKeyOrAddressZero } from "../utils/Utils" prefix Utils_;
 
   // Public state
   export ledger _counter: Counter;

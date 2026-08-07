@@ -21,9 +21,9 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
-import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
-import "../../../src/crypto/ElGamal" prefix ElGamal_;
+import { EscrowEntry, _balances, _burn, _burnFrom, _decimals, _encryptionKeys, _escrow, _memos, _mint, _move, _name, _pending, _symbol, allowance, approve, balanceOf, clearMemos, computeAccountId, initialize, isRegistered, pendingOf, register, sweep, transfer, transferFrom } from "../../../src/token/ConfidentialFungibleToken" prefix Token_;
+import { _addSupply, _subSupply, _totalSupply, totalSupply } from "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
+import { Ciphertext } from "../../../src/crypto/ElGamal" prefix ElGamal_;
 
 export { Token_EscrowEntry, ElGamal_Ciphertext };
 

@@ -60,7 +60,14 @@ pragma language_version >= 0.23.0;
  *
  * ```compact
  * import CompactStandardLibrary;
- * import "./node_modules/@openzeppelin/compact-contracts/src/access/ShieldedAccessControl" prefix ShieldedAccessControl_;
+ * import {
+ *   AccountIdentifier,
+ *   RoleIdentifier,
+ *   DEFAULT_ADMIN_ROLE,
+ *   initialize,
+ *   _grantRole,
+ *   assertOnlyRole
+ * } from "./node_modules/@openzeppelin/compact-contracts/src/access/ShieldedAccessControl" prefix ShieldedAccessControl_;
  *
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
@@ -167,7 +174,6 @@ pragma language_version >= 0.23.0;
  */
 module ShieldedAccessControl {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
 
   export enum UpdateType {
     Grant,

@@ -8,7 +8,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../ShieldedToken" prefix ShieldedToken_;
+import { _counter, _domain, _nonce, burn, decimals, initializer, mint, name, symbol, totalSupply } from "../../ShieldedToken" prefix ShieldedToken_;
 
 export {
   ZswapCoinPublicKey,

@@ -12,8 +12,8 @@
 // this mock.
 pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
-import "../../ConfidentialFungibleToken" prefix CFT_;
-import "../../../crypto/ElGamal" prefix ElGamal_;
+import { EscrowEntry, _balances, _burn, _burnFrom, _decimals, _encryptionKeys, _escrow, _memos, _mint, _move, _name, _pending, _symbol, allowance, approve, balanceOf, clearMemos, computeAccountId, initialize, isRegistered, pendingOf, register, sweep, transfer, transferFrom } from "../../ConfidentialFungibleToken" prefix CFT_;
+import { Ciphertext } from "../../../crypto/ElGamal" prefix ElGamal_;
 
 export { CFT_EscrowEntry, ElGamal_Ciphertext };
 

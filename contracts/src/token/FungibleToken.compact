@@ -64,7 +64,7 @@ pragma language_version >= 0.23.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
+  import { canonicalize, computeAccountId, isTargetZero, zeroAccount } from "../utils/Utils" prefix Utils_;
 
   /**
    * @description Initialization flag, tracked per-module to avoid the compiler's

@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../extensions/NativeShieldedTokenPublicSupply" prefix NativeShieldedTokenPublicSupply_;
+import { _addBurned, _addMinted, totalBurned, totalMinted, totalSupply } from "../../extensions/NativeShieldedTokenPublicSupply" prefix NativeShieldedTokenPublicSupply_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 

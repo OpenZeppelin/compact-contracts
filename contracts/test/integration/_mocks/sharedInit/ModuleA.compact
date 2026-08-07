@@ -5,7 +5,7 @@ pragma language_version >= 0.23.0;
 
 module ModuleA {
   import CompactStandardLibrary;
-  import "../../../../src/security/Initializable" prefix Initializable_;
+  import { assertInitialized, initialize } from "../../../../src/security/Initializable" prefix Initializable_;
 
   export circuit initA(): [] {
     Initializable_initialize();

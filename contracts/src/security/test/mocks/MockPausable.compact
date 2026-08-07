@@ -8,7 +8,7 @@
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
-import "../../Pausable" prefix Pausable_;
+import { _isPaused, _pause, _unpause, assertNotPaused, assertPaused, isPaused } from "../../Pausable" prefix Pausable_;
 
 export { Pausable__isPaused };
 

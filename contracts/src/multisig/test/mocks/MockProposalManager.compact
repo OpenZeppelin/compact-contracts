@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 
-import "../../ProposalManager" prefix Proposal_;
+import { Proposal, ProposalStatus, Recipient, _cancelProposal, _createProposal, _markExecuted, assertProposalActive, assertProposalExists, contractRecipient, getProposal, getProposalAmount, getProposalColor, getProposalRecipient, getProposalStatus, shieldedUserRecipient, toShieldedRecipient, toUnshieldedRecipient, unshieldedUserRecipient } from "../../ProposalManager" prefix Proposal_;
 
 export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Proposal_Recipient {
   return Proposal_shieldedUserRecipient(key);

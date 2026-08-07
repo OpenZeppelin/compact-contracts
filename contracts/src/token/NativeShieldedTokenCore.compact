@@ -61,7 +61,7 @@ pragma language_version >= 0.23.0;
  */
 module NativeShieldedTokenCore {
   import CompactStandardLibrary;
-  import "../utils/Utils" prefix Utils_;
+  import { isKeyOrAddressZero } from "../utils/Utils" prefix Utils_;
 
   /**
    * @description Initialization flag, tracked per-module to avoid the compiler's
