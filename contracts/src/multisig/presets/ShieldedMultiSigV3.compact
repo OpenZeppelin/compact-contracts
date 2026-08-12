@@ -20,7 +20,7 @@ pragma language_version >= 0.23.0;
  *
  * - `mint` creates a new UTXO via `mintShieldedToken`, addressed to the
  *   contract. No external coin input; supply is produced on-chain.
- * - `burn` consumes a UTXO via `sendShielded` to `burnAddress()`. Only
+ * - `burn` consumes a UTXO via `sendShielded` to `shieldedBurnAddress()`. Only
  *   coins of this contract's token type can be burned. Change is handled
  *   automatically by the transaction layer.
  *
@@ -194,7 +194,7 @@ export circuit mint(
  * @description Burns a shielded coin of this contract's token type,
  * authorized by threshold signatures.
  *
- * Sends the specified amount of the supplied coin to `burnAddress()` via
+ * Sends the specified amount of the supplied coin to `shieldedBurnAddress()` via
  * `sendShielded`. The nullifier is submitted on-chain, permanently marking
  * the UTXO as spent.
  *

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha.1 (multisig/ForwarderShielded.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (multisig/ForwarderShielded.compact)
 
 pragma language_version >= 0.23.0;
 
@@ -103,7 +103,7 @@ module ForwarderShielded {
    * `sendImmediateShielded` to the stored parent recipient (always the
    * `left` / coin-public-key arm today).
    *
-   * @circuitInfo k=15, rows=18573
+   * @circuitInfo k=15, rows=24446
    *
    * Requirements:
    *

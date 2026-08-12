@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha.1 (multisig/ProposalManager.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (multisig/ProposalManager.compact)
 
 pragma language_version >= 0.23.0;
 
@@ -12,12 +12,33 @@ pragma language_version >= 0.23.0;
  * Recipient type with a RecipientKind tag. Typed helper circuits
  * provide safe construction of recipients without exposing the
  * internal Bytes<32> representation to consumers.
+ *
+ * @warning PROPOSALS ARE PUBLIC. `_proposals` is exported ledger state, so
+ * every proposal's recipient address, token color, amount, and status is
+ * readable off-chain, and `_nextProposalId` reveals how many have been created.
+ * This holds regardless of which treasury a consumer composes: pairing this
+ * module with `ShieldedTreasuryStateless` still publishes the full intent of
+ * every transfer, even though the transfer itself is shielded. The transfer is
+ * private; the plan is not.
+ *
+ * @notice `RecipientKind` is the only thing distinguishing what a recipient's
+ * 32 bytes mean, the same value is read as a Zswap coin public key, a contract
+ * address, or a user address depending on the tag. `Contract` is accepted by
+ * both `toShieldedRecipient` and `toUnshieldedRecipient`, so the tag alone does
+ * not determine the rail; a consumer composing both treasuries could route the
+ * same proposal either way.
  */
 module ProposalManager {
   import CompactStandardLibrary;
 
   // ─── Types ──────────────────────────────────────────────────────
 
+  /**
+   * @description Proposal lifecycle states. `Inactive` is the zero value and is
+   * never stored: `_createProposal` writes `Active`, and every view asserts the
+   * proposal exists before reading, so a stored proposal can never read
+   * `Inactive`.
+   */
   export enum ProposalStatus {
     Inactive,
     Active,
@@ -175,6 +196,19 @@ module ProposalManager {
 
   /**
    * @description Creates a new proposal.
+   *
+   * @warning The recipient is NOT validated beyond being well-typed. Two
+   * consequences the consumer must handle:
+   *
+   * - A `kind` the execution rail cannot accept (an `UnshieldedUser` recipient
+   *   on a shielded treasury, say) creates a proposal that passes here and then
+   *   reverts in `toShieldedRecipient` at execution. It stays `Active` and
+   *   unexecutable on that rail until `_cancelProposal` retires it.
+   * - A zero or otherwise unspendable `address` is accepted, and funds sent to
+   *   it on execution are unrecoverable.
+   *
+   * @notice `_nextProposalId` is incremented and then read back for the map key,
+   * making this a pinned read-modify-write.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own

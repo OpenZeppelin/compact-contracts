@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha.1 (multisig/ShieldedTreasury.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (multisig/ShieldedTreasury.compact)
 
 pragma language_version >= 0.23.0;
 
@@ -17,6 +17,19 @@ pragma language_version >= 0.23.0;
  * Cumulative received and sent totals are tracked per color for audit
  * purposes. The canonical balance query is `getTokenBalance`, which
  * reads the actual coin value from the UTXO map.
+ *
+ * @warning This treasury's HOLDINGS ARE PUBLIC. `_coins` is exported ledger
+ * state, so every coin it holds is readable off-chain in plaintext (nonce,
+ * color, value, and Merkle index) as are the cumulative `_received` and
+ * `_sent` totals. "Shielded" here refers to the token rail, not to the
+ * treasury's balance: individual transfers are shielded, but what this
+ * contract holds is not. Anyone can observe the treasury's balance per color
+ * and identify the exact UTXO backing it.
+ *
+ * Storing the coin is what buys the convenience: the contract can spend later
+ * without the caller supplying the UTXO. If public holdings are unacceptable,
+ * use `ShieldedTreasuryStateless`, which stores nothing and has the operator
+ * supply the coin at spend time.
  *
  * Underscore-prefixed circuits (_deposit, _send) have no access control
  * enforcement. The consuming contract must gate these behind its own
@@ -42,9 +55,13 @@ module ShieldedTreasury {
    * The coin is then merged with any existing coin of the same color,
    * or inserted as a new entry if no coin of that color exists.
    *
-   * Zero-value deposits are permitted. While currently a no-op
-   * economically, they may serve as signaling mechanisms when events
-   * are supported, or as decoy transactions for privacy.
+   * Zero-value deposits are permitted and are not always a no-op. On a color the
+   * treasury does not yet hold, a zero-value coin is inserted and occupies that
+   * color's single slot until a later deposit merges into it; if a coin of that
+   * color already exists, the zero merges into it via `mergeCoinImmediate` and
+   * the stored value is unchanged. They may serve as signaling mechanisms when
+   * events are supported. They are not useful as privacy decoys, this
+   * treasury's holdings are public (see the module header).
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -91,6 +108,12 @@ module ShieldedTreasury {
    * the UTXO map for the next spend. The returned `result.change` therefore
    * belongs to the treasury and must not be re-spent by the caller (doing
    * so would double-spend the recorded coin).
+   *
+   * @notice The returned `ShieldedSendResult` carries the sent and change coins
+   * in plaintext, so sinking it (returning it from an entry point, writing it
+   * to ledger, passing it cross-contract) discloses them. `_coins` publishes only
+   * the retained change coin, and nothing at all when the send leaves no change,
+   * so the sent coin's plaintext is disclosed beyond anything in public state.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -193,6 +216,13 @@ module ShieldedTreasury {
    * @description Returns the difference between cumulative received
    * and cumulative sent totals for a color. Should equal
    * `getTokenBalance` if accounting is consistent.
+   *
+   * @notice The subtraction is unguarded. `_send` cannot drive the sent total
+   * past the received total. Change re-insertion never increments `_received`
+   * so the invariant holds for any consumer that goes through `_deposit` and
+   * `_send`. A consumer that writes the exported `_coins` directly can break
+   * it, and this circuit then fails as an unprovable range violation rather
+   * than a named assert.
    *
    * @param {Bytes<32>} color - The token color.
    *

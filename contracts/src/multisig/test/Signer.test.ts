@@ -20,34 +20,35 @@ let contract: SignerSimulator;
 const freshInit = () => SignerSimulator.create(SIGNERS, THRESHOLD, IS_INIT);
 
 describe('Signer', () => {
-  describe('when not initialized', () => {
+  describe('when not configured', () => {
     beforeEach(async () => {
       const isNotInit = false;
       contract = await SignerSimulator.create(SIGNERS, 0n, isNotInit);
     });
 
-    const circuitsRequiringInit: [string, unknown[]][] = [
-      ['assertSigner', [SIGNER]],
-      ['assertThresholdMet', [0n]],
-      ['getSignerCount', []],
-      ['getThreshold', []],
-    ];
+    it('assertSigner should reject any caller', async () => {
+      await expect(contract.assertSigner(SIGNER)).rejects.toThrow(
+        'Signer: not a signer',
+      );
+    });
 
-    it.each(circuitsRequiringInit)(
-      '%s should fail',
-      async (circuitName, args) => {
+    // 0n would otherwise satisfy `approvalCount >= _threshold`.
+    it.each([0n, 1n, 255n])(
+      'assertThresholdMet should reject an approval count of %s',
+      async (approvalCount) => {
         await expect(
-          (
-            contract[circuitName as keyof SignerSimulator] as (
-              ...a: unknown[]
-            ) => Promise<unknown>
-          )(...args),
-        ).rejects.toThrow('Signer: contract not initialized');
+          contract.assertThresholdMet(approvalCount),
+        ).rejects.toThrow('Signer: threshold not set');
       },
     );
 
-    it('isSigner should succeed (no init guard)', async () => {
+    it('isSigner should return false', async () => {
       expect(await contract.isSigner(SIGNER)).toEqual(false);
+    });
+
+    it('getSignerCount and getThreshold should read zero', async () => {
+      expect(await contract.getSignerCount()).toEqual(0n);
+      expect(await contract.getThreshold()).toEqual(0n);
     });
   });
 
@@ -418,6 +419,36 @@ describe('Signer', () => {
     it('should fail _changeThreshold before signers are added', async () => {
       await expect(contract._changeThreshold(2n)).rejects.toThrow(
         'Signer: threshold exceeds signer count',
+      );
+    });
+
+    it('should expose working guards and views without initialize', async () => {
+      await contract._addSigner(SIGNER);
+      await contract._addSigner(SIGNER2);
+      await contract._changeThreshold(2n);
+
+      await contract.assertSigner(SIGNER);
+      await contract.assertThresholdMet(2n);
+      expect(await contract.getSignerCount()).toEqual(2n);
+      expect(await contract.getThreshold()).toEqual(2n);
+
+      await expect(contract.assertSigner(OTHER)).rejects.toThrow(
+        'Signer: not a signer',
+      );
+      await expect(contract.assertThresholdMet(1n)).rejects.toThrow(
+        'Signer: threshold not met',
+      );
+    });
+
+    // Deliberate delegation, not an oversight — see `assertThresholdMet`.
+    it('should not consult the signer count', async () => {
+      await contract._setThreshold(2n);
+      expect(await contract.getSignerCount()).toEqual(0n);
+
+      await contract.assertThresholdMet(2n);
+
+      await expect(contract.assertThresholdMet(1n)).rejects.toThrow(
+        'Signer: threshold not met',
       );
     });
   });

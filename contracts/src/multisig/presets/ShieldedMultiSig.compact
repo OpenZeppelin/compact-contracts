@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha.1 (multisig/presets/ShieldedMultiSig.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (multisig/presets/ShieldedMultiSig.compact)
 
 pragma language_version >= 0.23.0;
 
 /**
  * @module ShieldedMultiSig
- * @description A shielded multisig preset composing `SignerManager`,
+ * @description A shielded multisig preset composing `Signer`,
  * `ProposalManager`, and `ShieldedTreasury`. Signers approve proposals that
  * transfer shielded tokens out of the treasury once the configured threshold
  * is met.
@@ -29,7 +29,7 @@ import CompactStandardLibrary;
 
 import "../ProposalManager" prefix Proposal_;
 import "../ShieldedTreasury" prefix Treasury_;
-import "../SignerManager"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
+import "../Signer"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
 
 // ─── State ───────────────────────────────────────────────────────────────
 
@@ -212,7 +212,7 @@ export circuit getSentTotal(color: Bytes<32>): Uint<128> {
   return Treasury_getSentTotal(color);
 }
 
-// ISignerManager
+// ISigner
 
 export circuit getSignerCount(): Uint<8> {
   return Signer_getSignerCount();

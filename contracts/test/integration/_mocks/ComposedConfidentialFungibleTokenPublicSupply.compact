@@ -17,6 +17,10 @@
 // "Public" supply means the total, and therefore each mint/burn delta, is
 // disclosed on chain. Balances stay confidential; only the aggregate is
 // visible.
+//
+// The `Composed` prefix is load-bearing: compactc keys each `artifacts/<name>/`
+// directory on the source basename, so this file must not share a basename with
+// the `src/token/extensions` extension it composes.
 pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;

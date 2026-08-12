@@ -22,6 +22,7 @@
     "test:coverage": "SKIP_ZK=true turbo run test:coverage --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts",
     "test:integration": "SKIP_ZK=true turbo run test:integration --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:integration:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts integration",
     "test:harness": "turbo run test:harness --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:harness:live": "turbo run test:harness:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "lint": "biome check .",
