@@ -51,7 +51,7 @@
   "devDependencies": {
     "@midnight-ntwrk/compact-js": "2.5.1",
     "@midnight-ntwrk/compact-runtime": "0.16.0",
-    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.1",
     "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
@@ -62,7 +62,7 @@
     "@midnight-ntwrk/testkit-js": "4.1.1",
     "@openzeppelin/compact-simulator": "^0.3.1",
     "@tsconfig/node24": "^24.0.4",
-    "@types/node": "26.1.2",
+    "@types/node": "26.2.0",
     "@vitest/coverage-v8": "^4.1.10",
     "fast-check": "^4.9.0",
     "ts-node": "^10.9.2",
