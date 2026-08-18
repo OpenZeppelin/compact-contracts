@@ -8,9 +8,17 @@ import { configDefaults, defineConfig } from 'vitest/config';
  *                      via the live backend registered in `live.setup`. Driven
  *                      by `MIDNIGHT_BACKEND=live` (set by the `test:live` script).
  *   - `integration`  — composed-contract specs (`test/integration/specs`).
+ *   - `integration-live` — the same specs against the local stack, through the
+ *                      same harness as `unit-live`. Only the blocks a spec marks
+ *                      `runIf(isLiveBackend())` run; see `test:live integration`.
  *   - `harness`      — dry unit tests for the live harness itself (`test-utils`).
  *   - `harness-live` — live smoke that the real wallet pool funds + resolves on
  *                      the node, before the expensive contract live specs.
+ *   - `scripts`      — dry unit tests for the live orchestrator (`scripts/live`).
+ *
+ * Only ONE live project may run per vitest invocation: each derives its wallets
+ * from `walletSeedsFor(VITEST_POOL_ID)`, so worker 1 of two live projects would
+ * resolve to the same genesis deployer. `live.globalSetup` enforces this.
  *
  * Coverage is a root-level concern (applies to whichever project runs with
  * `--coverage`); the `unit` project is the one gated in CI.
@@ -51,9 +59,16 @@ const liveWorkers = process.env.MIDNIGHT_WALLET_SEED
       ),
     );
 
-// Publish the resolved count so `live.setup` can print `w<n>/<total>` in its
-// per-worker banner. Workers inherit this env at fork time.
+// Publish the resolved count as the process-wide fallback. Each live project
+// ALSO sets it per-project below (see `liveWorkerCount`), because the two differ:
+// a global value would make `integration-live` (one worker) print `w1/3`.
 process.env.MIDNIGHT_LIVE_WORKERS = String(liveWorkers);
+
+// Per-project worker total, handed to `live.setup` so its `w<n>/<total>` banner
+// matches that project's own `maxWorkers` rather than `unit-live`'s.
+const liveWorkerCount = (workers: number) => ({
+  MIDNIGHT_LIVE_WORKERS: String(workers),
+});
 
 export default defineConfig({
   test: {
@@ -115,6 +130,7 @@ export default defineConfig({
           // scheduler group: a multi-project run otherwise rejects two projects
           // that share a group but differ in `maxWorkers`.
           maxWorkers: liveWorkers,
+          env: liveWorkerCount(liveWorkers),
           sequence: { concurrent: false, groupOrder: 1 },
         },
       },
@@ -123,6 +139,33 @@ export default defineConfig({
           ...NODE,
           name: 'integration',
           include: ['test/integration/specs/**/*.spec.ts'],
+        },
+      },
+      {
+        // Same files as `integration`, run with `MIDNIGHT_BACKEND=live` (set by
+        // `test:live integration`). That turns on the `isLiveBackend()`-gated
+        // blocks and skips the dry functional ones. Today the only live-gated
+        // block is the composed-deploy block-limit canary.
+        //
+        // Reuses `unit-live`'s globalSetup (freshness + run lock) and setup
+        // (wallet pool + backend register) verbatim.
+        test: {
+          ...NODE,
+          ...LIVE_TIMEOUTS,
+          name: 'integration-live',
+          include: ['test/integration/specs/**/*.spec.ts'],
+          globalSetup: ['./test-utils/harness/live.globalSetup.ts'],
+          setupFiles: ['./test-utils/harness/live.setup.ts'],
+          // Only the deployer wallet is in play (the canary is a single rejected
+          // deploy, no `.as(alias)` impersonation), so no wallet partition is
+          // needed. Widen to `unit-live`-style per-worker partitioning once
+          // green functional live integration specs exist.
+          maxWorkers: 1,
+          env: liveWorkerCount(1),
+          // Own scheduler group: `unit-live` holds group 1 with a different
+          // `maxWorkers`, and a multi-project run rejects two projects that
+          // share a group but differ in it.
+          sequence: { concurrent: false, groupOrder: 2 },
         },
       },
       {
@@ -142,6 +185,17 @@ export default defineConfig({
           name: 'harness-live',
           include: ['test-utils/**/*.test.ts'],
           globalSetup: ['./test-utils/harness/live.globalSetup.ts'],
+        },
+      },
+      {
+        // Dry unit tests for the live-orchestrator services (scripts/live). The
+        // scripts tree sits at the repo root, one level above this config's
+        // root, hence the `../` include. A per-project `root: '..'` override was
+        // tried first and discovered no files under vitest 4.1.10.
+        test: {
+          ...NODE,
+          name: 'scripts',
+          include: ['../scripts/**/*.test.ts'],
         },
       },
     ],

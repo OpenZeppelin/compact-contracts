@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.3.0-alpha.2 (2026-08-11)
+
+### Changed
+
+- Remove the initialization guard from `Signer`'s `assertSigner`, `assertThresholdMet`, `getSignerCount`, and `getThreshold` (#761)
+- Consolidate the duplicate multisig signer registries onto `Signer`, removing `SignerManager` (#760)
+- Rename the native shielded token supply extensions to `NativeShieldedTokenPublicSupply` / `NativeShieldedTokenFamilyPublicSupply` (and the shared `NativeShieldedTokenPublicSupplyCore`), making explicit that they track supply on-chain and matching the `ConfidentialFungibleTokenPublicSupply` naming. (#710)
+
+### Fixed
+
+- Guard `UnshieldedTreasury` on its tracked balance instead of the protocol balance, fixing a runtime failure that made deposits revert (#762)
+
+## 0.3.0-alpha.1 (2026-07-21)
+
 ### Added
 
 - Add Confidential Fungible Token (#653)
@@ -14,14 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Remove the initialization guard from `Signer`'s `assertSigner`, `assertThresholdMet`, `getSignerCount`, and `getThreshold` (#761)
-- Consolidate the duplicate multisig signer registries onto `Signer`, removing `SignerManager` (#760)
 - Rename the contract-compilation scripts and Turbo tasks from `compact` / `compact:*` to `compile` / `compile:*`, and the Biome scripts from `fmt-and-lint` / `fmt-and-lint:*` to `lint` / `lint:*`. (#680)
-- Rename the native shielded token supply extensions to `NativeShieldedTokenPublicSupply` / `NativeShieldedTokenFamilyPublicSupply` (and the shared `NativeShieldedTokenPublicSupplyCore`), making explicit that they track supply on-chain and matching the `ConfidentialFungibleTokenPublicSupply` naming. (#710)
-
-### Fixed
-
-- Guard `UnshieldedTreasury` on its tracked balance instead of the protocol balance, fixing a runtime failure that made deposits revert (#762)
 
 ## 0.3.0-alpha (2026-06-30)
 
