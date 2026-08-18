@@ -398,6 +398,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/ledger-v8@npm:8.1.1":
+  version: 8.1.1
+  resolution: "@midnight-ntwrk/ledger-v8@npm:8.1.1"
+  checksum: 10/71564ae6fbddb1b93cfdc6240746829511d4558fad75d6bc1ae7130ce0976eea24926f2706682f6bbb01b9d006c10304c29c1b2e46ebd016919b3165db6fb988
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/midnight-js-compact@npm:4.1.1":
   version: 4.1.1
   resolution: "@midnight-ntwrk/midnight-js-compact@npm:4.1.1"
@@ -948,7 +955,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
-    "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
+    "@midnight-ntwrk/ledger-v8": "npm:8.1.1"
     "@midnight-ntwrk/midnight-js-contracts": "npm:4.1.1"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "npm:4.1.1"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "npm:4.1.1"
@@ -4209,7 +4216,7 @@ __metadata:
   dependencies:
     "@biomejs/biome": "npm:^2.5.8"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
-    "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
+    "@midnight-ntwrk/ledger-v8": "npm:8.1.1"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
     "@types/node": "npm:26.2.0"
     ts-node: "npm:^10.9.2"
