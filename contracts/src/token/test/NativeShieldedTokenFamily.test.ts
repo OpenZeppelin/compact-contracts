@@ -11,8 +11,12 @@ const b32 = (label: string): Uint8Array => {
   return u;
 };
 
-const RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const REFUND_TO = utils.createEitherTestUser('REFUND_TO');
+const RECIPIENT = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('RECIPIENT'),
+);
+const REFUND_TO = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('REFUND_TO'),
+);
 const { ZERO_KEY, ZERO_ADDRESS } = utils;
 
 const NAME = 'Family Token';

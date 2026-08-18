@@ -203,7 +203,9 @@ describe('ShieldedTreasuryStateless', () => {
   describe.skipIf(isLiveBackend())(
     '_send — implementing contract routes the change onward (dry only)',
     () => {
-      const CHANGE_DEST = utils.createEitherTestUser('CHANGE_DEST');
+      const CHANGE_DEST = utils.eitherUserFromCoinPublicKey(
+        utils.toHexPadded('CHANGE_DEST'),
+      );
 
       it('should let the caller send the change to a different recipient using the send result', async () => {
         const snap = zswapSnapshot(treasury);
