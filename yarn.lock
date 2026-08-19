@@ -959,7 +959,7 @@ __metadata:
     "@midnight-ntwrk/testkit-js": "npm:4.1.1"
     "@openzeppelin/compact-cli": "npm:^0.0.2"
     "@openzeppelin/compact-simulator": "npm:^0.3.1"
-    "@tsconfig/node24": "npm:^24.0.4"
+    "@tsconfig/node24": "npm:^24.0.5"
     "@types/node": "npm:26.2.0"
     "@vitest/coverage-v8": "npm:^4.1.10"
     fast-check: "npm:^4.9.0"
@@ -1823,10 +1823,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node24@npm:^24.0.4":
-  version: 24.0.4
-  resolution: "@tsconfig/node24@npm:24.0.4"
-  checksum: 10/e3c011e4589d1d3f8774e6587434bf6d5655ca31c848ac1d173de7949e2f2e1c3dd0be5f97869201e46c4a6dda03003659e1c5078efc580ecefce1d706b8b6a1
+"@tsconfig/node24@npm:^24.0.5":
+  version: 24.0.5
+  resolution: "@tsconfig/node24@npm:24.0.5"
+  checksum: 10/d7b57e0a2065d00b219119746e668016a15547fac5a9c3ac766d0913b543b937dc69d6c9fa703ed32ab559a4bb5f87438fea3cdc0eee96f0bf14adff0829cb77
   languageName: node
   linkType: hard
 
