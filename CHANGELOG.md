@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Refactor ProposalManager (#780)
+  - Support configurable expiry deadlines, improve proposal status
+
 ## 0.3.0-alpha.2 (2026-08-11)
 
 ### Changed

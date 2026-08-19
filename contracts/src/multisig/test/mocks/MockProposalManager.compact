@@ -10,6 +10,52 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../ProposalManager" prefix Proposal_;
+import { _nextProposalId, _proposals } from "../../ProposalManager";
+/**
+ * TEST-ONLY. Rewinds the proposal counter by `by`, so the next `_createProposal`
+ * reissues an id that `_proposals` already holds.
+ *
+ * @param {Uint<16>} by - How many ids to rewind.
+ * @returns {[]} Empty tuple.
+ */
+export circuit rewindProposalCounter(by: Uint<16>): [] {
+  _nextProposalId.decrement(disclose(by));
+}
+
+/**
+ * TEST-ONLY. Overwrites a proposal's `state` with an arbitrary value, leaving
+ * its other fields intact.
+ *
+ * This models what a consuming contract can already do: importing
+ * `_proposals` by name binds the module's ledger field itself, so the consumer
+ * can write it directly and bypass every guard `ProposalManager` enforces.
+ * Compact modules encapsulate circuits, not state. Specs use this to pin the
+ * blast radius of that capability rather than to fabricate states a real
+ * deployment could never reach.
+ *
+ * @param {Uint<64>} id - The proposal ID.
+ * @param {Uint<64>} state - The raw `state` value to write.
+ * @returns {[]} Empty tuple.
+ */
+export circuit forceProposalState(id: Uint<64>, state: Uint<64>): [] {
+  Proposal_assertProposalExists(id);
+
+  const proposal = _proposals.lookup(disclose(id));
+  _proposals.insert(disclose(id), Proposal_Proposal {
+    to: proposal.to,
+    color: proposal.color,
+    amount: proposal.amount,
+    state: disclose(state)
+  });
+}
+
+export pure circuit executedState(): Uint<64> {
+  return Proposal_executedState();
+}
+
+export pure circuit cancelledState(): Uint<64> {
+  return Proposal_cancelledState();
+}
 
 export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Proposal_Recipient {
   return Proposal_shieldedUserRecipient(key);
@@ -34,9 +80,10 @@ export circuit assertProposalActive(id: Uint<64>): [] {
 export circuit _createProposal(
   to: Proposal_Recipient,
   color: Bytes<32>,
-  amount: Uint<128>
+  amount: Uint<128>,
+  expiry: Uint<64>
 ): Uint<64> {
-  return Proposal__createProposal(to, color, amount);
+  return Proposal__createProposal(to, color, amount, expiry);
 }
 
 export circuit _cancelProposal(id: Uint<64>): [] {

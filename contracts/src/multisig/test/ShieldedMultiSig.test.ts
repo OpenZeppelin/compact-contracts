@@ -1,4 +1,6 @@
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { setBlockTime } from '#test-utils/fixtures/blockTime.js';
 import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
@@ -9,10 +11,19 @@ import {
 } from '#test-utils/fixtures/shieldedKey.js';
 import { ShieldedMultiSigSimulator } from './simulators/ShieldedMultiSigSimulator.js';
 
-const ProposalStatus = { Inactive: 0, Active: 1, Executed: 2, Cancelled: 3 };
+const ProposalStatus = {
+  Inactive: 0,
+  Active: 1,
+  Executed: 2,
+  Cancelled: 3,
+  Expired: 4,
+};
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 
 const THRESHOLD = 2n;
+// Year 2096. Far enough out that proposals stay active for the whole run on
+// both backends without any block-time manipulation.
+const EXPIRY = 4_000_000_000n;
 // A shielded token type the deployer wallet holds on live (genesis-minted);
 // `fill(1)` would be unfunded on live. On dry the color is arbitrary.
 const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
@@ -184,7 +195,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
           expect(id).toEqual(1n);
         });
 
@@ -192,10 +203,10 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
 
           const proposal = await multisig.getProposal(id);
-          expect(proposal.status).toEqual(ProposalStatus.Active);
+          expect(proposal.state).toEqual(EXPIRY);
           expect(proposal.amount).toEqual(PROPOSAL_AMOUNT);
           expect(proposal.color).toEqual(COLOR);
         });
@@ -205,14 +216,16 @@ describe('ShieldedMultiSig', () => {
           await expect(
             multisig
               .as('OTHER')
-              .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT),
+              .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY),
           ).rejects.toThrow('Signer: not a signer');
         });
 
         it('should fail with zero amount', async () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           await expect(
-            multisig.as('SIGNER1').createShieldedProposal(to, COLOR, 0n),
+            multisig
+              .as('SIGNER1')
+              .createShieldedProposal(to, COLOR, 0n, EXPIRY),
           ).rejects.toThrow('ProposalManager: zero amount');
         });
 
@@ -224,7 +237,7 @@ describe('ShieldedMultiSig', () => {
           await expect(
             multisig
               .as('SIGNER1')
-              .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT),
+              .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY),
           ).rejects.toThrow(
             'ShieldedMultiSig: recipient must be a shielded user or contract',
           );
@@ -237,7 +250,7 @@ describe('ShieldedMultiSig', () => {
           };
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
           expect(id).toEqual(1n);
           expect((await multisig.getProposal(id)).to.kind).toEqual(
             RecipientKind.Contract,
@@ -253,7 +266,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
         });
 
         it('should allow signer to approve', async () => {
@@ -309,7 +322,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
           await multisig.as('SIGNER1').approveProposal(proposalId);
         });
 
@@ -365,7 +378,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
           await multisig.as('SIGNER1').approveProposal(proposalId);
           await multisig.as('SIGNER2').approveProposal(proposalId);
         });
@@ -391,7 +404,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const fullId = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, AMOUNT);
+            .createShieldedProposal(to, COLOR, AMOUNT, EXPIRY);
           await multisig.as('SIGNER1').approveProposal(fullId);
           await multisig.as('SIGNER2').approveProposal(fullId);
 
@@ -417,7 +430,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id2 = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, 100n);
+            .createShieldedProposal(to, COLOR, 100n, EXPIRY);
           await multisig.as('SIGNER1').approveProposal(id2);
 
           await expect(multisig.executeShieldedProposal(id2)).rejects.toThrow(
@@ -443,7 +456,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const bigId = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, AMOUNT + 1n);
+            .createShieldedProposal(to, COLOR, AMOUNT + 1n, EXPIRY);
           await multisig.as('SIGNER1').approveProposal(bigId);
           await multisig.as('SIGNER2').approveProposal(bigId);
 
@@ -462,7 +475,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
           expect(
             await multisig.isProposalApprovedBySigner(id, Z_SIGNER1),
           ).toEqual(false);
@@ -472,7 +485,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
           expect(await multisig.getApprovalCount(id)).toEqual(0n);
         });
       });
@@ -485,7 +498,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           proposalId = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
         });
 
         // The preset dropped getProposalRecipient/Amount/Color to fit the deploy
@@ -514,7 +527,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
 
           // Approve to threshold
           await multisig.as('SIGNER1').approveProposal(id);
@@ -540,10 +553,10 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id1 = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, 200n);
+            .createShieldedProposal(to, COLOR, 200n, EXPIRY);
           const id2 = await multisig
             .as('SIGNER2')
-            .createShieldedProposal(to, COLOR, 300n);
+            .createShieldedProposal(to, COLOR, 300n, EXPIRY);
 
           // Approve and execute first
           await multisig.as('SIGNER1').approveProposal(id1);
@@ -565,7 +578,7 @@ describe('ShieldedMultiSig', () => {
           const to = makeRecipient(Z_RECIPIENT_PK);
           const id = await multisig
             .as('SIGNER1')
-            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT);
+            .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT, EXPIRY);
 
           // Approve then revoke
           await multisig.as('SIGNER1').approveProposal(id);
@@ -580,6 +593,132 @@ describe('ShieldedMultiSig', () => {
           await multisig.executeShieldedProposal(id);
           expect(await multisig.getProposalStatus(id)).toEqual(
             ProposalStatus.Executed,
+          );
+        });
+      });
+
+      // Needs control over the reported block time, which only the dry backend
+      // offers.
+      describe.skipIf(isLiveBackend())('expiry (dry only)', () => {
+        const NOW = 1_000_000n;
+        const DEADLINE = 2_000_000n;
+
+        beforeEach(async () => {
+          multisig = await freshMultisig();
+          setBlockTime(multisig, NOW);
+          await multisig.deposit(makeCoin(COLOR, AMOUNT));
+        });
+
+        const propose = () =>
+          multisig
+            .as('SIGNER1')
+            .createShieldedProposal(
+              makeRecipient(Z_RECIPIENT_PK),
+              COLOR,
+              PROPOSAL_AMOUNT,
+              DEADLINE,
+            );
+
+        it('should reject a proposal whose expiry is already past', async () => {
+          await expect(
+            multisig
+              .as('SIGNER1')
+              .createShieldedProposal(
+                makeRecipient(Z_RECIPIENT_PK),
+                COLOR,
+                PROPOSAL_AMOUNT,
+                NOW - 1n,
+              ),
+          ).rejects.toThrow('ProposalManager: expiry not in the future');
+        });
+
+        it('should not approve an expired proposal', async () => {
+          const id = await propose();
+          setBlockTime(multisig, DEADLINE);
+
+          await expect(
+            multisig.as('SIGNER1').approveProposal(id),
+          ).rejects.toThrow('ProposalManager: proposal expired');
+        });
+
+        it('should not revoke an approval on an expired proposal', async () => {
+          const id = await propose();
+          await multisig.as('SIGNER1').approveProposal(id);
+          setBlockTime(multisig, DEADLINE);
+
+          await expect(
+            multisig.as('SIGNER1').revokeApproval(id),
+          ).rejects.toThrow('ProposalManager: proposal expired');
+        });
+
+        it('should not execute an expired proposal that reached threshold', async () => {
+          const id = await propose();
+          await multisig.as('SIGNER1').approveProposal(id);
+          await multisig.as('SIGNER2').approveProposal(id);
+          expect(await multisig.getApprovalCount(id)).toEqual(THRESHOLD);
+
+          setBlockTime(multisig, DEADLINE);
+
+          await expect(multisig.executeShieldedProposal(id)).rejects.toThrow(
+            'ProposalManager: proposal expired',
+          );
+        });
+
+        it('should leave the treasury untouched when a proposal expires', async () => {
+          const id = await propose();
+          await multisig.as('SIGNER1').approveProposal(id);
+          await multisig.as('SIGNER2').approveProposal(id);
+
+          setBlockTime(multisig, DEADLINE);
+          await expect(multisig.executeShieldedProposal(id)).rejects.toThrow(
+            'ProposalManager: proposal expired',
+          );
+
+          expect(await multisig.getTokenBalance(COLOR)).toEqual(AMOUNT);
+          expect(await multisig.getSentTotal(COLOR)).toEqual(0n);
+        });
+
+        it('should report an expired proposal as Expired', async () => {
+          const id = await propose();
+          expect(await multisig.getProposalStatus(id)).toEqual(
+            ProposalStatus.Active,
+          );
+
+          setBlockTime(multisig, DEADLINE);
+          expect(await multisig.getProposalStatus(id)).toEqual(
+            ProposalStatus.Expired,
+          );
+        });
+
+        it('should execute a proposal replacing one that expired', async () => {
+          const stale = await propose();
+          setBlockTime(multisig, DEADLINE);
+          await expect(
+            multisig.as('SIGNER1').approveProposal(stale),
+          ).rejects.toThrow('ProposalManager: proposal expired');
+
+          // The treasury is still usable: a fresh proposal with a later
+          // deadline goes through.
+          const id = await multisig
+            .as('SIGNER1')
+            .createShieldedProposal(
+              makeRecipient(Z_RECIPIENT_PK),
+              COLOR,
+              PROPOSAL_AMOUNT,
+              DEADLINE * 2n,
+            );
+          await multisig.as('SIGNER1').approveProposal(id);
+          await multisig.as('SIGNER2').approveProposal(id);
+          await multisig.executeShieldedProposal(id);
+
+          expect(await multisig.getProposalStatus(id)).toEqual(
+            ProposalStatus.Executed,
+          );
+          expect(await multisig.getProposalStatus(stale)).toEqual(
+            ProposalStatus.Expired,
+          );
+          expect(await multisig.getTokenBalance(COLOR)).toEqual(
+            AMOUNT - PROPOSAL_AMOUNT,
           );
         });
       });
