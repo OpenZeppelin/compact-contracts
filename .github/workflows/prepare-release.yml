@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
         with:
           egress-policy: audit
 
@@ -168,7 +168,7 @@ jobs:
 
       # Uses GitHub API to create signed commits (requires creating blobs per file)
       - name: Commit version bump
-        uses: iarekylew00t/verified-bot-commit@33985d44b7719dcaf0b854a0f4b0caad9bdc5b86 # v2.3.3
+        uses: iarekylew00t/verified-bot-commit@1ccc6afd0f789e8442cff7deec3e9856a693cc7e # v2.3.4
         with:
           message: "chore(release): bump version to ${{ env.NEW_VERSION }}"
           token: ${{ steps.gh-app-token.outputs.token }}
