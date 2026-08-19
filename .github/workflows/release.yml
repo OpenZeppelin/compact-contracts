@@ -111,7 +111,7 @@ jobs:
         # Signed SLSA v1 provenance over the exact tarball, stored in the
         # GitHub attestation store (verifiable with `gh attestation verify`).
         # Complements the npm-registry provenance from NPM_CONFIG_PROVENANCE.
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: ${{ steps.pack.outputs.tarball }}
 
