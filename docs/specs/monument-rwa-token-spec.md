@@ -2,13 +2,13 @@
 
 > **Status:** draft for review (2026-08-18), written for the Monument Bank tokenized-deposit use case (phase one). Prepared for alignment with the Midnight Foundation: once agreed, this document is the baseline for what will be delivered in the year-end window, and changes to it are scope changes.
 >
-> **What this is.** A custom RWA token solution for Monument, not a new library standard. It composes two existing OpenZeppelin workstreams — the ConfidentialNoteFungibleToken family (issue [#722](https://github.com/OpenZeppelin/compact-contracts/issues/722), core PR [#743](https://github.com/OpenZeppelin/compact-contracts/pull/743)) and the `multisig/` package — into one deployable contract. The token half and the multisig half each exist today in draft form; **their composition (§6) is the part that has no prior design artifact, and this document is that design.**
+> **What this is.** A custom real-world asset (RWA) token solution for Monument, not a new library standard. It composes two existing OpenZeppelin workstreams — the ConfidentialNoteFungibleToken family (issue [#722](https://github.com/OpenZeppelin/compact-contracts/issues/722), core PR [#743](https://github.com/OpenZeppelin/compact-contracts/pull/743)) and the `multisig/` package — into one deployable contract. The token half and the multisig half each exist today in draft form; **their composition (§6) is the part that has no prior design artifact, and this document is that design.**
 >
 > **Verification.** Circuit costs are the compiler's own `@circuitInfo` numbers. Every requirement in §2 carries the date and venue where it was agreed. The code referenced is draft: not audited, not production.
 
 This document answers the five questions the specification was commissioned to answer:
 
-1. Is an ECDSA-multisig-controlled, note-based confidential token possible? — §8 (verdict: yes, conditionally; the conditions are named).
+1. Is a note-based confidential token controlled by an Elliptic Curve Digital Signature Algorithm (ECDSA) multisig possible? — §8 (yes, conditional on three named external items: the ECDSA primitive reaching general availability, a passing deploy canary, and two scope decisions landing).
 2. How do transfers happen? — §5.3, §6.5 (and why phase one deliberately exposes none).
 3. How does accounting happen? — §5.4, §6.4, §7.
 4. What is done and what is pending? — §10.
@@ -16,37 +16,54 @@ This document answers the five questions the specification was commissioned to a
 
 ## 1. Summary
 
-The Monument RWA token is a **confidential note token under institutional multisig control**. Value lives entirely inside one Compact contract as **notes**: `(value, nonce)` records owned by a per-customer key, represented on the public ledger only by hiding commitments in a Merkle tree and spent by publishing nullifiers. Amounts — including every issuance and redemption — senders, and recipients are all hidden from the public ledger. The issuer keeps the controls a regulated deposit needs: gated mint and burn, freeze, escrow-free seizure, structural auditor visibility, and provable supply. Every privileged operation is authorized by **M-of-N ECDSA signatures** (2-of-3 for phase one), matching how the custodian's HSM infrastructure actually signs.
+The Monument RWA token is a **confidential note token under institutional multisig control**. Value lives entirely inside one Compact contract as **notes**: `(value, nonce)` records owned by a per-customer key, represented on the public ledger only by hiding commitments in a Merkle tree and spent by publishing nullifiers. Amounts — including every issuance and redemption — senders, and recipients are all hidden from the public ledger. The issuer keeps the controls a regulated deposit needs: gated mint and burn, freeze, escrow-free seizure, structural auditor visibility, and provable supply. Every privileged operation is authorized by **M-of-N ECDSA signatures** (2-of-3 for phase one), matching how the custodian's hardware security module (HSM) infrastructure actually signs.
 
-This is **confidentiality, not unaccountability**. The design makes auditor visibility *structural*: every output note's nonce is derived from an ECDH against the audit key, so a note the auditor cannot open cannot exist (§5.5). The regulator's view is complete by construction, not by participants' good behavior. Concretely, for phase one: customers interact only with Monument's banking app; Monument and its custodian run all keys, proving, and accounting; the public chain shows that activity exists but never what it is; and the auditor sees all of it.
+This is **confidentiality, not unaccountability**. Confidentiality means outsiders cannot read amounts, balances, or the payment graph. Unaccountability would mean nobody can, leaving no transaction auditable and no party answerable for it. Privacy systems usually deliver both at once, which is what makes most of them unusable for a regulated deposit: here the public gets confidentiality and the auditor gets everything. The design makes auditor visibility *structural*: every output note's nonce is derived from an elliptic-curve Diffie–Hellman (ECDH) exchange against the audit key, so a note the auditor cannot open cannot exist (§5.5). The regulator's view is complete by construction, not by participants' good behavior. Concretely, for phase one: customers interact only with Monument's banking app; Monument and its custodian run all keys, proving, and accounting; the public chain shows that activity exists but never what it is; and the auditor sees all of it.
 
-**One contract, one address — by choice, not by platform limitation.** Cross-contract calls are live on Stagenet today (§3); this design deliberately does not use them. The multisig gates and the token compose at compile time into a single deployed contract, which keeps the proving surface, the deploy budget, and the audit scope small, and decouples the Monument timeline from cross-contract availability on mainnet. It also dissolves the two problems that dominated the earlier custodian architecture: per-user contract deployment (no factory pattern, unbounded upgrade burden, address-count leaks) and the cross-contract mint hop that failed with unclaimed-output errors before calls landed. A customer's segregated claim is a note keyed to their identity inside the shared contract — segregation without per-user contracts (§6.7).
+**One contract, one address.** Cross-contract calls are live on Stagenet (§3), yet the multisig gates and the token compose at compile time into a single deployed contract — partly by choice, partly by constraint. The choice: one contract keeps the proving surface, the deploy budget, and the audit scope small, and decouples the Monument timeline from cross-contract availability on mainnet. The constraint: a called circuit must be witness-free, and this token's circuits run on witnesses, so the note token cannot sit behind a cross-contract call — a per-user-contract wrapper around it is not buildable today even if it were wanted (§3, §12-Q1). One contract also avoids the earlier per-user design's operational costs: deploying and maintaining a contract per customer with no factory pattern, and moving newly minted value into a customer's contract within one transaction (§6.7). A customer's segregated claim is a note keyed to their identity inside the shared contract — segregation without per-user contracts.
 
 ## 2. Requirements and provenance
 
-Every row carries where it was agreed, so this table can serve as the scope baseline. "Sync" rows are the BitGo–MNF–OZ working sessions; requirements agreed there are inherited by the current custodian track unless restated.
+Every row links the meeting where it was agreed, so this table can serve as the scope baseline. Meeting labels are the exact Google Gemini note titles: **Bitgo <> MNF <> OZ** (the recurring tri-party call between BitGo, the Midnight Foundation (MNF), and OpenZeppelin (OZ)), **MNF x OZ** (the MNF–OZ technical call), **MNF <> OZ - Steering**, **MNF + OZ + Shielded Tech Call**, and **Balance - Openzeppelin**. Requirements agreed on the BitGo-era calls are inherited by the current custodian track unless restated; the 2026-08-18 Bitgo <> MNF <> OZ call ratified the note-based design and the single-contract shape (NFR7–NFR8).
+
+The split: **functional** rows (FR) describe behavior the deployed contract and its operators must exhibit; **non-functional** rows (NFR) constrain how the system is built, operated, and delivered (security invariants, architecture, operations, scope, schedule, dependencies, communication). Each table numbers its rows independently. Scope: OZ delivers the contract side of every row — the circuits and the exposed public state. The systems that call those circuits and read that state (custodian and bank backends, indexers, wallets) are outside OZ scope (§11).
+
+### 2.1 Functional requirements
 
 | # | Requirement | Agreed | Satisfied in |
 | --- | --- | --- | --- |
-| R1 | 2-of-3 threshold signing is a hard requirement for privileged operations | Sync 2026-05-05 | §6.1 |
-| R2 | ECDSA is the authority scheme (operations and contract maintenance) | Sync 2026-06-02 | §6.1, §6.4 |
-| R3 | ECDSA signatures: low-s form only (malleability rule) | Tech call 2026-08-03 | §6.1 |
-| R4 | Value under multisig custody at every step; no single-sig hop, ever | BitGo architecture doc; sync 2026-06-30 | §6.7 |
-| R5 | Mint/burn authority restricted to the issuer; end users cannot burn their own tokens | Sync 2026-07-07 | §6.2 |
-| R6 | Custodian API surface: mint, burn, freeze, unfreeze, query total supply / total minted / total burned | Balance call 2026-07-29 | §6.4 |
-| R7 | Key topology: admin keys offline; a warm key available 24/7 for mint/burn | Balance call 2026-07-29 | §6.4 |
-| R8 | Compliance dataset per transaction: sender, receiver, token type, amount; genesis tracing not required | Sync 2026-07-21, 2026-07-14 | §5.5, §7 |
-| R9 | Disclosure/compliance policy fixed before deployment; no post-deployment policy upgrades | Tech call 2026-07-13 | §6.6, §8.5 |
-| R10 | A regulator view that exposes all balances under one key is acceptable to Monument | Steering 2026-07-20 | §7 |
-| R11 | Honest, non-inflatable supply: holders and the regulator can verify supply was not inflated | Sync 2026-06-18, 2026-07-02 | §5.4, §12-Q2 |
-| R12 | Segregated per-customer claims with the chain as the ledger; an omnibus balance with an internal ledger is not acceptable | Sync 2026-06-30, 2026-07-07 | §6.7, §12-Q1 |
-| R13 | Phase one scope: bank-managed mint and redeem only; no end-user wallets, no customer-initiated transfers, no DeFi | Sync 2026-05-19, 2026-06-04 | §6.5 |
-| R14 | Customers must be able to recover funds if the bank winds down | Sync 2026-04-28 | §12-Q6 |
-| R15 | Freeze and seize capability for the RWA/tokenized-deposit track | MNF priority list 2026-06-22 | §5.6, §6.2 |
-| R16 | Year-end deadline: development and audit complete early enough for third-party integration to finish in 2026 | 1:1 2026-08-17; MNF roadmap ("Monument Bank Phase 1 LIVE", Q4 2026) | §11 |
-| R17 | Phase one is roadmap-gated on designated-party disclosure (`discloseTo`) being available | MNF roadmap, Q4 2026 row | §5.5 |
+| FR1 | 2-of-3 threshold signing is a hard requirement for privileged operations | [Bitgo <> MNF <> OZ 2026-05-05](https://docs.google.com/document/d/1ObPj4JJMOT8VJ7RPEsEuishhM1w20Jt6-i7jk4f4NVo) | §6.1 |
+| FR2 | ECDSA is the authority scheme (operations and contract maintenance) | [Bitgo <> MNF <> OZ 2026-06-02](https://docs.google.com/document/d/1liZ4Ika9tbU3i1LiJKM9agrFNAcYE7ZALQwJxtZR9yQ) | §6.1, §6.4 |
+| FR3 | ECDSA signatures: low-s form only (malleability rule) | [MNF + OZ + Shielded Tech Call 2026-08-03](https://docs.google.com/document/d/1KEYgmB0YgFiQNzz-0JSKKZr9D4E_3uPpXpxHP4sRmmM) | §6.1 |
+| FR4 | Mint: the contract exposes a mint circuit; only the issuer quorum can create value | [Bitgo <> MNF <> OZ 2026-07-07](https://docs.google.com/document/d/1bj2-YrpS24bRDl27RYyvTt8H7klpEtfrnW5X81dpXj4), [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §6.2 |
+| FR5 | Burn: the contract exposes a burn circuit; customers cannot burn unilaterally — the issuer quorum co-authorizes every redemption | [Bitgo <> MNF <> OZ 2026-07-07](https://docs.google.com/document/d/1bj2-YrpS24bRDl27RYyvTt8H7klpEtfrnW5X81dpXj4), [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §6.2 |
+| FR6 | Freeze: the contract exposes a freeze operation that immediately immobilizes a specific customer claim | [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU); MNF <> OZ - Steering 2026-06-22 (agenda; no Gemini notes) | §5.6, §6.2 |
+| FR7 | Unfreeze: the contract exposes an unfreeze operation that restores a frozen claim | [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §5.6, §6.2 |
+| FR8 | Seize: the contract exposes seizure of a customer claim without holding the customer's keys | MNF <> OZ - Steering 2026-06-22 (agenda; no Gemini notes) | §5.6, §6.2, §12-Q4 |
+| FR9 | Total supply: a tamper-evident on-chain total, readable by designated reviewers (the supply-key holders, e.g. regulator and external auditor); public proof-backed attestation available at any chosen cadence, including on-demand only — §12-Q2 | [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §5.4, §6.4 |
+| FR10 | Total minted is queryable by the custodian and verifiable by the regulator. Served by the custodian's own transaction records (it originates every mint) and the audit trail; not published on-chain by default, because a public minted counter would disclose each deposit amount as a delta (§5.4, §12-Q2) | [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §5.4, §6.4 |
+| FR11 | Total burned is queryable by the custodian and verifiable by the regulator. Same serving path as FR10; a public burned counter would disclose each redemption amount (§5.4, §12-Q2) | [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §5.4, §6.4 |
+| FR12 | Compliance dataset per transaction: sender, receiver, token type, amount; genesis tracing not required | [Bitgo <> MNF <> OZ 2026-07-21](https://docs.google.com/document/d/1B0dDP3dsJIcBi3J6nKUgvJ171hMtCNrASWJV4CqXJm4), [Bitgo <> MNF <> OZ 2026-07-14](https://docs.google.com/document/d/15AA4kQjE5gG0OUQ8QrBgnPzcderQ7EPoxBM7c7o0kwo) | §5.5, §7 |
+| FR13 | A regulator view that exposes all balances under one key is acceptable to Monument; visibility stays scoped to the individual contract — no chain-wide master viewing key | [MNF <> OZ - Steering 2026-07-20](https://docs.google.com/document/d/1-Jf7TnGPRtcvBo4eeG28-ncMCLByaCHs1_uqdbsQNKA); [Bitgo <> MNF <> OZ 2026-08-18](https://docs.google.com/document/d/1pqsNKJH_b5eezxBa9bESYApB_oSrIeEMvsFHg1y6xDU) | §7 |
+| FR14 | Honest, non-inflatable supply: holders and the regulator can verify supply was not inflated | [MNF x OZ 2026-06-18](https://docs.google.com/document/d/1Us8V74bNPKCPemgqm975-qwUntjjqXLFRqcbfKMkeHI), [MNF x OZ 2026-07-02](https://docs.google.com/document/d/1AgvN-8UfNfP_1f9A1iPpsWgTkVUn3AmPJ9RZfBVCKEw) | §5.4, §12-Q2 |
+| FR15 | Segregated per-customer claims with the chain as the ledger; an omnibus balance with an internal ledger is not acceptable | [Bitgo <> MNF <> OZ 2026-06-30](https://docs.google.com/document/d/1eBA5J4U7Wo-Rgk6TWUpBTciIbqNFRYxFwXhYeD1Ae_k), [Bitgo <> MNF <> OZ 2026-07-07](https://docs.google.com/document/d/1bj2-YrpS24bRDl27RYyvTt8H7klpEtfrnW5X81dpXj4) | §6.7, §12-Q1 |
+| FR16 | Customers must be able to recover funds if the bank winds down | [Bitgo <> MNF <> OZ 2026-04-28](https://docs.google.com/document/d/17ncCRGaEqLCxZRLjlFUj4T73mCUTOQUiBE6-0bbiisg) | §12-Q6 |
 
-Rows R12 (omnibus vs. smart account) and R11 (public vs. attested supply) have open sub-questions tracked in §12.
+### 2.2 Non-functional requirements
+
+| # | Requirement | Agreed | Satisfied in |
+| --- | --- | --- | --- |
+| NFR1 | Value under multisig custody at every step; no single-sig hop, ever | [BitGo architecture doc](https://docs.google.com/document/d/1IOdmTvO5teU-SE1i-HTCMJnn9M5dXaCCHj9176FrYmA); [Bitgo <> MNF <> OZ 2026-06-30](https://docs.google.com/document/d/1eBA5J4U7Wo-Rgk6TWUpBTciIbqNFRYxFwXhYeD1Ae_k) | §6.7 |
+| NFR2 | Key topology: admin keys offline; a warm key available 24/7 for mint/burn | [Balance - Openzeppelin 2026-07-29](https://docs.google.com/document/d/1LZcayo5wY6XVPiTZHnIX3T0jpGZnCrfP4YNfZ5h-urU) | §6.4 |
+| NFR3 | Disclosure/compliance policy fixed before deployment; no post-deployment policy upgrades | [MNF + OZ + Shielded Tech Call 2026-07-13](https://docs.google.com/document/d/1gP--f6iFbhXOaYMZRcN0AI8RPomc-0lDh8F_IxgWNsg) | §6.6, §8.5 |
+| NFR4 | Phase one scope: bank-managed mint and redeem only; no end-user wallets, no customer-initiated transfers, no decentralized finance (DeFi) | [Bitgo <> MNF <> OZ 2026-05-19](https://docs.google.com/document/d/1E4Vkc21ykf_DxM6t2_w8lBjqcJ6qxfDroZKG6yazJb8), [MNF x OZ 2026-06-04](https://docs.google.com/document/d/1WC_9IR9rSlDTWAEmI5sjFc66OvBsT1zlvtD37Z8pT5Q) | §6.5 |
+| NFR5 | Year-end deadline for the integrated product; OZ development and audit targeted complete by mid-November so third parties can integrate inside 2026 | [MNF roadmap](https://docs.google.com/spreadsheets/d/1lO_jXRheWImyydgkM9cIP6GRJWFWOa_tsNJr8r5Q2_I) ("Monument Bank Phase 1 LIVE", Q4 2026); mid-November is the OZ delivery target (§11) | §11 |
+| NFR6 | Phase one is roadmap-gated on designated-party disclosure (`discloseTo`) being available | [MNF roadmap](https://docs.google.com/spreadsheets/d/1lO_jXRheWImyydgkM9cIP6GRJWFWOa_tsNJr8r5Q2_I), Q4 2026 row | §5.5 |
+| NFR7 | The note-based architecture is the adopted primary token design for this use case | [Bitgo <> MNF <> OZ 2026-08-18](https://docs.google.com/document/d/1pqsNKJH_b5eezxBa9bESYApB_oSrIeEMvsFHg1y6xDU) | whole document; §4 |
+| NFR8 | Phase one ships as one composable contract: multisig layer + token + custody extensions in a single deployment (driven by the witness-support gap in contract-type calls) | [Bitgo <> MNF <> OZ 2026-08-18](https://docs.google.com/document/d/1pqsNKJH_b5eezxBa9bESYApB_oSrIeEMvsFHg1y6xDU) | §3, §6 |
+| NFR9 | Regulator-facing framing is "selective disclosure", not "privacy" (adopted after BitGo risk/compliance/legal approval; OCC engagement next) | [Bitgo <> MNF <> OZ 2026-08-18](https://docs.google.com/document/d/1pqsNKJH_b5eezxBa9bESYApB_oSrIeEMvsFHg1y6xDU) | §7 |
+
+Rows FR15 (omnibus vs. smart account) and FR14 (public vs. attested supply) have open sub-questions tracked in §12. NFR7–NFR8 were ratified on the 2026-08-18 Bitgo <> MNF <> OZ call, which also confirmed BitGo internal approval of the design.
 
 ## 3. System overview and interconnection
 
@@ -92,14 +109,14 @@ flowchart TD
 
 **Cross-contract calls: status, and why phase one does not use them.** Cross-contract calls are live on Stagenet (toolchain 0.33 / ledger-9 release candidates; ledger 9 has not reached mainnet). Two of their rules decide this design:
 
-- **Callees must be witness-free under the current toolchain, and the call boundary discloses.** Today's compiler disqualifies witness-calling circuits from contract types — a restriction the toolchain itself marks "not yet supported", so it may relax. What will not relax is the boundary: call arguments and the callee address are public. The note token's circuits run on witnesses (the input note, the spend secret, Merkle paths, randomness seeds), and those are exactly the values that must never cross a public boundary — so they cannot be callees under either the temporary rule or the permanent one. A confidential token composes inside one contract; at most it acts as a call *root*, never a callee.
-- **The re-entrancy ban is a toolchain guard, not a consensus rule.** The SDK rejects `A → B → A` shapes; the chain itself does not, and the language reference calls cyclic call graphs undefined. Call graphs are therefore designed acyclic, and non-re-entrancy is treated as a client-stack property.
+- **Callees must be witness-free under the current toolchain, and the call boundary discloses.** Today's compiler disqualifies witness-calling circuits from contract types — a restriction the toolchain itself marks "not yet supported", so it may relax. What will not relax is the boundary: the callee’s address is revealed on-chain, and call arguments must be marked disclosed — the caller cannot stop the callee from publishing them. The note token's circuits run on witnesses (the input note, the spend secret, Merkle paths, randomness seeds), and those are exactly the values that must never cross a public boundary — so they cannot be callees under either the temporary rule or the permanent one. A confidential token composes inside one contract; at most it acts as a call *root*, never a callee.
+- **The re-entrancy ban is a toolchain guard, not a consensus rule.** The client runtime rejects `A → B → A` shapes; the chain itself does not, and the language reference calls cyclic call graphs undefined. Call graphs are therefore designed acyclic, and non-re-entrancy is treated as a client-stack property.
 
 What calls do unlock is multi-contract architecture *around* the token — per-user account contracts and public-argument compositions. That is a phase-two conversation (§6.7, §12-Q1); nothing in phase one depends on it, which also keeps the Monument deadline decoupled from cross-contract availability on mainnet.
 
 ## 4. Why a note model
 
-The requirement set — hidden amounts including issuance (R8's dataset is for the *auditor*, not the public), segregated per-customer claims with the chain as the ledger (R12), freeze and seize (R15), honest supply (R11) — eliminates the alternatives one by one:
+The requirement set — hidden amounts including issuance (FR12's dataset is for the *auditor*, not the public), segregated per-customer claims with the chain as the ledger (FR15), freeze and seize (FR11), honest supply (FR8) — eliminates the alternatives one by one:
 
 | Approach | What it is | Why not (for this use case) |
 | --- | --- | --- |
@@ -107,7 +124,7 @@ The requirement set — hidden amounts including issuance (R8's dataset is for t
 | Native shielded (Zswap) coins + custody wrappers | protocol-level shielded UTXOs issued by a contract | **every mint and burn amount is public** (protocol supply deltas), and a coin in a wallet is a bearer instrument: freeze/seize are structurally impossible after issuance without key escrow |
 | Ring signatures / stealth addresses on an account model | hide the sender behind decoys | **circuit-constraint blowup**; evaluated and rejected 2026-07-13 — the note model is both cheaper and more private |
 | Omnibus balance + internal bank ledger | one on-chain pot, per-customer accounting off-chain | **rejected 2026-06-30**: Monument requires the chain itself to be the ledger |
-| Per-user contract instances (the earlier custodian architecture) | one multisig treasury contract deployed per customer | **no factory pattern in Compact**: deploying and upgrading 100k+ contracts by hand. Contract addresses leak the customer count. The cross-contract mint hop that failed with error 186 is now unblocked at the ledger level (the client-runtime half landed after the current Stagenet pin, §6.7), but the deployment and privacy costs stand, and phase one cannot depend on cross-contract mainnet timing |
+| Per-user contract instances (the earlier custodian architecture) | one multisig treasury contract deployed per customer | **no factory pattern in Compact**: deploying and upgrading 100k+ contracts by hand; contract addresses leak the customer count. Minting into a per-user contract in one transaction — the old error-186 failure — is now unblocked at the ledger level (§6.7), but a per-user shape cannot be rescued by wrapping this token either: called circuits must be witness-free, and the note token’s are not (§3). Phase one also cannot depend on cross-contract mainnet timing |
 | **Notes in one contract** | commitments + nullifiers inside a single contract | **Chosen.** The only shape that hides amounts, sender, and recipient at once *and* leaves the issuer a contract-mediated handle on every claim |
 
 Sender privacy is the forcing constraint: hiding which account a debit touches requires an unindexed commitment set with in-circuit membership proofs and nullifiers, and that *is* the note model. This is also why the Midnight Foundation confirmed the note design as the direction for Monument (2026-08-17): it is the design whose promises match the system they are integrating.
@@ -116,7 +133,7 @@ Sender privacy is the forcing constraint: hiding which account a debit touches r
 
 ## 5. The token: building blocks consumed
 
-The token half of the composition is the ConfidentialNoteFungibleToken family (#722). This section states only what the Monument deployment consumes and the properties the multisig design relies on; the family's own specification carries the full circuit-by-circuit detail.
+The token half of the composition is the ConfidentialNoteFungibleToken family ([#722](https://github.com/OpenZeppelin/compact-contracts/issues/722)). This section states only what the Monument deployment consumes and the properties the multisig design relies on; the family's own specification carries the full circuit-by-circuit detail.
 
 ### 5.1 The note algebra
 
@@ -124,7 +141,7 @@ A note is `Note { value: Uint<128>, nonce: Field }` owned by `pk = Hf(sk)`. On t
 
 **The nullifier preimage is the nonce alone — no owner secret.** This is the family's load-bearing deviation from Zcash: anyone who knows a nonce derives the same nullifier. It is what makes seizure escrow-free (§5.6) and it makes every nonce a spend-critical secret end to end. In the phase-one custodial topology, all nonces live inside the Monument/custodian boundary, which contains this risk but concentrates it (§7).
 
-### 5.2 The core (PR #743, open)
+### 5.2 The core (PR [#743](https://github.com/OpenZeppelin/compact-contracts/pull/743), open)
 
 The core owns the commitment tree and nullifier set and nothing else: no balances, no accounts, no supply, **no roles**. It provides self-gated `transfer`/`burn` for standalone use and ungated `_mint` / `_transfer` / `_burn` / `_consumeNote` building blocks for composition. Conservation (`input = output + change`) is asserted inside the proof. Ownership is bound in the commitment, not the nullifier — which is exactly the hook seizure uses.
 
@@ -138,23 +155,24 @@ The core writes no supply; supply is a per-deployment policy choice:
 
 | Variant | Public sees | Fit |
 | --- | --- | --- |
-| none | nothing; auditor reconstructs from the audit trail | insufficient for R11 |
-| confidential + attested | a proof-backed total at a chosen cadence (homomorphic ElGamal running total; attestation proves the decryption) | hides per-deposit amounts; supply verifiable at attestation cadence |
-| fully public counters | every mint/burn delta, live | simplest queries; **leaks each deposit/redemption amount with its timestamp** |
+| none | nothing; auditor reconstructs from the audit trail | insufficient for FR14 |
+| confidential, designated readers | a ciphertext; the total is readable only by the supply-key holders (e.g. regulator, external auditor) | hides per-deposit amounts and the program size; reviewers verify continuously; no public proof until one is requested |
+| confidential + public attestation | a proof-backed total at a chosen cadence (homomorphic ElGamal running total; attestation proves the decryption) | hides per-deposit amounts; publishes the program size at each attestation |
+| fully public counters ([#740](https://github.com/OpenZeppelin/compact-contracts/issues/740)) | every mint/burn delta, live | simplest queries; **leaks each deposit/redemption amount with its timestamp** |
 
-R6 requires the custodian to query totals; R11 requires the totals to be non-inflatable. Both variants satisfy R11. The open decision (§12-Q2) is whether the public may see per-event deltas: public counters contradict the reason the note model was chosen (hidden issuance), so this specification recommends **confidential + attested** with a daily attestation, and treats public counters as a fallback if the regulator requires live public totals. Accounting per customer is off-chain by construction: the custodian's backend tracks notes per `ownerId` from the delivery/audit data it already holds (§6.4).
+FR9 requires an authoritative, verifiable total on-chain; FR10–FR11 (gross minted and burned) are served by the custodian's own records and the audit trail rather than by public state; FR14 requires the total to be non-inflatable. Every variant except "none" satisfies FR14. The two confidential rows are the same deployed code — the attestation circuit ships either way, and cadence is an operational choice, not a code choice. This specification recommends **confidential with designated readers, attesting publicly on demand**: the regulator verifies continuously (supply key and audit trail), the public can be handed a proof-backed total whenever one is needed, and the bank's day-to-day program size stays off the public record. Public counters contradict the reason the note model was chosen (hidden issuance) and remain only a fallback if the regulator requires live public totals (§12-Q2). Accounting per customer is off-chain by construction: the custodian's backend tracks notes per `ownerId` from the delivery/audit data it already holds (§6.4).
 
 ### 5.5 Audit: completeness by construction
 
-For every output note, the audit extension runs an ECDH against the audit key, **derives the note's nonce from the shared secret**, and publishes an encrypted audit record of `(value, owner)`. Because the nonce comes out of the audit ECDH and the commitment binds the same fields inside one proof, an output the auditor cannot open cannot exist. The auditor recovers amounts, recipients, and — via published nullifiers matched against earlier records — senders: exactly the R8 dataset, with no honest-participation assumption. The audit key decrypts; it can never spend.
+For every output note, the audit extension runs an ECDH against the audit key, **derives the note's nonce from the shared secret**, and publishes an encrypted audit record of `(value, owner)`. Because the nonce comes out of the audit ECDH and the commitment binds the same fields inside one proof, an output the auditor cannot open cannot exist. The auditor recovers amounts, recipients, and — via published nullifiers matched against earlier records — senders: exactly the FR12 dataset, with no honest-participation assumption. The audit key decrypts; it can never spend.
 
-The **review extension** adds scoped, per-designee disclosure alongside the global audit channel (records encrypted to an approved reviewer key, e.g. a custodian FIU). Its final shape is pending FIU feedback (§12-Q3). Relation to the platform's `discloseTo` roadmap item (R17): the contract-level channels above deliver day-one auditor completeness without waiting for platform features; `discloseTo` adds platform-level scoped viewing keys that the same records can ride when it lands. The two are complementary, and this contract does not block on `discloseTo` for its own audit channel.
+The **review extension** adds scoped, per-designee disclosure alongside the global audit channel (records encrypted to an approved reviewer key, e.g. a custodian’s financial intelligence unit (FIU)). Its final shape is pending FIU feedback (§12-Q3). Relation to the platform's `discloseTo` roadmap item (NFR6): the contract-level channels above deliver day-one auditor completeness without waiting for platform features; `discloseTo` adds platform-level scoped viewing keys that the same records can ride when it lands. The two are complementary, and this contract does not block on `discloseTo` for its own audit channel.
 
 ### 5.6 Compliance: freeze, seize, allowlist
 
 - **Seize (escrow-free).** The authority consumes the target note using the audit-trail data as witness and re-mints the full value to a recovery key — audited and delivered like any output. Owner-spend and seizure derive the *same* nullifier, so they are mutually exclusive: first to land wins, and the authority never holds customer spend keys. A public seizure counter provides accountability (how many, never against whom).
 - **Freeze.** A frozen-nullifier set checked at the owner-spend chokepoint: freezing a note blocks its owner-spend while leaving seizure available. The operational sequence is freeze → finality → seize.
-- **KYC allowlist.** Spend-time Merkle-membership proof (a hidden spender cannot do a `Set` lookup without disclosing a stable pseudonym). Phase one has no customer-initiated spends, so the allowlist gates onboarding administratively; it becomes load-bearing in phase two.
+- **Know-your-customer (KYC) allowlist.** Spend-time Merkle-membership proof (a hidden spender cannot do a `Set` lookup without disclosing a stable pseudonym). Phase one has no customer-initiated spends, so the allowlist gates onboarding administratively; it becomes load-bearing in phase two.
 
 ## 6. The multisig integration (the new design)
 
@@ -162,14 +180,14 @@ This section is the part of the system that existed nowhere before this document
 
 ### 6.1 Authorization: threshold ECDSA replaces the role secrets
 
-The family's draft preset gates its roles by **hash-preimage proof**: the caller proves knowledge of a secret whose hash matches a stored role key. That is a single shared secret — no threshold, no rotation of individual signers, and nothing an institutional HSM can produce. The custodian requirement (R1–R4, R7) is signatures from independently held ECDSA keys.
+The family's draft preset gates its roles by **hash-preimage proof**: the caller proves knowledge of a secret whose hash matches a stored role key. That is a single shared secret — no threshold, no rotation of individual signers, and nothing an institutional HSM can produce. The custodian requirement (FR1–FR3, NFR1, NFR2) is signatures from independently held ECDSA keys.
 
 **The mechanism already exists in the `multisig/` package.** `EcdsaSignerManager` stores signers as commitments `H(pk, instanceSalt, domain)` in an M-of-N registry and verifies a vector of `(pubkey, signature)` pairs against a message hash, folding the valid count against the threshold. The Monument preset replaces each role gate with a call into this verifier:
 
 - **Message binding.** Each operation verifies signatures over `msgHash = H(opDomainTag, contractAddress, paramsHash, opNonce)` — the operation selector, this contract instance, every consequential parameter, and a monotonic per-contract nonce. A signature for one operation, parameter set, instance, or point in the sequence cannot authorize any other; the nonce blocks replay. This is the pattern already implemented in `ShieldedMultiSigV3` and it carries over unchanged.
-- **Signature form.** Low-s signatures only (R3), matching the Ethereum-ecosystem HSM convention the custodians use.
+- **Signature form.** Low-s signatures only (FR3), matching the Ethereum-ecosystem HSM convention the custodians use.
 - **Hash function.** The message hash MUST be `keccak256` in production to match HSM signing formats; the current code uses `persistentHash` as a stand-in until the Keccak primitive is available.
-- **The stub boundary.** ECDSA verification is stubbed today (`stubVerifySignature` returns true — issue [#475](https://github.com/OpenZeppelin/compact-contracts/issues/475)). The stub MUST hard-fail outside test builds so a stubbed contract can never reach a production network. Real `ecdsaVerify` was validated end-to-end on Stagenet with multisig flows (2026-08-03) on the release-candidate toolchain (PR [#713](https://github.com/OpenZeppelin/compact-contracts/pull/713)); general availability of the primitives is a Midnight Foundation deliverable (§8.5).
+- **The stub boundary.** ECDSA verification is stubbed today (`stubVerifySignature` returns true — issue [#475](https://github.com/OpenZeppelin/compact-contracts/issues/475)). The stub MUST hard-fail outside test builds so a stubbed contract can never reach a production network. Real `ecdsaVerify` was validated end-to-end on Stagenet with multisig flows (2026-08-03) on the release-candidate (RC) toolchain (PR [#713](https://github.com/OpenZeppelin/compact-contracts/pull/713)); general availability (GA) of the primitives is a Midnight Foundation deliverable (§8.5).
 - **A known defect to fix before composition.** The verifier's duplicate-signer detection compares adjacent entries only, which is correct for 2 signatures but not for 3+ (issue [#629](https://github.com/OpenZeppelin/compact-contracts/issues/629)). Phase one submits exactly 2 signatures, but the fix lands before audit regardless.
 
 ### 6.2 The gated operation set
@@ -179,7 +197,7 @@ Working name for the deployable composition: **`MultisigConfidentialNoteFungible
 | Operation | Gate | Notes |
 | --- | --- | --- |
 | `mint(ownerId, encPk, value, sigs)` | 2-of-3 ECDSA (warm set) | creates a note for a customer; amount hidden; audited + delivered |
-| `burn(value, sigs)` | 2-of-3 ECDSA **and** the note owner's spend proof | redemption; the bank proves the customer's note with the escrowed key, the multisig co-authorizes (R5: customers cannot burn unilaterally — and the bank cannot burn without the note either) |
+| `burn(value, sigs)` | 2-of-3 ECDSA **and** the note owner's spend proof | redemption; the bank proves the customer's note with the escrowed key, the multisig co-authorizes (FR5: customers cannot burn unilaterally — and the bank cannot burn without the note either) |
 | `freeze(nf, sigs)` / `unfreeze(nf, sigs)` | 2-of-3 ECDSA | immediate; works while other activity is in flight |
 | `seize(targetOwnerId, recoveryId, recoveryEncPk, sigs)` | 2-of-3 ECDSA | escrow-free clawback per §5.6; scope question §12-Q4 |
 | `authorizeAccount(ownerId, sigs)` | 2-of-3 ECDSA | onboarding into the allowlist |
@@ -193,23 +211,24 @@ Two-party control falls out of the structure: minting needs the multisig but cre
 
 The `multisig/` package offers two authorization flows: **direct threshold signatures** (each call carries the co-signatures, V3 style) and the **`ProposalManager`** (propose on-chain, approve, execute; recently extended with expiry deadlines in PR [#780](https://github.com/OpenZeppelin/compact-contracts/pull/780)). Phase one uses **direct signatures**:
 
-- The custodian's operational model is "sign this message hash with the warm keys" (R6, R7) — machine-driven, single-transaction, no human quorum workflow on-chain.
+- The custodian's operational model is "sign this message hash with the warm keys" (FR4–FR11, NFR2) — machine-driven, single-transaction, no human quorum workflow on-chain.
 - The proposal flow adds ledger state, extra circuits (contract size, §8.2), and extra pinned reads (concurrency, §9) for a coordination problem phase one does not have.
 - The proposal manager remains the right tool for slower, human-quorum governance actions and can be composed in phase two without disturbing the phase-one surface.
 
 ### 6.4 Key topology and the custodian API
 
-Mapping the custodian's required endpoints (R6) and key model (R7) onto the contract:
+Mapping the custodian's required operations (FR4–FR11) and key model (NFR2) onto the contract:
 
 | Custodian endpoint | Contract surface | Signing keys |
 | --- | --- | --- |
 | mint | `mint(...)` | warm 2-of-3 set |
 | burn | `burn(...)` | warm 2-of-3 set + escrowed owner key (witness) |
 | freeze / unfreeze | `freeze(...)` / `unfreeze(...)` | warm 2-of-3 set |
-| total supply / minted / burned | supply reads (attested values, or live counters per §12-Q2) | none |
+| total supply | encrypted on-chain accumulator, read with the supply key; publicly attested value when/if published (§12-Q2) | supply key (reads) |
+| total minted / total burned | custodian's own transaction records (closed loop), verifiable against the audit trail; separately attested gross accumulators are an optional extension (§12-Q2) | none |
 
 - **Warm operational set (2-of-3).** Available 24/7 for mint/burn/freeze tempo. Signer keys live in the custodian's HSM infrastructure; the contract stores only salted commitments to them, so the on-chain state does not even reveal the operating public keys.
-- **Offline admin keys.** Signer-set rotation and threshold changes are gated to the admin quorum. The contract-upgrade authority (Midnight's contract maintenance authority — circuits are upgradable, the ledger layout is not) belongs with the same offline keys (R2).
+- **Offline admin keys.** Signer-set rotation and threshold changes are gated to the admin quorum. The contract-upgrade authority (Midnight's contract maintenance authority — circuits are upgradable, the ledger layout is not) belongs with the same offline keys (FR2).
 - **Audit key.** Held by the auditor/regulator arrangement Monument designates; separated from the seizure authority as a matter of duty separation (§7).
 - **Witness discipline.** Customer spend secrets and note openings are witnesses: they exist only inside the Monument/custodian boundary, and the proof server MUST run inside that boundary. A hosted or third-party prover would see everything the chain hides.
 
@@ -217,13 +236,13 @@ The custodian's transaction discovery is a closed loop (their own words, 2026-07
 
 ### 6.5 Phase-one circuit surface: deliberately narrow
 
-Phase one exposes **no transfer**. The custodian API (R6) has no transfer endpoint, and phase-one doctrine is bank-managed mint/redeem only (R13). Consequences, in order of importance:
+Phase one exposes **no transfer**. The custodian operation set (FR4–FR11) includes no transfer, and phase-one doctrine is bank-managed mint/redeem only (NFR4). Consequences, in order of importance:
 
 1. **Contract size.** The transfer circuit is the family's largest (k=18, ~136k rows, two full emission pipelines). Excluding it from the deployed contract removes the single biggest contributor to the block-budget risk (§8.2).
 2. **Concurrency.** No customer-initiated spends means the allowlist admin-vs-spend contention and same-note races are phase-two concerns (§9).
 3. **Scope honesty.** "Customers move tokens" is exactly the phase-two boundary MNF drew; building it now would be unrequested scope.
 
-Segregation is unaffected: every customer's claims are distinct notes under their own `ownerId`, on-chain, satisfying R12 without customer-facing circuits.
+Segregation is unaffected: every customer's claims are distinct notes under their own `ownerId`, on-chain, satisfying FR15 without customer-facing circuits.
 
 ### 6.6 Operation flows
 
@@ -268,11 +287,11 @@ sequenceDiagram
   Mon->>App: GBP released off-chain
 ```
 
-Both flows change nothing after deployment: the policy — who signs, what is audited, what the public sees — is fixed at deployment time (R9). Signer *keys* rotate under the admin quorum; the policy shape does not.
+Both flows change nothing after deployment: the policy — who signs, what is audited, what the public sees — is fixed at deployment time (NFR3). Signer *keys* rotate under the admin quorum; the policy shape does not.
 
 ### 6.7 Relation to the earlier custodian architecture
 
-The BitGo-era design ("Midnight Onboarding — Architecture & Design Decisions") put each customer in their own V2 multisig treasury contract, with a shared V3 mint authority, on native Zswap coins. Its **requirements survive** in this specification: 2-of-3 ECDSA (R1), HSM-held platform keys, multisig custody at every step (R4), indexer-driven reconciliation. Its **architecture is superseded**, though not for the reason assumed at the time. The mint hop into a per-user contract failed because the client stack could not construct a transaction satisfying the ledger's coin-claim rule, so the chain rejected the unclaimed output (error 186). The ledger itself permitted contract-to-contract coin forwarding all along — its coin-claim rule (every contract-owned coin claimed by exactly one contract in the same transaction segment) is unchanged from ledger 8 to 9.1 — and the remaining client gap, a callee's shielded-coin state, was closed in the compact runtime after the current Stagenet pin. So the V3-mint-into-V2 flow is becoming buildable. It stays the wrong shape for this use case on the other grounds: per-user deployment has no factory and no upgrade story (the language cannot create contract instances), native coins make every mint and burn amount public, and contract addresses leak the customer count. In the note model, "mint to the customer" is an internal note creation inside the one contract — no hop, no second contract, no public amount — and R4 holds because value never exists outside the multisig-governed contract at all.
+The BitGo-era design ("Midnight Onboarding — Architecture & Design Decisions") put each customer in their own V2 multisig treasury contract, with a shared V3 mint authority, on native Zswap coins. Its **requirements survive** in this specification: 2-of-3 ECDSA (FR1), HSM-held platform keys, multisig custody at every step (NFR1), indexer-driven reconciliation. Its **architecture is superseded**, though not for the reason assumed at the time. Minting into a per-user contract failed because the client stack could not construct a transaction satisfying the ledger's coin-claim rule, so the chain rejected the unclaimed output (error 186). The ledger itself permitted contract-to-contract coin forwarding all along — its coin-claim rule (every contract-owned coin claimed by exactly one contract in the same transaction segment) is unchanged from ledger 8 to 9.1 — and the remaining client gap, a callee's shielded-coin state, was closed in the compact runtime after the current Stagenet pin. So the V3-mint-into-V2 flow is becoming buildable. It stays the wrong shape for this use case on the other grounds: per-user deployment has no factory and no upgrade story (the language cannot create contract instances), native coins make every mint and burn amount public, and contract addresses leak the customer count. In the note model, "mint to the customer" is an internal note creation inside the one contract — no hop, no second contract, no public amount — and NFR1 holds because value never exists outside the multisig-governed contract at all.
 
 ## 7. Privacy and disclosure, stated precisely
 
@@ -281,14 +300,14 @@ The BitGo-era design ("Midnight Onboarding — Architecture & Design Decisions")
 | Public / any indexer | that commitments, nullifiers, encrypted records, and supply-cell updates appeared; operation shape and timing; seizure count; attested totals at their cadence | amounts, balances, customer identities, who-paid-whom |
 | Custodian (closed loop) | everything about transactions it originated; the full reconciliation view of its own notes | nothing about any other party's data |
 | Monument | everything (it runs onboarding, holds escrowed keys, sees all openings) | — |
-| Auditor / regulator (audit key) | every output's `(owner, value, nonce)`, hence every balance and the full flow graph (R8, R10) | it cannot spend, freeze, or seize |
+| Auditor / regulator (audit key) | every output's `(owner, value, nonce)`, hence every balance and the full flow graph (FR12, FR13) | it cannot spend, freeze, or seize |
 | Seizure authority | nothing extra by itself | it acts only when armed with audit-trail data for a specific target |
 
 Named honestly, the residual leaks and concentrations:
 
 - **Shape and timing are public.** A mint (one commitment) is distinguishable from a burn/seize (nullifier + one commitment) and a transfer (nullifier + two commitments); counts and timestamps are visible. Amounts and parties are not.
-- **The audit key is all-seeing by design.** R10 records that Monument accepts this. Compromise of the audit key is total *visibility* compromise (never spend capability); audit-key + authority-key collusion equals unilateral clawback, so the two MUST be held under separated duties, and both SHOULD themselves be threshold-held.
-- **Phase one concentrates custody.** Monument's boundary holds every customer key and every nonce (spend-critical secrets). That is the deliberate phase-one topology (R13) — the note model's self-custody capability is what phase two graduates into, without changing the token.
+- **The audit key is all-seeing by design.** FR13 records that Monument accepts this. Compromise of the audit key is total *visibility* compromise (never spend capability); audit-key + authority-key collusion equals unilateral clawback, so the two MUST be held under separated duties, and both SHOULD themselves be threshold-held.
+- **Phase one concentrates custody.** Monument's boundary holds every customer key and every nonce (spend-critical secrets). That is the deliberate phase-one topology (NFR4) — the note model's self-custody capability is what phase two graduates into, without changing the token.
 - **Issuance-time linkage.** Off-chain knowledge that "customer X deposited at time T" combines with public timing. On-chain data alone reveals nothing; the mitigation for stronger threat models is batching (§9).
 
 ## 8. Feasibility and constraints
@@ -332,16 +351,16 @@ The commitment tree is fixed-depth (2^20 leaves, no deletion) and the root histo
 
 1. **ECDSA + Keccak primitives reach general availability** on a deployable network (validated on Stagenet on the RC toolchain 2026-08-03; GA is an MNF/platform deliverable). Until then the signature gate is a stub and the contract MUST NOT hold value.
 2. **The composed contract passes the deploy canary** under the current block budget (expected to pass given verifier-key-only deploys and the trimmed surface; asserted empirically, not assumed).
-3. **The supply-variant and seize-scope decisions land** (§12-Q2, Q4) before the audit scope freezes, because ledger layout is fixed at deployment (R9).
+3. **The supply-variant and seize-scope decisions land** (§12-Q2, Q4) before the audit scope freezes, because ledger layout is fixed at deployment (NFR3).
 
-Not conditions: a Poseidon-class hasher (cost, not feasibility) and `discloseTo` (the contract's own audit channel is self-contained; the platform gate R17 is MNF's to manage).
+Not conditions: a Poseidon-class hasher (cost, not feasibility) and `discloseTo` (the contract's own audit channel is self-contained; the platform gate NFR6 is MNF's to manage).
 
 ## 9. Concurrency
 
 The family's conflict analysis carries over; what matters for this composition:
 
 - **Privileged operations serialize on the signature nonce — by design.** Replay protection requires each signed operation to bind the current nonce, which pins it: two concurrent multisig operations conflict and one retries. Effective tempo is one privileged operation per block (~seconds). At launch-scale deposit volume this is adequate; the levers, if volume outgrows it, are batch outputs (N deposits in one mint proof — tracked as a family extension) and partitioned nonce lanes per operation class.
-- **Supply updates serialize** on the encrypted-supply cell. The family already has the fix designed and implemented in draft (a commuting delta inbox whose attestation proves the inbox empty); adopting it is a composition choice if mint/burn tempo demands it.
+- **Supply updates serialize** on the encrypted-supply cell. The family already has the fix designed and implemented in draft (a commuting delta inbox whose attestation proves the inbox empty; [#729](https://github.com/OpenZeppelin/compact-contracts/issues/729), [#736](https://github.com/OpenZeppelin/compact-contracts/issues/736)); adopting it is a composition choice if mint/burn tempo demands it.
 - **A losing racer pays nothing on-chain** (guaranteed-segment failure rejects before fees); the cost is rebuild-reprove-resubmit inside the custody backend.
 - **Freeze/seize ordering** is operational: freeze wins only if it lands first, so the authority sequence is freeze → finality → seize (§6.6).
 - **Phase-two note**: customer-initiated transfers commute with each other and with mint/burn (append-only tree, per-key nullifier writes), so opening the transfer surface later scales payments without touching the phase-one gates. Allowlist administration vs. in-flight customer spends becomes the contention to manage then.
@@ -350,16 +369,16 @@ The family's conflict analysis carries over; what matters for this composition:
 
 | Component | Status | Where |
 | --- | --- | --- |
-| Note core (tree, nullifiers, conservation, `OZ:note:*` tags) | implemented, unit-tested, **in review** | PR #743 (fixes #723) |
+| Note core (tree, nullifiers, conservation, `OZ:note:*` tags) | implemented, unit-tested, **in review** | PR [#743](https://github.com/OpenZeppelin/compact-contracts/pull/743) (fixes [#723](https://github.com/OpenZeppelin/compact-contracts/issues/723)) |
 | Crypto primitives: ElGamal, EcdhMask | merged | `crypto/` |
-| NoteDelivery primitive | implemented, tested (draft branch) | #735 |
-| Audit / Delivery / Supply / ConcurrentSupply extensions | implemented in draft, compile-verified; to re-land as reviewed PRs | #726, #727, #728, #729 |
-| Freeze / Allowlist / Review extensions | implemented in draft; Review shape pending FIU feedback | #730, #731, #732 |
-| Family test suites for the invariants | not yet | #742 |
+| NoteDelivery primitive | implemented, tested (draft branch) | [#735](https://github.com/OpenZeppelin/compact-contracts/issues/735) |
+| Audit / Delivery / Supply / ConcurrentSupply extensions | implemented in draft, compile-verified; to re-land as reviewed PRs | [#726](https://github.com/OpenZeppelin/compact-contracts/issues/726), [#727](https://github.com/OpenZeppelin/compact-contracts/issues/727), [#728](https://github.com/OpenZeppelin/compact-contracts/issues/728), [#729](https://github.com/OpenZeppelin/compact-contracts/issues/729) |
+| Freeze / Allowlist / Review extensions | implemented in draft; Review shape pending FIU feedback | [#730](https://github.com/OpenZeppelin/compact-contracts/issues/730), [#731](https://github.com/OpenZeppelin/compact-contracts/issues/731), [#732](https://github.com/OpenZeppelin/compact-contracts/issues/732) |
+| Family test suites for the invariants | not yet | [#742](https://github.com/OpenZeppelin/compact-contracts/issues/742) |
 | Multisig signer registry + proposal manager | merged on `main` | `multisig/` |
-| `EcdsaSignerManager` (commitment registry + fold verify) | implemented on a branch; duplicate-detection fix needed for 3+ | #629 |
-| ECDSA/Keccak integration on the RC toolchain | in progress (draft), validated on Stagenet | PR #713, #475 |
-| Stub hard-fail outside test builds | open requirement | #475 |
+| `EcdsaSignerManager` (commitment registry + fold verify) | implemented on a branch; duplicate-detection fix needed for 3+ | [#629](https://github.com/OpenZeppelin/compact-contracts/issues/629) |
+| ECDSA/Keccak integration on the RC toolchain | in progress (draft), validated on Stagenet | PR [#713](https://github.com/OpenZeppelin/compact-contracts/pull/713), [#475](https://github.com/OpenZeppelin/compact-contracts/issues/475) |
+| Stub hard-fail outside test builds | open requirement | [#475](https://github.com/OpenZeppelin/compact-contracts/issues/475) |
 | **The Monument preset (this document's §6)** | **designed here; not built; no tracking issue yet** | — |
 | Deploy canary on the RC stack | not run | §8.2 |
 | Security audit of the composition | not started | §11 |
@@ -368,18 +387,18 @@ Operational obligations that are *not* contract work but are load-bearing: custo
 
 ## 11. Plan and timeline realism
 
-Working backwards from R16: third parties need the audited contract early enough to run their own integration inside 2026, and the custodian expects extension-complete alphas around late September. That leaves, from this week, roughly **five to six development weeks before an audit-scope freeze**, then the audit and the integration window. The precedent for pace: the family's core, nine extensions, and presets already exist in draft; this plan is mostly landing, composing, and hardening — not inventing.
+Working backwards from NFR5: third parties need the audited contract early enough to run their own integration inside 2026, and the custodian expects extension-complete alphas around late September. That leaves, from this week, roughly **five to six development weeks before an audit-scope freeze**, then the audit and the integration window. The precedent for pace: the family's core, nine extensions, and presets already exist in draft; this plan is mostly landing, composing, and hardening — not inventing.
 
 | Window | Work | Exit criterion |
 | --- | --- | --- |
 | Week of Aug 18 | This specification agreed with MNF; §12 decisions collected; preset tracking issue filed | signed-off baseline |
-| Weeks of Aug 24 – Sep 07 | Re-land family extensions as reviewed PRs with the invariant test suites (#742); fix #629; ECDSA cost measurement on the RC toolchain | extensions merged; ECDSA cost known |
+| Weeks of Aug 24 – Sep 07 | Re-land family extensions as reviewed PRs with the invariant test suites ([#742](https://github.com/OpenZeppelin/compact-contracts/issues/742)); fix [#629](https://github.com/OpenZeppelin/compact-contracts/issues/629); ECDSA cost measurement on the RC toolchain | extensions merged; ECDSA cost known |
 | Weeks of Sep 07 – 21 | Build the Monument preset (§6.2), simulator, tests; **deploy canary** on the RC stack; live contention check on mint/burn | composed contract deploys; invariants green |
 | Late Sep | Scope freeze; audit begins (baseline per prior agreement: platform primitives are assumed documented-correct; audit covers our logic on top) | audit start |
 | Oct–Nov | Audit + remediation; custodian integration against preview/Stagenet in parallel (collaboration agreed 2026-07-29) | audited artifact |
 | Dec | Third-party integration window; MNF gate items (`discloseTo`) land per their roadmap | Monument phase one live (MNF milestone) |
 
-**Ownership boundaries, stated so they cannot creep.** OpenZeppelin delivers standards and smart contracts: the family modules, the Monument preset, simulators, tests, and this documentation. Backends, wallets, UTXO stores, key ceremonies, proving infrastructure, and production deployment belong to Monument/Balance; ECDSA-primitive GA, the block-budget bound, `discloseTo`, and audit scheduling belong to the Midnight Foundation. One known gap to surface with MNF: the custodian expects a final, ready-to-deploy contract, and today no party owns that last-mile productization (§12-Q5).
+**Ownership boundaries, stated so they cannot creep.** OpenZeppelin delivers standards and smart contracts: the family modules, the Monument preset, simulators, tests, and this documentation. Backends, wallets, unspent-transaction-output (UTXO) stores, key ceremonies, proving infrastructure, and production deployment belong to Monument/Balance; ECDSA-primitive GA, the block-budget bound, `discloseTo`, and audit scheduling belong to the Midnight Foundation. One known gap to surface with MNF: the custodian expects a final, ready-to-deploy contract, and today no party owns that last-mile productization (§12-Q5).
 
 **The honest risk list**: ECDSA GA slipping (the schedule's long pole — everything value-bearing is behind it), the deploy canary failing (fallbacks: incremental deployment, further surface trimming), audit findings in the novel seams (the audit-derived-nonce channel and the multisig binding are the two places to expect attention), and decision latency on §12 (each open question that slips past the scope freeze becomes a phase-two item by default, because ledger layout cannot change post-deployment).
 
@@ -387,27 +406,27 @@ Working backwards from R16: third parties need the audited contract early enough
 
 | # | Question | For | Default if unanswered |
 | --- | --- | --- | --- |
-| Q1 | Omnibus vs. smart accounts: is the note model's "segregated claims in one contract" accepted as satisfying R12? Smart-account-per-user is no longer call-blocked (cross-contract calls run on Stagenet) but stays gated on: no factory (contract instances cannot be created from the language), the witness-free-callee rule (§3) shaping what a per-user contract can expose, callee shielded-coin support only in compact-runtime releases newer than the Stagenet pin, and ledger-9 mainnet timing — phase two at the earliest. | MNF + Monument | notes-in-one-contract (this spec) |
-| Q2 | Supply variant: confidential + attested (recommended) or fully public counters? Equivalently: may the public see per-mint/burn deltas? | MNF + Monument regulator view | confidential + attested, daily cadence |
+| Q1 | Omnibus vs. smart accounts: is the note model's "segregated claims in one contract" accepted as satisfying FR15? Smart-account-per-user is no longer call-blocked (cross-contract calls run on Stagenet) but stays gated on: no factory (contract instances cannot be created from the language), the witness-free-callee rule (§3), which blocks any per-user wrapper from calling into this token; the absence of contract private state, so a per-user contract cannot custody its customer’s secrets; callee shielded-coin support only in compact-runtime releases newer than the Stagenet pin; and ledger-9 mainnet timing — phase two at the earliest. | MNF + Monument | notes-in-one-contract (this spec) |
+| Q2 | Supply disclosure: (a) who holds the supply key — which reviewers may read the total continuously; (b) public attestation cadence — scheduled (publishes the program size each time) or on-demand only; (c) are separately attested gross totalMinted/totalBurned accumulators required on-chain, or do the custodian's records plus the audit trail suffice (FR10–FR11)? Live public counters stay a regulator-mandated fallback only | MNF + Monument regulator view | regulator + external auditor hold the supply key; attestation on demand; no on-chain gross counters |
 | Q3 | Review-extension shape: what exactly must the custodian FIU see, per record? | Balance/FIU | global audit channel only in phase one |
 | Q4 | Is seize in phase-one scope, or freeze-only until phase two? (The capability is native to the design either way.) | MNF + Monument | included, behind the 2-of-3 gate |
 | Q5 | Who owns final productization and deployment of the contract the custodian expects to receive ready-to-run? | MNF | unassigned — must be raised |
-| Q6 | Wind-down mechanics (R14): off-chain redemption commitment vs. an on-chain recovery path | Monument | off-chain redemption process |
+| Q6 | Wind-down mechanics (FR16): off-chain redemption commitment vs. an on-chain recovery path | Monument | off-chain redemption process |
 | Q7 | ECDSA/Keccak GA date and the documented block-budget bound | MNF | plan assumes GA before scope freeze |
 
-## 13. FAQ
+## 13. Common questions (FAQ)
 
 **Can the public see a customer's balance or deposit history?** No. The ledger shows commitments, nullifiers, and ciphertexts. Balances, amounts, and identities appear nowhere on-chain, at any time, including at mint and burn.
 
-**Can Monument or the custodian inflate the supply?** Not silently. Every mint updates the supply state inside the same proof that creates the note; the attested (or public, per Q2) total is proof-backed. A wrong total cannot be published without failing the proof.
+**Can Monument or the custodian inflate the supply?** Not silently. Every mint updates the encrypted supply accumulator inside the same proof that creates the note, so the total the designated reviewers read — and any attestation published from it — is proof-backed. A wrong total cannot be published without failing the proof, and the regulator can independently reconstruct the supply from the audit trail.
 
 **What if the audit key is compromised?** Every balance and flow becomes visible to the holder — visibility, not theft: the audit key cannot spend, freeze, or seize. Combined compromise of audit *and* authority keys equals clawback power, which is why the two are separated duties and each should itself be threshold-held.
 
 **What if a warm signing key is compromised?** Nothing moves on one key: the threshold is 2-of-3, every signature binds a specific operation and nonce, and the admin quorum rotates the signer set. On-chain, signers are salted commitments, so the key set is not even enumerable from state.
 
-**Can a customer be paid by someone other than the bank?** Not in phase one — there are no customer wallets and no transfer surface (R13). The family supports customer-to-customer transfers; exposing them is the phase-two composition change.
+**Can a customer be paid by someone other than the bank?** Not in phase one — there are no customer wallets and no transfer surface (NFR4). The family supports customer-to-customer transfers; exposing them is the phase-two composition change.
 
-**Why not the account-based confidential token the library already has?** It hides amounts but keeps the account graph public, and hot accounts serialize on credits. The requirement here includes sender/recipient privacy on a chain-as-ledger (R12); only the note model delivers that (§4).
+**Why not the account-based confidential token the library already has?** It hides amounts but keeps the account graph public, and hot accounts serialize on credits. The requirement here includes sender/recipient privacy on a chain-as-ledger (FR15); only the note model delivers that (§4).
 
 **Is this Zcash?** Same commitment/nullifier skeleton, three deliberate differences: nullifiers omit the owner secret (escrow-free seizure), audit records are structurally unavoidable (auditor completeness), and the pool is a single contract's state under an institutional multisig.
 
@@ -415,10 +434,10 @@ Working backwards from R16: third parties need the audited contract early enough
 
 ## 14. References
 
-- ConfidentialNoteFungibleToken family: umbrella [#722](https://github.com/OpenZeppelin/compact-contracts/issues/722) and sub-issues #723–#742; core PR [#743](https://github.com/OpenZeppelin/compact-contracts/pull/743); design draft `confidential-note-token.md` (family branch); exploration draft PR [#679](https://github.com/OpenZeppelin/compact-contracts/pull/679) (closed, superseded by the per-sub-issue PRs).
+- ConfidentialNoteFungibleToken family: umbrella [#722](https://github.com/OpenZeppelin/compact-contracts/issues/722) and sub-issues [#723](https://github.com/OpenZeppelin/compact-contracts/issues/723)–[#742](https://github.com/OpenZeppelin/compact-contracts/issues/742); core PR [#743](https://github.com/OpenZeppelin/compact-contracts/pull/743); design draft `confidential-note-token.md` (family branch); exploration draft PR [#679](https://github.com/OpenZeppelin/compact-contracts/pull/679) (closed, superseded by the per-sub-issue PRs).
 - Multisig package: `contracts/src/multisig/` on `main`; `EcdsaSignerManager` branch; ECDSA integration PR [#713](https://github.com/OpenZeppelin/compact-contracts/pull/713); issues [#475](https://github.com/OpenZeppelin/compact-contracts/issues/475), [#629](https://github.com/OpenZeppelin/compact-contracts/issues/629), [#619](https://github.com/OpenZeppelin/compact-contracts/issues/619); proposal expiry PR [#780](https://github.com/OpenZeppelin/compact-contracts/pull/780).
 - Custodian-era architecture: "Midnight Onboarding — Architecture & Design Decisions" ([Google Doc](https://docs.google.com/document/d/1IOdmTvO5teU-SE1i-HTCMJnn9M5dXaCCHj9176FrYmA)) — requirements inherited, architecture superseded (§6.7).
-- Midnight Foundation roadmap: "SHARED w/ OZ MN Roadmap 2026-2027" ([sheet](https://docs.google.com/spreadsheets/d/1lO_jXRheWImyydgkM9cIP6GRJWFWOa_tsNJr8r5Q2_I)) — Monument Phase 1 (Q4 2026, gated on `discloseTo`), tokenized-deposit contract framework, shielded contract tokens, MPS-0006 custody design.
+- Midnight Foundation roadmap: "SHARED w/ OZ MN Roadmap 2026-2027" ([sheet](https://docs.google.com/spreadsheets/d/1lO_jXRheWImyydgkM9cIP6GRJWFWOa_tsNJr8r5Q2_I)) — Monument Phase 1 (Q4 2026, gated on `discloseTo`), tokenized-deposit contract framework, shielded contract tokens, and the Midnight Problem Statement MPS-0006 custody design.
 - Cross-contract calls: CoIP-2 (`LFDT-Minokawa/compact`, `coips/coip-0002.md`) and the toolchain 0.33 release notes; "Cross-contract calls on Midnight — how they work" ([Google Doc](https://docs.google.com/document/d/1oJlQ3izG7GqZ9gOOZSpFNjf20oGKsx8YPldtxKkYQ-Q), draft); ledger semantics inspected at tag `ledger-9.1.0.0-rc.3` (`ledger/src/verify.rs`, `ledger/src/structure.rs`, `ledger/src/semantics.rs`, `ledger/tests/composable.rs`).
-- Meeting record for §2 provenance: BitGo–MNF–OZ syncs (2026-04-21 … 2026-07-21), MNF–OZ steering and shielded-tech calls (2026-07-13, 2026-07-20, 2026-07-27, 2026-08-03, 2026-08-10), Balance–OpenZeppelin call (2026-07-29), OZ 1:1 (2026-08-17).
-- Prior art: Zerocash (Ben-Sasson et al., IEEE S&P 2014); Zcash protocol specification §3.2, §3.8–3.9 (notes, commitment trees, nullifiers); Native Shielded Token standard (MIP-0011) and its custody-extension draft for the seize/privacy exclusivity analysis.
+- Meeting record for §2 provenance (labels are the Gemini note titles): Bitgo <> MNF <> OZ (2026-04-21 … 2026-08-18), MNF x OZ (2026-06-04 … 2026-07-02), MNF <> OZ - Steering (2026-06-22 agenda, 2026-07-20, 2026-07-27, 2026-08-03, 2026-08-10), MNF + OZ + Shielded Tech Call (2026-07-13, 2026-07-27, 2026-08-03, 2026-08-10), Balance - Openzeppelin (2026-07-29).
+- Prior art: Zerocash (Ben-Sasson et al., IEEE S&P 2014); Zcash protocol specification §3.2, §3.8–3.9 (notes, commitment trees, nullifiers); Native Shielded Token standard (Midnight Improvement Proposal MIP-0011) and its custody-extension draft for the seize/privacy exclusivity analysis.
