@@ -838,6 +838,48 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(0n);
   });
+
+  // The credit nonce comes from `_creditEpochs`, which only ever increases. If
+  // it could return to an earlier value, a reused seed would repeat a credit's
+  // randomness and a repeated memo ephemeral reuses the one-time pad, making
+  // two equal amounts produce byte-identical entries. Both tests below hold the
+  // seed, recipient, and amount constant, so the nonce is the only thing that
+  // can distinguish the two credits.
+  it('produces distinct memos for equal amounts across a clearMemos', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    const newest = async () =>
+      [...(await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId)][0];
+
+    await cft._mint(ALICE.accountId, 10n);
+    const before = await newest();
+
+    await cft.clearMemos();
+
+    await cft._mint(ALICE.accountId, 10n);
+    expect(await newest()).not.toStrictEqual(before);
+  });
+
+  it('advances the credit epoch on every credit, and a prune does not reset it', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    const epoch = async () =>
+      (await cft.getPublicState()).CFT__creditEpochs.lookup(
+        ALICE.accountId,
+      ).read();
+
+    await cft._mint(ALICE.accountId, 10n);
+    const first = await epoch();
+    expect(first).toBeGreaterThan(0n);
+
+    await cft.clearMemos();
+    expect(await epoch()).toBe(first);
+
+    await cft._mint(ALICE.accountId, 10n);
+    expect(await epoch()).toBeGreaterThan(first);
+  });
 });
 
 // ---------------------------------------------------------------------------
