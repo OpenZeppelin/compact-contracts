@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Confidential Fungible Token (#653)
 - Add EcdhMask (#655)
+- Add Confidential Note Fungible Token core (#723)
 
 ### Changed
 

@@ -1,0 +1,68 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleToken core. Exposes the
+// self-gated `transfer` / `burn` surface plus every `_`-prefixed building block,
+// so the suite can drive the core the way a composing contract would. Circuits
+// appear in the core's own order.
+//
+// The building blocks are UNGATED by design: re-exporting `_mint` / `_mintNote`
+// is a permissionless mint, and re-exporting `_consumeNote` / `_transfer` /
+// `_burn` lets any caller spend a note whose nonce they know. A PRODUCTION
+// contract must gate them (see the core's module doc). DO NOT deploy this mock.
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+import "../../ConfidentialNoteFungibleToken" prefix Core_;
+
+export { Core_Note }
+
+export { Core__commitments, Core__nullifiers };
+
+export circuit _mint(recipientPk: Field, value: Uint<128>): Core_Note {
+  return Core__mint(recipientPk, value);
+}
+
+export circuit _mintNote(note: Core_Note, ownerPk: Field): [] {
+  return Core__mintNote(note, ownerPk);
+}
+
+export pure circuit commitOf(note: Core_Note, pk: Field): Bytes<32> {
+  return Core_commitOf(note, pk);
+}
+
+export circuit burn(value: Uint<128>): Core_Note {
+  return Core_burn(value);
+}
+
+export circuit _spenderPk(): Field {
+  // Exported-boundary marker: returns only to the local caller.
+  return disclose(Core__spenderPk());
+}
+
+export pure circuit derivePk(sk: Bytes<32>): Field {
+  return Core_derivePk(sk);
+}
+
+export circuit _inputNote(): Core_Note {
+  // Exported-boundary marker: returns only to the local caller.
+  return disclose(Core__inputNote());
+}
+
+export circuit _burn(spenderPk: Field, value: Uint<128>, changeNote: Core_Note): [] {
+  return Core__burn(spenderPk, value, changeNote);
+}
+
+export circuit _consumeNote(ownerPk: Field): Core_Note {
+  // Exported-boundary marker: the consumed note returns only to the local
+  // caller (who supplied it as a witness in the first place).
+  return disclose(Core__consumeNote(ownerPk));
+}
+
+export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+  return Core_nullifierOf(note);
+}
+
+export circuit transfer(recipientPk: Field, value: Uint<128>): [Core_Note, Core_Note] {
+  return Core_transfer(recipientPk, value);
+}
+
+export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: Core_Note, changeNote: Core_Note): [] {
+  return Core__transfer(spenderPk, recipientPk, outNote, changeNote);
+}
