@@ -11,7 +11,17 @@ pragma language_version >= 0.23.0;
  * follows the same pattern as `FungibleToken`: a witness-derived
  * `accountId = persistentHash(secretKey)`. Encryption uses a separate witness
  * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
- * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
+ * `ElGamal_derivePk`, where
+ * `pk = g^degradeToTransient(persistentHash([ElGamal domain tag, EK]))`.
+ *
+ * @notice Sharing key material between the two witnesses is PERMITTED. The
+ * account identifier is an untagged hash of the SK and is published as a ledger
+ * map key; the encryption scalar is a DOMAIN-SEPARATED hash of the EK. Because
+ * the two derivations are tagged differently, a wallet may return the same
+ * value from `wit_ConfidentialTokenSK` and `wit_ConfidentialTokenEK`, or derive
+ * both from one master secret, without the published identifier revealing the
+ * encryption key. The domain separation is what makes that safe. Do not remove
+ * it. See `ElGamal.secretToScalar`.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
@@ -223,6 +233,7 @@ module ConfidentialFungibleToken {
   import CompactStandardLibrary;
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
+  import "../utils/Utils" prefix Utils_;
 
   // ---------------------------------------------------------------------------
   // Types
@@ -1027,15 +1038,19 @@ module ConfidentialFungibleToken {
   }
 
   /**
-   * @description Derives the public `accountId` from a secret key, as
-   * `persistentHash(sk)`. Pure, so a wallet can compute its own account
-   * identifier off-chain (no proof) before transacting.
+   * @description Derives the public `accountId` from a secret key. Pure, so a
+   * wallet can compute its own account identifier off-chain (no proof) before
+   * transacting.
+   *
+   * @dev Delegates to `Utils.computeAccountId` rather than reimplementing the
+   * hash. The identifier is deliberately GLOBAL. The same key material yields
+   * the same id in every module that derives it.
    *
    * @param {Bytes<32>} sk - The account secret key.
    * @return {Bytes<32>} - The derived accountId.
    */
   export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([sk]);
+    return Utils_computeAccountId(sk);
   }
 
   /**

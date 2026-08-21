@@ -28,19 +28,36 @@ const padTag = (s: string): Uint8Array => {
 // ---------------------------------------------------------------------------
 
 /**
+ * @description The domain-separation tag `ElGamal.secretToScalar` prefixes its
+ * input with, mirroring Compact's `pad(32, "ElGamal:secretToScalar")`. The tag
+ * is FIRST so no `expandRandomness([seed, tag])` call can reproduce the tuple.
+ */
+const SECRET_TO_SCALAR_TAG = (() => {
+  const tag = new Uint8Array(32);
+  tag.set(new TextEncoder().encode('ElGamal:secretToScalar'));
+  return tag;
+})();
+
+/**
  * @description Derives the expected pk for a given EK, mirroring the
  * in-circuit `_derivePk`:
- *   pk = ecMulGenerator(degradeToTransient(persistentHash([ek])))
+ *   pk = ecMulGenerator(degradeToTransient(persistentHash([TAG, ek])))
  *
  * The `convertBytesToField` call mirrors `degradeToTransient`, producing the
  * field element that `ecMulGenerator` expects.
+ *
+ * @note The tag is what keeps this scalar unrelated to the account identifier,
+ * which is `persistentHash([sk])` (untagged, and public as a ledger map key).
+ * Without it, a secret used in both roles would have its encryption key
+ * recoverable from the published identifier. See `buildAccountIdHash` below —
+ * that one is deliberately untagged and must stay so.
  *
  * @note The field-element derivation from EK uses 31 bytes of the hash output
  * (empirically determined); the effective collision resistance is therefore 248 bits.
  */
 const derivePk = (ek: Uint8Array) => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  const ekHash = persistentHash(rt_type, [ek]);
+  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
+  const ekHash = persistentHash(rt_type, [SECRET_TO_SCALAR_TAG, ek]);
   const ekField = convertBytesToField(31, ekHash, 'derivePk');
   return ecMulGenerator(ekField);
 };

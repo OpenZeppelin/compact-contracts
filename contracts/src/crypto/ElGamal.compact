@@ -34,6 +34,13 @@ pragma language_version >= 0.23.0;
  * scalar. Feeding a raw `persistentHash` output into `ecMulGenerator` would
  * occasionally exceed the Jubjub scalar field order and fault at runtime.
  *
+ * @dev Domain separation. `persistentHash<Vector<N, Bytes<32>>>` is NOT
+ * domain-separating on its own. Two circuits hashing the same arity and
+ * element type share one hash domain, and the hash cannot tell which slot was
+ * "meant" as a tag. `secretToScalar` therefore prefixes a fixed constant, and
+ * that constant is placed FIRST so no call to `expandRandomness` (whose two
+ * slots are both caller-supplied) can reproduce the tuple by ordinary use.
+ *
  * @dev TRUST ASSUMPTION — subgroup membership. This is the module's most
  * load-bearing assumption. Every `JubjubPoint` reaching a curve operation is
  * assumed to be in the Jubjub prime-order subgroup, including points supplied by
@@ -102,11 +109,34 @@ module ElGamal {
    * @description Maps a 32-byte secret to a valid Jubjub scalar. See the
    * module-level hash-to-scalar note for why `degradeToTransient` is required.
    *
+   * @dev Domain separation here is load-bearing, not cosmetic. This output is
+   * the private key protecting every ciphertext held under an account. Public
+   * account identifiers elsewhere in the library are derived as
+   * `persistentHash([secretKey])` (`Utils.computeAccountId`), and that
+   * identifier is stored in the clear as a ledger map key. Untagged, this
+   * circuit would compute that same hash, so a secret used in both roles would
+   * have its encryption key recoverable from a published identifier by applying
+   * `degradeToTransient`. The tag makes the two derivations unrelated, so a
+   * wallet MAY safely derive its account secret and its encryption secret from
+   * common key material.
+   *
+   * @dev The tag is FIRST, deliberately. `expandRandomness` hashes
+   * `[seed, tag]` with both slots caller-supplied, so tagging this circuit as
+   * `[secret, tag]` would make `secretToScalar(x)` identical to
+   * `expandRandomness(x, <this tag>)` reachable by passing this domain string
+   * to the parameter that exists to receive domain strings. Leading with the
+   * tag means reproducing this output through `expandRandomness` would require
+   * passing the domain constant as the *seed*. Do not normalise the orderings.
+   *
    * @param secret - The 32-byte secret to map.
    * @return A Field guaranteed to be a valid Jubjub scalar.
    */
   export pure circuit secretToScalar(secret: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<Vector<1, Bytes<32>>>([secret]));
+    return degradeToTransient(
+             persistentHash<Vector<2, Bytes<32>>>(
+               [pad(32, "ElGamal:secretToScalar"), secret]
+             )
+           );
   }
 
   /**

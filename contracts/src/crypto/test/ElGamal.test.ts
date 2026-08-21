@@ -1,4 +1,10 @@
-import type { JubjubPoint } from '@midnight-ntwrk/compact-runtime';
+import {
+  CompactTypeBytes,
+  CompactTypeVector,
+  convertBytesToField,
+  type JubjubPoint,
+  persistentHash,
+} from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   type Ciphertext,
@@ -22,6 +28,9 @@ const b32 = (label: string): Uint8Array => {
 // Distinct secrets for two independent identities.
 const EK_A = b32('elgamal-ek-A');
 const EK_B = b32('elgamal-ek-B');
+
+// Mirrors the `pad(32, ...)` tag `secretToScalar` prefixes its input with.
+const SECRET_TO_SCALAR_TAG = b32('ElGamal:secretToScalar');
 
 // Explicit encryption randomness. Any value below the Jubjub scalar field
 // order (~2^252) is a valid scalar; these small constants keep the tests
@@ -60,6 +69,37 @@ describe('ElGamal', () => {
 
     it('returns a positive scalar', async () => {
       expect(await contract.secretToScalar(EK_A)).toBeGreaterThan(0n);
+    });
+
+    // Guards the domain separation on `secretToScalar` (rationale in its @dev
+    // notes). Account identifiers are the same hash, untagged, and public.
+    it('is not recoverable from a published account identifier', async () => {
+      // What any observer can do: take the identifier and apply the circuit's
+      // own truncation.
+      const accountId = persistentHash(
+        new CompactTypeVector(1, new CompactTypeBytes(32)),
+        [EK_A],
+      );
+
+      expect(await contract.secretToScalar(EK_A)).not.toBe(
+        convertBytesToField(31, accountId, 'attacker'),
+      );
+    });
+
+    // The next two pin the tag's POSITION. `expandRandomness([seed, tag])` has
+    // both slots caller-supplied, so the collision cannot be removed.
+    // Both flip if the order becomes `[secret, tag]`
+    it('is not reproducible by passing the domain tag as expandRandomness tag', async () => {
+      expect(
+        await contract.expandRandomness(EK_A, SECRET_TO_SCALAR_TAG),
+      ).not.toBe(await contract.secretToScalar(EK_A));
+    });
+
+    it('is reproducible only with the domain tag in the seed slot', async () => {
+      // Both parameters used against their purpose — the residual collision.
+      expect(await contract.expandRandomness(SECRET_TO_SCALAR_TAG, EK_A)).toBe(
+        await contract.secretToScalar(EK_A),
+      );
     });
   });
 
