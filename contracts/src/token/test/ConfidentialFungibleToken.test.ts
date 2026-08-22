@@ -812,6 +812,25 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
     ).toBe(0n);
   });
 
+  // Audit L-03. `clearMemos` authenticates the caller the way every other
+  // authenticating circuit does, so it returns the principal it authenticated.
+  // Without that return, a compliance wrapper cannot gate this entry point, and
+  // clearing destroys memos.
+  it('clearMemos returns the authenticated accountId', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    expect(await cft.clearMemos()).toStrictEqual(ALICE.accountId);
+  });
+
+  it('clearMemos returns whichever caller invoked it', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+    await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+    await cft.register();
+
+    expect(await cft.clearMemos()).toStrictEqual(BOB.accountId);
+  });
 });
 
 // ---------------------------------------------------------------------------

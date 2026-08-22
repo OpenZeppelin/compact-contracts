@@ -189,8 +189,10 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
 
   /**
    * @description Clears the caller's memo list.
+   * @returns The authenticated accountId, so a wrapper can gate on the principal
+   * this circuit authenticated.
    */
-  public clearMemos(): Promise<[]> {
+  public clearMemos(): Promise<Uint8Array> {
     return this.circuits.impure.clearMemos();
   }
 

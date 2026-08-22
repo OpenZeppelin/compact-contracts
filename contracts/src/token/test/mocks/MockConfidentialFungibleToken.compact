@@ -115,6 +115,6 @@ export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
   return CFT__burnFrom(authenticated(), fromAddress, value);
 }
 
-export circuit clearMemos(): [] {
-  CFT_clearMemos(authenticated());
+export circuit clearMemos(): Bytes<32> {
+  return CFT_clearMemos(authenticated());
 }

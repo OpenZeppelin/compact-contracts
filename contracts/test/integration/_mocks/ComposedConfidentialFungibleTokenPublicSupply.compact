@@ -109,8 +109,8 @@ export circuit sweep(): Bytes<32> {
   return Token_sweep(authenticated());
 }
 
-export circuit clearMemos(): [] {
-  Token_clearMemos(authenticated());
+export circuit clearMemos(): Bytes<32> {
+  return Token_clearMemos(authenticated());
 }
 
 // ─── Conserving value operations ─────────────────────────────────────────

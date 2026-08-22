@@ -1002,18 +1002,28 @@ module ConfidentialFungibleToken {
    * funds become unspendable, not merely undisplayable. Clear only memos already
    * folded into a durable cache/backup (see §7 of the design doc).
    *
+   * @notice Returns the authenticated `accountId` for the same reason every other
+   * caller-authenticating circuit does: a wrapper layering an allowlist or
+   * blocklist needs the principal this circuit ACTUALLY authenticated, because a
+   * separate witness call in the wrapper could return a different secret. That
+   * matters here in particular given the destructive behavior above. Without the
+   * return value a compliance wrapper cannot gate this entry point, so a
+   * blocklisted account whose key has leaked could clear its memos and strand the
+   * funds before the owner reacts.
+   *
    * Requirements:
    *
    * - Contract is initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @return {Bytes<32>} - The caller's accountId.
    */
-  export circuit clearMemos(caller: Principal_AuthenticatedCaller): [] {
+  export circuit clearMemos(caller: Principal_AuthenticatedCaller): Bytes<32> {
     assertInitialized();
     const accountId = caller.principal;
     if (_memos.member(disclose(accountId))) {
       _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
     }
+    return disclose(accountId);
   }
 
   // ---------------------------------------------------------------------------
