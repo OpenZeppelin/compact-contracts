@@ -28,6 +28,8 @@ import CompactStandardLibrary;
 import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
 import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
 import "../../../src/crypto/ElGamal" prefix ElGamal_;
+import "../../../src/access/Caller" prefix Caller_;
+import "../../../src/access/Principal" prefix Principal_;
 
 export { Token_EscrowEntry, ElGamal_Ciphertext };
 
@@ -47,14 +49,27 @@ export {
   Supply__totalSupply
 };
 
+// The caller domain this deployment authenticates under. Stored at deploy time so
+// a principal can be named off-chain before the contract exists.
+export ledger _callerDomain: Bytes<32>;
+
 // ─── Constructor ─────────────────────────────────────────────────────────
 
 constructor(
     name_: Opaque<"string">,
     symbol_: Opaque<"string">,
     decimals_: Uint<8>,
+    callerDomain: Bytes<32>,
 ) {
+  _callerDomain = disclose(callerDomain);
   Token_initialize(name_, symbol_, decimals_);
+}
+
+// Authenticates once, under the stored domain. Every circuit below routes through
+// here. This contract derives the principal and accepts none as a parameter,
+// because a sender who could choose one would walk past every gate in it.
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
 }
 
 // ─── Metadata and views ──────────────────────────────────────────────────
@@ -84,36 +99,32 @@ export circuit isRegistered(account: Bytes<32>): Boolean {
   return Token_isRegistered(account);
 }
 
-export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-  return Token_computeAccountId(sk);
-}
-
 // ─── Registration and wallet maintenance ─────────────────────────────────
 
 export circuit register(): Bytes<32> {
-  return Token_register();
+  return Token_register(authenticated());
 }
 
 export circuit sweep(): Bytes<32> {
-  return Token_sweep();
+  return Token_sweep(authenticated());
 }
 
 export circuit clearMemos(): [] {
-  return Token_clearMemos();
+  Token_clearMemos(authenticated());
 }
 
 // ─── Conserving value operations ─────────────────────────────────────────
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_transfer(to, value);
+  return Token_transfer(authenticated(), to, value);
 }
 
 export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token__move(to, value);
+  return Token__move(authenticated(), to, value);
 }
 
 export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_approve(spender, value);
+  return Token_approve(authenticated(), spender, value);
 }
 
 export circuit transferFrom(
@@ -121,7 +132,7 @@ export circuit transferFrom(
     to: Bytes<32>,
     value: Uint<128>
 ): Bytes<32> {
-  return Token_transferFrom(fromAddress, to, value);
+  return Token_transferFrom(authenticated(), fromAddress, to, value);
 }
 
 // ─── Supply operations (token op paired with its accounting block) ───────
@@ -132,13 +143,13 @@ export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
 }
 
 export circuit burn(value: Uint<128>): Bytes<32> {
-  const accountId = Token__burn(value);
+  const accountId = Token__burn(authenticated(), value);
   Supply__subSupply(value);
   return accountId;
 }
 
 export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
-  const spenderId = Token__burnFrom(fromAddress, value);
+  const spenderId = Token__burnFrom(authenticated(), fromAddress, value);
   Supply__subSupply(value);
   return spenderId;
 }

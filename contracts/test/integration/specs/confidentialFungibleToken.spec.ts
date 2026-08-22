@@ -1,10 +1,6 @@
-import {
-  CompactTypeBytes,
-  CompactTypeVector,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import { ConfidentialFungibleTokenPublicSupplySimulator } from '../fixtures/confidentialFungibleTokenPublicSupply.js';
 
 /**
@@ -40,15 +36,14 @@ const createTestKey = (label: string): Uint8Array => {
   return key;
 };
 
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt, [sk]);
-};
+// The caller domain this deployment authenticates under: identity comes from
+// access/Caller, so an account id is a domain-separated principal.
+const DOMAIN = pad32('ComposedCFT:test');
 
 const makeUser = (label: string) => {
   const secretKey = createTestKey(`${label}_SK`);
   const encryptionKey = createTestKey(`${label}_EK`);
-  const accountId = buildAccountIdHash(secretKey);
+  const accountId = derivePrincipal(secretKey, DOMAIN);
   return { secretKey, encryptionKey, accountId };
 };
 
@@ -62,7 +57,12 @@ const DECIMALS = 6n;
 let cft: ConfidentialFungibleTokenPublicSupplySimulator;
 
 const deploy = () =>
-  ConfidentialFungibleTokenPublicSupplySimulator.create(NAME, SYMBOL, DECIMALS);
+  ConfidentialFungibleTokenPublicSupplySimulator.create(
+    NAME,
+    SYMBOL,
+    DECIMALS,
+    DOMAIN,
+  );
 
 // ---------------------------------------------------------------------------
 // Live: block-limit canary. This block comes FIRST because it is the boundary

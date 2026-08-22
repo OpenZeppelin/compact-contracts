@@ -7,11 +7,21 @@ pragma language_version >= 0.23.0;
  * @module ConfidentialFungibleToken
  * @description An account-based confidential fungible token module.
  *
- * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity
- * follows the same pattern as `FungibleToken`: a witness-derived
- * `accountId = persistentHash(secretKey)`. Encryption uses a separate witness
- * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
- * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
+ * Balances are stored as ElGamal ciphertexts on Jubjub.
+ *
+ * @dev Caller identity. This module derives no caller. Every authenticating circuit
+ * takes a `Principal_AuthenticatedCaller` that the composing contract gets once from
+ * `Caller_authenticate` and hands to every module it drives. This module used to
+ * declare `wit_ConfidentialTokenSK` and derive `accountId = persistentHash(secretKey)`
+ * itself, which left the caller identity here unrelatable to any other module's.
+ *
+ * Identity and encryption are two concerns and only identity moved. The encryption
+ * secret still arrives through `wit_ConfidentialTokenEK`, and `ElGamal_assertDecryptsTo`
+ * still verifies it in-circuit by re-deriving
+ * `pk = g^degradeToTransient(persistentHash(EK))` and comparing it against the pk
+ * stored for the account. The supplied principal picks which account the circuit acts
+ * on. The EK proof shows the caller controls it. One witness used to do both jobs
+ * without saying so.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
@@ -34,11 +44,6 @@ pragma language_version >= 0.23.0;
  * property the module claims.
  *
  * Witness audit:
- *
- *  - `wit_ConfidentialTokenSK`: verified by binding
- *    `accountId = persistentHash(SK)` to the on-chain account identifier used
- *    elsewhere in the circuit. A wrong SK produces a different accountId and
- *    the transaction fails at lookup.
  *
  *  - `wit_ConfidentialTokenEK`: verified by `ElGamal_assertDecryptsTo`,
  *    which re-derives `pk` and asserts it equals the on-chain stored pk.
@@ -142,17 +147,24 @@ pragma language_version >= 0.23.0;
  * about compliance policy (freeze, KYC, pause); a composing contract layers
  * that on top. Gating a circuit on an EXPLICIT argument (e.g. the recipient
  * `to`) is straightforward; the wrapper and this module see the same value.
- * Gating on the CALLER, however, is not: the caller is derived from
- * `wit_ConfidentialTokenSK`, and a separate witness call in the wrapper could
- * return a different secret than the one this module authenticates with,
- * letting a frozen account slip a clean id past the gate. To make caller-side
- * gates sound, every caller-authenticating circuit (`register`, `_burn`,
- * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_burnFrom`)
- * RETURNS the caller's `accountId`, the principal it authenticated from the
- * witness. A
- * wrapper gates on that returned value; since an assert failing anywhere in a
- * Compact circuit invalidates the whole transaction, a post-call check still
- * prevents the operation.
+ * Gating on the caller used to take more work. This module derived the caller
+ * from `wit_ConfidentialTokenSK`, and a second witness call in the wrapper could
+ * return a different secret than the one this module authenticated with, so a frozen
+ * account could slip a clean id past the gate. The partial remedy: every
+ * authenticating circuit returns the id it authenticated, and the wrapper gates on
+ * that value after the call.
+ *
+ * The wrapper now supplies the caller. `register`, `_burn`, `transfer`, `_move`,
+ * `approve`, `transferFrom`, `sweep`, `_burnFrom` and `clearMemos` each take a
+ * `Principal_AuthenticatedCaller`, so the wrapper holds the principal before the
+ * call and gates on it up front. This module cannot act on an identity the wrapper
+ * did not check.
+ *
+ * Those circuits still return the principal, which now echoes `caller.principal`.
+ * Keeping the returns lets wrappers written against the previous API keep working,
+ * and the returned value still answers which account the circuit acted on. Gating
+ * after the call also still works: an assert that fails anywhere in a Compact
+ * circuit invalidates the whole transaction.
  *
  * Invariant: the returned id is ALWAYS the caller (the sender / approver /
  * spender / registrant, depending on the circuit); it is never the recipient
@@ -222,6 +234,7 @@ pragma language_version >= 0.23.0;
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
   import "../crypto/ElGamal" prefix ElGamal_;
+  import "../access/Principal" prefix Principal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
 
   // ---------------------------------------------------------------------------
@@ -300,13 +313,6 @@ module ConfidentialFungibleToken {
   // ---------------------------------------------------------------------------
   // Witnesses
   // ---------------------------------------------------------------------------
-
-  /**
-   * @witness wit_ConfidentialTokenSK
-   * @description Returns the caller's account secret. Verified in-circuit by
-   * matching `persistentHash(SK)` against the public accountId.
-   */
-  witness wit_ConfidentialTokenSK(): Bytes<32>;
 
   /**
    * @witness wit_ConfidentialTokenEK
@@ -491,7 +497,7 @@ module ConfidentialFungibleToken {
    * `wit_ConfidentialTokenEK` and initializes their balance to an encryption of
    * zero. Registration is a prerequisite for sending or receiving.
    *
-   * @circuitInfo k=13, rows=6203
+   * @circuitInfo k=13, rows=8135
    *
    * @notice Returns the caller's `accountId`. A composing contract can gate on
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
@@ -504,9 +510,9 @@ module ConfidentialFungibleToken {
    *
    * @return {Bytes<32>} - The registered (caller's) accountId.
    */
-  export circuit register(): Bytes<32> {
+  export circuit register(caller: Principal_AuthenticatedCaller): Bytes<32> {
     assertInitialized();
-    const accountId = _computeAccountId();
+    const accountId = caller.principal;
     assert(!_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: already registered");
 
@@ -588,11 +594,11 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to debit.
    * @return {Bytes<32>} - The caller's accountId.
    */
-  circuit _debit(value: Uint<128>): Bytes<32> {
+  circuit _debit(caller: Principal_AuthenticatedCaller, value: Uint<128>): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
 
-    const accountId = _computeAccountId();
+    const accountId = caller.principal;
     assert(_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: sender not registered");
 
@@ -716,7 +722,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @circuitInfo k=14, rows=14673
+   * @circuitInfo k=15, rows=16605
    *
    * Requirements:
    *
@@ -727,8 +733,8 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to burn.
    * @return {Bytes<32>} - The caller's accountId.
    */
-  export circuit _burn(value: Uint<128>): Bytes<32> {
-    return _debit(value);
+  export circuit _burn(caller: Principal_AuthenticatedCaller, value: Uint<128>): Bytes<32> {
+    return _debit(caller, value);
   }
 
   // ---------------------------------------------------------------------------
@@ -740,7 +746,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @circuitInfo k=16, rows=41617
+   * @circuitInfo k=16, rows=43549
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -757,11 +763,14 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Bytes<32>} - The caller's (sender's) accountId.
    */
-  export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  export circuit transfer(caller: Principal_AuthenticatedCaller,
+                          to: Bytes<32>,
+                          value: Uint<128>
+                          ): Bytes<32> {
     assertInitialized();
     // Derive the sender from the same authentication `_debit` uses, so the
     // returned id is exactly the account whose funds moved.
-    const senderId = _debit(value);
+    const senderId = _debit(caller, value);
     // A self-transfer would debit the caller's spendable and re-credit their own pending,
     // forcing a sweep with no foreseeable benefit.
     assert(senderId != to, "ConfidentialFungibleToken: self-transfer");
@@ -778,7 +787,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @circuitInfo k=16, rows=41606
+   * @circuitInfo k=16, rows=43538
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -803,9 +812,12 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to move.
    * @return {Bytes<32>} - The caller's accountId (for caller-side gating).
    */
-  export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  export circuit _move(caller: Principal_AuthenticatedCaller,
+                       to: Bytes<32>,
+                       value: Uint<128>
+                       ): Bytes<32> {
     assertInitialized();
-    const senderId = _debit(value);
+    const senderId = _debit(caller, value);
     _credit(to, value);
     return senderId;
   }
@@ -819,7 +831,7 @@ module ConfidentialFungibleToken {
    * change, which is what would otherwise invalidate the victim's in-flight spend
    * proofs (a liveness grief).
    *
-   * @circuitInfo k=13, rows=2879
+   * @circuitInfo k=13, rows=4811
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -832,9 +844,9 @@ module ConfidentialFungibleToken {
    *
    * @return {Bytes<32>} - The caller's accountId.
    */
-  export circuit sweep(): Bytes<32> {
+  export circuit sweep(caller: Principal_AuthenticatedCaller): Bytes<32> {
     assertInitialized();
-    const accountId = _computeAccountId();
+    const accountId = caller.principal;
     assert(_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: not registered");
     const newSpendable = ElGamal_add(
@@ -852,7 +864,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @circuitInfo k=16, rows=43067
+   * @circuitInfo k=16, rows=44999
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -874,13 +886,16 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The allowance amount.
    * @return {Bytes<32>} - The caller's (approver's) accountId.
    */
-  export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  export circuit approve(caller: Principal_AuthenticatedCaller,
+                         spender: Bytes<32>,
+                         value: Uint<128>
+                         ): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
     assert(spender != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid spender");
 
-    const ownerId = _computeAccountId();
+    const ownerId = caller.principal;
     assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
     assert(_encryptionKeys.member(disclose(spender)),
            "ConfidentialFungibleToken: spender not registered");
@@ -936,7 +951,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=16, rows=63207
+   * @circuitInfo k=16, rows=65139
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -953,6 +968,7 @@ module ConfidentialFungibleToken {
    * @return {Bytes<32>} - The caller's (spender's) accountId.
    */
   export circuit transferFrom(
+                   caller: Principal_AuthenticatedCaller,
                    fromAddress: Bytes<32>,
                    to: Bytes<32>,
                    value: Uint<128>
@@ -962,7 +978,7 @@ module ConfidentialFungibleToken {
     assert(to != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid receiver");
 
-    const spenderId = _spendEscrow(fromAddress, value);
+    const spenderId = _spendEscrow(caller, fromAddress, value);
 
     _credit(to, value);
     return spenderId;
@@ -976,7 +992,7 @@ module ConfidentialFungibleToken {
    * @description Clears the caller's memo list, letting a wallet that has folded
    * its memos into its local balance cache prune on-chain memo storage.
    *
-   * @circuitInfo k=13, rows=2316
+   * @circuitInfo k=13, rows=4270
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -992,9 +1008,9 @@ module ConfidentialFungibleToken {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit clearMemos(): [] {
+  export circuit clearMemos(caller: Principal_AuthenticatedCaller): [] {
     assertInitialized();
-    const accountId = _computeAccountId();
+    const accountId = caller.principal;
     if (_memos.member(disclose(accountId))) {
       _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
     }
@@ -1015,27 +1031,6 @@ module ConfidentialFungibleToken {
   circuit _assertValueInBound(value: Uint<128>): [] {
     assert(value <= MAX_TRANSFER_VALUE(),
            "ConfidentialFungibleToken: value exceeds bound");
-  }
-
-  /**
-   * @description Derives the on-chain accountId from the witness-supplied SK.
-   * Uses `persistentHash` because `accountId` is used as a Map key
-   * throughout the ledger state.
-   */
-  circuit _computeAccountId(): Bytes<32> {
-    return computeAccountId(wit_ConfidentialTokenSK());
-  }
-
-  /**
-   * @description Derives the public `accountId` from a secret key, as
-   * `persistentHash(sk)`. Pure, so a wallet can compute its own account
-   * identifier off-chain (no proof) before transacting.
-   *
-   * @param {Bytes<32>} sk - The account secret key.
-   * @return {Bytes<32>} - The derived accountId.
-   */
-  export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([sk]);
   }
 
   /**
@@ -1067,11 +1062,14 @@ module ConfidentialFungibleToken {
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
    */
-  circuit _spendEscrow(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  circuit _spendEscrow(caller: Principal_AuthenticatedCaller,
+                       fromAddress: Bytes<32>,
+                       value: Uint<128>
+                       ): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
 
-    const spenderId = _computeAccountId();
+    const spenderId = caller.principal;
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
            "ConfidentialFungibleToken: no escrow");
@@ -1119,7 +1117,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @circuitInfo k=16, rows=36274
+   * @circuitInfo k=16, rows=38206
    *
    * Requirements:
    *
@@ -1131,8 +1129,11 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to burn.
    * @return {Bytes<32>} - The caller's (spender's) accountId.
    */
-  export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
-    return _spendEscrow(fromAddress, value);
+  export circuit _burnFrom(caller: Principal_AuthenticatedCaller,
+                           fromAddress: Bytes<32>,
+                           value: Uint<128>
+                           ): Bytes<32> {
+    return _spendEscrow(caller, fromAddress, value);
   }
 
   /**

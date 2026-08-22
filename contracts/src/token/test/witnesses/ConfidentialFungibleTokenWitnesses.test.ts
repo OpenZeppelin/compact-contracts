@@ -273,14 +273,12 @@ describe('ConfidentialFungibleTokenPrivateState.lookupPlaintext', () => {
 // Witness functions
 // ---------------------------------------------------------------------------
 
-describe('wit_ConfidentialTokenSK', () => {
+describe('wit_CallerSK', () => {
   it('returns the SK from private state', () => {
     const witnesses = ConfidentialFungibleTokenWitnesses();
     const state = ConfidentialFungibleTokenPrivateState.withSecrets(SK_A, EK_A);
 
-    const [returnedState, sk] = witnesses.wit_ConfidentialTokenSK(
-      makeContext(state),
-    );
+    const [returnedState, sk] = witnesses.wit_CallerSK(makeContext(state));
 
     expect(sk).toEqual(SK_A);
     expect(returnedState).toBe(state);
@@ -297,8 +295,8 @@ describe('wit_ConfidentialTokenSK', () => {
       EK_B,
     );
 
-    const [, skA] = witnesses.wit_ConfidentialTokenSK(makeContext(stateA));
-    const [, skB] = witnesses.wit_ConfidentialTokenSK(makeContext(stateB));
+    const [, skA] = witnesses.wit_CallerSK(makeContext(stateA));
+    const [, skB] = witnesses.wit_CallerSK(makeContext(stateB));
 
     expect(skA).toEqual(SK_A);
     expect(skB).toEqual(SK_B);
@@ -322,7 +320,7 @@ describe('wit_ConfidentialTokenEK', () => {
     const witnesses = ConfidentialFungibleTokenWitnesses();
     const state = ConfidentialFungibleTokenPrivateState.withSecrets(SK_A, EK_B);
 
-    const [, sk] = witnesses.wit_ConfidentialTokenSK(makeContext(state));
+    const [, sk] = witnesses.wit_CallerSK(makeContext(state));
     const [, ek] = witnesses.wit_ConfidentialTokenEK(makeContext(state));
 
     expect(sk).toEqual(SK_A);

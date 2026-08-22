@@ -88,10 +88,11 @@ const ZERO_CIPHERTEXT_KEY: string = (() => {
  */
 export interface IConfidentialFungibleTokenWitnesses<L, P> {
   /**
-   * Returns the user's account secret key. Verified in-circuit by binding
-   * `accountId = persistentHash(SK)` to the on-chain account identifier.
+   * Returns the caller's secret key, the only input to the principal
+   * `access/Principal` derives. `access/Caller` declares this witness and owns
+   * caller identity. This module contributes the encryption witnesses below.
    */
-  wit_ConfidentialTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_CallerSK(context: WitnessContext<L, P>): [P, Uint8Array];
 
   /**
    * Returns the user's ElGamal encryption secret. Verified in-circuit by
@@ -247,7 +248,7 @@ export const ConfidentialFungibleTokenWitnesses = <
   L,
   ConfidentialFungibleTokenPrivateState
 > => ({
-  wit_ConfidentialTokenSK(
+  wit_CallerSK(
     context: WitnessContext<L, ConfidentialFungibleTokenPrivateState>,
   ): [ConfidentialFungibleTokenPrivateState, Uint8Array] {
     return [context.privateState, context.privateState.secretKey];

@@ -21,6 +21,7 @@ type ConfidentialFungibleTokenArgs = readonly [
   name: string,
   symbol: string,
   decimals: bigint,
+  callerDomain: Uint8Array,
 ];
 
 const ConfidentialFungibleTokenSimulatorBase = createSimulator<
@@ -33,7 +34,12 @@ const ConfidentialFungibleTokenSimulatorBase = createSimulator<
   contractFactory: (witnesses) =>
     new MockCFT<ConfidentialFungibleTokenPrivateState>(witnesses),
   defaultPrivateState: () => ConfidentialFungibleTokenPrivateState.generate(),
-  contractArgs: (name, symbol, decimals) => [name, symbol, decimals],
+  contractArgs: (name, symbol, decimals, callerDomain) => [
+    name,
+    symbol,
+    decimals,
+    callerDomain,
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialFungibleTokenWitnesses(),
   artifactName: 'MockConfidentialFungibleToken',
@@ -47,6 +53,7 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     name: string,
     symbol: string,
     decimals: bigint,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
       ConfidentialFungibleTokenPrivateState,
       ReturnType<typeof ConfidentialFungibleTokenWitnesses>
@@ -54,7 +61,7 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   ): Promise<ConfidentialFungibleTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [name, symbol, decimals],
+      [name, symbol, decimals, callerDomain],
       options,
     ) as Promise<ConfidentialFungibleTokenSimulator>;
   }
@@ -180,7 +187,10 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     return this.circuits.impure._burnFrom(fromAddress, value);
   }
 
-  public clearMemos() {
+  /**
+   * @description Clears the caller's memo list.
+   */
+  public clearMemos(): Promise<[]> {
     return this.circuits.impure.clearMemos();
   }
 

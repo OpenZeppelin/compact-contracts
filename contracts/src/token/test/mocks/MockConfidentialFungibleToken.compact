@@ -14,6 +14,8 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;
+import "../../../access/Caller" prefix Caller_;
+import "../../../access/Principal" prefix Principal_;
 
 export { CFT_EscrowEntry, ElGamal_Ciphertext };
 
@@ -28,12 +30,28 @@ export {
   CFT__decimals
 };
 
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be derived off-chain before the contract exists.
+ */
+export ledger _callerDomain: Bytes<32>;
+
 constructor(
     name_: Opaque<"string">,
     symbol_: Opaque<"string">,
     decimals_: Uint<8>,
+    callerDomain: Bytes<32>,
 ) {
+  _callerDomain = disclose(callerDomain);
   CFT_initialize(name_, symbol_, decimals_);
+}
+
+/**
+ * @description Authenticates once, under this deployment's stored domain. Every
+ * wrapper routes through here.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
 }
 
 export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
@@ -45,7 +63,7 @@ export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
 }
 
 export circuit sweep(): Bytes<32> {
-  return CFT_sweep();
+  return CFT_sweep(authenticated());
 }
 
 export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
@@ -57,19 +75,19 @@ export circuit isRegistered(account: Bytes<32>): Boolean {
 }
 
 export circuit register(): Bytes<32> {
-  return CFT_register();
+  return CFT_register(authenticated());
 }
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT_transfer(to, value);
+  return CFT_transfer(authenticated(), to, value);
 }
 
 export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT__move(to, value);
+  return CFT__move(authenticated(), to, value);
 }
 
 export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT_approve(spender, value);
+  return CFT_approve(authenticated(), spender, value);
 }
 
 export circuit transferFrom(
@@ -77,7 +95,7 @@ export circuit transferFrom(
     to: Bytes<32>,
     value: Uint<128>
 ): Bytes<32> {
-  return CFT_transferFrom(fromAddress, to, value);
+  return CFT_transferFrom(authenticated(), fromAddress, to, value);
 }
 
 // Test-only funding / draining. `_mint` seeds a balance (a raw credit, no supply
@@ -88,19 +106,15 @@ export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
 }
 
 export circuit _burn(value: Uint<128>): Bytes<32> {
-  return CFT__burn(value);
+  return CFT__burn(authenticated(), value);
 }
 
 // Escrow-burn building block: consumes an allowance the owner granted the caller
 // with no recipient credit (the base's `_spendEscrow` under its burn-intent name).
 export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT__burnFrom(fromAddress, value);
-}
-
-export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-  return CFT_computeAccountId(sk);
+  return CFT__burnFrom(authenticated(), fromAddress, value);
 }
 
 export circuit clearMemos(): [] {
-  return CFT_clearMemos();
+  CFT_clearMemos(authenticated());
 }

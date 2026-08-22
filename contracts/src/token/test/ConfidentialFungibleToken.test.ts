@@ -7,6 +7,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 // The ElGamal pure circuits double as an off-circuit "mirror." They let a test
 // predict a ciphertext the contract will produce internally (e.g. the
@@ -45,11 +46,6 @@ const derivePk = (ek: Uint8Array) => {
   return ecMulGenerator(ekField);
 };
 
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
-};
-
 /**
  * @description The identity element on Jubjub, produced by ecMulGenerator(0).
  * Used as both c1 and c2 of Enc(0).
@@ -63,10 +59,14 @@ const createTestKey = (label: string): Uint8Array => {
   return key;
 };
 
+// The caller domain this deployment authenticates under. A real contract stores a
+// per-deployment value. A fixed one here keeps account ids precomputable.
+const DOMAIN = pad32('MockCFT:test');
+
 const makeUser = (label: string) => {
   const secretKey = createTestKey(`${label}_SK`);
   const encryptionKey = createTestKey(`${label}_EK`);
-  const accountId = buildAccountIdHash(secretKey);
+  const accountId = derivePrincipal(secretKey, DOMAIN);
   return { secretKey, encryptionKey, accountId };
 };
 
@@ -90,6 +90,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        DOMAIN,
       );
     });
 
@@ -233,38 +234,6 @@ describe.skipIf(isLiveBackend())(
         expect(await cft.isRegistered(BOB.accountId)).toBe(false);
       });
     });
-
-    describe('computeAccountId', () => {
-      it('should match the test helper derivation', async () => {
-        const users = [ALICE, BOB, CHARLIE];
-
-        for (const user of users) {
-          expect(await cft.computeAccountId(user.secretKey)).toEqual(
-            user.accountId,
-          );
-        }
-      });
-
-      it('should produce distinct identifiers for distinct keys', async () => {
-        const users = [ALICE, BOB, CHARLIE];
-        const ids = await Promise.all(
-          users.map((u) => cft.computeAccountId(u.secretKey)),
-        );
-
-        for (let i = 0; i < ids.length; i++) {
-          for (let j = i + 1; j < ids.length; j++) {
-            expect(ids[i]).not.toEqual(ids[j]);
-          }
-        }
-      });
-
-      it('should be deterministic for the same secret key', async () => {
-        const id1 = await cft.computeAccountId(ALICE.secretKey);
-        const id2 = await cft.computeAccountId(ALICE.secretKey);
-
-        expect(id1).toEqual(id2);
-      });
-    });
   },
 );
 
@@ -285,6 +254,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: transfer', () => {
       NAME,
       SYMBOL,
       DECIMALS,
+      DOMAIN,
     );
   });
 
@@ -365,6 +335,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        DOMAIN,
       );
     });
 
@@ -769,6 +740,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        DOMAIN,
       );
     });
 
@@ -808,6 +780,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       NAME,
       SYMBOL,
       DECIMALS,
+      DOMAIN,
     );
   });
 
@@ -838,6 +811,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(0n);
   });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -852,6 +826,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        DOMAIN,
       );
     });
 
@@ -980,6 +955,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        DOMAIN,
       );
     });
 
@@ -1059,6 +1035,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        DOMAIN,
       );
     });
 
@@ -1104,7 +1081,7 @@ describe.skipIf(isLiveBackend())(
 
 describe('ConfidentialFungibleToken: receive-path smoke', () => {
   const deploy = () =>
-    ConfidentialFungibleTokenSimulator.create(NAME, SYMBOL, DECIMALS, {
+    ConfidentialFungibleTokenSimulator.create(NAME, SYMBOL, DECIMALS, DOMAIN, {
       privateState: ConfidentialFungibleTokenPrivateState.withSecrets(
         ALICE.secretKey,
         ALICE.encryptionKey,

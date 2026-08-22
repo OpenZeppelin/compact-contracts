@@ -29,6 +29,7 @@ type ConfidentialFungibleTokenPublicSupplyArgs = readonly [
   name: string,
   symbol: string,
   decimals: bigint,
+  callerDomain: Uint8Array,
 ];
 
 const Base = createSimulator<
@@ -43,7 +44,12 @@ const Base = createSimulator<
       witnesses,
     ),
   defaultPrivateState: () => ConfidentialFungibleTokenPrivateState.generate(),
-  contractArgs: (name, symbol, decimals) => [name, symbol, decimals],
+  contractArgs: (name, symbol, decimals, callerDomain) => [
+    name,
+    symbol,
+    decimals,
+    callerDomain,
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialFungibleTokenWitnesses(),
   artifactName: 'ComposedConfidentialFungibleTokenPublicSupply',
@@ -54,6 +60,7 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
     name: string,
     symbol: string,
     decimals: bigint,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
       ConfidentialFungibleTokenPrivateState,
       ReturnType<typeof ConfidentialFungibleTokenWitnesses>
@@ -61,7 +68,7 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
   ): Promise<ConfidentialFungibleTokenPublicSupplySimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [name, symbol, decimals],
+      [name, symbol, decimals, callerDomain],
       options,
     ) as Promise<ConfidentialFungibleTokenPublicSupplySimulator>;
   }
