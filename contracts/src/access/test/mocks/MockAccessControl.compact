@@ -10,8 +10,29 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../AccessControl" prefix AccessControl_;
+import "../../Caller" prefix Caller_;
+import "../../Principal" prefix Principal_;
 
 export { ContractAddress, Either, Maybe };
+
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be derived off-chain before the contract exists,
+ * which is what lets a deployment pre-grant a role to a named account.
+ */
+export ledger _callerDomain: Bytes<32>;
+
+constructor(callerDomain: Bytes<32>) {
+  _callerDomain = disclose(callerDomain);
+}
+
+/**
+ * @description Authenticates once, under this deployment's stored domain. Every
+ * wrapper below routes through here.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
+}
 
 export pure circuit DEFAULT_ADMIN_ROLE(): Bytes<32> {
   return AccessControl_DEFAULT_ADMIN_ROLE();
@@ -22,7 +43,7 @@ export circuit hasRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAdd
 }
 
 export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-  AccessControl_assertOnlyRole(roleId);
+  AccessControl_assertOnlyRole(authenticated(), roleId);
 }
 
 export circuit _checkRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): [] {
@@ -34,15 +55,15 @@ export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
 }
 
 export circuit grantRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): [] {
-  AccessControl_grantRole(roleId, account);
+  AccessControl_grantRole(authenticated(), roleId, account);
 }
 
 export circuit revokeRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): [] {
-  AccessControl_revokeRole(roleId, account);
+  AccessControl_revokeRole(authenticated(), roleId, account);
 }
 
 export circuit renounceRole(roleId: Bytes<32>, callerConfirmation: Either<Bytes<32>, ContractAddress>): [] {
-  AccessControl_renounceRole(roleId, callerConfirmation);
+  AccessControl_renounceRole(authenticated(), roleId, callerConfirmation);
 }
 
 export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
@@ -60,4 +81,3 @@ export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<Bytes<32>, Co
 export circuit _revokeRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): Boolean {
   return AccessControl__revokeRole(roleId, account);
 }
-

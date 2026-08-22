@@ -1,17 +1,12 @@
-import {
-  CompactTypeBytes,
-  CompactTypeVector,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 
-// Helpers
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
-};
+// The caller domain this deployment authenticates under. A real contract stores a
+// per-deployment value. A fixed one here keeps principals precomputable, which is
+// what lets the constructor name an initial owner.
+const DOMAIN = pad32('MockOwnable:test');
 
 const zeroBytes = utils.zeroUint8Array();
 
@@ -40,7 +35,7 @@ const createTestSK = (label: string): Uint8Array => {
 
 const makeUser = (label: string) => {
   const secretKey = createTestSK(label);
-  const accountId = buildAccountIdHash(secretKey);
+  const accountId = derivePrincipal(secretKey, DOMAIN);
   const either = eitherAccountId(accountId);
   return { secretKey, accountId, either };
 };
@@ -76,7 +71,7 @@ const zeroTypes = [
 describe('Ownable', () => {
   describe('before initialized', () => {
     it('should initialize', async () => {
-      ownable = await OwnableSimulator.create(OWNER.either, isInit, {
+      ownable = await OwnableSimulator.create(OWNER.either, isInit, DOMAIN, {
         privateState: { secretKey: OWNER.secretKey },
       });
       expect(await ownable.owner()).toEqual(OWNER.either);
@@ -84,7 +79,7 @@ describe('Ownable', () => {
 
     it('should fail to initialize when owner is a contract address', async () => {
       await expect(
-        OwnableSimulator.create(OWNER_CONTRACT, isInit, {
+        OwnableSimulator.create(OWNER_CONTRACT, isInit, DOMAIN, {
           privateState: { secretKey: OWNER.secretKey },
         }),
       ).rejects.toThrow('Ownable: unsafe ownership transfer');
@@ -94,7 +89,7 @@ describe('Ownable', () => {
       'should fail to initialize when owner is zero (%s)',
       async (_, _zero) => {
         await expect(
-          OwnableSimulator.create(_zero, isInit, {
+          OwnableSimulator.create(_zero, isInit, DOMAIN, {
             privateState: { secretKey: OWNER.secretKey },
           }),
         ).rejects.toThrow('Ownable: invalid initial owner');
@@ -114,9 +109,14 @@ describe('Ownable', () => {
     it.each(circuitsToFail)(
       'should fail when calling circuit "%s"',
       async (circuitName, args) => {
-        ownable = await OwnableSimulator.create(OWNER.either, isBadInit, {
-          privateState: { secretKey: OWNER.secretKey },
-        });
+        ownable = await OwnableSimulator.create(
+          OWNER.either,
+          isBadInit,
+          DOMAIN,
+          {
+            privateState: { secretKey: OWNER.secretKey },
+          },
+        );
         await expect(
           (ownable[circuitName] as (...args: unknown[]) => Promise<unknown>)(
             ...args,
@@ -132,7 +132,7 @@ describe('Ownable', () => {
         right: utils.encodeToAddress('JUNK_DATA'),
       };
 
-      ownable = await OwnableSimulator.create(nonCanonical, isInit, {
+      ownable = await OwnableSimulator.create(nonCanonical, isInit, DOMAIN, {
         privateState: { secretKey: OWNER.secretKey },
       });
 
@@ -145,7 +145,7 @@ describe('Ownable', () => {
 
   describe('when initialized', () => {
     beforeEach(async () => {
-      ownable = await OwnableSimulator.create(OWNER.either, isInit, {
+      ownable = await OwnableSimulator.create(OWNER.either, isInit, DOMAIN, {
         privateState: { secretKey: OWNER.secretKey },
       });
     });
@@ -506,26 +506,31 @@ describe('Ownable', () => {
 
   describe('simulator wiring', () => {
     it('should construct with a generated private state when none is supplied', async () => {
-      const sim = await OwnableSimulator.create(OWNER.either, isInit);
+      const sim = await OwnableSimulator.create(OWNER.either, isInit, DOMAIN);
       const sk = await sim.privateState.getCurrentSecretKey();
 
       expect(sk).toBeInstanceOf(Uint8Array);
       expect(sk.length).toBe(32);
     });
 
-    it('should expose an empty public ledger via getPublicState', async () => {
-      const sim = await OwnableSimulator.create(OWNER.either, isInit, {
+    it('should expose only the caller domain via getPublicState', async () => {
+      const sim = await OwnableSimulator.create(OWNER.either, isInit, DOMAIN, {
         privateState: { secretKey: OWNER.secretKey },
       });
 
-      expect(await sim.getPublicState()).toStrictEqual({});
+      // The prefixed module import hides Ownable's own ledger. The caller domain
+      // is the mock's field, and it stays public because every caller reads it to
+      // derive the principal it authenticates as.
+      expect(await sim.getPublicState()).toStrictEqual({
+        _callerDomain: DOMAIN,
+      });
     });
   });
 
   describe('privateState helpers', () => {
     describe('getCurrentSecretKey', () => {
       it('should return the injected secret key', async () => {
-        ownable = await OwnableSimulator.create(OWNER.either, isInit, {
+        ownable = await OwnableSimulator.create(OWNER.either, isInit, DOMAIN, {
           privateState: { secretKey: OWNER.secretKey },
         });
         await ownable.privateState.injectSecretKey(NEW_OWNER.secretKey);
@@ -536,14 +541,67 @@ describe('Ownable', () => {
       });
 
       it('should throw when the secret key is undefined', async () => {
-        const sim = await OwnableSimulator.create(OWNER.either, isInit, {
-          privateState: { secretKey: undefined as unknown as Uint8Array },
-        });
+        const sim = await OwnableSimulator.create(
+          OWNER.either,
+          isInit,
+          DOMAIN,
+          {
+            privateState: { secretKey: undefined as unknown as Uint8Array },
+          },
+        );
 
         await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
           'Missing secret key',
         );
       });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Audit L-06 / platform L-03. The composing contract derives the caller
+  // identity once and hands it to Ownable, which reads no witness of its own.
+  // `MockOwnable` is that composing contract. It derives the principal in-circuit
+  // from the stored domain and takes no `AuthenticatedCaller` parameter.
+  // -------------------------------------------------------------------------
+  describe('caller authentication', () => {
+    it('should authorize the principal derived in-circuit under the stored domain', async () => {
+      // The TypeScript mirror of `Principal_derivePrincipal` names the initial
+      // owner off-chain. That owner authorizes only if the in-circuit derivation
+      // produced the same value, which binds the two derivations together.
+      const sim = await OwnableSimulator.create(
+        eitherAccountId(derivePrincipal(OWNER.secretKey, DOMAIN)),
+        isInit,
+        DOMAIN,
+        { privateState: { secretKey: OWNER.secretKey } },
+      );
+
+      await expect(sim.assertOnlyOwner()).resolves.not.toThrow();
+    });
+
+    it('should reject a principal derived under a different domain', async () => {
+      const otherDomain = pad32('MockOwnable:other');
+      const sim = await OwnableSimulator.create(
+        eitherAccountId(derivePrincipal(OWNER.secretKey, otherDomain)),
+        isInit,
+        DOMAIN,
+        { privateState: { secretKey: OWNER.secretKey } },
+      );
+
+      await expect(sim.assertOnlyOwner()).rejects.toThrow(
+        'Ownable: caller is not the owner',
+      );
+    });
+
+    it('should derive a different principal per domain', () => {
+      expect(
+        derivePrincipal(OWNER.secretKey, pad32('MockOwnable:other')),
+      ).not.toEqual(derivePrincipal(OWNER.secretKey, DOMAIN));
+    });
+
+    it('should derive a different principal per secret key under one domain', () => {
+      expect(derivePrincipal(OWNER.secretKey, DOMAIN)).not.toEqual(
+        derivePrincipal(UNAUTHORIZED.secretKey, DOMAIN),
+      );
     });
   });
 });

@@ -9,9 +9,16 @@ import {
   Contract as MockOwnable,
 } from '../../../../artifacts/MockOwnable/contract/index.js';
 import {
-  OwnablePrivateState,
-  OwnableWitnesses,
-} from '../witnesses/OwnableWitnesses.js';
+  CallerPrivateState,
+  CallerWitnesses,
+} from '../witnesses/CallerWitnesses.js';
+
+/**
+ * Ownable declares no identity witness. It takes an `AuthenticatedCaller` that the
+ * composing contract derives, and `MockOwnable` is that composing contract, so the
+ * secret key lives here and `access/Caller` reads it once per circuit.
+ */
+type OwnableLedger = ReturnType<typeof ledger>;
 
 /**
  * Type constructor args
@@ -19,21 +26,26 @@ import {
 type OwnableArgs = readonly [
   initialOwner: Either<Uint8Array, ContractAddress>,
   isInit: boolean,
+  callerDomain: Uint8Array,
 ];
 
 const OwnableSimulatorBase = createSimulator<
-  OwnablePrivateState,
-  ReturnType<typeof ledger>,
-  ReturnType<typeof OwnableWitnesses>,
-  MockOwnable<OwnablePrivateState>,
+  CallerPrivateState,
+  OwnableLedger,
+  ReturnType<typeof CallerWitnesses>,
+  MockOwnable<CallerPrivateState>,
   OwnableArgs
 >({
   contractFactory: (witnesses) =>
-    new MockOwnable<OwnablePrivateState>(witnesses),
-  defaultPrivateState: () => OwnablePrivateState.generate(),
-  contractArgs: (initialOwner, isInit) => [initialOwner, isInit],
+    new MockOwnable<CallerPrivateState>(witnesses),
+  defaultPrivateState: () => CallerPrivateState.generate(),
+  contractArgs: (initialOwner, isInit, callerDomain) => [
+    initialOwner,
+    isInit,
+    callerDomain,
+  ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => OwnableWitnesses(),
+  witnessesFactory: () => CallerWitnesses(),
   artifactName: 'MockOwnable',
 });
 
@@ -44,14 +56,15 @@ export class OwnableSimulator extends OwnableSimulatorBase {
   static async create(
     initialOwner: Either<Uint8Array, ContractAddress>,
     isInit: boolean,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
-      OwnablePrivateState,
-      ReturnType<typeof OwnableWitnesses>
+      CallerPrivateState,
+      ReturnType<typeof CallerWitnesses>
     > = {},
   ): Promise<OwnableSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [initialOwner, isInit],
+      [initialOwner, isInit, callerDomain],
       options,
     ) as Promise<OwnableSimulator>;
   }
@@ -129,8 +142,8 @@ export class OwnableSimulator extends OwnableSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): Promise<OwnablePrivateState> =>
-      this.updatePrivateState(OwnablePrivateState.withSecretKey(newSK)),
+    injectSecretKey: (newSK: Uint8Array): Promise<CallerPrivateState> =>
+      this.updatePrivateState(CallerPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

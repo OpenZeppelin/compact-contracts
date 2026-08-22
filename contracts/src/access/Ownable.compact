@@ -10,16 +10,20 @@ pragma language_version >= 0.23.0;
  * that can be granted exclusive access to specific circuits.
  * This approach is perfectly reasonable for contracts that have a single administrative user.
  *
- * Authorization is based on a witness-derived identity scheme. The owner proves knowledge
- * of a secret key by injecting it via the `wit_OwnableSK` witness. The module computes
- * an account identifier as `persistentHash(secretKey)` which is a commitment that hides the key
- * while providing a stable, pseudonymous on-chain identity.
+ * @dev Caller identity. This module derives no caller. Every authenticating circuit
+ * takes a `Principal_AuthenticatedCaller` that the composing contract gets once from
+ * `Caller_authenticate` and hands to every module it drives.
  *
- * Because the account identifier is `H(secretKey)` with no per-deployment salt or domain
- * separator, the same secret key produces the same identity across all contracts. This is
- * intentional. It provides a linkable pseudonymous identity analogous to Solidity's
- * `msg.sender`. Users who desire cross-contract unlinkability can use different secret keys
- * per contract at the wallet layer.
+ * This module used to declare `wit_OwnableSK` and derive the caller itself. A prover
+ * writes witness code off-chain, and nothing forces two witnesses to return the same
+ * value, so a contract that authorized here and acted through a token module bound
+ * its check and its effect to two unrelated identities. The derivation lived in a
+ * non-exported circuit, so the composing contract had no sound value to compare
+ * against and could not repair the pairing. Taking the caller as a parameter deletes
+ * the second derivation instead of trying to detect it later.
+ *
+ * `access/Principal` holds the identity type and the derivation. `access/Caller`
+ * holds the one witness that feeds it.
  *
  * The initial owner must be set by using the `initialize` circuit during construction.
  * This can later be changed with `transferOwnership`.
@@ -74,18 +78,16 @@ pragma language_version >= 0.23.0;
  * ownership changes flow.
  *
  * @dev Security Considerations:
- * - The `secretKey` must be kept private. Loss of the key prevents the owner
- *   from proving ownership. Key exposure allows impersonation.
- * - It is strongly recommended to use cryptographically secure random values for the secret key
- *   (e.g., `crypto.getRandomValues()`). Weak or predictable keys can be brute-forced.
- * - The `secretKey` is provided via the `wit_OwnableSK` witness. As with all witnesses,
- *   the contract must not assume that the witness implementation matches the developer's code.
- *   Any DApp may provide any implementation. The ZK proof system constrains what values
- *   can produce valid proofs.
+ * - `access/Caller` owns secret-key handling now. Read that module for the key
+ *   requirements and for what happens when a key is lost or leaked.
+ * - This module authorizes against the principal it is handed. Derive a caller
+ *   identity twice in one composing contract, or hand-build an `AuthenticatedCaller`,
+ *   and you give up the guarantee. Derive once per transaction.
  */
 module Ownable {
   import CompactStandardLibrary;
   import "../utils/Utils" prefix Utils_;
+  import "./Principal" prefix Principal_;
 
   /**
    * @description Initialization flag, tracked per-module to avoid the compiler's
@@ -95,17 +97,6 @@ module Ownable {
   export ledger _isInitialized: Boolean;
 
   export ledger _owner: Either<Bytes<32>, ContractAddress>;
-
-  /**
-   * @witness wit_OwnableSK
-   * @description Returns the caller's secret key used in deriving the account identifier.
-   *
-   * The same key produces the same account identifier across all contracts. Users who
-   * desire cross-contract unlinkability should use different keys per contract.
-   *
-   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   */
-  witness wit_OwnableSK(): Bytes<32>;
 
   /**
    * @description Initializes the contract by setting the `initialOwner`.
@@ -178,7 +169,7 @@ module Ownable {
    * interactions are supported in Compact.
    * This restriction prevents permanently disabling access to a circuit.
    *
-   * @circuitInfo k=13, rows=2959
+   * @circuitInfo k=13, rows=4880
    *
    * Requirements:
    *
@@ -187,14 +178,18 @@ module Ownable {
    * - `newOwner` is not a ContractAddress.
    * - `newOwner` is not the zero address.
    *
+   * @param {Principal_AuthenticatedCaller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  export circuit transferOwnership(
+                   caller: Principal_AuthenticatedCaller,
+                   newOwner: Either<Bytes<32>, ContractAddress>
+                   ): [] {
     assertInitialized();
     const isContractAddr = !newOwner.is_left;
     assert(!isContractAddr, "Ownable: unsafe ownership transfer");
-    _unsafeTransferOwnership(newOwner);
+    _unsafeTransferOwnership(caller, newOwner);
   }
 
   /**
@@ -205,7 +200,7 @@ module Ownable {
    * Ownership privileges sent to a contract address may become uncallable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=13, rows=2956
+   * @circuitInfo k=13, rows=4877
    *
    * Requirements:
    *
@@ -213,12 +208,16 @@ module Ownable {
    * - The caller is the current contract owner.
    * - `newOwner` is not the zero address.
    *
+   * @param {Principal_AuthenticatedCaller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit _unsafeTransferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  export circuit _unsafeTransferOwnership(
+                   caller: Principal_AuthenticatedCaller,
+                   newOwner: Either<Bytes<32>, ContractAddress>
+                   ): [] {
     assertInitialized();
-    assertOnlyOwner();
+    assertOnlyOwner(caller);
     assert(!Utils_isTargetZero(newOwner), "Ownable: invalid new owner");
     _unsafeUncheckedTransferOwnership(newOwner);
   }
@@ -228,18 +227,19 @@ module Ownable {
    * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
-   * @circuitInfo k=13, rows=2364
+   * @circuitInfo k=13, rows=4285
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - The caller is the current contract owner.
    *
+   * @param {Principal_AuthenticatedCaller} caller - The authenticated caller.
    * @returns {[]} Empty tuple.
    */
-  export circuit renounceOwnership(): [] {
+  export circuit renounceOwnership(caller: Principal_AuthenticatedCaller): [] {
     assertInitialized();
-    assertOnlyOwner();
+    assertOnlyOwner(caller);
 
     // We use `left` here because `assertOnlyOwner` would return a misleading
     // error msg (c2c is not currently supported)
@@ -250,25 +250,23 @@ module Ownable {
   }
 
   /**
-   * @description Throws if called by any account other than the owner.
+   * @description Throws if `caller` is not the owner.
    * Use this to restrict access of specific circuits to the owner.
    *
-   * In the case of an external (non-contract) caller, the caller’s identity is
-   * derived from the `wit_OwnableSK` witness as `persistentHash(secretKey)`.
-   *
-   * @circuitInfo k=13, rows=2360
+   * @circuitInfo k=13, rows=4281
    *
    * Requirements:
    *
    * - Contract is initialized.
-   * - The caller is the current contract owner.
+   * - `caller`'s principal is the current contract owner.
    *
+   * @param {Principal_AuthenticatedCaller} caller - The authenticated caller.
    * @returns {[]} Empty tuple.
    */
-  export circuit assertOnlyOwner(): [] {
+  export circuit assertOnlyOwner(caller: Principal_AuthenticatedCaller): [] {
     assertInitialized();
     if (_owner.is_left) {
-      assert(_computeAccountId() == _owner.left, "Ownable: caller is not the owner");
+      assert(caller.principal == _owner.left, "Ownable: caller is not the owner");
     } else {
       assert(false, "Ownable: contract address owner authentication is not yet supported");
     }
@@ -324,17 +322,4 @@ module Ownable {
     _owner = disclose(canonAcct);
   }
 
-  /**
-   * @description Computes the caller's account identifier from the `wit_OwnableSK` witness.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * The result is a 32-byte commitment that uniquely identifies the caller.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  circuit _computeAccountId(): Bytes<32> {
-    return Utils_computeAccountId(wit_OwnableSK());
-  }
 }

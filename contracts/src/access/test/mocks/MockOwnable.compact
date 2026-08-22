@@ -10,8 +10,17 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../Ownable" prefix Ownable_;
+import "../../Caller" prefix Caller_;
+import "../../Principal" prefix Principal_;
 
 export { ContractAddress, Either, Maybe };
+
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be derived off-chain before the contract exists,
+ * which is what lets the constructor name an initial owner.
+ */
+export ledger _callerDomain: Bytes<32>;
 
 /**
  * @description `isInit` is a param for testing.
@@ -20,10 +29,28 @@ export { ContractAddress, Either, Maybe };
  * This behavior is to test that circuits are not callable unless the
  * contract is initialized.
 */
-constructor(initialOwner: Either<Bytes<32>, ContractAddress>, isInit: Boolean) {
+constructor(
+  initialOwner: Either<Bytes<32>, ContractAddress>,
+  isInit: Boolean,
+  callerDomain: Bytes<32>
+) {
+  _callerDomain = disclose(callerDomain);
   if (disclose(isInit)) {
     Ownable_initialize(initialOwner);
   }
+}
+
+/**
+ * @description Authenticates once, under this deployment's stored domain. Every
+ * wrapper below routes through here.
+ *
+ * A top-level contract works this way: derive the caller in-circuit from the
+ * witness, then hand the principal to each module it drives. No exported circuit
+ * takes an `AuthenticatedCaller`, because a transaction sender who could choose one
+ * would walk past every gate in the contract.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
 }
 
 export circuit owner(): Either<Bytes<32>, ContractAddress> {
@@ -31,19 +58,19 @@ export circuit owner(): Either<Bytes<32>, ContractAddress> {
 }
 
 export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
-  return Ownable_transferOwnership(newOwner);
+  return Ownable_transferOwnership(authenticated(), newOwner);
 }
 
 export circuit _unsafeTransferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
-  return Ownable__unsafeTransferOwnership(newOwner);
+  return Ownable__unsafeTransferOwnership(authenticated(), newOwner);
 }
 
 export circuit renounceOwnership(): [] {
-  return Ownable_renounceOwnership();
+  return Ownable_renounceOwnership(authenticated());
 }
 
 export circuit assertOnlyOwner(): [] {
-  return Ownable_assertOnlyOwner();
+  return Ownable_assertOnlyOwner(authenticated());
 }
 
 export circuit _transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
@@ -53,4 +80,3 @@ export circuit _transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>):
 export circuit _unsafeUncheckedTransferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
   return Ownable__unsafeUncheckedTransferOwnership(newOwner);
 }
-

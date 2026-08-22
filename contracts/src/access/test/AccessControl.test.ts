@@ -1,18 +1,13 @@
-import {
-  CompactTypeBytes,
-  CompactTypeVector,
-  convertFieldToBytes,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
+import { convertFieldToBytes } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
 
-// Helpers
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
-};
+// The caller domain this deployment authenticates under. A real contract stores a
+// per-deployment value. A fixed one here keeps principals precomputable, so a
+// deployment can pre-grant a role to a named account.
+const DOMAIN = pad32('MockAccessControl:test');
 
 const zeroBytes = utils.zeroUint8Array();
 
@@ -41,7 +36,7 @@ const createTestSK = (label: string): Uint8Array => {
 
 const makeUser = (label: string) => {
   const secretKey = createTestSK(label);
-  const accountId = buildAccountIdHash(secretKey);
+  const accountId = derivePrincipal(secretKey, DOMAIN);
   const either = eitherCommitment(accountId);
   return { secretKey, accountId, either };
 };
@@ -79,7 +74,7 @@ const operatorTypes = [
 
 describe('AccessControl', () => {
   beforeEach(async () => {
-    accessControl = await AccessControlSimulator.create();
+    accessControl = await AccessControlSimulator.create(DOMAIN);
   });
 
   describe('hasRole', () => {
@@ -852,7 +847,7 @@ describe('AccessControl', () => {
       });
 
       it('should throw when the secret key is undefined', async () => {
-        const sim = await AccessControlSimulator.create({
+        const sim = await AccessControlSimulator.create(DOMAIN, {
           privateState: { secretKey: undefined as unknown as Uint8Array },
         });
 
@@ -862,8 +857,13 @@ describe('AccessControl', () => {
       });
     });
 
-    it('should expose an empty public ledger via getPublicState', async () => {
-      expect(await accessControl.getPublicState()).toStrictEqual({});
+    it('should expose only the caller domain via getPublicState', async () => {
+      // The prefixed module import hides AccessControl's own ledger. The caller
+      // domain is the mock's field, and it stays public because every caller reads
+      // it to derive the principal it authenticates as.
+      expect(await accessControl.getPublicState()).toStrictEqual({
+        _callerDomain: DOMAIN,
+      });
     });
   });
 });

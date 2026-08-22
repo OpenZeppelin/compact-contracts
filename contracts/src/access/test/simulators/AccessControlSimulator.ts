@@ -9,28 +9,28 @@ import {
   Contract as MockAccessControl,
 } from '../../../../artifacts/MockAccessControl/contract/index.js';
 import {
-  AccessControlPrivateState,
-  AccessControlWitnesses,
-} from '../witnesses/AccessControlWitnesses.js';
+  CallerPrivateState,
+  CallerWitnesses,
+} from '../witnesses/CallerWitnesses.js';
 
 /**
  * Type constructor args
  */
-type AccessControlArgs = readonly [];
+type AccessControlArgs = readonly [callerDomain: Uint8Array];
 
 const AccessControlSimulatorBase = createSimulator<
-  AccessControlPrivateState,
+  CallerPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof AccessControlWitnesses>,
-  MockAccessControl<AccessControlPrivateState>,
+  ReturnType<typeof CallerWitnesses>,
+  MockAccessControl<CallerPrivateState>,
   AccessControlArgs
 >({
   contractFactory: (witnesses) =>
-    new MockAccessControl<AccessControlPrivateState>(witnesses),
-  defaultPrivateState: () => AccessControlPrivateState.generate(),
-  contractArgs: () => [],
+    new MockAccessControl<CallerPrivateState>(witnesses),
+  defaultPrivateState: () => CallerPrivateState.generate(),
+  contractArgs: (callerDomain) => [callerDomain],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => AccessControlWitnesses(),
+  witnessesFactory: () => CallerWitnesses(),
   artifactName: 'MockAccessControl',
 });
 
@@ -39,13 +39,17 @@ const AccessControlSimulatorBase = createSimulator<
  */
 export class AccessControlSimulator extends AccessControlSimulatorBase {
   static async create(
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
-      AccessControlPrivateState,
-      ReturnType<typeof AccessControlWitnesses>
+      CallerPrivateState,
+      ReturnType<typeof CallerWitnesses>
     > = {},
   ): Promise<AccessControlSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create([], options) as Promise<AccessControlSimulator>;
+    return super.create(
+      [callerDomain],
+      options,
+    ) as Promise<AccessControlSimulator>;
   }
 
   /**
@@ -188,8 +192,8 @@ export class AccessControlSimulator extends AccessControlSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): Promise<AccessControlPrivateState> =>
-      this.updatePrivateState(AccessControlPrivateState.withSecretKey(newSK)),
+    injectSecretKey: (newSK: Uint8Array): Promise<CallerPrivateState> =>
+      this.updatePrivateState(CallerPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.
