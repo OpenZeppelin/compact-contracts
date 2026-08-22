@@ -1,0 +1,145 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract carries an unsound circuit on purpose (`deputisedTransfer`). It
+// exists to pin the boundary of the audit L-06 / platform L-03 fix in an executable
+// test. DO NOT deploy it, and do not copy `deputisedTransfer` or `fabricated` into a
+// real contract.
+
+// Top-level contract composing a gate module (Ownable) with an effect module
+// (FungibleToken), the shape the audit finding describes. The gate answers whether
+// the caller owns the contract. The effect answers whose balance moves. Let those
+// two answers name different principals and you have a confused deputy.
+//
+// Two circuits below drive the same pair of modules. They differ in where the second
+// principal comes from:
+//
+//   correctTransfer     - one `authenticated()` call feeds both modules, so gate and
+//                         effect name one principal by construction. This is what an
+//                         integrator writes.
+//
+//   deputisedTransfer   - the gate gets the authenticated principal and the effect
+//                         gets a struct built from a circuit parameter. The gate
+//                         passes on the caller while value leaves somebody else's
+//                         balance.
+//
+// What the fix changed: every module used to read its own identity witness in a
+// non-exported circuit, so the divergence above was the default for a composing
+// contract and that contract had no sound value to compare against. One place now
+// admits an identity into a transaction, and reaching the divergent case takes the
+// visible `fabricated()` call below.
+//
+// What the fix leaves alone: Compact structs are not opaque, so a contract can still
+// assemble an `AuthenticatedCaller` it never derived. That residual is why
+// `fabricated` compiles. The type stops an integrator getting this wrong by
+// accident. It does not stop one doing it on purpose, and a hostile composer already
+// controls its own contract. The `confusedDeputy` spec covers both halves so neither
+// can drift without a test failing.
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../../src/access/Ownable" prefix Ownable_;
+import "../../../src/token/FungibleToken" prefix FungibleToken_;
+import "../../../src/access/Caller" prefix Caller_;
+import "../../../src/access/Principal" prefix Principal_;
+
+export { ContractAddress, Either, Maybe };
+
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be named off-chain before the contract exists,
+ * which is what lets the constructor set an initial owner.
+ */
+export ledger _callerDomain: Bytes<32>;
+
+constructor(
+  initialOwner: Either<Bytes<32>, ContractAddress>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  callerDomain: Bytes<32>
+) {
+  _callerDomain = disclose(callerDomain);
+  Ownable_initialize(initialOwner);
+  FungibleToken_initialize(name_, symbol_, decimals_);
+}
+
+/**
+ * @description Derives the caller's principal in-circuit from the witness. The only
+ * sound source of an identity in this contract.
+ *
+ * No exported circuit here takes an `AuthenticatedCaller`. Let the transaction
+ * sender choose that value and they satisfy every gate in the contract, so a
+ * top-level contract produces the caller and never accepts one.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
+}
+
+/**
+ * @description Assembles an `AuthenticatedCaller` for a principal this contract
+ * never authenticated.
+ *
+ * Unsound on purpose. It exists so `deputisedTransfer` can exist. A real contract
+ * has no reason to build this struct, because `authenticated()` returns the value it
+ * needs.
+ */
+circuit fabricated(principal: Bytes<32>): Principal_AuthenticatedCaller {
+  return Principal_AuthenticatedCaller {
+    principal: disclose(principal),
+    domain: _callerDomain
+  };
+}
+
+/**
+ * @description The correct composition. Authenticate once and drive both modules
+ * with that one value, and the owner gate and the balance debit provably name one
+ * principal.
+ */
+export circuit correctTransfer(
+  to: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): [] {
+  const caller = authenticated();
+  Ownable_assertOnlyOwner(caller);
+  FungibleToken_transfer(caller, to, value);
+}
+
+/**
+ * @description The confused deputy. You reach it only by writing it on purpose.
+ *
+ * The real caller satisfies the gate and `actAs` takes the debit. A spec drives this
+ * to show what the pre-fix default looked like, and to show that reaching it now
+ * costs a visible `fabricated()` call instead of falling out of two modules reading
+ * two witnesses.
+ *
+ * @param actAs - The principal to move value out of. Never the caller's own.
+ */
+export circuit deputisedTransfer(
+  actAs: Bytes<32>,
+  to: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): [] {
+  Ownable_assertOnlyOwner(authenticated());
+  FungibleToken_transfer(fabricated(actAs), to, value);
+}
+
+/**
+ * @description The principal this contract authenticates for the current caller, so
+ * a spec can assert which account a gate or an effect landed on.
+ */
+export circuit callerPrincipal(): Bytes<32> {
+  return disclose(authenticated().principal);
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit ftMint(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+  return FungibleToken__mint(account, value);
+}
+
+export circuit ftBalanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
