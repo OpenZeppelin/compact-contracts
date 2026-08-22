@@ -252,28 +252,6 @@ describe('Utils', () => {
     });
   });
 
-  describe('computeAccountId', () => {
-    it('should match the persistentHash derivation', async () => {
-      const sk = createTestSK('SOME_SK');
-      expect(await contract.computeAccountId(sk)).toEqual(
-        buildAccountIdHash(sk),
-      );
-    });
-
-    it('should produce distinct identifiers for distinct keys', async () => {
-      const ids = await Promise.all(
-        ['A', 'B', 'C'].map((label) =>
-          contract.computeAccountId(createTestSK(label)),
-        ),
-      );
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          expect(ids[i]).not.toEqual(ids[j]);
-        }
-      }
-    });
-  });
-
   describe('simulator wiring', () => {
     it('should expose an empty public ledger via getPublicState', async () => {
       expect(await contract.getPublicState()).toStrictEqual({});

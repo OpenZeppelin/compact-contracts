@@ -152,14 +152,4 @@ export class UtilsSimulator extends UtilsSimulatorBase {
   ): Promise<boolean> {
     return this.circuits.pure.isTargetZero(target);
   }
-
-  /**
-   * @description Computes an account identifier without on-chain state, allowing a user to
-   * derive their identity commitment before submitting an operation.
-   * @param secretKey A 32-byte cryptographically secure random value.
-   * @returns The computed account identifier.
-   */
-  public computeAccountId(secretKey: Uint8Array): Promise<Uint8Array> {
-    return this.circuits.pure.computeAccountId(secretKey);
-  }
 }
