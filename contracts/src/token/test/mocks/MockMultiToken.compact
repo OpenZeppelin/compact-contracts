@@ -9,9 +9,26 @@ pragma language_version >= 0.23.0;
 
 import CompactStandardLibrary;
 import "../../MultiToken" prefix MultiToken_;
+import "../../../access/Caller" prefix Caller_;
+import "../../../access/Principal" prefix Principal_;
 
 export { ContractAddress, Either, Maybe };
 export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
+
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be derived off-chain before the contract exists.
+ */
+export ledger _callerDomain: Bytes<32>;
+
+/**
+ * @description Authenticates once, under this deployment's stored domain. Every
+ * wrapper routes through here, the pattern a composing contract follows: one
+ * derivation per transaction, shared by every module the contract drives.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
+}
 
 /**
  * @description `_uri` is a `Maybe` type for testing.
@@ -20,8 +37,10 @@ export { MultiToken__balances, MultiToken__operatorApprovals, MultiToken__uri };
  * the contract when it is not initialized properly.
 */
 constructor(
-  _uri: Maybe<Opaque<"string">>
+  _uri: Maybe<Opaque<"string">>,
+  callerDomain: Bytes<32>
 ) {
+  _callerDomain = disclose(callerDomain);
   if (disclose(_uri.is_some)) {
     MultiToken_initialize(_uri.value);
   }
@@ -40,7 +59,7 @@ export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>, id: Uint<1
 }
 
 export circuit setApprovalForAll(operator: Either<Bytes<32>, ContractAddress>, approved: Boolean): [] {
-  return MultiToken_setApprovalForAll(operator, approved);
+  return MultiToken_setApprovalForAll(authenticated(), operator, approved);
 }
 
 export circuit isApprovedForAll(
@@ -56,7 +75,7 @@ export circuit transferFrom(
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken_transferFrom(fromAddress, to, id, value);
+  return MultiToken_transferFrom(authenticated(), fromAddress, to, id, value);
 }
 
 export circuit _unsafeTransferFrom(
@@ -65,7 +84,7 @@ export circuit _unsafeTransferFrom(
   id: Uint<128>,
   value: Uint<128>
 ): [] {
-  return MultiToken__unsafeTransferFrom(fromAddress, to, id, value);
+  return MultiToken__unsafeTransferFrom(authenticated(), fromAddress, to, id, value);
 }
 
 export circuit _transfer(
@@ -109,4 +128,3 @@ export circuit _setApprovalForAll(
 ): [] {
   return MultiToken__setApprovalForAll(owner, operator, approved);
 }
-

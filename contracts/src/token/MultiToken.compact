@@ -10,17 +10,6 @@ pragma language_version >= 0.23.0;
  * therefore, the MultiToken module should be treated as an approximation of
  * the ERC1155 standard and not necessarily a compliant implementation.
  *
- * Authorization is based on a witness-derived identity scheme. Each caller proves knowledge
- * of a secret key by injecting it via the `wit_MultiTokenSK` witness. The module computes
- * an account identifier as `persistentHash(secretKey)` which is a commitment that hides the key
- * while providing a stable, pseudonymous on-chain identity.
- *
- * Because the account identifier is `H(secretKey)` with no per-deployment salt or domain
- * separator, the same secret key produces the same identity across all contracts. This is
- * intentional. It provides a linkable pseudonymous identity analogous to Solidity's
- * `msg.sender`. Users who desire cross-contract unlinkability can use different secret keys
- * per contract at the wallet layer.
- *
  * @notice One notable difference regarding this implementation and the EIP1155 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
  * cannot be supported. This is true for both token IDs and for amounts.
@@ -68,6 +57,22 @@ pragma language_version >= 0.23.0;
  * - Introspection.
  * - Contract-to-contract calls for acceptance callback.
  *
+ * @dev Caller identity. This module derives no caller. `setApprovalForAll`,
+ * `transferFrom` and `_unsafeTransferFrom` each take a
+ * `Principal_AuthenticatedCaller` that the composing contract gets once from
+ * `Caller_authenticate` and hands to every module it drives.
+ *
+ * This module used to declare `wit_MultiTokenSK` and derive the caller itself. A
+ * prover writes witness code off-chain, and nothing forces two witnesses to return
+ * the same value, so a contract that authorized through an access-control module and
+ * moved value through this one bound its check and its effect to two unrelated
+ * identities. The derivation lived in a non-exported circuit, so the composing
+ * contract had no sound value to compare against. Taking the caller as a parameter
+ * deletes the second derivation instead of trying to detect it later.
+ *
+ * `access/Principal` holds the identity type and the derivation. `access/Caller`
+ * holds the one witness that feeds it.
+ *
  * @dev Canonicalization
  * All `Either<Bytes<32>, ContractAddress>` values are canonicalized before use as map keys
  * or in ledger writes. Canonicalization zeroes out the inactive branch of the Either,
@@ -78,14 +83,11 @@ pragma language_version >= 0.23.0;
  * `_unsafeTransferFrom` canonicalizes `fromAddress` before comparing against the caller identity.
  *
  * @dev Security Considerations:
- * - The `secretKey` must be kept private. Loss of the key prevents token holders
- *   from proving ownership or authorization. Key exposure allows impersonation.
- * - It is strongly recommended to use cryptographically secure random values for the secret key
- *   (e.g., `crypto.getRandomValues()`). Weak or predictable keys can be brute-forced.
- * - The `secretKey` is provided via the `wit_MultiTokenSK` witness. As with all witnesses,
- *   the contract must not assume that the witness implementation matches the developer's code.
- *   Any DApp may provide any implementation. The ZK proof system constrains what values
- *   can produce valid proofs.
+ * - `access/Caller` owns secret-key handling now. Read that module for the key
+ *   requirements and for what happens when a key is lost or leaked.
+ * - This module authorizes against the principal it is handed. Derive a caller
+ *   identity twice in one composing contract, or hand-build an `AuthenticatedCaller`,
+ *   and you give up the guarantee. Derive once per transaction.
  *
  * @dev Migration plan (safe -> C2C-capable transfers)
  *
@@ -125,6 +127,7 @@ pragma language_version >= 0.23.0;
 module MultiToken {
   import CompactStandardLibrary;
   import "../utils/Utils" prefix Utils_;
+  import "../access/Principal" prefix Principal_;
 
   /**
    * @description Initialization flag, tracked per-module to avoid the compiler's
@@ -161,17 +164,6 @@ module MultiToken {
    * @type {Opaque<"string">} _uri - The base URI for all token URIs.
    */
   export ledger _uri: Opaque<"string">;
-
-  /**
-   * @witness wit_MultiTokenSK
-   * @description Returns the caller's secret key used in deriving the account identifier.
-   *
-   * The same key produces the same account identifier across all contracts. Users who
-   * desire cross-contract unlinkability should use different keys per contract.
-   *
-   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   */
-  witness wit_MultiTokenSK(): Bytes<32>;
 
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
@@ -224,7 +216,7 @@ module MultiToken {
    * Clients calling this function must replace the `\{id\}` substring with the
    * actual token type ID.
    *
-   * @circuitInfo k=8, rows=176
+   * @circuitInfo k=8, rows=178
    *
    * Requirements:
    *
@@ -241,7 +233,7 @@ module MultiToken {
   /**
    * @description Returns the amount of `id` tokens owned by `account`.
    *
-   * @circuitInfo k=10, rows=875
+   * @circuitInfo k=10, rows=869
    *
    * Requirements:
    *
@@ -267,10 +259,7 @@ module MultiToken {
   /**
    * @description Enables or disables approval for `operator` to manage all of the caller's assets.
    *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
-   * witness as `persistentHash(secretKey)`.
-   *
-   * @circuitInfo k=13, rows=2944
+   * @circuitInfo k=13, rows=4879
    *
    * Requirements:
    *
@@ -284,18 +273,18 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(
+                   caller: Principal_AuthenticatedCaller,
                    operator: Either<Bytes<32>, ContractAddress>,
                    approved: Boolean
                    ): [] {
     assertInitialized();
-    const caller = left<Bytes<32>, ContractAddress>(_computeAccountId());
-    _setApprovalForAll(caller, operator, approved);
+    _setApprovalForAll(Principal_asAccount(caller), operator, approved);
   }
 
   /**
    * @description Queries if `operator` is an authorized operator for `account`.
    *
-   * @circuitInfo k=11, rows=1343
+   * @circuitInfo k=11, rows=1349
    *
    * Requirements:
    *
@@ -325,14 +314,11 @@ module MultiToken {
    * @description Transfers ownership of `value` amount of `id` tokens from `fromAddress` to `to`.
    * The caller must be `fromAddress` or approved to transfer on their behalf.
    *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
-   * witness as `persistentHash(secretKey)`.
-   *
    * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=13, rows=4926
+   * @circuitInfo k=13, rows=6848
    *
    * Requirements:
    *
@@ -350,6 +336,7 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit transferFrom(
+                   caller: Principal_AuthenticatedCaller,
                    fromAddress: Either<Bytes<32>, ContractAddress>,
                    to: Either<Bytes<32>, ContractAddress>,
                    id: Uint<128>,
@@ -357,7 +344,7 @@ module MultiToken {
                    ): [] {
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "MultiToken: unsafe transfer");
-    _unsafeTransferFrom(fromAddress, to, id, value);
+    _unsafeTransferFrom(caller, fromAddress, to, id, value);
   }
 
   /**
@@ -369,7 +356,7 @@ module MultiToken {
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=12, rows=2450
+   * @circuitInfo k=12, rows=2447
    *
    * Requirements:
    *
@@ -455,14 +442,11 @@ module MultiToken {
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    * The caller must be `fromAddress` or approved to transfer on their behalf.
    *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
-   * witness as `persistentHash(secretKey)`.
-   *
    * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=13, rows=4925
+   * @circuitInfo k=13, rows=6847
    *
    * Requirements:
    *
@@ -479,6 +463,7 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
+                   caller: Principal_AuthenticatedCaller,
                    fromAddress: Either<Bytes<32>, ContractAddress>,
                    to: Either<Bytes<32>, ContractAddress>,
                    id: Uint<128>,
@@ -486,10 +471,10 @@ module MultiToken {
                    ): [] {
     assertInitialized();
 
-    const caller = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const callerAccount = Principal_asAccount(caller);
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
-    if (disclose(canonFrom) != disclose(caller)) {
-      assert(isApprovedForAll(canonFrom, caller), "MultiToken: unauthorized operator");
+    if (disclose(canonFrom) != disclose(callerAccount)) {
+      assert(isApprovedForAll(canonFrom, callerAccount), "MultiToken: unauthorized operator");
     }
 
     _unsafeTransfer(canonFrom, to, id, value);
@@ -504,7 +489,7 @@ module MultiToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=12, rows=2449
+   * @circuitInfo k=12, rows=2446
    *
    * Requirements:
    *
@@ -567,7 +552,7 @@ module MultiToken {
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=11, rows=1531
+   * @circuitInfo k=11, rows=1488
    *
    * Requirements:
    *
@@ -596,7 +581,7 @@ module MultiToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=11, rows=1530
+   * @circuitInfo k=11, rows=1487
    *
    * Requirements:
    *
@@ -621,7 +606,7 @@ module MultiToken {
   /**
    * @description Destroys a `value` amount of tokens of type `id` from `fromAddress`.
    *
-   * @circuitInfo k=11, rows=1222
+   * @circuitInfo k=11, rows=1299
    *
    * Requirements:
    *
@@ -649,7 +634,7 @@ module MultiToken {
    * @notice This circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *
-   * @circuitInfo k=11, rows=1279
+   * @circuitInfo k=11, rows=1282
    *
    * Requirements:
    *
@@ -686,17 +671,4 @@ module MultiToken {
     _operatorApprovals.lookup(canonOwner).insert(disclose(canonOp), disclose(approved));
   }
 
-  /**
-   * @description Computes the caller's account identifier from the `wit_MultiTokenSK` witness.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * The result is a 32-byte commitment that uniquely identifies the caller.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  circuit _computeAccountId(): Bytes<32> {
-    return Utils_computeAccountId(wit_MultiTokenSK());
-  }
 }

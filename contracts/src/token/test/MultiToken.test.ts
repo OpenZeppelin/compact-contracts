@@ -1,18 +1,12 @@
-import {
-  CompactTypeBytes,
-  CompactTypeVector,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import type { Maybe } from '../../../artifacts/MockMultiToken/contract/index.js';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator.js';
 
-// Helpers
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
-};
+// The caller domain this deployment authenticates under. A real contract stores a
+// per-deployment value. A fixed one here keeps principals precomputable.
+const DOMAIN = pad32('MockMultiToken:test');
 
 const zeroBytes = utils.zeroUint8Array();
 
@@ -41,7 +35,7 @@ const createTestSK = (label: string): Uint8Array => {
 
 const makeUser = (label: string) => {
   const secretKey = createTestSK(label);
-  const accountId = buildAccountIdHash(secretKey);
+  const accountId = derivePrincipal(secretKey, DOMAIN);
   const either = eitherAccountId(accountId);
   return { secretKey, accountId, either };
 };
@@ -126,19 +120,19 @@ let token: MultiTokenSimulator;
 describe('MultiToken', () => {
   describe('before initialization', () => {
     it('should initialize metadata', async () => {
-      token = await MultiTokenSimulator.create(initWithURI);
+      token = await MultiTokenSimulator.create(initWithURI, DOMAIN);
 
       expect(await token.uri(TOKEN_ID)).toEqual(URI);
     });
 
     it('should initialize empty metadata', async () => {
-      token = await MultiTokenSimulator.create(initWithEmptyURI);
+      token = await MultiTokenSimulator.create(initWithEmptyURI, DOMAIN);
 
       expect(await token.uri(TOKEN_ID)).toEqual(NO_STRING);
     });
 
     it('should not be able to re-initialize', async () => {
-      token = await MultiTokenSimulator.create(initWithEmptyURI);
+      token = await MultiTokenSimulator.create(initWithEmptyURI, DOMAIN);
 
       await expect(token.initialize(URI)).rejects.toThrow(
         'MultiToken: contract already initialized',
@@ -148,7 +142,7 @@ describe('MultiToken', () => {
 
   describe('when not initialized correctly', () => {
     beforeEach(async () => {
-      token = await MultiTokenSimulator.create(badInit);
+      token = await MultiTokenSimulator.create(badInit, DOMAIN);
     });
 
     type FailingCircuits = [method: keyof MultiTokenSimulator, args: unknown[]];
@@ -186,7 +180,7 @@ describe('MultiToken', () => {
 
   describe('when initialized correctly', () => {
     beforeEach(async () => {
-      token = await MultiTokenSimulator.create(initWithURI);
+      token = await MultiTokenSimulator.create(initWithURI, DOMAIN);
     });
 
     describe('balanceOf', () => {
@@ -1557,7 +1551,7 @@ describe('MultiToken', () => {
 
   describe('simulator wiring', () => {
     it('should expose the balances map via getPublicState', async () => {
-      const sim = await MultiTokenSimulator.create(initWithURI);
+      const sim = await MultiTokenSimulator.create(initWithURI, DOMAIN);
 
       const ledgerState = await sim.getPublicState();
 
@@ -1569,7 +1563,7 @@ describe('MultiToken', () => {
   describe('privateState helpers', () => {
     describe('getCurrentSecretKey', () => {
       it('should return the injected secret key', async () => {
-        const sim = await MultiTokenSimulator.create(initWithURI);
+        const sim = await MultiTokenSimulator.create(initWithURI, DOMAIN);
         await sim.privateState.injectSecretKey(OWNER.secretKey);
 
         expect(await sim.privateState.getCurrentSecretKey()).toEqual(
@@ -1578,7 +1572,7 @@ describe('MultiToken', () => {
       });
 
       it('should throw when the secret key is undefined', async () => {
-        const sim = await MultiTokenSimulator.create(initWithURI, {
+        const sim = await MultiTokenSimulator.create(initWithURI, DOMAIN, {
           privateState: { secretKey: undefined as unknown as Uint8Array },
         });
 

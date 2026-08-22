@@ -9,9 +9,9 @@ import {
   Contract as MockNonFungibleToken,
 } from '../../../../artifacts/MockNonFungibleToken/contract/index.js';
 import {
-  NonFungibleTokenPrivateState,
-  NonFungibleTokenWitnesses,
-} from '../witnesses/NonFungibleTokenWitnesses.js';
+  CallerPrivateState,
+  CallerWitnesses,
+} from '../../../access/test/witnesses/CallerWitnesses.js';
 
 /**
  * Type constructor args
@@ -20,21 +20,27 @@ type NonFungibleTokenArgs = readonly [
   name: string,
   symbol: string,
   init: boolean,
+  callerDomain: Uint8Array,
 ];
 
 const NonFungibleTokenSimulatorBase = createSimulator<
-  NonFungibleTokenPrivateState,
+  CallerPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof NonFungibleTokenWitnesses>,
-  MockNonFungibleToken<NonFungibleTokenPrivateState>,
+  ReturnType<typeof CallerWitnesses>,
+  MockNonFungibleToken<CallerPrivateState>,
   NonFungibleTokenArgs
 >({
   contractFactory: (witnesses) =>
-    new MockNonFungibleToken<NonFungibleTokenPrivateState>(witnesses),
-  defaultPrivateState: () => NonFungibleTokenPrivateState.generate(),
-  contractArgs: (name, symbol, init) => [name, symbol, init],
+    new MockNonFungibleToken<CallerPrivateState>(witnesses),
+  defaultPrivateState: () => CallerPrivateState.generate(),
+  contractArgs: (name, symbol, init, callerDomain) => [
+    name,
+    symbol,
+    init,
+    callerDomain,
+  ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => NonFungibleTokenWitnesses(),
+  witnessesFactory: () => CallerWitnesses(),
   artifactName: 'MockNonFungibleToken',
 });
 
@@ -46,14 +52,15 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
     name: string,
     symbol: string,
     init: boolean,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
-      NonFungibleTokenPrivateState,
-      ReturnType<typeof NonFungibleTokenWitnesses>
+      CallerPrivateState,
+      ReturnType<typeof CallerWitnesses>
     > = {},
   ): Promise<NonFungibleTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [name, symbol, init],
+      [name, symbol, init, callerDomain],
       options,
     ) as Promise<NonFungibleTokenSimulator>;
   }
@@ -462,12 +469,8 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (
-      newSK: Uint8Array,
-    ): Promise<NonFungibleTokenPrivateState> =>
-      this.updatePrivateState(
-        NonFungibleTokenPrivateState.withSecretKey(newSK),
-      ),
+    injectSecretKey: (newSK: Uint8Array): Promise<CallerPrivateState> =>
+      this.updatePrivateState(CallerPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

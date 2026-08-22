@@ -1,17 +1,11 @@
-import {
-  CompactTypeBytes,
-  CompactTypeVector,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
 
-// Helpers
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
-};
+// The caller domain this deployment authenticates under. A real contract stores a
+// per-deployment value. A fixed one here keeps principals precomputable.
+const DOMAIN = pad32('MockNonFungibleToken:test');
 
 const zeroBytes = utils.zeroUint8Array();
 
@@ -40,7 +34,7 @@ const createTestSK = (label: string): Uint8Array => {
 
 const makeUser = (label: string) => {
   const secretKey = createTestSK(label);
-  const accountId = buildAccountIdHash(secretKey);
+  const accountId = derivePrincipal(secretKey, DOMAIN);
   const either = eitherAccountId(accountId);
   return { secretKey, accountId, either };
 };
@@ -84,7 +78,12 @@ let token: NonFungibleTokenSimulator;
 describe('NonFungibleToken', () => {
   describe('initializer and metadata', () => {
     it('should initialize metadata', async () => {
-      token = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
+      token = await NonFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        INIT,
+        DOMAIN,
+      );
       expect(await token.name()).toEqual(NAME);
       expect(await token.symbol()).toEqual(SYMBOL);
     });
@@ -94,6 +93,7 @@ describe('NonFungibleToken', () => {
         EMPTY_STRING,
         EMPTY_STRING,
         INIT,
+        DOMAIN,
       );
       expect(await token.name()).toEqual(EMPTY_STRING);
       expect(await token.symbol()).toEqual(EMPTY_STRING);
@@ -104,6 +104,7 @@ describe('NonFungibleToken', () => {
         '  NAME  ',
         '  SYMBOL  ',
         INIT,
+        DOMAIN,
       );
       expect(await token.name()).toEqual('  NAME  ');
       expect(await token.symbol()).toEqual('  SYMBOL  ');
@@ -114,6 +115,7 @@ describe('NonFungibleToken', () => {
         'NAME!@#',
         'SYMBOL$%^',
         INIT,
+        DOMAIN,
       );
       expect(await token.name()).toEqual('NAME!@#');
       expect(await token.symbol()).toEqual('SYMBOL$%^');
@@ -126,6 +128,7 @@ describe('NonFungibleToken', () => {
         longName,
         longSymbol,
         INIT,
+        DOMAIN,
       );
       expect(await token.name()).toEqual(longName);
       expect(await token.symbol()).toEqual(longSymbol);
@@ -133,7 +136,7 @@ describe('NonFungibleToken', () => {
   });
 
   beforeEach(async () => {
-    token = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
+    token = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT, DOMAIN);
   });
 
   describe('balanceOf', () => {
@@ -1462,6 +1465,7 @@ describe('Uninitialized NonFungibleToken', () => {
       NAME,
       SYMBOL,
       BAD_INIT,
+      DOMAIN,
     );
   });
 
@@ -1477,15 +1481,30 @@ describe('Uninitialized NonFungibleToken', () => {
 });
 
 describe('NonFungibleTokenSimulator wiring', () => {
-  it('should expose an empty public ledger via getPublicState', async () => {
-    const sim = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
+  it('should expose only the caller domain via getPublicState', async () => {
+    const sim = await NonFungibleTokenSimulator.create(
+      NAME,
+      SYMBOL,
+      INIT,
+      DOMAIN,
+    );
 
-    expect(await sim.getPublicState()).toStrictEqual({});
+    // The prefixed module import hides the module's own ledger. The caller domain
+    // is the mock's field, and it stays public because every caller reads it to
+    // derive the principal it authenticates as.
+    expect(await sim.getPublicState()).toStrictEqual({
+      _callerDomain: DOMAIN,
+    });
   });
 
   describe('privateState getCurrentSecretKey', () => {
     it('should return the injected secret key', async () => {
-      const sim = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT);
+      const sim = await NonFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        INIT,
+        DOMAIN,
+      );
       await sim.privateState.injectSecretKey(OWNER.secretKey);
 
       expect(await sim.privateState.getCurrentSecretKey()).toEqual(
@@ -1494,9 +1513,15 @@ describe('NonFungibleTokenSimulator wiring', () => {
     });
 
     it('should throw when the secret key is undefined', async () => {
-      const sim = await NonFungibleTokenSimulator.create(NAME, SYMBOL, INIT, {
-        privateState: { secretKey: undefined as unknown as Uint8Array },
-      });
+      const sim = await NonFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        INIT,
+        DOMAIN,
+        {
+          privateState: { secretKey: undefined as unknown as Uint8Array },
+        },
+      );
 
       await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
         'Missing secret key',

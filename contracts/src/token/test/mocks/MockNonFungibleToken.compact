@@ -10,8 +10,25 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../NonFungibleToken" prefix NonFungibleToken_;
+import "../../../access/Caller" prefix Caller_;
+import "../../../access/Principal" prefix Principal_;
 
 export { ContractAddress, Either, Maybe };
+
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be derived off-chain before the contract exists.
+ */
+export ledger _callerDomain: Bytes<32>;
+
+/**
+ * @description Authenticates once, under this deployment's stored domain. Every
+ * wrapper routes through here, the pattern a composing contract follows: one
+ * derivation per transaction, shared by every module the contract drives.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
+}
 
 /**
  * @description `init` is a param for testing.
@@ -22,8 +39,10 @@ export { ContractAddress, Either, Maybe };
 constructor(
   _name: Opaque<"string">,
   _symbol: Opaque<"string">,
-  init: Boolean
+  init: Boolean,
+  callerDomain: Bytes<32>
 ) {
+  _callerDomain = disclose(callerDomain);
   if (disclose(init)) {
     NonFungibleToken_initialize(_name, _symbol);
   }
@@ -53,7 +72,7 @@ export circuit approve(
   to: Either<Bytes<32>, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken_approve(to, tokenId);
+  return NonFungibleToken_approve(authenticated(), to, tokenId);
 }
 
 export circuit getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
@@ -64,7 +83,7 @@ export circuit setApprovalForAll(
   operator: Either<Bytes<32>, ContractAddress>,
   approved: Boolean
 ): [] {
-  return NonFungibleToken_setApprovalForAll(operator, approved);
+  return NonFungibleToken_setApprovalForAll(authenticated(), operator, approved);
 }
 
 export circuit isApprovedForAll(
@@ -79,7 +98,7 @@ export circuit transferFrom(
   to: Either<Bytes<32>, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken_transferFrom(fromAddress, to, tokenId);
+  return NonFungibleToken_transferFrom(authenticated(), fromAddress, to, tokenId);
 }
 
 export circuit _requireOwned(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
@@ -154,7 +173,7 @@ export circuit _unsafeTransferFrom(
   to: Either<Bytes<32>, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__unsafeTransferFrom(fromAddress, to, tokenId);
+  return NonFungibleToken__unsafeTransferFrom(authenticated(), fromAddress, to, tokenId);
 }
 
 export circuit _unsafeTransfer(
@@ -171,4 +190,3 @@ export circuit _unsafeMint(
 ): [] {
   return NonFungibleToken__unsafeMint(to, tokenId);
 }
-

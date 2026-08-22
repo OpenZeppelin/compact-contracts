@@ -10,28 +10,28 @@ import {
   Contract as MockMultiToken,
 } from '../../../../artifacts/MockMultiToken/contract/index.js';
 import {
-  MultiTokenPrivateState,
-  MultiTokenWitnesses,
-} from '../witnesses/MultiTokenWitnesses.js';
+  CallerPrivateState,
+  CallerWitnesses,
+} from '../../../access/test/witnesses/CallerWitnesses.js';
 
 /**
  * Type constructor args
  */
-type MultiTokenArgs = readonly [_uri: Maybe<string>];
+type MultiTokenArgs = readonly [_uri: Maybe<string>, callerDomain: Uint8Array];
 
 const MultiTokenSimulatorBase = createSimulator<
-  MultiTokenPrivateState,
+  CallerPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof MultiTokenWitnesses>,
-  MockMultiToken<MultiTokenPrivateState>,
+  ReturnType<typeof CallerWitnesses>,
+  MockMultiToken<CallerPrivateState>,
   MultiTokenArgs
 >({
   contractFactory: (witnesses) =>
-    new MockMultiToken<MultiTokenPrivateState>(witnesses),
-  defaultPrivateState: () => MultiTokenPrivateState.generate(),
-  contractArgs: (_uri) => [_uri],
+    new MockMultiToken<CallerPrivateState>(witnesses),
+  defaultPrivateState: () => CallerPrivateState.generate(),
+  contractArgs: (_uri, callerDomain) => [_uri, callerDomain],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => MultiTokenWitnesses(),
+  witnessesFactory: () => CallerWitnesses(),
   artifactName: 'MockMultiToken',
 });
 
@@ -41,13 +41,17 @@ const MultiTokenSimulatorBase = createSimulator<
 export class MultiTokenSimulator extends MultiTokenSimulatorBase {
   static async create(
     _uri: Maybe<string>,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
-      MultiTokenPrivateState,
-      ReturnType<typeof MultiTokenWitnesses>
+      CallerPrivateState,
+      ReturnType<typeof CallerWitnesses>
     > = {},
   ): Promise<MultiTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create([_uri], options) as Promise<MultiTokenSimulator>;
+    return super.create(
+      [_uri, callerDomain],
+      options,
+    ) as Promise<MultiTokenSimulator>;
   }
 
   /**
@@ -251,8 +255,8 @@ export class MultiTokenSimulator extends MultiTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): Promise<MultiTokenPrivateState> =>
-      this.updatePrivateState(MultiTokenPrivateState.withSecretKey(newSK)),
+    injectSecretKey: (newSK: Uint8Array): Promise<CallerPrivateState> =>
+      this.updatePrivateState(CallerPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.

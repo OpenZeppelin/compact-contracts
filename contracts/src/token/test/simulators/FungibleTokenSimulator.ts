@@ -9,9 +9,9 @@ import {
   Contract as MockFungibleToken,
 } from '../../../../artifacts/MockFungibleToken/contract/index.js';
 import {
-  FungibleTokenPrivateState,
-  FungibleTokenWitnesses,
-} from '../witnesses/FungibleTokenWitnesses.js';
+  CallerPrivateState,
+  CallerWitnesses,
+} from '../../../access/test/witnesses/CallerWitnesses.js';
 
 /**
  * Type constructor args
@@ -21,26 +21,28 @@ type FungibleTokenArgs = readonly [
   symbol: string,
   decimals: bigint,
   init: boolean,
+  callerDomain: Uint8Array,
 ];
 
 const FungibleTokenSimulatorBase = createSimulator<
-  FungibleTokenPrivateState,
+  CallerPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof FungibleTokenWitnesses>,
-  MockFungibleToken<FungibleTokenPrivateState>,
+  ReturnType<typeof CallerWitnesses>,
+  MockFungibleToken<CallerPrivateState>,
   FungibleTokenArgs
 >({
   contractFactory: (witnesses) =>
-    new MockFungibleToken<FungibleTokenPrivateState>(witnesses),
-  defaultPrivateState: () => FungibleTokenPrivateState.generate(),
-  contractArgs: (name, symbol, decimals, init) => [
+    new MockFungibleToken<CallerPrivateState>(witnesses),
+  defaultPrivateState: () => CallerPrivateState.generate(),
+  contractArgs: (name, symbol, decimals, init, callerDomain) => [
     name,
     symbol,
     decimals,
     init,
+    callerDomain,
   ],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => FungibleTokenWitnesses(),
+  witnessesFactory: () => CallerWitnesses(),
   artifactName: 'MockFungibleToken',
 });
 
@@ -53,14 +55,15 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
     symbol: string,
     decimals: bigint,
     init: boolean,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
-      FungibleTokenPrivateState,
-      ReturnType<typeof FungibleTokenWitnesses>
+      CallerPrivateState,
+      ReturnType<typeof CallerWitnesses>
     > = {},
   ): Promise<FungibleTokenSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [name, symbol, decimals, init],
+      [name, symbol, decimals, init, callerDomain],
       options,
     ) as Promise<FungibleTokenSimulator>;
   }
@@ -306,8 +309,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
      * @param newSK - The new secret key to set.
      * @returns The updated private state.
      */
-    injectSecretKey: (newSK: Uint8Array): Promise<FungibleTokenPrivateState> =>
-      this.updatePrivateState(FungibleTokenPrivateState.withSecretKey(newSK)),
+    injectSecretKey: (newSK: Uint8Array): Promise<CallerPrivateState> =>
+      this.updatePrivateState(CallerPrivateState.withSecretKey(newSK)),
 
     /**
      * @description Returns the current secret key from the private state.
