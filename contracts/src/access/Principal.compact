@@ -1,0 +1,198 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (access/Principal.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module Principal
+ * @description The caller-identity type every authenticating circuit in this library
+ * takes, and the derivation that produces it.
+ *
+ * This module declares no witness and holds no ledger state. `Ownable`,
+ * `AccessControl`, `ShieldedAccessControl`, `FungibleToken`, `NonFungibleToken`,
+ * `MultiToken` and `ConfidentialFungibleToken` import it to name the caller type
+ * without inheriting an identity witness.
+ *
+ * @dev Why a struct instead of a bare `Bytes<32>`.
+ *
+ * Both an authenticated identifier and one the caller typed in are 32 bytes, so a
+ * `Bytes<32>` parameter cannot tell them apart. `AuthenticatedCaller` types them
+ * differently. To hand a module an arbitrary account, you have to build the struct
+ * by hand.
+ *
+ * @warning Never take an `AuthenticatedCaller` as a parameter of an exported circuit
+ * on a deployed contract.
+ *
+ * Whoever submits the transaction chooses that parameter. Pick your own principal
+ * and you satisfy every gate in the contract. A top-level contract calls
+ * `Caller_authenticate` and passes the result down. The parameter belongs on module
+ * circuits, which the compiler inlines and which callers reach only through the
+ * composing contract.
+ *
+ *     // In a module: correct. The composing contract supplies the caller.
+ *     export circuit assertOnlyOwner(caller: AuthenticatedCaller): [] { ... }
+ *
+ *     // In a deployed contract: an authentication bypass.
+ *     export circuit withdraw(caller: Principal_AuthenticatedCaller, ...): [] { ... }
+ *
+ *     // In a deployed contract: correct.
+ *     export circuit withdraw(...): [] {
+ *       const caller = Caller_authenticate(_callerDomain);
+ *       ...
+ *     }
+ *
+ * The type system does not enforce this. `test/integration/specs/confusedDeputy.spec.ts`
+ * covers both halves.
+ *
+ * @warning The type guards against mistakes. It does not stop a hostile integrator.
+ * Compact structs are not opaque, so a composing contract can build
+ * `AuthenticatedCaller { principal: someoneElsesId, domain: d }` and this library
+ * will accept it. A hostile composer already controls its whole contract. What the
+ * type buys you: the correct path is the shorter one, and the incorrect path is a
+ * hand-built struct a reviewer will spot. Do not tell auditors this module makes
+ * cross-module identity confusion impossible. It makes one derivation the default
+ * and extra derivations visible.
+ *
+ * @dev Domain separation.
+ *
+ * `derivePrincipal` binds the secret key to a `domain` and to a scheme tag:
+ *
+ * `principal = persistentHash([secretKey, domain, "Principal:v1"])`
+ *
+ * Pick the `domain` per deployment, never per module. A per-module domain hands the
+ * same secret a different principal in each module, so an authorization check in one
+ * module and an effect in another compare different identifiers again, which is the
+ * defect this design removes. One deployment gives one principal to every module the
+ * contract drives. Two deployments give the same secret two unlinkable principals.
+ *
+ * The scheme tag is what `Utils_computeAccountId` (`persistentHash([secretKey])`)
+ * lacked. Without it, an account identifier collides with any other single-preimage
+ * hash of the same secret.
+ *
+ * @dev Choosing a domain.
+ *
+ * - `Caller_authenticate(domain)`, with a domain the contract stores at deploy time,
+ *   is the default. `derivePrincipal` is `pure`, so you can compute a principal
+ *   off-chain with no proof and name one in a constructor: an initial owner, a
+ *   pre-granted role holder. `ShieldedAccessControl`'s `_instanceSalt` follows the
+ *   same pattern.
+ *
+ * - `Caller_authenticateForThisContract()` uses `kernel.self().bytes` and needs no
+ *   storage and no initialization argument. Use it where nobody has to be named
+ *   before the address exists, such as a token whose users register themselves.
+ *
+ * @warning `kernel.self()` does not exist while the deploy transaction is being
+ * built. A contract that names a principal in its constructor cannot use
+ * `authenticateForThisContract`, because the address that principal would derive
+ * under is not known yet. Store a domain instead.
+ */
+module Principal {
+  import CompactStandardLibrary;
+
+  /**
+   * @description A caller identity this library derived, as opposed to an identifier
+   * the caller supplied.
+   *
+   * @notice `principal` is `Bytes<32>`, an account identifier, rather than
+   * `Either<Bytes<32>, ContractAddress>`. No witness can authenticate as a contract,
+   * so this library cannot construct the contract arm today. Widening a circuit
+   * parameter later costs a verifier-key rotation, which the Contract Maintenance
+   * Authority supports. Widening a ledger field costs a state migration, which it
+   * does not. So the narrow arm is the right choice now, and contract-to-contract
+   * callers widen it once a runtime caller primitive exists.
+   */
+  export struct AuthenticatedCaller {
+    principal: Bytes<32>;
+    domain: Bytes<32>;
+  }
+
+  /**
+   * @description The scheme tag mixed into every principal derivation. Separates
+   * this derivation from any other hash of the same secret key.
+   *
+   * @return {Bytes<32>} - The scheme domain tag.
+   */
+  export pure circuit SCHEME_TAG(): Bytes<32> {
+    return pad(32, "Principal:v1");
+  }
+
+  /**
+   * @description Derives a caller's principal from a secret key and a deployment
+   * domain.
+   *
+   * ## Derivation
+   * `principal = persistentHash([secretKey, domain, SCHEME_TAG()])`
+   *
+   * Pure, so a wallet can compute its own principal off-chain with no proof.
+   *
+   * @param {Bytes<32>} secretKey - The caller's 32-byte secret. Must be a
+   * cryptographically secure random value; weak keys can be brute-forced.
+   * @param {Bytes<32>} domain - The per-deployment domain. See the module `@dev`
+   * notes on why this is per-deployment and never per-module.
+   * @return {Bytes<32>} - The derived principal.
+   */
+  export pure circuit derivePrincipal(
+                        secretKey: Bytes<32>,
+                        domain: Bytes<32>
+                        ): Bytes<32> {
+    return persistentHash<Vector<3, Bytes<32>>>([secretKey, domain, SCHEME_TAG()]);
+  }
+
+  /**
+   * @description Builds an `AuthenticatedCaller` from a secret key and a domain.
+   *
+   * @notice Prefer `Caller_authenticateForThisContract` or `Caller_authenticate`.
+   * This circuit is the derivation without the witness read, exposed so a
+   * composing contract that sources its secret some other way (or a test) can
+   * build the same value.
+   *
+   * @param {Bytes<32>} secretKey - The caller's 32-byte secret.
+   * @param {Bytes<32>} domain - The per-deployment domain.
+   * @return {AuthenticatedCaller} - The authenticated caller.
+   */
+  export pure circuit authenticatedCallerFrom(
+                        secretKey: Bytes<32>,
+                        domain: Bytes<32>
+                        ): AuthenticatedCaller {
+    return AuthenticatedCaller {
+      principal: derivePrincipal(secretKey, domain),
+      domain: domain
+    };
+  }
+
+  /**
+   * @description Returns `caller`'s principal as an
+   * `Either<Bytes<32>, ContractAddress>`, the account shape this library's
+   * ledger state and explicit-principal circuits use.
+   *
+   * @param {AuthenticatedCaller} caller - The authenticated caller.
+   * @return {Either<Bytes<32>, ContractAddress>} - The principal as an account.
+   */
+  export pure circuit asAccount(
+                        caller: AuthenticatedCaller
+                        ): Either<Bytes<32>, ContractAddress> {
+    return left<Bytes<32>, ContractAddress>(caller.principal);
+  }
+
+  /**
+   * @description Asserts that `caller` was derived under `expectedDomain`.
+   *
+   * @notice Optional. A contract that wants to reject a principal derived for a
+   * different deployment calls this before acting. Modules do not call it
+   * themselves because they do not store a domain.
+   *
+   * Requirements:
+   *
+   * - `caller.domain` equals `expectedDomain`.
+   *
+   * @param {AuthenticatedCaller} caller - The authenticated caller.
+   * @param {Bytes<32>} expectedDomain - The domain the caller must have used.
+   * @return {[]} - Empty tuple.
+   */
+  export pure circuit assertDomain(
+                        caller: AuthenticatedCaller,
+                        expectedDomain: Bytes<32>
+                        ): [] {
+    assert(caller.domain == expectedDomain, "Principal: unexpected caller domain");
+  }
+}
