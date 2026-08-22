@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../Caller" prefix Caller_;
+import "../../Principal" prefix Principal_;
+
+export { ContractAddress, Either, Maybe };
+export { Principal_AuthenticatedCaller };
+
+export circuit authenticate(domain: Bytes<32>): Principal_AuthenticatedCaller {
+  return disclose(Caller_authenticate(domain));
+}
+
+export circuit authenticateForThisContract(): Principal_AuthenticatedCaller {
+  return disclose(Caller_authenticateForThisContract());
+}
+
+export circuit derivePrincipal(secretKey: Bytes<32>, domain: Bytes<32>): Bytes<32> {
+  return Principal_derivePrincipal(disclose(secretKey), disclose(domain));
+}
+
+export circuit asAccount(caller: Principal_AuthenticatedCaller): Either<Bytes<32>, ContractAddress> {
+  return Principal_asAccount(caller);
+}
+
+export circuit assertDomain(caller: Principal_AuthenticatedCaller, expectedDomain: Bytes<32>): [] {
+  return Principal_assertDomain(caller, expectedDomain);
+}

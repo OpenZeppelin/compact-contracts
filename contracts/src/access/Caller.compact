@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (access/Caller.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module Caller
+ * @description The one identity authority for the account-based modules: `Ownable`,
+ * `AccessControl`, `ShieldedAccessControl`, `FungibleToken`, `NonFungibleToken`,
+ * `MultiToken` and `ConfidentialFungibleToken`. Across that set, only this module
+ * reads a caller's secret key.
+ *
+ * Call `authenticate(domain)` or `authenticateForThisContract()` once, then pass the
+ * `Principal_AuthenticatedCaller` you get back to every module the contract drives.
+ * None of those modules declares an identity witness, so a caller identity has one
+ * place to come from.
+ *
+ * @warning A top-level contract produces the caller here. It never takes one as a
+ * parameter of an exported circuit. The `@warning` on `Principal` explains why that
+ * would hand an attacker every gate in the contract.
+ *
+ * @notice Scope. Other witnesses remain in the library.
+ *
+ * `ConfidentialFungibleToken` keeps three encryption witnesses
+ * (`wit_ConfidentialTokenEK`, `wit_PlaintextBalance`, `wit_RandomnessSeed`). Each
+ * one is bound in-circuit against on-chain state. Its identity witness is gone and
+ * its caller comes from here.
+ *
+ * `ShieldedAccessControl` keeps `wit_getRoleCommitmentPath`. That witness carries
+ * proof data, a Merkle path the circuit checks against the on-chain root, so it
+ * carries no identity. Its `_instanceSalt` still separates role commitments across
+ * deployments while the caller domain separates principals. Its identity witness is
+ * gone.
+ *
+ * `ZOwnablePK` keeps `wit_secretNonce` and stays out of scope. Nothing derives its
+ * identity from a witness: the anchor is `ownPublicKey()`, a runtime primitive that
+ * returns the same value to every module in one transaction, and the witness adds a
+ * blinding nonce. Swapping that anchor for a supplied principal would throw away a
+ * binding the runtime already guarantees.
+ *
+ * Drive `ZOwnablePK` alongside a migrated module and the contract holds two
+ * unrelated identities, a coin public key and a principal. Bind them yourself. That
+ * module's header says how.
+ *
+ * @dev What this replaces.
+ *
+ * Each of the modules named above used to declare its own secret-key witness and
+ * derive its own caller. A prover writes witness code off-chain, and nothing forces
+ * two witnesses to return the same value, so one composed circuit could authorize
+ * through one module and take effect through another under a different identity. The
+ * authorization held on its own. The effect held on its own. Only the pairing went
+ * unconstrained, and because each module derived its caller in a non-exported
+ * circuit, the composing contract had no sound value to compare against and could
+ * not repair the pairing itself.
+ *
+ * @dev What still does not hold.
+ *
+ * Compact cannot force a witness to be read once per transaction. A contract can
+ * call `authenticate` twice and pass one principal to the gate and another to the
+ * effect. That now takes a visible line in the composing contract instead of hiding
+ * inside module internals. The `@warning` on `Principal` makes the matching point
+ * about struct forgery.
+ *
+ * `test/integration/specs/confusedDeputy.spec.ts` covers both halves against a
+ * contract that composes a gate module with an effect module.
+ *
+ * @dev Cost. The derivation runs one `persistentHash` over three 32-byte words, and
+ * `persistentHash` dominates these circuits. A circuit that authenticates and also
+ * does one module's work costs more than the version that folded the derivation into
+ * that same circuit. A circuit that authenticates once and drives several modules
+ * costs less, since it pays for the derivation once instead of once per module. So
+ * authenticate once per transaction, and do not call `authenticate` inside each
+ * module wrapper. Row counts sit on the `@circuitInfo` annotations of each module.
+ *
+ * @dev Contract-to-contract calls.
+ *
+ * No other contract can call a module that reads a witness, because the calling
+ * contract cannot supply the callee's witnesses. The business modules no longer read
+ * one. Only this module does. A calling contract holds no secret key, so
+ * authenticating it needs a runtime caller primitive: a parameter would carry only
+ * the calling contract's word for who it is. Once that primitive exists, an
+ * `authenticateContract` circuit joins this module, returns the same type, and every
+ * business module stays as it is.
+ */
+module Caller {
+  import CompactStandardLibrary;
+  import "./Principal" prefix Principal_;
+
+  /**
+   * @witness wit_CallerSK
+   * @description Returns the caller's secret key.
+   *
+   * @dev No circuit verifies this witness, and none can. The principal it derives
+   * is the authenticated identity, so no earlier on-chain value exists to check it
+   * against. Supply a secret you do not own and you authenticate as whoever does
+   * own it, which means you already had their secret. The one thing the witness
+   * must not do is answer differently twice in one transaction. See the module's
+   * `@dev What still does not hold`.
+   *
+   * @return {Bytes<32>} - The caller's 32-byte secret key. Generate it with a
+   * cryptographically secure source such as `crypto.getRandomValues()`. Lose the
+   * key and you cannot authenticate. Leak it and anyone can impersonate you.
+   */
+  witness wit_CallerSK(): Bytes<32>;
+
+  /**
+   * @description Authenticates the caller under an explicit `domain`.
+   *
+   * Start here. Store a domain at deploy time and pass it in. The derivation is
+   * `pure`, so you can compute a principal off-chain before the contract exists and
+   * name one in a constructor: an initial owner, a pre-granted role holder.
+   *
+   * @warning Give two contracts the same domain and one secret yields one principal
+   * on both. Sometimes you want that, for a set of related contracts sharing an
+   * identity. Otherwise it links a user across deployments. Use a per-deployment
+   * value unless you mean to share.
+   *
+   * @notice No `@circuitInfo` here. This circuit touches no ledger state, so the
+   * compiler emits no proof circuit for it and whichever circuit calls it pays the
+   * cost.
+   *
+   * @param {Bytes<32>} domain - The per-deployment domain.
+   * @return {Principal_AuthenticatedCaller} - The authenticated caller.
+   */
+  export circuit authenticate(domain: Bytes<32>): Principal_AuthenticatedCaller {
+    return Principal_authenticatedCallerFrom(wit_CallerSK(), domain);
+  }
+
+  /**
+   * @description Authenticates the caller under this contract's own address,
+   * `kernel.self()`.
+   *
+   * Takes no ledger state and no initialization argument, and gives one secret an
+   * unlinkable principal per deployment.
+   *
+   * @warning Use this only where nobody has to be named before deployment. The
+   * address does not exist while the deploy transaction is being built, so you
+   * cannot derive a constructor argument such as an initial owner under this
+   * domain. Those contracts call `authenticate` with a stored domain.
+   *
+   * @circuitInfo k=13, rows=4247
+   *
+   * @return {Principal_AuthenticatedCaller} - The authenticated caller.
+   */
+  export circuit authenticateForThisContract(): Principal_AuthenticatedCaller {
+    return Principal_authenticatedCallerFrom(wit_CallerSK(), kernel.self().bytes);
+  }
+}
