@@ -8,6 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { derivePrincipal, pad32 } from '#test-utils/fixtures/principal.js';
 import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
@@ -21,7 +22,6 @@ const itDryOnly = it.skipIf(isLiveBackend());
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
 const COMMITMENT_DOMAIN = 'ShieldedAccessControl:commitment';
 const NULLIFIER_DOMAIN = 'ShieldedAccessControl:nullifier';
-const ACCOUNT_DOMAIN = 'ShieldedAccessControl:accountId';
 
 const DEFAULT_MT_PATH: MerkleTreePath<Uint8Array> = {
   leaf: new Uint8Array(32),
@@ -45,12 +45,13 @@ const encodePadded32 = (value: string): Uint8Array => {
   return out;
 };
 
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+// The caller domain this deployment authenticates under. INSTANCE_SALT does a
+// different job: the salt separates role commitments across deployments and the
+// domain separates principals. A real contract may reuse one value for both.
+const CALLER_DOMAIN = pad32('MockShieldedAccessControl:test');
 
-  const bDomain = encodePadded32(ACCOUNT_DOMAIN);
-  return persistentHash(rt_type, [sk, INSTANCE_SALT, bDomain]);
-};
+const buildAccountIdHash = (sk: Uint8Array): Uint8Array =>
+  derivePrincipal(sk, CALLER_DOMAIN);
 
 const buildRoleCommitmentHash = (
   role: Uint8Array,
@@ -115,6 +116,7 @@ describe('ShieldedAccessControl', () => {
       contract = await ShieldedAccessControlSimulator.create(
         INSTANCE_SALT,
         false,
+        CALLER_DOMAIN,
       );
     });
 
@@ -159,7 +161,6 @@ describe('ShieldedAccessControl', () => {
       ['computeRoleCommitment', [ROLE_ADMIN, ADMIN_ACCOUNT_ID]],
       ['computeNullifier', [ADMIN_ROLE_COMMITMENT]],
       ['DEFAULT_ADMIN_ROLE', []],
-      ['computeAccountId', [ADMIN_SK, INSTANCE_SALT]],
     ];
 
     it.each(circuitsNotRequiringInit)(
@@ -175,7 +176,11 @@ describe('ShieldedAccessControl', () => {
 
     it('should fail with zero instanceSalt', async () => {
       await expect(
-        ShieldedAccessControlSimulator.create(new Uint8Array(32), true),
+        ShieldedAccessControlSimulator.create(
+          new Uint8Array(32),
+          true,
+          CALLER_DOMAIN,
+        ),
       ).rejects.toThrow('ShieldedAccessControl: Instance salt must not be 0');
     });
   });
@@ -185,6 +190,7 @@ describe('ShieldedAccessControl', () => {
       contract = await ShieldedAccessControlSimulator.create(
         INSTANCE_SALT,
         true,
+        CALLER_DOMAIN,
         {
           privateState:
             ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),
@@ -196,34 +202,6 @@ describe('ShieldedAccessControl', () => {
       it('should return zero bytes', async () => {
         expect(await contract.DEFAULT_ADMIN_ROLE()).toStrictEqual(
           new Uint8Array(32),
-        );
-      });
-    });
-
-    describe('computeAccountId', () => {
-      it('should match pre-computed accountId', async () => {
-        expect(
-          await contract.computeAccountId(ADMIN_SK, INSTANCE_SALT),
-        ).toEqual(ADMIN_ACCOUNT_ID);
-      });
-
-      it('should produce different accountId with different key', async () => {
-        expect(
-          await contract.computeAccountId(BAD_SK, INSTANCE_SALT),
-        ).not.toEqual(ADMIN_ACCOUNT_ID);
-      });
-
-      it('should produce different accountId with different salt', async () => {
-        const differentSalt = new Uint8Array(32).fill(1);
-        expect(
-          await contract.computeAccountId(ADMIN_SK, differentSalt),
-        ).not.toEqual(ADMIN_ACCOUNT_ID);
-      });
-
-      it('should accept zero-byte secret key', async () => {
-        const zeroKey = new Uint8Array(32);
-        expect(await contract.computeAccountId(zeroKey, INSTANCE_SALT)).toEqual(
-          buildAccountIdHash(zeroKey),
         );
       });
     });
@@ -251,6 +229,7 @@ describe('ShieldedAccessControl', () => {
         const newContract = await ShieldedAccessControlSimulator.create(
           new Uint8Array(32).fill(1),
           true,
+          CALLER_DOMAIN,
           {
             privateState:
               ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),
@@ -1170,14 +1149,17 @@ describe('ShieldedAccessControl', () => {
         const contractB = await ShieldedAccessControlSimulator.create(
           differentSalt,
           true,
+          CALLER_DOMAIN,
           {
             privateState:
               ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),
           },
         );
 
-        // Same key on contract B produces a different accountId (different salt)
-        // so canProveRole should return false — role was never granted on B
+        // B sees the same accountId, since it shares the caller domain and the
+        // key. It sees a different role commitment, because `_instanceSalt` is
+        // hashed into that. Nobody inserted this commitment on B, so the role
+        // cannot be proved there.
         expect(await contractB.canProveRole(ROLE_ADMIN)).toBe(false);
       });
 
@@ -1186,6 +1168,7 @@ describe('ShieldedAccessControl', () => {
         const contractB = await ShieldedAccessControlSimulator.create(
           differentSalt,
           true,
+          CALLER_DOMAIN,
           {
             privateState:
               ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),
@@ -1196,16 +1179,40 @@ describe('ShieldedAccessControl', () => {
           ROLE_ADMIN,
           ADMIN_ACCOUNT_ID,
         );
-        const accountIdOnB = await contractB.computeAccountId(
-          ADMIN_SK,
-          differentSalt,
-        );
+        // Same principal on both deployments; only the salt differs.
         const commitmentB = await contractB.computeRoleCommitment(
           ROLE_ADMIN,
-          accountIdOnB,
+          ADMIN_ACCOUNT_ID,
         );
 
         expect(commitmentA).not.toEqual(commitmentB);
+      });
+
+      it('should give the same key a different principal under a different caller domain', async () => {
+        // The other half of the separation. The caller domain is what makes one
+        // secret key unlinkable across deployments. The instance salt does not.
+        const otherDomain = pad32('MockShieldedAccessControl:other');
+        const contractB = await ShieldedAccessControlSimulator.create(
+          INSTANCE_SALT,
+          true,
+          otherDomain,
+          {
+            privateState:
+              ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),
+          },
+        );
+
+        // Granted to the principal ADMIN_SK holds on this contract.
+        await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        await contractB._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+
+        expect(derivePrincipal(ADMIN_SK, otherDomain)).not.toEqual(
+          ADMIN_ACCOUNT_ID,
+        );
+        // B authenticates the same key as a different principal, so it looks for
+        // a commitment nobody inserted.
+        expect(await contract.canProveRole(ROLE_ADMIN)).toBe(true);
+        expect(await contractB.canProveRole(ROLE_ADMIN)).toBe(false);
       });
     });
   });
@@ -1215,6 +1222,7 @@ describe('ShieldedAccessControl', () => {
       contract = await ShieldedAccessControlSimulator.create(
         INSTANCE_SALT,
         true,
+        CALLER_DOMAIN,
         {
           privateState:
             ShieldedAccessControlPrivateState.withSecretKey(ADMIN_SK),

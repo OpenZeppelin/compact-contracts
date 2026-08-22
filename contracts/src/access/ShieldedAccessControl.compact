@@ -15,22 +15,25 @@ pragma language_version >= 0.23.0;
  * ```
  * roleCommitment := SHA256( role ‖ accountId ‖ instanceSalt ‖ commitmentDomain ) where
  *
- * accountId := SHA256( secretKey ‖ instanceSalt ‖ accountIdDomain )
+ * accountId := the caller's principal, supplied by the composing contract
+ *               (see `access/Principal`)
  *
  * roleNullifier  := SHA256( roleCommitment ‖ nullifierDomain )
  *
  * commitmentDomain := pad(32, "ShieldedAccessControl:commitment")
- * accountIdDomain  := pad(32, "ShieldedAccessControl:accountId")
  * nullifierDomain  := pad(32, "ShieldedAccessControl:nullifier")
  * ```
  *
  *  - `roleCommitment` is a Merkle tree leaf committing a `(roleId, accountId)` pairing, inserted
  *     into `_operatorRoles` on grant. The `instanceSalt` prevents commitment collisions across
  *     deployments that share the same role identifiers.
- *  - `accountId` is a privacy-preserving identity commitment. `secretKey` is a 32-byte
- *     cryptographically secure random value held in local private state (supplied by `wit_secretKey`);
- *     `instanceSalt` ensures the same key cannot be correlated across contracts.
- *     A single `secretKey` can be used across multiple roles within the same contract instance.
+ *  - `accountId` is a privacy-preserving identity commitment: the principal the
+ *     composing contract derives once per transaction through `access/Caller` and
+ *     hands to every module it drives. This module reads no identity witness, so an
+ *     authorization here and an effect in another module cannot land on two
+ *     different accounts (audit L-06). Each deployment gets its own domain, so
+ *     nobody can correlate one secret key across contracts, and one key serves
+ *     every role within a contract instance. See `access/Principal`.
  *  - `roleNullifier` is a one-time burn token inserted into `_roleCommitmentNullifiers` on
  *     revocation. Its presence permanently invalidates the corresponding role commitment,
  *     making re-grant under the same `accountId` impossible without generating a new identity.
@@ -168,6 +171,7 @@ pragma language_version >= 0.23.0;
 module ShieldedAccessControl {
   import CompactStandardLibrary;
   import "../utils/Utils" prefix Utils_;
+  import "./Principal" prefix Principal_;
 
   export enum UpdateType {
     Grant,
@@ -235,17 +239,6 @@ module ShieldedAccessControl {
   witness wit_getRoleCommitmentPath(
             roleCommitment: RoleCommitment
             ): MerkleTreePath<20, RoleCommitment>;
-
-  /**
-   * @witness wit_secretKey
-   * @description Returns the user's secret key used in deriving the shielded account identifier.
-   *
-   * The same key can be used across multiple roles within a contract instance. If a role is
-   * revoked and re-granted, a new secret key must be generated to produce a new `accountId`.
-   *
-   * @returns {Bytes<32>} secretKey - A secret key used in deriving the shielded account identifier.
-   */
-  witness wit_secretKey(): Bytes<32>;
 
   /**
    * @description Initializes the contract by storing the `instanceSalt` that acts as a privacy additive
@@ -327,9 +320,12 @@ module ShieldedAccessControl {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit assertOnlyRole(role: RoleIdentifier): [] {
+  export circuit assertOnlyRole(
+                   caller: Principal_AuthenticatedCaller,
+                   role: RoleIdentifier
+                   ): [] {
     assertInitialized();
-    assert(_uncheckedCanProveRole(role), "ShieldedAccessControl: unauthorized account");
+    assert(_uncheckedCanProveRole(caller, role), "ShieldedAccessControl: unauthorized account");
   }
 
   /**
@@ -352,9 +348,12 @@ module ShieldedAccessControl {
    *
    * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
-  export circuit canProveRole(role: RoleIdentifier): Boolean {
+  export circuit canProveRole(
+                   caller: Principal_AuthenticatedCaller,
+                   role: RoleIdentifier
+                   ): Boolean {
     assertInitialized();
-    return _uncheckedCanProveRole(role);
+    return _uncheckedCanProveRole(caller, role);
   }
 
   /**
@@ -380,9 +379,11 @@ module ShieldedAccessControl {
    *
    * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
-  circuit _uncheckedCanProveRole(role: RoleIdentifier): Boolean {
-    const accountId = _computeAccountId();
-    return _validateRole(role, accountId);
+  circuit _uncheckedCanProveRole(
+            caller: Principal_AuthenticatedCaller,
+            role: RoleIdentifier
+            ): Boolean {
+    return _validateRole(role, caller.principal as AccountIdentifier);
   }
 
   /**
@@ -411,9 +412,13 @@ module ShieldedAccessControl {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit grantRole(role: RoleIdentifier, accountId: AccountIdentifier): [] {
+  export circuit grantRole(
+                   caller: Principal_AuthenticatedCaller,
+                   role: RoleIdentifier,
+                   accountId: AccountIdentifier
+                   ): [] {
     // Initialization check performed in assertOnlyRole
-    assertOnlyRole(getRoleAdmin(role));
+    assertOnlyRole(caller, getRoleAdmin(role));
     _updateRole(role, accountId, UpdateType.Grant);
   }
 
@@ -481,10 +486,14 @@ module ShieldedAccessControl {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit renounceRole(role: RoleIdentifier, accountIdConfirmation: AccountIdentifier): [] {
+  export circuit renounceRole(
+                   caller: Principal_AuthenticatedCaller,
+                   role: RoleIdentifier,
+                   accountIdConfirmation: AccountIdentifier
+                   ): [] {
     assertInitialized();
 
-    assert(accountIdConfirmation == _computeAccountId(),
+    assert(accountIdConfirmation == caller.principal as AccountIdentifier,
            "ShieldedAccessControl: bad confirmation"
            );
 
@@ -516,9 +525,13 @@ module ShieldedAccessControl {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit revokeRole(role: RoleIdentifier, accountId: AccountIdentifier): [] {
+  export circuit revokeRole(
+                   caller: Principal_AuthenticatedCaller,
+                   role: RoleIdentifier,
+                   accountId: AccountIdentifier
+                   ): [] {
     // Initialization check performed in assertOnlyRole
-    assertOnlyRole(getRoleAdmin(role));
+    assertOnlyRole(caller, getRoleAdmin(role));
     _updateRole(role, accountId, UpdateType.Revoke);
   }
 
@@ -747,71 +760,4 @@ module ShieldedAccessControl {
            as RoleNullifier;
   }
 
-  /**
-   * @description Computes the unique identifier (`accountId`) of a caller from their
-   * secret key and the instance salt.
-   *
-   * @warning This circuit does not perform an initialization check. It's only meant to be used as
-   * an internal helper in the Shielded Access Control module. Using this circuit outside of the
-   * module may cause undefined behavior and break security guarantees.
-   *
-   * ## ID Derivation
-   * `accountId = SHA256(secretKey, instanceSalt, accountIdDomain)`
-   *
-   * - `secretKey`: A 32-byte cryptographically secure random value supplied by the `wit_secretKey` witness.
-   * - `instanceSalt`: A unique per-deployment salt, stored during initialization.
-   * This prevents commitment collisions across deployments.
-   * - `accountIdDomain`: Domain separator `"ShieldedAccessControl:accountId"` (padded to 32 bytes) to prevent
-   * hash collisions when extending the module or using similar commitment schemes.
-   *
-   * The result is a 32-byte commitment that uniquely identifies the account.
-   * This value is later used in role commitment hashing,
-   * and acts as a privacy-preserving identity.
-   *
-   * @returns {AccountIdentifier} accountId - The computed account ID.
-   */
-  circuit _computeAccountId(): AccountIdentifier {
-    return computeAccountId(wit_secretKey(), _instanceSalt);
-  }
-
-  /**
-   * @description Computes an `accountId` without on-chain state, allowing a user to derive
-   * their shielded identity commitment before submitting it in a grant or revoke operation.
-   * This is the off-chain counterpart to {_computeAccountId} and produces an identical result
-   * given the same inputs.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the privacy guarantees of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered. Back up
-   *   keys securely before using them in role commitments.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = SHA256(secretKey, instanceSalt, accountIdDomain)`
-   *
-   * See {_computeAccountId} for further details.
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   * @param {Bytes<32>} instanceSalt - The unique per-deployment salt for the contract instance.
-   *
-   * @returns {AccountIdentifier} accountId - The computed account ID.
-   */
-  export pure circuit computeAccountId(
-                        secretKey: Bytes<32>,
-                        instanceSalt: Bytes<32>
-                        ): AccountIdentifier {
-    return persistentHash<Vector<3, Bytes<32>>>(
-             [secretKey, instanceSalt, pad(32, "ShieldedAccessControl:accountId")]
-             )
-           as AccountIdentifier;
-  }
 }

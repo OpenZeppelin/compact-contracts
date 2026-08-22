@@ -23,6 +23,7 @@ type ShieldedAccessControlLedger = ReturnType<typeof ledger>;
 type ShieldedAccessControlArgs = readonly [
   instanceSalt: Uint8Array,
   isInit: boolean,
+  callerDomain: Uint8Array,
 ];
 
 const ShieldedAccessControlSimulatorBase = createSimulator<
@@ -35,8 +36,8 @@ const ShieldedAccessControlSimulatorBase = createSimulator<
   contractFactory: (witnesses) =>
     new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(witnesses),
   defaultPrivateState: () => ShieldedAccessControlPrivateState.generate(),
-  contractArgs: (instanceSalt, isInit) => {
-    return [instanceSalt, isInit];
+  contractArgs: (instanceSalt, isInit, callerDomain) => {
+    return [instanceSalt, isInit, callerDomain];
   },
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () =>
@@ -51,6 +52,7 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
   static async create(
     instanceSalt: Uint8Array,
     isInit: boolean,
+    callerDomain: Uint8Array,
     options: SimulatorOptions<
       ShieldedAccessControlPrivateState,
       ReturnType<typeof ShieldedAccessControlWitnesses>
@@ -58,7 +60,7 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
   ): Promise<ShieldedAccessControlSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, isInit],
+      [instanceSalt, isInit, callerDomain],
       options,
     ) as Promise<ShieldedAccessControlSimulator>;
   }
@@ -115,13 +117,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
 
   public computeNullifier(roleCommitment: Uint8Array): Promise<Uint8Array> {
     return this.circuits.pure.computeNullifier(roleCommitment);
-  }
-
-  public computeAccountId(
-    secretKey: Uint8Array,
-    instanceSalt: Uint8Array,
-  ): Promise<Uint8Array> {
-    return this.circuits.pure.computeAccountId(secretKey, instanceSalt);
   }
 
   public readonly privateState = {

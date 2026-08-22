@@ -10,11 +10,20 @@ pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
 
 import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+import "../../Caller" prefix Caller_;
+import "../../Principal" prefix Principal_;
 
 export { MerkleTreePath,
          ShieldedAccessControl__operatorRoles,
          ShieldedAccessControl__roleCommitmentNullifiers,
          ShieldedAccessControl__adminRoles };
+
+/**
+ * @description The caller domain this deployment authenticates under. Stored at
+ * deploy time so a principal can be derived off-chain before the contract exists,
+ * which is what lets a deployment pre-grant a role to a named account.
+ */
+export ledger _callerDomain: Bytes<32>;
 
 /**
  * @description `isInit` is a param for testing.
@@ -23,10 +32,21 @@ export { MerkleTreePath,
  * This behavior is to test that circuits are not callable unless the
  * contract is initialized.
 */
-constructor(instanceSalt: Bytes<32>, isInit: Boolean) {
+constructor(instanceSalt: Bytes<32>, isInit: Boolean, callerDomain: Bytes<32>) {
+  _callerDomain = disclose(callerDomain);
   if (disclose(isInit)) {
     ShieldedAccessControl_initialize(instanceSalt);
   }
+}
+
+/**
+ * @description Authenticates once, under this deployment's stored domain. Every
+ * wrapper below routes through here. The circuit derives the principal and takes
+ * none as a parameter, since a sender who could choose one would satisfy every role
+ * gate in the contract.
+ */
+circuit authenticated(): Principal_AuthenticatedCaller {
+  return Caller_authenticate(_callerDomain);
 }
 
 export pure circuit DEFAULT_ADMIN_ROLE(): ShieldedAccessControl_RoleIdentifier {
@@ -34,18 +54,18 @@ export pure circuit DEFAULT_ADMIN_ROLE(): ShieldedAccessControl_RoleIdentifier {
 }
 
 export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
-  ShieldedAccessControl_assertOnlyRole(role);
+  ShieldedAccessControl_assertOnlyRole(authenticated(), role);
 }
 
 export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
-  return ShieldedAccessControl_canProveRole(role);
+  return ShieldedAccessControl_canProveRole(authenticated(), role);
 }
 
 export circuit grantRole(
                  role: ShieldedAccessControl_RoleIdentifier,
                  accountId: ShieldedAccessControl_AccountIdentifier
                  ): [] {
-  ShieldedAccessControl_grantRole(role, accountId);
+  ShieldedAccessControl_grantRole(authenticated(), role, accountId);
 }
 
 export circuit _grantRole(
@@ -59,14 +79,14 @@ export circuit renounceRole(
                  role: ShieldedAccessControl_RoleIdentifier,
                  accountIdConfirmation: ShieldedAccessControl_AccountIdentifier
                  ): [] {
-  ShieldedAccessControl_renounceRole(role, accountIdConfirmation);
+  ShieldedAccessControl_renounceRole(authenticated(), role, accountIdConfirmation);
 }
 
 export circuit revokeRole(
                  role: ShieldedAccessControl_RoleIdentifier,
                  accountId: ShieldedAccessControl_AccountIdentifier
                  ): [] {
-  ShieldedAccessControl_revokeRole(role, accountId);
+  ShieldedAccessControl_revokeRole(authenticated(), role, accountId);
 }
 
 export circuit _revokeRole(
@@ -101,12 +121,4 @@ export pure circuit computeNullifier(
                       roleCommitment: ShieldedAccessControl_RoleCommitment
                       ): ShieldedAccessControl_RoleNullifier {
   return ShieldedAccessControl_computeNullifier(roleCommitment);
-}
-
-export pure circuit computeAccountId(
-                      secretKey: Bytes<32>,
-                      instanceSalt: Bytes<32>
-                      ): ShieldedAccessControl_AccountIdentifier {
-
-  return ShieldedAccessControl_computeAccountId(secretKey, instanceSalt);
 }
