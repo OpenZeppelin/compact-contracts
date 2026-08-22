@@ -14,6 +14,25 @@ pragma language_version >= 0.23.0;
  * derived from the owner's public key and a secret nonce.
  * For the strongest security guarantees, use an Air-Gapped Public Key.
  *
+ * @notice Identity model, and why this module takes no `AuthenticatedCaller`
+ * (audit L-06 / platform L-03).
+ *
+ * The account-based modules moved to one supplied caller because each of them
+ * derived its own identity from its own witness, and nothing forced two witnesses in
+ * one transaction to agree. This module works differently. Its identity anchor is
+ * `ownPublicKey()`, a runtime primitive that returns the same value to every circuit
+ * in a transaction and that the prover cannot choose. `wit_secretNonce` supplies a
+ * blinding factor. A nonce that disagrees with the stored commitment fails the check
+ * instead of authenticating somebody else. Swap that anchor for a supplied principal
+ * and you throw away a binding the runtime already guarantees, so this module keeps
+ * its witness.
+ *
+ * @warning Compose this module with a migrated one (`Ownable`, `AccessControl`,
+ * `ShieldedAccessControl`, the token modules) and your contract holds two unrelated
+ * identities: a Zswap coin public key here and a `Principal_AuthenticatedCaller`
+ * there. Nothing binds them. If they have to be the same party, establish that
+ * yourself, for example by registering the mapping and asserting it in-circuit.
+ *
  * @notice This module explicitly supports commitments derived from public keys;
  * however, it may be possible to use contract addresses when contract-to-contract
  * calls become available. This will be revisited when it's known if/how witnesses
