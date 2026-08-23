@@ -94,8 +94,8 @@ export circuit sweep(): Bytes<32> {
   return Token_sweep();
 }
 
-export circuit clearMemos(): [] {
-  return Token_clearMemos();
+export circuit clearMemos(expectedEpoch: Uint<64>): [] {
+  return Token_clearMemos(expectedEpoch);
 }
 
 // ─── Conserving value operations ─────────────────────────────────────────
