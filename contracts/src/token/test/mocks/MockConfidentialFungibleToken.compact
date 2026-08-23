@@ -102,6 +102,6 @@ export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
   return CFT_computeAccountId(sk);
 }
 
-export circuit clearMemos(): [] {
-  return CFT_clearMemos();
+export circuit clearMemos(expectedEpoch: Uint<64>): [] {
+  return CFT_clearMemos(expectedEpoch);
 }

@@ -991,7 +991,14 @@ module ConfidentialFungibleToken {
    * @description Clears the caller's memo list, letting a wallet that has folded
    * its memos into its local balance cache prune on-chain memo storage.
    *
-   * @circuitInfo k=13, rows=2316
+   * `expectedEpoch` is the caller's view of its `_creditEpochs` value at the
+   * moment it read the list. The call is rejected unless that still matches, so
+   * a credit landing between the read and this transaction is never silently
+   * discarded. The wallet retries against the memos it has now seen. A wallet
+   * therefore reads its memo list and its epoch together, folds the memos into
+   * its cache, and passes that epoch back here.
+   *
+   * @circuitInfo k=13, rows=2345
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -999,20 +1006,32 @@ module ConfidentialFungibleToken {
    * them without a durable off-chain record of the balance loses the ability to
    * recover it; and because spending requires proving the balance plaintext, the
    * funds become unspendable, not merely undisplayable. Clear only memos already
-   * folded into a durable cache/backup (see §7 of the design doc).
+   * folded into a durable cache/backup. The epoch check only rules out a credit
+   * the caller has not seen; it does not make clearing safe for memos the caller
+   * never folded in.
+   *
+   * @param {Uint<64>} expectedEpoch - The caller's view of its credit epoch.
    *
    * Requirements:
    *
    * - Contract is initialized.
+   * - The caller has a memo list.
+   * - `expectedEpoch` equals the caller's current credit epoch.
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit clearMemos(): [] {
+  export circuit clearMemos(expectedEpoch: Uint<64>): [] {
     assertInitialized();
     const accountId = _computeAccountId();
-    if (_memos.member(disclose(accountId))) {
-      _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
-    }
+
+    // Both reads are unconditional, so both are pinned in the transcript and a
+    // concurrent credit invalidates this tx
+    assert(_memos.member(disclose(accountId)),
+           "ConfidentialFungibleToken: no memo list");
+    assert(_creditEpochs.lookup(disclose(accountId)) as Field == expectedEpoch as Field,
+           "ConfidentialFungibleToken: memo list changed");
+
+    _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
   }
 
   // ---------------------------------------------------------------------------
