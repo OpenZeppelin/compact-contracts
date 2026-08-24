@@ -393,6 +393,40 @@ describe.skipIf(isLiveBackend())(
       await cft.approve(BOB.accountId, cap);
     };
 
+    // One escrow spend by Bob, returning the entry either side. `allowance` is
+    // his current remaining, which he must cache to prove the spend.
+    const spendEscrow = async (
+      value: bigint,
+      allowance: bigint,
+      via: 'transferFrom' | 'burnFrom' = 'transferFrom',
+    ) => {
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      const before = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.cachePlaintext(before.spenderCt, allowance);
+      if (via === 'transferFrom') {
+        await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, value);
+      } else {
+        await cft._burnFrom(ALICE.accountId, value);
+      }
+      const after = await cft.allowance(ALICE.accountId, BOB.accountId);
+      return { before, after };
+    };
+
+    type SpendPair = Awaited<ReturnType<typeof spendEscrow>>;
+
+    // Not plain inequality: an intervening re-approve re-randomizes the escrow
+    // anyway so that would pass unfixed. Both spends subtract `Enc(value, r)`
+    // for the same value, so repeated randomness means
+    // `before1 - after1 == before2 - after2` i.e. `b1 + a2 == b2 + a1`
+    const expectRerandomized = (a: SpendPair, b: SpendPair) => {
+      expect(
+        elgamal.add(a.before.spenderCt, b.after.spenderCt),
+      ).not.toStrictEqual(elgamal.add(b.before.spenderCt, a.after.spenderCt));
+      expect(elgamal.add(a.before.ownerCt, b.after.ownerCt)).not.toStrictEqual(
+        elgamal.add(b.before.ownerCt, a.after.ownerCt),
+      );
+    };
+
     it('records an allowance and debits the owner balance', async () => {
       await approveBob(100n, 40n);
 
@@ -704,6 +738,51 @@ describe.skipIf(isLiveBackend())(
         55n,
       );
       await cft._burn(55n);
+    });
+
+    it('re-randomizes every escrow value across spends under one spender seed', async () => {
+      await approveBob(100n, 40n);
+
+      const first = await spendEscrow(10n, 40n); // remaining 30
+
+      // Load-bearing: equal remainders across both spends. Differing
+      // plaintexts would mask a repeated pad
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const refunded = elgamal.add(
+        await cft.balanceOf(ALICE.accountId),
+        escrow.ownerCt,
+      );
+      await cft.privateState.cachePlaintext(refunded, 60n + 30n);
+      await cft.approve(BOB.accountId, 40n);
+
+      const second = await spendEscrow(10n, 40n); // remaining 30 again
+
+      expect(second.after.ownerMemo).not.toStrictEqual(first.after.ownerMemo);
+      expectRerandomized(first, second);
+    });
+
+    // The memo can't be compared here: consecutive spends leave different
+    // remainders, so the memos differ on plaintext alone.
+    it('re-randomizes across consecutive spends on one approval', async () => {
+      await approveBob(100n, 40n);
+
+      const first = await spendEscrow(10n, 40n); // 40 -> 30
+      const second = await spendEscrow(10n, 30n); // 30 -> 20
+
+      expectRerandomized(first, second);
+    });
+
+    it('re-randomizes across escrow burns under one spender seed', async () => {
+      await approveBob(100n, 40n);
+
+      const first = await spendEscrow(10n, 40n, 'burnFrom');
+      const second = await spendEscrow(10n, 30n, 'burnFrom');
+
+      expectRerandomized(first, second);
     });
 
     it('re-approve after a partial spend fails if the owner assumes the escrow is untouched', async () => {
