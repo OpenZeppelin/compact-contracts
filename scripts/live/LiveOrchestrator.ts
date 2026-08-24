@@ -11,6 +11,7 @@ import {
 } from './paths.ts';
 import type { Reporter } from './Reporter.ts';
 import { banner, run } from './shell.ts';
+import { filterSpecFiles, specFiles } from './specs.ts';
 import type { LivePlan, LiveTarget } from './targets.ts';
 import type { VitestRunner } from './VitestRunner.ts';
 
@@ -70,6 +71,7 @@ export class LiveOrchestrator {
   readonly #compiler: ArtifactCompiler;
   readonly #runner: VitestRunner;
   readonly #reporter: Reporter;
+  readonly #specFiles: (target: string) => readonly string[];
 
   constructor(deps: {
     readonly plan: LivePlan;
@@ -77,12 +79,16 @@ export class LiveOrchestrator {
     readonly compiler: ArtifactCompiler;
     readonly runner: VitestRunner;
     readonly reporter: Reporter;
+    /** A target's spec files. Injected only so a round can be tested without a
+     * real `src/` tree. */
+    readonly specFiles?: (target: string) => readonly string[];
   }) {
     this.#plan = deps.plan;
     this.#stack = deps.stack;
     this.#compiler = deps.compiler;
     this.#runner = deps.runner;
     this.#reporter = deps.reporter;
+    this.#specFiles = deps.specFiles ?? specFiles;
   }
 
   /** @returns the process exit code */
@@ -144,8 +150,12 @@ export class LiveOrchestrator {
    *
    * Each target gets a freshly reset node: smaller coin tree, no cross-target
    * state interactions. The harness smoke already validated the stack, and its
-   * only on-chain footprint (NIGHT/dust) does not trip the freshness guard — so
+   * only on-chain footprint (NIGHT/dust) does not trip the freshness guard, so
    * the first target reuses the node the smoke ran against.
+   *
+   * A file filter is resolved per target, and a target it matches nothing under
+   * is skipped rather than run: that keeps a filter from reaching into another
+   * target's specs, which matters most in CI, where each target is its own job.
    *
    * @returns the failing files, or `undefined` on an infrastructure abort
    */
@@ -153,21 +163,42 @@ export class LiveOrchestrator {
     const { targets, fileFilters } = this.#plan;
     const failed: FailedFile[] = [];
     let filesRun = 0;
+    let targetsRun = 0;
 
     for (const [i, target] of targets.entries()) {
       banner(`ROUND 1 · ${target.name} (${i + 1}/${targets.length})`);
-      if (i > 0 && (await this.#stack.up()) !== 0) {
+
+      // vitest ORs positional filters, so passing the target directory *and* a
+      // name filter would run the whole target, and passing the name alone would
+      // reach into every OTHER target too (the project's include glob is not
+      // scoped to one). So a name filter is resolved against this target's own
+      // spec files and handed over as explicit paths. With no filter, the
+      // target's own filters run the whole set (for integration: none, so the
+      // project's include glob decides).
+      const filters =
+        fileFilters.length > 0
+          ? filterSpecFiles(this.#specFiles(target.name), fileFilters)
+          : target.defaultFilters;
+
+      // Nothing to run here, and an empty filter list would run the whole
+      // project. Skipping keeps the filter scoped; a filter that matches nothing
+      // in ANY target is caught after the loop.
+      if (fileFilters.length > 0 && filters.length === 0) {
+        console.log(
+          `\n${target.name}: no file matches ${fileFilters.join(' ')} — skipped.`,
+        );
+        continue;
+      }
+
+      // The harness smoke already validated the stack and its NIGHT/dust
+      // footprint does not trip the freshness guard, so the first target that
+      // actually runs reuses that node.
+      if (targetsRun > 0 && (await this.#stack.up()) !== 0) {
         console.log(`env-up failed before '${target.name}'.`);
         return undefined;
       }
+      targetsRun++;
 
-      // vitest ORs positional filters, so passing the target dir *and* a name
-      // filter would match the whole target (every file is under the dir). Use
-      // the name filters when given — they scope to the matching files;
-      // otherwise the target's own filters run the whole set (for integration:
-      // none, so the project's include glob decides).
-      const filters =
-        fileFilters.length > 0 ? fileFilters : target.defaultFilters;
       const reportPath = round1Report(target.name);
       const status = await this.#runner.run(
         target.project,

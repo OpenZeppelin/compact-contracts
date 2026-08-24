@@ -1,4 +1,10 @@
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,7 +18,8 @@ import type { LiveStack } from '../LiveStack.ts';
 import { round2Report } from '../paths.ts';
 import type { Reporter } from '../Reporter.ts';
 import { RunLock } from '../RunLock.ts';
-import { listTargets, resolvePlan } from '../targets.ts';
+import { filterSpecFiles, specFilesIn } from '../specs.ts';
+import { type LiveTarget, listTargets, resolvePlan } from '../targets.ts';
 import { VitestRunner } from '../VitestRunner.ts';
 
 /**
@@ -293,28 +300,52 @@ describe('LiveOrchestrator', () => {
     defaultFilters: ['src/faketarget'],
   } as const;
 
+  /** The positional filters each `VitestRunner.run` call received, in order. */
+  let ran: { target: string; filters: readonly string[] }[] = [];
+
   /** A round wired to stand-ins: every collaborator but the harness-smoke spawn
    * is constructor-injected, so a whole round runs without docker or vitest. */
-  const roundOver = (
-    fileStatuses: () => Map<string, string> | undefined,
-    fileFilters: readonly string[] = [],
-  ): LiveOrchestrator =>
-    new LiveOrchestrator({
-      plan: { targets: [TARGET], fileFilters, integration: false },
+  const roundOver = (opts: {
+    readonly fileStatuses: () => Map<string, string> | undefined;
+    readonly targets?: readonly LiveTarget[];
+    readonly fileFilters?: readonly string[];
+    readonly specFiles?: (target: string) => readonly string[];
+  }): LiveOrchestrator => {
+    const targets = opts.targets ?? [TARGET];
+    return new LiveOrchestrator({
+      plan: {
+        targets,
+        fileFilters: opts.fileFilters ?? [],
+        integration: false,
+      },
       stack: { up: async () => 0, stop: () => {} } as unknown as LiveStack,
       compiler: {
         compileVerified: async () => true,
       } as unknown as ArtifactCompiler,
-      runner: { run: async () => 0, fileStatuses } as unknown as VitestRunner,
+      runner: {
+        run: async (_project: string, report: string, filters: string[]) => {
+          // The report path names the target (`live-r1-<target>.json`), so a
+          // skipped target cannot be mistaken for the one that ran after it.
+          ran.push({
+            target: path.basename(report).replace(/^live-r1-|\.json$/g, ''),
+            filters,
+          });
+          return 0;
+        },
+        fileStatuses: opts.fileStatuses,
+      } as unknown as VitestRunner,
       reporter: {
         firstRunGreen: () => 0,
         verdict: () => 0,
       } as unknown as Reporter,
+      specFiles: opts.specFiles,
     });
+  };
 
   let logged: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    ran = [];
     logged = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
@@ -328,7 +359,11 @@ describe('LiveOrchestrator', () => {
     // A mistyped target is indistinguishable from a file filter, and
     // `--passWithNoTests` makes vitest exit 0 with an empty report — so without
     // this guard the run reports PASSED having executed nothing.
-    const code = await roundOver(() => new Map(), ['multsig']).run();
+    const code = await roundOver({
+      fileStatuses: () => new Map(),
+      fileFilters: ['multsig'],
+      specFiles: () => ['src/faketarget/test/Thing.test.ts'],
+    }).run();
 
     expect(code).toBe(INFRA_ABORT);
     expect(output()).toContain('no test file matched');
@@ -336,18 +371,164 @@ describe('LiveOrchestrator', () => {
   });
 
   it('aborts when a target wrote no report at all', async () => {
-    const code = await roundOver(() => undefined).run();
+    const code = await roundOver({ fileStatuses: () => undefined }).run();
 
     expect(code).toBe(INFRA_ABORT);
     expect(output()).toContain('produced no results file');
   });
 
   it('reports the first run green when every file passed', async () => {
-    const code = await roundOver(
-      () => new Map([['a.test.ts', 'passed']]),
-    ).run();
+    const code = await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'passed']]),
+    }).run();
 
     expect(code).toBe(0);
+  });
+
+  it('runs the whole target when no filter was given', async () => {
+    await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'passed']]),
+    }).run();
+
+    expect(ran).toStrictEqual([
+      { target: 'faketarget', filters: TARGET.defaultFilters },
+    ]);
+  });
+
+  it('hands a file filter over as matching paths under the target', async () => {
+    // Not the filter itself: vitest ORs positional filters against the whole
+    // project include, so `Forwarder` alone would also run another target's
+    // `Forwarder` spec — in CI, where each target is its own job, twice.
+    await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'passed']]),
+      fileFilters: ['forwarder'],
+      specFiles: () => [
+        'src/faketarget/test/Forwarder.test.ts',
+        'src/faketarget/test/Other.test.ts',
+      ],
+    }).run();
+
+    expect(ran).toStrictEqual([
+      {
+        target: 'faketarget',
+        // Matched case-insensitively, as vitest matches it.
+        filters: ['src/faketarget/test/Forwarder.test.ts'],
+      },
+    ]);
+  });
+
+  it('skips a target the filter matches nothing under', async () => {
+    // An empty filter list would run the target's whole include glob, so this
+    // has to skip rather than fall through.
+    const other = {
+      name: 'othertarget',
+      project: 'unit-live',
+      defaultFilters: ['src/othertarget'],
+    } as const;
+
+    await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'passed']]),
+      targets: [TARGET, other],
+      fileFilters: ['Forwarder'],
+      specFiles: (target) =>
+        target === 'faketarget'
+          ? ['src/faketarget/test/Forwarder.test.ts']
+          : ['src/othertarget/test/Unrelated.test.ts'],
+    }).run();
+
+    expect(ran).toStrictEqual([
+      {
+        target: 'faketarget',
+        filters: ['src/faketarget/test/Forwarder.test.ts'],
+      },
+    ]);
+    expect(output()).toContain('othertarget: no file matches Forwarder');
+  });
+});
+
+describe('filterSpecFiles', () => {
+  const FILES = [
+    'src/multisig/test/Forwarder.test.ts',
+    'src/token/test/FungibleToken.test.ts',
+  ];
+
+  it('matches a substring of the path, case-insensitively', () => {
+    // vitest lowercases both sides (`TestProject.filterFiles`), so a filter that
+    // runs locally must not be rejected as unmatched here.
+    expect(filterSpecFiles(FILES, ['forwarder'])).toStrictEqual([
+      'src/multisig/test/Forwarder.test.ts',
+    ]);
+  });
+
+  it('matches a directory prefix as well as a file name', () => {
+    expect(filterSpecFiles(FILES, ['src/token'])).toStrictEqual([
+      'src/token/test/FungibleToken.test.ts',
+    ]);
+  });
+
+  it('ORs several filters', () => {
+    expect(filterSpecFiles(FILES, ['Forwarder', 'Fungible'])).toStrictEqual(
+      FILES,
+    );
+  });
+
+  it('matches nothing for a filter no path contains', () => {
+    expect(filterSpecFiles(FILES, ['Frowarder'])).toStrictEqual([]);
+  });
+});
+
+describe('specFilesIn', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), 'live-specs-'));
+  });
+
+  /** Write `name` under `dir`, creating its parent directories. */
+  const touch = (name: string): void => {
+    const file = path.join(dir, name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, '');
+  };
+
+  it('finds the suffix at any depth', () => {
+    touch('src/multisig/test/Forwarder.test.ts');
+    touch('src/multisig/test/witnesses/Deep.test.ts');
+
+    expect(specFilesIn(dir, dir, '.test.ts')).toStrictEqual([
+      'src/multisig/test/Forwarder.test.ts',
+      'src/multisig/test/witnesses/Deep.test.ts',
+    ]);
+  });
+
+  it('takes only the suffix asked for', () => {
+    // One suffix per live project: `unit-live` includes `*.test.ts`, so a
+    // `*.spec.ts` under `src/` would be handed to vitest as a path it never runs.
+    touch('src/multisig/test/Forwarder.test.ts');
+    touch('src/multisig/test/Forwarder.spec.ts');
+    touch('src/multisig/MultiSigWallet.compact');
+
+    expect(specFilesIn(dir, dir, '.test.ts')).toStrictEqual([
+      'src/multisig/test/Forwarder.test.ts',
+    ]);
+  });
+
+  it('reports paths relative to the given base', () => {
+    // The base is the vitest root, because that is what a positional filter is
+    // matched against.
+    touch('contracts/src/token/test/FungibleToken.test.ts');
+
+    expect(
+      specFilesIn(path.join(dir, 'contracts'), dir, '.test.ts'),
+    ).toStrictEqual(['contracts/src/token/test/FungibleToken.test.ts']);
+  });
+
+  it('reports nothing for a directory that does not exist', () => {
+    // A target with no `src/` directory cannot be in the target list, so this is
+    // only about not throwing on one.
+    expect(specFilesIn(path.join(dir, 'nope'), dir, '.test.ts')).toStrictEqual(
+      [],
+    );
   });
 });
 

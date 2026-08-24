@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,7 +11,6 @@ import {
   nightlyAction,
   reportNightly,
 } from '../nightly.ts';
-import { specFilesIn } from '../specs.ts';
 
 /**
  * Unit tests for what `live.yml` used to do in `run:` shell: resolving the matrix
@@ -140,6 +139,22 @@ describe('resolveMatrix', () => {
     expect(resolution.message).toContain("'nope' is not a live target");
   });
 
+  it('rejects a label whose scope is empty', () => {
+    // `live-tests:` passes the workflow's `startsWith` gate. Reading it as "every
+    // target" would queue the full fan-out off a malformed label.
+    const resolution = resolveMatrix(
+      request({ label: `${LIVE_LABEL}:` }),
+      TARGETS,
+      specs,
+    );
+
+    expect(resolution.ok).toBe(false);
+    if (resolution.ok) return;
+    expect(resolution.message).toContain(
+      `'${LIVE_LABEL}:' is not a live target`,
+    );
+  });
+
   it('ignores an unrelated label', () => {
     // The workflow gates on the label name, so this is belt and braces: an
     // unrelated label must not be read as a target.
@@ -181,6 +196,17 @@ describe('resolveMatrix', () => {
       ok: true,
       targets: ['token'],
       dropped: ['access', 'multisig', 'integration'],
+    });
+  });
+
+  it('matches a filter case-insensitively, as vitest does', () => {
+    // A filter that runs the Forwarder specs locally must not be rejected here.
+    expect(
+      resolveMatrix(request({ filter: 'forwarder' }), TARGETS, specs),
+    ).toStrictEqual({
+      ok: true,
+      targets: ['multisig', 'integration'],
+      dropped: ['access', 'token'],
     });
   });
 
@@ -522,57 +548,6 @@ describe('GhIssueTracker', () => {
     expect(() =>
       new GhIssueTracker('o/r', exec).findOpen('live-nightly'),
     ).toThrow(/gh issue list returned unreadable JSON.*something unexpected/s);
-  });
-});
-
-describe('specFilesIn', () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = mkdtempSync(path.join(os.tmpdir(), 'live-ci-specs-'));
-  });
-
-  /** Write `name` under `dir`, creating its parent directories. */
-  const touch = (name: string): void => {
-    const file = path.join(dir, name);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, '');
-  };
-
-  it('finds the spec convention of both live projects, at any depth', () => {
-    touch('src/multisig/test/Forwarder.test.ts');
-    touch('test/integration/specs/Composed.spec.ts');
-
-    expect(specFilesIn(dir, dir)).toStrictEqual([
-      'src/multisig/test/Forwarder.test.ts',
-      'test/integration/specs/Composed.spec.ts',
-    ]);
-  });
-
-  it('ignores files that are not specs', () => {
-    touch('src/multisig/test/Forwarder.test.ts');
-    touch('src/multisig/MultiSigWallet.compact');
-    touch('src/multisig/test/simulators/Simulator.ts');
-
-    expect(specFilesIn(dir, dir)).toStrictEqual([
-      'src/multisig/test/Forwarder.test.ts',
-    ]);
-  });
-
-  it('reports paths relative to the given base', () => {
-    // The base is the vitest root, because that is what a positional filter is
-    // matched against.
-    touch('contracts/src/token/test/FungibleToken.test.ts');
-
-    expect(specFilesIn(path.join(dir, 'contracts'), dir)).toStrictEqual([
-      'contracts/src/token/test/FungibleToken.test.ts',
-    ]);
-  });
-
-  it('reports nothing for a directory that does not exist', () => {
-    // A target whose `src/` directory is missing cannot be in the target list,
-    // so this is only about not throwing on one.
-    expect(specFilesIn(path.join(dir, 'nope'), dir)).toStrictEqual([]);
   });
 });
 

@@ -1,3 +1,5 @@
+import { filterSpecFiles } from '../live/specs.ts';
+
 /**
  * Which live targets `live.yml` fans out into matrix jobs.
  *
@@ -45,7 +47,11 @@ function requestedTarget(
 ): string {
   const label = request.label.trim();
   if (label.startsWith(`${LIVE_LABEL}:`)) {
-    return label.slice(LIVE_LABEL.length + 1).trim();
+    // A bare `live-tests:` names no target, and `''` here would mean "every
+    // target" — a malformed label must not silently queue the full fan-out. Hand
+    // the label itself back instead: it is not a target name, so the caller
+    // rejects it with the valid ones.
+    return label.slice(LIVE_LABEL.length + 1).trim() || label;
   }
   // The bare label carries no scope, so a PR run falls through to the dispatch
   // input, which is itself empty on a `pull_request` event.
@@ -99,9 +105,10 @@ export function resolveMatrix(
   // others. The ones it misses must not get a job at all: one live target that
   // runs no file is an infrastructure abort in the runner, not a pass, so a
   // full fan-out with a filter would report red jobs for every target the
-  // filter does not name.
-  const matched = scope.filter((target) =>
-    specFiles(target).some((file) => file.includes(filter)),
+  // filter does not name. The match is vitest's own, so a filter that works
+  // locally is never rejected here.
+  const matched = scope.filter(
+    (target) => filterSpecFiles(specFiles(target), [filter]).length > 0,
   );
   if (matched.length === 0) {
     return {

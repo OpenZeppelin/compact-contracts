@@ -2,7 +2,7 @@ import { setOutput } from './ci/actions.ts';
 import { GhIssueTracker } from './ci/gh.ts';
 import { resolveMatrix } from './ci/matrix.ts';
 import { reportNightly } from './ci/nightly.ts';
-import { specFiles } from './ci/specs.ts';
+import { specFiles } from './live/specs.ts';
 import { listTargets, liveCategories } from './live/targets.ts';
 
 /**
@@ -14,7 +14,6 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * are exactly the ones a mistake stays hidden in for a night. Each concern lives
  * in `scripts/ci/`:
  *   - `matrix.ts`  — which live targets the run fans out into (pure)
- *   - `specs.ts`   — the spec files a target would run, for filter narrowing
  *   - `nightly.ts` — what the nightly reports to the tracking issue (pure)
  *   - `gh.ts`      — the `gh` CLI adapter behind the issue operations
  *   - `actions.ts` — the runner's step-output protocol

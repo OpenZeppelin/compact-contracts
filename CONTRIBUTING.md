@@ -215,6 +215,11 @@ yarn test:live multisig ShieldedTreasury # any file matching "ShieldedTreasury"
 yarn test:live integration ConfidentialFungibleToken # one integration spec
 ```
 
+The filter is resolved against the named target's own spec files, matched the way
+vitest matches it (a case-insensitive substring of the path), so it never reaches
+into another target's specs. In an unscoped run, a target the filter matches
+nothing under is skipped; a filter that matches nothing anywhere aborts the run.
+
 The two-round flake check still applies to a scoped run, so a green result
 means the same thing it does for the full suite.
 
@@ -255,7 +260,7 @@ The live suite is too slow for the regular PR checks (hours, not minutes), so [`
 
 A plan job asks the runner which live targets exist (the same list `yarn test:live --list` prints) and fans out one job per target, so each gets its own runner, its own stack, and its own 6-hour job budget. Every job runs the same `yarn test:live` entry point a local run does, so the two-round flake semantics are identical. Each job's verdict lands in its GitHub job summary, the JSON verdict reports upload as a `live-reports-<target>` artifact on every run, and the service and worker logs as `live-logs-<target>` on failure.
 
-A `filter` input narrows the matrix as well as the run: a target the filter matches no file under gets no job, because one live target that runs nothing is an abort in the runner rather than a pass. A filter that matches nothing anywhere fails the plan job in seconds.
+A `filter` input narrows the matrix as well as the run: a target the filter matches no file under gets no job, because one live target that runs nothing is an abort in the runner rather than a pass. A filter that matches nothing anywhere fails the plan job in seconds. The plan job matches it exactly as vitest does, so a filter that works locally is never rejected here.
 
 The workflow itself holds no logic: resolving that matrix and reporting the nightly both live in [`scripts/live-ci.ts`](./scripts/live-ci.ts), so both are unit tested and runnable locally.
 
