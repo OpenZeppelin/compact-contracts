@@ -66,7 +66,18 @@ export class GhIssueTracker implements IssueTracker {
       '--json',
       'number',
     ]);
-    const issues = JSON.parse(out || '[]') as readonly IssueRef[];
+    let issues: readonly IssueRef[];
+    try {
+      issues = JSON.parse(out || '[]') as readonly IssueRef[];
+    } catch (e) {
+      // `gh` keeps its warnings on stderr today, so this should not happen. If it
+      // ever does, a bare `SyntaxError` names neither the command nor the output.
+      throw new Error(
+        `gh issue list returned unreadable JSON (${
+          e instanceof Error ? e.message : String(e)
+        }): ${out}`,
+      );
+    }
     return issues[0]?.number;
   }
 

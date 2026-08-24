@@ -34,7 +34,8 @@
     "env:status": "make env-status",
     "env:logs": "make env-logs",
     "env:logs:clean": "make env-logs-clean",
-    "types": "turbo run types",
+    "types": "turbo run types && yarn run types:scripts",
+    "types:scripts": "tsc -p scripts/tsconfig.json",
     "clean": "turbo run clean"
   },
   "resolutions": {

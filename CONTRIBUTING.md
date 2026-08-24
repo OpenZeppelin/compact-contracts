@@ -251,14 +251,17 @@ The live suite is too slow for the regular PR checks (hours, not minutes), so [`
 
 * **Nightly** on `main`, as the regression safety net. A failed nightly opens (or comments on) a `live-nightly` tracking issue, which closes automatically on the next green run.
 * **On demand**: run `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `target` and `filter` inputs.
-* **On a PR**: apply the `live-tests` label. Re-apply it for a fresh run after new pushes.
+* **On a PR**: apply the `live-tests` label for every target, or `live-tests:<target>` (e.g. `live-tests:multisig`) for one of them. Re-apply the label for a fresh run after new pushes.
 
 A plan job asks the runner which live targets exist (the same list `yarn test:live --list` prints) and fans out one job per target, so each gets its own runner, its own stack, and its own 6-hour job budget. Every job runs the same `yarn test:live` entry point a local run does, so the two-round flake semantics are identical. Each job's verdict lands in its GitHub job summary, the JSON verdict reports upload as a `live-reports-<target>` artifact on every run, and the service and worker logs as `live-logs-<target>` on failure.
+
+A `filter` input narrows the matrix as well as the run: a target the filter matches no file under gets no job, because one live target that runs nothing is an abort in the runner rather than a pass. A filter that matches nothing anywhere fails the plan job in seconds.
 
 The workflow itself holds no logic: resolving that matrix and reporting the nightly both live in [`scripts/live-ci.ts`](./scripts/live-ci.ts), so both are unit tested and runnable locally.
 
 ```bash
-yarn test:scripts   # dry unit tests for scripts/live and scripts/ci
+yarn test:scripts    # dry unit tests for scripts/live and scripts/ci
+yarn types:scripts   # type-check them (also part of `yarn types`)
 ```
 
 ## Styleguides

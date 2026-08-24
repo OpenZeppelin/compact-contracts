@@ -2,6 +2,7 @@ import { setOutput } from './ci/actions.ts';
 import { GhIssueTracker } from './ci/gh.ts';
 import { resolveMatrix } from './ci/matrix.ts';
 import { reportNightly } from './ci/nightly.ts';
+import { specFiles } from './ci/specs.ts';
 import { listTargets, liveCategories } from './live/targets.ts';
 
 /**
@@ -13,13 +14,14 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * are exactly the ones a mistake stays hidden in for a night. Each concern lives
  * in `scripts/ci/`:
  *   - `matrix.ts`  — which live targets the run fans out into (pure)
+ *   - `specs.ts`   — the spec files a target would run, for filter narrowing
  *   - `nightly.ts` — what the nightly reports to the tracking issue (pure)
  *   - `gh.ts`      — the `gh` CLI adapter behind the issue operations
  *   - `actions.ts` — the runner's step-output protocol
  * Their tests are in `scripts/ci/test/` (`yarn test:scripts`).
  *
  * Usage, with the inputs each command reads from the environment:
- *   node scripts/live-ci.ts matrix    # TARGET
+ *   node scripts/live-ci.ts matrix    # TARGET, LABEL, FILTER
  *   node scripts/live-ci.ts nightly   # REPO, SUITE_RESULT, PLAN_RESULT, RUN_URL
  *
  * Node runs this .ts directly (type stripping) and it imports only `node:`
@@ -46,13 +48,25 @@ function optionalEnv(name: string): string {
 
 /** Publish the matrix the suite job fans out over. */
 function matrix(): number {
+  const filter = optionalEnv('FILTER');
   const resolution = resolveMatrix(
-    optionalEnv('TARGET'),
+    {
+      target: optionalEnv('TARGET'),
+      label: optionalEnv('LABEL'),
+      filter,
+    },
     listTargets(liveCategories()),
+    specFiles,
   );
   if (!resolution.ok) {
     console.log(resolution.message);
     return 1;
+  }
+  if (resolution.dropped.length > 0) {
+    console.log(
+      `no file matches '${filter}' under ${resolution.dropped.join(', ')}: ` +
+        'no job for those.',
+    );
   }
   console.log(`live targets: ${resolution.targets.join(', ')}`);
   setOutput('targets', JSON.stringify(resolution.targets));

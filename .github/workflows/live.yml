@@ -11,7 +11,8 @@ env:
 #     `live-nightly` tracking issue, which closes on the next green run)
 #   - on demand via workflow_dispatch, optionally scoped to one target or a file
 #     filter within it
-#   - on a PR, opt-in, by applying the `live-tests` label (re-apply to re-run)
+#   - on a PR, opt-in, by applying the `live-tests` label for every target or
+#     `live-tests:<target>` for one of them (re-apply to re-run)
 #
 # The plan job asks the runner which live targets exist and fans out one matrix
 # job per target, so each gets its own runner, its own stack, and its own 6-hour
@@ -34,6 +35,9 @@ on:
         required: false
         default: all
       filter:
+        # A substring of a spec file's path, as vitest matches it. The plan job
+        # drops the targets it matches nothing under, since a live target that
+        # runs no file is an abort in the runner rather than a pass.
         description: "Vitest file filter within the target (e.g. Forwarder)"
         required: false
         default: ""
@@ -49,8 +53,12 @@ concurrency:
 jobs:
   plan:
     name: Plan targets
-    # `pull_request: labeled` fires for every label; only ours starts a run.
-    if: github.event_name != 'pull_request' || github.event.label.name == 'live-tests'
+    # `pull_request: labeled` fires for every label; only ours starts a run. The
+    # label itself carries the scope, and the plan step reads it.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.label.name == 'live-tests'
+      || startsWith(github.event.label.name, 'live-tests:')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -74,10 +82,14 @@ jobs:
         with:
           node-version-file: ".nvmrc"
 
+      # TARGET and FILTER are empty on every trigger but workflow_dispatch, LABEL
+      # on every trigger but a PR label. The script resolves whichever is set.
       - name: Resolve the target matrix
         id: plan
         env:
           TARGET: ${{ inputs.target }}
+          LABEL: ${{ github.event.label.name }}
+          FILTER: ${{ inputs.filter }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
 
   run-live-suite:
