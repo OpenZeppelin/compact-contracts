@@ -92,9 +92,49 @@ jobs:
           FILTER: ${{ inputs.filter }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
 
+  # One cold compiler install for the whole run, instead of one per matrix job.
+  #
+  # `setup-compact-action` installs on a cache miss and then runs `compact
+  # update` unconditionally, which queries the GitHub API. On a cache hit that
+  # query is allowed to fail (the action swallows it) because the compiler is
+  # already there; on a miss there is no compiler to fall back on and the job
+  # dies in setup. A full fan-out on a cold cache means every job racing that one
+  # API at the same second, which is exactly how a run lost a target to
+  # "Failed to update / No default compiler set" rather than to a test.
+  #
+  # Populating the cache here once leaves every suite job below on the tolerant
+  # path. Best effort by design: if this job fails, the matrix still runs and
+  # each job installs its own compiler, as it did before.
+  warm-compiler-cache:
+    name: Warm the compiler cache
+    needs: plan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    continue-on-error: true
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Compiler only: no yarn install, and no turbo-cache entry saved from a job
+      # that compiles nothing (see the action).
+      - name: Setup Compact Compiler
+        uses: ./.github/actions/setup
+        with:
+          compact-only: "true"
+
   run-live-suite:
     name: live-${{ matrix.target }}
-    needs: plan
+    # `warm-compiler-cache` is `continue-on-error`, so a failure there does not
+    # hold the suite back.
+    needs: [plan, warm-compiler-cache]
     strategy:
       fail-fast: false # one target failing should not cancel the others
       matrix:
