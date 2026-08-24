@@ -818,6 +818,77 @@ describe('NonFungibleToken', () => {
     });
   });
 
+  // Audit finding M-04 (Midnight Foundation #02, release 0.3.0-alpha.1).
+  //
+  // `_approve` runs its approver validation only when `auth` is non-zero, so
+  // the `_requireOwned` existence check sits inside the guarded branch while
+  // the approval write executes unconditionally. `MockNonFungibleToken`
+  // exports `_approve`, so the zero-auth path is reachable without going
+  // through `approve` and its `_computeAccountId` derived auth.
+  //
+  // The module relies elsewhere on the invariant these tests pin: that a
+  // populated approval implies an existing token. The comment in
+  // `_unsafeTransferFrom` states that supplying an `auth` argument verifies
+  // token existence, and therefore skips checking the returned previous owner
+  // against zero.
+  //
+  // These tests assert the intended behaviour and FAIL on the current
+  // implementation. They are the reproduction for the finding.
+  describe('audit M-04: approvals for nonexistent tokens', () => {
+    it('should reject a zero-auth approval for a nonexistent token', async () => {
+      await expect(
+        token._approve(SPENDER.either, NON_EXISTENT_TOKEN, ZERO_ACCOUNT),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
+
+      expect(await token._getApproved(NON_EXISTENT_TOKEN)).toEqual(
+        ZERO_ACCOUNT,
+      );
+    });
+
+    it('should not let a planted approval mint a nonexistent token', async () => {
+      // Plant the approval on an unminted identifier. Tolerated so the chain
+      // below is exercised on the current implementation; the test above pins
+      // the revert that closes it.
+      await token
+        ._approve(SPENDER.either, NON_EXISTENT_TOKEN, ZERO_ACCOUNT)
+        .catch(() => undefined);
+
+      // The stale approval satisfies `_isAuthorized`, so `_checkAuthorized`
+      // never reaches its nonexistent-token assert. `_update` then reads the
+      // owner as zero, skips the balance decrement, credits the recipient and
+      // writes the owner entry, minting the token without mint authorization
+      // and permanently blocking a later gated mint of that identifier.
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token.transferFrom(ZERO_ACCOUNT, SPENDER.either, NON_EXISTENT_TOKEN),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
+
+      expect(await token._ownerOf(NON_EXISTENT_TOKEN)).toEqual(ZERO_ACCOUNT);
+      expect(await token.balanceOf(SPENDER.either)).toEqual(0n);
+    });
+
+    it('should not let a planted approval survive a later mint', async () => {
+      // Plant the approval on an identifier that is about to be minted.
+      await token
+        ._approve(SPENDER.either, TOKENID_1, ZERO_ACCOUNT)
+        .catch(() => undefined);
+
+      // `_update` clears approvals only when the source is non-zero, so a mint
+      // never clears the planted approval and it outlives the legitimate mint.
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+
+      // Otherwise the planter transfers the freshly minted token away from its
+      // rightful owner.
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1),
+      ).rejects.toThrow('NonFungibleToken: insufficient approval');
+
+      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
+    });
+  });
+
   describe('_checkAuthorized', () => {
     it('should throw if token not minted', async () => {
       await expect(
