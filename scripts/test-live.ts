@@ -13,6 +13,7 @@ import { VitestRunner } from './live/VitestRunner.ts';
  *
  * Each concern lives in `scripts/live/` with the reasoning that belongs to it:
  *   - `targets.ts`          — what an invocation resolves to (pure)
+ *   - `specs.ts`            — a target's spec files, and vitest's filter match
  *   - `RunLock.ts`          — one orchestrator run at a time
  *   - `LiveStack.ts`        — `make env-up` / `env-down` lifecycle
  *   - `ArtifactCompiler.ts` — build + truncated-ZK-key self-heal
