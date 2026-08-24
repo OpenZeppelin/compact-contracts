@@ -2,6 +2,7 @@
   "$schema": "https://turbo.build/schema.json",
   "globalPassThroughEnv": [
     "GITHUB_ACTIONS",
+    "GITHUB_OUTPUT",
     "GITHUB_STEP_SUMMARY",
     "MIDNIGHT_LIVE_KEEP_ENV"
   ],
@@ -95,6 +96,10 @@
       "cache": false
     },
     "test:harness": {
+      "outputs": [],
+      "cache": false
+    },
+    "test:scripts": {
       "outputs": [],
       "cache": false
     },
