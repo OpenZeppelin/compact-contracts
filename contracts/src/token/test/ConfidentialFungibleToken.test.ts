@@ -171,6 +171,22 @@ describe.skipIf(isLiveBackend())(
         expect(storedPk).toEqual(expectedPk);
       });
 
+      it('keeps the encryption scalar unrelated to the public accountId when SK and EK are the same secret', async () => {
+        await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.secretKey);
+        await cft.register();
+
+        const ledger = await cft.getPublicState();
+        const storedPk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
+
+        // What any observer can derive from the published accountId.
+        expect(storedPk).not.toEqual(
+          ecMulGenerator(
+            convertBytesToField(31, ALICE.accountId, 'publicAccountId'),
+          ),
+        );
+        expect(storedPk).toEqual(derivePk(ALICE.secretKey));
+      });
+
       it('should store distinct pks for distinct EKs', async () => {
         await cft.privateState.switchIdentity(
           ALICE.secretKey,
