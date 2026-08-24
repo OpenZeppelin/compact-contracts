@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../ForwarderPrivate" prefix ForwarderPrivate_;
+
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
+
+/**
+ * @description Test fixture exposing the private ForwarderPrivate
+ * module's underscore-prefixed circuits directly. `isInit` controls
+ * whether the constructor initializes. Set it to `false` to leave the
+ * contract uninitialized and exercise the not-initialized guard. The
+ * parent commitment is set once at construction via `initialize`.
+ *
+ * DO NOT USE IN PRODUCTION.
+ */
+constructor(parentCommitment: Bytes<32>, isInit: Boolean) {
+  if (disclose(isInit)) {
+    ForwarderPrivate_initialize(parentCommitment);
+  }
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return ForwarderPrivate__deposit(coin);
+}
+
+export circuit drain(
+  coin: QualifiedShieldedCoinInfo,
+  parent: ZswapCoinPublicKey,
+  opSecret: Bytes<32>,
+  value: Uint<128>
+): ShieldedSendResult {
+  return ForwarderPrivate__drain(coin, parent, opSecret, value);
+}
+
+// Demonstrates how an implementing contract drains to the parent, then uses the
+// returned `result.change` to spend the change onward to a *different* recipient
+// in the same transaction. (Re-spending change is only meaningful when it goes
+// somewhere other than self — `sendShielded` already routes it to self.) Only
+// possible because `_drain` hands back a live, unspent change coin. Returns the
+// onward send's result, whose `sent` is the coin delivered to `changeRecipient`.
+export circuit drainAndRouteChange(
+  coin: QualifiedShieldedCoinInfo,
+  parent: ZswapCoinPublicKey,
+  opSecret: Bytes<32>,
+  value: Uint<128>,
+  changeRecipient: Either<ZswapCoinPublicKey, ContractAddress>
+): ShieldedSendResult {
+  const drainRes = ForwarderPrivate__drain(coin, parent, opSecret, value);
+  if (disclose(drainRes.change.is_some)) {
+    return sendImmediateShielded(
+      disclose(drainRes.change.value),
+      disclose(changeRecipient),
+      disclose(drainRes.change.value.value)
+    );
+  }
+  return drainRes;
+}
+
+export pure circuit calculateParentCommitment(
+  parentAddr: Bytes<32>,
+  opSecret: Bytes<32>
+): Bytes<32> {
+  return ForwarderPrivate__calculateParentCommitment(parentAddr, opSecret);
+}
+
+// The module is imported with a prefix only, so `_parentCommitment` is not
+// surfaced by the generated `ledger()` reader (`getPublicState()` is empty).
+// Expose it via a getter, mirroring `MockForwarderShielded.getParent`.
+export circuit getParentCommitment(): Bytes<32> {
+  return ForwarderPrivate__parentCommitment;
+}

@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../UnshieldedTreasury" prefix Treasury_;
+
+export circuit _deposit(color: Bytes<32>, amount: Uint<128>): [] {
+  return Treasury__deposit(color, amount);
+}
+
+export circuit _send(
+    recipient: Either<ContractAddress, UserAddress>,
+    color: Bytes<32>,
+    amount: Uint<128>
+  ): [] {
+  return Treasury__send(recipient, color, amount);
+}
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return Treasury_getTokenBalance(color);
+}
+
+/**
+ * @description Receive then spend in a SINGLE circuit, so both treasury calls
+ * land in one transaction. Guarding on the protocol balance rejects this,
+ * because that balance is fixed at the start of execution and cannot see the
+ * deposit; guarding on `_balances` permits it.
+ */
+export circuit depositThenSend(
+    color: Bytes<32>,
+    amount: Uint<128>,
+    recipient: Either<ContractAddress, UserAddress>
+  ): [] {
+  Treasury__deposit(color, amount);
+  return Treasury__send(recipient, color, amount);
+}
+
+/**
+ * @description Two spends in a SINGLE circuit, so the second sees whatever the
+ * first left behind. A protocol-balance guard is blind to the first spend and
+ * lets an overspend through to the arithmetic; a `_balances` guard rejects it.
+ */
+export circuit sendTwice(
+    color: Bytes<32>,
+    first: Uint<128>,
+    second: Uint<128>,
+    recipient: Either<ContractAddress, UserAddress>
+  ): [] {
+  Treasury__send(recipient, color, first);
+  return Treasury__send(recipient, color, second);
+}
+
+/**
+ * @description Calls `receiveUnshielded` directly, bypassing the treasury, so
+ * the protocol credits the contract without `_balances` moving. Probes the
+ * module's documented desync warning.
+ */
+export circuit receiveRaw(color: Bytes<32>, amount: Uint<128>): [] {
+  receiveUnshielded(disclose(color), disclose(amount));
+}
+
+/**
+ * @description Calls `sendUnshielded` directly, bypassing the treasury and its
+ * sufficiency guard. Used to probe whether the ledger independently enforces
+ * conservation, and whether deposited funds are spendable without the mirror.
+ */
+export circuit sendRaw(
+    color: Bytes<32>,
+    amount: Uint<128>,
+    recipient: Either<ContractAddress, UserAddress>
+  ): [] {
+  sendUnshielded(disclose(color), disclose(amount), disclose(recipient));
+}
+
+/**
+ * @description Reads the protocol balance in its own transaction, where the
+ * start-of-execution snapshot does reflect prior transactions.
+ */
+export circuit probeBalanceGte(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceGte(disclose(color), disclose(amount));
+}
+
+/**
+ * @description The comparison `_deposit` must NOT use. Works for a small operand
+ * but fails at runtime for one near 2^128, which is why `_deposit` keeps its
+ * overflow bound as in-circuit arithmetic. Regression guard for that reasoning.
+ */
+export circuit probeBalanceLte(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceLte(disclose(color), disclose(amount));
+}
+
+/**
+ * @description Sends to this contract's own address. Measured on a live node:
+ * the send is ACCEPTED, the funds stay credited to the contract and remain
+ * spendable, but `_send` has already zeroed the tracked balance.
+ */
+export circuit sendToSelf(color: Bytes<32>, amount: Uint<128>): [] {
+  return Treasury__send(
+    left<ContractAddress, UserAddress>(kernel.self()),
+    color,
+    amount
+  );
+}
+
+/**
+ * @description Probes the protocol balance directly, bypassing the treasury:
+ * receives `amount` then asks whether the balance covers it. `false` means the
+ * balance is a start-of-execution snapshot, which is what makes a protocol-based
+ * guard wrong. Uses `Gte` because `Lte` cannot take a large operand.
+ */
+export circuit probeBalanceAfterReceive(
+    color: Bytes<32>,
+    amount: Uint<128>
+  ): Boolean {
+  receiveUnshielded(disclose(color), disclose(amount));
+  return unshieldedBalanceGte(disclose(color), disclose(amount));
+}

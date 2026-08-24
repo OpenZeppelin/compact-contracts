@@ -1,18 +1,17 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+  type SimulatorOptions,
+} from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
   type Either,
   ledger,
   Contract as MockFungibleToken,
-  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockFungibleToken/contract/index.js';
 import {
   FungibleTokenPrivateState,
   FungibleTokenWitnesses,
-} from '../../witnesses/FungibleTokenWitnesses.js';
+} from '../witnesses/FungibleTokenWitnesses.js';
 
 /**
  * Type constructor args
@@ -33,7 +32,7 @@ const FungibleTokenSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockFungibleToken<FungibleTokenPrivateState>(witnesses),
-  defaultPrivateState: () => FungibleTokenPrivateState,
+  defaultPrivateState: () => FungibleTokenPrivateState.generate(),
   contractArgs: (name, symbol, decimals, init) => [
     name,
     symbol,
@@ -42,29 +41,34 @@ const FungibleTokenSimulatorBase = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => FungibleTokenWitnesses(),
+  artifactName: 'MockFungibleToken',
 });
 
 /**
  * FungibleToken Simulator
  */
 export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
-  constructor(
+  static async create(
     name: string,
     symbol: string,
     decimals: bigint,
     init: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       FungibleTokenPrivateState,
       ReturnType<typeof FungibleTokenWitnesses>
     > = {},
-  ) {
-    super([name, symbol, decimals, init], options);
+  ): Promise<FungibleTokenSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [name, symbol, decimals, init],
+      options,
+    ) as Promise<FungibleTokenSimulator>;
   }
   /**
    * @description Returns the token name.
    * @returns The token name.
    */
-  public name(): string {
+  public name(): Promise<string> {
     return this.circuits.impure.name();
   }
 
@@ -72,7 +76,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @description Returns the symbol of the token.
    * @returns The token name.
    */
-  public symbol(): string {
+  public symbol(): Promise<string> {
     return this.circuits.impure.symbol();
   }
 
@@ -80,7 +84,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @description Returns the number of decimals used to get its user representation.
    * @returns The account's token balance.
    */
-  public decimals(): bigint {
+  public decimals(): Promise<bigint> {
     return this.circuits.impure.decimals();
   }
 
@@ -88,7 +92,7 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @description Returns the value of tokens in existence.
    * @returns The total supply of tokens.
    */
-  public totalSupply(): bigint {
+  public totalSupply(): Promise<bigint> {
     return this.circuits.impure.totalSupply();
   }
 
@@ -98,8 +102,8 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns The account's token balance.
    */
   public balanceOf(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): bigint {
+    account: Either<Uint8Array, ContractAddress>,
+  ): Promise<bigint> {
     return this.circuits.impure.balanceOf(account);
   }
 
@@ -111,9 +115,9 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns The `spender`'s allowance over `owner`'s tokens.
    */
   public allowance(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): bigint {
+    owner: Either<Uint8Array, ContractAddress>,
+    spender: Either<Uint8Array, ContractAddress>,
+  ): Promise<bigint> {
     return this.circuits.impure.allowance(owner, spender);
   }
 
@@ -124,9 +128,9 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public transfer(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure.transfer(to, value);
   }
 
@@ -137,9 +141,9 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public _unsafeTransfer(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure._unsafeTransfer(to, value);
   }
 
@@ -152,10 +156,10 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public transferFrom(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure.transferFrom(fromAddress, to, value);
   }
 
@@ -167,10 +171,10 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns As per the IERC20 spec, this MUST return true.
    */
   public _unsafeTransferFrom(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure._unsafeTransferFrom(fromAddress, to, value);
   }
 
@@ -181,9 +185,9 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @returns Returns a boolean value indicating whether the operation succeeded.
    */
   public approve(
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    spender: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure.approve(spender, value);
   }
 
@@ -200,11 +204,11 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens to transfer.
    */
   public _transfer(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._transfer(fromAddress, to, value);
+  ): Promise<[]> {
+    return this.circuits.impure._transfer(fromAddress, to, value);
   }
 
   /**
@@ -214,11 +218,15 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens to transfer.
    */
   public _unsafeUncheckedTransfer(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._unsafeUncheckedTransfer(fromAddress, to, value);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeUncheckedTransfer(
+      fromAddress,
+      to,
+      value,
+    );
   }
 
   /**
@@ -228,10 +236,10 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens minted.
    */
   public _mint(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    account: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._mint(account, value);
+  ): Promise<[]> {
+    return this.circuits.impure._mint(account, value);
   }
 
   /**
@@ -240,10 +248,10 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens minted.
    */
   public _unsafeMint(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    account: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._unsafeMint(account, value);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeMint(account, value);
   }
 
   /**
@@ -253,10 +261,10 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens to burn.
    */
   public _burn(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
+    account: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._burn(account, value);
+  ): Promise<[]> {
+    return this.circuits.impure._burn(account, value);
   }
 
   /**
@@ -268,11 +276,11 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of tokens `spender` may spend on behalf of `owner`.
    */
   public _approve(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: Either<Uint8Array, ContractAddress>,
+    spender: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._approve(owner, spender, value);
+  ): Promise<[]> {
+    return this.circuits.impure._approve(owner, spender, value);
   }
 
   /**
@@ -283,10 +291,35 @@ export class FungibleTokenSimulator extends FungibleTokenSimulatorBase {
    * @param value The amount of token allowance to spend.
    */
   public _spendAllowance(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: Either<Uint8Array, ContractAddress>,
+    spender: Either<Uint8Array, ContractAddress>,
     value: bigint,
-  ) {
-    this.circuits.impure._spendAllowance(owner, spender, value);
+  ): Promise<[]> {
+    return this.circuits.impure._spendAllowance(owner, spender, value);
   }
+
+  public readonly privateState = {
+    /**
+     * @description Replaces the secret key in the private state. Used in tests to
+     * simulate switching between different user identities or injecting incorrect
+     * keys to test failure paths.
+     * @param newSK - The new secret key to set.
+     * @returns The updated private state.
+     */
+    injectSecretKey: (newSK: Uint8Array): Promise<FungibleTokenPrivateState> =>
+      this.updatePrivateState(FungibleTokenPrivateState.withSecretKey(newSK)),
+
+    /**
+     * @description Returns the current secret key from the private state.
+     * @returns The secret key.
+     * @throws If the secret key is undefined.
+     */
+    getCurrentSecretKey: async (): Promise<Uint8Array> => {
+      const sk = (await this.getPrivateState()).secretKey;
+      if (typeof sk === 'undefined') {
+        throw new Error('Missing secret key');
+      }
+      return Uint8Array.from(sk);
+    },
+  };
 }

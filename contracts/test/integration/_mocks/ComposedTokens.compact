@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+// Top-level contract composing two PRODUCTION modules that live in the SAME
+// directory (FungibleToken + NonFungibleToken). Each now owns its `_isInitialized`
+// flag, so initializing one must NOT initialize the other. The
+// `initStateIsolation` spec asserts that isolation (the fix for #556).
+//
+// `initFT` / `initNFT` select which module is initialized at construction, so a
+// test can initialize one and assert the other is still uninitialized. (Both
+// initializers write `sealed` ledger fields, so they must run in the constructor.)
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../../src/token/FungibleToken" prefix FungibleToken_;
+import "../../../src/token/NonFungibleToken" prefix NonFungibleToken_;
+
+export { ContractAddress, Either, Maybe };
+
+constructor(
+  ftName_: Opaque<"string">,
+  ftSymbol_: Opaque<"string">,
+  ftDecimals_: Uint<8>,
+  nftName_: Opaque<"string">,
+  nftSymbol_: Opaque<"string">,
+  initFT: Boolean,
+  initNFT: Boolean
+) {
+  if (disclose(initFT)) {
+    FungibleToken_initialize(ftName_, ftSymbol_, ftDecimals_);
+  }
+  if (disclose(initNFT)) {
+    NonFungibleToken_initialize(nftName_, nftSymbol_);
+  }
+}
+
+// Init-guarded getters: each calls its module's `assertInitialized()`.
+export circuit ftName(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit nftName(): Opaque<"string"> {
+  return NonFungibleToken_name();
+}

@@ -1,62 +1,111 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "GITHUB_ACTIONS",
+    "GITHUB_OUTPUT",
+    "GITHUB_STEP_SUMMARY",
+    "MIDNIGHT_LIVE_KEEP_ENV"
+  ],
   "tasks": {
-    "compact:security": {
+    "compile:crypto": {
+      "dependsOn": ["^build"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/crypto/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
+    },
+    "compile:security": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/security/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compact:utils": {
+    "compile:utils": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/utils/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compact:access": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
+    "compile:access": {
+      "dependsOn": ["^build", "compile:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/access/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compact:archive": {
-      "dependsOn": ["^build", "compact:utils"],
+    "compile:archive": {
+      "dependsOn": ["^build", "compile:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/archive/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compact:token": {
-      "dependsOn": ["^build", "compact:security", "compact:utils"],
+    "compile:multisig": {
+      "dependsOn": ["^build", "compile:utils"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/multisig/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
+    },
+    "compile:token": {
+      "dependsOn": ["^build", "compile:utils", "compile:crypto"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/token/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
-    "compact": {
+    "compile:integration": {
+      "dependsOn": ["^build"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["test/integration/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/**/"]
+    },
+    "compile": {
       "dependsOn": [
-        "compact:security",
-        "compact:utils",
-        "compact:access",
-        "compact:token"
+        "compile:crypto",
+        "compile:security",
+        "compile:utils",
+        "compile:access",
+        "compile:multisig",
+        "compile:token"
       ],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/**/*.compact", "test/**/*.compact"],
+      "inputs": ["src/**/*.compact", "!src/archive/**"],
       "outputLogs": "new-only",
-      "outputs": ["artifacts/**"]
+      "outputs": ["artifacts/**/"]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["compile"],
       "env": ["COMPACT_HOME"],
-      "inputs": [
-        "src/**/*.ts",
-        "src/**/*.compact",
-        "vitest.config.ts",
-        "package.json"
-      ],
+      "outputs": [],
+      "cache": false
+    },
+    "test:coverage": {
+      "dependsOn": ["compile"],
+      "env": ["COMPACT_HOME"],
+      "outputs": [],
+      "cache": false
+    },
+    "test:integration": {
+      "dependsOn": ["compile:integration"],
+      "env": ["COMPACT_HOME"],
+      "outputs": [],
+      "cache": false
+    },
+    "test:harness": {
+      "outputs": [],
+      "cache": false
+    },
+    "test:scripts": {
+      "outputs": [],
+      "cache": false
+    },
+    "test:harness:live": {
+      "dependsOn": ["test:harness"],
+      "env": ["COMPACT_HOME"],
       "outputs": [],
       "cache": false
     },
@@ -66,6 +115,7 @@
       "inputs": [
         "src/**/*.ts",
         "!src/**/*.test.ts",
+        "src/**/*.compact",
         "tsconfig.json",
         "tsconfig.build.json",
         ".env"
@@ -73,16 +123,13 @@
       "outputs": ["dist/**"]
     },
     "types": {
-      "dependsOn": [
-        "@openzeppelin-compact/compact#build",
-        "@openzeppelin/compact-contracts#compact"
-      ],
+      "dependsOn": ["@openzeppelin/compact-contracts#compile"],
       "outputs": [],
       "cache": false
     },
-    "//#fmt-and-lint": {},
-    "//#fmt-and-lint:ci": {},
-    "//#fmt-and-lint:fix": {
+    "//#lint": {},
+    "//#lint:ci": {},
+    "//#lint:fix": {
       "cache": false
     },
     "clean": {

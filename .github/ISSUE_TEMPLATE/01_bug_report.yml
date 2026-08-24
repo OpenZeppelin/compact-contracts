@@ -31,7 +31,7 @@ body:
       label: What are the steps to reproduce this issue?
       placeholder: |
         1. Clone repo
-        2. Run `turbo compact`
+        2. Run `yarn compile`
         3. …
         4. See error
     validations:
@@ -93,7 +93,9 @@ body:
       label: Version
       description: What version of Compact are you running?
       options:
-        - 0.29.0 (Default)
+        - 0.31.0 (Default)
+        - 0.30.0
+        - 0.29.0
       default: 0
     validations:
       required: true

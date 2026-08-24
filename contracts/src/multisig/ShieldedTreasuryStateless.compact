@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (multisig/ShieldedTreasuryStateless.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ShieldedTreasuryStateless
+ * @description Manages shielded (private) token deposits and transfers for
+ * multisig governance contracts, without any ledger state.
+ *
+ * This module holds NO state: no coin map, no balances, no received/sent
+ * totals. Deposits call `receiveShielded` only, and spends take the coin as a
+ * circuit parameter. The operator discovers coin indices from `ZswapOutput`
+ * events via the indexer, constructs the `QualifiedShieldedCoinInfo` off-chain,
+ * and supplies it at spend time. Coin data therefore never reaches the public
+ * ledger, and there is no on-chain balance to query — contrast
+ * `ShieldedTreasury`, which stores one merged UTXO per color and tracks
+ * cumulative totals.
+ *
+ * @notice Because nothing is tracked on-chain, this module cannot detect a
+ * double spend or a coin it does not own; the protocol rejects both at
+ * application time. Sufficiency is likewise enforced by `sendShielded` rather
+ * than by an assert here.
+ *
+ * @notice "No ledger state" is not the same as "unobservable". A coin
+ * commitment is a hash of the coin's data, so `sendShielded` can link a coin
+ * receive to its later spend; `_send` declares that disclosure on the
+ * consumer's behalf. Consumers that need to make the trade-off themselves
+ * should note it is only declared here for convenience — it could be moved to
+ * the caller. Separately, see `_send`'s warning about its return value, which
+ * carries coin plaintext.
+ *
+ * Underscore-prefixed circuits (_deposit, _send) have no access control
+ * enforcement. The consuming contract must gate these behind its own
+ * authorization policy.
+ */
+module ShieldedTreasuryStateless {
+  import CompactStandardLibrary;
+
+  // ─── Deposit ────────────────────────────────────────────────────
+
+  /**
+   * @description Receives a shielded coin into the treasury.
+   */
+  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    receiveShielded(disclose(coin));
+  }
+
+  // ─── Send ───────────────────────────────────────────────────────
+
+  /**
+   * @description Sends shielded tokens using a caller-provided coin.
+   *
+   * The coin is supplied by the caller rather than looked up from
+   * on-chain state; the token color is derived from `coin.color`.
+   * Executes the shielded send and returns the result untouched.
+   * `sendShielded` already routes any change back to this contract as a
+   * self-owned output, so `result.change` is a live, spendable coin. The
+   * implementing contract chooses what to do with it: retain it off-chain and
+   * pass it back as the `coin` for a later spend, or spend it onward to a
+   * different recipient in the same transaction via `sendImmediateShielded`.
+   * (Re-spending change is only meaningful when it goes somewhere other than
+   * self — `sendShielded` already routes it to self.) No balance or
+   * received/sent accounting is tracked on the ledger.
+   *
+   * @warning The returned `ShieldedSendResult` holds the sent and change coins
+   * in plaintext (`nonce`, `color`, `value`). Consuming it in-circuit is safe
+   * (passing `result.change` to `sendImmediateShielded`, for instance). Returning
+   * it from your entry point, writing it to ledger, or passing it to another
+   * contract publishes those coin details, including the amount left over from
+   * the coin that was spent. Note the compiler will NOT stop you: the
+   * `disclose` calls below clear the witness taint, so such a return compiles
+   * with no `disclose` of your own and no marker at the disclosure site. If you
+   * do not need in-circuit change handling, ignore the result. The change is
+   * recoverable off-chain from the transaction's private proving state.
+   *
+   * @notice Access control is NOT enforced here.
+   * The consuming contract must gate this behind its own
+   * authorization policy.
+   *
+   * Requirements:
+   *
+   * - `coin.value` must be >= `amount`.
+   *
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (provided by the caller).
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The recipient.
+   * @param {Uint<128>} amount - The amount to send.
+   *
+   * @returns {ShieldedSendResult} The result containing sent coin and any change.
+   */
+  export circuit _send(
+    coin: QualifiedShieldedCoinInfo,
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    amount: Uint<128>
+  ): ShieldedSendResult {
+    const result = sendShielded(disclose(coin), disclose(recipient), disclose(amount));
+
+    // `sendShielded` already emits any change as a fresh, self-owned output.
+    // `_send` returns it untouched: it must not re-spend the change here and
+    // then hand that same (now-nullified) coin back via `result.change`. That
+    // is the double spend a node rejects on the next spend. The implementing
+    // contract decides what to do with the returned change: retain it off-chain
+    // and spend it later, or route it onward itself. The rule is only that the
+    // change must never be re-spent AND still treated as held. "Retain" means
+    // off-chain. This module keeps no state, and writing the coin to ledger
+    // would publish its nonce, color, and value.
+    return result;
+  }
+}

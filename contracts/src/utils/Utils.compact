@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.0.1-alpha.1 (utils/Utils.compact)
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (utils/Utils.compact)
 
-pragma language_version >= 0.21.0;
+pragma language_version >= 0.23.0;
 
 /**
  * @module Utils.
@@ -44,7 +44,7 @@ module Utils {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is is equal to `other`.
+   * @return {Boolean} - Returns true if `keyOrAddress` is equal to `other`.
    */
   export pure circuit isKeyOrAddressEqual(
                         keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -78,5 +78,105 @@ module Utils {
    */
   export pure circuit emptyString(): Opaque<"string"> {
     return default<Opaque<"string">>;
+  }
+
+  /**
+   * @description Zeroes out the unused side of an `Either` value. Prevents crafted
+   * inputs where both `left` and `right` fields carry data from bypassing checks that
+   * only inspect the active side.
+   *
+   * @param {Either<T1, T2>} value - The value to canonicalize.
+   * @return {Either<T1, T2>} - The canonicalized value.
+   */
+  export pure circuit canonicalize<T1, T2>(
+                        value: Either<T1, T2>
+                        ): Either<T1, T2> {
+    return value.is_left
+      ? Either<T1, T2>{ is_left: true, left: value.left, right: default<T2> }
+      : Either<T1, T2>{ is_left: false, left: default<T1>, right: value.right };
+  }
+
+  /**
+   * @description Returns the canonical zero `Either<Bytes<32>, ContractAddress>` value: the
+   * left variant (`Bytes<32>`) set to zero. Used as the sentinel for mint/burn operations
+   * (a zero `from` signals a mint, a zero `to` signals a burn) and for cleared approvals.
+   *
+   * The left variant is chosen so that `isTargetZero` checks against `default<Bytes<32>>`,
+   * and to avoid triggering contract-address guards (e.g. circuits that check `!to.is_left`
+   * before delegating to an `_unsafe` variant). A right variant with `default<ContractAddress>`
+   * would also pass `isTargetZero`, but the left variant keeps guards and error messages consistent.
+   *
+   * @return {Either<Bytes<32>, ContractAddress>} - The canonical zero value.
+   */
+  export pure circuit zeroAccount(): Either<Bytes<32>, ContractAddress> {
+    return Either<Bytes<32>, ContractAddress> {
+      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
+    };
+  }
+
+  /**
+   * @description Returns `true` if `target`'s active branch (as indicated by `is_left`)
+   * holds the zero value.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
+   * @return {Boolean} - `true` if the active branch is zero, `false` otherwise.
+   */
+  export pure circuit isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
+    if (target.is_left) {
+      return target.left == default<Bytes<32>>;
+    } else {
+      return target.right == default<ContractAddress>;
+    }
+  }
+
+  /**
+   * @description Computes an account identifier without on-chain state, allowing a user to derive
+   * their identity commitment before submitting an operation.
+   *
+   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
+   * permanently compromise the security of this system:
+   *
+   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
+   *   application logs, analytics pipelines, or any observable side-channel.
+   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
+   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
+   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
+   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
+   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
+   * - **Avoid calling this circuit in untrusted environments** — executing this in an
+   *   unverified browser extension, compromised runtime, or shared machine may expose
+   *   the key to a malicious observer.
+   *
+   * ## ID Derivation
+   * `accountId = persistentHash(secretKey)`
+   *
+   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
+   *
+   * @returns {Bytes<32>} accountId - The computed account identifier.
+   */
+  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
+  }
+
+  /**
+   * @description Returns the current contract's address as an
+   * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
+   * recipient in shielded send operations (deposits and receiving change).
+   *
+   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
+   */
+  export circuit selfAsRecipient(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return right<ZswapCoinPublicKey, ContractAddress>(kernel.self());
+  }
+
+  /**
+   * @description The maximum value representable by a `Uint<128>`.
+   *
+   * @notice TODO: Remove once a math module providing this constant is available.
+   *
+   * @returns {Uint<128>} `2^128 - 1`.
+   */
+  export pure circuit UINT128_MAX(): Uint<128> {
+    return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
   }
 }

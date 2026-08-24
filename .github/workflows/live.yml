@@ -1,0 +1,207 @@
+name: Live Test Suite
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+# The live suite runs the live targets against a real local stack (node, indexer,
+# proof server, via `make env-up`) with real ZK proofs, so a run takes hours, not
+# minutes. It is deliberately separate from the regular PR checks and is never a
+# required one:
+#   - nightly on main, as the regression safety net (a failure is mirrored into a
+#     `live-nightly` tracking issue, which closes on the next green run)
+#   - on demand via workflow_dispatch, optionally scoped to one target or a file
+#     filter within it
+#   - on a PR, opt-in, by applying the `live-tests` label for every target or
+#     `live-tests:<target>` for one of them (re-apply to re-run)
+#
+# The plan job asks the runner which live targets exist and fans out one matrix
+# job per target, so each gets its own runner, its own stack, and its own 6-hour
+# job budget.
+#
+# Every `run:` here is a one-liner. The logic behind the two that are not calls to
+# the runner lives in `scripts/live-ci.ts`, where it is unit tested and can be run
+# locally (`yarn test:scripts`).
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        # A free-form string, not a `choice`: the valid set is whatever
+        # `scripts/live/targets.ts` discovers, and a dropdown enumerated here
+        # would silently go stale as categories join. The plan job validates the
+        # value against that list and fails in seconds with the valid names.
+        description: "Live target: a src/ category, `integration`, or `all`"
+        required: false
+        default: all
+      filter:
+        # A substring of a spec file's path, as vitest matches it. The plan job
+        # drops the targets it matches nothing under, since a live target that
+        # runs no file is an abort in the runner rather than a pass.
+        description: "Vitest file filter within the target (e.g. Forwarder)"
+        required: false
+        default: ""
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  # Keyed by trigger as well as ref, so a manual dispatch on main does not cancel
+  # the nightly it was meant to complement.
+  group: live-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Plan targets
+    # `pull_request: labeled` fires for every label; only ours starts a run. The
+    # label itself carries the scope, and the plan step reads it.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.label.name == 'live-tests'
+      || startsWith(github.event.label.name, 'live-tests:')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The script only imports node builtins, so this job needs a Node but no
+      # `yarn install` (and no Compact compiler).
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      # TARGET and FILTER are empty on every trigger but workflow_dispatch, LABEL
+      # on every trigger but a PR label. The script resolves whichever is set.
+      - name: Resolve the target matrix
+        id: plan
+        env:
+          TARGET: ${{ inputs.target }}
+          LABEL: ${{ github.event.label.name }}
+          FILTER: ${{ inputs.filter }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
+
+  run-live-suite:
+    name: live-${{ matrix.target }}
+    needs: plan
+    strategy:
+      fail-fast: false # one target failing should not cancel the others
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    # Per-target budget: the runner compiles (real ZK keys), resets the stack, and
+    # verifies failures with a second round. Budget generously, but stay under the
+    # 6h hosted-runner cap.
+    timeout-minutes: 350
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # Recommended by turbo team
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+
+      # The same entry point a local run uses, so the two-round flake semantics,
+      # the stack lifecycle, and the verdict are identical. `${FILTER:+...}` keeps
+      # an unset filter from reaching vitest as an empty positional argument,
+      # which would match no file.
+      - name: Run live suite
+        env:
+          TARGET: ${{ matrix.target }}
+          FILTER: ${{ inputs.filter }}
+        run: yarn test:live "$TARGET" ${FILTER:+"$FILTER"}
+
+      # The runner tears the stack down itself on every exit path. This is the
+      # safety net for the one path it cannot cover: a job timeout or a cancel
+      # that kills it outright, leaving containers streaming into the logs about
+      # to be uploaded.
+      - name: Stop local stack
+        if: always()
+        run: make env-down
+
+      # The JSON verdict reports are tiny and useful on green runs too (flake
+      # trends). The service and worker logs can reach hundreds of MB after a
+      # multi-hour run, so those upload only when something failed.
+      - name: Upload live reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-reports-${{ matrix.target }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: logs/live-*.json
+
+      # Two roots on purpose: the stack's container logs land in the repo-root
+      # `logs/` (the Makefile's), and the per-worker harness logs in
+      # `contracts/logs/` (vitest runs with `contracts/` as its cwd).
+      - name: Upload live logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-logs-${{ matrix.target }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            contracts/logs/live-harness*.log
+            logs/node.log
+            logs/indexer.log
+            logs/proof-server.log
+
+  # A failed scheduled run only emails the workflow author, which is easy to miss.
+  # `live-ci.ts nightly` mirrors the nightly state into a `live-nightly` tracking
+  # issue instead: opened (or commented) on failure, closed on the next green run.
+  report-nightly:
+    name: Report nightly result
+    needs: [plan, run-live-suite]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      # PLAN_RESULT is how the script separates "the suite never ran" from "the
+      # suite passed": a suite job the plan job never reached reports `skipped`,
+      # not `failure`, and a nightly that tested nothing is a failed nightly.
+      - name: Report to the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SUITE_RESULT: ${{ needs.run-live-suite.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts nightly

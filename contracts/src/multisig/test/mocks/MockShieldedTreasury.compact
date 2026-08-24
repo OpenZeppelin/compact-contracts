@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedTreasury" prefix Treasury_;
+
+export circuit _deposit(coin: ShieldedCoinInfo): [] {
+  return Treasury__deposit(coin);
+}
+
+export circuit _send(
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    color: Bytes<32>,
+    amount: Uint<128>,
+  ): ShieldedSendResult {
+  return Treasury__send(recipient, color, amount);
+}
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return Treasury_getTokenBalance(color);
+}
+
+export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedTotal(color);
+}
+
+export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+  return Treasury_getSentTotal(color);
+}
+
+export circuit getReceivedMinusSent(color: Bytes<32>): Uint<128> {
+  return Treasury_getReceivedMinusSent(color);
+}

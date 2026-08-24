@@ -36,24 +36,39 @@ let thisTokenType: TokenType;
 
 describe('Shielded token', () => {
   describe('initializer and metadata', () => {
-    it('should initialize metadata', () => {
-      token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
+    it('should initialize metadata', async () => {
+      token = await ShieldedTokenSimulator.create(
+        NONCE,
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
 
-      expect(token.name()).toEqual(NAME);
-      expect(token.symbol()).toEqual(SYMBOL);
-      expect(token.decimals()).toEqual(DECIMALS);
+      expect(await token.name()).toEqual(NAME);
+      expect(await token.symbol()).toEqual(SYMBOL);
+      expect(await token.decimals()).toEqual(DECIMALS);
     });
 
-    it('should initialize empty metadata', () => {
-      token = new ShieldedTokenSimulator(NONCE, NO_STRING, NO_STRING, 0n);
+    it('should initialize empty metadata', async () => {
+      token = await ShieldedTokenSimulator.create(
+        NONCE,
+        NO_STRING,
+        NO_STRING,
+        0n,
+      );
 
-      expect(token.name()).toEqual(NO_STRING);
-      expect(token.symbol()).toEqual(NO_STRING);
-      expect(token.decimals()).toEqual(0n);
+      expect(await token.name()).toEqual(NO_STRING);
+      expect(await token.symbol()).toEqual(NO_STRING);
+      expect(await token.decimals()).toEqual(0n);
     });
 
-    it('should set public state', () => {
-      token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
+    it('should set public state', async () => {
+      token = await ShieldedTokenSimulator.create(
+        NONCE,
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
 
       expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(0n);
       expect(token.getCurrentPublicState().ShieldedToken__domain).toEqual(
@@ -63,14 +78,14 @@ describe('Shielded token', () => {
     });
   });
 
-  beforeEach(() => {
-    token = new ShieldedTokenSimulator(NONCE, NAME, SYMBOL, DECIMALS);
+  beforeEach(async () => {
+    token = await ShieldedTokenSimulator.create(NONCE, NAME, SYMBOL, DECIMALS);
     thisTokenType = tokenType(DOMAIN, token.contractAddress);
   });
 
   describe('mint', () => {
-    it('should mint', () => {
-      const res = token.mint(Z_OWNER, AMOUNT);
+    it('should mint', async () => {
+      const res = await token.mint(Z_OWNER, AMOUNT);
       const thisNonce = token.getCurrentPublicState().ShieldedToken__nonce;
       const thisCoinInfo = {
         color: encodeTokenType(thisTokenType),
@@ -88,21 +103,21 @@ describe('Shielded token', () => {
         Z_OWNER,
       );
       // Check supply
-      expect(token.totalSupply()).toEqual(AMOUNT);
+      expect(await token.totalSupply()).toEqual(AMOUNT);
     });
 
-    it('should bump counter', () => {
+    it('should bump counter', async () => {
       expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(0n);
-      token.mint(Z_OWNER, AMOUNT);
+      await token.mint(Z_OWNER, AMOUNT);
 
       expect(token.getCurrentPublicState().ShieldedToken__counter).toEqual(1n);
     });
 
-    it('should bump nonce', () => {
+    it('should bump nonce', async () => {
       const initNonce = token.getCurrentPublicState().ShieldedToken__nonce;
       expect(initNonce).toEqual(NONCE);
 
-      token.mint(Z_OWNER, AMOUNT);
+      await token.mint(Z_OWNER, AMOUNT);
 
       // TODO: create js equivalent of `evolve_nonce` circuit to derive correct value
       expect(initNonce).not.toEqual(
@@ -110,27 +125,27 @@ describe('Shielded token', () => {
       );
     });
 
-    it('should fail when minting to the zero address', () => {
-      expect(() => {
-        token.mint(utils.ZERO_KEY, AMOUNT);
-      }).toThrow('ShieldedToken: invalid recipient');
+    it('should fail when minting to the zero address', async () => {
+      await expect(token.mint(utils.ZERO_KEY, AMOUNT)).rejects.toThrow(
+        'ShieldedToken: invalid recipient',
+      );
     });
 
-    it('should fail when minting overflow uint64', () => {
-      token.mint(Z_OWNER, MAX_UINT64);
+    it('should fail when minting overflow uint64', async () => {
+      await token.mint(Z_OWNER, MAX_UINT64);
 
-      expect(() => {
-        token.mint(Z_OWNER, 1n);
-      }).toThrow('arithmetic overflow');
+      await expect(token.mint(Z_OWNER, 1n)).rejects.toThrow(
+        'arithmetic overflow',
+      );
     });
   });
 
   describe('burn', () => {
-    beforeEach(() => {
-      token.mint(Z_OWNER, AMOUNT);
+    beforeEach(async () => {
+      await token.mint(Z_OWNER, AMOUNT);
     });
 
-    it('should burn (whole)', () => {
+    it('should burn (whole)', async () => {
       const nonceStr = NONCE.filter((x) => x !== 0)
         .join('')
         .padStart(64, '0'); //297481949006
@@ -142,7 +157,7 @@ describe('Shielded token', () => {
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
       // Burn
-      const res = token.burn(encoded_coin_info, AMOUNT);
+      const res = await token.burn(encoded_coin_info, AMOUNT);
 
       // Check circuit result
       expect(res.result.change.is_some).toBe(false);
@@ -162,10 +177,10 @@ describe('Shielded token', () => {
       expect(txInputs.nonce).toEqual(encoded_coin_info.nonce);
 
       // Check supply
-      expect(token.totalSupply()).toEqual(0n);
+      expect(await token.totalSupply()).toEqual(0n);
     });
 
-    it('should burn (partial)', () => {
+    it('should burn (partial)', async () => {
       const nonceStr = NONCE.filter((x) => x !== 0)
         .join('')
         .padStart(64, '0');
@@ -178,7 +193,7 @@ describe('Shielded token', () => {
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
       // Burn
-      const res = token.burn(encoded_coin_info, partialAmt);
+      const res = await token.burn(encoded_coin_info, partialAmt);
 
       // Check circuit result
       const change = res.result.change;
@@ -204,10 +219,10 @@ describe('Shielded token', () => {
       expect(txInput2.nonce).not.toEqual(encoded_coin_info.nonce);
 
       // Check supply
-      expect(token.totalSupply()).toEqual(1n);
+      expect(await token.totalSupply()).toEqual(1n);
     });
 
-    it('should fail with incorrect domain', () => {
+    it('should fail with incorrect domain', async () => {
       const nonceStr = NONCE.filter((x) => x !== 0)
         .join('')
         .padStart(64, '0');
@@ -220,12 +235,12 @@ describe('Shielded token', () => {
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
-      expect(() => {
-        token.burn(encoded_coin_info, AMOUNT);
-      }).toThrow('ShieldedToken: token not created from this contract');
+      await expect(token.burn(encoded_coin_info, AMOUNT)).rejects.toThrow(
+        'ShieldedToken: token not created from this contract',
+      );
     });
 
-    it('should fail with incorrect address', () => {
+    it('should fail with incorrect address', async () => {
       const nonceStr = NONCE.filter((x) => x !== 0)
         .join('')
         .padStart(64, '0');
@@ -238,12 +253,12 @@ describe('Shielded token', () => {
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
-      expect(() => {
-        token.burn(encoded_coin_info, AMOUNT);
-      }).toThrow('ShieldedToken: token not created from this contract');
+      await expect(token.burn(encoded_coin_info, AMOUNT)).rejects.toThrow(
+        'ShieldedToken: token not created from this contract',
+      );
     });
 
-    it('should fail when not enough balance', () => {
+    it('should fail when not enough balance', async () => {
       const nonceStr = NONCE.filter((x) => x !== 0)
         .join('')
         .padStart(64, '0');
@@ -255,9 +270,9 @@ describe('Shielded token', () => {
       };
       const encoded_coin_info = encodeCoinInfo(coin_info);
 
-      expect(() => {
-        token.burn(encoded_coin_info, AMOUNT + 1n);
-      }).toThrow('ShieldedToken: insufficient token amount to burn');
+      await expect(token.burn(encoded_coin_info, AMOUNT + 1n)).rejects.toThrow(
+        'ShieldedToken: insufficient token amount to burn',
+      );
     });
   });
 });

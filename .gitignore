@@ -25,6 +25,7 @@ managed/
 artifacts/
 midnight-level-db
 compactc
+.circuit-info.json
 
 coverage
 **/reports
@@ -46,3 +47,7 @@ coverage
 *~
 
 *temp
+
+.claude/
+
+.states

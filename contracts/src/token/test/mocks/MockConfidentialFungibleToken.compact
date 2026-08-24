@@ -1,0 +1,106 @@
+// TEST-ONLY. Mock for the supply-free ConfidentialFungibleToken BASE. Exposes
+// the conserving surface plus the base's exposed `_mint` / `_burn` / `_burnFrom`
+// building blocks, so the base suite can seed, prove, and burn balances using
+// ONLY base primitives (no supply layer). The composed mint / burn / burnFrom /
+// totalSupply live in the separate MockConfidentialFungibleTokenPublicSupply.
+//
+// `_mint`/`_burn`/`_burnFrom` are exposed here purely as a test affordance: they
+// are the base's supply-free value building blocks (the raw `_credit`/`_debit`/
+// `_spendEscrow` they wrap are non-exported in the base and cannot leak). A
+// PRODUCTION contract must NEVER re-export them (see the base's DANGER note).
+// Doing so would be a permissionless mint / burn / escrow-burn. DO NOT deploy
+// this mock.
+pragma language_version >= 0.23.0;
+import CompactStandardLibrary;
+import "../../ConfidentialFungibleToken" prefix CFT_;
+import "../../../crypto/ElGamal" prefix ElGamal_;
+
+export { CFT_EscrowEntry, ElGamal_Ciphertext };
+
+export {
+  CFT__balances,
+  CFT__pending,
+  CFT__encryptionKeys,
+  CFT__memos,
+  CFT__escrow,
+  CFT__name,
+  CFT__symbol,
+  CFT__decimals
+};
+
+constructor(
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
+) {
+  CFT_initialize(name_, symbol_, decimals_);
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_balanceOf(account);
+}
+
+export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_pendingOf(account);
+}
+
+export circuit sweep(): Bytes<32> {
+  return CFT_sweep();
+}
+
+export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
+  return CFT_allowance(owner, spender);
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return CFT_isRegistered(account);
+}
+
+export circuit register(): Bytes<32> {
+  return CFT_register();
+}
+
+export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT_transfer(to, value);
+}
+
+export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT__move(to, value);
+}
+
+export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT_approve(spender, value);
+}
+
+export circuit transferFrom(
+    fromAddress: Bytes<32>,
+    to: Bytes<32>,
+    value: Uint<128>
+): Bytes<32> {
+  return CFT_transferFrom(fromAddress, to, value);
+}
+
+// Test-only funding / draining. `_mint` seeds a balance (a raw credit, no supply
+// bookkeeping); `_burn` proves a balance behaviourally (its in-circuit
+// assertDecryptsTo only passes if the balance truly encrypts >= value).
+export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+  return CFT__mint(account, value);
+}
+
+export circuit _burn(value: Uint<128>): Bytes<32> {
+  return CFT__burn(value);
+}
+
+// Escrow-burn building block: consumes an allowance the owner granted the caller
+// with no recipient credit (the base's `_spendEscrow` under its burn-intent name).
+export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT__burnFrom(fromAddress, value);
+}
+
+export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
+  return CFT_computeAccountId(sk);
+}
+
+export circuit clearMemos(): [] {
+  return CFT_clearMemos();
+}

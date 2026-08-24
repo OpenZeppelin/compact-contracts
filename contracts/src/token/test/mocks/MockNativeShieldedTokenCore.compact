@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeShieldedTokenCore" prefix NativeShieldedTokenCore_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// Surface the core ledger state unprefixed so tests can read it via
+// `getPublicState()` and assert the metadata getters return it verbatim.
+import { _name, _symbol, _decimals, _isInitialized } from "../../NativeShieldedTokenCore";
+export { _name, _symbol, _decimals, _isInitialized };
+
+// Unit mock for the bare NativeShieldedTokenCore module in isolation: the
+// domain-parameterized base shared by the single-token and family flavors, with
+// no wrapper, no supply accounting, and no derived-nonce extension. It also
+// surfaces the raw init assertions (`assertInitialized` / `assertNotInitialized`)
+// that the flavor wrappers do not expose, so the base guards are pinned directly.
+
+/**
+ * @description `init` is a test-only flag. When true, the constructor
+ * initializes the core module (metadata). When false, it is left uninitialized
+ * so tests can exercise the pre-initialization revert guards. The core
+ * `initialize` is intentionally NOT exposed as a circuit: it writes `sealed`
+ * ledger fields, which the sealed-write rule confines to constructor execution.
+ */
+constructor(
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  init: Boolean
+) {
+  if (disclose(init)) {
+    NativeShieldedTokenCore_initialize(name_, symbol_, decimals_);
+  }
+}
+
+export circuit isInitialized(): Boolean {
+  return NativeShieldedTokenCore_isInitialized();
+}
+
+export circuit assertInitialized(): [] {
+  NativeShieldedTokenCore_assertInitialized();
+}
+
+export circuit assertNotInitialized(): [] {
+  NativeShieldedTokenCore_assertNotInitialized();
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedTokenCore_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedTokenCore_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedTokenCore_decimals();
+}
+
+export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
+  return NativeShieldedTokenCore_tokenColor(domain);
+}
+
+export circuit _mint(
+  domain: Bytes<32>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenCore__mint(domain, recipient, amount, nonce);
+}
+
+export circuit _burn(
+  domain: Bytes<32>,
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedTokenCore__burn(domain, coin, amount, refundTo);
+}
+
+export circuit _burnFromSelf(
+  domain: Bytes<32>,
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedTokenCore__burnFromSelf(domain, coin, amount);
+}

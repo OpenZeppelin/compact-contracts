@@ -1,18 +1,17 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+  type SimulatorOptions,
+} from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
   type Either,
   ledger,
   Contract as MockNonFungibleToken,
-  type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockNonFungibleToken/contract/index.js';
 import {
   NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,
-} from '../../witnesses/NonFungibleTokenWitnesses.js';
+} from '../witnesses/NonFungibleTokenWitnesses.js';
 
 /**
  * Type constructor args
@@ -32,33 +31,38 @@ const NonFungibleTokenSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockNonFungibleToken<NonFungibleTokenPrivateState>(witnesses),
-  defaultPrivateState: () => NonFungibleTokenPrivateState,
+  defaultPrivateState: () => NonFungibleTokenPrivateState.generate(),
   contractArgs: (name, symbol, init) => [name, symbol, init],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => NonFungibleTokenWitnesses(),
+  artifactName: 'MockNonFungibleToken',
 });
 
 /**
  * NonFungibleToken Simulator
  */
 export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
-  constructor(
+  static async create(
     name: string,
     symbol: string,
     init: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       NonFungibleTokenPrivateState,
       ReturnType<typeof NonFungibleTokenWitnesses>
     > = {},
-  ) {
-    super([name, symbol, init], options);
+  ): Promise<NonFungibleTokenSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [name, symbol, init],
+      options,
+    ) as Promise<NonFungibleTokenSimulator>;
   }
 
   /**
    * @description Returns the token name.
    * @returns The token name.
    */
-  public name(): string {
+  public name(): Promise<string> {
     return this.circuits.impure.name();
   }
 
@@ -66,7 +70,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @description Returns the symbol of the token.
    * @returns The token symbol.
    */
-  public symbol(): string {
+  public symbol(): Promise<string> {
     return this.circuits.impure.symbol();
   }
 
@@ -76,8 +80,8 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @return The number of tokens in `account`'s account.
    */
   public balanceOf(
-    account: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): bigint {
+    account: Either<Uint8Array, ContractAddress>,
+  ): Promise<bigint> {
     return this.circuits.impure.balanceOf(account);
   }
 
@@ -86,7 +90,9 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The identifier for a token.
    * @return The public key that owns the token.
    */
-  public ownerOf(tokenId: bigint): Either<ZswapCoinPublicKey, ContractAddress> {
+  public ownerOf(
+    tokenId: bigint,
+  ): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.impure.ownerOf(tokenId);
   }
 
@@ -100,7 +106,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The identifier for a token.
    * @returns The token id's URI.
    */
-  public tokenURI(tokenId: bigint): string {
+  public tokenURI(tokenId: bigint): Promise<string> {
     return this.circuits.impure.tokenURI(tokenId);
   }
 
@@ -119,10 +125,10 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The token `to` may be permitted to transfer
    */
   public approve(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure.approve(to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure.approve(to, tokenId);
   }
 
   /**
@@ -132,7 +138,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    */
   public getApproved(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.impure.getApproved(tokenId);
   }
 
@@ -148,10 +154,10 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param approved A boolean determining if `operator` may manage all tokens of the caller
    */
   public setApprovalForAll(
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    operator: Either<Uint8Array, ContractAddress>,
     approved: boolean,
-  ) {
-    this.circuits.impure.setApprovalForAll(operator, approved);
+  ): Promise<[]> {
+    return this.circuits.impure.setApprovalForAll(operator, approved);
   }
 
   /**
@@ -162,9 +168,9 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @return A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
   public isApprovedForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
-  ): boolean {
+    owner: Either<Uint8Array, ContractAddress>,
+    operator: Either<Uint8Array, ContractAddress>,
+  ): Promise<boolean> {
     return this.circuits.impure.isApprovedForAll(owner, operator);
   }
 
@@ -178,16 +184,16 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * - `tokenId` token must be owned by `fromAddress`.
    * - If the caller is not `fromAddress`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The source account from which the token is being transfered
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
+   * @param {Either<Uint8Array, ContractAddress>} fromAddress - The source account from which the token is being transfered
+   * @param {Either<Uint8Array, ContractAddress>} to - The target account to transfer token to
    * @param {TokenId} tokenId - The token being transfered
    */
   public transferFrom(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure.transferFrom(fromAddress, to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure.transferFrom(fromAddress, to, tokenId);
   }
 
   /**
@@ -201,7 +207,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    */
   public _requireOwned(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.impure._requireOwned(tokenId);
   }
 
@@ -213,7 +219,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    */
   public _ownerOf(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.impure._ownerOf(tokenId);
   }
 
@@ -228,11 +234,11 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param auth An account authorized to operate on all tokens held by the owner the token
    */
   public _approve(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-    auth: Either<ZswapCoinPublicKey, ContractAddress>,
-  ) {
-    this.circuits.impure._approve(to, tokenId, auth);
+    auth: Either<Uint8Array, ContractAddress>,
+  ): Promise<[]> {
+    return this.circuits.impure._approve(to, tokenId, auth);
   }
 
   /**
@@ -249,10 +255,10 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The token to spend
    */
   public _checkAuthorized(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: Either<Uint8Array, ContractAddress>,
+    spender: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
+  ): Promise<[]> {
     return this.circuits.impure._checkAuthorized(owner, spender, tokenId);
   }
 
@@ -269,10 +275,10 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @return A boolean determining if `spender` may manage `tokenId`
    */
   public _isAuthorized(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    spender: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: Either<Uint8Array, ContractAddress>,
+    spender: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ): boolean {
+  ): Promise<boolean> {
     return this.circuits.impure._isAuthorized(owner, spender, tokenId);
   }
 
@@ -284,7 +290,7 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    */
   public _getApproved(
     tokenId: bigint,
-  ): Either<ZswapCoinPublicKey, ContractAddress> {
+  ): Promise<Either<Uint8Array, ContractAddress>> {
     return this.circuits.impure._getApproved(tokenId);
   }
 
@@ -300,11 +306,11 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param approved A boolean determining if `operator` may operate on all of `owner` tokens
    */
   public _setApprovalForAll(
-    owner: Either<ZswapCoinPublicKey, ContractAddress>,
-    operator: Either<ZswapCoinPublicKey, ContractAddress>,
+    owner: Either<Uint8Array, ContractAddress>,
+    operator: Either<Uint8Array, ContractAddress>,
     approved: boolean,
-  ) {
-    this.circuits.impure._setApprovalForAll(owner, operator, approved);
+  ): Promise<[]> {
+    return this.circuits.impure._setApprovalForAll(owner, operator, approved);
   }
 
   /**
@@ -319,10 +325,10 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The token to transfer
    */
   public _mint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure._mint(to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure._mint(to, tokenId);
   }
 
   /**
@@ -336,8 +342,8 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    *
    * @param tokenId The token to burn
    */
-  public _burn(tokenId: bigint) {
-    this.circuits.impure._burn(tokenId);
+  public _burn(tokenId: bigint): Promise<[]> {
+    return this.circuits.impure._burn(tokenId);
   }
 
   /**
@@ -354,11 +360,11 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The token to transfer
    */
   public _transfer(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure._transfer(fromAddress, to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure._transfer(fromAddress, to, tokenId);
   }
 
   /**
@@ -370,8 +376,8 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * @param tokenId The identifier of the token.
    * @param tokenURI The URI of `tokenId`.
    */
-  public _setTokenURI(tokenId: bigint, tokenURI: string) {
-    this.circuits.impure._setTokenURI(tokenId, tokenURI);
+  public _setTokenURI(tokenId: bigint, tokenURI: string): Promise<[]> {
+    return this.circuits.impure._setTokenURI(tokenId, tokenURI);
   }
 
   /**
@@ -388,16 +394,16 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * - `tokenId` token must be owned by `fromAddress`.
    * - If the caller is not `fromAddress`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The source account from which the token is being transfered
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account to transfer token to
+   * @param {Either<Uint8Array, ContractAddress>} fromAddress - The source account from which the token is being transfered
+   * @param {Either<Uint8Array, ContractAddress>} to - The target account to transfer token to
    * @param {TokenId} tokenId - The token being transfered
    */
   public _unsafeTransferFrom(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure._unsafeTransferFrom(fromAddress, to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeTransferFrom(fromAddress, to, tokenId);
   }
 
   /**
@@ -414,16 +420,16 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * - `to` cannot be the zero address.
    * - `tokenId` token must be owned by `fromAddress`.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} fromAddress - The source account of the token transfer
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The target account of the token transfer
+   * @param {Either<Uint8Array, ContractAddress>} fromAddress - The source account of the token transfer
+   * @param {Either<Uint8Array, ContractAddress>} to - The target account of the token transfer
    * @param {TokenId} tokenId - The token to transfer
    */
   public _unsafeTransfer(
-    fromAddress: Either<ZswapCoinPublicKey, ContractAddress>,
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    fromAddress: Either<Uint8Array, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure._unsafeTransfer(fromAddress, to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeTransfer(fromAddress, to, tokenId);
   }
 
   /**
@@ -438,13 +444,42 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
    * - `tokenId` must not exist.
    * - `to` cannot be the zero address.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} to - The account receiving `tokenId`
+   * @param {Either<Uint8Array, ContractAddress>} to - The account receiving `tokenId`
    * @param {TokenId} tokenId - The token to transfer
    */
   public _unsafeMint(
-    to: Either<ZswapCoinPublicKey, ContractAddress>,
+    to: Either<Uint8Array, ContractAddress>,
     tokenId: bigint,
-  ) {
-    this.circuits.impure._unsafeMint(to, tokenId);
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeMint(to, tokenId);
   }
+
+  public readonly privateState = {
+    /**
+     * @description Replaces the secret key in the private state. Used in tests to
+     * simulate switching between different user identities or injecting incorrect
+     * keys to test failure paths.
+     * @param newSK - The new secret key to set.
+     * @returns The updated private state.
+     */
+    injectSecretKey: (
+      newSK: Uint8Array,
+    ): Promise<NonFungibleTokenPrivateState> =>
+      this.updatePrivateState(
+        NonFungibleTokenPrivateState.withSecretKey(newSK),
+      ),
+
+    /**
+     * @description Returns the current secret key from the private state.
+     * @returns The secret key.
+     * @throws If the secret key is undefined.
+     */
+    getCurrentSecretKey: async (): Promise<Uint8Array> => {
+      const sk = (await this.getPrivateState()).secretKey;
+      if (typeof sk === 'undefined') {
+        throw new Error('Missing secret key');
+      }
+      return Uint8Array.from(sk);
+    },
+  };
 }

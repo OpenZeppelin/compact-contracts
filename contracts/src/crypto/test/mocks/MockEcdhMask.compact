@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the EcdhMask module's pure circuits so they can be driven from
+// off-chain tests. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+import "../../EcdhMask" prefix EcdhMask_;
+
+export { EcdhMask_Ciphertext }
+
+export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+  return EcdhMask_kdf(sShared, domain);
+}
+
+export pure circuit encrypt(
+                      recipientPk: JubjubPoint,
+                      value: Uint<128>,
+                      e: Field,
+                      domain: Bytes<32>
+                      ): EcdhMask_Ciphertext {
+  return EcdhMask_encrypt(recipientPk, value, e, domain);
+}
+
+export pure circuit decrypt(ciphertext: EcdhMask_Ciphertext, ekScalar: Field, domain: Bytes<32>): Field {
+  return EcdhMask_decrypt(ciphertext, ekScalar, domain);
+}

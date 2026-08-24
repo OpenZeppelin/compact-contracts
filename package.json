@@ -8,30 +8,57 @@
     "packages/*"
   ],
   "scripts": {
-    "compact": "turbo run compact --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile": "turbo run compile --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:access": "turbo run compile:access --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:archive": "turbo run compile:archive --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:crypto": "turbo run compile:crypto --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:multisig": "turbo run compile:multisig --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:security": "turbo run compile:security --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:token": "turbo run compile:token --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:utils": "turbo run compile:utils --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:integration": "turbo run compile:integration --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "build": "turbo run build --log-prefix=none",
-    "test": "turbo run test --filter=@openzeppelin/compact-contracts --log-prefix=none",
-    "fmt-and-lint": "biome check . --changed",
-    "fmt-and-lint:fix": "biome check . --changed --write",
-    "fmt-and-lint:ci": "biome ci . --changed --no-errors-on-unmatched",
-    "types": "turbo run types",
+    "test": "SKIP_ZK=true turbo run test --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:coverage": "SKIP_ZK=true turbo run test:coverage --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts",
+    "test:integration": "SKIP_ZK=true turbo run test:integration --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:integration:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts integration",
+    "test:harness": "turbo run test:harness --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:harness:live": "turbo run test:harness:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:scripts": "turbo run test:scripts --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "lint": "biome check .",
+    "lint:fix": "biome check . --write",
+    "lint:ci": "biome ci . --no-errors-on-unmatched",
+    "env:up": "make env-up",
+    "env:down": "make env-down",
+    "env:status": "make env-status",
+    "env:logs": "make env-logs",
+    "env:logs:clean": "make env-logs-clean",
+    "types": "turbo run types && yarn run types:scripts",
+    "types:scripts": "tsc -p scripts/tsconfig.json",
     "clean": "turbo run clean"
   },
   "resolutions": {
-    "tar": "~7.5.7",
-    "glob": "~10.5.0"
+    "tar": "~7.5.11",
+    "glob": "~10.5.0",
+    "vite": "8.0.16",
+    "minimatch": "9.0.6",
+    "postcss": "8.5.10",
+    "picomatch": "4.0.4",
+    "ip-address": "10.1.1",
+    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.14.0"
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.7",
-    "@midnight-ntwrk/ledger-v7": "7.0.0",
+    "@biomejs/biome": "^2.5.8",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
-    "@types/node": "24.10.0",
+    "@types/node": "26.2.0",
     "ts-node": "^10.9.2",
-    "turbo": "^2.9.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.2"
+    "turbo": "^2.10.9",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }

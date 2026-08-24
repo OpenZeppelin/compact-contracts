@@ -1,7 +1,7 @@
 import {
-  type BaseSimulatorOptions,
   createSimulator,
-} from '@openzeppelin-compact/contracts-simulator';
+  type SimulatorOptions,
+} from '@openzeppelin/compact-simulator';
 import {
   type ContractAddress,
   type Either,
@@ -12,16 +12,17 @@ import {
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,
-} from '../../witnesses/ZOwnablePKWitnesses.js';
+} from '../witnesses/ZOwnablePKWitnesses.js';
 
-/**
- * Type constructor args
- */
+/** Type constructor args */
 type ZOwnablePKArgs = readonly [
   owner: Uint8Array,
   instanceSalt: Uint8Array,
   isInit: boolean,
 ];
+
+/** Concrete ledger type extracted from the generated artifact */
+type ZOwnablePKLedger = ReturnType<typeof ledger>;
 
 /**
  * Base simulator
@@ -47,23 +48,28 @@ const ZOwnablePKSimulatorBase: any = createSimulator<
     return [owner, instanceSalt, isInit];
   },
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => ZOwnablePKWitnesses(),
+  witnessesFactory: () => ZOwnablePKWitnesses<ZOwnablePKLedger>(),
+  artifactName: 'MockZOwnablePK',
 });
 
 /**
  * ZOwnablePKSimulator
  */
 export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
-  constructor(
+  static async create(
     ownerId: Uint8Array,
     instanceSalt: Uint8Array,
     isInit: boolean,
-    options: BaseSimulatorOptions<
+    options: SimulatorOptions<
       ZOwnablePKPrivateState,
       ReturnType<typeof ZOwnablePKWitnesses>
     > = {},
-  ) {
-    super([ownerId, instanceSalt, isInit], options);
+  ): Promise<ZOwnablePKSimulator> {
+    // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
+    return super.create(
+      [ownerId, instanceSalt, isInit],
+      options,
+    ) as Promise<ZOwnablePKSimulator>;
   }
 
   /**
@@ -71,7 +77,7 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
    * The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
    * @returns The current owner's commitment.
    */
-  public owner(): Uint8Array {
+  public owner(): Promise<Uint8Array> {
     return this.circuits.impure.owner();
   }
 
@@ -80,8 +86,8 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
    * `newOwnerId` must be precalculated and given to the current owner off chain.
    * @param newOwnerId The new owner's unique identifier (`SHA256(pk, nonce)`).
    */
-  public transferOwnership(newOwnerId: Uint8Array) {
-    this.circuits.impure.transferOwnership(newOwnerId);
+  public transferOwnership(newOwnerId: Uint8Array): Promise<[]> {
+    return this.circuits.impure.transferOwnership(newOwnerId);
   }
 
   /**
@@ -89,16 +95,16 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
    * It will not be possible to call `assertOnlyOnwer` circuits anymore.
    * Can only be called by the current owner.
    */
-  public renounceOwnership() {
-    this.circuits.impure.renounceOwnership();
+  public renounceOwnership(): Promise<[]> {
+    return this.circuits.impure.renounceOwnership();
   }
 
   /**
    * @description Throws if called by any account whose id hash `SHA256(pk, nonce)` does not match
    * the stored owner commitment. Use this to only allow the owner to call specific circuits.
    */
-  public assertOnlyOwner() {
-    this.circuits.impure.assertOnlyOwner();
+  public assertOnlyOwner(): Promise<[]> {
+    return this.circuits.impure.assertOnlyOwner();
   }
 
   /**
@@ -108,7 +114,10 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
    * after every transfer to prevent duplicate commitments given the same `id`.
    * @returns The commitment derived from `id` and `counter`.
    */
-  public _computeOwnerCommitment(id: Uint8Array, counter: bigint): Uint8Array {
+  public _computeOwnerCommitment(
+    id: Uint8Array,
+    counter: bigint,
+  ): Promise<Uint8Array> {
     return this.circuits.impure._computeOwnerCommitment(id, counter);
   }
 
@@ -122,7 +131,7 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
   public _computeOwnerId(
     pk: Either<ZswapCoinPublicKey, ContractAddress>,
     nonce: Uint8Array,
-  ): Uint8Array {
+  ): Promise<Uint8Array> {
     return this.circuits.pure._computeOwnerId(pk, nonce);
   }
 
@@ -131,8 +140,8 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
    * enforcing permission checks on the caller.
    * @param newOwnerId - The unique identifier of the new owner calculated by `SHA256(pk, nonce)`.
    */
-  public _transferOwnership(newOwnerId: Uint8Array) {
-    this.circuits.impure._transferOwnership(newOwnerId);
+  public _transferOwnership(newOwnerId: Uint8Array): Promise<[]> {
+    return this.circuits.impure._transferOwnership(newOwnerId);
   }
 
   public readonly privateState = {
@@ -143,21 +152,15 @@ export class ZOwnablePKSimulator extends ZOwnablePKSimulatorBase {
      */
     injectSecretNonce: (
       newNonce: Buffer<ArrayBufferLike>,
-    ): ZOwnablePKPrivateState => {
-      const currentState =
-        this.circuitContextManager.getContext().currentPrivateState;
-      const updatedState = { ...currentState, secretNonce: newNonce };
-      this.circuitContextManager.updatePrivateState(updatedState);
-      return updatedState;
-    },
+    ): Promise<ZOwnablePKPrivateState> =>
+      this.updatePrivateState({ secretNonce: newNonce }),
 
     /**
      * @description Returns the secret nonce given the context.
      * @returns The secret nonce.
      */
-    getCurrentSecretNonce: (): Uint8Array => {
-      return this.circuitContextManager.getContext().currentPrivateState
-        .secretNonce;
+    getCurrentSecretNonce: async (): Promise<Uint8Array> => {
+      return (await this.getPrivateState()).secretNonce;
     },
   };
 }
