@@ -83,9 +83,9 @@ pragma language_version >= 0.23.0;
  * seed; nothing can stop a spender who deliberately publishes it, since any
  * construction must let the spender compute the pad. Only the seed and the epoch
  * are needed to make the pad unique: the mask is `kdf(e * ownerPk)`, so it
- * already varies with the owner and the preimage doesn't need not name them. Wallet
- * authors supplying a seed for `transferFrom` / `burnFrom` should understand they are
- * protecting the owner they are spending on behalf of.
+ * already varies with the owner and the preimage doesn't need to name them. Wallet
+ * authors supplying a seed for `transferFrom` / `burnFrom` should understand they
+ * are protecting the owner they are spending on behalf of.
  *
  * Seed generation is a WALLET responsibility and OUT OF SCOPE for this
  * contract, which cannot enforce it. The witness shipped in this repo
