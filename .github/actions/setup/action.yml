@@ -20,12 +20,24 @@ runs:
     # that compiles nothing passes an empty one and skips the step: saving an
     # empty cache under a key later jobs restore would leave them with nothing
     # instead of an earlier commit's populated fallback.
+    #
+    # Keyed on the contract sources and the pinned compiler, NOT on the commit.
+    # A commit-keyed entry is written on every push whether or not anything it
+    # caches changed, and these entries are large — `token`'s slice is ~275 MB of
+    # ZK keys, so five commits had left five copies of it, and the repo was at
+    # 6.5 GB of a 10 GB budget. Past that ceiling GitHub evicts least-recently
+    # used, which would silently drop the dependency-tree cache below and undo
+    # what it saves. Content keys mean a docs-only or test-only commit reuses the
+    # existing entry rather than duplicating it.
     - name: Cache turbo build setup
       if: ${{ inputs.turbo-cache-key != '' }}
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: .turbo
-        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ github.sha }}
+        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ hashFiles('contracts/src/**/*.compact', 'contracts/test/integration/**/*.compact', '.github/actions/setup/action.yml') }}
+        # Kept, so a source change still starts from the previous build rather
+        # than from nothing: turbo's store is content-addressed, so the tasks
+        # whose inputs did not move stay hits.
         restore-keys: |
           ${{ runner.os }}-${{ inputs.turbo-cache-key }}-
 
