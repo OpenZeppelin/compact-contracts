@@ -377,20 +377,28 @@ describe.skipIf(isLiveBackend())(
 
     // Alice (owner) funds with `amount` and approves Bob (spender) for `cap`.
     // Leaves Alice active.
-    const approveBob = async (amount: bigint, cap: bigint) => {
-      await registerAll();
+    const fundAndApprove = async (
+      owner: typeof ALICE,
+      amount: bigint,
+      cap: bigint,
+    ) => {
       await cft.privateState.switchIdentity(
-        ALICE.secretKey,
-        ALICE.encryptionKey,
+        owner.secretKey,
+        owner.encryptionKey,
       );
-      await cft._mint(ALICE.accountId, amount);
+      await cft._mint(owner.accountId, amount);
       // Dual-balance: sweep the minted value into spendable so approve can debit it.
       await cft.sweep();
       await cft.privateState.cachePlaintext(
-        await cft.balanceOf(ALICE.accountId),
+        await cft.balanceOf(owner.accountId),
         amount,
       );
       await cft.approve(BOB.accountId, cap);
+    };
+
+    const approveBob = async (amount: bigint, cap: bigint) => {
+      await registerAll();
+      await fundAndApprove(ALICE, amount, cap);
     };
 
     // One escrow spend by Bob, returning the entry either side. `allowance` is
@@ -399,16 +407,21 @@ describe.skipIf(isLiveBackend())(
       value: bigint,
       allowance: bigint,
       via: 'transferFrom' | 'burnFrom' = 'transferFrom',
+      owner = ALICE,
+      spender = BOB,
     ) => {
-      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
-      const before = await cft.allowance(ALICE.accountId, BOB.accountId);
+      await cft.privateState.switchIdentity(
+        spender.secretKey,
+        spender.encryptionKey,
+      );
+      const before = await cft.allowance(owner.accountId, spender.accountId);
       await cft.privateState.cachePlaintext(before.spenderCt, allowance);
       if (via === 'transferFrom') {
-        await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, value);
+        await cft.transferFrom(owner.accountId, CHARLIE.accountId, value);
       } else {
-        await cft._burnFrom(ALICE.accountId, value);
+        await cft._burnFrom(owner.accountId, value);
       }
-      const after = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const after = await cft.allowance(owner.accountId, spender.accountId);
       return { before, after };
     };
 
@@ -774,6 +787,79 @@ describe.skipIf(isLiveBackend())(
       const second = await spendEscrow(10n, 30n); // 30 -> 20
 
       expectRerandomized(first, second);
+    });
+
+    it('re-randomizes across spends against different owners under one spender seed', async () => {
+      await approveBob(100n, 40n);
+      await fundAndApprove(CHARLIE, 100n, 40n);
+
+      const fromAlice = await spendEscrow(10n, 40n, 'burnFrom', ALICE);
+      const fromCharlie = await spendEscrow(10n, 40n, 'burnFrom', CHARLIE);
+
+      // Only the spender copies are comparable: both are encrypted under Bob's
+      // key, so a repeated `rSpender` makes the two subtracted encryptions
+      // coincide. The owner copies are under different keys and differ anyway.
+      expect(
+        elgamal.add(fromAlice.before.spenderCt, fromCharlie.after.spenderCt),
+      ).not.toStrictEqual(
+        elgamal.add(fromCharlie.before.spenderCt, fromAlice.after.spenderCt),
+      );
+    });
+
+    it('re-randomizes across spends against different owners via transferFrom', async () => {
+      await approveBob(100n, 40n);
+      await fundAndApprove(CHARLIE, 100n, 40n);
+
+      const fromAlice = await spendEscrow(10n, 40n, 'transferFrom', ALICE);
+      const fromCharlie = await spendEscrow(10n, 40n, 'transferFrom', CHARLIE);
+
+      expect(
+        elgamal.add(fromAlice.before.spenderCt, fromCharlie.after.spenderCt),
+      ).not.toStrictEqual(
+        elgamal.add(fromCharlie.before.spenderCt, fromAlice.after.spenderCt),
+      );
+    });
+
+    // Two wallets shipping the same fixed seed is a realistic wallet bug, and the
+    // owner they both spend from carries the leak.
+    it('re-randomizes across spends by different spenders on one owner', async () => {
+      await approveBob(100n, 40n);
+
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        60n,
+      );
+      await cft.approve(CHARLIE.accountId, 40n);
+
+      const byBob = await spendEscrow(10n, 40n, 'burnFrom', ALICE, BOB);
+      const byCharlie = await spendEscrow(10n, 40n, 'burnFrom', ALICE, CHARLIE);
+
+      // Both owner copies are under Alice's key, so a repeated `rOwner` makes
+      // the subtracted encryptions coincide.
+      expect(
+        elgamal.add(byBob.before.ownerCt, byCharlie.after.ownerCt),
+      ).not.toStrictEqual(
+        elgamal.add(byCharlie.before.ownerCt, byBob.after.ownerCt),
+      );
+      // Both memos mask 30 under Alice's key, so a repeated ephemeral would
+      // make them byte-identical.
+      expect(byCharlie.after.ownerMemo).not.toStrictEqual(
+        byBob.after.ownerMemo,
+      );
+    });
+
+    // Both entry points reach `_spendEscrow`, so they must share one counter.
+    it('re-randomizes across one pair spending via both entry points', async () => {
+      await approveBob(100n, 40n);
+
+      const viaTransfer = await spendEscrow(10n, 40n, 'transferFrom');
+      const viaBurn = await spendEscrow(10n, 30n, 'burnFrom');
+
+      expectRerandomized(viaTransfer, viaBurn);
     });
 
     it('re-randomizes across escrow burns under one spender seed', async () => {

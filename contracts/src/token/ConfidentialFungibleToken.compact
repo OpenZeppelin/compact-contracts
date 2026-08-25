@@ -65,27 +65,30 @@ pragma language_version >= 0.23.0;
  * it. The debit and re-approve-refund ciphertexts (`_debit`, `approve`) derive
  * randomness from a static domain tag with no per-op nonce, so two
  * operations under one seed share randomness and their public ciphertext deltas
- * reveal the amount difference. `_spendEscrow` is the exception. Every value it
- * derives folds in `_escrowSpendEpochs`, so its randomness is unique per spend
- * regardless of the seed. The credit path folds the recipient's memo-list length
- * in as a nonce (defense in depth), but that counter RESETS on `clearMemos`, so it
- * is an in-epoch backstop only, never a substitute for freshness.
+ * reveal the amount difference. `_spendEscrow` is the exception: every value it
+ * derives folds in the spend epoch AND both counterparties, so its randomness
+ * is unique per spend regardless of the seed. The credit path folds the
+ * memo-list length in as a nonce (defense in depth), but that counter RESETS on
+ * `clearMemos`, so it is an in-epoch backstop only, never a substitute for
+ * freshness.
  *
  * @notice WHOSE confidentiality a seed protects is not always the caller's. On
  * most paths a wallet's seed hygiene guards its own amounts, so the incentive
- * and the exposure sit with the same party. The escrow owner memo is the
+ * and the exposure sit with the same party. The escrow spend path is the
  * exception: `_spendEscrow` expands every random value it uses from the
  * SPENDER's seed, but all three protect the OWNER. Two re-encrypt their escrow
  * and the third masks their remaining allowance. A spender reusing a seed leaks
  * a counterparty's balance, not their own, and the owner cannot prevent it by
- * rotating their own seed as the leaking call is not theirs. `_escrowSpendEpochs`
- * removes the accidental case by making each ephemeral unique regardless of the
- * seed; nothing can stop a spender who deliberately publishes it, since any
- * construction must let the spender compute the pad. Only the seed and the epoch
- * are needed to make the pad unique: the mask is `kdf(e * ownerPk)`, so it
- * already varies with the owner and the preimage doesn't need to name them. Wallet
- * authors supplying a seed for `transferFrom` / `burnFrom` should understand they
- * are protecting the owner they are spending on behalf of.
+ * rotating their own seed as the leaking call is not theirs.
+ *
+ * The accidental case is removed by binding both counterparties into the
+ * derivation alongside the epoch, which counts per (owner, spender) and so
+ * restarts for each pair. That covers the two ways one seed repeats randomness
+ * across calls: one spender drawing on two owners, and two wallets sharing a
+ * seed drawing on one owner. Nothing stops a spender who deliberately publishes
+ * their seed, since any construction must let them compute the pad. Wallet
+ * authors supplying a seed for `transferFrom` / `burnFrom` should understand
+ * they are protecting the owner they are spending on behalf of.
  *
  * Seed generation is a WALLET responsibility and OUT OF SCOPE for this
  * contract, which cannot enforce it. The witness shipped in this repo
@@ -191,15 +194,15 @@ pragma language_version >= 0.23.0;
  * into the derivations is a possible defense-in-depth hardening; under review, deferred.
  *
  * Block weight. A deploy bundles every exported entry point's on-chain IR into
- * one transaction, and the value circuits are SHA256-heavy (k=16), so a
- * full-surface deployment is byte-heavy. Whether it fits is a property of the
+ * one transaction, and the value circuits are SHA256-heavy (k=16, k=17 for
+ * `transferFrom`), so a full-surface deployment is byte-heavy. Whether it fits is a property of the
  * target network, not the contract: the per-transaction block byte budget is a
  * governance-configurable, node-side ledger parameter. On the local ledger-8 dev
  * stack the full surface exceeded it and was rejected (`1010: Transaction would
  * exhaust the block limits`), while a reduced surface (e.g. receive + transfer,
  * dropping allowances and supply accounting) fit. So confirm deployability
  * against the target network; if a deployment is over budget there, the lever is
- * exposing only the k=16 value operations it needs, not just trimming getters.
+ * exposing only the value operations it needs, not just trimming getters.
  * A deployed contract can also be upgraded by its Contract Maintenance Authority
  * (CMA), so an over-budget deployment can start with a lean surface and add
  * operations by upgrade instead of fitting the whole surface into one deploy.
@@ -271,14 +274,18 @@ module ConfidentialFungibleToken {
     ownerMemo: EcdhMask_Ciphertext;
   }
 
-  // Hash preimage for the per-spend randomness `_spendEscrow` derives; the epoch
-  // rides as a `Field` to keep it within the SHA256 block count of the seed+domain
-  // expansion it replaced. It is hashed once per random value, so an added field
-  // crosses a block boundary three times over and pushes `transferFrom` past its k.
+  // Hash preimage for the per-spend randomness `_spendEscrow` derives. The epoch
+  // counts per (owner, spender) and so restarts for each pair, which is why both
+  // parties are bound in alongside it. Drop the owner and one spender's first
+  // spend against two owners repeats `rSpender`; drop the spender and two wallets
+  // sharing a seed repeat `rOwner` against one owner. Either repeat cancels on
+  // subtraction, because the colliding pair is encrypted under one key.
   struct SpendRandomnessPreimage {
-    seed:   Bytes<32>;
-    domain: Bytes<32>;
-    epoch:  Field;
+    seed:    Bytes<32>;
+    domain:  Bytes<32>;
+    owner:   Bytes<32>;
+    spender: Bytes<32>;
+    epoch:   Field;
   }
 
   // ---------------------------------------------------------------------------
@@ -298,9 +305,9 @@ module ConfidentialFungibleToken {
   export ledger _escrow: Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>;
 
   // Per-(owner, spender) escrow-spend counter, folded into the randomness
-  // `_spendEscrow` derives so two spends never share a one-time pad. Keyed to
-  // the pair that circuit already reads, so it pins nothing new and spends
-  // against different owners stay independent.
+  // `_spendEscrow` derives so repeat spends by one spender against one owner
+  // never share a one-time pad. It restarts for each pair, which is why both
+  // counterparties are bound in too; see `SpendRandomnessPreimage`.
   //
   // Kept out of `EscrowEntry`: `approve` replaces that entry wholesale, so a
   // counter living there would restart on every re-approve.
@@ -381,9 +388,10 @@ module ConfidentialFungibleToken {
    * module header). The derivation is deterministic and public, so an observer
    * who knows the seed can strip a memo's mask and read the delivered amount, and
    * recover balance/escrow amounts from the public ciphertexts. Seed REUSE leaks
-   * plaintext differences and the circuit does NOT prevent it: only the credit
-   * path folds a per-recipient nonce (the memo-list length) in as defense in
-   * depth, and even that resets on `clearMemos`. The seed MUST be fresh,
+   * plaintext differences and the circuit does NOT prevent it on most paths.
+   * `_spendEscrow` is an exception (its randomness folds the spend epoch and both
+   * counterparties); the credit path folds the recipient's memo-list length as
+   * defense in depth, and that resets on `clearMemos`. The seed MUST be fresh,
    * high-entropy, and secret for every invocation.
    */
   witness wit_RandomnessSeed(): Bytes<32>;
@@ -972,7 +980,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=16, rows=64374
+   * @circuitInfo k=17, rows=70164
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1123,9 +1131,9 @@ module ConfidentialFungibleToken {
 
     const seed = wit_RandomnessSeed();
 
-    // The seed is the SPENDER's, but all three values protect the OWNER, so the
-    // epoch is what keeps them distinct when a spender reuses a seed. See the
-    // module header's @notice on whose confidentiality a seed protects.
+    // The seed is the SPENDER's, but all three values protect the OWNER. The
+    // epoch below plus both counterparties in the preimage are what keep them
+    // distinct when a seed is reused. See the module header's @notice.
     if (!_escrowSpendEpochs.member(disclose(fromAddress))) {
       _escrowSpendEpochs.insert(disclose(fromAddress), default<Map<Bytes<32>, Counter>>);
     }
@@ -1136,9 +1144,9 @@ module ConfidentialFungibleToken {
     const spendEpoch =
       _escrowSpendEpochs.lookup(disclose(fromAddress)).lookup(disclose(spenderId)) as Field;
 
-    const rSpender   = _expandSpendRandomness(seed, pad(32, "spend_escrow_spender"), spendEpoch);
-    const rOwner     = _expandSpendRandomness(seed, pad(32, "spend_escrow_owner"),   spendEpoch);
-    const eOwnerMemo = _expandSpendRandomness(seed, pad(32, "spend_owner_memo"),     spendEpoch);
+    const rSpender   = _expandSpendRandomness(seed, pad(32, "spend_escrow_spender"), fromAddress, spenderId, spendEpoch);
+    const rOwner     = _expandSpendRandomness(seed, pad(32, "spend_escrow_owner"),   fromAddress, spenderId, spendEpoch);
+    const eOwnerMemo = _expandSpendRandomness(seed, pad(32, "spend_owner_memo"),     fromAddress, spenderId, spendEpoch);
 
     const ownerPk = _encryptionKeys.lookup(disclose(fromAddress));
     const newSpenderCt = ElGamal_subEncrypted(entry.spenderCt, spenderPk, value, rSpender);
@@ -1169,7 +1177,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @circuitInfo k=16, rows=37441
+   * @circuitInfo k=16, rows=43231
    *
    * Requirements:
    *
@@ -1187,15 +1195,19 @@ module ConfidentialFungibleToken {
 
   /**
    * @description Derives one per-spend random scalar for `_spendEscrow`. Does
-   * what `ElGamal_expandRandomness` does, but folds the escrow-spend epoch into
-   * the preimage as well as the seed and domain tag, so each spend gets distinct
-   * randomness even when the spender reuses a seed.
+   * what `ElGamal_expandRandomness` does, but folds both counterparties and the
+   * escrow-spend epoch into the preimage as well as the seed and domain tag, so
+   * each spend gets distinct randomness even when a seed is reused.
    */
   pure circuit _expandSpendRandomness(
-      seed: Bytes<32>, domain: Bytes<32>, epoch: Field): Field {
+      seed: Bytes<32>, domain: Bytes<32>, owner: Bytes<32>, spender: Bytes<32>,
+      epoch: Field): Field {
     return degradeToTransient(
              persistentHash<SpendRandomnessPreimage>(
-               SpendRandomnessPreimage { seed: seed, domain: domain, epoch: epoch }
+               SpendRandomnessPreimage {
+                 seed: seed, domain: domain, owner: owner, spender: spender,
+                 epoch: epoch
+               }
              )
            );
   }
