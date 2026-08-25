@@ -16,6 +16,29 @@
  * fresh clone of the repo has no such label yet. */
 export const NIGHTLY_LABEL = 'live-nightly';
 
+/**
+ * Collapse the per-target job results into the one that decides the nightly.
+ *
+ * The workflow runs a pipeline per target, so `compile` and the suite are seven
+ * jobs each rather than one, and it hands them over as a whitespace-joined list.
+ * Severity order matters more than it looks:
+ *   - one `failure` anywhere is a failed nightly, however many targets passed;
+ *   - `cancelled` is not a verdict, so it only wins when nothing failed;
+ *   - a mix of `success` and `skipped` is a success, because a run scoped to one
+ *     target legitimately skips the other six;
+ *   - all `skipped` stays `skipped`, which is how "nothing ran" reaches
+ *     {@link nightlyAction}.
+ *
+ * @param results - whitespace-separated `needs.<job>.result` values
+ */
+export function worstResult(results: string): string {
+  const seen = new Set(results.split(/\s+/).filter((r) => r !== ''));
+  for (const result of ['failure', 'cancelled', 'success']) {
+    if (seen.has(result)) return result;
+  }
+  return 'skipped';
+}
+
 const ISSUE_TITLE = 'Nightly live test run is failing';
 
 /** GitHub issue operations {@link reportNightly} needs. Narrow on purpose: the

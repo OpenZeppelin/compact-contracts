@@ -1,7 +1,7 @@
 import { setOutput } from './ci/actions.ts';
 import { GhIssueTracker } from './ci/gh.ts';
 import { resolveMatrix } from './ci/matrix.ts';
-import { reportNightly } from './ci/nightly.ts';
+import { reportNightly, worstResult } from './ci/nightly.ts';
 import { specFiles } from './live/specs.ts';
 import { listTargets, liveCategories } from './live/targets.ts';
 
@@ -20,7 +20,7 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * Their tests are in `scripts/ci/test/` (`yarn test:scripts`).
  *
  * Usage, with the inputs each command reads from the environment:
- *   node scripts/live-ci.ts matrix    # TARGET, LABEL, FILTER
+ *   node scripts/live-ci.ts matrix    # TARGET, LABEL, FILTER, KNOWN_TARGETS
  *   node scripts/live-ci.ts nightly   # REPO, SUITE_RESULT, PLAN_RESULT,
  *                                     # COMPILE_RESULT, RUN_URL
  *
@@ -46,8 +46,18 @@ function optionalEnv(name: string): string {
   return process.env[name] ?? '';
 }
 
-/** Publish the matrix the suite job fans out over. */
+/** Publish the matrices the compile and suite jobs fan out over. */
 function matrix(): number {
+  const missing = unpaired(env('KNOWN_TARGETS'));
+  if (missing.length > 0) {
+    console.log(
+      `live target(s) with no job pair in live.yml: ${missing.join(', ')}.\n` +
+        'Add a `compile-<target>` job and a `live-<target>` job for each, plus ' +
+        'its `legs-<target>` plan output, and list it in KNOWN_TARGETS.',
+    );
+    return 1;
+  }
+
   const filter = optionalEnv('FILTER');
   const resolution = resolveMatrix(
     {
@@ -75,11 +85,35 @@ function matrix(): number {
   for (const leg of resolution.legs) {
     console.log(`  ${leg.target} · ${leg.name}  (${leg.file})`);
   }
-  // Two matrices, one resolution: the compile jobs build a target once and the
-  // suite jobs that run its spec files download what they built.
+
+  // One `legs-<target>` output per target, because the workflow pairs a compile
+  // job with its own suite matrix so each target's specs start as soon as THAT
+  // target is built (`needs` is job-level, so one shared suite matrix would wait
+  // for the slowest compile of all). Actions output names have to be literals,
+  // so the workflow declares the pairs it knows and KNOWN_TARGETS below is what
+  // keeps that list honest.
   setOutput('targets', JSON.stringify(resolution.targets));
-  setOutput('legs', JSON.stringify(resolution.legs));
+  for (const target of listTargets(liveCategories())) {
+    setOutput(
+      `legs-${target}`,
+      JSON.stringify(resolution.legs.filter((l) => l.target === target)),
+    );
+  }
   return 0;
+}
+
+/**
+ * Fail when a discovered live target has no job pair in the workflow.
+ *
+ * The dynamic target list was the whole point of resolving the matrix here, and
+ * the per-target pipeline gives part of it back: a compile job and a suite matrix
+ * per target have to exist as literal YAML. Without this check a new `src/`
+ * category would simply never run live — a silently missing job nobody notices.
+ * With it, the plan job goes red in seconds naming what to add.
+ */
+function unpaired(known: string): string[] {
+  const declared = new Set(known.split(/[\s,]+/).filter((t) => t !== ''));
+  return listTargets(liveCategories()).filter((t) => !declared.has(t));
 }
 
 /** Mirror the nightly result into the `live-nightly` tracking issue. */
@@ -87,9 +121,12 @@ function nightly(): number {
   console.log(
     reportNightly(
       {
-        suite: env('SUITE_RESULT'),
+        // Both aggregates arrive as a whitespace-joined list, one entry per
+        // target pipeline, since the workflow pairs a compile job with a suite
+        // matrix per target rather than running one matrix of each.
+        suite: worstResult(env('SUITE_RESULT')),
         plan: env('PLAN_RESULT'),
-        compile: env('COMPILE_RESULT'),
+        compile: worstResult(env('COMPILE_RESULT')),
         runUrl: env('RUN_URL'),
       },
       new GhIssueTracker(env('REPO')),

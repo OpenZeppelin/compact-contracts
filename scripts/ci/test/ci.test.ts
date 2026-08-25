@@ -10,6 +10,7 @@ import {
   NIGHTLY_LABEL,
   nightlyAction,
   reportNightly,
+  worstResult,
 } from '../nightly.ts';
 
 /**
@@ -372,6 +373,42 @@ describe('resolveMatrix', () => {
     resolveMatrix(request({ target: ALL_TARGETS }), TARGETS, lookup);
 
     expect(lookup.mock.calls).toStrictEqual(TARGETS.map((t) => [t]));
+  });
+});
+
+describe('worstResult', () => {
+  it('reduces a single result to itself', () => {
+    expect(worstResult('success')).toBe('success');
+  });
+
+  it('lets one failure outweigh six passing targets', () => {
+    expect(worstResult('success success success failure success success')).toBe(
+      'failure',
+    );
+  });
+
+  it('prefers a failure over a cancellation', () => {
+    // A cancelled sibling says nothing about the target that actually broke.
+    expect(worstResult('cancelled failure success')).toBe('failure');
+  });
+
+  it('reports a cancellation when nothing failed', () => {
+    expect(worstResult('success cancelled skipped')).toBe('cancelled');
+  });
+
+  it('reads a scoped run as a success', () => {
+    // A run scoped to one target legitimately skips the other six, so skipped
+    // siblings must not drag the verdict down.
+    expect(worstResult('skipped skipped success skipped')).toBe('success');
+  });
+
+  it('stays skipped when every target was skipped', () => {
+    // How "nothing ran at all" reaches `nightlyAction`.
+    expect(worstResult('skipped skipped skipped')).toBe('skipped');
+  });
+
+  it('reads an empty list as skipped rather than as a pass', () => {
+    expect(worstResult('')).toBe('skipped');
   });
 });
 
