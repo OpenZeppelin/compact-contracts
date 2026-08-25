@@ -40,9 +40,17 @@ import { VitestRunner } from '../VitestRunner.ts';
 // The one collaborator the orchestrator does not take by injection is the
 // harness-smoke spawn, so `run` is stubbed to succeed. Everything else in
 // `shell.ts` stays real (`banner` prints through the console spies below).
+// The stub records its argv so `VitestRunner.run` can be asserted on the
+// arguments it builds (the `-t` pattern in particular) without spawning.
+const spawned = vi.hoisted(
+  () => [] as { cmd: string; args: readonly string[] }[],
+);
 vi.mock('../shell.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../shell.ts')>()),
-  run: async () => 0,
+  run: async (cmd: string, args: readonly string[] = []) => {
+    spawned.push({ cmd, args });
+    return 0;
+  },
 }));
 
 /** `liveCategories()` reads `src/`, so every case passes this explicitly to keep
@@ -413,6 +421,77 @@ describe('VitestRunner.fileStatuses', () => {
   });
 });
 
+describe('VitestRunner.run arguments', () => {
+  beforeEach(() => {
+    spawned.length = 0;
+  });
+
+  it('appends -t when built with a test pattern', async () => {
+    // Round 2 goes through this same instance, so the flake re-run of a split
+    // leg inherits the slice — a plain re-run would widen back to the file.
+    await new VitestRunner('^Big one ').run('unit-live', '/tmp/r.json', [
+      'src/x/test/Big.test.ts',
+    ]);
+
+    const args = spawned[0]?.args ?? [];
+    const at = args.indexOf('-t');
+    expect(at).toBeGreaterThan(-1);
+    // One argv element, exactly as built: no shell ever re-tokenizes it.
+    expect(args[at + 1]).toBe('^Big one ');
+  });
+
+  it('passes no -t without a pattern', async () => {
+    await new VitestRunner().run('unit-live', '/tmp/r.json', []);
+
+    expect(spawned[0]?.args).not.toContain('-t');
+  });
+});
+
+describe('VitestRunner.reportedTestNames', () => {
+  let dir: string;
+  const report = (name: string, body: string): string => {
+    const p = path.join(dir, name);
+    writeFileSync(p, body);
+    return p;
+  };
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), 'live-names-'));
+  });
+
+  it('lists every test name in the report, skipped ones included', () => {
+    // vitest lists the tests a `-t` pattern skipped too; that is what lets the
+    // orchestrator tell "the pattern matches nothing" apart from "everything
+    // it matches is runtime-skipped".
+    const p = report(
+      'ok.json',
+      JSON.stringify({
+        testResults: [
+          {
+            name: 'a.test.ts',
+            status: 'passed',
+            assertionResults: [
+              { fullName: 'Top ran', status: 'passed' },
+              { fullName: 'Top skipped by pattern', status: 'skipped' },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(new VitestRunner().reportedTestNames(p)).toStrictEqual([
+      'Top ran',
+      'Top skipped by pattern',
+    ]);
+  });
+
+  it('reports no result when the report is missing', () => {
+    expect(
+      new VitestRunner().reportedTestNames(path.join(dir, 'absent.json')),
+    ).toBeUndefined();
+  });
+});
+
 describe('LiveOrchestrator', () => {
   // Deliberately not a real category, so clearing stale reports finds nothing.
   const TARGET = {
@@ -431,6 +510,8 @@ describe('LiveOrchestrator', () => {
     readonly targets?: readonly LiveTarget[];
     readonly fileFilters?: readonly string[];
     readonly specFiles?: (target: string) => readonly string[];
+    readonly testPattern?: string;
+    readonly reportedTestNames?: () => string[] | undefined;
   }): LiveOrchestrator => {
     const targets = opts.targets ?? [TARGET];
     return new LiveOrchestrator({
@@ -454,12 +535,14 @@ describe('LiveOrchestrator', () => {
           return 0;
         },
         fileStatuses: opts.fileStatuses,
+        reportedTestNames: opts.reportedTestNames,
       } as unknown as VitestRunner,
       reporter: {
         firstRunGreen: () => 0,
         verdict: () => 0,
       } as unknown as Reporter,
       specFiles: opts.specFiles,
+      testPattern: opts.testPattern,
     });
   };
 
@@ -496,6 +579,46 @@ describe('LiveOrchestrator', () => {
 
     expect(code).toBe(INFRA_ABORT);
     expect(output()).toContain('produced no results file');
+  });
+
+  it('aborts when the test pattern matches no reported name', async () => {
+    // A `-t` that matches nothing is silently green in vitest (the file
+    // reports "passed" with every test skipped), so a stale split pattern
+    // would pass a leg that ran zero tests.
+    const code = await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'passed']]),
+      testPattern: '^Renamed suite ',
+      reportedTestNames: () => ['Suite one', 'Suite two'],
+    }).run();
+
+    expect(code).toBe(INFRA_ABORT);
+    expect(output()).toContain('matched none');
+  });
+
+  it('passes a pattern whose matches are all runtime-skipped', async () => {
+    // `.skipIf(isLiveBackend())` legitimately empties a slice on live; the
+    // names are still reported, which is how this differs from a stale
+    // pattern. Aborting here would turn a valid dry-only slice red.
+    const code = await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'passed']]),
+      testPattern: '^Suite one',
+      reportedTestNames: () => ['Suite one dry-only check'],
+    }).run();
+
+    expect(code).toBe(0);
+  });
+
+  it('leaves a failing file to the flake rounds, pattern or not', async () => {
+    // A failure already tells its own story; the pattern guard must not
+    // reclassify it as an infrastructure abort.
+    const code = await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'failed']]),
+      testPattern: '^Nothing matches this ',
+      reportedTestNames: () => ['Suite one'],
+    }).run();
+
+    expect(code).not.toBe(INFRA_ABORT);
+    expect(output()).not.toContain('matched none');
   });
 
   it('reports the first run green when every file passed', async () => {

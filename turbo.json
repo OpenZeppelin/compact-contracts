@@ -4,7 +4,8 @@
     "GITHUB_ACTIONS",
     "GITHUB_OUTPUT",
     "GITHUB_STEP_SUMMARY",
-    "MIDNIGHT_LIVE_KEEP_ENV"
+    "MIDNIGHT_LIVE_KEEP_ENV",
+    "MIDNIGHT_LIVE_TEST_PATTERN"
   ],
   "tasks": {
     "compile:crypto": {

@@ -51,6 +51,14 @@ import { VitestRunner } from './live/VitestRunner.ts';
  *   yarn test:live token --compile-only        # build the slice, then stop
  *   yarn test:live token <file> --prebuilt     # run against a downloaded build
  *
+ * CI also caps a suite leg at MAX_TESTS_PER_LEG tests (`scripts/ci/split.ts`):
+ * a file over the limit fans out into several jobs running the same file, each
+ * scoped by `MIDNIGHT_LIVE_TEST_PATTERN` — a vitest `-t` (testNamePattern)
+ * regex the runner appends to every spawn, so the round-2 flake re-run stays
+ * inside the same slice. Empty or unset means the whole file, as ever. A
+ * pattern that matches no reported test name aborts the run (exit 2) instead
+ * of passing green on zero tests.
+ *
  * The stack's whole lifecycle belongs to this script: it starts it (`make env-up`,
  * itself a reset) and stops it on every exit path, signals included.
  * `MIDNIGHT_LIVE_KEEP_ENV=1` leaves it running for post-mortem inspection;
@@ -102,14 +110,29 @@ async function main(): Promise<number> {
     }
   }
 
+  // Validated here, before any expensive setup: vitest would only reject a
+  // broken regex after the stack is up, and `new RegExp` is the exact check
+  // (that is all vitest does with `-t`).
+  const testPattern = process.env.MIDNIGHT_LIVE_TEST_PATTERN ?? '';
+  try {
+    new RegExp(testPattern);
+  } catch (e) {
+    console.log(
+      'MIDNIGHT_LIVE_TEST_PATTERN is not a valid regex: ' +
+        `${e instanceof Error ? e.message : String(e)}`,
+    );
+    return INFRA_ABORT;
+  }
+
   const stack = new LiveStack();
   const lock = new RunLock();
   const orchestrator = new LiveOrchestrator({
     plan,
     stack,
     compiler,
-    runner: new VitestRunner(),
+    runner: new VitestRunner(testPattern),
     reporter: new Reporter(),
+    testPattern,
   });
 
   // Teardown always precedes the lock release, so no other run can start against

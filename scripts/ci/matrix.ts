@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { filterSpecFiles } from '../live/specs.ts';
+import { splitSpec } from './split.ts';
 
 /**
  * What `live.yml` fans out into matrix jobs: one compile job per live target,
@@ -45,8 +46,14 @@ export interface MatrixLeg {
    * filter. A full path matches exactly one file, so no leg can pull in a
    * sibling the way a bare name would. */
   readonly file: string;
-  /** Distinguishes the job and its uploaded artifacts within the target. */
+  /** Distinguishes the job and its uploaded artifacts within the target. A
+   * split file's legs carry a `-1`, `-2`, … suffix, which keeps the name
+   * unique and artifact-safe without depending on describe names. */
   readonly name: string;
+  /** vitest `-t` regex scoping the leg to its share of the file's tests.
+   * Absent on an unsplit leg — the workflow reads a missing matrix key as an
+   * empty string, which the runner treats as "no filter". */
+  readonly testFilter?: string;
 }
 
 export type MatrixResolution =
@@ -114,11 +121,15 @@ function requestedTarget(
  *
  * @param available - what the runner reports as live targets
  * @param specFiles - a target's spec files, consulted only when a filter is set
+ * @param readSpec - a spec file's source, for the leg-splitting rule. Returning
+ *   `undefined` (the default) means "cannot read it", which safely disables
+ *   splitting for that file rather than failing the plan.
  */
 export function resolveMatrix(
   request: MatrixRequest,
   available: readonly string[],
   specFiles: (target: string) => readonly string[],
+  readSpec: (file: string) => string | undefined = () => undefined,
 ): MatrixResolution {
   // An empty matrix is not a no-op in Actions: the fan-out job fails with an
   // opaque "matrix must define at least one vector" error. Rejecting here puts
@@ -160,9 +171,28 @@ export function resolveMatrix(
     if (files.length === 0) continue;
     matched.push(target);
     const names = legNames(files);
-    legs.push(
-      ...files.map((file, i) => ({ target, file, name: names[i] as string })),
-    );
+    for (const [i, file] of files.entries()) {
+      const name = names[i] as string;
+      // The leg-splitting rule: a file over MAX_TESTS_PER_LEG becomes several
+      // legs of the same file, each scoped by a test-name pattern, so one big
+      // file cannot dominate the run's wall clock. Applied after the file
+      // filter on purpose: a dispatch that selects the file still gets the
+      // split, since the point is the file's size, not how it was chosen.
+      const source = readSpec(file);
+      const split = source === undefined ? null : splitSpec(source);
+      if (split === null) {
+        legs.push({ target, file, name });
+        continue;
+      }
+      legs.push(
+        ...split.map((leg, k) => ({
+          target,
+          file,
+          name: `${name}-${k + 1}`,
+          testFilter: leg.testFilter,
+        })),
+      );
+    }
   }
 
   if (legs.length === 0) {

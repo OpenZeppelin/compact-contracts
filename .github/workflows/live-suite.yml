@@ -23,6 +23,14 @@ on:
         description: "The spec's name within its target, for the job and its artifacts"
         required: true
         type: string
+      test-filter:
+        description: >-
+          vitest -t regex scoping the run to one leg of a split file
+          (empty = the whole file). The plan job caps legs at
+          MAX_TESTS_PER_LEG tests (see scripts/ci/split.ts).
+        required: false
+        default: ""
+        type: string
 
 # Not inherited from the calling workflow: a reusable workflow gets its own env.
 env:
@@ -71,11 +79,16 @@ jobs:
 
       # The same entry point a local run uses, so the two-round flake semantics,
       # the stack lifecycle, and the verdict are identical — the file is passed
-      # as a full path, which matches exactly one spec.
+      # as a full path, which matches exactly one spec. The test-name pattern
+      # travels as an env var, not an argument: the runner appends it to every
+      # vitest spawn itself, so the round-2 flake re-run keeps the same slice,
+      # and its regex metacharacters never meet the shell. Empty means no
+      # pattern, which is what an unsplit leg passes.
       - name: Run live suite
         env:
           TARGET: ${{ inputs.target }}
           FILE: ${{ inputs.file }}
+          MIDNIGHT_LIVE_TEST_PATTERN: ${{ inputs.test-filter }}
         run: yarn test:live "$TARGET" "$FILE" --prebuilt
 
       # The runner tears the stack down itself on every exit path. This is the

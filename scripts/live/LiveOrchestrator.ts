@@ -72,6 +72,7 @@ export class LiveOrchestrator {
   readonly #runner: VitestRunner;
   readonly #reporter: Reporter;
   readonly #specFiles: (target: string) => readonly string[];
+  readonly #testPattern: string;
 
   constructor(deps: {
     readonly plan: LivePlan;
@@ -82,6 +83,11 @@ export class LiveOrchestrator {
     /** A target's spec files. Injected only so a round can be tested without a
      * real `src/` tree. */
     readonly specFiles?: (target: string) => readonly string[];
+    /** The `-t` pattern the runner was built with, when a CI leg runs a slice
+     * of a split file. The orchestrator needs it too: a pattern that matches
+     * no reported test name means the slice ran nothing, which must abort
+     * rather than pass (see the guard in `#round1`). */
+    readonly testPattern?: string;
   }) {
     this.#plan = deps.plan;
     this.#stack = deps.stack;
@@ -89,6 +95,7 @@ export class LiveOrchestrator {
     this.#runner = deps.runner;
     this.#reporter = deps.reporter;
     this.#specFiles = deps.specFiles ?? specFiles;
+    this.#testPattern = deps.testPattern ?? '';
   }
 
   /** @returns the process exit code */
@@ -98,7 +105,8 @@ export class LiveOrchestrator {
     const { targets, fileFilters } = this.#plan;
     banner(
       `ROUND 1 — targets: ${targets.map((t) => t.name).join(', ')}` +
-        (fileFilters.length ? ` (filter: ${fileFilters.join(' ')})` : ''),
+        (fileFilters.length ? ` (filter: ${fileFilters.join(' ')})` : '') +
+        (this.#testPattern !== '' ? ` (-t: ${this.#testPattern})` : ''),
     );
 
     if (!(await this.#compiler.compileVerified())) return INFRA_ABORT;
@@ -223,6 +231,32 @@ export class LiveOrchestrator {
             'files — aborting to be safe.',
         );
         return undefined;
+      }
+
+      // Vitest is silently green when `-t` matches nothing: the file reports
+      // "passed" with every test skipped, indistinguishable in exit code from
+      // a real pass. The report still lists every test's full name, though —
+      // matched or not — so a pattern that matches none of them is provably
+      // wrong (stale against the file, or a splitter bug), not merely
+      // runtime-skipped: a slice whose tests are all `.skipIf`-ed still has
+      // its names in the report and passes here. Only a clean run is checked;
+      // a failing file already tells its own story.
+      if (
+        this.#testPattern !== '' &&
+        status === 0 &&
+        targetFailed.length === 0
+      ) {
+        const names = this.#runner.reportedTestNames(reportPath) ?? [];
+        const pattern = new RegExp(this.#testPattern);
+        if (!names.some((name) => pattern.test(name))) {
+          console.log(
+            `\nthe test-name pattern matched none of the ${names.length} ` +
+              `reported test name(s) under '${target.name}' — the run would ` +
+              'have passed while executing nothing. The pattern no longer ' +
+              'fits the file; regenerate the plan.',
+          );
+          return undefined;
+        }
       }
 
       filesRun += statuses.size;

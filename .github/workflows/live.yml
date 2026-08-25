@@ -37,7 +37,10 @@ name: Live Test Suite
 # (the 2026-08-24 nightly spent 5.75h in `live-token`) while the files are
 # independent: every suite job resets its own stack, so nothing one spec leaves on
 # the node can fail another. The compile layer is what makes that affordable — 16
-# token spec jobs must not mean 16 token compiles.
+# token spec jobs must not mean 16 token compiles. A file over MAX_TESTS_PER_LEG
+# tests (scripts/ci/split.ts) fans out further: several legs of the same file,
+# each scoped by a vitest test-name pattern (`testFilter` in the leg), so one
+# big file cannot set the whole run's wall clock either.
 #
 # Every `run:` here is a one-liner. The logic behind the ones that are not calls
 # to the runner lives in `scripts/live-ci.ts`, where it is unit tested and can be
@@ -164,6 +167,7 @@ jobs:
       target: access
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   compile-crypto:
     name: compile-crypto
@@ -196,6 +200,7 @@ jobs:
       target: crypto
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   compile-multisig:
     name: compile-multisig
@@ -228,6 +233,7 @@ jobs:
       target: multisig
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   compile-security:
     name: compile-security
@@ -260,6 +266,7 @@ jobs:
       target: security
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   compile-token:
     name: compile-token
@@ -292,6 +299,7 @@ jobs:
       target: token
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   compile-utils:
     name: compile-utils
@@ -324,6 +332,7 @@ jobs:
       target: utils
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   compile-integration:
     name: compile-integration
@@ -356,6 +365,7 @@ jobs:
       target: integration
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
 
   # A failed scheduled run only emails the workflow author, which is easy to miss.
   # `live-ci.ts nightly` mirrors the nightly state into a `live-nightly` tracking

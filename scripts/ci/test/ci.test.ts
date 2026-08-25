@@ -12,6 +12,7 @@ import {
   reportNightly,
   worstResult,
 } from '../nightly.ts';
+import { MAX_TESTS_PER_LEG, type SplitLeg, splitSpec } from '../split.ts';
 
 /**
  * Unit tests for what `live.yml` used to do in `run:` shell: resolving the matrix
@@ -814,5 +815,339 @@ describe('setOutput', () => {
     // `name=value` cannot express one, and writing it anyway corrupts every
     // later output in the file instead of failing here.
     expect(() => setOutput('targets', 'a\nb')).toThrow(/single line/);
+  });
+});
+
+describe('splitSpec', () => {
+  /** `n` test registrations, distinct names. */
+  const its = (n: number, prefix = 't'): string =>
+    Array.from(
+      { length: n },
+      (_, i) => `it('${prefix}${i}', () => {});\n`,
+    ).join('');
+
+  const block = (name: string, body: string): string =>
+    `describe('${name}', () => {\n${body}});\n`;
+
+  /** How vitest applies a leg's filter: `new RegExp(pattern)` against the
+   * space-joined full name (see split.ts on the format). */
+  const matches = (filter: string, fullName: string): boolean =>
+    new RegExp(filter).test(fullName);
+
+  it('does not split a file at or under the limit', () => {
+    expect(splitSpec(block('A', its(3)), 3)).toBeNull();
+  });
+
+  it('splits sibling describes into anchored path patterns', () => {
+    const legs = splitSpec(block('A', its(2)) + block('B', its(2)), 2);
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^A ', tests: 2 },
+      { testFilter: '^B ', tests: 2 },
+    ]);
+  });
+
+  it('descends into a describe bigger than the limit', () => {
+    const legs = splitSpec(
+      block('P', block('x', its(2)) + block('y', its(2))),
+      2,
+    );
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^P x ', tests: 2 },
+      { testFilter: '^P y ', tests: 2 },
+    ]);
+  });
+
+  it('keeps tests beside child describes in exactly one leg', () => {
+    // P holds one direct test next to two child describes, so the direct test
+    // gets a remainder alternative: P's path minus its children. Without the
+    // lookahead it would run in every leg whose pattern starts with `^P `.
+    const legs = splitSpec(
+      block(
+        'P',
+        `${its(1, 'direct')}${block('x', its(2))}${block('y', its(2))}`,
+      ),
+      3,
+    );
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^P (?!x |y )|^P x ', tests: 3 },
+      { testFilter: '^P y ', tests: 2 },
+    ]);
+    if (legs === null) return;
+    const first = legs[0] as SplitLeg;
+    const second = legs[1] as SplitLeg;
+    expect(matches(first.testFilter, 'P direct0')).toBe(true);
+    expect(matches(second.testFilter, 'P direct0')).toBe(false);
+    expect(matches(first.testFilter, 'P y t0')).toBe(false);
+    expect(matches(second.testFilter, 'P y t0')).toBe(true);
+  });
+
+  it('anchors and space-bounds names against sibling near-misses', () => {
+    // The classic hazard: an unanchored 'grantRole' matches '_grantRole', and
+    // one without the trailing space matches 'grantRoleExtra'.
+    const legs = splitSpec(
+      block(
+        'C',
+        'grantRole _grantRole grantRoleExtra'
+          .split(' ')
+          .map((name) => block(name, its(2)))
+          .join(''),
+      ),
+      2,
+    );
+
+    expect(legs).not.toBeNull();
+    if (legs === null) return;
+    const forName = (name: string) =>
+      legs.filter((leg) => matches(leg.testFilter, `C ${name} t0`));
+    for (const name of ['grantRole', '_grantRole', 'grantRoleExtra']) {
+      // Each test lands in exactly one leg.
+      expect(forName(name)).toHaveLength(1);
+    }
+    expect(forName('grantRole')).not.toStrictEqual(forName('_grantRole'));
+    expect(forName('grantRole')).not.toStrictEqual(forName('grantRoleExtra'));
+  });
+
+  it('regex-escapes describe names', () => {
+    const legs = splitSpec(
+      block('A (v1.0) [x]', its(2)) + block('B $end', its(2)),
+      2,
+    );
+
+    expect(legs).not.toBeNull();
+    if (legs === null) return;
+    for (const leg of legs)
+      expect(() => new RegExp(leg.testFilter)).not.toThrow();
+    const a = legs[0] as SplitLeg;
+    const b = legs[1] as SplitLeg;
+    expect(matches(a.testFilter, 'A (v1.0) [x] t0')).toBe(true);
+    // The dot must not have become a wildcard.
+    expect(matches(a.testFilter, 'A (v1X0) [x] t0')).toBe(false);
+    expect(matches(b.testFilter, 'B $end t0')).toBe(true);
+  });
+
+  it('rides a dynamic-named child on the remainder leg', () => {
+    // A `describe.each` (or template/variable name) cannot be named in a
+    // pattern; its tests are addressed by excluding every literal sibling.
+    const legs = splitSpec(
+      block(
+        'P',
+        `${block('lit', its(2))}describe.each(rows)('with %s', () => {\n${its(2)}});\n`,
+      ),
+      2,
+    );
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^P (?!lit )', tests: 2 },
+      { testFilter: '^P lit ', tests: 2 },
+    ]);
+  });
+
+  it('does not split when a dynamic subtree alone exceeds the limit', () => {
+    // The dynamic child cannot be subdivided (no names to pattern on), so the
+    // rule cannot be met; a wrong filter would be worse than a long leg.
+    const legs = splitSpec(
+      block(
+        'P',
+        `${block('lit', its(2))}describe.each(rows)('with %s', () => {\n${its(3)}});\n`,
+      ),
+      2,
+    );
+
+    expect(legs).toBeNull();
+  });
+
+  it('treats a template name with an interpolation as dynamic', () => {
+    const legs = splitSpec(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the placeholder is the fixture's point (an interpolated describe name must count as dynamic)
+      'describe(`P ${suffix}`, () => {\n' +
+        its(3) +
+        '});\n' +
+        block('B', its(2)),
+      2,
+    );
+
+    expect(legs).toBeNull();
+  });
+
+  it('does not split when one describe exceeds the limit indivisibly', () => {
+    expect(splitSpec(block('A', its(4)) + block('B', its(1)), 2)).toBeNull();
+  });
+
+  it('does not split colliding sibling prefixes', () => {
+    // 'grant ' is a prefix of 'grant extra ', so the shorter pattern would run
+    // the longer one's tests in two legs.
+    const legs = splitSpec(
+      block('P', block('grant', its(2)) + block('grant extra', its(2))),
+      2,
+    );
+
+    expect(legs).toBeNull();
+  });
+
+  it('counts aliased test registrations', () => {
+    // `const itDryOnly = it.skipIf(isLiveBackend())` registers tests under
+    // another name (ShieldedAccessControl does this); missing them would both
+    // undercount the packing and misjudge the split threshold.
+    const source =
+      'const itDryOnly = it.skipIf(isLiveBackend());\n' +
+      block('A', `itDryOnly('a', () => {});\n${its(1)}`) +
+      block('B', its(2));
+
+    expect(splitSpec(source, 2)).toStrictEqual([
+      { testFilter: '^A ', tests: 2 },
+      { testFilter: '^B ', tests: 2 },
+    ]);
+  });
+
+  it('counts modifier chains and .each tables as one test each', () => {
+    const body =
+      "it.each([1, 2, 3])('case %s', () => {});\n" + // one, however many rows
+      "it.skipIf(cond)('conditional', () => {});\n" +
+      "it.concurrent('parallel', () => {});\n";
+    const legs = splitSpec(block('A', body) + block('B', its(3)), 3);
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^A ', tests: 3 },
+      { testFilter: '^B ', tests: 3 },
+    ]);
+  });
+
+  it('ignores registrations in comments and strings', () => {
+    const source =
+      "// it('commented', () => {});\n" +
+      "/* describe('block', () => {}); */\n" +
+      'const s = "it(\'in a string\', x)";\n' +
+      block('A', its(2)) +
+      block('B', its(2));
+
+    expect(splitSpec(source, 2)).toStrictEqual([
+      { testFilter: '^A ', tests: 2 },
+      { testFilter: '^B ', tests: 2 },
+    ]);
+  });
+
+  it('puts top-level tests on the root remainder leg', () => {
+    const legs = splitSpec(its(2, 'top') + block('A', its(2)), 2);
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^(?!A )', tests: 2 },
+      { testFilter: '^A ', tests: 2 },
+    ]);
+  });
+
+  it('does not split a source it cannot scan to the end', () => {
+    // An unbalanced scan means some construct was misread, and a filter built
+    // on a misreading could silently skip tests.
+    expect(splitSpec(`describe('A', () => {\n${its(4)}`, 2)).toBeNull();
+  });
+
+  it('splits the real worst offender within the limit', () => {
+    // The rule exists for files like ShieldedAccessControl (85+ minutes as a
+    // single live leg). Against the real source: every leg within the limit,
+    // every filter a valid regex, and enough legs to matter.
+    const source = readFileSync(
+      path.join(
+        import.meta.dirname,
+        '../../../contracts/src/access/test/ShieldedAccessControl.test.ts',
+      ),
+      'utf8',
+    );
+    const legs = splitSpec(source, MAX_TESTS_PER_LEG);
+
+    expect(legs).not.toBeNull();
+    if (legs === null) return;
+    expect(legs.length).toBeGreaterThanOrEqual(3);
+    for (const leg of legs) {
+      expect(leg.tests).toBeLessThanOrEqual(MAX_TESTS_PER_LEG);
+      expect(() => new RegExp(leg.testFilter)).not.toThrow();
+      expect(leg.testFilter.startsWith('^')).toBe(true);
+    }
+  });
+});
+
+describe('resolveMatrix splitting', () => {
+  const OVER_LIMIT =
+    `describe('Big', () => {\n` +
+    `describe('one', () => {\n${Array.from({ length: MAX_TESTS_PER_LEG }, (_, i) => `it('a${i}', () => {});\n`).join('')}});\n` +
+    `describe('two', () => {\n${Array.from({ length: 10 }, (_, i) => `it('b${i}', () => {});\n`).join('')}});\n` +
+    '});\n';
+
+  const sources: Record<string, string> = {
+    'src/multisig/test/Forwarder.test.ts': OVER_LIMIT,
+    'src/multisig/test/MultiSigWallet.test.ts':
+      "describe('S', () => { it('t', () => {}); });\n",
+  };
+  const readSpec = (file: string): string | undefined => sources[file];
+
+  it('splits a leg over the limit and leaves the others alone', () => {
+    const resolution = resolveMatrix(
+      request({ target: 'multisig' }),
+      TARGETS,
+      specs,
+      readSpec,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    expect(resolution.legs).toStrictEqual([
+      {
+        target: 'multisig',
+        file: 'src/multisig/test/Forwarder.test.ts',
+        name: 'Forwarder-1',
+        testFilter: '^Big one ',
+      },
+      {
+        target: 'multisig',
+        file: 'src/multisig/test/Forwarder.test.ts',
+        name: 'Forwarder-2',
+        testFilter: '^Big two ',
+      },
+      {
+        target: 'multisig',
+        file: 'src/multisig/test/MultiSigWallet.test.ts',
+        name: 'MultiSigWallet',
+      },
+    ]);
+    // One compile still serves all three legs.
+    expect(resolution.targets).toStrictEqual(['multisig']);
+  });
+
+  it('still splits a file the dispatch filter selected', () => {
+    // Splitting is about the file's size, not how it entered the matrix: a
+    // dispatch that names the big file must not get one 40-test leg back.
+    const resolution = resolveMatrix(
+      request({ filter: 'Forwarder' }),
+      TARGETS,
+      specs,
+      readSpec,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    const multisig = resolution.legs.filter((l) => l.target === 'multisig');
+    expect(multisig.map((l) => l.name)).toStrictEqual([
+      'Forwarder-1',
+      'Forwarder-2',
+    ]);
+  });
+
+  it('runs a file it cannot read as one unsplit leg', () => {
+    const resolution = resolveMatrix(
+      request({ target: 'multisig' }),
+      TARGETS,
+      specs,
+      () => undefined,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    expect(resolution.legs.map((l) => l.name)).toStrictEqual([
+      'Forwarder',
+      'MultiSigWallet',
+    ]);
+    expect(resolution.legs.every((l) => l.testFilter === undefined)).toBe(true);
   });
 });

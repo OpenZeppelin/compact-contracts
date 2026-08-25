@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { setOutput } from './ci/actions.ts';
 import { GhIssueTracker } from './ci/gh.ts';
 import { resolveMatrix } from './ci/matrix.ts';
 import { reportNightly, worstResult } from './ci/nightly.ts';
+import { CONTRACTS } from './live/paths.ts';
 import { specFiles } from './live/specs.ts';
 import { listTargets, liveCategories } from './live/targets.ts';
 
@@ -67,6 +70,16 @@ function matrix(): number {
     },
     listTargets(liveCategories()),
     specFiles,
+    // The spec source feeds the leg-splitting rule. An unreadable file only
+    // disables splitting for it (one unfiltered leg, the old behaviour), so
+    // reading is best-effort rather than a reason to fail the plan.
+    (file) => {
+      try {
+        return readFileSync(path.join(CONTRACTS, file), 'utf8');
+      } catch {
+        return undefined;
+      }
+    },
   );
   if (!resolution.ok) {
     console.log(resolution.message);
@@ -80,10 +93,21 @@ function matrix(): number {
   }
   console.log(
     `compile: ${resolution.targets.join(', ')}\n` +
-      `live: ${resolution.legs.length} spec file(s)`,
+      `live: ${resolution.legs.length} leg(s)`,
   );
+  // A split file appears once per leg; the `(split k/n)` marker is what tells
+  // a reader the file was capped rather than duplicated.
+  const legsPerFile = new Map<string, number>();
   for (const leg of resolution.legs) {
-    console.log(`  ${leg.target} · ${leg.name}  (${leg.file})`);
+    legsPerFile.set(leg.file, (legsPerFile.get(leg.file) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  for (const leg of resolution.legs) {
+    const parts = legsPerFile.get(leg.file) ?? 1;
+    const part = (seen.get(leg.file) ?? 0) + 1;
+    seen.set(leg.file, part);
+    const marker = parts > 1 ? `  (split ${part}/${parts})` : '';
+    console.log(`  ${leg.target} · ${leg.name}  (${leg.file})${marker}`);
   }
 
   // One `legs-<target>` output per target, because the workflow pairs a compile
