@@ -29,16 +29,50 @@ runs:
         restore-keys: |
           ${{ runner.os }}-${{ inputs.turbo-cache-key }}-
 
+    # The materialised dependency tree, not just the package zips.
+    #
+    # `setup-node`'s `cache: yarn` restores `.yarn/cache` alone, so every job
+    # unpacked it into `node_modules` and rebuilt the native modules from source
+    # — `ssh2`, `classic-level`, `cpu-features`, `msgpackr-extract`,
+    # `protobufjs`, all reported as "must be built because it never has been
+    # before". That install was 24s of a 38s setup, in every job of a fan-out
+    # that is now one job per spec file (measured on run 32815780786).
+    #
+    # Caching the tree makes the install a no-op instead. It costs transfer:
+    # `node_modules` is 137 MB zstd-compressed against `.yarn/cache`'s 138 MB, so
+    # keeping both roughly doubles the entry — worth it, since a 275 MB entry
+    # restores in seconds (the turbo cache is that size and takes ~3s) and buys
+    # back 24s of CPU. The zips stay in the entry because they are what a miss
+    # needs: without them a cache miss fetches the whole tree over the network.
+    #
+    # Exact key only, no `restore-keys`: a tree restored from a different
+    # lockfile is worse than no tree at all, since `--immutable` would have to
+    # undo it. A miss then behaves exactly as it did before this step existed.
+    - name: Cache the dependency tree
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: |
+          node_modules
+          contracts/node_modules
+          .yarn/cache
+        key: ${{ runner.os }}-deps-${{ hashFiles('yarn.lock', '.yarnrc.yml', '.nvmrc') }}
+
     - name: Enable corepack
       shell: bash
       run: corepack enable
 
+    # `package-manager-cache: false` because the step above already owns the
+    # dependency cache; leaving `setup-node`'s own enabled would restore
+    # `.yarn/cache` a second time.
     - name: Setup Node.js
       uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version-file: ".nvmrc"
-        cache: "yarn"
+        package-manager-cache: false
 
+    # Unconditional even on a cache hit: with the tree and yarn's install state
+    # restored this is a fast no-op, and it is the check that a partial restore
+    # fails here rather than inside a spec.
     - name: Install dependencies
       shell: bash
       run: yarn install --immutable
