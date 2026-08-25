@@ -13,8 +13,8 @@
 // delivered amount from a memo (any size; the ECDH memo channel removed the
 // former 2^48 brute-force bound), and can recover balance/escrow amounts from
 // the public ciphertexts. Reusing a seed across transactions also leaks
-// plaintext differences (the debit and escrow paths have no per-operation
-// nonce). Do not copy this seed behavior into a real wallet.
+// plaintext differences on the debit path, which has no per-operation nonce
+// (`_spendEscrow` does). Do not copy this seed behavior into a real wallet.
 
 import { getRandomValues } from 'node:crypto';
 import type {
