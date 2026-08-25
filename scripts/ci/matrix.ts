@@ -23,9 +23,11 @@ import { splitSpec } from './split.ts';
  * same thing. */
 export const ALL_TARGETS = 'all';
 
-/** The PR label that opts a pull request into a live run. On its own it means
- * every target; `live-tests:<target>` scopes the run to one, which is what a PR
- * usually wants (the full fan-out is one long-running job per target). */
+/** The PR label prefix that opts a pull request into a live run.
+ * `live-tests:<target>` scopes the run to one target. The bare label is
+ * rejected: with legs split per spec file it would queue 60+ checks on the
+ * PR, which is never what applying a label casually means — the full fan-out
+ * stays reachable through a deliberate dispatch with target `all`. */
 export const LIVE_LABEL = 'live-tests';
 
 /** How a run was asked for. Each field is empty on the triggers that do not carry
@@ -108,8 +110,6 @@ function requestedTarget(
     // rejects it with the valid ones.
     return label.slice(LIVE_LABEL.length + 1).trim() || label;
   }
-  // The bare label carries no scope, so a PR run falls through to the dispatch
-  // input, which is itself empty on a `pull_request` event.
   const target = request.target.trim();
   return target === ALL_TARGETS ? '' : target;
 }
@@ -140,6 +140,22 @@ export function resolveMatrix(
       message:
         'the runner reports no live targets, so there is nothing to run. ' +
         'Check `yarn test:live --list`.',
+    };
+  }
+
+  // The bare label used to mean "every target", which was fine when that was
+  // seven jobs. Per-file (and per-slice) legs made it 60+ checks on the PR, so
+  // the unscoped form is refused with the scoped one to use instead; a full
+  // fan-out on a PR has to be asked for via a dispatch with target 'all'.
+  if (request.label.trim() === LIVE_LABEL) {
+    return {
+      ok: false,
+      message:
+        `the bare '${LIVE_LABEL}' label would fan out into a job per spec ` +
+        'file across every target (60+ checks on this PR). Use ' +
+        `'${LIVE_LABEL}:<target>' (one of: ${available.join(', ')}), or ` +
+        `dispatch the workflow with target '${ALL_TARGETS}' if the full ` +
+        'fan-out is deliberate.',
     };
   }
 

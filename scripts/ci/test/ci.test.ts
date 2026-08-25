@@ -208,10 +208,22 @@ describe('resolveMatrix', () => {
     expect(resolution.message).toContain('no spec file exists');
   });
 
-  it('fans out over every target for the bare PR label', () => {
-    expect(
-      resolveMatrix(request({ label: LIVE_LABEL }), TARGETS, specs),
-    ).toStrictEqual(expected(SPECS));
+  it('rejects the bare PR label and points at the scoped form', () => {
+    // Per-file legs made the bare label 60+ checks on a PR, so the unscoped
+    // form is refused; the full fan-out stays reachable via dispatch 'all'.
+    const resolution = resolveMatrix(
+      request({ label: LIVE_LABEL }),
+      TARGETS,
+      specs,
+    );
+
+    expect(resolution.ok).toBe(false);
+    if (resolution.ok) return;
+    expect(resolution.message).toContain(`'${LIVE_LABEL}:<target>'`);
+    expect(resolution.message).toContain(
+      'access, multisig, token, integration',
+    );
+    expect(resolution.message).toContain(`'${ALL_TARGETS}'`);
   });
 
   it('scopes to the target named by the PR label', () => {

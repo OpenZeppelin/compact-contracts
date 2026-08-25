@@ -8,8 +8,10 @@ name: Live Test Suite
 #     `live-nightly` tracking issue, which closes on the next green run)
 #   - on demand via workflow_dispatch, optionally scoped to one target or a file
 #     filter within it
-#   - on a PR, opt-in, by applying the `live-tests` label for every target or
-#     `live-tests:<target>` for one of them (re-apply to re-run)
+#   - on a PR, opt-in, by applying a `live-tests:<target>` label (re-apply to
+#     re-run). The bare `live-tests` label is rejected by the plan job: per-file
+#     legs would make it 60+ checks on the PR — dispatch with target `all` when
+#     the full fan-out is deliberate.
 #
 # One plan job, then a PIPELINE PER TARGET:
 #
@@ -79,7 +81,9 @@ jobs:
   plan:
     name: Plan the pipelines
     # `pull_request: labeled` fires for every label; only ours starts a run. The
-    # label itself carries the scope, and the plan step reads it.
+    # label itself carries the scope, and the plan step reads it. The bare label
+    # still passes this gate on purpose: the plan job rejects it with the scoped
+    # form to use, and skipping it here would fail silently instead.
     if: >-
       github.event_name != 'pull_request'
       || github.event.label.name == 'live-tests'
