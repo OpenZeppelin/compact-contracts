@@ -27,6 +27,28 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    env:
+      # `setup-compact-action` runs `compact update` on every job, cache hit or
+      # miss, and that call queries the GitHub API. The action passes
+      # `github.token` to its install step but NOT to its update step, so the
+      # query goes out unauthenticated: 60 requests an hour per runner egress IP,
+      # shared by every job in the fan-out. Run 32812144831 hit the ceiling and
+      # `compile-integration` died in setup with
+      #
+      #   API rate limit exceeded for 20.25.10.69
+      #   Error: Failed to update ... Error: Failed to run compactc
+      #   Caused by: No default compiler set
+      #
+      # A cache hit is the fragile path, not the safe one: it skips the install
+      # step, so nothing has set the default compiler, and `compact update` is
+      # what sets it. Its failure is swallowed by `|| true` and the next line
+      # (`compact compile --version`) is what actually fails the job.
+      #
+      # A composite action's steps inherit the calling job's environment, so
+      # exporting the token here authenticates that query (1000 requests an hour)
+      # without patching the action. The upstream fix is for its update step to
+      # take `github.token` the way its install step already does.
+      GITHUB_TOKEN: ${{ github.token }}
     # Real ZK key generation for one slice, plus the self-heal path's serial
     # recompile if the tree comes back poisoned (#675).
     timeout-minutes: 90
