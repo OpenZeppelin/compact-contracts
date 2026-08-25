@@ -67,7 +67,13 @@ runs:
     # Exact key only, no `restore-keys`: a tree restored from a different
     # lockfile is worse than no tree at all, since `--immutable` would have to
     # undo it. A miss then behaves exactly as it did before this step existed.
+    #
+    # The `v1` token is the manual version of the key. actions/cache never
+    # overwrites an existing key, so a change to the `path` list above would
+    # silently keep restoring the old, incomplete entry until the lockfile
+    # happens to move — bump the token together with any path-list change.
     - name: Cache the dependency tree
+      id: deps-cache
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: |
@@ -75,7 +81,15 @@ runs:
           contracts/node_modules
           .yarn/cache
           .yarn/install-state.gz
-        key: ${{ runner.os }}-deps-${{ hashFiles('yarn.lock', '.yarnrc.yml', '.nvmrc') }}
+        key: ${{ runner.os }}-deps-v1-${{ hashFiles('yarn.lock', '.yarnrc.yml', '.nvmrc') }}
+
+    # A miss is expected only after a lockfile (or key-version) change; on any
+    # other run it means the entry was evicted or the key list drifted, and the
+    # job silently pays the full install. Make it visible in the annotations.
+    - name: Warn on a dependency cache miss
+      if: steps.deps-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: echo "::warning::deps cache miss — full install; expected only after a lockfile change"
 
     - name: Enable corepack
       shell: bash
