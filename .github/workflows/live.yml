@@ -142,9 +142,10 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    # Per-target budget: the runner compiles (real ZK keys), resets the stack, and
-    # verifies failures with a second round. Budget generously, but stay under the
-    # 6h hosted-runner cap.
+    # Per-target budget: the runner compiles the target's own contract slice
+    # (real ZK keys — turbo pulls in the categories it imports, nothing else),
+    # resets the stack, and verifies failures with a second round. Budget
+    # generously, but stay under the 6h hosted-runner cap.
     timeout-minutes: 350
 
     steps:

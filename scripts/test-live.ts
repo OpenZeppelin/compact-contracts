@@ -4,7 +4,12 @@ import { LiveStack } from './live/LiveStack.ts';
 import { Reporter } from './live/Reporter.ts';
 import { RunLock } from './live/RunLock.ts';
 import { installSignalHandlers } from './live/shell.ts';
-import { listTargets, liveCategories, resolvePlan } from './live/targets.ts';
+import {
+  compileScope,
+  listTargets,
+  liveCategories,
+  resolvePlan,
+} from './live/targets.ts';
 import { VitestRunner } from './live/VitestRunner.ts';
 
 /**
@@ -70,7 +75,7 @@ async function main(): Promise<number> {
   const orchestrator = new LiveOrchestrator({
     plan,
     stack,
-    compiler: new ArtifactCompiler(plan.integration),
+    compiler: new ArtifactCompiler(compileScope(plan)),
     runner: new VitestRunner(),
     reporter: new Reporter(),
   });

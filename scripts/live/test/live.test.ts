@@ -15,11 +15,17 @@ import {
   LiveOrchestrator,
 } from '../LiveOrchestrator.ts';
 import type { LiveStack } from '../LiveStack.ts';
-import { round2Report } from '../paths.ts';
+import { INTEGRATION_MOCKS, round2Report, SRC } from '../paths.ts';
 import type { Reporter } from '../Reporter.ts';
 import { RunLock } from '../RunLock.ts';
 import { filterSpecFiles, specFilesIn } from '../specs.ts';
-import { type LiveTarget, listTargets, resolvePlan } from '../targets.ts';
+import {
+  compileScope,
+  type LivePlan,
+  type LiveTarget,
+  listTargets,
+  resolvePlan,
+} from '../targets.ts';
 import { VitestRunner } from '../VitestRunner.ts';
 
 /**
@@ -155,6 +161,53 @@ describe('resolvePlan', () => {
     ]);
     expect(resolution.plan.fileFilters).toStrictEqual([]);
     expect(resolution.plan.integration).toBe(false);
+  });
+});
+
+describe('compileScope', () => {
+  /** Resolve a plan the way `main()` does, failing the test on a rejection so
+   * the scope cases stay about scoping. */
+  const plan = (args: string[]): LivePlan => {
+    const resolution = resolvePlan(args, CATEGORIES);
+    if (!resolution.ok) throw new Error(resolution.message);
+    return resolution.plan;
+  };
+
+  it('compiles only a scoped category, and verifies only its tree', () => {
+    // turbo's `dependsOn` pulls in the categories the slice imports, and the
+    // specs deploy only their own category's artifacts (composition is
+    // compile-time), so both the build and the scan stay per-category.
+    expect(compileScope(plan(['multisig']))).toStrictEqual({
+      scripts: ['compile:multisig'],
+      verifyRoots: [path.join(SRC, 'multisig')],
+    });
+  });
+
+  it('widens the scan to a category whose mocks a target deploys', () => {
+    // The token fixtures deploy `src/crypto` mocks (MockElGamal, MockEcdhMask),
+    // so token's key scan covers crypto too — the build already does, through
+    // turbo's `dependsOn`.
+    expect(compileScope(plan(['token']))).toStrictEqual({
+      scripts: ['compile:token'],
+      verifyRoots: [path.join(SRC, 'token'), path.join(SRC, 'crypto')],
+    });
+  });
+
+  it('compiles the integration mocks for the integration target', () => {
+    // `compile:integration` depends on the full `compile`, so the src slices
+    // the mocks import are built without being named here; the specs deploy
+    // only the composed mocks, so only that tree is scanned.
+    expect(compileScope(plan(['integration']))).toStrictEqual({
+      scripts: ['compile:integration'],
+      verifyRoots: [INTEGRATION_MOCKS],
+    });
+  });
+
+  it('compiles everything for an unscoped run', () => {
+    expect(compileScope(plan([]))).toStrictEqual({
+      scripts: ['compile'],
+      verifyRoots: [SRC],
+    });
   });
 });
 
