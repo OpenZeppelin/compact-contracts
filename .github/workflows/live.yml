@@ -397,6 +397,8 @@ jobs:
     permissions:
       contents: read
       issues: write
+      # For the cache-pruning step: deleting cache entries is a write.
+      actions: write
     timeout-minutes: 5
 
     steps:
@@ -427,3 +429,16 @@ jobs:
           COMPILE_RESULT: "${{ needs.compile-access.result }} ${{ needs.compile-crypto.result }} ${{ needs.compile-multisig.result }} ${{ needs.compile-security.result }} ${{ needs.compile-token.result }} ${{ needs.compile-utils.result }} ${{ needs.compile-integration.result }}"
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts nightly
+
+      # The cache entries here are large (a deps tree or a per-target turbo
+      # slice is ~275 MB) against a 10 GB repo budget, past which GitHub evicts
+      # least-recently-used — i.e. whatever the next run was about to need. The
+      # nightly prunes deliberately instead: superseded entries (an older hash
+      # under the same key prefix and ref) and anything not restored in 7 days
+      # (`scripts/ci/caches.ts`). After the report on purpose, so a gh hiccup
+      # here can never block the tracking issue.
+      - name: Prune stale action caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts prune-caches

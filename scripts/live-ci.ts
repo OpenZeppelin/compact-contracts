@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { setOutput } from './ci/actions.ts';
+import { GhCacheClient, pruneCaches } from './ci/caches.ts';
 import { GhIssueTracker } from './ci/gh.ts';
 import { resolveMatrix } from './ci/matrix.ts';
 import { reportNightly, worstResult } from './ci/nightly.ts';
@@ -18,14 +19,17 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * in `scripts/ci/`:
  *   - `matrix.ts`  — which live targets the run fans out into (pure)
  *   - `nightly.ts` — what the nightly reports to the tracking issue (pure)
+ *   - `caches.ts`  — which Actions cache entries the nightly prunes (pure
+ *                    decision + its own `gh api` adapter)
  *   - `gh.ts`      — the `gh` CLI adapter behind the issue operations
  *   - `actions.ts` — the runner's step-output protocol
  * Their tests are in `scripts/ci/test/` (`yarn test:scripts`).
  *
  * Usage, with the inputs each command reads from the environment:
- *   node scripts/live-ci.ts matrix    # TARGET, LABEL, FILTER, KNOWN_TARGETS
- *   node scripts/live-ci.ts nightly   # REPO, SUITE_RESULT, PLAN_RESULT,
- *                                     # COMPILE_RESULT, RUN_URL
+ *   node scripts/live-ci.ts matrix        # TARGET, LABEL, FILTER, KNOWN_TARGETS
+ *   node scripts/live-ci.ts nightly       # REPO, SUITE_RESULT, PLAN_RESULT,
+ *                                         # COMPILE_RESULT, RUN_URL
+ *   node scripts/live-ci.ts prune-caches  # REPO
  *
  * Node runs this .ts directly (type stripping) and it imports only `node:`
  * builtins, so the jobs that call it need a checkout and a Node, not an install.
@@ -33,7 +37,7 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * Exit codes: 0 done, 1 a bad input or a failed `gh` call.
  */
 
-const USAGE = 'usage: node scripts/live-ci.ts <matrix|nightly>';
+const USAGE = 'usage: node scripts/live-ci.ts <matrix|nightly|prune-caches>';
 
 /** A required input. Missing one is a workflow bug, so it fails the step rather
  * than defaulting to something plausible. */
@@ -159,6 +163,12 @@ function nightly(): number {
   return 0;
 }
 
+/** Delete the Actions cache entries the nightly no longer needs. */
+function prune(): number {
+  console.log(pruneCaches(new GhCacheClient(env('REPO')), Date.now()));
+  return 0;
+}
+
 function main(): number {
   const command = process.argv[2];
   switch (command) {
@@ -166,6 +176,8 @@ function main(): number {
       return matrix();
     case 'nightly':
       return nightly();
+    case 'prune-caches':
+      return prune();
     default:
       console.log(command ? `unknown command '${command}'. ${USAGE}` : USAGE);
       return 1;
