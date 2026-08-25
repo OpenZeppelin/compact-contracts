@@ -57,9 +57,13 @@
       "outputs": ["artifacts/**/"]
     },
     "compile:integration": {
-      "dependsOn": ["^build", "compile"],
+      "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["test/integration/**/*.compact"],
+      "inputs": [
+        "test/integration/**/*.compact",
+        "src/**/*.compact",
+        "!src/archive/**"
+      ],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
