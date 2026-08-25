@@ -26,8 +26,8 @@ on:
       test-filter:
         description: >-
           vitest -t regex scoping the run to one leg of a split file
-          (empty = the whole file). The plan job caps legs at
-          MAX_TESTS_PER_LEG tests (see scripts/ci/split.ts).
+          (empty = the whole file). The plan job budgets legs at MAX_LEG_MS
+          of estimated duration (see scripts/ci/split.ts).
         required: false
         default: ""
         type: string

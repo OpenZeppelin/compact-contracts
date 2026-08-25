@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import {
   prunePlan,
 } from '../caches.ts';
 import { type Captured, type Exec, GhIssueTracker } from '../gh.ts';
+import { fetchPreviousReports } from '../history.ts';
 import { ALL_TARGETS, LIVE_LABEL, legNames, resolveMatrix } from '../matrix.ts';
 import {
   type IssueTracker,
@@ -18,7 +19,14 @@ import {
   reportNightly,
   worstResult,
 } from '../nightly.ts';
-import { MAX_TESTS_PER_LEG, type SplitLeg, splitSpec } from '../split.ts';
+import {
+  DEFAULT_TEST_MS,
+  estimateSpecMs,
+  MAX_TESTS_PER_LEG,
+  type SplitLeg,
+  splitSpec,
+} from '../split.ts';
+import { collectDurations, durationsForFile } from '../weights.ts';
 
 /**
  * Unit tests for what `live.yml` used to do in `run:` shell: resolving the matrix
@@ -860,8 +868,8 @@ describe('splitSpec', () => {
     const legs = splitSpec(block('A', its(2)) + block('B', its(2)), 2);
 
     expect(legs).toStrictEqual([
-      { testFilter: '^A ', tests: 2 },
-      { testFilter: '^B ', tests: 2 },
+      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -872,8 +880,8 @@ describe('splitSpec', () => {
     );
 
     expect(legs).toStrictEqual([
-      { testFilter: '^P x ', tests: 2 },
-      { testFilter: '^P y ', tests: 2 },
+      { testFilter: '^P x ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^P y ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -890,8 +898,12 @@ describe('splitSpec', () => {
     );
 
     expect(legs).toStrictEqual([
-      { testFilter: '^P (?!x |y )|^P x ', tests: 3 },
-      { testFilter: '^P y ', tests: 2 },
+      {
+        testFilter: '^P (?!x |y )|^P x ',
+        tests: 3,
+        estimatedMs: 3 * DEFAULT_TEST_MS,
+      },
+      { testFilter: '^P y ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
     if (legs === null) return;
     const first = legs[0] as SplitLeg;
@@ -958,8 +970,8 @@ describe('splitSpec', () => {
     );
 
     expect(legs).toStrictEqual([
-      { testFilter: '^P (?!lit )', tests: 2 },
-      { testFilter: '^P lit ', tests: 2 },
+      { testFilter: '^P (?!lit )', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^P lit ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -1015,8 +1027,8 @@ describe('splitSpec', () => {
       block('B', its(2));
 
     expect(splitSpec(source, 2)).toStrictEqual([
-      { testFilter: '^A ', tests: 2 },
-      { testFilter: '^B ', tests: 2 },
+      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -1028,8 +1040,8 @@ describe('splitSpec', () => {
     const legs = splitSpec(block('A', body) + block('B', its(3)), 3);
 
     expect(legs).toStrictEqual([
-      { testFilter: '^A ', tests: 3 },
-      { testFilter: '^B ', tests: 3 },
+      { testFilter: '^A ', tests: 3, estimatedMs: 3 * DEFAULT_TEST_MS },
+      { testFilter: '^B ', tests: 3, estimatedMs: 3 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -1042,8 +1054,8 @@ describe('splitSpec', () => {
       block('B', its(2));
 
     expect(splitSpec(source, 2)).toStrictEqual([
-      { testFilter: '^A ', tests: 2 },
-      { testFilter: '^B ', tests: 2 },
+      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -1051,8 +1063,8 @@ describe('splitSpec', () => {
     const legs = splitSpec(its(2, 'top') + block('A', its(2)), 2);
 
     expect(legs).toStrictEqual([
-      { testFilter: '^(?!A )', tests: 2 },
-      { testFilter: '^A ', tests: 2 },
+      { testFilter: '^(?!A )', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -1116,17 +1128,20 @@ describe('resolveMatrix splitting', () => {
         file: 'src/multisig/test/Forwarder.test.ts',
         name: 'Forwarder-1',
         testFilter: '^Big one ',
+        estimatedMs: MAX_TESTS_PER_LEG * DEFAULT_TEST_MS,
       },
       {
         target: 'multisig',
         file: 'src/multisig/test/Forwarder.test.ts',
         name: 'Forwarder-2',
         testFilter: '^Big two ',
+        estimatedMs: 10 * DEFAULT_TEST_MS,
       },
       {
         target: 'multisig',
         file: 'src/multisig/test/MultiSigWallet.test.ts',
         name: 'MultiSigWallet',
+        estimatedMs: DEFAULT_TEST_MS,
       },
     ]);
     // One compile still serves all three legs.
@@ -1414,5 +1429,413 @@ describe('GhCacheClient and pruneCaches', () => {
     expect(logged.mock.calls.flat().join('\n')).toContain('Linux-deps-v1-');
 
     logged.mockRestore();
+  });
+});
+describe('splitSpec weighting', () => {
+  const its = (n: number, prefix = 't'): string =>
+    Array.from(
+      { length: n },
+      (_, i) => `it('${prefix}${i}', () => {});\n`,
+    ).join('');
+  const block = (name: string, body: string): string =>
+    `describe('${name}', () => {\n${body}});\n`;
+
+  /** History for every test the fixtures register: `<describe> <prefix><i>`,
+   * the space-joined form the leg patterns match. */
+  const history = (
+    perTest: Readonly<Record<string, number>>,
+    tests: number,
+    prefix = 't',
+  ): Map<string, number> => {
+    const map = new Map<string, number>();
+    for (const [name, ms] of Object.entries(perTest)) {
+      for (let i = 0; i < tests; i++) map.set(`${name} ${prefix}${i}`, ms);
+    }
+    return map;
+  };
+
+  // The MultiToken shape: few tests, each several minutes. 20 tests over four
+  // describes is far under the 30-test cap, but at 3 min/test the file is a
+  // ~1h leg — the exact under-split run 32831811290 measured.
+  const HEAVY =
+    block('A', its(5)) +
+    block('B', its(5)) +
+    block('C', its(5)) +
+    block('D', its(5));
+  const HEAVY_MS = history(
+    { A: 180_000, B: 180_000, C: 180_000, D: 180_000 },
+    5,
+  );
+
+  it('splits a heavy file that count packing leaves whole', () => {
+    // 20 tests ≤ 30: the count rule sees nothing to do.
+    expect(splitSpec(HEAVY, MAX_TESTS_PER_LEG)).toBeNull();
+
+    // 20 × 180s = 60 minutes of measured history: over the ~27.5 min budget,
+    // so the same file now fans out, each leg within it.
+    const legs = splitSpec(HEAVY, MAX_TESTS_PER_LEG, HEAVY_MS);
+
+    expect(legs).not.toBeNull();
+    if (legs === null) return;
+    expect(legs.length).toBeGreaterThanOrEqual(2);
+    for (const leg of legs) {
+      expect(leg.estimatedMs).toBeLessThanOrEqual(
+        MAX_TESTS_PER_LEG * DEFAULT_TEST_MS,
+      );
+    }
+    // Every test still runs exactly once.
+    expect(legs.reduce((sum, leg) => sum + leg.tests, 0)).toBe(20);
+  });
+
+  it('packs exactly as the count rule when no test matches the history', () => {
+    // The equivalence the fallback promises: uniform default weights make
+    // every weight comparison the count comparison scaled by the default, so
+    // no history, an empty history, and another file's history all produce
+    // the same legs the count-based rule did.
+    const source = block('A', its(2)) + block('B', its(2)) + block('C', its(1));
+    const byCount = splitSpec(source, 2);
+
+    expect(byCount).not.toBeNull();
+    expect(splitSpec(source, 2, new Map())).toStrictEqual(byCount);
+    expect(
+      splitSpec(source, 2, history({ 'Other file suite': 999_000 }, 2)),
+    ).toStrictEqual(byCount);
+  });
+
+  it('matches history names the way the leg patterns are built', () => {
+    // The lookup keys are full names in the split's own convention —
+    // space-joined describe path plus test name. A measured describe carries
+    // its duration; an unmeasured sibling weighs the default per test.
+    const source = block('A', its(2)) + block('B', its(2));
+    const legs = splitSpec(source, 2, history({ A: 50_000 }, 2));
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^A ', tests: 2, estimatedMs: 100_000 },
+      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+    ]);
+  });
+
+  it('gives a measured, indivisible, over-budget describe its own leg', () => {
+    // A cannot be subdivided (no child describes) and its MEASURED weight
+    // exceeds the budget. Its filter is still exact, so it stands alone as an
+    // oversized leg — refusing here would collapse the whole file into one
+    // even longer leg (the exact way MultiToken degraded in the first cut).
+    const source = block('A', its(2)) + block('B', its(2));
+    const legs = splitSpec(source, 2, history({ A: 400_000 }, 2));
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^A ', tests: 2, estimatedMs: 800_000 },
+      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+    ]);
+  });
+
+  it('still refuses an over-budget indivisible unit assumed from defaults', () => {
+    // Without a measurement the overrun is a guess, so the old count rule
+    // stands: a 4-test leaf describe at limit 2 does not split, history or
+    // not — this is the count-equivalence corner, pinned on purpose.
+    const source = block('A', its(4)) + block('B', its(1));
+
+    expect(splitSpec(source, 2, history({ B: 10_000 }, 1))).toBeNull();
+  });
+
+  it('descends into a heavy describe with splittable children', () => {
+    // P as a whole (160s) is over the 110s budget, but each child fits: the
+    // walk recurses into P instead of giving up on it.
+    const source = block('P', block('x', its(2)) + block('y', its(2)));
+    const legs = splitSpec(
+      source,
+      2,
+      history({ 'P x': 40_000, 'P y': 40_000 }, 2),
+    );
+
+    expect(legs).toStrictEqual([
+      { testFilter: '^P x ', tests: 2, estimatedMs: 80_000 },
+      { testFilter: '^P y ', tests: 2, estimatedMs: 80_000 },
+    ]);
+  });
+});
+
+describe('estimateSpecMs', () => {
+  it('weighs an unmeasured file at the default per test', () => {
+    expect(estimateSpecMs("describe('A', () => { it('t', () => {}); });")).toBe(
+      DEFAULT_TEST_MS,
+    );
+  });
+
+  it('prefers measured durations and defaults the rest', () => {
+    expect(
+      estimateSpecMs(
+        "describe('A', () => { it('t0', () => {}); it('t1', () => {}); });",
+        new Map([['A t0', 120_000]]),
+      ),
+    ).toBe(120_000 + DEFAULT_TEST_MS);
+  });
+
+  it('reports no estimate for a source it cannot scan', () => {
+    expect(estimateSpecMs("describe('A', () => {")).toBeUndefined();
+  });
+});
+
+describe('collectDurations', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), 'live-weights-'));
+  });
+
+  const write = (relPath: string, body: unknown): void => {
+    const file = path.join(dir, relPath);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(body));
+  };
+
+  const report = (file: string, tests: Record<string, number | undefined>) => ({
+    testResults: [
+      {
+        name: file,
+        status: 'passed',
+        assertionResults: Object.entries(tests).map(([fullName, duration]) => ({
+          fullName,
+          status: duration === undefined ? 'skipped' : 'passed',
+          ...(duration === undefined ? {} : { duration }),
+        })),
+      },
+    ],
+  });
+
+  it('walks the artifact subdirectories gh run download creates', () => {
+    write(
+      'live-reports-token-MultiToken-1/live-r1-token.json',
+      report('/ci/contracts/src/token/test/MultiToken.test.ts', {
+        'M a': 1000,
+      }),
+    );
+    write(
+      'live-reports-access-Ownable/live-r1-access.json',
+      report('/ci/contracts/src/access/test/Ownable.test.ts', { 'O b': 2000 }),
+    );
+
+    const collected = collectDurations(dir);
+
+    expect([...collected.keys()].sort()).toStrictEqual([
+      '/ci/contracts/src/access/test/Ownable.test.ts',
+      '/ci/contracts/src/token/test/MultiToken.test.ts',
+    ]);
+  });
+
+  it('keeps the maximum duration seen for a name across reports', () => {
+    // A round-2 re-run reports the same names; the pessimistic estimate is
+    // the one that keeps a leg under its budget.
+    write('a/live-r1-token.json', report('/ci/f.test.ts', { 'S t': 1000 }));
+    write('b/live-r2-f.json', report('/ci/f.test.ts', { 'S t': 5000 }));
+
+    expect(collectDurations(dir).get('/ci/f.test.ts')).toStrictEqual(
+      new Map([['S t', 5000]]),
+    );
+  });
+
+  it('skips tests that report no duration', () => {
+    // A `-t`-skipped or `.skipIf`-ed test has no measurement to contribute.
+    write(
+      'a/live-r1-token.json',
+      report('/ci/f.test.ts', { ran: 1000, skipped: undefined }),
+    );
+
+    expect(collectDurations(dir).get('/ci/f.test.ts')).toStrictEqual(
+      new Map([['ran', 1000]]),
+    );
+  });
+
+  it('ignores files that are not reports, and unreadable reports', () => {
+    write('a/notes.json', report('/ci/f.test.ts', { 'S t': 1000 }));
+    writeFileSync(path.join(dir, 'live-r1-token.json'), '{"testResults":[');
+
+    expect(collectDurations(dir)).toStrictEqual(new Map());
+  });
+
+  it('collects nothing from a directory that does not exist', () => {
+    expect(collectDurations(path.join(dir, 'absent'))).toStrictEqual(new Map());
+  });
+});
+
+describe('durationsForFile', () => {
+  const collected = new Map([
+    [
+      '/home/runner/work/repo/contracts/src/token/test/MultiToken.test.ts',
+      new Map([['M a', 1000]]),
+    ],
+    [
+      '/home/runner/work/repo/contracts/src/access/test/MultiToken.test.ts',
+      new Map([['M a', 9000]]),
+    ],
+  ]);
+
+  it('finds a report path by its contracts-relative suffix', () => {
+    // Reports carry the absolute path of the runner that wrote them; the plan
+    // works in contracts/-relative paths.
+    expect(
+      durationsForFile(collected, 'src/token/test/MultiToken.test.ts'),
+    ).toStrictEqual(new Map([['M a', 1000]]));
+  });
+
+  it('never lets a same-named file in another directory answer', () => {
+    expect(
+      durationsForFile(collected, 'src/access/test/MultiToken.test.ts'),
+    ).toStrictEqual(new Map([['M a', 9000]]));
+  });
+
+  it('reports no history for a file no report covers', () => {
+    expect(
+      durationsForFile(collected, 'src/token/test/New.test.ts'),
+    ).toBeUndefined();
+  });
+});
+
+describe('resolveMatrix weighting', () => {
+  const heavySource =
+    `describe('M', () => {\n` +
+    `describe('a', () => {\n${Array.from({ length: 5 }, (_, i) => `it('t${i}', () => {});\n`).join('')}});\n` +
+    `describe('b', () => {\n${Array.from({ length: 5 }, (_, i) => `it('t${i}', () => {});\n`).join('')}});\n` +
+    '});\n';
+  const readSpec = (file: string): string | undefined =>
+    file === 'src/token/test/FungibleToken.test.ts' ? heavySource : undefined;
+  const heavyDurations = new Map(
+    ['a', 'b'].flatMap((d) =>
+      Array.from({ length: 5 }, (_, i) => [`M ${d} t${i}`, 300_000] as const),
+    ),
+  );
+
+  it('splits by measured weight and estimates every leg', () => {
+    // 10 tests would never split by count; 10 × 5 min of history fans the
+    // file out and surfaces the estimate the plan job logs.
+    const resolution = resolveMatrix(
+      request({ target: 'token' }),
+      TARGETS,
+      specs,
+      readSpec,
+      (file) =>
+        file === 'src/token/test/FungibleToken.test.ts'
+          ? heavyDurations
+          : undefined,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    expect(resolution.legs).toStrictEqual([
+      {
+        target: 'token',
+        file: 'src/token/test/FungibleToken.test.ts',
+        name: 'FungibleToken-1',
+        testFilter: '^M a ',
+        estimatedMs: 1_500_000,
+      },
+      {
+        target: 'token',
+        file: 'src/token/test/FungibleToken.test.ts',
+        name: 'FungibleToken-2',
+        testFilter: '^M b ',
+        estimatedMs: 1_500_000,
+      },
+    ]);
+  });
+
+  it('keeps the count behaviour for the same file without history', () => {
+    const resolution = resolveMatrix(
+      request({ target: 'token' }),
+      TARGETS,
+      specs,
+      readSpec,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    expect(resolution.legs).toStrictEqual([
+      {
+        target: 'token',
+        file: 'src/token/test/FungibleToken.test.ts',
+        name: 'FungibleToken',
+        estimatedMs: 10 * DEFAULT_TEST_MS,
+      },
+    ]);
+  });
+});
+
+describe('fetchPreviousReports', () => {
+  const recorder = (results: readonly Captured[] = []) => {
+    const argv: string[][] = [];
+    const exec: Exec = (cmd, args) => {
+      argv.push([cmd, ...args]);
+      return results[argv.length - 1] ?? { status: 0, stdout: '', stderr: '' };
+    };
+    return { argv, exec };
+  };
+  const OPTS = { repo: 'o/r', workflow: 'live.yml', outDir: '/tmp/history' };
+
+  it('downloads the newest completed run, whatever its conclusion', () => {
+    const { argv, exec } = recorder([
+      { status: 0, stdout: '[{"databaseId":123}]', stderr: '' },
+    ]);
+
+    const summary = fetchPreviousReports(OPTS, exec);
+
+    expect(argv[0]).toStrictEqual([
+      'gh',
+      'run',
+      'list',
+      '--workflow',
+      'live.yml',
+      // Completed, not successful: a failed nightly's timings are as real as
+      // a green run's, and the reports upload on every run.
+      '--status',
+      'completed',
+      '--limit',
+      '1',
+      '--json',
+      'databaseId',
+      '--repo',
+      'o/r',
+    ]);
+    expect(argv[1]).toStrictEqual([
+      'gh',
+      'run',
+      'download',
+      '123',
+      '--pattern',
+      'live-reports-*',
+      '--dir',
+      '/tmp/history',
+      '--repo',
+      'o/r',
+    ]);
+    expect(summary).toContain("downloaded run 123's timing reports");
+  });
+
+  it('reports, never throws, when no completed run exists', () => {
+    const { argv, exec } = recorder([{ status: 0, stdout: '[]', stderr: '' }]);
+
+    expect(fetchPreviousReports(OPTS, exec)).toContain('no completed');
+    expect(argv).toHaveLength(1); // no download attempted
+  });
+
+  it('reports, never throws, when the listing fails', () => {
+    const { exec } = recorder([{ status: 1, stdout: '', stderr: 'HTTP 500' }]);
+
+    expect(fetchPreviousReports(OPTS, exec)).toContain('gh run list failed');
+  });
+
+  it('reports, never throws, when the artifacts are gone', () => {
+    // The usual cause: 14-day retention expired the previous run's reports.
+    const { exec } = recorder([
+      { status: 0, stdout: '[{"databaseId":123}]', stderr: '' },
+      {
+        status: 1,
+        stdout: '',
+        stderr: 'no artifact matches any of the names',
+      },
+    ]);
+
+    expect(fetchPreviousReports(OPTS, exec)).toContain(
+      'could not download reports of run 123',
+    );
   });
 });

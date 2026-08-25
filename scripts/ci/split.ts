@@ -1,16 +1,25 @@
 /**
- * Cap a spec file's suite leg at {@link MAX_TESTS_PER_LEG} tests.
+ * Cap a spec file's suite leg at a wall-clock budget ({@link MAX_LEG_MS}).
  *
- * A live test costs ~55s of wall clock (deploy-per-test against a real node),
+ * A live test's cost is its transaction count times ~18s of indexer finality,
  * so one big file is one long serial job: `ShieldedAccessControl.test.ts` (89
  * tests) ran 85+ minutes and set the whole run's duration. Files cannot be
  * split on disk without losing their structure, but vitest can run a slice of
  * one: `-t <regex>` (testNamePattern) skips every test whose full name does
- * not match. So a file over the limit is parsed into its `describe` tree,
- * bin-packed by describe blocks into groups of at most the limit, and each
+ * not match. So a file over the budget is parsed into its `describe` tree,
+ * bin-packed by describe blocks into groups of at most the budget, and each
  * group becomes one leg running the same file under a `-t` filter.
  *
- * Nothing here is per-file: the rule is driven only by the constant, and the
+ * The budget is in milliseconds, not tests, because per-test cost varies by a
+ * factor of three across files (run 32831811290: MultiToken legs of ≤30 tests
+ * ran 70–91 minutes at ~3 min/test while most files run ~1 min/test — count
+ * budgeting under-split exactly the heavy files). A test weighs its measured
+ * duration from the previous run's reports when the caller has one, and
+ * {@link DEFAULT_TEST_MS} when it does not; with no history at all every
+ * weight is the default, and the packing degenerates to exactly the old
+ * count-per-leg behaviour (see the note on {@link MAX_LEG_MS}).
+ *
+ * Nothing here is per-file: the rule is driven only by the constants, and the
  * parser handles whatever the spec files contain (verified against the forms
  * that occur under `contracts/src/`).
  *
@@ -37,7 +46,10 @@
  * the parent's remainder group, whose lookahead names only the literal
  * siblings. Whenever exactness is at risk the file is NOT split at all:
  *   - the scan looks corrupted (unbalanced brackets, unterminated literals);
- *   - an indivisible unit alone exceeds the limit;
+ *   - an indivisible unit alone exceeds the budget by assumed default weights
+ *     (one whose overrun is proven by measurements instead becomes its own
+ *     oversized leg: the filter is exact, the leg just long — refusing would
+ *     collapse the whole file into one even longer leg);
  *   - two sibling names collide as prefixes (`grant` next to `grant extra`),
  *     which would run one group's tests in two legs;
  *   - the units' counts do not add back up to the file's total.
@@ -45,14 +57,30 @@
  * registered through a helper function, say) is in `LiveOrchestrator`: a
  * pattern that matches no reported test name aborts the leg loudly.
  *
- * Counting is static: an `it.each` table counts as one test, so property-based
- * files pack under their runtime size. Acceptable — packing is a budget, not
- * an invariant.
+ * Counting is static: an `it.each` table counts as one test, so an unmeasured
+ * property-based file packs under its runtime size (a measured one is covered
+ * — its history carries every runtime row). Acceptable — packing is a budget,
+ * not an invariant.
  */
 
-/** No suite leg may carry more tests than this. ~30 × 55s ≈ a half-hour job,
- * short enough that no single file dominates the run's wall clock. */
+/** The weight of a test no history covers: roughly the fleet-wide median live
+ * test (deploy-per-test against a real node). Also the unit {@link MAX_LEG_MS}
+ * is expressed in. */
+export const DEFAULT_TEST_MS = 55_000;
+
+/** The old count cap, kept as the leg budget's denominator: it sized the legs
+ * well for default-weight files, and deriving the budget from it is what makes
+ * the no-history packing IDENTICAL to the old count-based packing (uniform
+ * weights make every weight comparison a scaled count comparison). */
 export const MAX_TESTS_PER_LEG = 30;
+
+/** No suite leg may weigh more than this: 30 default tests ≈ 27.5 minutes.
+ * Derived, not hand-picked — see {@link MAX_TESTS_PER_LEG}. */
+export const MAX_LEG_MS = MAX_TESTS_PER_LEG * DEFAULT_TEST_MS;
+
+/** A file's history from a previous run: test full name (space-joined, the
+ * same form the leg patterns match) → measured milliseconds. */
+export type TestDurations = ReadonlyMap<string, number>;
 
 /** One leg of a split file. */
 export interface SplitLeg {
@@ -60,6 +88,9 @@ export interface SplitLeg {
   readonly testFilter: string;
   /** Statically counted tests in the leg (an `.each` table counts once). */
   readonly tests: number;
+  /** The leg's weight: measured history where it exists, the default per test
+   * where it does not. An estimate for the plan log, not a bound. */
+  readonly estimatedMs: number;
 }
 
 /** A `describe` block: its name (or null when it cannot be matched by name),
@@ -73,15 +104,54 @@ interface SuiteNode {
 /** An indivisible slice of the tree the packer arranges into legs. */
 interface Unit {
   readonly tests: number;
+  /** What the unit costs, by the weigher below. */
+  readonly weightMs: number;
   /** A `^`-anchored regex alternative selecting exactly this unit. */
   readonly pattern: string;
   /** Source order, so a leg's alternation reads like the file does. */
   readonly order: number;
 }
 
+/** A subtree's weight, and whether any of it is a real measurement — an
+ * over-budget unit is only allowed to stand as its own oversized leg when the
+ * overrun is proven, not merely assumed from the default (see collectUnits). */
+interface Weight {
+  readonly weightMs: number;
+  readonly measured: boolean;
+}
+
+/** Weighs the subtree a pattern selects: the measured duration of every
+ * history name the pattern matches, plus the default for however many of the
+ * statically counted tests that leaves uncovered. The clamp handles `it.each`
+ * (one static test, N runtime names): its history simply covers it. */
+type Weigher = (pattern: string, tests: number) => Weight;
+
+function makeWeigher(durations: TestDurations | undefined): Weigher {
+  const history = [...(durations ?? [])];
+  return (pattern, tests) => {
+    const regex = new RegExp(pattern);
+    let measuredMs = 0;
+    let measured = 0;
+    for (const [name, ms] of history) {
+      if (regex.test(name)) {
+        measuredMs += ms;
+        measured++;
+      }
+    }
+    return {
+      weightMs: measuredMs + Math.max(0, tests - measured) * DEFAULT_TEST_MS,
+      measured: measured > 0,
+    };
+  };
+}
+
 /**
- * Split a spec file's source into legs of at most `limit` tests.
+ * Split a spec file's source into legs weighing at most `limit` default tests
+ * ({@link MAX_LEG_MS} at the default limit).
  *
+ * @param durations - the file's measured history, when the caller has one.
+ *   Omitted (or matching nothing), every test weighs the default and the
+ *   result is exactly the old count-based split.
  * @returns the legs, or `null` when the file fits in one leg or cannot be
  *   split safely (see the fallback list above) — the caller then runs the
  *   whole file unfiltered, exactly as before.
@@ -89,23 +159,28 @@ interface Unit {
 export function splitSpec(
   source: string,
   limit: number = MAX_TESTS_PER_LEG,
+  durations?: TestDurations,
 ): SplitLeg[] | null {
   const root = parseSuiteTree(source);
   if (root === undefined) return null;
   const total = totalTests(root);
-  if (total <= limit) return null;
+  const weigh = makeWeigher(durations);
+  const budgetMs = limit * DEFAULT_TEST_MS;
+  // The empty pattern matches every history name: the whole file's weight.
+  if (weigh('', total).weightMs <= budgetMs) return null;
 
   const units: Unit[] = [];
-  if (!collectUnits(root, [], limit, units)) return null;
+  if (!collectUnits(root, [], budgetMs, weigh, units)) return null;
   // Exactness insurance: the units partition the tree by construction, so a
   // sum that misses the total means the parse or the walk is wrong — and a
   // wrong filter must fall back to one long leg, never ship.
   if (units.reduce((sum, unit) => sum + unit.tests, 0) !== total) return null;
   if (units.length < 2) return null;
 
-  const legs = pack(units, limit).map((bin) => ({
+  const legs = pack(units, budgetMs).map((bin) => ({
     testFilter: bin.units.map((unit) => unit.pattern).join('|'),
     tests: bin.tests,
+    estimatedMs: Math.round(bin.weightMs),
   }));
   if (legs.length < 2) return null;
   // The pattern is handed to `new RegExp` twice downstream (vitest's `-t` and
@@ -119,6 +194,20 @@ export function splitSpec(
     }
   }
   return legs;
+}
+
+/**
+ * A whole file's weight, for the plan log's per-leg estimates: the file
+ * itself is one leg when it was not split. `undefined` when the source cannot
+ * be scanned — an unknown, not a zero.
+ */
+export function estimateSpecMs(
+  source: string,
+  durations?: TestDurations,
+): number | undefined {
+  const root = parseSuiteTree(source);
+  if (root === undefined) return undefined;
+  return Math.round(makeWeigher(durations)('', totalTests(root)).weightMs);
 }
 
 /** Sum of a subtree's statically counted tests. */
@@ -141,7 +230,7 @@ function pathPrefix(names: readonly string[]): string {
 /**
  * Decompose `node` (whose own path is literal) into indivisible units.
  *
- * A literal child at or under the limit is one unit; one over it is recursed
+ * A literal child at or under the budget is one unit; one over it is recursed
  * into. The node's direct tests and every dynamic-named child form the
  * remainder unit: the node's path minus a lookahead over the literal children
  * — the only way to address tests whose own describe cannot be named.
@@ -152,7 +241,8 @@ function pathPrefix(names: readonly string[]): string {
 function collectUnits(
   node: SuiteNode,
   path: readonly string[],
-  limit: number,
+  budgetMs: number,
+  weigh: Weigher,
   out: Unit[],
 ): boolean {
   const literal = node.children.filter((child) => child.name !== null) as
@@ -172,32 +262,33 @@ function collectUnits(
   const remainder =
     node.directTests +
     dynamic.reduce((sum, child) => sum + totalTests(child), 0);
-  // The remainder cannot be subdivided (its describes cannot be named), so a
-  // remainder over the limit means this file cannot be split within the rule.
-  if (remainder > limit) return false;
   if (remainder > 0) {
     const lookahead =
       literal.length > 0
         ? `(?!${literal.map((child) => `${escapeRegex(child.name)} `).join('|')})`
         : '';
-    out.push({
-      tests: remainder,
-      pattern: `^${pathPrefix(path)}${lookahead}`,
-      order: out.length,
-    });
+    const pattern = `^${pathPrefix(path)}${lookahead}`;
+    const { weightMs, measured } = weigh(pattern, remainder);
+    // The remainder cannot be subdivided (its describes cannot be named), so
+    // over the budget it either stands as its own oversized leg — allowed only
+    // when measurements prove the overrun, since the filter is still exact and
+    // one long leg beats collapsing the whole file back into one longer one —
+    // or, weighed purely by assumed defaults, keeps the old count rule: do not
+    // split this file at all. The latter is what keeps a no-history run
+    // packing exactly as it always did.
+    if (weightMs > budgetMs && !measured) return false;
+    out.push({ tests: remainder, weightMs, pattern, order: out.length });
   }
 
   for (const child of literal) {
     const tests = totalTests(child);
     if (tests === 0) continue; // nothing to select; still excluded above
     const childPath = [...path, child.name];
-    if (tests <= limit) {
-      out.push({
-        tests,
-        pattern: `^${pathPrefix(childPath)}`,
-        order: out.length,
-      });
-    } else if (!collectUnits(child, childPath, limit, out)) {
+    const pattern = `^${pathPrefix(childPath)}`;
+    const { weightMs } = weigh(pattern, tests);
+    if (weightMs <= budgetMs) {
+      out.push({ tests, weightMs, pattern, order: out.length });
+    } else if (!collectUnits(child, childPath, budgetMs, weigh, out)) {
       return false;
     }
   }
@@ -206,21 +297,27 @@ function collectUnits(
 
 interface Bin {
   tests: number;
+  weightMs: number;
   units: Unit[];
 }
 
 /**
- * First-fit-decreasing bin packing. Not optimal, but within one bin of
- * `ceil(total/limit)` in practice, and the group count is a job count — a
- * spare group costs one more stack reset, not correctness.
+ * First-fit-decreasing bin packing by weight. Not optimal, but within one bin
+ * of `ceil(total/budget)` in practice, and the group count is a job count — a
+ * spare group costs one more stack reset, not correctness. With uniform
+ * (default) weights this orders and fits exactly as the old count packing did:
+ * `sort` is stable and every comparison is the count one scaled by the
+ * default.
  */
-function pack(units: readonly Unit[], limit: number): Bin[] {
+function pack(units: readonly Unit[], budgetMs: number): Bin[] {
   const bins: Bin[] = [];
-  for (const unit of [...units].sort((a, b) => b.tests - a.tests)) {
-    const bin = bins.find((b) => b.tests + unit.tests <= limit);
-    if (bin === undefined) bins.push({ tests: unit.tests, units: [unit] });
-    else {
+  for (const unit of [...units].sort((a, b) => b.weightMs - a.weightMs)) {
+    const bin = bins.find((b) => b.weightMs + unit.weightMs <= budgetMs);
+    if (bin === undefined) {
+      bins.push({ tests: unit.tests, weightMs: unit.weightMs, units: [unit] });
+    } else {
       bin.tests += unit.tests;
+      bin.weightMs += unit.weightMs;
       bin.units.push(unit);
     }
   }

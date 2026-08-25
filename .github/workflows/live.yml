@@ -39,8 +39,10 @@ name: Live Test Suite
 # (the 2026-08-24 nightly spent 5.75h in `live-token`) while the files are
 # independent: every suite job resets its own stack, so nothing one spec leaves on
 # the node can fail another. The compile layer is what makes that affordable — 16
-# token spec jobs must not mean 16 token compiles. A file over MAX_TESTS_PER_LEG
-# tests (scripts/ci/split.ts) fans out further: several legs of the same file,
+# token spec jobs must not mean 16 token compiles. A file over the leg budget
+# (MAX_LEG_MS in scripts/ci/split.ts, weighed by the previous run's measured
+# per-test durations when the plan job could download its reports, by test count
+# otherwise) fans out further: several legs of the same file,
 # each scoped by a vitest test-name pattern (`testFilter` in the leg), so one
 # big file cannot set the whole run's wall clock either.
 #
@@ -91,6 +93,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      # For the timing-history step: downloading a previous run's artifacts.
+      actions: read
     timeout-minutes: 5
     outputs:
       # `targets` gates the compile jobs; one `legs-<target>` per target feeds
@@ -121,6 +125,22 @@ jobs:
         with:
           node-version-file: ".nvmrc"
 
+      # Best-effort: the previous completed run's `live-reports-*` artifacts
+      # carry per-test durations, which weight the leg packing so a heavy file
+      # splits finer than its test count suggests. No history — first run,
+      # expired artifacts (14-day retention), an API hiccup — just means the
+      # matrix step packs by count, so this must never fail the plan: the
+      # script always exits 0 and `continue-on-error` is belt and braces.
+      # The gh CLI is preinstalled on the runner; still no `yarn install` here.
+      - name: Fetch the previous run's timing reports
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOW: live.yml
+          OUT_DIR: ${{ runner.temp }}/live-history
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts fetch-reports
+
       # TARGET and FILTER are empty on every trigger but workflow_dispatch, LABEL
       # on every trigger but a PR label. The script resolves whichever is set.
       # KNOWN_TARGETS is the pairs below: a discovered target missing from it
@@ -132,6 +152,7 @@ jobs:
           LABEL: ${{ github.event.label.name }}
           FILTER: ${{ inputs.filter }}
           KNOWN_TARGETS: access crypto multisig security token utils integration
+          LIVE_REPORTS_DIR: ${{ runner.temp }}/live-history
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
 
   # One pair per live target, below. Both jobs are skipped when the run's scope

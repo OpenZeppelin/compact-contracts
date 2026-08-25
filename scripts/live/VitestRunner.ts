@@ -3,20 +3,40 @@ import { CONTRACTS, PROGRESS_REPORTER, rel, VITEST_BIN } from './paths.ts';
 import { run } from './shell.ts';
 import type { LiveTarget } from './targets.ts';
 
-interface JsonAssertionResult {
+/** One test in a vitest JSON report. Exported (with the containers below) so
+ * the plan-side weighting (`scripts/ci/weights.ts`) reads the same shape this
+ * runner does instead of keeping a second definition of the format. */
+export interface JsonAssertionResult {
+  /** The describe names and the test name, space-joined — the same form a
+   * `-t` pattern is matched against. */
   readonly fullName: string;
   readonly status: string;
+  /** Wall-clock milliseconds. Absent on a test that never ran (skipped by a
+   * pattern or `.skipIf`). */
+  readonly duration?: number;
   /** The failure's rendered message(s) — usually one entry, the error message
    * plus its stack. Empty (or absent) on a pass or a skip. */
   readonly failureMessages?: readonly string[];
 }
-interface JsonTestResult {
+export interface JsonTestResult {
+  /** The spec file's path, as vitest saw it (absolute on this runner). */
   readonly name: string;
   readonly status: string;
   readonly assertionResults?: readonly JsonAssertionResult[];
 }
-interface JsonReport {
+export interface JsonReport {
   readonly testResults?: readonly JsonTestResult[];
+}
+
+/** Parse a report body, or `undefined` for one a killed vitest left truncated.
+ * The runner's own reads go through {@link VitestRunner} (which also handles a
+ * missing file and names the path in its log); this is the shared piece. */
+export function parseJsonReport(body: string): JsonReport | undefined {
+  try {
+    return JSON.parse(body) as JsonReport;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Spawns vitest against one live project and reads back its JSON report. */
@@ -133,19 +153,15 @@ export class VitestRunner {
 
   #report(reportPath: string): JsonReport | undefined {
     if (!existsSync(reportPath)) return undefined;
-    try {
-      return JSON.parse(readFileSync(reportPath, 'utf8')) as JsonReport;
-    } catch (e) {
+    const report = parseJsonReport(readFileSync(reportPath, 'utf8'));
+    if (report === undefined) {
       // A killed vitest can leave a partial report that still passes `existsSync`,
       // so parsing is a second way to have no result — not an exception to throw
       // through the callers, which are written to abort gracefully on `undefined`.
       // Named here because the caller's message ("produced no results file")
       // would otherwise misdescribe an unreadable one.
-      console.log(
-        `\ncould not read ${rel(reportPath)}: ` +
-          `${e instanceof Error ? e.message : String(e)}`,
-      );
-      return undefined;
+      console.log(`\ncould not read ${rel(reportPath)}: not valid JSON`);
     }
+    return report;
   }
 }

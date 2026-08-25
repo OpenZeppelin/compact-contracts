@@ -1,6 +1,11 @@
 import path from 'node:path';
 import { filterSpecFiles } from '../live/specs.ts';
-import { splitSpec } from './split.ts';
+import {
+  estimateSpecMs,
+  MAX_TESTS_PER_LEG,
+  splitSpec,
+  type TestDurations,
+} from './split.ts';
 
 /**
  * What `live.yml` fans out into matrix jobs: one compile job per live target,
@@ -58,12 +63,21 @@ export interface MatrixLeg {
   readonly testFilter?: string;
 }
 
+/** A resolved leg plus what it is expected to cost, for the plan job's log.
+ * The estimate stays plan-side: the caller strips it before publishing the
+ * matrix, so the workflow's leg shape does not change with it. */
+export interface PlannedLeg extends MatrixLeg {
+  /** Measured history where it exists, `DEFAULT_TEST_MS` per test where it
+   * does not. Absent when the spec source could not be read or scanned. */
+  readonly estimatedMs?: number;
+}
+
 export type MatrixResolution =
   | {
       readonly ok: true;
       /** Targets to compile: those at least one leg runs under. */
       readonly targets: readonly string[];
-      readonly legs: readonly MatrixLeg[];
+      readonly legs: readonly PlannedLeg[];
       /** Targets the file filter ruled out, for the plan job's log. */
       readonly dropped: readonly string[];
     }
@@ -124,12 +138,17 @@ function requestedTarget(
  * @param readSpec - a spec file's source, for the leg-splitting rule. Returning
  *   `undefined` (the default) means "cannot read it", which safely disables
  *   splitting for that file rather than failing the plan.
+ * @param durationsFor - a spec file's measured per-test history from the
+ *   previous run's reports (`weights.ts`), for duration-weighted packing.
+ *   Returning `undefined` (the default) means "no history", which packs the
+ *   file by test count exactly as before.
  */
 export function resolveMatrix(
   request: MatrixRequest,
   available: readonly string[],
   specFiles: (target: string) => readonly string[],
   readSpec: (file: string) => string | undefined = () => undefined,
+  durationsFor: (file: string) => TestDurations | undefined = () => undefined,
 ): MatrixResolution {
   // An empty matrix is not a no-op in Actions: the fan-out job fails with an
   // opaque "matrix must define at least one vector" error. Rejecting here puts
@@ -179,7 +198,7 @@ export function resolveMatrix(
   // a pass. The match is vitest's own, so a filter that works locally is never
   // rejected here.
   const filter = request.filter.trim();
-  const legs: MatrixLeg[] = [];
+  const legs: PlannedLeg[] = [];
   const matched: string[] = [];
   for (const target of scope) {
     const all = specFiles(target);
@@ -189,15 +208,30 @@ export function resolveMatrix(
     const names = legNames(files);
     for (const [i, file] of files.entries()) {
       const name = names[i] as string;
-      // The leg-splitting rule: a file over MAX_TESTS_PER_LEG becomes several
-      // legs of the same file, each scoped by a test-name pattern, so one big
-      // file cannot dominate the run's wall clock. Applied after the file
-      // filter on purpose: a dispatch that selects the file still gets the
-      // split, since the point is the file's size, not how it was chosen.
+      // The leg-splitting rule: a file over the leg budget (MAX_LEG_MS,
+      // weighed by measured durations where history exists and by test count
+      // otherwise) becomes several legs of the same file, each scoped by a
+      // test-name pattern, so one big file cannot dominate the run's wall
+      // clock. Applied after the file filter on purpose: a dispatch that
+      // selects the file still gets the split, since the point is the file's
+      // weight, not how it was chosen.
       const source = readSpec(file);
-      const split = source === undefined ? null : splitSpec(source);
+      const durations = durationsFor(file);
+      const split =
+        source === undefined
+          ? null
+          : splitSpec(source, MAX_TESTS_PER_LEG, durations);
       if (split === null) {
-        legs.push({ target, file, name });
+        const estimatedMs =
+          source === undefined ? undefined : estimateSpecMs(source, durations);
+        legs.push({
+          target,
+          file,
+          name,
+          // Left off entirely when unknown, so an estimate-less leg keeps the
+          // exact shape (and JSON) legs had before estimates existed.
+          ...(estimatedMs === undefined ? {} : { estimatedMs }),
+        });
         continue;
       }
       legs.push(
@@ -206,6 +240,7 @@ export function resolveMatrix(
           file,
           name: `${name}-${k + 1}`,
           testFilter: leg.testFilter,
+          estimatedMs: leg.estimatedMs,
         })),
       );
     }

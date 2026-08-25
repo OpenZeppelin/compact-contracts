@@ -3,8 +3,10 @@ import path from 'node:path';
 import { setOutput } from './ci/actions.ts';
 import { GhCacheClient, pruneCaches } from './ci/caches.ts';
 import { GhIssueTracker } from './ci/gh.ts';
+import { fetchPreviousReports } from './ci/history.ts';
 import { resolveMatrix } from './ci/matrix.ts';
 import { reportNightly, worstResult } from './ci/nightly.ts';
+import { collectDurations, durationsForFile } from './ci/weights.ts';
 import { CONTRACTS } from './live/paths.ts';
 import { specFiles } from './live/specs.ts';
 import { listTargets, liveCategories } from './live/targets.ts';
@@ -18,6 +20,9 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * are exactly the ones a mistake stays hidden in for a night. Each concern lives
  * in `scripts/ci/`:
  *   - `matrix.ts`  — which live targets the run fans out into (pure)
+ *   - `weights.ts` — measured per-test durations out of a previous run's
+ *                    reports, for duration-weighted leg packing (pure)
+ *   - `history.ts` — the `gh` adapter that downloads those reports
  *   - `nightly.ts` — what the nightly reports to the tracking issue (pure)
  *   - `caches.ts`  — which Actions cache entries the nightly prunes (pure
  *                    decision + its own `gh api` adapter)
@@ -26,10 +31,12 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * Their tests are in `scripts/ci/test/` (`yarn test:scripts`).
  *
  * Usage, with the inputs each command reads from the environment:
- *   node scripts/live-ci.ts matrix        # TARGET, LABEL, FILTER, KNOWN_TARGETS
- *   node scripts/live-ci.ts nightly       # REPO, SUITE_RESULT, PLAN_RESULT,
- *                                         # COMPILE_RESULT, RUN_URL
- *   node scripts/live-ci.ts prune-caches  # REPO
+ *   node scripts/live-ci.ts matrix         # TARGET, LABEL, FILTER,
+ *                                          # KNOWN_TARGETS, LIVE_REPORTS_DIR
+ *   node scripts/live-ci.ts fetch-reports  # REPO, WORKFLOW, OUT_DIR
+ *   node scripts/live-ci.ts nightly        # REPO, SUITE_RESULT, PLAN_RESULT,
+ *                                          # COMPILE_RESULT, RUN_URL
+ *   node scripts/live-ci.ts prune-caches   # REPO
  *
  * Node runs this .ts directly (type stripping) and it imports only `node:`
  * builtins, so the jobs that call it need a checkout and a Node, not an install.
@@ -37,7 +44,8 @@ import { listTargets, liveCategories } from './live/targets.ts';
  * Exit codes: 0 done, 1 a bad input or a failed `gh` call.
  */
 
-const USAGE = 'usage: node scripts/live-ci.ts <matrix|nightly|prune-caches>';
+const USAGE =
+  'usage: node scripts/live-ci.ts <matrix|fetch-reports|nightly|prune-caches>';
 
 /** A required input. Missing one is a workflow bug, so it fails the step rather
  * than defaulting to something plausible. */
@@ -65,6 +73,24 @@ function matrix(): number {
     return 1;
   }
 
+  // The previous run's timing reports, when the fetch step landed any: they
+  // weight the leg packing so a heavy file splits finer than its test count
+  // suggests. Missing/empty is the designed fallback — count-based packing.
+  const reportsDir = optionalEnv('LIVE_REPORTS_DIR');
+  const history =
+    reportsDir === ''
+      ? new Map<string, ReadonlyMap<string, number>>()
+      : collectDurations(reportsDir);
+  const timed = [...history.values()].reduce((sum, d) => sum + d.size, 0);
+  if (timed > 0) {
+    console.log(
+      `weighting legs by ${timed} measured test duration(s) across ` +
+        `${history.size} spec file(s) (from ${reportsDir}).`,
+    );
+  } else {
+    console.log('no timing history — packing legs by test count.');
+  }
+
   const filter = optionalEnv('FILTER');
   const resolution = resolveMatrix(
     {
@@ -84,6 +110,7 @@ function matrix(): number {
         return undefined;
       }
     },
+    (file) => durationsForFile(history, file),
   );
   if (!resolution.ok) {
     console.log(resolution.message);
@@ -111,7 +138,15 @@ function matrix(): number {
     const part = (seen.get(leg.file) ?? 0) + 1;
     seen.set(leg.file, part);
     const marker = parts > 1 ? `  (split ${part}/${parts})` : '';
-    console.log(`  ${leg.target} · ${leg.name}  (${leg.file})${marker}`);
+    // The estimate makes the packing checkable at a glance: a leg far over
+    // ~30 minutes means the weights (or the splitter) need a look.
+    const estimate =
+      leg.estimatedMs === undefined
+        ? ''
+        : `  ~${Math.round(leg.estimatedMs / 60_000)}m`;
+    console.log(
+      `  ${leg.target} · ${leg.name}  (${leg.file})${marker}${estimate}`,
+    );
   }
 
   // One `legs-<target>` output per target, because the workflow pairs a compile
@@ -121,12 +156,31 @@ function matrix(): number {
   // so the workflow declares the pairs it knows and KNOWN_TARGETS below is what
   // keeps that list honest.
   setOutput('targets', JSON.stringify(resolution.targets));
+  // The estimate is for the log above, not for the matrix: stripping it keeps
+  // the published leg shape (and the suite workflow's inputs) exactly as it
+  // was before estimates existed.
+  const published = resolution.legs.map(
+    ({ estimatedMs: _estimatedMs, ...leg }) => leg,
+  );
   for (const target of listTargets(liveCategories())) {
     setOutput(
       `legs-${target}`,
-      JSON.stringify(resolution.legs.filter((l) => l.target === target)),
+      JSON.stringify(published.filter((l) => l.target === target)),
     );
   }
+  return 0;
+}
+
+/** Best-effort download of the previous run's timing reports. Always exits 0:
+ * no history only means the matrix packs by count. */
+function fetchReports(): number {
+  console.log(
+    fetchPreviousReports({
+      repo: env('REPO'),
+      workflow: env('WORKFLOW'),
+      outDir: env('OUT_DIR'),
+    }),
+  );
   return 0;
 }
 
@@ -174,6 +228,8 @@ function main(): number {
   switch (command) {
     case 'matrix':
       return matrix();
+    case 'fetch-reports':
+      return fetchReports();
     case 'nightly':
       return nightly();
     case 'prune-caches':
