@@ -50,6 +50,13 @@ runs:
     # before". That install was 24s of a 38s setup, in every job of a fan-out
     # that is now one job per spec file (measured on run 32815780786).
     #
+    # `.yarn/install-state.gz` is in the entry for the same reason: it is where
+    # yarn records which packages have been built, and without it a job with a
+    # fully restored `node_modules` still reports every native module as "must be
+    # built because it never has been before" and recompiles it. Restoring the
+    # tree alone took the install from 24s to 9s; the state file is what removes
+    # the rest.
+    #
     # Caching the tree makes the install a no-op instead. It costs transfer:
     # `node_modules` is 137 MB zstd-compressed against `.yarn/cache`'s 138 MB, so
     # keeping both roughly doubles the entry — worth it, since a 275 MB entry
@@ -67,6 +74,7 @@ runs:
           node_modules
           contracts/node_modules
           .yarn/cache
+          .yarn/install-state.gz
         key: ${{ runner.os }}-deps-${{ hashFiles('yarn.lock', '.yarnrc.yml', '.nvmrc') }}
 
     - name: Enable corepack
