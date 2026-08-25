@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import type { ArtifactCompiler } from './ArtifactCompiler.ts';
+import { deterministicCause } from './deterministic.ts';
 import type { LiveStack } from './LiveStack.ts';
 import {
   LOGS,
@@ -22,6 +23,10 @@ interface FailedFile {
   readonly file: string;
   /** The target that ran it, so round 2 re-runs it under the same project. */
   readonly target: LiveTarget;
+  /** Set when every failure in the file is a deterministic rejection (see
+   * `deterministic.ts`): the file skips round 2 — a fresh node returns the
+   * same verdict — and reports as REAL under this cause. */
+  readonly cause?: string;
 }
 
 /**
@@ -54,7 +59,10 @@ export function classify(
  *            it). Collect the files that failed from the JSON reporter.
  *   Round 2: for each failed file, reset the stack and re-run just that file on
  *            its own (one worker), so no earlier round-2 file can dirty the node
- *            under a later one.
+ *            under a later one. A file whose every round-1 failure matches a
+ *            deterministic rejection (`deterministic.ts`) is exempt: a fresh
+ *            node returns the same verdict, so it reports REAL immediately with
+ *            the cause named.
  *
  * A file that fails round 1 but passes round 2 is FLAKY (an environment
  * artifact); one that fails both — or never reports in round 2 — is a REAL
@@ -127,16 +135,45 @@ export class LiveOrchestrator {
     if (failed.length === 0) return this.#reporter.firstRunGreen();
 
     banner(`ROUND 1 found ${failed.length} failing file(s)`);
-    for (const f of failed) console.log(`  ✗ ${rel(f.file)}`);
+    for (const f of failed) {
+      console.log(
+        `  ✗ ${rel(f.file)}${f.cause === undefined ? '' : ` — deterministic: ${f.cause}`}`,
+      );
+    }
 
-    const round2 = await this.#round2(failed);
+    // A file whose every failure is a deterministic rejection skips round 2:
+    // the verdict is a property of the transaction, so a fresh node re-returns
+    // it, and the re-run only doubles the loss. It is REAL without a retry.
+    const deterministic = failed.filter((f) => f.cause !== undefined);
+    const retryable = failed.filter((f) => f.cause === undefined);
+    if (deterministic.length > 0) {
+      console.log(
+        `\nskipping round 2 for ${deterministic.length} file(s): every ` +
+          'failure is a deterministic rejection a fresh node cannot change.',
+      );
+    }
+
+    const round2 =
+      retryable.length > 0
+        ? await this.#round2(retryable)
+        : new Map<string, string>();
     if (round2 === undefined) return INFRA_ABORT;
 
     const { flaky, real } = classify(
-      failed.map((f) => f.file),
+      retryable.map((f) => f.file),
       round2,
     );
-    return this.#reporter.verdict(flaky, real);
+    const causes = new Map(
+      deterministic.map((f) => [f.file, f.cause as string]),
+    );
+    return this.#reporter.verdict(
+      flaky,
+      // Round-1 order, so the verdict reads like the run did.
+      failed
+        .map((f) => f.file)
+        .filter((file) => causes.has(file) || real.includes(file)),
+      causes,
+    );
   }
 
   /** Drop reports from previous runs, so a stale file can never be read as this
@@ -260,7 +297,19 @@ export class LiveOrchestrator {
       }
 
       filesRun += statuses.size;
-      failed.push(...targetFailed.map((file) => ({ file, target })));
+      // A file is only exempt from round 2 when the report can prove every
+      // one of its failures deterministic; an unreadable second read (should
+      // not happen — `fileStatuses` just parsed this file) or a hook-level
+      // crash with no failed assertions proves nothing, so `cause` stays
+      // unset and the file keeps its flake check.
+      const failureMessages = this.#runner.failedTestMessages(reportPath);
+      failed.push(
+        ...targetFailed.map((file) => ({
+          file,
+          target,
+          cause: deterministicCause(failureMessages?.get(file) ?? []),
+        })),
+      );
       console.log(
         `\n${target.name}: ${statuses.size} file(s), ${targetFailed.length} failed`,
       );

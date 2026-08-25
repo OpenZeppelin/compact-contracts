@@ -10,6 +10,10 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ArtifactCompiler } from '../ArtifactCompiler.ts';
 import {
+  DETERMINISTIC_FAILURES,
+  deterministicCause,
+} from '../deterministic.ts';
+import {
   classify,
   INFRA_ABORT,
   LiveOrchestrator,
@@ -492,6 +496,61 @@ describe('VitestRunner.reportedTestNames', () => {
   });
 });
 
+describe('VitestRunner.failedTestMessages', () => {
+  let dir: string;
+  const report = (name: string, body: string): string => {
+    const p = path.join(dir, name);
+    writeFileSync(p, body);
+    return p;
+  };
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), 'live-messages-'));
+  });
+
+  it('collects one message list per failed test, per file', () => {
+    const p = report(
+      'ok.json',
+      JSON.stringify({
+        testResults: [
+          {
+            name: 'a.test.ts',
+            status: 'failed',
+            assertionResults: [
+              { fullName: 'A passes', status: 'passed', failureMessages: [] },
+              {
+                fullName: 'A fails once',
+                status: 'failed',
+                failureMessages: ['Error: boom'],
+              },
+              {
+                fullName: 'A fails twice',
+                status: 'failed',
+                failureMessages: ['Error: one', 'Error: two'],
+              },
+            ],
+          },
+          // A hook crash: file failed, but nothing at assertion level did.
+          { name: 'b.test.ts', status: 'failed', assertionResults: [] },
+        ],
+      }),
+    );
+
+    expect(new VitestRunner().failedTestMessages(p)).toStrictEqual(
+      new Map([
+        ['a.test.ts', [['Error: boom'], ['Error: one', 'Error: two']]],
+        ['b.test.ts', []],
+      ]),
+    );
+  });
+
+  it('reports no result when the report is missing', () => {
+    expect(
+      new VitestRunner().failedTestMessages(path.join(dir, 'absent.json')),
+    ).toBeUndefined();
+  });
+});
+
 describe('LiveOrchestrator', () => {
   // Deliberately not a real category, so clearing stale reports finds nothing.
   const TARGET = {
@@ -503,6 +562,13 @@ describe('LiveOrchestrator', () => {
   /** The positional filters each `VitestRunner.run` call received, in order. */
   let ran: { target: string; filters: readonly string[] }[] = [];
 
+  /** What the run handed `Reporter.verdict`, for the classification cases. */
+  let verdicts: {
+    flaky: readonly string[];
+    real: readonly string[];
+    causes: ReadonlyMap<string, string> | undefined;
+  }[] = [];
+
   /** A round wired to stand-ins: every collaborator but the harness-smoke spawn
    * is constructor-injected, so a whole round runs without docker or vitest. */
   const roundOver = (opts: {
@@ -512,6 +578,7 @@ describe('LiveOrchestrator', () => {
     readonly specFiles?: (target: string) => readonly string[];
     readonly testPattern?: string;
     readonly reportedTestNames?: () => string[] | undefined;
+    readonly failedTestMessages?: () => Map<string, string[][]> | undefined;
   }): LiveOrchestrator => {
     const targets = opts.targets ?? [TARGET];
     return new LiveOrchestrator({
@@ -536,10 +603,19 @@ describe('LiveOrchestrator', () => {
         },
         fileStatuses: opts.fileStatuses,
         reportedTestNames: opts.reportedTestNames,
+        failedTestMessages:
+          opts.failedTestMessages ?? (() => new Map<string, string[][]>()),
       } as unknown as VitestRunner,
       reporter: {
         firstRunGreen: () => 0,
-        verdict: () => 0,
+        verdict: (
+          flaky: readonly string[],
+          real: readonly string[],
+          causes?: ReadonlyMap<string, string>,
+        ) => {
+          verdicts.push({ flaky, real, causes });
+          return real.length === 0 ? 0 : 1;
+        },
       } as unknown as Reporter,
       specFiles: opts.specFiles,
       testPattern: opts.testPattern,
@@ -550,6 +626,7 @@ describe('LiveOrchestrator', () => {
 
   beforeEach(() => {
     ran = [];
+    verdicts = [];
     logged = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
@@ -687,6 +764,121 @@ describe('LiveOrchestrator', () => {
       },
     ]);
     expect(output()).toContain('othertarget: no file matches Forwarder');
+  });
+
+  it('skips round 2 when every failure in a file is deterministic', async () => {
+    // "1010: Invalid Transaction" on a deploy is a property of the tx, not of
+    // node state — a fresh node returns the same rejection, so the re-run
+    // would only double the loss (run 32831811290: 11 legs, all like this).
+    const code = await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'failed']]),
+      failedTestMessages: () =>
+        new Map([
+          [
+            'a.test.ts',
+            [
+              [
+                'Error: 1010: Invalid Transaction: Transaction would exhaust the block limits\n    at deploy…',
+              ],
+              ['Error: Custom error: 186\n    at _mint…'],
+            ],
+          ],
+        ]),
+    }).run();
+
+    expect(code).toBe(1); // still a real failure
+    expect(ran).toHaveLength(1); // round 1 only — no re-run
+    expect(verdicts).toStrictEqual([
+      {
+        flaky: [],
+        real: ['a.test.ts'],
+        causes: new Map([
+          ['a.test.ts', 'block limits + unclaimed shielded output (err 186)'],
+        ]),
+      },
+    ]);
+    expect(output()).toContain('skipping round 2 for 1 file(s)');
+    expect(output()).toContain('a.test.ts — deterministic: block limits');
+  });
+
+  it('keeps round 2 for a file with any non-deterministic failure', async () => {
+    // One matched failure next to an unknown one proves nothing about the
+    // file as a whole; it keeps today's flake check exactly.
+    const code = await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'failed']]),
+      failedTestMessages: () =>
+        new Map([
+          [
+            'a.test.ts',
+            [
+              ['Error: Transaction would exhaust the block limits'],
+              ['AssertionError: expected 1 to be 2'],
+            ],
+          ],
+        ]),
+    }).run();
+
+    expect(code).toBe(1);
+    expect(ran).toHaveLength(2); // round 1, then the file alone in round 2
+    expect(verdicts).toStrictEqual([
+      { flaky: [], real: ['a.test.ts'], causes: new Map() },
+    ]);
+  });
+
+  it('keeps round 2 when the failure reached no assertion', async () => {
+    // A hook crash reports at file level with no failed tests; an empty list
+    // proves nothing, so the file must not lose its flake check.
+    await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'failed']]),
+      failedTestMessages: () => new Map([['a.test.ts', []]]),
+    }).run();
+
+    expect(ran).toHaveLength(2);
+  });
+});
+
+describe('deterministicCause', () => {
+  it('names the cause when every failed test matches a pattern', () => {
+    expect(
+      deterministicCause([
+        ['Error: Transaction would exhaust the block limits'],
+      ]),
+    ).toBe('block limits');
+  });
+
+  it('joins distinct causes in pattern order', () => {
+    expect(
+      deterministicCause([
+        ['Error: Custom error: 186'],
+        ['Error: Transaction would exhaust the block limits'],
+      ]),
+    ).toBe('block limits + unclaimed shielded output (err 186)');
+  });
+
+  it('reports nothing when any failed test does not match', () => {
+    expect(
+      deterministicCause([
+        ['Error: Transaction would exhaust the block limits'],
+        ['AssertionError: expected 1 to be 2'],
+      ]),
+    ).toBeUndefined();
+  });
+
+  it('reports nothing for a message-less failure', () => {
+    expect(deterministicCause([[]])).toBeUndefined();
+  });
+
+  it('reports nothing when no test failed at assertion level', () => {
+    expect(deterministicCause([])).toBeUndefined();
+  });
+
+  it('keeps every pattern paired with a cause name', () => {
+    // The verdict line prints the cause, so an unnamed pattern would render
+    // as `deterministic: undefined`.
+    for (const d of DETERMINISTIC_FAILURES) {
+      expect(d.cause.length).toBeGreaterThan(0);
+      expect(d.pattern).toBeInstanceOf(RegExp);
+    }
   });
 });
 

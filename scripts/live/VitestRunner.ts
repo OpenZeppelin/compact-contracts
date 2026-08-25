@@ -6,6 +6,9 @@ import type { LiveTarget } from './targets.ts';
 interface JsonAssertionResult {
   readonly fullName: string;
   readonly status: string;
+  /** The failure's rendered message(s) — usually one entry, the error message
+   * plus its stack. Empty (or absent) on a pass or a skip. */
+  readonly failureMessages?: readonly string[];
 }
 interface JsonTestResult {
   readonly name: string;
@@ -100,6 +103,31 @@ export class VitestRunner {
     if (report === undefined) return undefined;
     return (report.testResults ?? []).flatMap((r) =>
       (r.assertionResults ?? []).map((a) => a.fullName),
+    );
+  }
+
+  /**
+   * For each file in the report, the failure messages of its failed tests —
+   * one inner array per failed test, so a caller can tell "every failed test
+   * says X" from "one of them does". A file whose failure never reached an
+   * assertion (a hook crash reported only at file level) gets an empty list,
+   * which readers must treat as "cause unknown".
+   *
+   * @returns `undefined` under the same conditions as {@link fileStatuses}
+   */
+  failedTestMessages(reportPath: string): Map<string, string[][]> | undefined {
+    const report = this.#report(reportPath);
+    if (report === undefined) return undefined;
+    return new Map(
+      (report.testResults ?? []).map(
+        (r) =>
+          [
+            r.name,
+            (r.assertionResults ?? [])
+              .filter((a) => a.status === 'failed')
+              .map((a) => [...(a.failureMessages ?? [])]),
+          ] as const,
+      ),
     );
   }
 
