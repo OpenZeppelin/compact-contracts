@@ -1,12 +1,21 @@
+import path from 'node:path';
 import { filterSpecFiles } from '../live/specs.ts';
 
 /**
- * Which live targets `live.yml` fans out into matrix jobs.
+ * What `live.yml` fans out into matrix jobs: one compile job per live target,
+ * then one suite job per spec file.
  *
- * The list itself comes from the runner (`listTargets(liveCategories())`), so the
- * workflow never carries a copy of it: a category starts getting its own CI job
- * the moment it appears under `src/`. This module only decides what a requested
- * scope resolves to against that list.
+ * The target list comes from the runner (`listTargets(liveCategories())`) and the
+ * files from its spec walker, so the workflow never carries a copy of either: a
+ * category starts getting jobs the moment it appears under `src/`, and a new spec
+ * file gets its own job the moment it is written. This module only decides what a
+ * requested scope resolves to against them.
+ *
+ * Per file rather than per target because a target is one long serial job — the
+ * 2026-08-24 nightly spent 5.75h in `live-token` — while the files are
+ * independent: each suite job resets its own stack, so nothing one spec leaves on
+ * the node can fail another. The compile layer is what keeps that affordable,
+ * since 16 token jobs must not mean 16 token compiles.
  */
 
 /** The dispatch input meaning "every live target". An empty input resolves to the
@@ -29,14 +38,53 @@ export interface MatrixRequest {
   readonly filter: string;
 }
 
+/** One suite job: a single spec file, run under its target's project. */
+export interface MatrixLeg {
+  readonly target: string;
+  /** Spec path relative to `contracts/`, handed to the runner as its file
+   * filter. A full path matches exactly one file, so no leg can pull in a
+   * sibling the way a bare name would. */
+  readonly file: string;
+  /** Distinguishes the job and its uploaded artifacts within the target. */
+  readonly name: string;
+}
+
 export type MatrixResolution =
   | {
       readonly ok: true;
+      /** Targets to compile: those at least one leg runs under. */
       readonly targets: readonly string[];
+      readonly legs: readonly MatrixLeg[];
       /** Targets the file filter ruled out, for the plan job's log. */
       readonly dropped: readonly string[];
     }
   | { readonly ok: false; readonly message: string };
+
+/**
+ * Name each spec file within its target, uniquely.
+ *
+ * The basename alone collides (`multisig` has both `test/ForwarderPrivate` and
+ * `test/presets/ForwarderPrivate`), and a collision would make two jobs upload
+ * artifacts under one name. Stripping the directory the target's specs share
+ * keeps the common case to a bare file name and lets a nested one carry just
+ * enough path to be distinct (`presets-ForwarderPrivate`).
+ */
+export function legNames(files: readonly string[]): string[] {
+  const dirs = files.map((f) => path.dirname(f).split(path.sep));
+  const shared: string[] = [];
+  for (let i = 0; dirs.length > 0 && i < dirs[0].length; i++) {
+    const segment = dirs[0][i];
+    if (!dirs.every((d) => d[i] === segment)) break;
+    shared.push(segment);
+  }
+  return files.map((file) =>
+    file
+      .split(path.sep)
+      .slice(shared.length)
+      .join('-')
+      .replace(/\.(test|spec)\.ts$/, ''),
+  );
+}
 
 /**
  * The target a request scopes to, before the file filter narrows it further.
@@ -98,29 +146,40 @@ export function resolveMatrix(
   }
   const scope = wanted === '' ? available : [wanted];
 
+  // A filter is a substring of a file path, so it selects files within a target
+  // and rules other targets out entirely. A target it misses must not get a job
+  // at all: one that runs no file is an infrastructure abort in the runner, not
+  // a pass. The match is vitest's own, so a filter that works locally is never
+  // rejected here.
   const filter = request.filter.trim();
-  if (filter === '') return { ok: true, targets: scope, dropped: [] };
+  const legs: MatrixLeg[] = [];
+  const matched: string[] = [];
+  for (const target of scope) {
+    const all = specFiles(target);
+    const files = filter === '' ? all : filterSpecFiles(all, [filter]);
+    if (files.length === 0) continue;
+    matched.push(target);
+    const names = legNames(files);
+    legs.push(
+      ...files.map((file, i) => ({ target, file, name: names[i] as string })),
+    );
+  }
 
-  // A filter is a substring of a file path, so it matches some targets and not
-  // others. The ones it misses must not get a job at all: one live target that
-  // runs no file is an infrastructure abort in the runner, not a pass, so a
-  // full fan-out with a filter would report red jobs for every target the
-  // filter does not name. The match is vitest's own, so a filter that works
-  // locally is never rejected here.
-  const matched = scope.filter(
-    (target) => filterSpecFiles(specFiles(target), [filter]).length > 0,
-  );
-  if (matched.length === 0) {
+  if (legs.length === 0) {
     return {
       ok: false,
       message:
-        `no spec file matches '${filter}' under ${scope.join(', ')}. ` +
-        'The filter is a substring of the file path, as vitest matches it.',
+        filter === ''
+          ? `no spec file exists under ${scope.join(', ')}, so there is ` +
+            'nothing to run. Check `yarn test:live --list`.'
+          : `no spec file matches '${filter}' under ${scope.join(', ')}. ` +
+            'The filter is a substring of the file path, as vitest matches it.',
     };
   }
   return {
     ok: true,
     targets: matched,
+    legs,
     dropped: scope.filter((target) => !matched.includes(target)),
   };
 }

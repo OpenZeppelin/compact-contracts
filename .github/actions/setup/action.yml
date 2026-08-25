@@ -6,41 +6,40 @@ inputs:
     description: "Skip Compact compiler installation"
     required: false
     default: "false"
-  compact-only:
-    description: "Install only the Compact compiler, skipping the turbo cache, Node.js and the yarn install. For a job whose only purpose is to populate the compiler cache."
+  turbo-cache-key:
+    description: "Cache-key prefix for the turbo build cache, after the runner OS. Set an empty string to skip the cache entirely, for a job that compiles nothing."
     required: false
-    default: "false"
+    default: "turbo"
 
 runs:
   using: "composite"
   steps:
-    # Deliberately skipped for a compiler-only setup: this entry is keyed on the
-    # commit, so saving it from a job that compiles nothing would make every
-    # later job in the run restore an empty cache instead of falling back to a
-    # previous commit's populated one.
+    # Two jobs that share one key are a write race, since both save at the end:
+    # one wins and the other's slice is silently lost to whoever restores next.
+    # A job that compiles per target therefore passes a per-target key. A job
+    # that compiles nothing passes an empty one and skips the step: saving an
+    # empty cache under a key later jobs restore would leave them with nothing
+    # instead of an earlier commit's populated fallback.
     - name: Cache turbo build setup
-      if: ${{ inputs.compact-only != 'true' }}
+      if: ${{ inputs.turbo-cache-key != '' }}
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: .turbo
-        key: ${{ runner.os }}-turbo-${{ github.sha }}
+        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-turbo-
+          ${{ runner.os }}-${{ inputs.turbo-cache-key }}-
 
     - name: Enable corepack
-      if: ${{ inputs.compact-only != 'true' }}
       shell: bash
       run: corepack enable
 
     - name: Setup Node.js
-      if: ${{ inputs.compact-only != 'true' }}
       uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version-file: ".nvmrc"
         cache: "yarn"
 
     - name: Install dependencies
-      if: ${{ inputs.compact-only != 'true' }}
       shell: bash
       run: yarn install --immutable
 

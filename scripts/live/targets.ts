@@ -125,6 +125,71 @@ export function resolvePlan(
   };
 }
 
+/** What the runner does about artifacts on this invocation. */
+export type ArtifactMode =
+  /** Compile what the plan needs, then run the suite. The local default. */
+  | 'build'
+  /** Compile what the plan needs and stop: no stack, no specs. A CI compile job
+   * runs this, and the suite jobs that fan out after it consume what it built. */
+  | 'build-only'
+  /** The tree was built elsewhere and arrives ready: verify it, never build it.
+   * A CI suite job runs this against the compile job's uploaded artifacts. */
+  | 'prebuilt';
+
+/** A CLI invocation, split into how it runs and what it runs on. */
+export interface Invocation {
+  readonly mode: ArtifactMode;
+  /** The positional args, for {@link resolvePlan}. */
+  readonly args: readonly string[];
+}
+
+export type InvocationResolution =
+  | { readonly ok: true; readonly invocation: Invocation }
+  | { readonly ok: false; readonly message: string };
+
+/** Flag spelling per non-default mode. `--` is dropped: yarn passes it through
+ * when a script takes positional args. */
+const MODE_FLAGS: ReadonlyMap<string, ArtifactMode> = new Map([
+  ['--compile-only', 'build-only'],
+  ['--prebuilt', 'prebuilt'],
+]);
+
+/**
+ * Split mode flags from positional args. Pure, like {@link resolvePlan}.
+ *
+ * An unknown `--flag` is rejected by name: left in, it would reach
+ * {@link resolvePlan} as a positional and be reported as "not a live target",
+ * which misdirects the fix. The two flags are mutually exclusive — one builds the
+ * artifacts, the other forbids building them — so they resolve to one mode rather
+ * than to two booleans a caller could combine into a state that has no meaning.
+ */
+export function parseInvocation(argv: readonly string[]): InvocationResolution {
+  const flags = argv.filter((a) => a.startsWith('--') && a !== '--');
+  const unknown = flags.find((f) => !MODE_FLAGS.has(f));
+  if (unknown !== undefined) {
+    return {
+      ok: false,
+      message: `unknown flag '${unknown}'. Flags: ${[...MODE_FLAGS.keys()].join(', ')}.`,
+    };
+  }
+  const modes = new Set(flags.map((f) => MODE_FLAGS.get(f) as ArtifactMode));
+  if (modes.size > 1) {
+    return {
+      ok: false,
+      message:
+        '--compile-only builds the artifacts and --prebuilt forbids building ' +
+        'them; pass one or the other.',
+    };
+  }
+  return {
+    ok: true,
+    invocation: {
+      mode: [...modes][0] ?? 'build',
+      args: argv.filter((a) => !a.startsWith('--')),
+    },
+  };
+}
+
 /** What a plan compiles, and which artifacts it must be able to deploy. */
 export interface CompileScope {
   /** Root `package.json` compile scripts to run, in order. */

@@ -24,6 +24,7 @@ import {
   type LivePlan,
   type LiveTarget,
   listTargets,
+  parseInvocation,
   resolvePlan,
 } from '../targets.ts';
 import { VitestRunner } from '../VitestRunner.ts';
@@ -161,6 +162,73 @@ describe('resolvePlan', () => {
     ]);
     expect(resolution.plan.fileFilters).toStrictEqual([]);
     expect(resolution.plan.integration).toBe(false);
+  });
+});
+
+describe('parseInvocation', () => {
+  /** The mode and the surviving positionals, which is all a caller reads. */
+  const parse = (argv: string[]) => {
+    const resolution = parseInvocation(argv);
+    if (!resolution.ok) throw new Error(resolution.message);
+    return resolution.invocation;
+  };
+
+  it('defaults to building, with every arg positional', () => {
+    expect(parse(['multisig', 'Forwarder'])).toStrictEqual({
+      mode: 'build',
+      args: ['multisig', 'Forwarder'],
+    });
+  });
+
+  it('reads --compile-only and keeps the target positional', () => {
+    expect(parse(['token', '--compile-only'])).toStrictEqual({
+      mode: 'build-only',
+      args: ['token'],
+    });
+  });
+
+  it('reads --prebuilt alongside a file filter', () => {
+    expect(
+      parse(['token', 'src/token/test/FungibleToken.test.ts', '--prebuilt']),
+    ).toStrictEqual({
+      mode: 'prebuilt',
+      args: ['token', 'src/token/test/FungibleToken.test.ts'],
+    });
+  });
+
+  it('drops the `--` yarn passes through', () => {
+    expect(parse(['--', 'token'])).toStrictEqual({
+      mode: 'build',
+      args: ['token'],
+    });
+  });
+
+  it('rejects the two modes together', () => {
+    // One builds the artifacts and the other forbids building them, so there is
+    // no run this could mean.
+    const resolution = parseInvocation(['--compile-only', '--prebuilt']);
+
+    expect(resolution.ok).toBe(false);
+    if (resolution.ok) return;
+    expect(resolution.message).toContain('pass one or the other');
+  });
+
+  it('rejects an unknown flag by name', () => {
+    // Left in, it would reach `resolvePlan` as a positional and come back as
+    // "not a live target", which points at the wrong fix.
+    const resolution = parseInvocation(['token', '--prebuild']);
+
+    expect(resolution.ok).toBe(false);
+    if (resolution.ok) return;
+    expect(resolution.message).toContain("unknown flag '--prebuild'");
+    expect(resolution.message).toContain('--compile-only, --prebuilt');
+  });
+
+  it('accepts a flag repeated', () => {
+    expect(parse(['--prebuilt', 'token', '--prebuilt'])).toStrictEqual({
+      mode: 'prebuilt',
+      args: ['token'],
+    });
   });
 });
 

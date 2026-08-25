@@ -29,13 +29,16 @@ export interface IssueTracker {
   create(label: string, title: string, body: string): void;
 }
 
-/** The two `needs.*.result` values the report is derived from, plus the run being
+/** The `needs.*.result` values the report is derived from, plus the run being
  * reported. */
 export interface NightlyState {
-  /** `needs.run-live-suite.result`: the aggregate over the matrix jobs. */
+  /** `needs.run-live-suite.result`: the aggregate over the suite matrix jobs. */
   readonly suite: string;
   /** `needs.plan.result`: distinguishes "the suite never ran" from "it passed". */
   readonly plan: string;
+  /** `needs.compile.result`: the aggregate over the compile matrix jobs, the
+   * other way the suite can be skipped without a single spec running. */
+  readonly compile: string;
   /** Link back to the workflow run, for the issue body. */
   readonly runUrl: string;
   /** The open tracking issue, when one exists. */
@@ -49,16 +52,19 @@ export type NightlyAction =
   | { readonly kind: 'none'; readonly reason: string };
 
 /**
- * Collapse the two job results into the one verdict the report is about.
+ * Collapse the job results into the one verdict the report is about.
  *
  * The suite job reports `skipped` whenever it never started, which covers both
- * "the plan job failed" (a failed nightly: nothing was tested) and "the run was
- * cancelled" (nothing to report). The plan result is what tells them apart, so a
- * skipped suite inherits it.
+ * "something upstream failed" (a failed nightly: nothing was tested) and "the run
+ * was cancelled" (nothing to report). The upstream results are what tell them
+ * apart, so a skipped suite inherits the first one that is not a success — a
+ * compile that failed is as much a failed nightly as a plan that did, and
+ * reporting it as `skipped` would leave a broken build silent until someone
+ * opened the Actions tab.
  */
 function verdict(state: NightlyState): string {
   if (state.suite !== 'skipped') return state.suite;
-  return state.plan === 'success' ? 'skipped' : state.plan;
+  return [state.plan, state.compile].find((r) => r !== 'success') ?? 'skipped';
 }
 
 function failureBody(runUrl: string): string {

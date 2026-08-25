@@ -14,9 +14,24 @@ env:
 #   - on a PR, opt-in, by applying the `live-tests` label for every target or
 #     `live-tests:<target>` for one of them (re-apply to re-run)
 #
-# The plan job asks the runner which live targets exist and fans out one matrix
-# job per target, so each gets its own runner, its own stack, and its own 6-hour
-# job budget.
+# Three layers, so a failure lands on the smallest job that can carry it:
+#   plan     — asks the runner which live targets exist and which spec files each
+#              one holds, and publishes two matrices
+#   compile  — one job per target, building that target's contract slice once
+#              (real ZK keys) and uploading the artifact tree
+#   suite    — one job per SPEC FILE, downloading its target's tree and running
+#              that one file on its own runner, stack, and 6-hour job budget
+#
+# Per file rather than per target because a target is one long serial job (the
+# 2026-08-24 nightly spent 5.75h in `live-token`) while the files are independent:
+# every suite job resets its own stack, so nothing one spec leaves on the node can
+# fail another. The compile layer is what makes that affordable — 16 token spec
+# jobs must not mean 16 token compiles.
+#
+# `needs` is job-level in Actions, so the suite matrix waits for the whole compile
+# matrix, not just for its own target's job. That barrier is the slowest compile
+# (minutes) against a suite measured in hours, and it buys every job the same
+# byte-identical artifacts.
 #
 # Every `run:` here is a one-liner. The logic behind the two that are not calls to
 # the runner lives in `scripts/live-ci.ts`, where it is unit tested and can be run
@@ -35,9 +50,10 @@ on:
         required: false
         default: all
       filter:
-        # A substring of a spec file's path, as vitest matches it. The plan job
-        # drops the targets it matches nothing under, since a live target that
-        # runs no file is an abort in the runner rather than a pass.
+        # A substring of a spec file's path, as vitest matches it. It narrows the
+        # matrix to the files it selects, and drops the targets it matches
+        # nothing under: a live target that runs no file is an abort in the
+        # runner rather than a pass.
         description: "Vitest file filter within the target (e.g. Forwarder)"
         required: false
         default: ""
@@ -52,7 +68,7 @@ concurrency:
 
 jobs:
   plan:
-    name: Plan targets
+    name: Plan the matrices
     # `pull_request: labeled` fires for every label; only ours starts a run. The
     # label itself carries the scope, and the plan step reads it.
     if: >-
@@ -64,7 +80,9 @@ jobs:
       contents: read
     timeout-minutes: 5
     outputs:
+      # Targets to compile, and one leg per spec file to run.
       targets: ${{ steps.plan.outputs.targets }}
+      legs: ${{ steps.plan.outputs.legs }}
 
     steps:
       - name: Harden Runner
@@ -84,7 +102,7 @@ jobs:
 
       # TARGET and FILTER are empty on every trigger but workflow_dispatch, LABEL
       # on every trigger but a PR label. The script resolves whichever is set.
-      - name: Resolve the target matrix
+      - name: Resolve the compile and suite matrices
         id: plan
         env:
           TARGET: ${{ inputs.target }}
@@ -92,27 +110,31 @@ jobs:
           FILTER: ${{ inputs.filter }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
 
-  # One cold compiler install for the whole run, instead of one per matrix job.
+  # Build each target's contract slice once, for the suite jobs that fan out per
+  # spec file below. Without this layer every one of them would repeat its
+  # target's key generation — 16 times over for `token` alone.
   #
-  # `setup-compact-action` installs on a cache miss and then runs `compact
-  # update` unconditionally, which queries the GitHub API. On a cache hit that
-  # query is allowed to fail (the action swallows it) because the compiler is
-  # already there; on a miss there is no compiler to fall back on and the job
-  # dies in setup. A full fan-out on a cold cache means every job racing that one
-  # API at the same second, which is exactly how a run lost a target to
-  # "Failed to update / No default compiler set" rather than to a test.
-  #
-  # Populating the cache here once leaves every suite job below on the tolerant
-  # path. Best effort by design: if this job fails, the matrix still runs and
-  # each job installs its own compiler, as it did before.
-  warm-compiler-cache:
-    name: Warm the compiler cache
+  # It also replaces the compiler-cache warmer this job grew out of.
+  # `setup-compact-action` installs on a cache miss and then runs `compact update`
+  # unconditionally, which queries the GitHub API. On a cache hit that query is
+  # allowed to fail (the action swallows it) because the compiler is already
+  # there; on a miss there is no compiler to fall back on and the job dies in
+  # setup, which is how a run once lost a target to "Failed to update / No default
+  # compiler set" rather than to a test. One compile layer means the whole fan-out
+  # below starts from a warm cache and stays on the tolerant path.
+  compile:
+    name: compile-${{ matrix.target }}
     needs: plan
+    strategy:
+      fail-fast: false # one target failing should not cancel the others
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    timeout-minutes: 15
-    continue-on-error: true
+    # Real ZK key generation for one slice, plus the self-heal path's serial
+    # recompile if the tree comes back poisoned (#675).
+    timeout-minutes: 90
 
     steps:
       - name: Harden Runner
@@ -122,30 +144,63 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # Recommended by turbo team
 
-      # Compiler only: no yarn install, and no turbo-cache entry saved from a job
-      # that compiles nothing (see the action).
-      - name: Setup Compact Compiler
+      # Per-target turbo cache. One key per target, because a single key shared
+      # by every compile job is a write race: they all finish around the same
+      # moment, one wins, and the rest of the run restores a slice that is not
+      # theirs. Keyed on the commit with a target-scoped prefix to fall back on,
+      # so a night whose sources did not change restores instead of rebuilding.
+      # `live-` rather than `turbo-` so the regular checks' fallback prefix
+      # (`<os>-turbo-`) can never match these entries: they carry full ZK keys,
+      # hundreds of MB a PR check would download for nothing.
+      - name: Setup Environment
         uses: ./.github/actions/setup
         with:
-          compact-only: "true"
+          turbo-cache-key: live-${{ matrix.target }}
+
+      # Compiles and verifies the slice, then stops: no stack, no specs. Exits 2
+      # if the tree is still poisoned after the serial recompile.
+      - name: Compile the target
+        env:
+          TARGET: ${{ matrix.target }}
+        run: yarn test:live "$TARGET" --compile-only
+
+      # What the suite jobs for this target consume. Retained a day: it is
+      # scratch for this run, not a release artifact. No compression, since ZK
+      # keys are high-entropy and gzip only costs time on them.
+      - name: Upload the compiled artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-artifacts-${{ matrix.target }}
+          path: contracts/artifacts
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
 
   run-live-suite:
-    name: live-${{ matrix.target }}
-    # `warm-compiler-cache` is `continue-on-error`, so a failure there does not
-    # hold the suite back.
-    needs: [plan, warm-compiler-cache]
+    name: live-${{ matrix.target }} · ${{ matrix.name }}
+    needs: [plan, compile]
+    # `needs` aggregates the whole compile matrix, so one failed compile leg
+    # would skip all 46 suite jobs and erase the night's signal for every other
+    # target. Gate on the plan instead and let the legs decide for themselves:
+    # the ones whose target compiled run normally, and the ones whose target did
+    # not fail in seconds at the download step (the artifact does not exist),
+    # which reads in the UI as a red compile job over its own red children.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
     strategy:
-      fail-fast: false # one target failing should not cancel the others
+      fail-fast: false # one spec file failing should not cancel the others
       matrix:
-        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+        # `include` rather than an axis product: the legs are (target, file)
+        # pairs the plan job already resolved, not every combination of them.
+        include: ${{ fromJSON(needs.plan.outputs.legs) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    # Per-target budget: the runner compiles the target's own contract slice
-    # (real ZK keys — turbo pulls in the categories it imports, nothing else),
-    # resets the stack, and verifies failures with a second round. Budget
-    # generously, but stay under the 6h hosted-runner cap.
+    # One spec file: reset the stack, run it, and verify its failures with a
+    # second round. Far under the old per-target budget, but kept generous —
+    # a single multisig file has run over an hour.
     timeout-minutes: 350
 
     steps:
@@ -159,18 +214,33 @@ jobs:
         with:
           fetch-depth: 2 # Recommended by turbo team
 
+      # No Compact compiler and no turbo cache: this job compiles nothing, and
+      # restoring a cache of build outputs it is about to download would only
+      # duplicate the transfer.
       - name: Setup Environment
         uses: ./.github/actions/setup
+        with:
+          skip-compact: "true"
+          turbo-cache-key: ""
+
+      # Built once by this target's compile job. `--prebuilt` below refuses to
+      # rebuild, so a tree that arrives incomplete or with a truncated key aborts
+      # the job (exit 2) instead of reaching the specs, where a failed deploy
+      # would show up as a silently skipped suite.
+      - name: Download the compiled artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: live-artifacts-${{ matrix.target }}
+          path: contracts/artifacts
 
       # The same entry point a local run uses, so the two-round flake semantics,
-      # the stack lifecycle, and the verdict are identical. `${FILTER:+...}` keeps
-      # an unset filter from reaching vitest as an empty positional argument,
-      # which would match no file.
+      # the stack lifecycle, and the verdict are identical — the file is passed
+      # as a full path, which matches exactly one spec.
       - name: Run live suite
         env:
           TARGET: ${{ matrix.target }}
-          FILTER: ${{ inputs.filter }}
-        run: yarn test:live "$TARGET" ${FILTER:+"$FILTER"}
+          FILE: ${{ matrix.file }}
+        run: yarn test:live "$TARGET" "$FILE" --prebuilt
 
       # The runner tears the stack down itself on every exit path. This is the
       # safety net for the one path it cannot cover: a job timeout or a cancel
@@ -187,7 +257,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: live-reports-${{ matrix.target }}
+          name: live-reports-${{ matrix.target }}-${{ matrix.name }}
           if-no-files-found: ignore
           retention-days: 14
           path: logs/live-*.json
@@ -199,7 +269,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: live-logs-${{ matrix.target }}
+          name: live-logs-${{ matrix.target }}-${{ matrix.name }}
           if-no-files-found: ignore
           retention-days: 7
           path: |
@@ -213,7 +283,7 @@ jobs:
   # issue instead: opened (or commented) on failure, closed on the next green run.
   report-nightly:
     name: Report nightly result
-    needs: [plan, run-live-suite]
+    needs: [plan, compile, run-live-suite]
     if: always() && github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     permissions:
@@ -235,14 +305,16 @@ jobs:
         with:
           node-version-file: ".nvmrc"
 
-      # PLAN_RESULT is how the script separates "the suite never ran" from "the
-      # suite passed": a suite job the plan job never reached reports `skipped`,
-      # not `failure`, and a nightly that tested nothing is a failed nightly.
+      # PLAN_RESULT and COMPILE_RESULT are how the script separates "the suite
+      # never ran" from "the suite passed": a suite job neither upstream reached
+      # reports `skipped`, not `failure`, and a nightly that tested nothing is a
+      # failed nightly whichever layer stopped it.
       - name: Report to the tracking issue
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SUITE_RESULT: ${{ needs.run-live-suite.result }}
           PLAN_RESULT: ${{ needs.plan.result }}
+          COMPILE_RESULT: ${{ needs.compile.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts nightly

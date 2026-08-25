@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setOutput } from '../actions.ts';
 import { type Captured, type Exec, GhIssueTracker } from '../gh.ts';
-import { ALL_TARGETS, LIVE_LABEL, resolveMatrix } from '../matrix.ts';
+import { ALL_TARGETS, LIVE_LABEL, legNames, resolveMatrix } from '../matrix.ts';
 import {
   type IssueTracker,
   NIGHTLY_LABEL,
@@ -45,40 +45,127 @@ const request = (fields: {
 
 const RUN_URL = 'https://github.com/o/r/actions/runs/1';
 
+/**
+ * The resolution expected for a target-to-files map: one leg per file, targets
+ * in the order given. Spelled out rather than hand-written per case, because
+ * every case now carries its legs and the interesting part of each is which
+ * files survived, not the shape around them.
+ */
+const expected = (
+  files: Readonly<Record<string, readonly string[]>>,
+  dropped: readonly string[] = [],
+) => ({
+  ok: true,
+  targets: Object.keys(files),
+  legs: Object.entries(files).flatMap(([target, targetFiles]) =>
+    targetFiles.map((file) => ({
+      target,
+      file,
+      // Every fixture target keeps its specs in one directory, so the shared
+      // prefix `legNames` strips leaves the bare file name.
+      name: path.basename(file).replace(/\.(test|spec)\.ts$/, ''),
+    })),
+  ),
+  dropped,
+});
+
+describe('legNames', () => {
+  it('names a file by its base name when the specs share a directory', () => {
+    expect(
+      legNames([
+        'src/token/test/FungibleToken.test.ts',
+        'src/token/test/MultiToken.test.ts',
+      ]),
+    ).toStrictEqual(['FungibleToken', 'MultiToken']);
+  });
+
+  it('keeps a nested file distinct from its same-named sibling', () => {
+    // Real collision: `multisig` holds both of these, and one name for two jobs
+    // would mean two uploads under one artifact name.
+    expect(
+      legNames([
+        'src/multisig/test/ForwarderPrivate.test.ts',
+        'src/multisig/test/presets/ForwarderPrivate.test.ts',
+      ]),
+    ).toStrictEqual(['ForwarderPrivate', 'presets-ForwarderPrivate']);
+  });
+
+  it('strips the integration spec extension too', () => {
+    expect(
+      legNames(['test/integration/specs/confidentialFungibleToken.spec.ts']),
+    ).toStrictEqual(['confidentialFungibleToken']);
+  });
+
+  it('keeps a compound file name intact', () => {
+    // `.property` is part of the name, not an extension to strip.
+    expect(
+      legNames([
+        'src/token/test/NativeShieldedTokenPublicSupply.property.test.ts',
+      ]),
+    ).toStrictEqual(['NativeShieldedTokenPublicSupply.property']);
+  });
+
+  it('reports nothing for no files', () => {
+    expect(legNames([])).toStrictEqual([]);
+  });
+});
+
 describe('resolveMatrix', () => {
-  it('fans out over every target when nothing is requested', () => {
+  it('fans out over every spec file when nothing is requested', () => {
     // What the schedule trigger passes: no input at all.
-    expect(resolveMatrix(request({}), TARGETS, specs)).toStrictEqual({
-      ok: true,
-      targets: TARGETS,
-      dropped: [],
-    });
+    expect(resolveMatrix(request({}), TARGETS, specs)).toStrictEqual(
+      expected(SPECS),
+    );
   });
 
   it(`fans out over every target for '${ALL_TARGETS}'`, () => {
     expect(
       resolveMatrix(request({ target: ALL_TARGETS }), TARGETS, specs),
-    ).toStrictEqual({ ok: true, targets: TARGETS, dropped: [] });
+    ).toStrictEqual(expected(SPECS));
   });
 
-  it('scopes to one requested target', () => {
-    expect(
-      resolveMatrix(request({ target: 'multisig' }), TARGETS, specs),
-    ).toStrictEqual({ ok: true, targets: ['multisig'], dropped: [] });
+  it('gives each spec file in a target its own leg', () => {
+    // The point of the per-file matrix: `multisig` is two jobs, not one.
+    const resolution = resolveMatrix(
+      request({ target: 'multisig' }),
+      TARGETS,
+      specs,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    expect(resolution.legs).toStrictEqual([
+      {
+        target: 'multisig',
+        file: 'src/multisig/test/Forwarder.test.ts',
+        name: 'Forwarder',
+      },
+      {
+        target: 'multisig',
+        file: 'src/multisig/test/MultiSigWallet.test.ts',
+        name: 'MultiSigWallet',
+      },
+    ]);
+    // One compile job for the target the two suite jobs share.
+    expect(resolution.targets).toStrictEqual(['multisig']);
   });
 
   it('scopes to the integration target like any other', () => {
     // `integration` is a target but not a `src/` category, and the matrix makes
-    // no distinction: one job, same runner invocation.
+    // no distinction: same compile job, same runner invocation.
     expect(
       resolveMatrix(request({ target: 'integration' }), TARGETS, specs),
-    ).toStrictEqual({ ok: true, targets: ['integration'], dropped: [] });
+    ).toStrictEqual(
+      expected({ integration: SPECS.integration as readonly string[] }),
+    );
   });
 
   it('trims a padded input', () => {
     expect(
       resolveMatrix(request({ target: '  multisig  ' }), TARGETS, specs),
-    ).toStrictEqual({ ok: true, targets: ['multisig'], dropped: [] });
+    ).toStrictEqual(
+      expected({ multisig: SPECS.multisig as readonly string[] }),
+    );
   });
 
   it('rejects an unknown target and names the valid ones', () => {
@@ -109,22 +196,33 @@ describe('resolveMatrix', () => {
     expect(resolution.message).toContain('no live targets');
   });
 
+  it('rejects a target set whose spec files have all gone', () => {
+    // Same failure as an empty target list, one layer down: targets exist but
+    // hold no file, so the suite matrix would be empty.
+    const resolution = resolveMatrix(request({}), TARGETS, () => []);
+
+    expect(resolution.ok).toBe(false);
+    if (resolution.ok) return;
+    expect(resolution.message).toContain('no spec file exists');
+  });
+
   it('fans out over every target for the bare PR label', () => {
     expect(
       resolveMatrix(request({ label: LIVE_LABEL }), TARGETS, specs),
-    ).toStrictEqual({ ok: true, targets: TARGETS, dropped: [] });
+    ).toStrictEqual(expected(SPECS));
   });
 
   it('scopes to the target named by the PR label', () => {
-    // A PR usually wants the target its change touches, and the full fan-out is
-    // one multi-hour job per target.
+    // A PR usually wants the target its change touches.
     expect(
       resolveMatrix(
         request({ label: `${LIVE_LABEL}:multisig` }),
         TARGETS,
         specs,
       ),
-    ).toStrictEqual({ ok: true, targets: ['multisig'], dropped: [] });
+    ).toStrictEqual(
+      expected({ multisig: SPECS.multisig as readonly string[] }),
+    );
   });
 
   it('rejects a PR label naming an unknown target', () => {
@@ -160,31 +258,57 @@ describe('resolveMatrix', () => {
     // unrelated label must not be read as a target.
     expect(
       resolveMatrix(request({ label: 'documentation' }), TARGETS, specs),
-    ).toStrictEqual({ ok: true, targets: TARGETS, dropped: [] });
+    ).toStrictEqual(expected(SPECS));
   });
 
   it('drops the targets a file filter matches nothing under', () => {
     // Not cosmetic: one live target that runs no file is an infrastructure abort
-    // in the runner (exit 2, after `env-up` and a compile), so a full fan-out
-    // with a filter would report a red job for every target it does not name.
+    // in the runner (exit 2, after `env-up`), so a full fan-out with a filter
+    // would report a red job for every target it does not name.
     expect(
       resolveMatrix(request({ filter: 'MultiSigWallet' }), TARGETS, specs),
-    ).toStrictEqual({
-      ok: true,
-      targets: ['multisig'],
-      dropped: ['access', 'token', 'integration'],
-    });
+    ).toStrictEqual(
+      expected({ multisig: ['src/multisig/test/MultiSigWallet.test.ts'] }, [
+        'access',
+        'token',
+        'integration',
+      ]),
+    );
+  });
+
+  it('narrows a target to the files the filter selects', () => {
+    // The filter reaches inside a target now, not just across targets: one of
+    // multisig's two specs gets a job, and the other does not.
+    const resolution = resolveMatrix(
+      request({ target: 'multisig', filter: 'Forwarder' }),
+      TARGETS,
+      specs,
+    );
+
+    expect(resolution.ok).toBe(true);
+    if (!resolution.ok) return;
+    expect(resolution.legs).toStrictEqual([
+      {
+        target: 'multisig',
+        file: 'src/multisig/test/Forwarder.test.ts',
+        name: 'Forwarder',
+      },
+    ]);
   });
 
   it('keeps every target a filter matches under', () => {
     // `Forwarder` exists as a unit spec and an integration spec.
     expect(
       resolveMatrix(request({ filter: 'Forwarder' }), TARGETS, specs),
-    ).toStrictEqual({
-      ok: true,
-      targets: ['multisig', 'integration'],
-      dropped: ['access', 'token'],
-    });
+    ).toStrictEqual(
+      expected(
+        {
+          multisig: ['src/multisig/test/Forwarder.test.ts'],
+          integration: ['test/integration/specs/Forwarder.spec.ts'],
+        },
+        ['access', 'token'],
+      ),
+    );
   });
 
   it('matches a filter against the whole path, not the file name', () => {
@@ -192,22 +316,28 @@ describe('resolveMatrix', () => {
     // `defaultFilters` (`src/<category>`) work.
     expect(
       resolveMatrix(request({ filter: 'src/token' }), TARGETS, specs),
-    ).toStrictEqual({
-      ok: true,
-      targets: ['token'],
-      dropped: ['access', 'multisig', 'integration'],
-    });
+    ).toStrictEqual(
+      expected({ token: SPECS.token as readonly string[] }, [
+        'access',
+        'multisig',
+        'integration',
+      ]),
+    );
   });
 
   it('matches a filter case-insensitively, as vitest does', () => {
     // A filter that runs the Forwarder specs locally must not be rejected here.
     expect(
       resolveMatrix(request({ filter: 'forwarder' }), TARGETS, specs),
-    ).toStrictEqual({
-      ok: true,
-      targets: ['multisig', 'integration'],
-      dropped: ['access', 'token'],
-    });
+    ).toStrictEqual(
+      expected(
+        {
+          multisig: ['src/multisig/test/Forwarder.test.ts'],
+          integration: ['test/integration/specs/Forwarder.spec.ts'],
+        },
+        ['access', 'token'],
+      ),
+    );
   });
 
   it('rejects a filter that matches nothing anywhere', () => {
@@ -234,14 +364,14 @@ describe('resolveMatrix', () => {
     expect(resolution.message).toContain('under token');
   });
 
-  it('does not look for spec files when no filter is given', () => {
-    // The plan job runs without an install; keeping the filterless path off the
-    // filesystem keeps it that much cheaper.
+  it("reads each target's spec files exactly once", () => {
+    // The per-file matrix needs the file list on every run, filter or not, but
+    // the plan job runs without an install and the walk is real filesystem work.
     const lookup = vi.fn(specs);
 
     resolveMatrix(request({ target: ALL_TARGETS }), TARGETS, lookup);
 
-    expect(lookup).not.toHaveBeenCalled();
+    expect(lookup.mock.calls).toStrictEqual(TARGETS.map((t) => [t]));
   });
 });
 
@@ -251,6 +381,7 @@ describe('nightlyAction', () => {
       nightlyAction({
         suite: 'success',
         plan: 'success',
+        compile: 'success',
         runUrl: RUN_URL,
         openIssue: 42,
       }),
@@ -265,6 +396,7 @@ describe('nightlyAction', () => {
     const action = nightlyAction({
       suite: 'success',
       plan: 'success',
+      compile: 'success',
       runUrl: RUN_URL,
     });
 
@@ -278,6 +410,7 @@ describe('nightlyAction', () => {
       nightlyAction({
         suite: 'failure',
         plan: 'success',
+        compile: 'success',
         runUrl: RUN_URL,
         openIssue: 42,
       }),
@@ -292,6 +425,7 @@ describe('nightlyAction', () => {
     const action = nightlyAction({
       suite: 'failure',
       plan: 'success',
+      compile: 'success',
       runUrl: RUN_URL,
     });
 
@@ -309,6 +443,7 @@ describe('nightlyAction', () => {
     const action = nightlyAction({
       suite: 'skipped',
       plan: 'failure',
+      compile: 'success',
       runUrl: RUN_URL,
     });
 
@@ -322,6 +457,7 @@ describe('nightlyAction', () => {
       nightlyAction({
         suite: 'cancelled',
         plan: 'success',
+        compile: 'success',
         runUrl: RUN_URL,
         openIssue: 42,
       }).kind,
@@ -330,18 +466,51 @@ describe('nightlyAction', () => {
 
   it('reports nothing when a cancelled plan skipped the suite', () => {
     expect(
-      nightlyAction({ suite: 'skipped', plan: 'cancelled', runUrl: RUN_URL })
-        .kind,
+      nightlyAction({
+        suite: 'skipped',
+        plan: 'cancelled',
+        compile: 'success',
+        runUrl: RUN_URL,
+      }).kind,
     ).toBe('none');
   });
 
-  it('reports nothing for a skipped suite under a green plan', () => {
+  it('treats a suite skipped by a failed compile as a failed nightly', () => {
+    // The compile matrix is the other way nothing gets tested. Reading that as
+    // `skipped` would leave a build that cannot compile silent all night.
+    const action = nightlyAction({
+      suite: 'skipped',
+      plan: 'success',
+      compile: 'failure',
+      runUrl: RUN_URL,
+    });
+
+    expect(action).toStrictEqual({
+      kind: 'create',
+      title: 'Nightly live test run is failing',
+      body: expect.stringContaining(RUN_URL),
+    });
+  });
+
+  it('reports nothing when a cancelled compile skipped the suite', () => {
+    expect(
+      nightlyAction({
+        suite: 'skipped',
+        plan: 'success',
+        compile: 'cancelled',
+        runUrl: RUN_URL,
+      }),
+    ).toStrictEqual({ kind: 'none', reason: 'suite result: cancelled' });
+  });
+
+  it('reports nothing for a skipped suite under a green plan and compile', () => {
     // Not reachable from the current workflow (the suite job has no `if` of its
     // own); pinned so a future condition on it cannot turn into a false green.
     expect(
       nightlyAction({
         suite: 'skipped',
         plan: 'success',
+        compile: 'success',
         runUrl: RUN_URL,
         openIssue: 42,
       }).kind,
@@ -376,7 +545,12 @@ describe('reportNightly', () => {
     const tracker = new RecordingTracker(42);
 
     const summary = reportNightly(
-      { suite: 'success', plan: 'success', runUrl: RUN_URL },
+      {
+        suite: 'success',
+        plan: 'success',
+        compile: 'success',
+        runUrl: RUN_URL,
+      },
       tracker,
     );
 
@@ -391,7 +565,12 @@ describe('reportNightly', () => {
     const tracker = new RecordingTracker();
 
     const summary = reportNightly(
-      { suite: 'failure', plan: 'success', runUrl: RUN_URL },
+      {
+        suite: 'failure',
+        plan: 'success',
+        compile: 'success',
+        runUrl: RUN_URL,
+      },
       tracker,
     );
 
@@ -406,7 +585,12 @@ describe('reportNightly', () => {
     const tracker = new RecordingTracker();
 
     const summary = reportNightly(
-      { suite: 'cancelled', plan: 'success', runUrl: RUN_URL },
+      {
+        suite: 'cancelled',
+        plan: 'success',
+        compile: 'success',
+        runUrl: RUN_URL,
+      },
       tracker,
     );
 

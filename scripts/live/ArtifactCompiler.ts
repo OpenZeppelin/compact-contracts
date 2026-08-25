@@ -1,5 +1,5 @@
 import { rmSync } from 'node:fs';
-import { emptyKeyArtifacts } from '../keyIntegrity.ts';
+import { emptyKeyArtifacts, missingKeyArtifacts } from '../keyIntegrity.ts';
 import { ARTIFACTS, rel, TURBO_CACHE } from './paths.ts';
 import { run } from './shell.ts';
 import type { CompileScope } from './targets.ts';
@@ -22,20 +22,30 @@ import type { CompileScope } from './targets.ts';
  * mode this check exists to prevent. Both repairs are mechanical, so self-heal
  * once (drain the cache, recompile serially — a parallel recompile can re-poison
  * it) and only abort if keys are still truncated afterwards.
+ *
+ * In `prebuilt` mode the tree was built somewhere else and arrives ready — a CI
+ * compile job builds it once and every suite job for that target downloads it.
+ * Building is then the wrong response to a bad tree: the artifacts are an input
+ * to this run, not its product, so a failure aborts instead of quietly
+ * recompiling in every one of the jobs that share them.
  */
 export class ArtifactCompiler {
   readonly #scope: CompileScope;
+  readonly #prebuilt: boolean;
 
-  constructor(scope: CompileScope) {
+  constructor(scope: CompileScope, prebuilt = false) {
     this.#scope = scope;
+    this.#prebuilt = prebuilt;
   }
 
   /**
-   * Compile, verify, self-heal once, verify again.
+   * Compile, verify, self-heal once, verify again. In `prebuilt` mode, verify
+   * only.
    *
    * @returns `true` when the artifact tree is safe to deploy from
    */
   async compileVerified(): Promise<boolean> {
+    if (this.#prebuilt) return this.#verifyPrebuilt();
     if (!(await this.#compileAll([]))) {
       console.log('compile failed — a compile error is real, not a flake.');
       return false;
@@ -92,6 +102,46 @@ export class ArtifactCompiler {
       }
     }
     return true;
+  }
+
+  /**
+   * Check a tree this run did not build, and never repair it.
+   *
+   * Two ways a provided tree can be wrong, and both end the same way for the
+   * specs — a deploy that fails in `beforeAll`, which vitest turns into a silent
+   * whole-suite skip:
+   *   - a contract is absent, because the upload or the download only partly
+   *     landed (or the compile job built a different scope than this run needs);
+   *   - a key is truncated, the #675 failure mode, here carried in rather than
+   *     produced locally.
+   * Both abort. Recompiling would paper over a broken hand-off, and every job
+   * sharing this tree would pay for it separately.
+   */
+  #verifyPrebuilt(): boolean {
+    const missing = missingKeyArtifacts(ARTIFACTS, ...this.#scope.verifyRoots);
+    if (missing.length > 0) {
+      console.log(
+        `\nno artifacts under ${rel(ARTIFACTS)} for ${missing.length} ` +
+          'contract(s) this run deploys:',
+      );
+      for (const name of missing) console.log(`  ✗ ${name}`);
+      console.log(
+        '\nThe artifacts are an input to this run, not its product ' +
+          '(--prebuilt), so there is nothing to rebuild from here. Check that ' +
+          'the compile job for this target succeeded and that its upload was ' +
+          'downloaded into the right path.',
+      );
+      return false;
+    }
+    const empty = this.#truncatedKeys();
+    if (empty.length === 0) return true;
+    console.log('\nprovided artifacts carry truncated (0-byte) ZK key(s):');
+    for (const k of empty) console.log(`  ✗ ${rel(k)}`);
+    console.log(
+      '\nThe tree was poisoned before it got here ' +
+        '(OpenZeppelin/compact-contracts#675); rerun the compile job.',
+    );
+    return false;
   }
 
   /** Scoped to the source roots this run deploys from, so an artifact directory

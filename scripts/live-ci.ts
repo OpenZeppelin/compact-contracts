@@ -21,7 +21,8 @@ import { listTargets, liveCategories } from './live/targets.ts';
  *
  * Usage, with the inputs each command reads from the environment:
  *   node scripts/live-ci.ts matrix    # TARGET, LABEL, FILTER
- *   node scripts/live-ci.ts nightly   # REPO, SUITE_RESULT, PLAN_RESULT, RUN_URL
+ *   node scripts/live-ci.ts nightly   # REPO, SUITE_RESULT, PLAN_RESULT,
+ *                                     # COMPILE_RESULT, RUN_URL
  *
  * Node runs this .ts directly (type stripping) and it imports only `node:`
  * builtins, so the jobs that call it need a checkout and a Node, not an install.
@@ -67,8 +68,17 @@ function matrix(): number {
         'no job for those.',
     );
   }
-  console.log(`live targets: ${resolution.targets.join(', ')}`);
+  console.log(
+    `compile: ${resolution.targets.join(', ')}\n` +
+      `live: ${resolution.legs.length} spec file(s)`,
+  );
+  for (const leg of resolution.legs) {
+    console.log(`  ${leg.target} · ${leg.name}  (${leg.file})`);
+  }
+  // Two matrices, one resolution: the compile jobs build a target once and the
+  // suite jobs that run its spec files download what they built.
   setOutput('targets', JSON.stringify(resolution.targets));
+  setOutput('legs', JSON.stringify(resolution.legs));
   return 0;
 }
 
@@ -79,6 +89,7 @@ function nightly(): number {
       {
         suite: env('SUITE_RESULT'),
         plan: env('PLAN_RESULT'),
+        compile: env('COMPILE_RESULT'),
         runUrl: env('RUN_URL'),
       },
       new GhIssueTracker(env('REPO')),

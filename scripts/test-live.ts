@@ -3,11 +3,12 @@ import { INFRA_ABORT, LiveOrchestrator } from './live/LiveOrchestrator.ts';
 import { LiveStack } from './live/LiveStack.ts';
 import { Reporter } from './live/Reporter.ts';
 import { RunLock } from './live/RunLock.ts';
-import { installSignalHandlers } from './live/shell.ts';
+import { banner, installSignalHandlers } from './live/shell.ts';
 import {
   compileScope,
   listTargets,
   liveCategories,
+  parseInvocation,
   resolvePlan,
 } from './live/targets.ts';
 import { VitestRunner } from './live/VitestRunner.ts';
@@ -45,6 +46,11 @@ import { VitestRunner } from './live/VitestRunner.ts';
  *   yarn test:live integration         # the composed-contract integration specs
  *   yarn test:live --list              # live targets, for the CI matrix (JSON)
  *
+ * Two flags exist for CI, which splits a run across jobs that a local run does
+ * in one process (see `live.yml`):
+ *   yarn test:live token --compile-only        # build the slice, then stop
+ *   yarn test:live token <file> --prebuilt     # run against a downloaded build
+ *
  * The stack's whole lifecycle belongs to this script: it starts it (`make env-up`,
  * itself a reset) and stops it on every exit path, signals included.
  * `MIDNIGHT_LIVE_KEEP_ENV=1` leaves it running for post-mortem inspection;
@@ -62,20 +68,46 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  const args = process.argv.slice(2).filter((a) => a !== '--');
+  const invocation = parseInvocation(process.argv.slice(2));
+  if (!invocation.ok) {
+    console.log(invocation.message);
+    return INFRA_ABORT;
+  }
+  const { mode, args } = invocation.invocation;
+
   const resolution = resolvePlan(args, liveCategories());
   if (!resolution.ok) {
     console.log(resolution.message);
     return INFRA_ABORT;
   }
   const { plan } = resolution;
+  const compiler = new ArtifactCompiler(
+    compileScope(plan),
+    mode === 'prebuilt',
+  );
+
+  // `--compile-only` stops here: no stack, no specs. The CI compile job runs
+  // this so the suite jobs that fan out per spec file can share one build
+  // instead of each repeating it (see `live.yml`). It still takes the run lock:
+  // it writes the same shared `artifacts/` tree a full run deploys from, and a
+  // compile racing a live run over that tree is the #675 truncation.
+  if (mode === 'build-only') {
+    banner(`COMPILE — ${plan.targets.map((t) => t.name).join(', ')}`);
+    const lock = new RunLock();
+    lock.acquire();
+    try {
+      return (await compiler.compileVerified()) ? 0 : INFRA_ABORT;
+    } finally {
+      lock.release();
+    }
+  }
 
   const stack = new LiveStack();
   const lock = new RunLock();
   const orchestrator = new LiveOrchestrator({
     plan,
     stack,
-    compiler: new ArtifactCompiler(compileScope(plan)),
+    compiler,
     runner: new VitestRunner(),
     reporter: new Reporter(),
   });
