@@ -25,6 +25,18 @@ const UNIT_SUFFIX = '.test.ts';
 const INTEGRATION_SUFFIX = '.spec.ts';
 
 /**
+ * Directory `unit-live` excludes (`LIVE_EXCLUDE` in vitest.config).
+ *
+ * The witness specs build a fabricated `WitnessContext` and assert on the
+ * private-state helpers directly, so a live backend changes nothing about them.
+ * They have to be dropped HERE too, not just by vitest: a target-wide run let
+ * vitest's own exclude filter them out silently, but CI gives each spec file its
+ * own job, and a job whose only file is excluded matches nothing — which the
+ * runner reports as an infrastructure abort, not a pass.
+ */
+const UNIT_EXCLUDED_DIR = `${path.sep}witnesses${path.sep}`;
+
+/**
  * Spec files under `root`, as paths relative to `base`.
  *
  * Relative to `base` because that is what a vitest positional filter is matched
@@ -51,11 +63,15 @@ export function specFilesIn(
 }
 
 /** {@link specFilesIn} wired to where a target's specs live, matching the include
- * glob of the vitest project that would run them. */
+ * glob AND the exclude of the vitest project that would run them — a file this
+ * reports has to be one that project actually runs. */
 export function specFiles(target: string): string[] {
-  return target === INTEGRATION
-    ? specFilesIn(INTEGRATION_SPECS, CONTRACTS, INTEGRATION_SUFFIX)
-    : specFilesIn(path.join(SRC, target), CONTRACTS, UNIT_SUFFIX);
+  if (target === INTEGRATION) {
+    return specFilesIn(INTEGRATION_SPECS, CONTRACTS, INTEGRATION_SUFFIX);
+  }
+  return specFilesIn(path.join(SRC, target), CONTRACTS, UNIT_SUFFIX).filter(
+    (file) => !file.includes(UNIT_EXCLUDED_DIR),
+  );
 }
 
 /**

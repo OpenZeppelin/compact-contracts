@@ -18,7 +18,7 @@ import type { LiveStack } from '../LiveStack.ts';
 import { INTEGRATION_MOCKS, round2Report, SRC } from '../paths.ts';
 import type { Reporter } from '../Reporter.ts';
 import { RunLock } from '../RunLock.ts';
-import { filterSpecFiles, specFilesIn } from '../specs.ts';
+import { filterSpecFiles, specFiles, specFilesIn } from '../specs.ts';
 import {
   compileScope,
   type LivePlan,
@@ -564,6 +564,27 @@ describe('LiveOrchestrator', () => {
       },
     ]);
     expect(output()).toContain('othertarget: no file matches Forwarder');
+  });
+});
+
+describe('specFiles', () => {
+  it('drops the witness specs `unit-live` excludes', () => {
+    // Reads the real `src/` tree: these files exist, and vitest's `unit-live`
+    // project excludes `src/**/test/witnesses/**`. A leg for one would run no
+    // file, which the runner reports as an infrastructure abort rather than a
+    // pass — observed on run 32811648017 before this filter existed.
+    const files = specFiles('token');
+
+    expect(files.length).toBeGreaterThan(0);
+    expect(files.filter((f) => f.includes('/witnesses/'))).toStrictEqual([]);
+    expect(files).toContain('src/token/test/FungibleToken.test.ts');
+  });
+
+  it('keeps the integration specs, which have no such exclude', () => {
+    expect(specFiles('integration')).toStrictEqual([
+      'test/integration/specs/confidentialFungibleToken.spec.ts',
+      'test/integration/specs/initStateIsolation.spec.ts',
+    ]);
   });
 });
 
