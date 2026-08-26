@@ -27,16 +27,8 @@ const padTag = (s: string): Uint8Array => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * @description The domain-separation tag `ElGamal.secretToScalar` prefixes its
- * input with, mirroring Compact's `pad(32, "ElGamal:secretToScalar")`. The tag
- * is FIRST so no `expandRandomness([seed, tag])` call can reproduce the tuple.
- */
-const SECRET_TO_SCALAR_TAG = (() => {
-  const tag = new Uint8Array(32);
-  tag.set(new TextEncoder().encode('ElGamal:secretToScalar'));
-  return tag;
-})();
+/** The domain-separation tag `ElGamal.secretToScalar` prefixes its input with. */
+const SECRET_TO_SCALAR_TAG = padTag('ElGamal:secretToScalar');
 
 /**
  * @description Derives the expected pk for a given EK, mirroring the
