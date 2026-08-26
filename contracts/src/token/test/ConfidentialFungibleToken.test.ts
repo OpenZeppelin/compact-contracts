@@ -312,6 +312,62 @@ describe.skipIf(isLiveBackend())(
 // building blocks, so this suite never touches the composed mint/burn/totalSupply.
 // ---------------------------------------------------------------------------
 
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: shared SK/EK through the value path',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
+
+    // Every party uses ONE secret for both witnesses.
+    const shared = (u: typeof ALICE) =>
+      cft.privateState.switchIdentity(u.secretKey, u.secretKey);
+
+    const decryptsTo = (ct: any, u: typeof ALICE, value: bigint) =>
+      elgamal.assertDecryptsTo(
+        ct,
+        elgamal.derivePk(u.secretKey),
+        u.secretKey,
+        value,
+      );
+
+    it('mints, transfers and sweeps with one secret in both roles', async () => {
+      for (const u of [ALICE, BOB]) {
+        await shared(u);
+        await cft.register();
+      }
+
+      await shared(ALICE);
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+
+      // `_debit` re-derives Alice's pk from the shared secret and asserts her
+      // balance decrypts to the claimed 100.
+      await cft.transfer(BOB.accountId, 40n);
+
+      await shared(BOB);
+      await cft.sweep();
+
+      const aliceBalance = await cft.balanceOf(ALICE.accountId);
+      const bobBalance = await cft.balanceOf(BOB.accountId);
+
+      expect(() => decryptsTo(aliceBalance, ALICE, 60n)).not.toThrow();
+      expect(() => decryptsTo(bobBalance, BOB, 40n)).not.toThrow();
+
+      // Confirm the binding is real
+      expect(() => decryptsTo(aliceBalance, ALICE, 61n)).toThrow();
+    });
+  },
+);
+
 describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: transfer', () => {
   beforeEach(async () => {
     cft = await ConfidentialFungibleTokenSimulator.create(
