@@ -42,6 +42,8 @@ pragma language_version >= 0.23.0;
  *
  *  - `wit_ConfidentialTokenEK`: verified by `ElGamal_assertDecryptsTo`,
  *    which re-derives `pk` and asserts it equals the on-chain stored pk.
+ *    `sweep` and `clearMemos` have no plaintext to decrypt, so they assert the
+ *    same binding directly via `_assertOwnsEncryptionKey`.
  *
  *  - `wit_PlaintextBalance(ct)`: verified by `ElGamal_assertDecryptsTo`,
  *    which asserts `Dec(ct, EK) == claimedValue`. The ciphertext is passed
@@ -819,7 +821,7 @@ module ConfidentialFungibleToken {
    * change, which is what would otherwise invalidate the victim's in-flight spend
    * proofs (a liveness grief).
    *
-   * @circuitInfo k=13, rows=2879
+   * @circuitInfo k=13, rows=5688
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -835,8 +837,7 @@ module ConfidentialFungibleToken {
   export circuit sweep(): Bytes<32> {
     assertInitialized();
     const accountId = _computeAccountId();
-    assert(_encryptionKeys.member(disclose(accountId)),
-           "ConfidentialFungibleToken: not registered");
+    _assertOwnsEncryptionKey(accountId);
     const newSpendable = ElGamal_add(
       _balances.lookup(disclose(accountId)),
       _pending.lookup(disclose(accountId)));
@@ -976,7 +977,7 @@ module ConfidentialFungibleToken {
    * @description Clears the caller's memo list, letting a wallet that has folded
    * its memos into its local balance cache prune on-chain memo storage.
    *
-   * @circuitInfo k=13, rows=2316
+   * @circuitInfo k=13, rows=5127
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -995,6 +996,7 @@ module ConfidentialFungibleToken {
   export circuit clearMemos(): [] {
     assertInitialized();
     const accountId = _computeAccountId();
+    _assertOwnsEncryptionKey(accountId);
     if (_memos.member(disclose(accountId))) {
       _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
     }
@@ -1024,6 +1026,26 @@ module ConfidentialFungibleToken {
    */
   circuit _computeAccountId(): Bytes<32> {
     return computeAccountId(wit_ConfidentialTokenSK());
+  }
+
+  /**
+   * @description Asserts `accountId` is registered and that the caller holds the
+   * encryption secret registered for it, by re-deriving the public key and
+   * comparing it to ledger state.
+   *
+   * @notice Circuits that move or destroy value prove this implicitly, via
+   * `ElGamal_assertDecryptsTo` on a balance. `sweep` and `clearMemos` have no
+   * plaintext to decrypt, so they assert it directly: holding the account secret
+   * alone must not be enough to clear a memo list or merge pending value, since
+   * doing both leaves the holder unable to state a balance they can no longer
+   * learn.
+   */
+  circuit _assertOwnsEncryptionKey(accountId: Bytes<32>): [] {
+    assert(_encryptionKeys.member(disclose(accountId)),
+           "ConfidentialFungibleToken: not registered");
+    assert(ElGamal_derivePk(wit_ConfidentialTokenEK()) ==
+             _encryptionKeys.lookup(disclose(accountId)),
+           "ConfidentialFungibleToken: wrong encryption key");
   }
 
   /**

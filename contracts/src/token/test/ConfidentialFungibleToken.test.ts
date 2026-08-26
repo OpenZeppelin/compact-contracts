@@ -841,6 +841,83 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Encryption-key authority on the non-value circuits
+// ---------------------------------------------------------------------------
+
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: encryption-key authority',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+      for (const u of [ALICE, BOB]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 1234n);
+    });
+
+    // Alice's account secret with Bob's encryption secret. Bob is registered, so
+    // this pins that the check is account-specific rather than merely rejecting
+    // a key it has never seen.
+    const asAttacker = () =>
+      cft.privateState.switchIdentity(ALICE.secretKey, BOB.encryptionKey);
+
+    it('rejects clearMemos from a caller without the registered encryption key', async () => {
+      await asAttacker();
+      await expect(cft.clearMemos()).rejects.toThrow('wrong encryption key');
+    });
+
+    it('rejects sweep from a caller without the registered encryption key', async () => {
+      await asAttacker();
+      await expect(cft.sweep()).rejects.toThrow('wrong encryption key');
+    });
+
+    // `clearMemos` previously no-opped for an unregistered caller; the key check
+    // makes registration a precondition of both.
+    it('rejects both from an unregistered caller', async () => {
+      await cft.privateState.switchIdentity(
+        CHARLIE.secretKey,
+        CHARLIE.encryptionKey,
+      );
+      await expect(cft.clearMemos()).rejects.toThrow('not registered');
+      await expect(cft.sweep()).rejects.toThrow('not registered');
+    });
+
+    // The pair is what freezes an account: prune the memo carrying the credit,
+    // then merge it into spendable, and the holder can no longer state a balance.
+    it('leaves the account spendable after a blocked prune-and-sweep', async () => {
+      await asAttacker();
+      await expect(cft.clearMemos()).rejects.toThrow();
+      await expect(cft.sweep()).rejects.toThrow();
+
+      // Alice still has the memo, so she can still learn the credit and spend.
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      expect(
+        (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
+      ).toBe(1n);
+
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        1234n,
+      );
+      await cft._burn(1234n);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Dual-balance grief fix (spendable vs pending; owner-only sweep)
 // ---------------------------------------------------------------------------
 
