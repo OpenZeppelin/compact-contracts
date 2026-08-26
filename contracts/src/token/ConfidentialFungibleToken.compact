@@ -89,6 +89,11 @@ pragma language_version >= 0.23.0;
  *  - approve does not disclose the cap (private-cap escrow design).
  *  - Counterparty graph (sender_id, recipient_id) is public on every
  *    transfer.
+ *  - Per-account lifetime credit count is public and permanent
+ *    (`_creditEpochs`); unlike the memo list, it does not reset on
+ *    `clearMemos`.
+ *  - Per-account lifetime credit count is public and permanent
+ *    (`_creditEpochs`). It does not reset on `clearMemos`.
  *
  * @dev Per-transfer value bound. Value-bearing circuits check
  * `value <= MAX_TRANSFER_VALUE()`, which is now the `Uint<128>` maximum: the ECDH
@@ -277,7 +282,8 @@ module ConfidentialFungibleToken {
   // credit's randomness distinct, so it MUST only ever increase. No circuit
   // resets it. It is kept out of `_memos` for that reason: the memo list is
   // prunable by its owner, and a nonce that could be walked back would let a
-  // reused seed repeat an earlier credit's randomness.
+  // reused seed repeat an earlier credit's randomness. The cost is that an
+  // account's lifetime credit count is now permanently readable from state.
   export ledger _creditEpochs: Map<Bytes<32>, Counter>;
 
   export ledger _isInitialized: Boolean;
