@@ -816,22 +816,8 @@ describe('NonFungibleToken', () => {
       await token._approve(ZERO_ACCOUNT, TOKENID_1, OWNER.either);
       expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
-  });
 
-  // Audit finding M-04 (Midnight Foundation #02, release 0.3.0-alpha.1).
-  //
-  // Before the fix, `_approve` checked the approver only when `auth` was
-  // non-zero. That guard held the `_requireOwned` existence check, and the
-  // approval write sat outside it, so the zero-auth path recorded approvals
-  // for unminted tokens. Other circuits read the broken invariant back: a
-  // recorded approval implies the token exists.
-  //
-  // Fixed by splitting the circuit the way Solidity overloads it: `_approve`
-  // always requires existence and delegates to `_unsafeApprove`, whose
-  // `isExistenceRequired` flag mirrors Solidity's `emitEvent`. These tests
-  // failed on the unfixed code and pin the intended behaviour.
-  describe('audit M-04: approvals for nonexistent tokens', () => {
-    it('should reject a zero-auth approval for a nonexistent token', async () => {
+    it('should throw if token does not exist and auth is zero', async () => {
       await expect(
         token._approve(SPENDER.either, NON_EXISTENT_TOKEN, ZERO_ACCOUNT),
       ).rejects.toThrow('NonFungibleToken: nonexistent token');
@@ -841,20 +827,13 @@ describe('NonFungibleToken', () => {
       );
     });
 
-    it('should not let a planted approval mint a nonexistent token', async () => {
-      // Plant an approval on an id nobody minted. On the unfixed code this
-      // call succeeded; it now reverts and the chain stops right here (the
-      // first test pins that revert), so the transfer below is exercised
-      // without a stale approval.
+    it('should not approve a nonexistent token into existence', async () => {
+      // Plant an approval on a nonexistent id
       await token
         ._approve(SPENDER.either, NON_EXISTENT_TOKEN, ZERO_ACCOUNT)
         .catch(() => undefined);
 
-      // On the unfixed code the stale approval satisfied `_isAuthorized`, so
-      // `_checkAuthorized` never reached its nonexistent-token assert:
-      // `_update` read the owner as zero, skipped the balance decrement,
-      // credited SPENDER and wrote the owner entry, leaving SPENDER holding a
-      // token nobody minted and blocking the composer's own gated mint of it.
+      // Attempt to mint the nonexistent token through a transfer
       await token.privateState.injectSecretKey(SPENDER.secretKey);
       await expect(
         token.transferFrom(ZERO_ACCOUNT, SPENDER.either, NON_EXISTENT_TOKEN),
@@ -864,20 +843,17 @@ describe('NonFungibleToken', () => {
       expect(await token.balanceOf(SPENDER.either)).toEqual(0n);
     });
 
-    it('should not let a planted approval survive a later mint', async () => {
-      // Plant an approval on the id OWNER is about to mint. Reverts on the
-      // fixed code; succeeded on the unfixed code.
+    it('should not approve a token before it is minted', async () => {
+      // Plant an approval on the id OWNER is about to mint
       await token
         ._approve(SPENDER.either, TOKENID_1, ZERO_ACCOUNT)
         .catch(() => undefined);
 
       // `_update` clears approvals only when the source is non-zero, so a
-      // mint leaves any planted approval standing.
+      // planted approval would survive the mint
       await token._mint(OWNER.either, TOKENID_1);
       expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
 
-      // On the unfixed code SPENDER then took OWNER's token on the strength
-      // of the surviving approval.
       await token.privateState.injectSecretKey(SPENDER.secretKey);
       await expect(
         token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1),
