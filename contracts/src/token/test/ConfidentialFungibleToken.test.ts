@@ -861,6 +861,22 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
     expect(await newest()).not.toStrictEqual(before);
   });
 
+  it('produces distinct pending ciphertexts for equal amounts across a clearMemos', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    await cft._mint(ALICE.accountId, 10n);
+    const first = await cft.pendingOf(ALICE.accountId);
+
+    await cft.sweep();
+    await cft.clearMemos();
+
+    await cft._mint(ALICE.accountId, 10n);
+    const second = await cft.pendingOf(ALICE.accountId);
+
+    expect(second).not.toStrictEqual(first);
+  });
+
   it('advances the credit epoch on every credit, and a prune does not reset it', async () => {
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
     await cft.register();
