@@ -256,7 +256,7 @@ The live suite is too slow for the regular PR checks (hours, not minutes), so [`
 
 * **Nightly** on `main`, as the regression safety net. A failed nightly opens (or comments on) a `live-nightly` tracking issue, which closes automatically on the next green run.
 * **On demand**: run `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `target` and `filter` inputs.
-* **On a PR**: apply a `live-tests:<target>` label (e.g. `live-tests:multisig`). Re-apply the label for a fresh run after new pushes. The bare `live-tests` label is rejected by the plan job — with one job per spec file it would queue 60+ checks on the PR; dispatch the workflow with target `all` when the full fan-out is deliberate.
+* **On a PR**: apply a `live-tests:<target>` label (e.g. `live-tests:multisig`), or `live-tests:all` for every target. Re-apply the label for a fresh run after new pushes. The bare `live-tests` label is rejected by the plan job — with one job per spec file it would queue 60+ checks on the PR, so the full fan-out has to be spelled out.
 
 The run is one pipeline per live target. A plan job asks the runner which live targets exist (the same list `yarn test:live --list` prints) and which spec files each one holds. Each target then gets a `compile-<target>` job that builds its contract slice once with real ZK keys and uploads it, feeding a `live-<target>` matrix with one job per **spec file** that downloads that build and runs its one file on its own runner, stack, and 6-hour job budget.
 

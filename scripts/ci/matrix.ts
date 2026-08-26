@@ -29,10 +29,10 @@ import {
 export const ALL_TARGETS = 'all';
 
 /** The PR label prefix that opts a pull request into a live run.
- * `live-tests:<target>` scopes the run to one target. The bare label is
- * rejected: with legs split per spec file it would queue 60+ checks on the
- * PR, which is never what applying a label casually means — the full fan-out
- * stays reachable through a deliberate dispatch with target `all`. */
+ * `live-tests:<target>` scopes the run to one target, `live-tests:all` runs
+ * every one of them. The bare label is rejected: with legs split per spec file
+ * the full fan-out is 60+ checks on the PR, which is never what applying a
+ * label casually means, so it has to be spelled out. */
 export const LIVE_LABEL = 'live-tests';
 
 /** How a run was asked for. Each field is empty on the triggers that do not carry
@@ -118,11 +118,17 @@ function requestedTarget(
 ): string {
   const label = request.label.trim();
   if (label.startsWith(`${LIVE_LABEL}:`)) {
+    const scope = label.slice(LIVE_LABEL.length + 1).trim();
     // A bare `live-tests:` names no target, and `''` here would mean "every
     // target" — a malformed label must not silently queue the full fan-out. Hand
     // the label itself back instead: it is not a target name, so the caller
     // rejects it with the valid ones.
-    return label.slice(LIVE_LABEL.length + 1).trim() || label;
+    if (scope === '') return label;
+    // `live-tests:all` is the label form of the dispatch's `all`, and the only
+    // way to ask a PR for the full fan-out: a run per target would otherwise
+    // mean a label per target, which the concurrency group (keyed by PR, not by
+    // label) would cancel down to whichever was applied last.
+    return scope === ALL_TARGETS ? '' : scope;
   }
   const target = request.target.trim();
   return target === ALL_TARGETS ? '' : target;
@@ -164,8 +170,7 @@ export function resolveMatrix(
 
   // The bare label used to mean "every target", which was fine when that was
   // seven jobs. Per-file (and per-slice) legs made it 60+ checks on the PR, so
-  // the unscoped form is refused with the scoped one to use instead; a full
-  // fan-out on a PR has to be asked for via a dispatch with target 'all'.
+  // the unscoped form is refused with the forms that spell out what they do.
   if (request.label.trim() === LIVE_LABEL) {
     return {
       ok: false,
@@ -173,8 +178,7 @@ export function resolveMatrix(
         `the bare '${LIVE_LABEL}' label would fan out into a job per spec ` +
         'file across every target (60+ checks on this PR). Use ' +
         `'${LIVE_LABEL}:<target>' (one of: ${available.join(', ')}), or ` +
-        `dispatch the workflow with target '${ALL_TARGETS}' if the full ` +
-        'fan-out is deliberate.',
+        `'${LIVE_LABEL}:${ALL_TARGETS}' if the full fan-out is deliberate.`,
     };
   }
 

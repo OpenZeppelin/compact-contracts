@@ -224,7 +224,7 @@ describe('resolveMatrix', () => {
 
   it('rejects the bare PR label and points at the scoped form', () => {
     // Per-file legs made the bare label 60+ checks on a PR, so the unscoped
-    // form is refused; the full fan-out stays reachable via dispatch 'all'.
+    // form is refused; both spelled-out forms stay reachable from a label.
     const resolution = resolveMatrix(
       request({ label: LIVE_LABEL }),
       TARGETS,
@@ -237,7 +237,7 @@ describe('resolveMatrix', () => {
     expect(resolution.message).toContain(
       'access, multisig, token, integration',
     );
-    expect(resolution.message).toContain(`'${ALL_TARGETS}'`);
+    expect(resolution.message).toContain(`'${LIVE_LABEL}:${ALL_TARGETS}'`);
   });
 
   it('scopes to the target named by the PR label', () => {
@@ -279,6 +279,20 @@ describe('resolveMatrix', () => {
     expect(resolution.message).toContain(
       `'${LIVE_LABEL}:' is not a live target`,
     );
+  });
+
+  it('runs every target from a `live-tests:all` label', () => {
+    // The label form of the dispatch's `all`, and the only way to ask a PR for
+    // the full fan-out: one run per target would need one label per target, and
+    // the concurrency group is keyed by PR rather than by label, so those runs
+    // would cancel each other down to the last one applied.
+    expect(
+      resolveMatrix(
+        request({ label: `${LIVE_LABEL}:${ALL_TARGETS}` }),
+        TARGETS,
+        specs,
+      ),
+    ).toStrictEqual(expected(SPECS));
   });
 
   it('ignores an unrelated label', () => {

@@ -8,10 +8,12 @@ name: Live Test Suite
 #     `live-nightly` tracking issue, which closes on the next green run)
 #   - on demand via workflow_dispatch, optionally scoped to one target or a file
 #     filter within it
-#   - on a PR, opt-in, by applying a `live-tests:<target>` label (re-apply to
-#     re-run). The bare `live-tests` label is rejected by the plan job: per-file
-#     legs would make it 60+ checks on the PR — dispatch with target `all` when
-#     the full fan-out is deliberate.
+#   - on a PR, opt-in, by applying a `live-tests:<target>` label, or
+#     `live-tests:all` for every target (re-apply to re-run). The bare
+#     `live-tests` label is rejected by the plan job: per-file legs would make it
+#     60+ checks on the PR, so the full fan-out has to be spelled out. One label
+#     rather than one per target because the concurrency group is keyed by PR,
+#     so seven labels would cancel down to whichever was applied last.
 #
 # One plan job, then a PIPELINE PER TARGET:
 #
