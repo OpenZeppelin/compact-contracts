@@ -75,6 +75,21 @@ on:
   pull_request:
     types: [labeled]
 
+# Deny by default, at the workflow level rather than per job.
+#
+# The 14 job pairs below are `uses:` declarations with no steps of their own, and
+# a job without a `permissions:` block inherits whatever the repository's default
+# GITHUB_TOKEN scope happens to be — which CodeQL flags, once per job. Setting the
+# floor here covers all of them in one place instead of adding 14 identical blocks
+# to jobs whose whole point is to stay one-liners. The two jobs that need more
+# (`plan` reads a previous run's artifacts, `report-nightly` writes the tracking
+# issue and prunes caches) declare it themselves, and a job-level block replaces
+# this one rather than adding to it. The reusable workflows both pin
+# `contents: read` on their own jobs, which is what a called workflow is capped at
+# here.
+permissions:
+  contents: read
+
 concurrency:
   # Keyed by trigger as well as ref, so a manual dispatch on main does not cancel
   # the nightly it was meant to complement.
