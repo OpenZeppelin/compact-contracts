@@ -27,20 +27,29 @@ const padTag = (s: string): Uint8Array => {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** The domain-separation tag `ElGamal.secretToScalar` prefixes its input with. */
+const SECRET_TO_SCALAR_TAG = padTag('ElGamal:secretToScalar');
+
 /**
  * @description Derives the expected pk for a given EK, mirroring the
  * in-circuit `_derivePk`:
- *   pk = ecMulGenerator(degradeToTransient(persistentHash([ek])))
+ *   pk = ecMulGenerator(degradeToTransient(persistentHash([TAG, ek])))
  *
  * The `convertBytesToField` call mirrors `degradeToTransient`, producing the
  * field element that `ecMulGenerator` expects.
+ *
+ * @note The tag is what keeps this scalar unrelated to the account identifier,
+ * which is `persistentHash([sk])` (untagged, and public as a ledger map key).
+ * Without it, a secret used in both roles would have its encryption key
+ * recoverable from the published identifier. See `buildAccountIdHash` below —
+ * that one is deliberately untagged and must stay so.
  *
  * @note The field-element derivation from EK uses 31 bytes of the hash output
  * (empirically determined); the effective collision resistance is therefore 248 bits.
  */
 const derivePk = (ek: Uint8Array) => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  const ekHash = persistentHash(rt_type, [ek]);
+  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
+  const ekHash = persistentHash(rt_type, [SECRET_TO_SCALAR_TAG, ek]);
   const ekField = convertBytesToField(31, ekHash, 'derivePk');
   return ecMulGenerator(ekField);
 };
@@ -152,6 +161,22 @@ describe.skipIf(isLiveBackend())(
         const expectedPk = derivePk(ALICE.encryptionKey);
 
         expect(storedPk).toEqual(expectedPk);
+      });
+
+      it('keeps the encryption scalar unrelated to the public accountId when SK and EK are the same secret', async () => {
+        await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.secretKey);
+        await cft.register();
+
+        const ledger = await cft.getPublicState();
+        const storedPk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
+
+        // What any observer can derive from the published accountId.
+        expect(storedPk).not.toEqual(
+          ecMulGenerator(
+            convertBytesToField(31, ALICE.accountId, 'publicAccountId'),
+          ),
+        );
+        expect(storedPk).toEqual(derivePk(ALICE.secretKey));
       });
 
       it('should store distinct pks for distinct EKs', async () => {
@@ -278,6 +303,62 @@ describe.skipIf(isLiveBackend())(
 // supply total needed. `_mint`/`_burn` are the base's exposed supply-free
 // building blocks, so this suite never touches the composed mint/burn/totalSupply.
 // ---------------------------------------------------------------------------
+
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: shared SK/EK through the value path',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+    });
+
+    // Every party uses ONE secret for both witnesses.
+    const shared = (u: typeof ALICE) =>
+      cft.privateState.switchIdentity(u.secretKey, u.secretKey);
+
+    const decryptsTo = (ct: any, u: typeof ALICE, value: bigint) =>
+      elgamal.assertDecryptsTo(
+        ct,
+        elgamal.derivePk(u.secretKey),
+        u.secretKey,
+        value,
+      );
+
+    it('mints, transfers and sweeps with one secret in both roles', async () => {
+      for (const u of [ALICE, BOB]) {
+        await shared(u);
+        await cft.register();
+      }
+
+      await shared(ALICE);
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+
+      // `_debit` re-derives Alice's pk from the shared secret and asserts her
+      // balance decrypts to the claimed 100.
+      await cft.transfer(BOB.accountId, 40n);
+
+      await shared(BOB);
+      await cft.sweep();
+
+      const aliceBalance = await cft.balanceOf(ALICE.accountId);
+      const bobBalance = await cft.balanceOf(BOB.accountId);
+
+      expect(() => decryptsTo(aliceBalance, ALICE, 60n)).not.toThrow();
+      expect(() => decryptsTo(bobBalance, BOB, 40n)).not.toThrow();
+
+      // Confirm the binding is real
+      expect(() => decryptsTo(aliceBalance, ALICE, 61n)).toThrow();
+    });
+  },
+);
 
 describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: transfer', () => {
   beforeEach(async () => {
