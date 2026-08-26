@@ -86,17 +86,17 @@ describe('ElGamal', () => {
       );
     });
 
-    // The next two pin the tag's POSITION. `expandRandomness([seed, tag])` has
-    // both slots caller-supplied, so the collision cannot be removed.
-    // Both flip if the order becomes `[secret, tag]`
+    // Both pin the tag's POSITION, and flip if the order becomes `[secret, tag]`
     it('is not reproducible by passing the domain tag as expandRandomness tag', async () => {
       expect(
         await contract.expandRandomness(EK_A, SECRET_TO_SCALAR_TAG),
       ).not.toBe(await contract.secretToScalar(EK_A));
     });
 
-    it('is reproducible only with the domain tag in the seed slot', async () => {
-      // Both parameters used against their purpose — the residual collision.
+    // An accepted residual, not a guarantee: `expandRandomness` is itself
+    // untagged, so its seed slot can carry this tag. Removable by tagging
+    // `expandRandomness` (arity 3, tag first)
+    it('can be reproduced via expandRandomness with the tag in the seed slot', async () => {
       expect(await contract.expandRandomness(SECRET_TO_SCALAR_TAG, EK_A)).toBe(
         await contract.secretToScalar(EK_A),
       );
