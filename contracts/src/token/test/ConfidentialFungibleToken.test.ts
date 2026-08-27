@@ -864,9 +864,7 @@ describe.skipIf(isLiveBackend())(
       await cft._mint(ALICE.accountId, 1234n);
     });
 
-    // Alice's account secret with Bob's encryption secret. Bob is registered, so
-    // this pins that the check is account-specific rather than merely rejecting
-    // a key it has never seen.
+    // Alice's account secret with Bob's encryption secret
     const asAttacker = () =>
       cft.privateState.switchIdentity(ALICE.secretKey, BOB.encryptionKey);
 
@@ -880,8 +878,6 @@ describe.skipIf(isLiveBackend())(
       await expect(cft.sweep()).rejects.toThrow('wrong encryption key');
     });
 
-    // `clearMemos` previously no-opped for an unregistered caller; the key check
-    // makes registration a precondition of both.
     it('rejects both from an unregistered caller', async () => {
       await cft.privateState.switchIdentity(
         CHARLIE.secretKey,
@@ -891,8 +887,6 @@ describe.skipIf(isLiveBackend())(
       await expect(cft.sweep()).rejects.toThrow('not registered');
     });
 
-    // The pair is what freezes an account: prune the memo carrying the credit,
-    // then merge it into spendable, and the holder can no longer state a balance.
     it('leaves the account spendable after a blocked prune-and-sweep', async () => {
       await asAttacker();
       await expect(cft.clearMemos()).rejects.toThrow();
