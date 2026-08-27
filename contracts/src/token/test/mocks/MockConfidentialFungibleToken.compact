@@ -97,6 +97,10 @@ export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
   return CFT__burnFrom(fromAddress, value);
 }
 
+export pure circuit MAX_TRANSFER_VALUE(): Uint<128> {
+  return CFT_MAX_TRANSFER_VALUE();
+}
+
 export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
   return CFT_computeAccountId(sk);
 }

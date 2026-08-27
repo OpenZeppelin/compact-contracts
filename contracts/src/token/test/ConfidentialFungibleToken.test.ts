@@ -12,6 +12,7 @@ import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contra
 // predict a ciphertext the contract will produce internally (e.g. the
 // post-refund balance in `approve`) so its plaintext can be cached ahead of the
 // witness query. They are pure (no proof), so this is cheap.
+import { pureCircuits as cftPure } from '../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
@@ -1101,6 +1102,49 @@ describe.skipIf(isLiveBackend())(
 //     and hide that, we ASSERT the rejection: a live-verified canary that flips
 //     red the day a staged deploy or a looser ledger lets the full base through.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Balance claim width (accumulated balance above the per-transfer bound)
+// ---------------------------------------------------------------------------
+
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: balance claim width',
+  () => {
+    const MAX128 = (1n << 128n) - 1n;
+
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft.register();
+    });
+
+    it('spends a balance accumulated past the per-transfer bound', async () => {
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft.sweep();
+
+      const total = 2n * MAX128;
+      expect(total).toBeGreaterThan(MAX128);
+
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        total,
+      );
+      await cft._burn(MAX128);
+    });
+
+    it('keeps the transfer bound at the Uint<128> maximum', async () => {
+      expect(cftPure.MAX_TRANSFER_VALUE()).toBe(MAX128);
+    });
+  },
+);
 
 describe('ConfidentialFungibleToken: receive-path smoke', () => {
   const deploy = () =>

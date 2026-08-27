@@ -452,6 +452,11 @@ module ElGamal {
    * wrong plaintext fails the decryption check. Lifted special case of
    * `assertDecryptsToPoint` with the message point `g^claimedValue`.
    *
+   * @notice `claimedValue` is the widest `Uint` Compact offers, so this parameter
+   * never bounds a caller. A narrower value costs proportionally fewer rows: the
+   * range constraint belongs to where the value is declared, not to this
+   * signature.
+   *
    * Requirements:
    *
    * - `ek` is the secret for `pk`.
@@ -466,7 +471,7 @@ module ElGamal {
                    ct: Ciphertext,
                    pk: JubjubPoint,
                    ek: Bytes<32>,
-                   claimedValue: Uint<128>
+                   claimedValue: Uint<248>
                    ): [] {
     assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as Field));
   }
