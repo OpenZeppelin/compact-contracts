@@ -816,10 +816,11 @@ module ConfidentialFungibleToken {
    * @description Sweeps the caller's incoming `pending` pool into their
    * `spendable` balance. Credits land in `pending` (see the dual-balance note);
    * this `sweep` is the ONLY path from pending into spendable, and only the owner
-   * can invoke it (the account is derived from the caller's witness secret). So a
-   * third party spamming credits cannot force a victim's spendable ciphertext to
-   * change, which is what would otherwise invalidate the victim's in-flight spend
-   * proofs (a liveness grief).
+   * can invoke it (the caller proves BOTH witness secrets: the account secret
+   * identifies the account, the encryption secret proves the caller can read it).
+   * So a third party spamming credits cannot force a victim's spendable ciphertext
+   * to change, which is what would otherwise invalidate the victim's in-flight
+   * spend proofs (a liveness grief).
    *
    * @circuitInfo k=13, rows=5688
    *
@@ -831,6 +832,7 @@ module ConfidentialFungibleToken {
    *
    * - Contract is initialized.
    * - The caller is registered.
+   * - The caller holds the encryption secret registered for their account.
    *
    * @return {Bytes<32>} - The caller's accountId.
    */
@@ -990,6 +992,8 @@ module ConfidentialFungibleToken {
    * Requirements:
    *
    * - Contract is initialized.
+   * - The caller is registered.
+   * - The caller holds the encryption secret registered for their account.
    *
    * @return {[]} - Empty tuple.
    */
