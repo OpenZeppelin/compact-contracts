@@ -40,7 +40,6 @@ export async function deployModule<C extends ContractNs.Any>(
   >,
   // The witnesses generic resolves to `never` for an empty-witness contract;
   // `any` admits both shapes.
-  // biome-ignore lint/suspicious/noExplicitAny: see above
   compiledContract: CompiledContract.CompiledContract<
     C,
     ContractNs.PrivateState<C>,

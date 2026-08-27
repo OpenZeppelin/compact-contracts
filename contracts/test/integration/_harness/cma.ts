@@ -2,9 +2,9 @@ import type { Contract as ContractNs } from '@midnight-ntwrk/compact-js';
 import {
   type ContractMaintenanceAuthority,
   type ContractState,
+  type SigningKey,
   sampleSigningKey,
   signData,
-  type SigningKey,
 } from '@midnight-ntwrk/compact-runtime';
 import {
   Intent,
@@ -32,7 +32,6 @@ import {
  */
 
 /** Providers for a contract whose concrete type the helper does not care about. */
-// biome-ignore lint/suspicious/noExplicitAny: helpers touch only shared plumbing
 type AnyProviders = MidnightProviders<any, any, any>;
 
 /** Either a freshly deployed contract or one rebound via `findDeployedContract`. */

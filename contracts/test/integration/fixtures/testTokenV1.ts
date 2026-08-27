@@ -1,17 +1,17 @@
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import type { Contract as ContractNs } from '@midnight-ntwrk/compact-js';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import {
   type FoundContract,
   findDeployedContract,
 } from '@midnight-ntwrk/midnight-js-contracts';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import type { MidnightWalletProvider } from '@midnight-ntwrk/testkit-js';
-import { requireLivePool } from '../../../test-utils/harness/livePool.js';
 import {
   Contract as TestTokenV1,
   type Ledger as TestTokenV1Ledger,
   ledger as testTokenV1Ledger,
 } from '../../../artifacts/TestTokenV1/contract/index.js';
+import { requireLivePool } from '../../../test-utils/harness/livePool.js';
 import { contractAssetsPath, deployModule } from '../_harness/deploy.js';
 import {
   DEFAULT_ADMIN_ROLE,

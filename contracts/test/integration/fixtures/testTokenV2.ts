@@ -1,5 +1,5 @@
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import type { Contract as ContractNs } from '@midnight-ntwrk/compact-js';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterfaces,
