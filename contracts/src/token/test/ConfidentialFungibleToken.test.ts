@@ -803,6 +803,11 @@ describe.skipIf(isLiveBackend())(
 // ---------------------------------------------------------------------------
 
 describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
+  // A wallet reads its epoch alongside its memos, then passes it back to
+  // `clearMemos`
+  const currentEpoch = async (accountId: Uint8Array): Promise<bigint> =>
+    (await cft.getPublicState()).CFT__creditEpochs.lookup(accountId).read();
+
   beforeEach(async () => {
     cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
@@ -832,11 +837,98 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(1n);
 
-    await cft.clearMemos();
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
 
     expect(
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(0n);
+  });
+
+  it('rejects a clearMemos whose epoch is stale', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+    await cft._mint(ALICE.accountId, 10n);
+
+    // The wallet reads its list and epoch here.
+    const seen = await currentEpoch(ALICE.accountId);
+
+    // A third party credits the same account before the prune is included.
+    await cft._mint(ALICE.accountId, 25n);
+
+    await expect(cft.clearMemos(seen)).rejects.toThrow(
+      'ConfidentialFungibleToken: memo list changed',
+    );
+
+    // The unseen memo is still there to be folded in.
+    expect(
+      (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
+    ).toBe(2n);
+  });
+
+  it('reverts when the caller has no memo list', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    await expect(cft.clearMemos(0n)).rejects.toThrow(
+      'ConfidentialFungibleToken: no memo list',
+    );
+  });
+
+  // The credit nonce comes from `_creditEpochs`, which only ever increases. If
+  // it could return to an earlier value, a reused seed would repeat a credit's
+  // randomness and a repeated memo ephemeral reuses the one-time pad, making
+  // two equal amounts produce byte-identical entries. Both tests below hold the
+  // seed, recipient, and amount constant, so the nonce is the only thing that
+  // can distinguish the two credits.
+  it('produces distinct memos for equal amounts across a clearMemos', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    const newest = async () =>
+      [...(await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId)][0];
+
+    await cft._mint(ALICE.accountId, 10n);
+    const before = await newest();
+
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
+
+    await cft._mint(ALICE.accountId, 10n);
+    expect(await newest()).not.toStrictEqual(before);
+  });
+
+  it('produces distinct pending ciphertexts for equal amounts across a clearMemos', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    await cft._mint(ALICE.accountId, 10n);
+    const first = await cft.pendingOf(ALICE.accountId);
+
+    await cft.sweep();
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
+
+    await cft._mint(ALICE.accountId, 10n);
+    const second = await cft.pendingOf(ALICE.accountId);
+
+    expect(second).not.toStrictEqual(first);
+  });
+
+  it('advances the credit epoch on every credit, and a prune does not reset it', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    const epoch = async () =>
+      (await cft.getPublicState()).CFT__creditEpochs.lookup(
+        ALICE.accountId,
+      ).read();
+
+    await cft._mint(ALICE.accountId, 10n);
+    expect(await epoch()).toBe(1n);
+
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
+    expect(await epoch()).toBe(1n);
+
+    await cft._mint(ALICE.accountId, 10n);
+    expect(await epoch()).toBe(2n);
   });
 });
 
