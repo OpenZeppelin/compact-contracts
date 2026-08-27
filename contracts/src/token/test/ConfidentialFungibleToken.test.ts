@@ -898,7 +898,9 @@ describe.skipIf(isLiveBackend())(
         ALICE.encryptionKey,
       );
       expect(
-        (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
+        (await cft.getPublicState()).CFT__memos.lookup(
+          ALICE.accountId,
+        ).length(),
       ).toBe(1n);
 
       await cft.sweep();
