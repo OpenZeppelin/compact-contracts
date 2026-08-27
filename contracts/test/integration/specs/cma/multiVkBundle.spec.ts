@@ -6,7 +6,10 @@ import {
 } from '@midnight-ntwrk/ledger-v8';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { submitRawMaintenanceUpdate } from '../../_harness/cma.js';
+import {
+  requireContractState,
+  submitRawMaintenanceUpdate,
+} from '../../_harness/cma.js';
 import {
   deployTestTokenV1,
   type TestTokenV1Kit,
@@ -56,12 +59,12 @@ describe.runIf(isLiveBackend())(
         );
         expect(result.status).toBe('SucceedEntirely');
 
-        const stateAfter =
-          await v1.providers.publicDataProvider.queryContractState(
-            v1.contractAddress,
-          );
-        expect(stateAfter?.operation('_mint')).toBeDefined();
-        expect(stateAfter?.operation('pause')).toBeDefined();
+        const stateAfter = await requireContractState(
+          v1.providers,
+          v1.contractAddress,
+        );
+        expect(stateAfter.operation('_mint')).toBeDefined();
+        expect(stateAfter.operation('pause')).toBeDefined();
       });
     });
 
@@ -89,12 +92,12 @@ describe.runIf(isLiveBackend())(
         );
         expect(result.status).toBe('SucceedEntirely');
 
-        const stateAfter =
-          await v1.providers.publicDataProvider.queryContractState(
-            v1.contractAddress,
-          );
-        expect(stateAfter?.operation('_mint')).toBeUndefined();
-        expect(stateAfter?.operation('pause')).toBeUndefined();
+        const stateAfter = await requireContractState(
+          v1.providers,
+          v1.contractAddress,
+        );
+        expect(stateAfter.operation('_mint')).toBeUndefined();
+        expect(stateAfter.operation('pause')).toBeUndefined();
       });
     });
 
@@ -126,12 +129,12 @@ describe.runIf(isLiveBackend())(
         );
         expect(result.status).toBe('SucceedEntirely');
 
-        const stateAfter =
-          await v1.providers.publicDataProvider.queryContractState(
-            v1.contractAddress,
-          );
-        expect(stateAfter?.operation('_mint')).toBeDefined();
-        expect(stateAfter?.operation('pause')).toBeUndefined();
+        const stateAfter = await requireContractState(
+          v1.providers,
+          v1.contractAddress,
+        );
+        expect(stateAfter.operation('_mint')).toBeDefined();
+        expect(stateAfter.operation('pause')).toBeUndefined();
       });
     });
   },

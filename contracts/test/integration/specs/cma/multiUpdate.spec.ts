@@ -11,8 +11,9 @@ import {
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  readAuthority,
+  readAuthoritySnapshot,
   readCmaCounter,
+  requireContractState,
   submitRawMaintenanceUpdate,
 } from '../../_harness/cma.js';
 import {
@@ -83,6 +84,10 @@ describe.runIf(isLiveBackend())(
     });
 
     it('is refused at submission', async () => {
+      const before = await readAuthoritySnapshot(
+        v1.providers,
+        v1.contractAddress,
+      );
       const authFor = (key: ReturnType<typeof sampleSigningKey>) =>
         new ContractMaintenanceAuthority([signatureVerifyingKey(key)], 1);
 
@@ -93,8 +98,11 @@ describe.runIf(isLiveBackend())(
         ]),
       ).rejects.toThrow(/SubmissionError|Transaction submission error/);
 
-      const auth = await readAuthority(v1.providers, v1.contractAddress);
-      expect(auth.committee.length).toBe(1);
+      const after = await readAuthoritySnapshot(
+        v1.providers,
+        v1.contractAddress,
+      );
+      expect(after).toStrictEqual(before);
     });
   },
 );
@@ -133,11 +141,11 @@ describe.runIf(isLiveBackend())(
       );
       expect(result.status).toBe('FailFallible');
 
-      const stateAfter =
-        await v1.providers.publicDataProvider.queryContractState(
-          v1.contractAddress,
-        );
-      expect(stateAfter?.operation('_mint')).toBeUndefined();
+      const stateAfter = await requireContractState(
+        v1.providers,
+        v1.contractAddress,
+      );
+      expect(stateAfter.operation('_mint')).toBeUndefined();
     });
   },
 );

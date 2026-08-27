@@ -5,7 +5,7 @@ import {
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  readAuthority,
+  readAuthoritySnapshot,
   submitRawMaintenanceUpdate,
 } from '../../_harness/cma.js';
 import {
@@ -34,13 +34,18 @@ describe.runIf(isLiveBackend())('TestToken — empty-committee CMA', () => {
   });
 
   it('is refused at submission', async () => {
+    const before = await readAuthoritySnapshot(
+      v1.providers,
+      v1.contractAddress,
+    );
+
     await expect(
       submitRawMaintenanceUpdate(v1.providers, v1.contractAddress, [
         new ReplaceAuthority(new ContractMaintenanceAuthority([], 1)),
       ]),
     ).rejects.toThrow(/SubmissionError|Transaction submission error/);
 
-    const authAfter = await readAuthority(v1.providers, v1.contractAddress);
-    expect(authAfter.committee.length).toBe(1);
+    const after = await readAuthoritySnapshot(v1.providers, v1.contractAddress);
+    expect(after).toStrictEqual(before);
   });
 });

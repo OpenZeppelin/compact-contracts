@@ -17,7 +17,7 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   maintenanceTtl,
-  readAuthority,
+  readAuthoritySnapshot,
   readCmaCounter,
 } from '../../_harness/cma.js';
 import {
@@ -61,6 +61,10 @@ describe.runIf(isLiveBackend())(
         );
       }
 
+      const authorityB = await readAuthoritySnapshot(
+        contractB.providers,
+        contractB.contractAddress,
+      );
       // Match B's counter, or a stale-counter rejection would mask the one
       // under test.
       const counterB = await readCmaCounter(
@@ -94,11 +98,11 @@ describe.runIf(isLiveBackend())(
         }),
       ).rejects.toThrow(/SubmissionError|Transaction submission error/);
 
-      const authAfter = await readAuthority(
+      const authorityAfter = await readAuthoritySnapshot(
         contractB.providers,
         contractB.contractAddress,
       );
-      expect(authAfter.committee.length).toBe(1);
+      expect(authorityAfter).toStrictEqual(authorityB);
     });
   },
 );

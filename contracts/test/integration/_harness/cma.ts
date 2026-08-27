@@ -58,6 +58,23 @@ export async function readContractState(
   return state ?? undefined;
 }
 
+/**
+ * On-chain `ContractState`, or a throw.
+ *
+ * A spec asserting that a slot is empty must not pass because the read came
+ * back empty — `state?.operation(op)` is `undefined` either way.
+ */
+export async function requireContractState(
+  providers: AnyProviders,
+  address: string,
+): Promise<ContractState> {
+  const state = await readContractState(providers, address);
+  if (!state) {
+    throw new Error(`requireContractState: no ContractState for ${address}`);
+  }
+  return state;
+}
+
 /** The contract's current maintenance authority. Throws if the indexer has no record. */
 export async function readAuthority(
   providers: AnyProviders,
@@ -70,6 +87,31 @@ export async function readAuthority(
     );
   }
   return state.maintenanceAuthority;
+}
+
+/** The authority flattened to plain values, so a spec can compare it whole. */
+export interface AuthoritySnapshot {
+  committee: string[];
+  threshold: number;
+  counter: bigint;
+}
+
+/**
+ * The authority as a comparable value.
+ *
+ * Asserting `committee.length` alone would accept a swap to a *different*
+ * single-key committee, which is exactly what a rejected update must not do.
+ */
+export async function readAuthoritySnapshot(
+  providers: AnyProviders,
+  address: string,
+): Promise<AuthoritySnapshot> {
+  const auth = await readAuthority(providers, address);
+  return {
+    committee: [...auth.committee],
+    threshold: auth.threshold,
+    counter: auth.counter,
+  };
 }
 
 /** The replay-protection counter each accepted `MaintenanceUpdate` advances. */

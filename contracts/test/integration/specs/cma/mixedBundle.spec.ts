@@ -12,7 +12,8 @@ import {
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  readAuthority,
+  readAuthoritySnapshot,
+  requireContractState,
   submitRawMaintenanceUpdate,
 } from '../../_harness/cma.js';
 import {
@@ -53,6 +54,10 @@ describe.runIf(isLiveBackend())(
       { order: 'ReplaceAuthority last', authorityFirst: false },
     ])('is refused at submission with $order', async ({ authorityFirst }) => {
       v1 = await deployWithEmptyMintSlot();
+      const authorityBefore = await readAuthoritySnapshot(
+        v1.providers,
+        v1.contractAddress,
+      );
 
       const newAuth = new ContractMaintenanceAuthority(
         [signatureVerifyingKey(sampleSigningKey())],
@@ -74,13 +79,16 @@ describe.runIf(isLiveBackend())(
 
       // Neither update took: the authority is the deploy-time one and the
       // slot is still empty.
-      const authAfter = await readAuthority(v1.providers, v1.contractAddress);
-      expect(authAfter.committee.length).toBe(1);
-      const stateAfter =
-        await v1.providers.publicDataProvider.queryContractState(
-          v1.contractAddress,
-        );
-      expect(stateAfter?.operation('_mint')).toBeUndefined();
+      const authorityAfter = await readAuthoritySnapshot(
+        v1.providers,
+        v1.contractAddress,
+      );
+      expect(authorityAfter).toStrictEqual(authorityBefore);
+      const stateAfter = await requireContractState(
+        v1.providers,
+        v1.contractAddress,
+      );
+      expect(stateAfter.operation('_mint')).toBeUndefined();
     });
   },
 );

@@ -22,7 +22,9 @@ import {
  */
 describe.runIf(isLiveBackend())('TestToken — freezing the CMA', () => {
   let v1: TestTokenV1Kit;
-  let counterBeforeFreeze: bigint;
+  // Sentinel: a failure in the first test would otherwise resurface here as
+  // a BigInt TypeError, hiding the real cause.
+  let counterBeforeFreeze = 0n;
 
   beforeAll(async () => {
     v1 = await deployTestTokenV1();
