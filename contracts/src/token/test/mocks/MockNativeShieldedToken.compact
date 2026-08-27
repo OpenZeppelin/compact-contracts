@@ -59,7 +59,7 @@ export circuit tokenColor(): Bytes<32> {
 }
 
 export circuit _mint(
-  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  recipient: ZswapCoinPublicKey,
   amount: Uint<64>,
   nonce: Bytes<32>
 ): ShieldedCoinInfo {
@@ -69,7 +69,7 @@ export circuit _mint(
 export circuit _burn(
   coin: ShieldedCoinInfo,
   amount: Uint<128>,
-  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+  refundTo: ZswapCoinPublicKey
 ): Maybe<ShieldedCoinInfo> {
   return NativeShieldedToken__burn(coin, amount, refundTo);
 }

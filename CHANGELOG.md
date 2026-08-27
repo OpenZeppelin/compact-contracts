@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Restrict `NativeShieldedToken` / `NativeShieldedTokenFamily` mint recipients and burn refund targets to `ZswapCoinPublicKey`. A contract-addressed coin must be claimed as a shielded receive by the recipient contract in the same transaction, which the module cannot arrange without cross-contract calls, so such transactions were always rejected by the node (audit H-03).
 - Remove the initialization guard from `Signer`'s `assertSigner`, `assertThresholdMet`, `getSignerCount`, and `getThreshold` (#761)
 - Consolidate the duplicate multisig signer registries onto `Signer`, removing `SignerManager` (#760)
 - Rename the contract-compilation scripts and Turbo tasks from `compact` / `compact:*` to `compile` / `compile:*`, and the Biome scripts from `fmt-and-lint` / `fmt-and-lint:*` to `lint` / `lint:*`. (#680)

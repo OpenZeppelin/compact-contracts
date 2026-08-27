@@ -3,8 +3,6 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  type ContractAddress,
-  type Either,
   ledger,
   type Maybe,
   Contract as MockNativeShieldedTokenFamily,
@@ -120,7 +118,7 @@ export class NativeShieldedTokenFamilySimulator extends NativeShieldedTokenFamil
    */
   public _mint(
     domain: Uint8Array,
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    recipient: ZswapCoinPublicKey,
     amount: bigint,
     nonce: Uint8Array,
   ): Promise<ShieldedCoinInfo> {
@@ -132,7 +130,7 @@ export class NativeShieldedTokenFamilySimulator extends NativeShieldedTokenFamil
     domain: Uint8Array,
     coin: ShieldedCoinInfo,
     amount: bigint,
-    refundTo: Either<ZswapCoinPublicKey, ContractAddress>,
+    refundTo: ZswapCoinPublicKey,
   ): Promise<Maybe<ShieldedCoinInfo>> {
     return this.circuits.impure._burn(domain, coin, amount, refundTo);
   }

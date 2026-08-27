@@ -20,7 +20,7 @@ pragma language_version >= 0.23.0;
  *
  *   export circuit mint(
  *     domain: Bytes<32>,
- *     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+ *     recipient: ZswapCoinPublicKey,
  *     amount: Uint<64>,
  *     nonce: Bytes<32>
  *   ): ShieldedCoinInfo {
@@ -33,7 +33,7 @@ pragma language_version >= 0.23.0;
  *     domain: Bytes<32>,
  *     coin: ShieldedCoinInfo,
  *     amount: Uint<128>,
- *     refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+ *     refundTo: ZswapCoinPublicKey
  *   ): Maybe<ShieldedCoinInfo> {
  *     const refund = Family__burn(domain, coin, amount, refundTo);
  *     Supply__addBurned(domain, amount);
