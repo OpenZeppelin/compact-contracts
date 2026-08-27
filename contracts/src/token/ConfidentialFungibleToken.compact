@@ -284,6 +284,11 @@ module ConfidentialFungibleToken {
   // prunable by its owner, and a nonce that could be walked back would let a
   // reused seed repeat an earlier credit's randomness. The cost is that an
   // account's lifetime credit count is now permanently readable from state.
+  //
+  // `Counter` is chosen for no-reset monotonicity, not commutativity. Its
+  // `increment` emits no pinned read, but `_credit` reads the value back to
+  // derive the nonce, and that read pins the recipient's key. Credits to one
+  // recipient still serialize; see the Concurrency note above.
   export ledger _creditEpochs: Map<Bytes<32>, Counter>;
 
   export ledger _isInitialized: Boolean;
