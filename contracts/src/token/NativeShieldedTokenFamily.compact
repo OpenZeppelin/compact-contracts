@@ -26,6 +26,9 @@ pragma language_version >= 0.23.0;
  * set of core state (a single init flag and one name/symbol/decimals).
  * Pick one flavor per contract.
  *
+ * @notice Recipients must be coin public keys. A contract-addressed coin
+ * would be unclaimable, making the transaction malformed.
+ *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
  * contracts compose that via the module/contract pattern (Ownable,
@@ -186,7 +189,7 @@ module NativeShieldedTokenFamily {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11119
+   * @circuitInfo k=14, rows=10748
    *
    * Requirements:
    *
@@ -195,14 +198,14 @@ module NativeShieldedTokenFamily {
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator. Same domain + same
    * contract address produces the same coin color (i.e. same token type).
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {ZswapCoinPublicKey} recipient - The coin recipient.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
   export circuit _mint(
                    domain: Bytes<32>,
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   recipient: ZswapCoinPublicKey,
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
@@ -227,7 +230,7 @@ module NativeShieldedTokenFamily {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47932
+   * @circuitInfo k=16, rows=41768
    *
    * Requirements:
    *
@@ -240,8 +243,8 @@ module NativeShieldedTokenFamily {
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {ShieldedCoinInfo} coin - The coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
-   * route the unspent portion (`coin.value - amount`).
+   * @param {ZswapCoinPublicKey} refundTo - Where to route the unspent
+   * portion (`coin.value - amount`).
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -249,7 +252,7 @@ module NativeShieldedTokenFamily {
                    domain: Bytes<32>,
                    coin: ShieldedCoinInfo,
                    amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   refundTo: ZswapCoinPublicKey
                    ): Maybe<ShieldedCoinInfo> {
     return Core__burn(domain, coin, amount, refundTo);
   }

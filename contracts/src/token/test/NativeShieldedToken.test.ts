@@ -13,10 +13,9 @@ const b32 = (label: string): Uint8Array => {
 };
 
 // Users / recipients
-const RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const RECIPIENT_CONTRACT = utils.createEitherTestContractAddress('RECIPIENT_C');
-const REFUND_TO = utils.createEitherTestUser('REFUND_TO');
-const { ZERO_KEY, ZERO_ADDRESS } = utils;
+const RECIPIENT = utils.encodeToPK('RECIPIENT');
+const REFUND_TO = utils.encodeToPK('REFUND_TO');
+const ZERO_KEY = { bytes: utils.zeroUint8Array() };
 
 // Metadata
 const NAME = 'Native Shielded Token';
@@ -115,20 +114,8 @@ describe('NativeShieldedToken (Fungible profile)', () => {
       expect(coin.color).toEqual(await token.tokenColor());
     });
 
-    it('should mint to a contract-address recipient', async () => {
-      const coin = await token._mint(RECIPIENT_CONTRACT, AMOUNT, b32('mint-c'));
-      expect(coin.value).toBe(AMOUNT);
-      expect(coin.color).toEqual(await token.tokenColor());
-    });
-
-    it('should revert on a zero recipient key', async () => {
+    it('should revert on a zero recipient', async () => {
       await expect(token._mint(ZERO_KEY, AMOUNT, b32('z'))).rejects.toThrow(
-        'NativeShieldedToken: invalid recipient',
-      );
-    });
-
-    it('should revert on a zero recipient address', async () => {
-      await expect(token._mint(ZERO_ADDRESS, AMOUNT, b32('z'))).rejects.toThrow(
         'NativeShieldedToken: invalid recipient',
       );
     });
@@ -163,9 +150,6 @@ describe('NativeShieldedToken (Fungible profile)', () => {
       await expect(token._burn(coinOf(AMOUNT), 1n, ZERO_KEY)).rejects.toThrow(
         'NativeShieldedToken: invalid refund target',
       );
-      await expect(
-        token._burn(coinOf(AMOUNT), 1n, ZERO_ADDRESS),
-      ).rejects.toThrow('NativeShieldedToken: invalid refund target');
     });
 
     it('should return none on a full burn (amount == coin.value)', async () => {
