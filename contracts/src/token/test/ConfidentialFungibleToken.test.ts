@@ -7,12 +7,12 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 // The ElGamal pure circuits double as an off-circuit "mirror." They let a test
 // predict a ciphertext the contract will produce internally (e.g. the
 // post-refund balance in `approve`) so its plaintext can be cached ahead of the
 // witness query. They are pure (no proof), so this is cheap.
 import { pureCircuits as cftPure } from '../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
+import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
