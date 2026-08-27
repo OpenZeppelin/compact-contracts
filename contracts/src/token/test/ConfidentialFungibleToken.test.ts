@@ -887,14 +887,13 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       ).read();
 
     await cft._mint(ALICE.accountId, 10n);
-    const first = await epoch();
-    expect(first).toBeGreaterThan(0n);
+    expect(await epoch()).toBe(1n);
 
     await cft.clearMemos();
-    expect(await epoch()).toBe(first);
+    expect(await epoch()).toBe(1n);
 
     await cft._mint(ALICE.accountId, 10n);
-    expect(await epoch()).toBeGreaterThan(first);
+    expect(await epoch()).toBe(2n);
   });
 });
 
