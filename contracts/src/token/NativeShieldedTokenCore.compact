@@ -44,6 +44,18 @@ pragma language_version >= 0.23.0;
  * compose `NativeShieldedTokenDerivedNonce` and pass its `_deriveNonce()`
  * output, at the cost of making those mints recipient-public.
  *
+ * @notice Recipients must be coin public keys. A contract-addressed coin
+ * would be unclaimable, making the transaction malformed.
+ *
+ * @dev Recipient arm
+ * A contract-addressed commitment counts only if the recipient contract's own
+ * call in the same transaction claims it as a shielded receive. No primitive
+ * claims a receive on another contract's behalf, so nothing this module emits
+ * can satisfy the ledger's effects check for such a coin. Both `mintShieldedToken`
+ * and `sendImmediateShielded` still take the protocol's
+ * `Either<ZswapCoinPublicKey, ContractAddress>`; the circuits wrap the caller's
+ * key in `left` and never expose the address arm.
+ *
  * @dev Burn variants
  * `_burn` destroys value from a coin provided within the current transaction
  * (e.g. the caller's wallet pays the contract): it receives the coin and spends
@@ -218,7 +230,7 @@ module NativeShieldedTokenCore {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11119
+   * @circuitInfo k=14, rows=10748
    *
    * Requirements:
    *
@@ -226,21 +238,26 @@ module NativeShieldedTokenCore {
    * - `recipient` is not zero.
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {ZswapCoinPublicKey} recipient - The coin recipient.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
   export circuit _mint(
                    domain: Bytes<32>,
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   recipient: ZswapCoinPublicKey,
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
     assertInitialized();
-    assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
+    assert(!Utils_isKeyZero(recipient), "NativeShieldedToken: invalid recipient");
 
-    return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
+    return mintShieldedToken(
+      disclose(domain),
+      disclose(amount),
+      disclose(nonce),
+      left<ZswapCoinPublicKey, ContractAddress>(disclose(recipient))
+    );
   }
 
   /**
@@ -261,7 +278,7 @@ module NativeShieldedTokenCore {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47932
+   * @circuitInfo k=16, rows=41768
    *
    * Requirements:
    *
@@ -274,8 +291,8 @@ module NativeShieldedTokenCore {
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {ShieldedCoinInfo} coin - The coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
-   * route the unspent portion (`coin.value - amount`).
+   * @param {ZswapCoinPublicKey} refundTo - Where to route the unspent
+   * portion (`coin.value - amount`).
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -283,12 +300,12 @@ module NativeShieldedTokenCore {
                    domain: Bytes<32>,
                    coin: ShieldedCoinInfo,
                    amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   refundTo: ZswapCoinPublicKey
                    ): Maybe<ShieldedCoinInfo> {
     assertInitialized();
     assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedToken: wrong token");
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
-    assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
+    assert(!Utils_isKeyZero(refundTo), "NativeShieldedToken: invalid refund target");
 
     receiveShielded(disclose(coin));
     const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
@@ -296,7 +313,7 @@ module NativeShieldedTokenCore {
     if (disclose(sendRes.change.is_some)) {
       const refundRes = sendImmediateShielded(
         disclose(sendRes.change.value),
-        disclose(refundTo),
+        left<ZswapCoinPublicKey, ContractAddress>(disclose(refundTo)),
         disclose(sendRes.change.value.value)
       );
       return some<ShieldedCoinInfo>(refundRes.sent);

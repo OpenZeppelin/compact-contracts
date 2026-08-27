@@ -11,9 +11,9 @@ const b32 = (label: string): Uint8Array => {
   return u;
 };
 
-const RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const REFUND_TO = utils.createEitherTestUser('REFUND_TO');
-const { ZERO_KEY, ZERO_ADDRESS } = utils;
+const RECIPIENT = utils.encodeToPK('RECIPIENT');
+const REFUND_TO = utils.encodeToPK('REFUND_TO');
+const ZERO_KEY = { bytes: utils.zeroUint8Array() };
 
 const NAME = 'Family Token';
 const SYMBOL = 'FAM';
@@ -104,9 +104,6 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
     it('should revert on a zero recipient', async () => {
       await expect(
         token._mint(DOMAIN_A, ZERO_KEY, AMOUNT, b32('z')),
-      ).rejects.toThrow('NativeShieldedToken: invalid recipient');
-      await expect(
-        token._mint(DOMAIN_A, ZERO_ADDRESS, AMOUNT, b32('z')),
       ).rejects.toThrow('NativeShieldedToken: invalid recipient');
     });
   });

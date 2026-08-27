@@ -20,6 +20,9 @@ pragma language_version >= 0.23.0;
  * share one set of core state (a single init flag and one name/symbol/decimals).
  * Pick one flavor per contract.
  *
+ * @notice Recipients must be coin public keys. A contract-addressed coin
+ * would be unclaimable, making the transaction malformed.
+ *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
  * contracts compose that via the module/contract pattern (Ownable,
@@ -190,21 +193,21 @@ module NativeShieldedToken {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=10843
+   * @circuitInfo k=14, rows=10471
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `recipient` is not zero.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {ZswapCoinPublicKey} recipient - The coin recipient.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
    * contract's color.
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
   export circuit _mint(
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   recipient: ZswapCoinPublicKey,
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
@@ -229,7 +232,7 @@ module NativeShieldedToken {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47656
+   * @circuitInfo k=16, rows=41492
    *
    * Requirements:
    *
@@ -241,15 +244,15 @@ module NativeShieldedToken {
    *
    * @param {ShieldedCoinInfo} coin - The coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
-   * route the unspent portion (`coin.value - amount`).
+   * @param {ZswapCoinPublicKey} refundTo - Where to route the unspent
+   * portion (`coin.value - amount`).
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
   export circuit _burn(
                    coin: ShieldedCoinInfo,
                    amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   refundTo: ZswapCoinPublicKey
                    ): Maybe<ShieldedCoinInfo> {
     return Core__burn(_domain, coin, amount, refundTo);
   }
