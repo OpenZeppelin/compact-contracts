@@ -14,8 +14,12 @@ const b32 = (label: string): Uint8Array => {
   return u;
 };
 
-const RECIPIENT = utils.createEitherTestUser('RECIPIENT');
-const REFUND_TO = utils.createEitherTestUser('REFUND_TO');
+const RECIPIENT = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('RECIPIENT'),
+);
+const REFUND_TO = utils.eitherUserFromCoinPublicKey(
+  utils.toHexPadded('REFUND_TO'),
+);
 const { ZERO_KEY, ZERO_ADDRESS } = utils;
 
 const NAME = 'Core Token';
@@ -35,8 +39,9 @@ let token: NativeShieldedTokenCoreSimulator;
 // Resolved once in `beforeAll` after the first `create()`: on live the harness
 // then publishes MIDNIGHT_DEPLOYER_COIN_PK, so this is the deployer wallet's own
 // coin public key (an encryption key the node can resolve as a mint recipient /
-// refund target); on dry it is the synthetic `createEitherTestUser('RECIPIENT')`,
-// identical to the un-gated tests' `RECIPIENT`.
+// refund target); on dry it is the synthetic
+// `eitherUserFromCoinPublicKey(toHexPadded('RECIPIENT'))`, identical to the
+// un-gated tests' `RECIPIENT`.
 let Z_RECIPIENT: ReturnType<typeof shieldedTestKey>;
 
 // A backend-aware mint nonce, delegated to the shared coin builder: on live every

@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  createEitherTestUser,
-  eitherUserFromCoinPublicKey,
-} from '../address.js';
+import { eitherUserFromCoinPublicKey, toHexPadded } from '../address.js';
 import { shieldedTestKey } from '../shieldedKey.js';
 
 /**
@@ -24,7 +21,9 @@ describe('shieldedTestKey', () => {
   describe('deployer (default)', () => {
     it('should build a synthetic deployer key when none is published', () => {
       vi.stubEnv('MIDNIGHT_DEPLOYER_COIN_PK', undefined);
-      expect(shieldedTestKey()).toStrictEqual(createEitherTestUser('deployer'));
+      expect(shieldedTestKey()).toStrictEqual(
+        eitherUserFromCoinPublicKey(toHexPadded('deployer')),
+      );
     });
 
     it('should bind to the published deployer coin public key', () => {
@@ -37,7 +36,7 @@ describe('shieldedTestKey', () => {
     it("should build a synthetic key from the alias when the signer's key is unpublished", () => {
       vi.stubEnv('MIDNIGHT_SIGNER1_COIN_PK', undefined);
       expect(shieldedTestKey('SIGNER1')).toStrictEqual(
-        createEitherTestUser('SIGNER1'),
+        eitherUserFromCoinPublicKey(toHexPadded('SIGNER1')),
       );
     });
 
