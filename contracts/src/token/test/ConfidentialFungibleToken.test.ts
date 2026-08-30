@@ -841,6 +841,79 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Encryption-key authority on the non-value circuits
+// ---------------------------------------------------------------------------
+
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: encryption-key authority',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+      for (const u of [ALICE, BOB]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 1234n);
+    });
+
+    // Alice's account secret with Bob's encryption secret
+    const asAttacker = () =>
+      cft.privateState.switchIdentity(ALICE.secretKey, BOB.encryptionKey);
+
+    it('rejects clearMemos from a caller without the registered encryption key', async () => {
+      await asAttacker();
+      await expect(cft.clearMemos()).rejects.toThrow('wrong encryption key');
+    });
+
+    it('rejects sweep from a caller without the registered encryption key', async () => {
+      await asAttacker();
+      await expect(cft.sweep()).rejects.toThrow('wrong encryption key');
+    });
+
+    it('rejects both from an unregistered caller', async () => {
+      await cft.privateState.switchIdentity(
+        CHARLIE.secretKey,
+        CHARLIE.encryptionKey,
+      );
+      await expect(cft.clearMemos()).rejects.toThrow('not registered');
+      await expect(cft.sweep()).rejects.toThrow('not registered');
+    });
+
+    it('leaves the account spendable after a blocked prune-and-sweep', async () => {
+      await asAttacker();
+      await expect(cft.clearMemos()).rejects.toThrow('wrong encryption key');
+      await expect(cft.sweep()).rejects.toThrow('wrong encryption key');
+
+      // Alice still has the memo, so she can still learn the credit and spend.
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      expect(
+        (await cft.getPublicState()).CFT__memos.lookup(
+          ALICE.accountId,
+        ).length(),
+      ).toBe(1n);
+
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        1234n,
+      );
+      await cft._burn(1234n);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Dual-balance grief fix (spendable vs pending; owner-only sweep)
 // ---------------------------------------------------------------------------
 
