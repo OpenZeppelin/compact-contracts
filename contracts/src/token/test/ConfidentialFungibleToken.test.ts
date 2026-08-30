@@ -889,8 +889,8 @@ describe.skipIf(isLiveBackend())(
 
     it('leaves the account spendable after a blocked prune-and-sweep', async () => {
       await asAttacker();
-      await expect(cft.clearMemos()).rejects.toThrow();
-      await expect(cft.sweep()).rejects.toThrow();
+      await expect(cft.clearMemos()).rejects.toThrow('wrong encryption key');
+      await expect(cft.sweep()).rejects.toThrow('wrong encryption key');
 
       // Alice still has the memo, so she can still learn the credit and spend.
       await cft.privateState.switchIdentity(
