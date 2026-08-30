@@ -66,9 +66,12 @@ pragma language_version >= 0.23.0;
  * and the re-approve refund) derive randomness from a static domain tag with
  * no per-operation nonce, so two operations under one seed share randomness
  * and their public ciphertext deltas reveal the amount difference. The credit
- * path folds the recipient's memo-list length in as a nonce (defense in
- * depth), but that counter RESETS on `clearMemos`, so it is an in-epoch
- * backstop only, never a substitute for freshness.
+ * path folds the recipient's `_creditEpochs` counter in as a nonce (defense in
+ * depth). A sender advances it with every credit and nothing rolls it back
+ * (neither the recipient nor any circuit) so the party whose randomness it
+ * protects is the one moving it, and a repeated seed still yields distinct
+ * randomness there. It is a backstop, not a substitute for freshness. It covers
+ * only credits, and only against reuse of one seed to one recipient.
  *
  * Seed generation is a WALLET responsibility and OUT OF SCOPE for this
  * contract, which cannot enforce it. The witness shipped in this repo
@@ -86,6 +89,9 @@ pragma language_version >= 0.23.0;
  *  - approve does not disclose the cap (private-cap escrow design).
  *  - Counterparty graph (sender_id, recipient_id) is public on every
  *    transfer.
+ *  - Per-account lifetime credit count is public and permanent
+ *    (`_creditEpochs`); unlike the memo list, it does not reset on
+ *    `clearMemos`.
  *
  * @dev Per-transfer value bound. Value-bearing circuits check
  * `value <= MAX_TRANSFER_VALUE()`, which is now the `Uint<128>` maximum: the ECDH
@@ -270,6 +276,19 @@ module ConfidentialFungibleToken {
   export ledger _memos: Map<Bytes<32>, List<EcdhMask_Ciphertext>>;
   export ledger _escrow: Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>;
 
+  // Per-account credit counter. `_credit` uses it as the nonce that keeps each
+  // credit's randomness distinct, so it MUST only ever increase. No circuit
+  // resets it. It is kept out of `_memos` for that reason: the memo list is
+  // prunable by its owner, and a nonce that could be walked back would let a
+  // reused seed repeat an earlier credit's randomness. The cost is that an
+  // account's lifetime credit count is now permanently readable from state.
+  //
+  // `Counter` is chosen for no-reset monotonicity, not commutativity. Its
+  // `increment` emits no pinned read, but `_credit` reads the value back to
+  // derive the nonce, and that read pins the recipient's key. Credits to one
+  // recipient still serialize; see the Concurrency note above.
+  export ledger _creditEpochs: Map<Bytes<32>, Counter>;
+
   export ledger _isInitialized: Boolean;
 
   export sealed ledger _name: Opaque<"string">;
@@ -346,9 +365,9 @@ module ConfidentialFungibleToken {
    * who knows the seed can strip a memo's mask and read the delivered amount, and
    * recover balance/escrow amounts from the public ciphertexts. Seed REUSE leaks
    * plaintext differences and the circuit does NOT prevent it: only the credit
-   * path folds a per-recipient nonce (the memo-list length) in as defense in
-   * depth, and even that resets on `clearMemos`. The seed MUST be fresh,
-   * high-entropy, and secret for every invocation.
+   * path folds a per-recipient nonce (`_creditEpochs`) in as defense in depth,
+   * and that covers credits alone. The seed MUST be fresh, high-entropy, and
+   * secret for every invocation.
    */
   witness wit_RandomnessSeed(): Bytes<32>;
 
@@ -555,14 +574,14 @@ module ConfidentialFungibleToken {
   // (its `mint` increments the total before crediting; its `burn` decrements it
   // after debiting).
   //
-  // Randomness: `_credit` folds a per-recipient nonce (the memo-list length)
-  // into its seed-derived randomness as defense in depth. This helps only
-  // within a memo epoch: `clearMemos` resets the counter, and it is NOT a
-  // substitute for seed freshness (see the header note); seed reuse still leaks
-  // credited-amount differences. Within an epoch the nonce keeps a single
-  // circuit's multi-party credits distinct (each recipient's count is
-  // independent). The debit side has no such nonce, so seed freshness is the
-  // only defense there.
+  // Randomness: `_credit` folds a per-recipient nonce (`_creditEpochs`) into
+  // its seed-derived randomness as defense in depth. The nonce only ever
+  // increases, so it never repeats a value, but it is NOT a substitute for seed
+  // freshness (see the header note); seed reuse still leaks credited-amount
+  // differences on every other path. It also keeps a single circuit's
+  // multi-party credits distinct, each recipient's counter being independent.
+  // The debit side has no such nonce, so seed freshness is the only defense
+  // there.
   // ---------------------------------------------------------------------------
 
   /**
@@ -618,11 +637,11 @@ module ConfidentialFungibleToken {
    * account's balance ciphertext and pushes an ECDH one-time-pad memo that
    * delivers `value` directly to the recipient (no discrete-log recovery, so no
    * `2^48` bound). All per-credit randomness is derived internally from the
-   * witness seed and a per-recipient monotonic nonce (the memo-list length),
-   * which keeps randomness distinct WITHIN a memo epoch (defense in depth for
-   * the memo's one-time pad; see `crypto/EcdhMask`). That nonce RESETS on
-   * `clearMemos`, so it is an in-epoch backstop only, never a substitute for
-   * seed freshness (see the module header and the section note above `_debit`).
+   * witness seed and a per-recipient monotonic nonce (`_creditEpochs`), which
+   * keeps randomness distinct across credits (defense in depth for the memo's
+   * one-time pad; see `crypto/EcdhMask`). That nonce only ever increases and
+   * nothing resets it, but it is never a substitute for seed freshness (see the
+   * module header and the section note above `_debit`).
    *
    * @warning Does not adjust any supply total. Called outside a supply-accounted
    * flow, `_credit` mints unbacked value (inflation) and breaks the
@@ -642,20 +661,25 @@ module ConfidentialFungibleToken {
 
     const recipientPk = _encryptionKeys.lookup(disclose(account));
 
-    // Ensure the recipient's memo list exists; its length is a per-recipient
-    // monotonic nonce that makes this credit's randomness unique even if the
-    // wallet reuses its seed. Freshness is essential for the memo OTP: a repeated
-    // ephemeral to the same recipient would reuse the pad.
+    // Ensure the recipient's memo list exists.
     if (!_memos.member(disclose(account))) {
       _memos.insert(disclose(account), default<List<EcdhMask_Ciphertext>>);
     }
-    const count = _memos.lookup(disclose(account)).length() as Field;
+
+    // Advance the recipient's credit epoch and use it as this credit's nonce.
+    // The nonce must come from a source that only increases; anything the
+    // recipient can reset would let a reused seed repeat the randomness below.
+    if (!_creditEpochs.member(disclose(account))) {
+      _creditEpochs.insert(disclose(account), default<Counter>);
+    }
+    _creditEpochs.lookup(disclose(account)).increment(1);
+    const count = _creditEpochs.lookup(disclose(account)) as Field;
     const seed = wit_RandomnessSeed();
 
     // Randomness must be a VALID Jubjub scalar. `transientHash`'s raw Field output
     // can exceed the Jubjub scalar-field order and fault `ecMulGenerator`, so each
     // scalar is derived via `degradeToTransient(persistentHash(...))`, which
-    // truncates into the scalar field. The per-recipient count, folded into a
+    // truncates into the scalar field. The per-recipient epoch, folded into a
     // Bytes<32> nonce, keeps each credit's randomness unique even if the seed
     // repeats (essential for the memo OTP). This inlines the tag + expansion into
     // a single hash per scalar. The residual persistentHash cost is poseidon-gated
@@ -693,7 +717,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @circuitInfo k=15, rows=27142
+   * @circuitInfo k=15, rows=27179
    *
    * Requirements:
    *
@@ -740,7 +764,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @circuitInfo k=16, rows=41617
+   * @circuitInfo k=16, rows=41654
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -778,7 +802,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @circuitInfo k=16, rows=41606
+   * @circuitInfo k=16, rows=41643
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -936,7 +960,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=16, rows=63207
+   * @circuitInfo k=16, rows=63244
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
