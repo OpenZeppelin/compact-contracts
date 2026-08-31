@@ -200,6 +200,9 @@ jobs:
       && needs.plan.outputs.legs-access != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
@@ -233,6 +236,9 @@ jobs:
       && needs.plan.outputs.legs-crypto != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
@@ -266,6 +272,9 @@ jobs:
       && needs.plan.outputs.legs-multisig != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
@@ -299,6 +308,9 @@ jobs:
       && needs.plan.outputs.legs-security != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
@@ -332,6 +344,9 @@ jobs:
       && needs.plan.outputs.legs-token != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
@@ -365,6 +380,9 @@ jobs:
       && needs.plan.outputs.legs-utils != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
@@ -398,6 +416,9 @@ jobs:
       && needs.plan.outputs.legs-integration != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
