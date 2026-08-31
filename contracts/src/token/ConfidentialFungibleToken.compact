@@ -92,7 +92,10 @@ pragma language_version >= 0.23.0;
  * memo delivers the amount directly (no discrete-log recovery), so the former
  * `2^48` cap that kept wallet-side BSGS tractable is gone. Amounts stay well under
  * the Jubjub scalar-field order, so the homomorphic balance sums (and the
- * `g^value` encoding) do not wrap.
+ * `g^value` encoding) do not wrap at any plausible scale. Accumulation makes
+ * that a resource bound rather than an invariant: ~2^124 maximal credits into
+ * one account reach `l`, past which the stored point encodes the sum MOD `l` and
+ * the balance verifies against a smaller number than was deposited.
  *
  * @dev Balance claims are `Uint<248>`, wider than the per-transfer bound. A
  * balance grows by homomorphic addition with no running total to bound, so a
