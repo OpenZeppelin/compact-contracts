@@ -457,6 +457,12 @@ module ElGamal {
    * range constraint belongs to where the value is declared, not to this
    * signature.
    *
+   * @warning The claim domain must stay below the Jubjub subgroup order `l`:
+   * verification compares `g^claimedValue`, so two claims congruent mod `l` are
+   * indistinguishable. `Uint<248>` clears `l` (~2^251.86) by under 4 bits, and
+   * that width is set by Compact's cap rather than by this bound — 251 is the
+   * widest sound `Uint` if the cap ever rises.
+   *
    * Requirements:
    *
    * - `ek` is the secret for `pk`.
