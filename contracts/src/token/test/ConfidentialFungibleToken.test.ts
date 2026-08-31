@@ -1140,6 +1140,37 @@ describe.skipIf(isLiveBackend())(
       await cft._burn(MAX128);
     });
 
+    it('approves and spends an escrow from a balance past the per-transfer bound', async () => {
+      for (const u of [BOB, CHARLIE]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft.sweep();
+
+      // `approve` claims the owner's balance, which is above the transfer bound.
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        2n * MAX128,
+      );
+      await cft.approve(BOB.accountId, MAX128);
+
+      // The escrow claim stays within `Uint<128>` by construction: `approve`
+      // caps it at the transfer bound.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        MAX128,
+      );
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, MAX128);
+    });
+
     it('keeps the transfer bound at the Uint<128> maximum', async () => {
       expect(cftPure.MAX_TRANSFER_VALUE()).toBe(MAX128);
     });
