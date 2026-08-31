@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import {
   CompactTypeBytes,
   CompactTypeVector,
@@ -7,11 +8,12 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 // The ElGamal pure circuits double as an off-circuit "mirror." They let a test
 // predict a ciphertext the contract will produce internally (e.g. the
 // post-refund balance in `approve`) so its plaintext can be cached ahead of the
 // witness query. They are pure (no proof), so this is cheap.
+import { pureCircuits as cftPure } from '../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
+import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
@@ -1101,6 +1103,130 @@ describe.skipIf(isLiveBackend())(
 //     and hide that, we ASSERT the rejection: a live-verified canary that flips
 //     red the day a staged deploy or a looser ledger lets the full base through.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Balance claim width (accumulated balance above the per-transfer bound)
+// ---------------------------------------------------------------------------
+
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: balance claim width',
+  () => {
+    const MAX128 = (1n << 128n) - 1n;
+
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+      );
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft.register();
+    });
+
+    it('spends a balance accumulated past the per-transfer bound', async () => {
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft.sweep();
+
+      const total = 2n * MAX128;
+      expect(total).toBeGreaterThan(MAX128);
+
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        total,
+      );
+      await cft._burn(MAX128);
+    });
+
+    it('approves and spends an escrow from a balance past the per-transfer bound', async () => {
+      for (const u of [BOB, CHARLIE]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft._mint(ALICE.accountId, MAX128);
+      await cft.sweep();
+
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        2n * MAX128,
+      );
+      await cft.approve(BOB.accountId, MAX128);
+
+      // The escrow itself stays within `Uint<128>`: `approve` caps it there.
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        MAX128,
+      );
+      await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, MAX128);
+    });
+
+    it('rejects an escrow claim that only fits after truncation', async () => {
+      for (const u of [BOB, CHARLIE]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+      await cft.approve(BOB.accountId, 40n);
+
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        (1n << 128n) + 40n,
+      );
+      // The message matters: without the narrowing this fails the decryption
+      // check instead, which a bare `toThrow()` would not distinguish.
+      await expect(
+        cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 10n),
+      ).rejects.toThrow('cast from Field or Uint value to smaller Uint value');
+    });
+
+    it('keeps the transfer bound at the Uint<128> maximum', async () => {
+      expect(cftPure.MAX_TRANSFER_VALUE()).toBe(MAX128);
+    });
+
+    it('pins the compiled claim and transfer widths', () => {
+      const raw = readFileSync(
+        new URL(
+          '../../../artifacts/MockConfidentialFungibleToken/compiler/contract-info.json',
+          import.meta.url,
+        ),
+        'utf8',
+      );
+      // `maxval` exceeds double precision, so quote before parsing.
+      const info = JSON.parse(raw.replace(/("maxval":\s*)(\d+)/g, '$1"$2"'));
+
+      const claim = info.witnesses.find(
+        (w: { name: string }) => w.name === 'wit_PlaintextBalance',
+      );
+      expect(BigInt(claim['result type'].maxval)).toBe((1n << 248n) - 1n);
+
+      const value = info.circuits
+        .find((c: { name: string }) => c.name === 'transfer')
+        .arguments.find((a: { name: string }) => a.name === 'value');
+      expect(BigInt(value.type.maxval)).toBe(MAX128);
+    });
+  },
+);
 
 describe('ConfidentialFungibleToken: receive-path smoke', () => {
   const deploy = () =>

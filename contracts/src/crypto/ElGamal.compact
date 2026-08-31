@@ -452,6 +452,17 @@ module ElGamal {
    * wrong plaintext fails the decryption check. Lifted special case of
    * `assertDecryptsToPoint` with the message point `g^claimedValue`.
    *
+   * @notice `claimedValue` is the widest `Uint` Compact offers, so this parameter
+   * never bounds a caller. A narrower value costs proportionally fewer rows: the
+   * range constraint belongs to where the value is declared, not to this
+   * signature.
+   *
+   * @warning The claim domain must stay below the Jubjub subgroup order `l`:
+   * verification compares `g^claimedValue`, so two claims congruent mod `l` are
+   * indistinguishable. `Uint<248>` clears `l` (~2^251.86) by under 4 bits, and
+   * that width is set by Compact's cap rather than by this bound. 251 is the
+   * widest sound `Uint` if the cap ever rises.
+   *
    * Requirements:
    *
    * - `ek` is the secret for `pk`.
@@ -466,7 +477,7 @@ module ElGamal {
                    ct: Ciphertext,
                    pk: JubjubPoint,
                    ek: Bytes<32>,
-                   claimedValue: Uint<128>
+                   claimedValue: Uint<248>
                    ): [] {
     assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as Field));
   }
