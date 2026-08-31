@@ -1154,21 +1154,49 @@ describe.skipIf(isLiveBackend())(
       await cft._mint(ALICE.accountId, MAX128);
       await cft.sweep();
 
-      // `approve` claims the owner's balance, which is above the transfer bound.
       await cft.privateState.cachePlaintext(
         await cft.balanceOf(ALICE.accountId),
         2n * MAX128,
       );
       await cft.approve(BOB.accountId, MAX128);
 
-      // The escrow claim stays within `Uint<128>` by construction: `approve`
-      // caps it at the transfer bound.
+      // The escrow itself stays within `Uint<128>`: `approve` caps it there.
       await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
       await cft.privateState.cachePlaintext(
         (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
         MAX128,
       );
       await cft.transferFrom(ALICE.accountId, CHARLIE.accountId, MAX128);
+    });
+
+    it('rejects an escrow claim that only fits after truncation', async () => {
+      for (const u of [BOB, CHARLIE]) {
+        await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
+        await cft.register();
+      }
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+      await cft.approve(BOB.accountId, 40n);
+
+      await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
+      await cft.privateState.cachePlaintext(
+        (await cft.allowance(ALICE.accountId, BOB.accountId)).spenderCt,
+        (1n << 128n) + 40n,
+      );
+      // The message matters: without the narrowing this fails the decryption
+      // check instead, which a bare `toThrow()` would not distinguish.
+      await expect(
+        cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 10n),
+      ).rejects.toThrow('cast from Field or Uint value to smaller Uint value');
     });
 
     it('keeps the transfer bound at the Uint<128> maximum', async () => {
