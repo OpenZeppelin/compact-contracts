@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-js": "2.5.1",
-    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/compact-runtime": "0.19.0",
     "@midnight-ntwrk/ledger-v8": "8.1.0",
     "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
