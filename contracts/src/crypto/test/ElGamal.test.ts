@@ -128,6 +128,15 @@ describe('ElGamal', () => {
       await contract.assertDecryptsTo(ct, pkA, EK_A, 0n);
     });
 
+    it('verifies a sum above the per-encryption bound', async () => {
+      const MAX128 = (1n << 128n) - 1n;
+      const sum = await contract.add(
+        await contract.encrypt(pkA, MAX128, R1),
+        await contract.encrypt(pkA, MAX128, R2),
+      );
+      await contract.assertDecryptsTo(sum, pkA, EK_A, 2n * MAX128);
+    });
+
     it('rejects a wrong claimed plaintext', async () => {
       const ct = await contract.encrypt(pkA, 100n, R1);
       await expect(
