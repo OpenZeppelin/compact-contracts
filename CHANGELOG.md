@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add `MessageHashUtils`: keccak256 word digests, EIP-191 signed-message wrap, EIP-712 typed-data hashing primitives (#827)
+- Add `Eip712`: stateful domain-separator module (`_domainSeparatorV4` / `_hashTypedDataV4`) consumed by the stateless multisig presets (#827)
+
+### Changed
+
+- **Breaking:** `ShieldedMultiSigV2` / `ShieldedMultiSigV3` operation digests are now EIP-712 keccak256 (`eth_signTypedData_v4`-compatible); signatures over the old `persistentHash` messages no longer match (#827)
+- **Breaking:** V2/V3 signer commitments switch from `persistentHash` to `keccak256`, and V2's signer domain is unified to `"multisig:signer:"` (#827)
+- Compile `crypto` and `multisig` with `--feature-zkir-v3` (in-circuit keccak256 requires ZKIR v3) (#827)
+
 ## 0.3.0-alpha.2 (2026-08-11)
 
 ### Changed
