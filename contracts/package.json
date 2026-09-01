@@ -60,7 +60,7 @@
     "@midnight-ntwrk/midnight-js-types": "5.0.0-beta.7",
     "@midnight-ntwrk/testkit-js": "5.0.0-beta.7",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
-    "@openzeppelin/compact-simulator": "file:../../compact-tools-034/packages/simulator",
+    "@openzeppelin/compact-simulator": "^0.4.0",
     "@tsconfig/node24": "^24.0.5",
     "@types/node": "26.2.0",
     "@vitest/coverage-v8": "^4.1.11",
