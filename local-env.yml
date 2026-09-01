@@ -31,6 +31,11 @@ services:
       APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
       APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+      # The spo-indexer subprocess dials spo_node.url, which defaults to
+      # ws://localhost:9944 (nothing inside the container) and takes the whole
+      # process down. Point it at the node; blockfrost_id only needs to be
+      # non-empty when SPO features are unused.
+      APP__INFRA__SPO_NODE__URL: 'ws://node:9944'
       APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'unused-local-devnet'
     healthcheck:
       test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
