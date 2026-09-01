@@ -1,4 +1,3 @@
-import { DustSecretKey, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
 import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   DEFAULT_DUST_OPTIONS,
@@ -8,6 +7,7 @@ import {
   syncWallet,
   waitForFunds,
 } from '@midnight-ntwrk/testkit-js';
+import { DustSecretKey, ZswapSecretKeys } from '@midnightntwrk/ledger-v9';
 import { MIN_WALLET_NIGHT, UNDEPLOYED_FEE_OVERHEAD } from './dust.js';
 import type { PooledWallet } from './WalletPool.js';
 

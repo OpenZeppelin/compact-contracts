@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.3.0-alpha.2 (token/ConfidentialFungibleToken.compact)
 
-pragma language_version >= 0.23.0;
+pragma language_version >= 0.26.0;
 
 /**
  * @module ConfidentialFungibleToken
@@ -131,7 +131,7 @@ pragma language_version >= 0.23.0;
  * Midnight runtime enforcing two curve invariants this module does NOT re-check:
  * every JubjubPoint reaching a curve op is cofactor-cleared into the prime-order
  * subgroup (so off-curve, low-order, or mixed-order points make the circuit
- * unsatisfiable), and `ecMul` faults on a scalar >= the subgroup order. These are
+ * unsatisfiable), and a scalar >= the subgroup order is rejected. These are
  * regression-pinned with adversarial inputs in
  * `crypto/test/CurveRuntimeInvariants.test.ts`, which fails loudly if a future
  * runtime stops enforcing them. That is behavioral verification of the shipped
@@ -653,9 +653,9 @@ module ConfidentialFungibleToken {
     const seed = wit_RandomnessSeed();
 
     // Randomness must be a VALID Jubjub scalar. `transientHash`'s raw Field output
-    // can exceed the Jubjub scalar-field order and fault `ecMulGenerator`, so each
-    // scalar is derived via `degradeToTransient(persistentHash(...))`, which
-    // truncates into the scalar field. The per-recipient count, folded into a
+    // can exceed the Jubjub scalar-field order, so each scalar is derived via
+    // `degradeToTransient(persistentHash(...))`, which truncates into the scalar
+    // field. The per-recipient count, folded into a
     // Bytes<32> nonce, keeps each credit's randomness unique even if the seed
     // repeats (essential for the memo OTP). This inlines the tag + expansion into
     // a single hash per scalar. The residual persistentHash cost is poseidon-gated
@@ -669,10 +669,10 @@ module ConfidentialFungibleToken {
     const countHash = persistentHash<Field>(count);
     const rBalance = degradeToTransient(
       persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_balance"), account, countHash])
-    );
+    ) as JubjubScalar;
     const e = degradeToTransient(
       persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_memo"), account, countHash])
-    );
+    ) as JubjubScalar;
 
     // Credit lands in the recipient's PENDING pool (not spendable), so incoming
     // value never churns their spendable ciphertext; they sweep it when ready.
@@ -1167,7 +1167,7 @@ module ConfidentialFungibleToken {
           // never decrypted. Use an on-curve identity point (never a `default`,
           // which is off-curve).
           ownerMemo: EcdhMask_Ciphertext {
-            ephemeralPk: ecMulGenerator(0 as Field),
+            ephemeralPk: ecMulGenerator(0 as JubjubScalar),
             ct: 0 as Field
           }
         })

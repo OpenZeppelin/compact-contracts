@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.3.0-alpha.2 (crypto/ElGamal.compact)
 
-pragma language_version >= 0.23.0;
+pragma language_version >= 0.26.0;
 
 /**
  * @module ElGamal
@@ -32,7 +32,11 @@ pragma language_version >= 0.23.0;
  * and compared against on every later verification; `degradeToTransient`
  * truncates the Field to 31 bytes so the result is ALWAYS a valid Jubjub
  * scalar. Feeding a raw `persistentHash` output into `ecMulGenerator` would
- * occasionally exceed the Jubjub scalar field order and fault at runtime.
+ * occasionally exceed the Jubjub scalar field order and be rejected.
+ *
+ * @dev Scalars are typed `JubjubScalar`, not `Field`. A `Field as JubjubScalar`
+ * cast reduces modulo the subgroup order, so casting at a call site would
+ * silently accept an out-of-range scalar the typed parameter rejects.
  *
  * @dev TRUST ASSUMPTION — subgroup membership. This is the module's most
  * load-bearing assumption. Every `JubjubPoint` reaching a curve operation is
@@ -43,9 +47,8 @@ pragma language_version >= 0.23.0;
  * off-curve / low-order / mixed-order point makes the circuit unsatisfiable.
  * The module therefore performs NO in-circuit subgroup check: the runtime
  * already constrains membership (so it is unnecessary), and the direct test
- * `ℓ*P == O` is unavailable anyway because `ecMul` by `ℓ` faults (verified — `ℓ`
- * exceeds the valid scalar range, while `ℓ-1` is accepted). The `ecNeg` identity
- * (`(ℓ-1)*P = -P`) and the homomorphic algebra depend on this holding.
+ * `ℓ*P == O` is unavailable anyway because `ecMul` by `ℓ` is out of scalar
+ * range. The homomorphic algebra depends on this holding.
  *
  * Basis (and its limits): source-verified against `midnight-circuits` 6.0.0 —
  * the version vendored by the Midnight onchain-runtime we compile against —
@@ -103,10 +106,10 @@ module ElGamal {
    * module-level hash-to-scalar note for why `degradeToTransient` is required.
    *
    * @param secret - The 32-byte secret to map.
-   * @return A Field guaranteed to be a valid Jubjub scalar.
+   * @return A valid Jubjub scalar.
    */
-  export pure circuit secretToScalar(secret: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<Vector<1, Bytes<32>>>([secret]));
+  export pure circuit secretToScalar(secret: Bytes<32>): JubjubScalar {
+    return degradeToTransient(persistentHash<Vector<1, Bytes<32>>>([secret])) as JubjubScalar;
   }
 
   /**
@@ -129,48 +132,15 @@ module ElGamal {
    *
    * @param seed - The seed to expand.
    * @param tag - A 32-byte tag distinguishing this expansion from its siblings.
-   * @return A Field suitable for use as encryption randomness.
+   * @return A scalar suitable for use as encryption randomness.
    */
-  export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<Vector<2, Bytes<32>>>([seed, tag]));
+  export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): JubjubScalar {
+    return degradeToTransient(persistentHash<Vector<2, Bytes<32>>>([seed, tag])) as JubjubScalar;
   }
 
   // ---------------------------------------------------------------------------
   // Curve helpers
   // ---------------------------------------------------------------------------
-
-  /**
-   * @description The order of the Jubjub prime-order subgroup (`EmbeddedFr`
-   * modulus `ℓ`), minus one. Used as the scalar for point negation: for any `P`
-   * in the subgroup, `(ℓ - 1) * P = ℓ*P - P = O - P = -P`.
-   *
-   * @notice The negation identity this enables (`P + (ℓ-1)*P == O`) is exercised
-   * by the `negate` round-trip tests. Compact has no module-level constants, so
-   * the value is exposed as a pure circuit returning the literal.
-   */
-  pure circuit JUBJUB_SUBGROUP_ORDER_MINUS_ONE(): Field {
-    return 6554484396890773809930967563523245729705921265872317281365359162392183254198 as Field;
-  }
-
-  /**
-   * @description Negates a Jubjub point.
-   *
-   * @notice Implemented as scalar multiplication by `ℓ-1` (via
-   * `JUBJUB_SUBGROUP_ORDER_MINUS_ONE`) rather than the obvious `ecMul(p, -1)`:
-   * the scalar `-1` computed in the `Field` type is `BLS_modulus - 1`, which
-   * exceeds the Jubjub scalar field order and faults `ecMul` ("failed to decode
-   * for built-in type EmbeddedFr"). (Coordinate negation `(-x, y)` via
-   * `constructJubjubPoint`/`jubjubPointX`/`jubjubPointY` is an equivalent
-   * alternative that does not depend on the subgroup assumption.) The
-   * `(ℓ-1)*P = -P` identity holds only in the prime-order subgroup, but that
-   * always applies here: the runtime constrains every assigned `JubjubPoint`
-   * into the prime-order subgroup (the embedded-curve gadget assigns points via
-   * cofactor clearing), so no in-subgroup precondition needs to be checked or
-   * assumed. See the module-level subgroup note.
-   */
-  pure circuit ecNeg(p: JubjubPoint): JubjubPoint {
-    return ecMul(p, JUBJUB_SUBGROUP_ORDER_MINUS_ONE());
-  }
 
   // ---------------------------------------------------------------------------
   // Encryption & homomorphic operations
@@ -186,7 +156,7 @@ module ElGamal {
    * before treating it as private.
    */
   export pure circuit encryptZero(): Ciphertext {
-    const id = ecMulGenerator(0 as Field);
+    const id = ecMulGenerator(0 as JubjubScalar);
     return Ciphertext { c1: id, c2: id };
   }
 
@@ -214,9 +184,9 @@ module ElGamal {
    * @param r - The encryption randomness.
    * @return The ciphertext `(g^r, pk^r * m)`.
    */
-  export pure circuit encryptPoint(pk: JubjubPoint, m: JubjubPoint, r: Field): Ciphertext {
-    assert(pk != ecMulGenerator(0 as Field), "ElGamal: identity pk");
-    assert(r != 0 as Field, "ElGamal: zero randomness");
+  export pure circuit encryptPoint(pk: JubjubPoint, m: JubjubPoint, r: JubjubScalar): Ciphertext {
+    assert(pk != ecMulGenerator(0 as JubjubScalar), "ElGamal: identity pk");
+    assert(r != 0 as JubjubScalar, "ElGamal: zero randomness");
     const c1 = ecMulGenerator(r);
     const mask = ecMul(pk, r);
     const c2 = ecAdd(mask, m);
@@ -226,8 +196,8 @@ module ElGamal {
   /**
    * @description Produces a fresh ciphertext of `value` under `pk` with
    * randomness `r`, lifting `value` to the point `g^value`. Randomness is taken
-   * as a `Field` directly to avoid a redundant `Bytes<32> -> Field` conversion
-   * at every call site; `expandRandomness` produces `Field` for the same reason.
+   * as a scalar directly to avoid a redundant conversion at every call site;
+   * `expandRandomness` produces one for the same reason.
    *
    * Requirements:
    *
@@ -239,8 +209,8 @@ module ElGamal {
    * @param r - The encryption randomness.
    * @return The ciphertext `(g^r, pk^r * g^value)`.
    */
-  export pure circuit encrypt(pk: JubjubPoint, value: Uint<128>, r: Field): Ciphertext {
-    return encryptPoint(pk, ecMulGenerator(value as Field), r);
+  export pure circuit encrypt(pk: JubjubPoint, value: Uint<128>, r: JubjubScalar): Ciphertext {
+    return encryptPoint(pk, ecMulGenerator(value as JubjubScalar), r);
   }
 
   /**
@@ -310,7 +280,7 @@ module ElGamal {
    * @param k - The public scalar multiplier (a valid Jubjub scalar).
    * @return A ciphertext of `k * v`.
    */
-  export pure circuit scalarMul(ct: Ciphertext, k: Field): Ciphertext {
+  export pure circuit scalarMul(ct: Ciphertext, k: JubjubScalar): Ciphertext {
     return Ciphertext { c1: ecMul(ct.c1, k), c2: ecMul(ct.c2, k) };
   }
 
@@ -329,7 +299,7 @@ module ElGamal {
                         old: Ciphertext,
                         pk: JubjubPoint,
                         value: Uint<128>,
-                        r: Field
+                        r: JubjubScalar
                         ): Ciphertext {
     return add(old, encrypt(pk, value, r));
   }
@@ -352,7 +322,7 @@ module ElGamal {
                         old: Ciphertext,
                         pk: JubjubPoint,
                         value: Uint<128>,
-                        r: Field
+                        r: JubjubScalar
                         ): Ciphertext {
     return sub(old, encrypt(pk, value, r));
   }
@@ -380,7 +350,7 @@ module ElGamal {
    * @param r - Fresh, nonzero randomness for the rerandomization.
    * @return A fresh ciphertext of the same plaintext.
    */
-  export pure circuit rerandomize(ct: Ciphertext, pk: JubjubPoint, r: Field): Ciphertext {
+  export pure circuit rerandomize(ct: Ciphertext, pk: JubjubPoint, r: JubjubScalar): Ciphertext {
     return add(ct, encrypt(pk, 0, r));
   }
 
@@ -434,7 +404,7 @@ module ElGamal {
     assert(ecMulGenerator(ekField) == pk,
            "ElGamal: ek/pk mismatch");
 
-    // m = c2 - ek*c1. ek*c1 is negated via ecNeg (scalar mul by ℓ-1) rather
+    // m = c2 - ek*c1. ek*c1 is negated via ecNeg rather
     // than ecMul by a negative scalar, which would exceed the Jubjub scalar
     // field. ekField < ℓ (the subgroup order), so ecMul(ct.c1, ekField) is a
     // valid scalar mul.
@@ -468,6 +438,6 @@ module ElGamal {
                    ek: Bytes<32>,
                    claimedValue: Uint<128>
                    ): [] {
-    assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as Field));
+    assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as JubjubScalar));
   }
 }
