@@ -951,29 +951,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/compact-builder@npm:^0.0.3":
-  version: 0.0.3
-  resolution: "@openzeppelin/compact-builder@npm:0.0.3"
+"@openzeppelin/compact-builder@npm:^0.0.4":
+  version: 0.0.4
+  resolution: "@openzeppelin/compact-builder@npm:0.0.4"
   dependencies:
-    chalk: "npm:^5.6.2"
+    chalk: "npm:^6.0.0"
     log-symbols: "npm:^7.0.0"
-    ora: "npm:^9.0.0"
-    shell-quote: "npm:^1.8.4"
-  checksum: 10/a083c504fe4b976b5c8d4fffb28981acc7ee3afd55515e467f9faffbf3e36e1bd5f491344dee09865447a31703bfd9ce4327421c3b41adb2fe5dc218dafc894f
+    ora: "npm:^9.4.1"
+    shell-quote: "npm:^1.10.0"
+  checksum: 10/2c34de10435f21c112b000b527d81a00edc121433ee70f82e9b7991022568c0061709904eea5f9df4d34f2c22c3f146a6867aac50f339d66863df9951b1ef86b
   languageName: node
   linkType: hard
 
-"@openzeppelin/compact-cli@npm:^0.0.2":
-  version: 0.0.2
-  resolution: "@openzeppelin/compact-cli@npm:0.0.2"
+"@openzeppelin/compact-cli@npm:^0.0.3":
+  version: 0.0.3
+  resolution: "@openzeppelin/compact-cli@npm:0.0.3"
   dependencies:
-    "@openzeppelin/compact-builder": "npm:^0.0.3"
-    chalk: "npm:^5.6.2"
-    ora: "npm:^9.0.0"
+    "@openzeppelin/compact-builder": "npm:^0.0.4"
+    chalk: "npm:^6.0.0"
+    ora: "npm:^9.4.1"
   bin:
     compact-builder: dist/runBuilder.js
     compact-compiler: dist/runCompiler.js
-  checksum: 10/c399234115c015ec927b5bf2249ee156b18a40cae4900be3711ba68f9bbba559d483d3a58878c2de1c2c69232383c5a301ae3646d8bdbed48787f35de4c7371c
+  checksum: 10/a01c265a299c03167cf7e6e180721f802210921ed558a6e926388d022ce6692298deec47684c315640f833a0aadc4dcf829b732fad5cc88c669529e12cd03f61
   languageName: node
   linkType: hard
 
@@ -992,7 +992,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/testkit-js": "npm:5.0.0-beta.7"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
-    "@openzeppelin/compact-cli": "npm:^0.0.2"
+    "@openzeppelin/compact-cli": "npm:^0.0.3"
     "@openzeppelin/compact-simulator": "npm:^0.4.0"
     "@tsconfig/node24": "npm:^24.0.5"
     "@types/node": "npm:26.2.0"
@@ -2607,6 +2607,13 @@ __metadata:
   version: 5.6.2
   resolution: "chalk@npm:5.6.2"
   checksum: 10/1b2f48f6fba1370670d5610f9cd54c391d6ede28f4b7062dd38244ea5768777af72e5be6b74fb6c6d54cb84c4a2dff3f3afa9b7cb5948f7f022cfd3d087989e0
+  languageName: node
+  linkType: hard
+
+"chalk@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "chalk@npm:6.0.0"
+  checksum: 10/bdcb895b9c848ddbce38f38df5a10a3e272d6c04d759161789c4a2fa5a1fa78bf9eecf4eef73433a2a3be7324d6da96c3c9baf5c80862f37683cc0b890597831
   languageName: node
   linkType: hard
 
@@ -4282,9 +4289,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ora@npm:^9.0.0":
-  version: 9.4.0
-  resolution: "ora@npm:9.4.0"
+"ora@npm:^9.4.1":
+  version: 9.4.1
+  resolution: "ora@npm:9.4.1"
   dependencies:
     chalk: "npm:^5.6.2"
     cli-cursor: "npm:^5.0.0"
@@ -4294,7 +4301,7 @@ __metadata:
     log-symbols: "npm:^7.0.1"
     stdin-discarder: "npm:^0.3.2"
     string-width: "npm:^8.1.0"
-  checksum: 10/48fe48f98764d1132a77d845862fab1b1f8d7aacd4c38c39ad42a874a55686c5949194eeb836a7ee4c43027a471ffb93937eff69f4db7353d6800b678073de55
+  checksum: 10/58b0b6c6ee20b30806e2e0bbf84f81b7517e21c9b721d0b7f186e12b9ef2e0be190174bf53085123efae6c8d120dcd9788708602e78e91188b9e12ff71abc275
   languageName: node
   linkType: hard
 
@@ -4773,7 +4780,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shell-quote@npm:^1.8.4":
+"shell-quote@npm:^1.10.0":
   version: 1.10.0
   resolution: "shell-quote@npm:1.10.0"
   checksum: 10/d4a22aeefe64919290af753ac6098239d7ffee52a5db62c20edef69794bd10b5f86e298f68be26af9606ac435e890dd391994a5405a90bb8aebef1ff1dde839b

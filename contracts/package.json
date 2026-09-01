@@ -46,7 +46,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@openzeppelin/compact-cli": "^0.0.2"
+    "@openzeppelin/compact-cli": "^0.0.3"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-js": "2.5.5-rc.8",
