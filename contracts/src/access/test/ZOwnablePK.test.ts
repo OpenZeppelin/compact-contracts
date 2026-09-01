@@ -1,7 +1,7 @@
 import {
   CompactTypeBytes,
   CompactTypeVector,
-  convertFieldToBytes,
+  convertBigintToBytes,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -40,7 +40,7 @@ const buildCommitmentFromId = (
   counter: bigint,
 ): Uint8Array => {
   const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
-  const bCounter = convertFieldToBytes(32, counter, '');
+  const bCounter = convertBigintToBytes(32, counter, '');
   const bDomain = new TextEncoder().encode(DOMAIN);
 
   const commitment = persistentHash(rt_type, [
@@ -62,7 +62,7 @@ const buildCommitment = (
   const id = createIdHash(pk, nonce);
 
   const rt_type = new CompactTypeVector(4, new CompactTypeBytes(32));
-  const bCounter = convertFieldToBytes(32, counter, '');
+  const bCounter = convertBigintToBytes(32, counter, '');
   const bDomain = new TextEncoder().encode(domain);
 
   const commitment = persistentHash(rt_type, [

@@ -78,9 +78,9 @@ const deploy = () =>
 // Rather than skip and hide that, ASSERT the rejection. A green skip would let
 // the branch claim live coverage it does not have.
 //
-// Scoped to ledger v8 (`@midnight-ntwrk/ledger-v8` 8.1.0). The budget is a ledger
-// property, not a contract property, so a ledger bump can move it. If this block
-// goes red, the composed deploy fits now: drop it and invert the guards below.
+// Scoped to ledger v9. The budget is a ledger property, not a contract property,
+// so a ledger bump can move it. If this block goes red, the composed deploy fits
+// now: drop it and invert the guards below.
 // ---------------------------------------------------------------------------
 
 describe.runIf(isLiveBackend())(

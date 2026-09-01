@@ -44,15 +44,16 @@
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
     "ip-address": "10.1.1",
-    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1"
+    "@midnight-ntwrk/compact-runtime": "0.19.0",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0"
+    "@midnight-ntwrk/compact-runtime": "0.19.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.8",
-    "@midnight-ntwrk/ledger-v8": "8.1.0",
     "@midnight-ntwrk/zswap": "^4.0.0",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
     "@types/node": "26.2.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.10.9",

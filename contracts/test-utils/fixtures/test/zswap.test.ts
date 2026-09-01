@@ -12,9 +12,9 @@ import {
 
 /**
  * The Zswap-introspection fixtures. `bytesToHex` and `isNonceSpent` are pure;
- * `zswapLocalState` / `zswapSnapshot` / `zswapDelta` read the accumulated
- * `currentZswapLocalState` off a dry simulator, which is reproduced here with a
- * plain object shaped like the backend the helpers dig into.
+ * `zswapLocalState` / `zswapSnapshot` / `zswapDelta` read the accumulated Zswap
+ * local state off a dry simulator, which is reproduced here with a plain object
+ * shaped like the backend the helpers dig into.
  */
 
 /** A minimal coin body for building inputs/outputs. */
@@ -39,8 +39,12 @@ const output = (nonceByte: number): ZswapOutput => ({
 });
 
 /** Wraps a local state in the nested shape `zswapLocalState` reads from. */
+const MOCK_ADDRESS = 'a'.repeat(64);
 const mockSim = (state: ZswapLocalState) => ({
-  _backend: { sim: { circuitContext: { currentZswapLocalState: state } } },
+  _backend: {
+    contractAddress: MOCK_ADDRESS,
+    sim: { circuitContext: { zswapLocalStates: { [MOCK_ADDRESS]: state } } },
+  },
 });
 
 describe('zswap fixtures', () => {
@@ -67,7 +71,7 @@ describe('zswap fixtures', () => {
 
     it('should throw when the simulator does not expose the local state', () => {
       expect(() => zswapLocalState({})).toThrow(
-        'Could not read currentZswapLocalState',
+        'Could not read the Zswap local state',
       );
     });
   });
