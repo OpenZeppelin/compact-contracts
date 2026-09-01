@@ -77,6 +77,19 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     return this.circuits.impure.deposit(coin);
   }
 
+  public getDomainSeparator(): Promise<Uint8Array> {
+    return this.circuits.impure.getDomainSeparator();
+  }
+
+  public executeDigest(
+    to: Recipient,
+    color: Uint8Array,
+    nonce: bigint,
+    amount: bigint,
+  ): Promise<Uint8Array> {
+    return this.circuits.impure.executeDigest(to, color, nonce, amount);
+  }
+
   public execute(
     to: Recipient,
     amount: bigint,

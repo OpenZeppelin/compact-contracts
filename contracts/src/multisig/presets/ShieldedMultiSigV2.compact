@@ -4,7 +4,7 @@
 pragma language_version >= 0.26.0;
 
 /**
- * @title ShieldedMultisigV2
+ * @title ShieldedMultiSigV2
  * @description Privacy-preserving 2-of-3 multisig contract.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
@@ -22,6 +22,8 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
+import "../../crypto/Eip712" prefix Eip712_;
+import "../../crypto/MessageHashUtils" prefix MessageHashUtils_;
 import "../ProposalManager" prefix Proposal_;
 import "../ShieldedTreasuryStateless" prefix Treasury_;
 import "../Signer"<Bytes<32>> prefix Signer_;
@@ -40,14 +42,28 @@ export struct VerificationState {
 }
 
 /**
- * @description Input to persistentHash for computing signer commitments.
- * Combines the ECDSA public key with an instance-specific salt and
- * domain separator to produce a unique, unlinkable commitment.
+ * @description Input to the signer-commitment hash. Combines the ECDSA public
+ * key with an instance-specific salt and domain separator to produce a unique,
+ * unlinkable commitment.
  */
 export struct SignerCommitmentInput {
   pk: Bytes<64>,
   salt: Bytes<32>,
   domain: Bytes<32>
+}
+
+/**
+ * @description EIP-712 struct-hash preimage for
+ * `Execute(uint8 recipientKind,bytes32 recipient,bytes32 color,uint256 nonce,uint256 amount)`.
+ * Every numeric member is a 32-byte big-endian word, as EIP-712 requires.
+ */
+struct ExecuteStructInput {
+  typeHash: Bytes<32>,
+  recipientKind: Vector<32, Uint<8>>,
+  recipient: Bytes<32>,
+  color: Bytes<32>,
+  nonce: Vector<32, Uint<8>>,
+  amount: Vector<32, Uint<8>>
 }
 
 // ─── State ──────────────────────────────────────────────────────
@@ -61,9 +77,8 @@ ledger _instanceSalt: Bytes<32>;
  * @description Deploys the multisig with 3 signer commitments and
  * a threshold.
  *
- * Each commitment is computed off-chain as:
- * persistentHash(SignerCommitmentInput { pk, instanceSalt, domain })
- * where domain is pad(32, "MultiSig:signer:").
+ * Each commitment is computed off-chain as
+ * `keccak256(pk ‖ instanceSalt ‖ pad(32, "multisig:signer:"))`.
  *
  * The instanceSalt should be a random value to prevent the same public
  * key from producing the same commitment across different multisig
@@ -89,6 +104,10 @@ constructor(
     "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
   );
   _instanceSalt = disclose(instanceSalt);
+  Eip712_initialize(
+    keccak256<Bytes<18>>(pad(18, "ShieldedMultiSigV2")),
+    keccak256<Bytes<1>>(pad(1, "1"))
+  );
   Signer_initialize<3>(signerCommitments, thresh);
 }
 
@@ -112,14 +131,65 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
   receiveShielded(disclose(coin));
 }
 
+// ─── EIP-712 Digests ────────────────────────────────────────────
+
+/**
+ * @description Returns this instance's EIP-712 domain separator over
+ * `EIP712Domain(string name,string version,bytes32 salt)` with name
+ * "ShieldedMultiSigV2", version "1", and salt `kernel.self().bytes`.
+ *
+ * @notice Midnight has no chain id, and a 32-byte contract address does not
+ * fit `verifyingContract`, so the instance binding rides in `salt`. Signers
+ * MUST encode the same field subset.
+ *
+ * @returns {Bytes<32>} The domain separator.
+ */
+export circuit getDomainSeparator(): Bytes<32> {
+  return Eip712__domainSeparatorV4();
+}
+
+/**
+ * @description Computes the EIP-712 digest an execute requires signatures over:
+ * `Execute(uint8 recipientKind,bytes32 recipient,bytes32 color,uint256 nonce,uint256 amount)`.
+ *
+ * `execute` calls this internally, so the signed digest and the verified digest
+ * cannot diverge. Callers use it to reproduce the digest off-chain.
+ *
+ * @param {Proposal_Recipient} to - The recipient; its kind and address are both signed.
+ * @param {Bytes<32>} color - The token color of the coin being spent.
+ * @param {Uint<64>} nonce - The nonce value the execute will consume.
+ * @param {Uint<128>} amount - The amount to send.
+ *
+ * @returns {Bytes<32>} The EIP-712 digest.
+ */
+export circuit executeDigest(
+  to: Proposal_Recipient,
+  color: Bytes<32>,
+  nonce: Uint<64>,
+  amount: Uint<128>
+): Bytes<32> {
+  const structHash = keccak256<ExecuteStructInput>(ExecuteStructInput {
+    typeHash: MessageHashUtils_typeHashFromAscii<89>(
+      pad(89, "Execute(uint8 recipientKind,bytes32 recipient,bytes32 color,uint256 nonce,uint256 amount)")
+    ),
+    recipientKind: MessageHashUtils_toBigEndianBytes32(to.kind as Uint<8> as Uint<128>),
+    recipient: to.address,
+    color: color,
+    nonce: MessageHashUtils_toBigEndianBytes32(nonce as Uint<128>),
+    amount: MessageHashUtils_toBigEndianBytes32(amount)
+  });
+
+  return Eip712__hashTypedDataV4(structHash);
+}
+
 // ─── Execute ────────────────────────────────────────────────────
 
 /**
  * @description Executes a shielded send authorized by threshold signatures.
  *
- * The circuit reads the current nonce from the ledger, increments it,
- * then reconstructs the message hash that signers must have signed
- * off-chain: `persistentHash(nonce, recipient address, coin color, amount)`.
+ * The circuit reads the current nonce from the ledger, increments it, then
+ * reconstructs the EIP-712 digest signers must have signed off-chain via
+ * `executeDigest(to, coin.color, nonce, amount)`.
  *
  * Signatures are verified via fold over parallel pubkey and signature
  * vectors. Each public key is hashed with the instance salt to produce
@@ -161,12 +231,7 @@ export circuit execute(
   _nonce.increment(1);
 
   // Construct message hash
-  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
-    currentNonce as Bytes<32>,
-    to.address,
-    coin.color,
-    amount as Bytes<32>
-  ]);
+  const msgHash = executeDigest(to, coin.color, currentNonce, amount);
 
   // Verify signatures via fold over parallel vectors
   const initialState = VerificationState {
@@ -211,8 +276,7 @@ circuit verifySignature(
   // Verify this commitment is a registered signer
   Signer_assertSigner(commitment);
 
-  // TODO: Replace with actual ECDSA primitive when available
-  // assert(ecdsaVerify(pubkey, state.msgHash, signature), "Multisig: invalid signature");
+  // TODO: replace with `ecdsaVerify` once the Compact ECDSA primitive lands.
   assert(stubVerifySignature(pubkey, state.msgHash, signature), "Multisig: invalid signature");
 
   return VerificationState {
@@ -225,10 +289,11 @@ circuit verifySignature(
 /**
  * @description Computes a signer commitment from an ECDSA public key.
  *
- * The commitment is persistentHash(pk, salt, domain) where:
- * - pk: the signer's ECDSA public key (64 bytes)
- * - salt: instance-specific random value (prevents cross-contract correlation)
- * - domain: "MultiSig:signer:" (domain separation)
+ * The commitment is `keccak256(pk ‖ salt ‖ pad(32, "multisig:signer:"))`, so a
+ * deployer can compute it with any Ethereum tooling.
+ *
+ * @notice This is an on-chain commitment, never an HSM-signed message, so it is
+ * deliberately not EIP-712 typed data.
  *
  * This is a pure circuit. It can be called off-chain by the deployer
  * to compute commitments for the constructor.
@@ -242,10 +307,10 @@ export pure circuit _calculateSignerId(
   pk: Bytes<64>,
   salt: Bytes<32>
 ): Bytes<32> {
-  return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+  return keccak256<SignerCommitmentInput>(SignerCommitmentInput {
     pk: pk,
     salt: salt,
-    domain: pad(32, "MultiSig:signer:")
+    domain: pad(32, "multisig:signer:")
   });
 }
 

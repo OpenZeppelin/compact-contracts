@@ -1,8 +1,20 @@
+import { encodeContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { keccak_256 } from '@noble/hashes/sha3.js';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
+import {
+  domainSeparator,
+  type ExecuteDigestParams,
+  executeDigest,
+  signerCommitmentPreimage,
+  V2_DOMAIN_NAME,
+  viemDomainSeparator,
+  viemExecuteDigest,
+} from './Eip712TestUtils.js';
 import { ShieldedMultiSigV2Simulator } from './simulators/ShieldedMultiSigV2Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
@@ -193,6 +205,120 @@ describe('ShieldedMultiSigV2', () => {
             [DUMMY_SIG, DUMMY_SIG],
           ),
         ).rejects.toThrow('Signer: not a signer');
+      });
+    });
+
+    describe('_calculateSignerId', () => {
+      // A deployer must be able to precompute commitments with a plain keccak
+      // library, so the preimage is the flat `pk ‖ salt ‖ pad(32, domain)`.
+      it('should equal keccak256 of pk, salt and the signer domain', () => {
+        expect(
+          ShieldedMultiSigV2Simulator.calculateSignerId(PK1, INSTANCE_SALT),
+        ).toStrictEqual(
+          keccak_256(signerCommitmentPreimage(PK1, INSTANCE_SALT)),
+        );
+      });
+    });
+  });
+
+  describe('EIP-712 digests', () => {
+    // The dry default address is all zeros, which a circuit that ignored the
+    // salt would still satisfy. Pin a distinctive one instead; live ignores the
+    // override, so the reference salt is always read back off the instance.
+    const DIGEST_CONTRACT_ADDRESS = '22'.repeat(32);
+    const DIGEST_NONCE = 5n;
+    const DIGEST_AMOUNT = 987_654_321n;
+    const DIGEST_RECIPIENT = new Uint8Array(32).fill(0x07);
+
+    let salt: Uint8Array;
+
+    const executeParams = (
+      kind: number = RecipientKind.ShieldedUser,
+    ): ExecuteDigestParams => ({
+      contractAddress: salt,
+      recipientKind: kind,
+      recipient: DIGEST_RECIPIENT,
+      color: COLOR,
+      nonce: DIGEST_NONCE,
+      amount: DIGEST_AMOUNT,
+    });
+
+    beforeAll(async () => {
+      multisig = await ShieldedMultiSigV2Simulator.create(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        2n,
+        { contractAddress: DIGEST_CONTRACT_ADDRESS },
+      );
+      salt = encodeContractAddress(multisig.contractAddress);
+    });
+
+    // The helpers rebuild the digest through compact-runtime; viem rebuilds it
+    // from the EIP-712 spec with no shared code. These run without artifacts.
+    describe('reference agreement', () => {
+      it('domain separator matches viem hashDomain', () => {
+        const params = { name: V2_DOMAIN_NAME, salt };
+        expect(domainSeparator(params)).toStrictEqual(
+          viemDomainSeparator(params),
+        );
+      });
+
+      it('execute digest matches viem hashTypedData', () => {
+        const params = executeParams();
+        expect(executeDigest(params)).toStrictEqual(viemExecuteDigest(params));
+      });
+
+      it('execute digest covers the recipient kind', () => {
+        expect(
+          executeDigest(executeParams(RecipientKind.ShieldedUser)),
+        ).not.toStrictEqual(
+          executeDigest(executeParams(RecipientKind.Contract)),
+        );
+      });
+
+      it('domain separator differs from the V3 preset', () => {
+        expect(
+          domainSeparator({ name: V2_DOMAIN_NAME, salt }),
+        ).not.toStrictEqual(
+          domainSeparator({ name: 'ShieldedMultiSigV3', salt }),
+        );
+      });
+    });
+
+    // Keccak in-circuit needs a ZKIR-v3 proof server; none is confirmed yet.
+    describe.skipIf(isLiveBackend())('circuit agreement (dry only)', () => {
+      it('getDomainSeparator matches viem hashDomain', async () => {
+        expect(await multisig.getDomainSeparator()).toStrictEqual(
+          viemDomainSeparator({ name: V2_DOMAIN_NAME, salt }),
+        );
+      });
+
+      it('executeDigest matches viem', async () => {
+        const params = executeParams();
+        const circuit = await multisig.executeDigest(
+          { kind: RecipientKind.ShieldedUser, address: DIGEST_RECIPIENT },
+          COLOR,
+          DIGEST_NONCE,
+          DIGEST_AMOUNT,
+        );
+        expect(circuit).toStrictEqual(viemExecuteDigest(params));
+        expect(circuit).toStrictEqual(executeDigest(params));
+      });
+
+      it('executeDigest binds the recipient kind', async () => {
+        const shielded = await multisig.executeDigest(
+          { kind: RecipientKind.ShieldedUser, address: DIGEST_RECIPIENT },
+          COLOR,
+          DIGEST_NONCE,
+          DIGEST_AMOUNT,
+        );
+        const contract = await multisig.executeDigest(
+          { kind: RecipientKind.Contract, address: DIGEST_RECIPIENT },
+          COLOR,
+          DIGEST_NONCE,
+          DIGEST_AMOUNT,
+        );
+        expect(shielded).not.toStrictEqual(contract);
       });
     });
   });
