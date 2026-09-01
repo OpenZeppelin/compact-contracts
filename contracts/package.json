@@ -28,7 +28,7 @@
     "compile:access": "compact-compiler --dir access",
     "compile:archive": "compact-compiler --dir archive",
     "compile:crypto": "compact-compiler --dir crypto",
-    "compile:multisig": "compact-compiler --dir multisig",
+    "compile:multisig": "compact-compiler --dir multisig --feature-zkir-v3",
     "compile:security": "compact-compiler --dir security",
     "compile:token": "compact-compiler --dir token",
     "compile:utils": "compact-compiler --dir utils",
