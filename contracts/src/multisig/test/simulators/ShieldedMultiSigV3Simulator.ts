@@ -65,6 +65,22 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     return this.circuits.pure._calculateSignerId(pk, salt);
   }
 
+  public getDomainSeparator(): Promise<Uint8Array> {
+    return this.circuits.impure.getDomainSeparator();
+  }
+
+  public mintDigest(
+    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    nonce: bigint,
+    amount: bigint,
+  ): Promise<Uint8Array> {
+    return this.circuits.impure.mintDigest(recipient, nonce, amount);
+  }
+
+  public burnDigest(nonce: bigint, amount: bigint): Promise<Uint8Array> {
+    return this.circuits.impure.burnDigest(nonce, amount);
+  }
+
   public mint(
     amount: bigint,
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,

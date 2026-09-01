@@ -1,7 +1,22 @@
+import { encodeContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { keccak_256 } from '@noble/hashes/sha3.js';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
+import {
+  type BurnDigestParams,
+  burnDigest,
+  domainSeparator,
+  type EitherRecipient,
+  type MintDigestParams,
+  mintDigest,
+  signerCommitmentPreimage,
+  V3_DOMAIN_NAME,
+  viemBurnDigest,
+  viemDomainSeparator,
+  viemMintDigest,
+} from './Eip712TestUtils.js';
 import {
   calculateSignerId,
   ShieldedMultiSigV3Simulator,
@@ -197,6 +212,16 @@ describe('ShieldedMultiSigV3', () => {
         );
         expect(await multisig._calculateSignerId(PK3, INSTANCE_SALT)).toEqual(
           COMMITMENT3,
+        );
+      });
+
+      // A deployer must be able to precompute commitments with a plain keccak
+      // library, so the preimage is the flat `pk ‖ salt ‖ pad(32, domain)`.
+      it('should equal keccak256 of pk, salt and the signer domain', async () => {
+        expect(
+          await multisig._calculateSignerId(PK1, INSTANCE_SALT),
+        ).toStrictEqual(
+          keccak_256(signerCommitmentPreimage(PK1, INSTANCE_SALT)),
         );
       });
     });
@@ -510,6 +535,124 @@ describe('ShieldedMultiSigV3', () => {
 
         expect(await multisig.getNonce()).toEqual(1n);
         expect(await instance2.getNonce()).toEqual(1n);
+      });
+    });
+  });
+
+  describe('EIP-712 digests', () => {
+    // The dry default address is all zeros, which a circuit that ignored the
+    // salt would still satisfy. Pin a distinctive one instead; live ignores the
+    // override, so the reference salt is always read back off the instance.
+    const DIGEST_CONTRACT_ADDRESS = '11'.repeat(32);
+    const DIGEST_NONCE = 7n;
+    const DIGEST_AMOUNT = 123_456_789n;
+
+    type Recipient = ReturnType<typeof shieldedTestRecipient>;
+
+    let salt: Uint8Array;
+    let userRecipient: Recipient;
+
+    const mintParams = (recipient: Recipient): MintDigestParams => ({
+      contractAddress: salt,
+      recipient: recipient as EitherRecipient,
+      nonce: DIGEST_NONCE,
+      amount: DIGEST_AMOUNT,
+    });
+
+    const burnParams = (): BurnDigestParams => ({
+      contractAddress: salt,
+      nonce: DIGEST_NONCE,
+      amount: DIGEST_AMOUNT,
+    });
+
+    beforeAll(async () => {
+      multisig = await ShieldedMultiSigV3Simulator.create(
+        INSTANCE_SALT,
+        INIT_COIN_NONCE,
+        TOKEN_DOMAIN,
+        SIGNER_COMMITMENTS,
+        { contractAddress: DIGEST_CONTRACT_ADDRESS },
+      );
+      salt = encodeContractAddress(multisig.contractAddress);
+      userRecipient = shieldedTestRecipient();
+    });
+
+    // The helpers rebuild the digest through compact-runtime; viem rebuilds it
+    // from the EIP-712 spec with no shared code. These run without artifacts.
+    describe('reference agreement', () => {
+      it('domain separator matches viem hashDomain', () => {
+        const params = { name: V3_DOMAIN_NAME, salt };
+        expect(domainSeparator(params)).toStrictEqual(
+          viemDomainSeparator(params),
+        );
+      });
+
+      it('mint digest matches viem hashTypedData for a coin public key', () => {
+        const params = mintParams(userRecipient);
+        expect(mintDigest(params)).toStrictEqual(viemMintDigest(params));
+      });
+
+      it('mint digest matches viem hashTypedData for a contract address', () => {
+        const params = mintParams(CONTRACT_RECIPIENT);
+        expect(mintDigest(params)).toStrictEqual(viemMintDigest(params));
+      });
+
+      it('burn digest matches viem hashTypedData', () => {
+        const params = burnParams();
+        expect(burnDigest(params)).toStrictEqual(viemBurnDigest(params));
+      });
+
+      it('mint and burn digests differ at the same nonce and amount', () => {
+        expect(mintDigest(mintParams(userRecipient))).not.toStrictEqual(
+          burnDigest(burnParams()),
+        );
+      });
+
+      it('domain separator binds the instance address', () => {
+        const other = new Uint8Array(32).fill(0x22);
+        expect(
+          domainSeparator({ name: V3_DOMAIN_NAME, salt }),
+        ).not.toStrictEqual(
+          domainSeparator({ name: V3_DOMAIN_NAME, salt: other }),
+        );
+      });
+    });
+
+    // Keccak in-circuit needs a ZKIR-v3 proof server; none is confirmed yet.
+    describe.skipIf(isLiveBackend())('circuit agreement (dry only)', () => {
+      it('getDomainSeparator matches viem hashDomain', async () => {
+        expect(await multisig.getDomainSeparator()).toStrictEqual(
+          viemDomainSeparator({ name: V3_DOMAIN_NAME, salt }),
+        );
+      });
+
+      it('mintDigest matches viem for a coin public key', async () => {
+        const params = mintParams(userRecipient);
+        const circuit = await multisig.mintDigest(
+          userRecipient,
+          DIGEST_NONCE,
+          DIGEST_AMOUNT,
+        );
+        expect(circuit).toStrictEqual(viemMintDigest(params));
+        expect(circuit).toStrictEqual(mintDigest(params));
+      });
+
+      it('mintDigest matches viem for a contract address', async () => {
+        const params = mintParams(CONTRACT_RECIPIENT);
+        const circuit = await multisig.mintDigest(
+          CONTRACT_RECIPIENT,
+          DIGEST_NONCE,
+          DIGEST_AMOUNT,
+        );
+        expect(circuit).toStrictEqual(viemMintDigest(params));
+        expect(circuit).toStrictEqual(mintDigest(params));
+      });
+
+      it('burnDigest matches viem', async () => {
+        const params = burnParams();
+        const circuit = await multisig.burnDigest(DIGEST_NONCE, DIGEST_AMOUNT);
+        expect(circuit).toStrictEqual(viemBurnDigest(params));
+        expect(circuit).toStrictEqual(burnDigest(params));
       });
     });
   });

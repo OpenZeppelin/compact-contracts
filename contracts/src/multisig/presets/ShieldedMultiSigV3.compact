@@ -29,18 +29,21 @@ pragma language_version >= 0.26.0;
  * provides replay protection, and also feeds `evolveNonce` to produce
  * unique coin nonces on each mint.
  *
- * Operation domain prefixes ("multisig:mint:" / "multisig:burn:") in the message
- * hash prevent signatures for one operation type from being replayed as
- * the other.
+ * Operations are signed as EIP-712 typed data under the domain
+ * `EIP712Domain(string name,string version,bytes32 salt)` with name
+ * "ShieldedMultiSigV3", version "1", and salt `kernel.self().bytes`. The salt
+ * binds a signature to this instance; the `Mint` / `Burn` type hashes keep a
+ * signature for one operation from being replayed as the other.
  *
  * @notice ECDSA verification is stubbed. Replace `stubVerifySignature` with
- * `ecdsaVerify`, and `persistentHash` with `keccak256`, once the Compact
- * ECDSA and Keccak primitives are available.
+ * `ecdsaVerify` once the Compact ECDSA primitive is available.
  */
 
 import CompactStandardLibrary;
 
 import "../Signer"<Bytes<32>> prefix Signer_;
+import "../../crypto/Eip712" prefix Eip712_;
+import "../../crypto/MessageHashUtils" prefix MessageHashUtils_;
 import "../../utils/Utils" prefix Utils_;
 // For testing
 export { ZswapCoinPublicKey };
@@ -59,14 +62,37 @@ struct VerificationState {
 }
 
 /**
- * @description Input to persistentHash for computing signer commitments.
- * Combines the ECDSA public key with an instance-specific salt and
- * domain separator to produce a unique, unlinkable commitment.
+ * @description Input to the signer-commitment hash. Combines the ECDSA public
+ * key with an instance-specific salt and domain separator to produce a unique,
+ * unlinkable commitment.
  */
 struct SignerCommitmentInput {
   pk: Bytes<64>,
   salt: Bytes<32>,
   domain: Bytes<32>
+}
+
+/**
+ * @description EIP-712 struct-hash preimage for
+ * `Mint(uint8 recipientType,bytes32 recipient,uint256 nonce,uint256 amount)`.
+ * Every numeric member is a 32-byte big-endian word, as EIP-712 requires.
+ */
+struct MintStructInput {
+  typeHash: Bytes<32>,
+  recipientType: Vector<32, Uint<8>>,
+  recipient: Bytes<32>,
+  nonce: Vector<32, Uint<8>>,
+  amount: Vector<32, Uint<8>>
+}
+
+/**
+ * @description EIP-712 struct-hash preimage for
+ * `Burn(uint256 nonce,uint256 amount)`.
+ */
+struct BurnStructInput {
+  typeHash: Bytes<32>,
+  nonce: Vector<32, Uint<8>>,
+  amount: Vector<32, Uint<8>>
 }
 
 // ─── State ──────────────────────────────────────────────────────
@@ -83,8 +109,7 @@ export sealed ledger _tokenDomain: Bytes<32>;
  * a threshold of 2.
  *
  * Each commitment is computed off-chain as:
- *   `persistentHash(SignerCommitmentInput { pk, instanceSalt, domain })`
- * where domain is `pad(32, "multisig:signer:")`.
+ *   `keccak256(pk ‖ instanceSalt ‖ pad(32, "multisig:signer:"))`.
  *
  * `tokenDomain` is used with `kernel.self()` to derive the token color
  * via `tokenType(_tokenDomain, kernel.self())`. Only coins of this color
@@ -112,7 +137,93 @@ constructor(
   _instanceSalt = disclose(instanceSalt);
   _coinNonce = disclose(initCoinNonce);
   _tokenDomain = disclose(tokenDomain);
+  Eip712_initialize(
+    keccak256<Bytes<18>>(pad(18, "ShieldedMultiSigV3")),
+    keccak256<Bytes<1>>(pad(1, "1"))
+  );
   Signer_initialize<3>(signerCommitments, 2);
+}
+
+// ─── EIP-712 Digests ────────────────────────────────────────────
+
+/**
+ * @description Returns this instance's EIP-712 domain separator over
+ * `EIP712Domain(string name,string version,bytes32 salt)` with name
+ * "ShieldedMultiSigV3", version "1", and salt `kernel.self().bytes`.
+ *
+ * @notice Midnight has no chain id, and a 32-byte contract address does not
+ * fit `verifyingContract`, so the instance binding rides in `salt`. Signers
+ * MUST encode the same field subset.
+ *
+ * @returns {Bytes<32>} The domain separator.
+ */
+export circuit getDomainSeparator(): Bytes<32> {
+  return Eip712__domainSeparatorV4();
+}
+
+/**
+ * @description Computes the EIP-712 digest a mint requires signatures over:
+ * `Mint(uint8 recipientType,bytes32 recipient,uint256 nonce,uint256 amount)`.
+ *
+ * The `Either` recipient is flattened to a tag plus the active arm's bytes:
+ * `recipientType` is 0 for a coin public key and 1 for a contract address.
+ *
+ * `mint` calls this internally, so the signed digest and the verified digest
+ * cannot diverge. Callers use it to reproduce the digest off-chain.
+ *
+ * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The mint recipient.
+ * @param {Uint<64>} nonce - The counter value the mint will consume.
+ * @param {Uint<64>} amount - The token amount to mint.
+ *
+ * @returns {Bytes<32>} The EIP-712 digest.
+ */
+export circuit mintDigest(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  nonce: Uint<64>,
+  amount: Uint<64>
+): Bytes<32> {
+  // Canonicalize so the inactive arm's garbage cannot alter the digest.
+  const canonRecipient = Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(recipient);
+
+  const structHash = keccak256<MintStructInput>(MintStructInput {
+    typeHash: MessageHashUtils_typeHashFromAscii<72>(
+      pad(72, "Mint(uint8 recipientType,bytes32 recipient,uint256 nonce,uint256 amount)")
+    ),
+    recipientType: MessageHashUtils_toBigEndianBytes32(
+      canonRecipient.is_left ? 0 as Uint<128> : 1 as Uint<128>
+    ),
+    recipient: canonRecipient.is_left
+      ? canonRecipient.left.bytes
+      : canonRecipient.right.bytes,
+    nonce: MessageHashUtils_toBigEndianBytes32(nonce as Uint<128>),
+    amount: MessageHashUtils_toBigEndianBytes32(amount as Uint<128>)
+  });
+
+  return Eip712__hashTypedDataV4(structHash);
+}
+
+/**
+ * @description Computes the EIP-712 digest a burn requires signatures over:
+ * `Burn(uint256 nonce,uint256 amount)`.
+ *
+ * `burn` calls this internally, so the signed digest and the verified digest
+ * cannot diverge. Callers use it to reproduce the digest off-chain.
+ *
+ * @param {Uint<64>} nonce - The counter value the burn will consume.
+ * @param {Uint<64>} amount - The token amount to burn.
+ *
+ * @returns {Bytes<32>} The EIP-712 digest.
+ */
+export circuit burnDigest(nonce: Uint<64>, amount: Uint<64>): Bytes<32> {
+  const structHash = keccak256<BurnStructInput>(BurnStructInput {
+    typeHash: MessageHashUtils_typeHashFromAscii<34>(
+      pad(34, "Burn(uint256 nonce,uint256 amount)")
+    ),
+    nonce: MessageHashUtils_toBigEndianBytes32(nonce as Uint<128>),
+    amount: MessageHashUtils_toBigEndianBytes32(amount as Uint<128>)
+  });
+
+  return Eip712__hashTypedDataV4(structHash);
 }
 
 // ─── Mint ───────────────────────────────────────────────────────
@@ -125,20 +236,16 @@ constructor(
  * addressed to the provided recipient. No external coin input is required;
  * supply is produced on-chain.
  *
- * The message hash commits to:
- *   - operation domain ("multisig:mint:" for burn op replay protection)
- *   - contract address (cross-instance replay protection)
- *   - recipient (redirection protection)
- *   - counter value (replay protection)
- *   - amount
+ * Signatures are checked against `mintDigest(recipient, nonce, amount)`, which
+ * binds the instance (domain salt), the operation (`Mint` type hash), the
+ * recipient, the counter value, and the amount.
  *
  * Coin nonce uniqueness is guaranteed by `evolveNonce(_counter, _coinNonce)`
  * after the counter has been incremented, binding each mint's nonce to a
  * distinct counter value.
  *
- * @notice Replace `persistentHash` with `keccak256` and `stubVerifySignature`
- * with `ecdsaVerify` once the Compact ECDSA and Keccak primitives are
- * available, to match the custodian's HSM signing format.
+ * @notice Replace `stubVerifySignature` with `ecdsaVerify` once the Compact
+ * ECDSA primitive is available.
  *
  * Requirements:
  *
@@ -163,15 +270,8 @@ export circuit mint(
 
   // Canonicalize recipient to ensure garbage values don't sully the hash
   const canonRecipient = Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(recipient);
-  const recipientHash = persistentHash<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient);
 
-  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
-    pad(32, "multisig:mint:"),
-    kernel.self().bytes,
-    recipientHash,
-    opNonce as Bytes<32>,
-    amount as Bytes<32>
-  ]);
+  const msgHash = mintDigest(recipient, opNonce, amount);
 
   const initialState = VerificationState {
     validCount: 0 as Uint<8>,
@@ -208,12 +308,11 @@ export circuit mint(
  * Only coins of this contract's token type can be burned. The operator
  * supplies the `QualifiedShieldedCoinInfo` from the off-chain UTXO pool.
  *
- * The "multisig:burn:" domain prefix ensures burn signatures cannot be replayed
- * as mint operations for the same parameters.
+ * Signatures are checked against `burnDigest(nonce, amount)`. Its `Burn` type
+ * hash keeps a burn signature from being replayed as a mint.
  *
- * @notice Replace `persistentHash` with `keccak256` and `stubVerifySignature`
- * with `ecdsaVerify` once the Compact ECDSA and Keccak primitives are
- * available, to match the custodian's HSM signing format.
+ * @notice Replace `stubVerifySignature` with `ecdsaVerify` once the Compact
+ * ECDSA primitive is available.
  *
  * Requirements:
  *
@@ -238,12 +337,7 @@ export circuit burn(
   const opNonce = _counter;
   _counter.increment(1);
 
-  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
-    pad(32, "multisig:burn:"),
-    kernel.self().bytes,
-    opNonce as Bytes<32>,
-    amount as Bytes<32>
-  ]);
+  const msgHash = burnDigest(opNonce, amount);
 
   const initialState = VerificationState {
     validCount: 0 as Uint<8>,
@@ -293,7 +387,7 @@ circuit verifySignature(
 
   Signer_assertSigner(commitment);
 
-  // TODO: Replace with ecdsaVerify + keccak256 when primitives are available
+  // TODO: replace with `ecdsaVerify` once the Compact ECDSA primitive lands.
   assert(stubVerifySignature(pubkey, state.msgHash, signature), "Multisig: invalid signature");
 
   return VerificationState {
@@ -306,10 +400,11 @@ circuit verifySignature(
 /**
  * @description Computes a signer commitment from an ECDSA public key.
  *
- * The commitment is persistentHash(pk, salt, domain) where:
- * - pk: the signer's ECDSA public key (64 bytes)
- * - salt: instance-specific random value (prevents cross-contract correlation)
- * - domain: "multisig:signer:" (domain separation)
+ * The commitment is `keccak256(pk ‖ salt ‖ pad(32, "multisig:signer:"))`, so a
+ * deployer can compute it with any Ethereum tooling.
+ *
+ * @notice This is an on-chain commitment, never an HSM-signed message, so it is
+ * deliberately not EIP-712 typed data.
  *
  * Pure circuit — callable off-chain by the deployer to compute
  * commitments for the constructor.
@@ -322,7 +417,7 @@ export pure circuit _calculateSignerId(
   pk: Bytes<64>,
   salt: Bytes<32>
 ): Bytes<32> {
-  return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+  return keccak256<SignerCommitmentInput>(SignerCommitmentInput {
     pk: pk,
     salt: salt,
     domain: pad(32, "multisig:signer:")
