@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits of the Eip712 module so they can be
+// driven directly from off-chain tests. DO NOT deploy or use this contract in
+// any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Eip712" prefix Eip712_;
+
+constructor(nameHash: Bytes<32>, versionHash: Bytes<32>) {
+  Eip712_initialize(nameHash, versionHash);
+}
+
+export circuit _domainSeparatorV4(): Bytes<32> {
+  return Eip712__domainSeparatorV4();
+}
+
+export circuit _hashTypedDataV4(structHash: Bytes<32>): Bytes<32> {
+  return Eip712__hashTypedDataV4(structHash);
+}

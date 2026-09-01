@@ -1,0 +1,183 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (crypto/MessageHashUtils.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module MessageHashUtils
+ * @description Keccak-256 message-digest builders for signatures produced by
+ * Ethereum tooling (EVM HSMs, viem, MetaMask). Provides the EIP-191
+ * personal-sign digest, the EIP-712 typed-data digest, and the primitives
+ * type hashes and struct hashes are assembled from.
+ *
+ * @notice This module holds NO ledger state and declares NO witnesses. Every
+ * circuit takes its inputs as explicit arguments so importing modules can build
+ * any digest shape without inheriting an interface they do not need.
+ *
+ * @dev Encoding basis. Compact's `binary_repr` writes `Bytes<N>` verbatim,
+ * `Uint<N>` fixed-width little-endian, and structs/Vectors as packed
+ * concatenation with no padding. A keccak over a struct is therefore a keccak
+ * over the concatenation of its fields, which is what makes the byte-level
+ * envelopes below (`0x19 0x01 ‖ ds ‖ hs`) expressible.
+ *
+ * @dev EIP-712 words. Every atomic value inside a struct hash is a 32-byte
+ * big-endian word; only the outer envelopes carry bare bytes. Numeric fields
+ * MUST go through `toBigEndianBytes32` before entering a hashed struct — a raw
+ * `Uint<8>` or `Uint<64>` field would encode as 1 or 8 little-endian bytes and
+ * diverge from every EVM signer.
+ *
+ * @dev Domain subset. `domainSeparator` implements
+ * `EIP712Domain(string name,string version,bytes32 salt)`. Midnight has no
+ * `chainId`, and a contract address is 32 bytes rather than the 20 that
+ * `verifyingContract` allows, so the address binds through `salt`. Field
+ * subsets are valid EIP-712 and are supported by viem and MetaMask; the type
+ * string above is what the signer must encode.
+ */
+module MessageHashUtils {
+  import CompactStandardLibrary;
+
+  // ---------------------------------------------------------------------------
+  // Types
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description EIP-712 signing envelope: `0x19 ‖ 0x01 ‖ domainSeparator ‖ structHash`.
+   */
+  export struct Eip712Envelope {
+    p1: Uint<8>,
+    p2: Uint<8>,
+    ds: Bytes<32>,
+    hs: Bytes<32>
+  }
+
+  /**
+   * @description EIP-191 personal-sign envelope:
+   * `0x19 ‖ "Ethereum Signed Message:\n32" ‖ messageHash`.
+   */
+  export struct EthSignedEnvelope {
+    x19: Uint<8>,
+    label: Bytes<24>,
+    nl: Uint<8>,
+    len: Bytes<2>,
+    hash: Bytes<32>
+  }
+
+  // ---------------------------------------------------------------------------
+  // Word encoding
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Encodes `value` as a 32-byte big-endian word, the EVM
+   * `uint256` layout every EIP-712 atomic value uses.
+   *
+   * @notice The result is a `Vector<32, Uint<8>>`, not `Bytes<32>` — no cast
+   * between them exists. The two share a `binary_repr`, so a vector field
+   * inside a hashed struct is byte-identical to 32 raw bytes.
+   *
+   * @param value - The value to encode. Callers upcast narrower integers.
+   * @return The big-endian 32-byte encoding.
+   */
+  export pure circuit toBigEndianBytes32(value: Uint<128>): Vector<32, Uint<8>> {
+    // `as Bytes<32>` yields the little-endian `binary_repr`; reversing the
+    // index order is the only byte-reordering primitive available (Compact has
+    // no division operator).
+    const le = value as Bytes<32>;
+    return [
+      le[31], le[30], le[29], le[28], le[27], le[26], le[25], le[24],
+      le[23], le[22], le[21], le[20], le[19], le[18], le[17], le[16],
+      le[15], le[14], le[13], le[12], le[11], le[10], le[9],  le[8],
+      le[7],  le[6],  le[5],  le[4],  le[3],  le[2],  le[1],  le[0]
+    ];
+  }
+
+  // ---------------------------------------------------------------------------
+  // EIP-712 primitives
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Hashes an EIP-712 type string into a type hash.
+   *
+   * @notice `n` MUST be the exact byte length of the ASCII type string.
+   * `pad` right-fills with zero bytes, so an oversized `n` hashes trailing
+   * zeros and yields a type hash no EVM signer will reproduce.
+   *
+   * @param typeString - The exact-length encoded type string.
+   * @return The type hash.
+   */
+  export pure circuit typeHashFromAscii<#n>(typeString: Bytes<n>): Bytes<32> {
+    return keccak256<Bytes<n>>(typeString);
+  }
+
+  /**
+   * @description Hashes a flat vector of 32-byte words, the EIP-712 struct-hash
+   * shape once every field is already a word.
+   *
+   * @notice Digests whose fields include big-endian numbers cannot use this —
+   * `Vector<32, Uint<8>>` and `Bytes<32>` are distinct types. Declare a struct
+   * mixing both field types and hash it directly instead.
+   *
+   * @param words - The words to concatenate and hash.
+   * @return The keccak-256 of the concatenation.
+   */
+  export pure circuit hashWords<#n>(words: Vector<n, Bytes<32>>): Bytes<32> {
+    return keccak256<Vector<n, Bytes<32>>>(words);
+  }
+
+  /**
+   * @description Builds the EIP-191 personal-sign digest of a 32-byte message
+   * hash, matching `eth_sign` / viem `hashMessage({ raw })`.
+   *
+   * @param messageHash - The 32-byte message hash to wrap.
+   * @return The personal-sign digest.
+   */
+  export pure circuit toEthSignedMessageHash(messageHash: Bytes<32>): Bytes<32> {
+    return keccak256<EthSignedEnvelope>(EthSignedEnvelope {
+      x19: 25 as Uint<8>,
+      label: pad(24, "Ethereum Signed Message:"),
+      nl: 10 as Uint<8>,
+      len: pad(2, "32"),
+      hash: messageHash
+    });
+  }
+
+  /**
+   * @description Builds the EIP-712 signing digest from a domain separator and
+   * a struct hash.
+   *
+   * @param ds - The domain separator.
+   * @param hs - The struct hash of the message.
+   * @return The digest an EIP-712 signer signs.
+   */
+  export pure circuit toTypedDataHash(ds: Bytes<32>, hs: Bytes<32>): Bytes<32> {
+    return keccak256<Eip712Envelope>(Eip712Envelope {
+      p1: 25 as Uint<8>,
+      p2: 1 as Uint<8>,
+      ds: ds,
+      hs: hs
+    });
+  }
+
+  /**
+   * @description Computes the domain separator for
+   * `EIP712Domain(string name,string version,bytes32 salt)`.
+   *
+   * @notice `nameHash` and `versionHash` are keccak hashes of the domain
+   * strings, not the strings themselves — EIP-712 hashes `string` members
+   * before encoding them.
+   *
+   * @param nameHash - `keccak256(domain name)`.
+   * @param versionHash - `keccak256(domain version)`.
+   * @param salt - The 32-byte instance binding, typically `kernel.self().bytes`.
+   * @return The domain separator.
+   */
+  export pure circuit domainSeparator(
+                        nameHash: Bytes<32>,
+                        versionHash: Bytes<32>,
+                        salt: Bytes<32>
+                        ): Bytes<32> {
+    const typeHash = typeHashFromAscii<53>(
+      pad(53, "EIP712Domain(string name,string version,bytes32 salt)")
+    );
+    return hashWords<4>([typeHash, nameHash, versionHash, salt]);
+  }
+}

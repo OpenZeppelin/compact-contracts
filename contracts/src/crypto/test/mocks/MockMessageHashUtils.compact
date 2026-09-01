@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits of the MessageHashUtils module so they
+// can be driven directly from off-chain tests. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../MessageHashUtils" prefix MessageHashUtils_;
+
+export { MessageHashUtils_Eip712Envelope, MessageHashUtils_EthSignedEnvelope }
+
+export pure circuit toBigEndianBytes32(value: Uint<128>): Vector<32, Uint<8>> {
+  return MessageHashUtils_toBigEndianBytes32(value);
+}
+
+// `typeHashFromAscii` and `hashWords` are size-generic; a contract circuit is
+// not. Each is instantiated at the lengths the library's own digests use, and
+// the simulator dispatches on the argument's length.
+//
+// 53 = EIP712Domain(string name,string version,bytes32 salt)
+// 34 = Burn(...), 72 = Mint(...), 89 = Execute(...)
+
+export pure circuit typeHashFromAscii34(typeString: Bytes<34>): Bytes<32> {
+  return MessageHashUtils_typeHashFromAscii<34>(typeString);
+}
+
+export pure circuit typeHashFromAscii53(typeString: Bytes<53>): Bytes<32> {
+  return MessageHashUtils_typeHashFromAscii<53>(typeString);
+}
+
+export pure circuit typeHashFromAscii72(typeString: Bytes<72>): Bytes<32> {
+  return MessageHashUtils_typeHashFromAscii<72>(typeString);
+}
+
+export pure circuit typeHashFromAscii89(typeString: Bytes<89>): Bytes<32> {
+  return MessageHashUtils_typeHashFromAscii<89>(typeString);
+}
+
+export pure circuit hashWords2(words: Vector<2, Bytes<32>>): Bytes<32> {
+  return MessageHashUtils_hashWords<2>(words);
+}
+
+export pure circuit hashWords3(words: Vector<3, Bytes<32>>): Bytes<32> {
+  return MessageHashUtils_hashWords<3>(words);
+}
+
+export pure circuit hashWords4(words: Vector<4, Bytes<32>>): Bytes<32> {
+  return MessageHashUtils_hashWords<4>(words);
+}
+
+export pure circuit hashWords5(words: Vector<5, Bytes<32>>): Bytes<32> {
+  return MessageHashUtils_hashWords<5>(words);
+}
+
+export pure circuit toEthSignedMessageHash(messageHash: Bytes<32>): Bytes<32> {
+  return MessageHashUtils_toEthSignedMessageHash(messageHash);
+}
+
+export pure circuit toTypedDataHash(ds: Bytes<32>, hs: Bytes<32>): Bytes<32> {
+  return MessageHashUtils_toTypedDataHash(ds, hs);
+}
+
+export pure circuit domainSeparator(
+                      nameHash: Bytes<32>,
+                      versionHash: Bytes<32>,
+                      salt: Bytes<32>
+                      ): Bytes<32> {
+  return MessageHashUtils_domainSeparator(nameHash, versionHash, salt);
+}

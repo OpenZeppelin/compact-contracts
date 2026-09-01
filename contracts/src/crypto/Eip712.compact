@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (crypto/Eip712.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Eip712
+ * @description Per-contract EIP-712 domain, mirroring OpenZeppelin Solidity's
+ * `EIP712`. An importing contract initializes the domain once and then wraps
+ * struct hashes with `_hashTypedDataV4` to produce signing digests.
+ *
+ * The domain is the subset `EIP712Domain(string name,string version,bytes32 salt)`
+ * with `salt = kernel.self().bytes`; see `MessageHashUtils` for why the address
+ * binds through `salt`. Signers MUST encode the same field subset.
+ *
+ * @notice The separator is recomputed per call rather than cached at
+ * initialization: `kernel.self()` resolves to a dummy address inside a
+ * constructor, because the initial state is built before the contract has an
+ * address. Only the two string hashes are stored.
+ *
+ * @notice Importing this module twice in one contract — directly and through
+ * another module — shares one domain. Import it once per contract.
+ */
+module Eip712 {
+  import CompactStandardLibrary;
+
+  import "./MessageHashUtils" prefix MessageHashUtils_;
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+
+  export sealed ledger _nameHash: Bytes<32>;
+  export sealed ledger _versionHash: Bytes<32>;
+
+  // ---------------------------------------------------------------------------
+  // Initialization
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Sets the domain's name and version hashes. Call from the
+   * importing contract's constructor.
+   *
+   * @notice The arguments are keccak hashes of the domain strings, not the
+   * strings themselves — EIP-712 hashes `string` members before encoding them.
+   *
+   * @param {Bytes<32>} nameHash - `keccak256(domain name)`.
+   * @param {Bytes<32>} versionHash - `keccak256(domain version)`.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(nameHash: Bytes<32>, versionHash: Bytes<32>): [] {
+    _nameHash = disclose(nameHash);
+    _versionHash = disclose(versionHash);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Digests
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @description Returns this contract's EIP-712 domain separator.
+   *
+   * @returns {Bytes<32>} The domain separator.
+   */
+  export circuit _domainSeparatorV4(): Bytes<32> {
+    return MessageHashUtils_domainSeparator(_nameHash, _versionHash, kernel.self().bytes);
+  }
+
+  /**
+   * @description Wraps a struct hash into the digest an EIP-712 signer signs.
+   *
+   * @param {Bytes<32>} structHash - The hash of the typed message.
+   * @returns {Bytes<32>} The EIP-712 digest.
+   */
+  export circuit _hashTypedDataV4(structHash: Bytes<32>): Bytes<32> {
+    return MessageHashUtils_toTypedDataHash(_domainSeparatorV4(), structHash);
+  }
+}
