@@ -54,7 +54,7 @@
     "@biomejs/biome": "^2.5.9",
     "@midnight-ntwrk/zswap": "^4.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
-    "@types/node": "26.2.0",
+    "@types/node": "26.4.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.10.11",
     "typescript": "^6.0.3",
