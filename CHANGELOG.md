@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Upgrade the Compact toolchain and Midnight dependencies: compiler `0.31.0` → `0.34.0`, `@midnight-ntwrk/compact-runtime` `0.16.0` → `0.19.0`, `@midnight-ntwrk/ledger-v8` `8.1.0` → `@midnightntwrk/ledger-v9` `1.0.0-rc.3`, `@midnight-ntwrk/compact-js` `2.5.1` → `2.5.5-rc.8`, the `midnight-js` packages `4.1.1` → `5.0.0-beta.7`, and `@openzeppelin/compact-simulator` `^0.3.1` → `^0.4.0`. Contract `pragma language_version` raised `>= 0.23.0` → `>= 0.26.0` (the language version shipped with compiler 0.34.0). (#841)
+
 ## 0.3.0-alpha.2 (2026-08-11)
 
 ### Changed

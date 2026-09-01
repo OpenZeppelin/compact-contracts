@@ -5,7 +5,7 @@ import {
   syncWallet,
   waitForFunds,
 } from '@midnight-ntwrk/testkit-js';
-import { UnshieldedAddress } from '@midnight-ntwrk/wallet-sdk-address-format';
+import { UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 
 /**
  * Deployer-funds-signer top-up for the local `undeployed` devnet.

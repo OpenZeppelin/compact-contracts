@@ -1,7 +1,7 @@
 import {
   CompactTypeBytes,
   CompactTypeVector,
-  convertBytesToField,
+  degradeToTransient,
   ecMulGenerator,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
@@ -32,16 +32,13 @@ const padTag = (s: string): Uint8Array => {
  * in-circuit `_derivePk`:
  *   pk = ecMulGenerator(degradeToTransient(persistentHash([ek])))
  *
- * The `convertBytesToField` call mirrors `degradeToTransient`, producing the
- * field element that `ecMulGenerator` expects.
- *
- * @note The field-element derivation from EK uses 31 bytes of the hash output
- * (empirically determined); the effective collision resistance is therefore 248 bits.
+ * @note `degradeToTransient` truncates the hash to 31 bytes, so the effective
+ * collision resistance is 248 bits.
  */
 const derivePk = (ek: Uint8Array) => {
   const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
   const ekHash = persistentHash(rt_type, [ek]);
-  const ekField = convertBytesToField(31, ekHash, 'derivePk');
+  const ekField = degradeToTransient(ekHash);
   return ecMulGenerator(ekField);
 };
 

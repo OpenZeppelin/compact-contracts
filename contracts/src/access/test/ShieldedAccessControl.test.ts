@@ -1,7 +1,7 @@
 import {
   CompactTypeBytes,
   CompactTypeVector,
-  convertFieldToBytes,
+  convertBigintToBytes,
   type MerkleTreePath,
   persistentHash,
   type WitnessContext,
@@ -84,11 +84,11 @@ const UNAUTHORIZED_SK = Buffer.alloc(32, 'UNAUTHORIZED_SECRET_KEY');
 const BAD_SK = Buffer.alloc(32, 'BAD_SECRET_KEY');
 
 // Roles
-const ROLE_ADMIN = Buffer.from(convertFieldToBytes(32, 0n, ''));
-const ROLE_OP1 = Buffer.from(convertFieldToBytes(32, 1n, ''));
-const ROLE_OP2 = Buffer.from(convertFieldToBytes(32, 2n, ''));
-const ROLE_OP3 = Buffer.from(convertFieldToBytes(32, 3n, ''));
-const ROLE_NONEXISTENT = Buffer.from(convertFieldToBytes(32, 555n, ''));
+const ROLE_ADMIN = Buffer.from(convertBigintToBytes(32, 0n, ''));
+const ROLE_OP1 = Buffer.from(convertBigintToBytes(32, 1n, ''));
+const ROLE_OP2 = Buffer.from(convertBigintToBytes(32, 2n, ''));
+const ROLE_OP3 = Buffer.from(convertBigintToBytes(32, 3n, ''));
+const ROLE_NONEXISTENT = Buffer.from(convertBigintToBytes(32, 555n, ''));
 
 // Derived ids
 const ADMIN_ACCOUNT_ID = buildAccountIdHash(ADMIN_SK);
