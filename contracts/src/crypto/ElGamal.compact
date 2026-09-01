@@ -398,17 +398,14 @@ module ElGamal {
                    m: JubjubPoint
                    ): [] {
     // Inlines the same key check as `assertKeyPair` (rather than calling it) so
-    // `ekField` is computed once and reused for the decryption below, avoiding
+    // `ekScalar` is computed once and reused for the decryption below, avoiding
     // a second `secretToScalar` hash in this hot verification path.
-    const ekField = secretToScalar(ek);
-    assert(ecMulGenerator(ekField) == pk,
+    const ekScalar = secretToScalar(ek);
+    assert(ecMulGenerator(ekScalar) == pk,
            "ElGamal: ek/pk mismatch");
 
-    // m = c2 - ek*c1. ek*c1 is negated via ecNeg rather
-    // than ecMul by a negative scalar, which would exceed the Jubjub scalar
-    // field. ekField < ℓ (the subgroup order), so ecMul(ct.c1, ekField) is a
-    // valid scalar mul.
-    const ekC1 = ecMul(ct.c1, ekField);
+    // m = c2 - ek*c1, with ek*c1 negated via ecNeg.
+    const ekC1 = ecMul(ct.c1, ekScalar);
     const mPoint = ecAdd(ct.c2, ecNeg(ekC1));
     assert(mPoint == m,
            "ElGamal: plaintext mismatch");
