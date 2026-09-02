@@ -575,7 +575,9 @@ describe('ShieldedMultiSigV3', () => {
 
     describe('cross-instance replay', () => {
       // The second instance needs a distinct deployed address so its message
-      // hash, which commits to `kernel.self()`, differs from the first's.
+      // hash, which commits to `kernel.self()`, differs from the first's. Dry
+      // only: live deploys already differ, and live `create()` refuses an
+      // address other than the one actually deployed.
       const OTHER_ADDRESS = '11'.repeat(32);
 
       it('should reject a signature bound to another instance', async () => {
@@ -585,7 +587,7 @@ describe('ShieldedMultiSigV3', () => {
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,
           SIGNER_COMMITMENTS,
-          { contractAddress: OTHER_ADDRESS },
+          isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
         );
 
         const digest1 = await mintDigest(instance1, USER_RECIPIENT, 100n);
