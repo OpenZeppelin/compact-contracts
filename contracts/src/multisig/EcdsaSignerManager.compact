@@ -66,6 +66,8 @@ module EcdsaSignerManager {
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
    * - `threshold` must be non-zero and must not exceed `n`.
+   * - `threshold` must not exceed 2, the number of approvals `assertApprovals`
+   *   verifies.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
@@ -78,6 +80,7 @@ module EcdsaSignerManager {
     threshold: Uint<8>
   ): [] {
     _instanceSalt = disclose(instanceSalt);
+    assert(threshold <= 2, "EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)");
     Signer_initialize<n>(signerCommitments, threshold);
   }
 
@@ -155,6 +158,10 @@ module EcdsaSignerManager {
    *
    * @notice Verification goes through `Ecdsa`'s low-s wrapper, so the high-s
    * encoding of an approval is rejected as an invalid signature.
+   *
+   * @dev Duplicates are caught by comparing against the previous commitment
+   * alone, which is exhaustive only at width 2. Widening the approval vectors
+   * requires an all-pairs check.
    *
    * @param {VerificationState} state - Accumulator threaded through fold.
    * @param {Secp256k1Point} pubkey - The signer's secp256k1 public key.

@@ -86,10 +86,15 @@ describe('EcdsaSignerManager', () => {
       );
     });
 
-    it('should fail with a threshold above the signer count', async () => {
-      await expect(freshManager(4n)).rejects.toThrow(
-        'Signer: threshold exceeds signer count',
-      );
+    // `assertApprovals` always counts exactly 2, so any higher threshold is a
+    // permanent lockout. This fires before `Signer_initialize`, which makes the
+    // module's own signer-count guard unreachable here (covered in Signer.test.ts).
+    it('should fail with a threshold above the approval width', async () => {
+      for (const threshold of [3n, 4n]) {
+        await expect(freshManager(threshold)).rejects.toThrow(
+          'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
+        );
+      }
     });
   });
 
@@ -134,15 +139,6 @@ describe('EcdsaSignerManager', () => {
       it('should accept two valid signatures under a 1-of-3 threshold', async () => {
         const oneOfThree = await freshManager(1n);
         await approve(oneOfThree, DIGEST, [S1, S2]);
-      });
-
-      // The Vector<2> surface contributes at most 2 approvals, so a 3-of-3
-      // configuration can never be satisfied through it.
-      it('should reject approvals below the threshold', async () => {
-        const threeOfThree = await freshManager(3n);
-        await expect(approve(threeOfThree, DIGEST, [S1, S2])).rejects.toThrow(
-          'Signer: threshold not met',
-        );
       });
 
       it('should reject duplicate signer', async () => {
