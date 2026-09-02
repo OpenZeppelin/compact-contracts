@@ -39,8 +39,7 @@ const ElGamalSimulatorBase = createSimulator<
 /**
  * ElGamal Simulator
  *
- * Every ElGamal circuit is pure (no ledger, no witnesses), so each method is a
- * thin pass-through to the compiled pure circuit.
+ * Each method is a thin pass-through to the mock's matching circuit.
  */
 export class ElGamalSimulator extends ElGamalSimulatorBase {
   static async create(
@@ -57,14 +56,14 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
    * @description Maps a 32-byte secret to a valid Jubjub scalar.
    */
   public secretToScalar(secret: Uint8Array): Promise<bigint> {
-    return this.circuits.pure.secretToScalar(secret);
+    return this.circuits.impure.secretToScalar(secret);
   }
 
   /**
    * @description Derives the ElGamal public key `pk = g^secretToScalar(ek)`.
    */
   public derivePk(ek: Uint8Array): Promise<JubjubPoint> {
-    return this.circuits.pure.derivePk(ek);
+    return this.circuits.impure.derivePk(ek);
   }
 
   /**
@@ -72,14 +71,14 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
    * by `tag`.
    */
   public expandRandomness(seed: Uint8Array, tag: Uint8Array): Promise<bigint> {
-    return this.circuits.pure.expandRandomness(seed, tag);
+    return this.circuits.impure.expandRandomness(seed, tag);
   }
 
   /**
    * @description The identity ciphertext `Enc(0)`.
    */
   public encryptZero(): Promise<Ciphertext> {
-    return this.circuits.pure.encryptZero();
+    return this.circuits.impure.encryptZero();
   }
 
   /**
@@ -91,7 +90,7 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     m: JubjubPoint,
     r: bigint,
   ): Promise<Ciphertext> {
-    return this.circuits.pure.encryptPoint(pk, m, r);
+    return this.circuits.impure.encryptPoint(pk, m, r);
   }
 
   /**
@@ -102,28 +101,28 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     value: bigint,
     r: bigint,
   ): Promise<Ciphertext> {
-    return this.circuits.pure.encrypt(pk, value, r);
+    return this.circuits.impure.encrypt(pk, value, r);
   }
 
   /**
    * @description Negates a ciphertext componentwise (encrypts `-v`).
    */
   public negate(ct: Ciphertext): Promise<Ciphertext> {
-    return this.circuits.pure.negate(ct);
+    return this.circuits.impure.negate(ct);
   }
 
   /**
    * @description Homomorphically adds two ciphertexts: `Enc(a) + Enc(b)`.
    */
   public add(a: Ciphertext, b: Ciphertext): Promise<Ciphertext> {
-    return this.circuits.pure.add(a, b);
+    return this.circuits.impure.add(a, b);
   }
 
   /**
    * @description Homomorphically subtracts two ciphertexts: `Enc(a) - Enc(b)`.
    */
   public sub(a: Ciphertext, b: Ciphertext): Promise<Ciphertext> {
-    return this.circuits.pure.sub(a, b);
+    return this.circuits.impure.sub(a, b);
   }
 
   /**
@@ -131,7 +130,7 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
    * `k`: `Enc(v)` becomes `Enc(k * v)`.
    */
   public scalarMul(ct: Ciphertext, k: bigint): Promise<Ciphertext> {
-    return this.circuits.pure.scalarMul(ct, k);
+    return this.circuits.impure.scalarMul(ct, k);
   }
 
   /**
@@ -143,7 +142,7 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     value: bigint,
     r: bigint,
   ): Promise<Ciphertext> {
-    return this.circuits.pure.addEncrypted(old, pk, value, r);
+    return this.circuits.impure.addEncrypted(old, pk, value, r);
   }
 
   /**
@@ -155,7 +154,7 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     value: bigint,
     r: bigint,
   ): Promise<Ciphertext> {
-    return this.circuits.pure.subEncrypted(old, pk, value, r);
+    return this.circuits.impure.subEncrypted(old, pk, value, r);
   }
 
   /**
@@ -167,14 +166,14 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     pk: JubjubPoint,
     r: bigint,
   ): Promise<Ciphertext> {
-    return this.circuits.pure.rerandomize(ct, pk, r);
+    return this.circuits.impure.rerandomize(ct, pk, r);
   }
 
   /**
    * @description Asserts `ek` is the secret for `pk`. Throws on mismatch.
    */
   public assertKeyPair(pk: JubjubPoint, ek: Uint8Array): Promise<[]> {
-    return this.circuits.pure.assertKeyPair(pk, ek);
+    return this.circuits.impure.assertKeyPair(pk, ek);
   }
 
   /**
@@ -187,7 +186,7 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     ek: Uint8Array,
     m: JubjubPoint,
   ): Promise<[]> {
-    return this.circuits.pure.assertDecryptsToPoint(ct, pk, ek, m);
+    return this.circuits.impure.assertDecryptsToPoint(ct, pk, ek, m);
   }
 
   /**
@@ -200,6 +199,6 @@ export class ElGamalSimulator extends ElGamalSimulatorBase {
     ek: Uint8Array,
     claimedValue: bigint,
   ): Promise<[]> {
-    return this.circuits.pure.assertDecryptsTo(ct, pk, ek, claimedValue);
+    return this.circuits.impure.assertDecryptsTo(ct, pk, ek, claimedValue);
   }
 }

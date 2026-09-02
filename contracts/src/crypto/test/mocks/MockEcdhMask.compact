@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// Exposes the EcdhMask module's pure circuits so they can be driven from
-// off-chain tests. DO NOT deploy or use this contract in any production
-// application.
+// Exposes the EcdhMask module's circuits so they can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production application.
 
 pragma language_version >= 0.26.0;
 
@@ -12,19 +11,27 @@ import "../../EcdhMask" prefix EcdhMask_;
 
 export { EcdhMask_Ciphertext }
 
-export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
+ledger _invocations: Counter;
+
+export circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+  _invocations.increment(1);
   return EcdhMask_kdf(sShared, domain);
 }
 
-export pure circuit encrypt(
+export circuit encrypt(
                       recipientPk: JubjubPoint,
                       value: Uint<128>,
                       e: JubjubScalar,
                       domain: Bytes<32>
                       ): EcdhMask_Ciphertext {
+  _invocations.increment(1);
   return EcdhMask_encrypt(recipientPk, value, e, domain);
 }
 
-export pure circuit decrypt(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+export circuit decrypt(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+  _invocations.increment(1);
   return EcdhMask_decrypt(ciphertext, ekScalar, domain);
 }
