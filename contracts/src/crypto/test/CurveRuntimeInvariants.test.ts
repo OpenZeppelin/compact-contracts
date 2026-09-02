@@ -1,9 +1,9 @@
 import {
   constructJubjubPoint,
-  type JubjubPoint,
+  ecMulGenerator,
 } from '@midnight-ntwrk/compact-runtime';
-import { describe, expect, it } from 'vitest';
-import { pureCircuits } from '../../../artifacts/MockCurveOps/contract/index.js';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { CurveOpsSimulator } from './simulators/CurveOpsSimulator.js';
 
 // ---------------------------------------------------------------------------
 // RUNTIME-INVARIANTS REGRESSION TEST.
@@ -40,29 +40,26 @@ const OFF_CURVE = constructJubjubPoint(1n, 1n);
 // arbitrary coords < q, unknown structure.
 const GARBAGE = constructJubjubPoint(12345n, 67890n);
 
-// Classify a runtime call as a returned value or a trap.
-const classify = <T>(
-  fn: () => T,
-): { ok: true; value: T } | { ok: false; err: string } => {
-  try {
-    return { ok: true, value: fn() };
-  } catch (e) {
-    return { ok: false, err: (e as Error).message };
-  }
-};
+const IN_SUBGROUP = ecMulGenerator(5n);
 
-const threw = (p: JubjubPoint, fn: (p: JubjubPoint) => unknown): boolean =>
-  !classify(() => fn(p)).ok;
+// MIXED-ORDER point of order 2*ℓ: an in-subgroup point plus the order-2 point.
+// In twisted Edwards, (x,y) + (0,-1) = (-x,-y), so this is just coordinate
+// negation of a real point. It is on-curve, NOT in the prime-order subgroup,
+// and (crucially) NOT a low-order point, so it should not hit any
+// addition-formula exception. This is the realistic attack vector.
+const MIXED = constructJubjubPoint(Q - IN_SUBGROUP.x, Q - IN_SUBGROUP.y);
+
+let contract: CurveOpsSimulator;
+
+// A trap fires while the circuit is evaluated locally, before any proof, so
+// the rejections below hold on the live backend too.
+const traps = (call: Promise<unknown>): Promise<void> =>
+  expect(call).rejects.toThrow();
 
 describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
-  const inSubgroup = pureCircuits.genMul(5n); // generator-derived -> in subgroup
-
-  // MIXED-ORDER point of order 2*ℓ: an in-subgroup point plus the order-2 point.
-  // In twisted Edwards, (x,y) + (0,-1) = (-x,-y), so this is just coordinate
-  // negation of a real point. It is on-curve, NOT in the prime-order subgroup,
-  // and (crucially) NOT a low-order point, so it should not hit any
-  // addition-formula exception. This is the realistic attack vector.
-  const MIXED = constructJubjubPoint(Q - inSubgroup.x, Q - inSubgroup.y);
+  beforeAll(async () => {
+    contract = await CurveOpsSimulator.create();
+  });
 
   it('FACT: a JubjubPoint is fabricable from arbitrary coordinates', () => {
     expect(ORDER_2).toEqual({ x: 0n, y: Q - 1n });
@@ -73,14 +70,12 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
   // from "incidental low-order formula exception".
   // -------------------------------------------------------------------------
   describe('mixed-order point (order 2*ℓ) — the decisive case', () => {
-    it('TRAPS ecMul on a mixed-order point (genuine subgroup enforcement)', () => {
-      expect(classify(() => pureCircuits.doEcMul(MIXED, 3n)).ok).toBe(false);
+    it('TRAPS ecMul on a mixed-order point (genuine subgroup enforcement)', async () => {
+      await traps(contract.doEcMul(MIXED, 3n));
     });
 
-    it('TRAPS ecAdd on a mixed-order point', () => {
-      expect(classify(() => pureCircuits.doEcAdd(MIXED, inSubgroup)).ok).toBe(
-        false,
-      );
+    it('TRAPS ecAdd on a mixed-order point', async () => {
+      await traps(contract.doEcAdd(MIXED, IN_SUBGROUP));
     });
   });
 
@@ -88,20 +83,22 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
   // ecMul: does it reject non-subgroup / off-curve points?
   // -------------------------------------------------------------------------
   describe('ecMul input validation', () => {
-    it('accepts an in-subgroup point', () => {
-      expect(threw(inSubgroup, (p) => pureCircuits.doEcMul(p, 3n))).toBe(false);
+    it('accepts an in-subgroup point', async () => {
+      await expect(contract.doEcMul(IN_SUBGROUP, 3n)).resolves.toEqual(
+        ecMulGenerator(15n),
+      );
     });
 
-    it('TRAPS on an on-curve order-2 point (off-subgroup)', () => {
-      expect(threw(ORDER_2, (p) => pureCircuits.doEcMul(p, 3n))).toBe(true);
+    it('TRAPS on an on-curve order-2 point (off-subgroup)', async () => {
+      await traps(contract.doEcMul(ORDER_2, 3n));
     });
 
-    it('TRAPS on an off-curve point', () => {
-      expect(threw(OFF_CURVE, (p) => pureCircuits.doEcMul(p, 3n))).toBe(true);
+    it('TRAPS on an off-curve point', async () => {
+      await traps(contract.doEcMul(OFF_CURVE, 3n));
     });
 
-    it('TRAPS on a garbage point', () => {
-      expect(threw(GARBAGE, (p) => pureCircuits.doEcMul(p, 3n))).toBe(true);
+    it('TRAPS on a garbage point', async () => {
+      await traps(contract.doEcMul(GARBAGE, 3n));
     });
   });
 
@@ -109,28 +106,22 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
   // ecAdd: THE linchpin for encryptPoint (m flows through ecAdd, not ecMul).
   // -------------------------------------------------------------------------
   describe('ecAdd input validation', () => {
-    it('accepts two in-subgroup points', () => {
-      expect(
-        classify(() => pureCircuits.doEcAdd(inSubgroup, inSubgroup)).ok,
-      ).toBe(true);
-    });
-
-    it('TRAPS when an order-2 point is added', () => {
-      expect(classify(() => pureCircuits.doEcAdd(ORDER_2, inSubgroup)).ok).toBe(
-        false,
+    it('accepts two in-subgroup points', async () => {
+      await expect(contract.doEcAdd(IN_SUBGROUP, IN_SUBGROUP)).resolves.toEqual(
+        ecMulGenerator(10n),
       );
     });
 
-    it('TRAPS when an off-curve point is added', () => {
-      expect(
-        classify(() => pureCircuits.doEcAdd(OFF_CURVE, inSubgroup)).ok,
-      ).toBe(false);
+    it('TRAPS when an order-2 point is added', async () => {
+      await traps(contract.doEcAdd(ORDER_2, IN_SUBGROUP));
     });
 
-    it('TRAPS when a garbage point is added', () => {
-      expect(classify(() => pureCircuits.doEcAdd(GARBAGE, inSubgroup)).ok).toBe(
-        false,
-      );
+    it('TRAPS when an off-curve point is added', async () => {
+      await traps(contract.doEcAdd(OFF_CURVE, IN_SUBGROUP));
+    });
+
+    it('TRAPS when a garbage point is added', async () => {
+      await traps(contract.doEcAdd(GARBAGE, IN_SUBGROUP));
     });
   });
 
@@ -143,12 +134,14 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
   // ephemeral POINT (g^e != identity), which catches e = ell regardless.
   // -------------------------------------------------------------------------
   describe('scalar-range fault (ecMulGenerator)', () => {
-    it('accepts the maximum valid scalar (ell - 1)', () => {
-      expect(classify(() => pureCircuits.genMul(L - 1n)).ok).toBe(true);
+    it('accepts the maximum valid scalar (ell - 1)', async () => {
+      await expect(contract.genMul(L - 1n)).resolves.toEqual(
+        ecMulGenerator(L - 1n),
+      );
     });
 
-    it('TRAPS on scalar == ell (out of range)', () => {
-      expect(classify(() => pureCircuits.genMul(L)).ok).toBe(false);
+    it('TRAPS on scalar == ell (out of range)', async () => {
+      await traps(contract.genMul(L));
     });
   });
 });
