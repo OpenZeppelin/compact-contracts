@@ -71,17 +71,18 @@ function makeQualifiedCoin(
 
 let multisig: ShieldedMultiSigV2Simulator;
 
-// The digest `execute` computes: persistentHash([nonce, to.address,
-// coin.color, amount]).
+// The digest `execute` computes: persistentHash([domain, self, nonce,
+// persistentHash(to), coin.color, amount]).
 async function executeDigest(
   m: ShieldedMultiSigV2Simulator,
-  to: { address: Uint8Array },
+  to: { kind: number; address: Uint8Array },
   coin: { color: Uint8Array },
   amount: bigint,
 ): Promise<Uint8Array> {
   return executeMsgHash({
+    contractAddress: Uint8Array.from(Buffer.from(m.contractAddress, 'hex')),
     nonce: await m.getNonce(),
-    toAddress: to.address,
+    to,
     coinColor: coin.color,
     amount,
   });
@@ -308,6 +309,56 @@ describe('ShieldedMultiSigV2', () => {
             coin,
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a signature over a different recipient kind', async () => {
+        const address = new Uint8Array(32).fill(7);
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        // Signed for a shielded user; submitted for a contract at the same
+        // address bytes.
+        const digest = await executeDigest(
+          multisig,
+          makeRecipient(address),
+          coin,
+          100n,
+        );
+        await expect(
+          multisig.execute(
+            { kind: RecipientKind.Contract, address },
+            100n,
+            coin,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+    });
+
+    describe('cross-instance replay', () => {
+      // A distinct deployed address for the second instance, so its digest
+      // (which commits to `kernel.self()`) differs from the first's.
+      const OTHER_ADDRESS = '11'.repeat(32);
+
+      it('should reject a signature bound to another instance', async () => {
+        const instance1 = await freshMultisig();
+        const instance2 = await ShieldedMultiSigV2Simulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          2n,
+          { contractAddress: OTHER_ADDRESS },
+        );
+        const to = makeRecipient(new Uint8Array(32).fill(7));
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        const digest = await executeDigest(instance1, to, coin, 100n);
+        await expect(
+          instance2.execute(
+            to,
+            100n,
+            coin,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
           ),
         ).rejects.toThrow('Multisig: invalid signature');
       });

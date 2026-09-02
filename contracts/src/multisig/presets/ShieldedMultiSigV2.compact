@@ -123,7 +123,10 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  *
  * The circuit reads the current nonce from the ledger, increments it,
  * then reconstructs the message hash that signers must have signed
- * off-chain: `persistentHash(nonce, recipient address, coin color, amount)`.
+ * off-chain: `persistentHash([domain, kernel.self(), nonce,
+ * persistentHash(to), coin color, amount])`. The digest is domain-separated
+ * and bound to the contract instance and the full recipient (kind and
+ * address), so a signature authorizes exactly one operation on one instance.
  *
  * Signatures are verified via fold over parallel pubkey and signature
  * vectors. Each public key is hashed with the instance salt to produce
@@ -162,9 +165,11 @@ export circuit execute(
   _nonce.increment(1);
 
   // Construct message hash
-  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+  const msgHash = persistentHash<Vector<6, Bytes<32>>>([
+    pad(32, "multisig:execute:"),
+    kernel.self().bytes,
     currentNonce as Bytes<32>,
-    to.address,
+    persistentHash<Proposal_Recipient>(to),
     coin.color,
     amount as Bytes<32>
   ]);

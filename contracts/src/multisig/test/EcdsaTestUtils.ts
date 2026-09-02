@@ -15,6 +15,7 @@ import {
   type CompactType,
   CompactTypeBoolean,
   CompactTypeBytes,
+  CompactTypeEnum,
   CompactTypeVector,
   convertBigintToBytes,
   persistentHash,
@@ -170,16 +171,37 @@ export function burnMsgHash(params: {
   ]);
 }
 
-/** ShieldedMultiSigV2 `execute` digest. No domain prefix. */
+/** A `Proposal_Recipient` as the artifact encodes it: kind enum + address. */
+export interface KindRecipient {
+  kind: number;
+  address: Uint8Array;
+}
+
+// Mirrors the generated `_Recipient_0` descriptor: CompactTypeEnum(2, 1) ‖ Bytes<32>.
+const RecipientKindEnum = new CompactTypeEnum(2, 1);
+const RecipientType: CompactType<KindRecipient> = {
+  alignment: () => RecipientKindEnum.alignment().concat(B32.alignment()),
+  fromValue: (value) => ({
+    kind: RecipientKindEnum.fromValue(value),
+    address: B32.fromValue(value),
+  }),
+  toValue: (value) =>
+    RecipientKindEnum.toValue(value.kind).concat(B32.toValue(value.address)),
+};
+
+/** ShieldedMultiSigV2 `execute` digest. `contractAddress` is `kernel.self().bytes`. */
 export function executeMsgHash(params: {
+  contractAddress: Uint8Array;
   nonce: bigint;
-  toAddress: Uint8Array;
+  to: KindRecipient;
   coinColor: Uint8Array;
   amount: bigint;
 }): Uint8Array {
   return persistentVec([
+    domainBytes('multisig:execute:'),
+    params.contractAddress,
     u256(params.nonce),
-    params.toAddress,
+    persistentHash(RecipientType, params.to),
     params.coinColor,
     u256(params.amount),
   ]);
