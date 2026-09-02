@@ -112,7 +112,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * Requirements:
  *
  * - Both public keys must hash to registered signer commitments.
- * - Both signatures must be valid over the message hash.
+ * - Both signatures must be valid over the message hash and use the low-s
+ *   encoding.
  * - Signers must not be duplicates.
  * - Coin value must be >= amount.
  *

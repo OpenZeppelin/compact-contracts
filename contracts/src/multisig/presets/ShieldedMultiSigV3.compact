@@ -34,9 +34,9 @@ pragma language_version >= 0.26.0;
  * the other.
  *
  * @notice Threshold authorization is enforced with secp256k1 ECDSA
- * (`secp256k1EcdsaVerify`) over `persistentHash` digests, via
- * `EcdsaSignerManager`. The approval vectors are fixed at `Vector<2, ...>`,
- * so this contract is 2-of-3 only.
+ * (`secp256k1EcdsaVerifyLowS`) over `persistentHash` digests, via
+ * `EcdsaSignerManager`, so a high-s signature is rejected. The approval
+ * vectors are fixed at `Vector<2, ...>`, so this contract is 2-of-3 only.
  *
  * TODO: switch every digest to `keccak256` to match the custodian's HSM
  * signing format (#827).
