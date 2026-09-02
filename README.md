@@ -189,6 +189,12 @@ Compiling 14 circuits:
 Overall progress [====================] 14/14
 ```
 
+ZKIR v3: the library targets ZKIR v2, the compiler 0.34.0 default. Pass
+`--feature-zkir-v3` only when the contract imports the secp256k1-based modules
+(`crypto/Ecdsa`, `multisig/EcdsaSignerManager`, `ShieldedMultiSigV2`,
+`ShieldedMultiSigV3`). Compiling the other modules under v3 currently hits
+upstream blockers, listed under [Known issues](CHANGELOG.md#known-issues).
+
 ## Development
 
 OpenZeppelin Contracts for Compact exists thanks to its contributors.
