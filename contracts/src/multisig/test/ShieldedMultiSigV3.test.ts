@@ -1,14 +1,17 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import {
+  highSTwin,
+  type Signer,
+  sign,
+  signerFromLabel,
+} from '#test-utils/fixtures/ecdsa.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   burnMsgHash,
   type EitherRecipient,
   mintMsgHash,
-  type Signer,
-  sign,
-  signerFromLabel,
 } from './EcdsaTestUtils.js';
 import {
   calculateSignerId,
@@ -330,6 +333,20 @@ describe('ShieldedMultiSigV3', () => {
             USER_RECIPIENT,
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a high-s signature', async () => {
+        const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+        // The twin verifies under plain ECDSA, so only the low-s gate can
+        // reject it.
+        await expect(
+          multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), highSTwin(sign(S2, digest))],
           ),
         ).rejects.toThrow('Multisig: invalid signature');
       });

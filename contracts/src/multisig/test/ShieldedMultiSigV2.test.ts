@@ -1,15 +1,16 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
-  encodeShieldedCoinInfo as makeCoin,
-} from '#test-utils/fixtures/nativeShieldedToken.js';
-import {
-  executeMsgHash,
+  highSTwin,
   type Signer,
   sign,
   signerFromLabel,
-} from './EcdsaTestUtils.js';
+} from '#test-utils/fixtures/ecdsa.js';
+import {
+  GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
+  encodeShieldedCoinInfo as makeCoin,
+} from '#test-utils/fixtures/nativeShieldedToken.js';
+import { executeMsgHash } from './EcdsaTestUtils.js';
 import { ShieldedMultiSigV2Simulator } from './simulators/ShieldedMultiSigV2Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
@@ -68,6 +69,9 @@ function makeQualifiedCoin(
     mt_index: mtIndex,
   };
 }
+
+const hexBytes = (hex: string): Uint8Array =>
+  Uint8Array.from(Buffer.from(hex, 'hex'));
 
 let multisig: ShieldedMultiSigV2Simulator;
 
@@ -198,6 +202,28 @@ describe('ShieldedMultiSigV2', () => {
       // A real send spends a deposited coin, which the live harness cannot yet
       // fund and track.
       describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
+        // Both output nonces derive from the deposited coin, so sending 100
+        // of a 1000 deposit is fully determined.
+        const EXPECTED_SEND_RESULT = {
+          change: {
+            is_some: true,
+            value: {
+              nonce: hexBytes(
+                '1d62fa499a81ab6b63c7e8fb768dcb46729383838adec43fa70b2381e0765400',
+              ),
+              color: COLOR,
+              value: 900n,
+            },
+          },
+          sent: {
+            nonce: hexBytes(
+              'f0925e45d140674d1bbc00240a017b3d9635b803ee6e75a61569afd28440cf00',
+            ),
+            color: COLOR,
+            value: 100n,
+          },
+        };
+
         async function execute(
           to: { kind: number; address: Uint8Array },
           amount: bigint,
@@ -223,7 +249,9 @@ describe('ShieldedMultiSigV2', () => {
           await multisig.deposit(makeCoin(COLOR, AMOUNT));
           const to = makeRecipient(new Uint8Array(32).fill(7));
           const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
-          await execute(to, 100n, coin, [S1, S2]);
+          expect(await execute(to, 100n, coin, [S1, S2])).toStrictEqual(
+            EXPECTED_SEND_RESULT,
+          );
           expect(await multisig.getNonce()).toEqual(1n);
         });
 
@@ -231,7 +259,11 @@ describe('ShieldedMultiSigV2', () => {
           await multisig.deposit(makeCoin(COLOR, AMOUNT));
           const to = makeRecipient(new Uint8Array(32).fill(7));
           const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
-          await execute(to, 100n, coin, [S2, S3]);
+          // Same expectation under different approvers: authorization
+          // cannot influence the coins produced.
+          expect(await execute(to, 100n, coin, [S2, S3])).toStrictEqual(
+            EXPECTED_SEND_RESULT,
+          );
           expect(await multisig.getNonce()).toEqual(1n);
         });
 
@@ -309,6 +341,23 @@ describe('ShieldedMultiSigV2', () => {
             coin,
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a high-s signature', async () => {
+        const to = makeRecipient(new Uint8Array(32).fill(7));
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        const digest = await executeDigest(multisig, to, coin, 100n);
+        // The twin verifies under plain ECDSA, so only the low-s gate can
+        // reject it.
+        await expect(
+          multisig.execute(
+            to,
+            100n,
+            coin,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), highSTwin(sign(S2, digest))],
           ),
         ).rejects.toThrow('Multisig: invalid signature');
       });

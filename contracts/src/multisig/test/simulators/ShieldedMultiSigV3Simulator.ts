@@ -3,6 +3,7 @@ import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
+import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   type ContractAddress,
   type Either,
@@ -11,7 +12,6 @@ import {
   Contract as ShieldedMultiSigV3Contract,
   type ZswapCoinPublicKey,
 } from '../../../../artifacts/ShieldedMultiSigV3/contract/index.js';
-import type { EcdsaSignature } from '../EcdsaTestUtils.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type ShieldedMultiSigV3Args = readonly [

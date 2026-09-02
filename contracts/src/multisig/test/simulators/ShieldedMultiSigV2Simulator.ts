@@ -3,13 +3,13 @@ import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
+import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   type Ledger,
   ledger,
   pureCircuits,
   Contract as ShieldedMultiSigV2,
 } from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
-import type { EcdsaSignature } from '../EcdsaTestUtils.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };

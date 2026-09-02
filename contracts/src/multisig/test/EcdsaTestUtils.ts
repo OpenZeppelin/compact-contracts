@@ -1,15 +1,11 @@
 /**
- * Test helpers for the ECDSA-backed multisig presets.
+ * Reconstructs, byte-for-byte, the message digest each multisig circuit hashes
+ * and verifies. This mirrors what a real operator must do off-chain: it reuses
+ * the runtime's own `persistentHash` / `convertBigintToBytes` primitives with
+ * `CompactType`s built identically to the generated artifact, so the digest
+ * matches the in-circuit computation.
  *
- * Two responsibilities:
- *  1. Produce real secp256k1 key pairs and ECDSA signatures in the shape the
- *     compiled circuits expect: a `Secp256k1Point` public key and an `{ r, s }`
- *     signature of scalar field elements.
- *  2. Reconstruct, byte-for-byte, the message digest each circuit hashes and
- *     verifies. This mirrors what a real operator must do off-chain: it reuses
- *     the runtime's own `persistentHash` / `convertBigintToBytes` primitives
- *     with `CompactType`s built identically to the generated artifact, so the
- *     digest matches the in-circuit computation.
+ * Key and signature fixtures live in `#test-utils/fixtures/ecdsa.js`.
  */
 import {
   type CompactType,
@@ -19,76 +15,14 @@ import {
   CompactTypeVector,
   convertBigintToBytes,
   persistentHash,
-  type Secp256k1Point,
 } from '@midnight-ntwrk/compact-runtime';
-import { secp256k1 } from '@noble/curves/secp256k1.js';
-
-// ─── Keys & signatures ──────────────────────────────────────────
-
-/** An ECDSA signature as the circuits consume it: two secp256k1 scalars. */
-export interface EcdsaSignature {
-  r: bigint;
-  s: bigint;
-}
-
-/** A secp256k1 signer: its secret key plus the public key as a circuit point. */
-export interface Signer {
-  secretKey: Uint8Array;
-  publicKey: Secp256k1Point;
-}
-
-const bytesToBigIntBE = (bytes: Uint8Array): bigint => {
-  let acc = 0n;
-  for (const b of bytes) acc = (acc << 8n) | BigInt(b);
-  return acc;
-};
-
-/** Derives a signer from a 32-byte secret key. */
-export function makeSigner(secretKey: Uint8Array): Signer {
-  const uncompressed = secp256k1.getPublicKey(secretKey, false); // 0x04 || X || Y
-  return {
-    secretKey,
-    publicKey: {
-      x: bytesToBigIntBE(uncompressed.slice(1, 33)),
-      y: bytesToBigIntBE(uncompressed.slice(33, 65)),
-      identity: false,
-    },
-  };
-}
-
-/** Deterministic signer from an ASCII label, for stable fixtures. */
-export function signerFromLabel(label: string): Signer {
-  const secretKey = new Uint8Array(32);
-  secretKey.set(new TextEncoder().encode(label).slice(0, 32));
-  secretKey[31] ||= 1; // avoid the zero scalar
-  return makeSigner(secretKey);
-}
-
-/**
- * Signs a 32-byte digest, returning `{ r, s }`. The digest is the pre-hashed
- * message, exactly as `secp256k1EcdsaVerify` interprets `msgHash`.
- */
-export function sign(signer: Signer, digest: Uint8Array): EcdsaSignature {
-  const sig = secp256k1.sign(digest, signer.secretKey, {
-    prehash: false,
-    lowS: true,
-  });
-  // @noble/curves v1 returns a `Signature`; v2 returns compact r‖s bytes.
-  if (sig instanceof Uint8Array) {
-    return {
-      r: bytesToBigIntBE(sig.slice(0, 32)),
-      s: bytesToBigIntBE(sig.slice(32, 64)),
-    };
-  }
-  return { r: sig.r, s: sig.s };
-}
 
 // ─── Digest reconstruction ──────────────────────────────────────
 
 const B32 = new CompactTypeBytes(32);
 
 const vecType = (n: number): CompactType<Uint8Array[]> =>
-  new CompactTypeVector(n, B32) as unknown as CompactType<Uint8Array[]>;
+  new CompactTypeVector(n, B32);
 
 /** `pad(32, s)`: ASCII bytes of `s`, right-padded with zeros to 32 bytes. */
 export function domainBytes(s: string): Uint8Array {
