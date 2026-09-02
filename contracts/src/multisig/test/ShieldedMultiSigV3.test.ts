@@ -1,7 +1,18 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import {
+  highSTwin,
+  type Signer,
+  sign,
+  signerFromLabel,
+} from '#test-utils/fixtures/ecdsa.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
+import {
+  burnMsgHash,
+  type EitherRecipient,
+  mintMsgHash,
+} from './EcdsaTestUtils.js';
 import {
   calculateSignerId,
   ShieldedMultiSigV3Simulator,
@@ -14,21 +25,20 @@ const INIT_COIN_NONCE = new Uint8Array(32).fill(0xbb);
 const TOKEN_DOMAIN = new Uint8Array(32);
 Buffer.from('smt:token:').copy(TOKEN_DOMAIN);
 
-// Signer identity is a commitment (`calculateSignerId(pk, salt)`) passed to
-// `mint`/`burn` explicitly, and ECDSA verification is stubbed (`DUMMY_SIG`
-// passes), so authorization is caller-agnostic — this spec's signer logic runs
-// unchanged on live (no `ownPublicKey`-based identity).
-const PK1 = new Uint8Array(64).fill(0x11);
-const PK2 = new Uint8Array(64).fill(0x22);
-const PK3 = new Uint8Array(64).fill(0x33);
-const NON_SIGNER_PK = new Uint8Array(64).fill(0x99);
+// Real secp256k1 signers, deterministic from labels. A signer's on-chain
+// identity is the commitment `calculateSignerId(pk, salt)`; authorization also
+// needs a genuine ECDSA signature over the operation digest. Both are
+// caller-agnostic (no `ownPublicKey` identity), so this spec runs unchanged on
+// live.
+const S1 = signerFromLabel('v3-signer-1');
+const S2 = signerFromLabel('v3-signer-2');
+const S3 = signerFromLabel('v3-signer-3');
+const OUTSIDER = signerFromLabel('v3-outsider');
 
-const COMMITMENT1 = calculateSignerId(PK1, INSTANCE_SALT);
-const COMMITMENT2 = calculateSignerId(PK2, INSTANCE_SALT);
-const COMMITMENT3 = calculateSignerId(PK3, INSTANCE_SALT);
+const COMMITMENT1 = calculateSignerId(S1.publicKey, INSTANCE_SALT);
+const COMMITMENT2 = calculateSignerId(S2.publicKey, INSTANCE_SALT);
+const COMMITMENT3 = calculateSignerId(S3.publicKey, INSTANCE_SALT);
 const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
-
-const DUMMY_SIG = new Uint8Array(64).fill(0xff);
 
 // A contract recipient for `mint`. Dry-only: minting to a non-participating
 // contract publishes an output no one claims, which a live node rejects (the
@@ -40,6 +50,53 @@ const CONTRACT_RECIPIENT = utils.createEitherTestContractAddress('TARGET');
 // the node can resolve), so the minted coin is deliverable; dry → a synthetic
 // user.
 let USER_RECIPIENT: ReturnType<typeof shieldedTestKey>;
+
+// ─── Signing helpers ──────────────────────────────────────────────
+
+const addrBytes = (m: ShieldedMultiSigV3Simulator): Uint8Array =>
+  Uint8Array.from(Buffer.from(m.contractAddress, 'hex'));
+
+/** The mint digest the contract computes for these params at its current nonce. */
+async function mintDigest(
+  m: ShieldedMultiSigV3Simulator,
+  recipient: EitherRecipient,
+  amount: bigint,
+): Promise<Uint8Array> {
+  return mintMsgHash({
+    contractAddress: addrBytes(m),
+    recipient,
+    opNonce: await m.getNonce(),
+    amount,
+  });
+}
+
+/** The burn digest the contract computes for these params at its current nonce. */
+async function burnDigest(
+  m: ShieldedMultiSigV3Simulator,
+  amount: bigint,
+): Promise<Uint8Array> {
+  return burnMsgHash({
+    contractAddress: addrBytes(m),
+    opNonce: await m.getNonce(),
+    amount,
+  });
+}
+
+/** Mints, signing the correct digest with each of `signers`. */
+async function mint(
+  m: ShieldedMultiSigV3Simulator,
+  amount: bigint,
+  recipient: EitherRecipient,
+  signers: Signer[],
+): Promise<void> {
+  const digest = await mintDigest(m, recipient, amount);
+  await m.mint(
+    amount,
+    recipient,
+    signers.map((s) => s.publicKey),
+    signers.map((s) => sign(s, digest)),
+  );
+}
 
 function makeQualifiedCoin(
   color: Uint8Array,
@@ -106,7 +163,7 @@ describe('ShieldedMultiSigV3', () => {
         SIGNER_COMMITMENTS,
       );
       const unknown = await multisig._calculateSignerId(
-        NON_SIGNER_PK,
+        OUTSIDER.publicKey,
         INSTANCE_SALT,
       );
       expect(await multisig.isSigner(unknown)).toEqual(false);
@@ -170,34 +227,49 @@ describe('ShieldedMultiSigV3', () => {
 
     describe('_calculateSignerId', () => {
       it('should produce deterministic commitments', async () => {
-        const c1 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
-        const c2 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
+        const c1 = await multisig._calculateSignerId(
+          S1.publicKey,
+          INSTANCE_SALT,
+        );
+        const c2 = await multisig._calculateSignerId(
+          S1.publicKey,
+          INSTANCE_SALT,
+        );
         expect(c1).toEqual(c2);
       });
 
       it('should produce different commitments for different keys', async () => {
-        const c1 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
-        const c2 = await multisig._calculateSignerId(PK2, INSTANCE_SALT);
+        const c1 = await multisig._calculateSignerId(
+          S1.publicKey,
+          INSTANCE_SALT,
+        );
+        const c2 = await multisig._calculateSignerId(
+          S2.publicKey,
+          INSTANCE_SALT,
+        );
         expect(c1).not.toEqual(c2);
       });
 
       it('should produce different commitments for different salts', async () => {
         const salt2 = new Uint8Array(32).fill(0xcc);
-        const c1 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
-        const c2 = await multisig._calculateSignerId(PK1, salt2);
+        const c1 = await multisig._calculateSignerId(
+          S1.publicKey,
+          INSTANCE_SALT,
+        );
+        const c2 = await multisig._calculateSignerId(S1.publicKey, salt2);
         expect(c1).not.toEqual(c2);
       });
 
       it('should match registered commitments', async () => {
-        expect(await multisig._calculateSignerId(PK1, INSTANCE_SALT)).toEqual(
-          COMMITMENT1,
-        );
-        expect(await multisig._calculateSignerId(PK2, INSTANCE_SALT)).toEqual(
-          COMMITMENT2,
-        );
-        expect(await multisig._calculateSignerId(PK3, INSTANCE_SALT)).toEqual(
-          COMMITMENT3,
-        );
+        expect(
+          await multisig._calculateSignerId(S1.publicKey, INSTANCE_SALT),
+        ).toEqual(COMMITMENT1);
+        expect(
+          await multisig._calculateSignerId(S2.publicKey, INSTANCE_SALT),
+        ).toEqual(COMMITMENT2);
+        expect(
+          await multisig._calculateSignerId(S3.publicKey, INSTANCE_SALT),
+        ).toEqual(COMMITMENT3);
       });
     });
 
@@ -207,30 +279,15 @@ describe('ShieldedMultiSigV3', () => {
       });
 
       it('should mint to a user recipient with signers 0 and 1', async () => {
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
       });
 
       it('should mint to a user recipient with signers 0 and 2', async () => {
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK3],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        await mint(multisig, 100n, USER_RECIPIENT, [S1, S3]);
       });
 
       it('should mint to a user recipient with signers 1 and 2', async () => {
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK2, PK3],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        await mint(multisig, 100n, USER_RECIPIENT, [S2, S3]);
       });
 
       // Live: a mint to a non-participating contract leaves an unclaimed output
@@ -238,95 +295,89 @@ describe('ShieldedMultiSigV3', () => {
       it.skipIf(isLiveBackend())(
         'should mint to a contract recipient',
         async () => {
-          await multisig.mint(
-            100n,
-            CONTRACT_RECIPIENT,
-            [PK1, PK2],
-            [DUMMY_SIG, DUMMY_SIG],
-          );
+          await mint(multisig, 100n, CONTRACT_RECIPIENT, [S1, S2]);
         },
       );
 
       it('should reject duplicate signer', async () => {
         await expect(
-          multisig.mint(
-            100n,
-            USER_RECIPIENT,
-            [PK1, PK1],
-            [DUMMY_SIG, DUMMY_SIG],
-          ),
+          mint(multisig, 100n, USER_RECIPIENT, [S1, S1]),
         ).rejects.toThrow('Multisig: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
         await expect(
+          mint(multisig, 100n, USER_RECIPIENT, [S1, OUTSIDER]),
+        ).rejects.toThrow('Signer: not a signer');
+      });
+
+      it('should reject a signature from the wrong key', async () => {
+        // S2's pubkey is registered, but S3 produced the signature.
+        const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+        await expect(
           multisig.mint(
             100n,
             USER_RECIPIENT,
-            [PK1, NON_SIGNER_PK],
-            [DUMMY_SIG, DUMMY_SIG],
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('Signer: not a signer');
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a signature over a different digest', async () => {
+        const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+        const wrongDigest = await mintDigest(multisig, USER_RECIPIENT, 999n);
+        await expect(
+          multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, wrongDigest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a high-s signature', async () => {
+        const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+        // The twin verifies under plain ECDSA, so only the low-s gate can
+        // reject it.
+        await expect(
+          multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), highSTwin(sign(S2, digest))],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
       });
 
       it('should increment nonce after mint', async () => {
         expect(await multisig.getNonce()).toEqual(0n);
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
         expect(await multisig.getNonce()).toEqual(1n);
       });
 
       it('should increment nonce on each mint', async () => {
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-        await multisig.mint(
-          200n,
-          USER_RECIPIENT,
-          [PK1, PK3],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-        await multisig.mint(
-          300n,
-          USER_RECIPIENT,
-          [PK2, PK3],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
+        await mint(multisig, 200n, USER_RECIPIENT, [S1, S3]);
+        await mint(multisig, 300n, USER_RECIPIENT, [S2, S3]);
         expect(await multisig.getNonce()).toEqual(3n);
       });
 
       it('should accept zero amount', async () => {
-        await multisig.mint(
-          0n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        await mint(multisig, 0n, USER_RECIPIENT, [S1, S2]);
       });
 
-      it('should prevent replay by incrementing nonce', async () => {
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-        // Second mint with same params succeeds because nonce is different
-        // (stub ver doesn't actually check signatures)
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-        expect(await multisig.getNonce()).toEqual(2n);
+      it('should reject signatures replayed after the nonce moves', async () => {
+        const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+        const pubkeys = [S1.publicKey, S2.publicKey];
+        const sigs = [sign(S1, digest), sign(S2, digest)];
+
+        await multisig.mint(100n, USER_RECIPIENT, pubkeys, sigs);
+        expect(await multisig.getNonce()).toEqual(1n);
+        await expect(
+          multisig.mint(100n, USER_RECIPIENT, pubkeys, sigs),
+        ).rejects.toThrow('Multisig: invalid signature');
       });
     });
 
@@ -344,84 +395,129 @@ describe('ShieldedMultiSigV3', () => {
       // Happy-path burns execute a real spend, so they are dry-only until the
       // live harness can fund and track the burned coin.
       describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
+        async function burn(
+          amount: bigint,
+          coinValue: bigint,
+          signers: Signer[],
+        ): Promise<void> {
+          const coin = makeQualifiedCoin(
+            await multisig.getTokenType(),
+            coinValue,
+          );
+          const digest = await burnDigest(multisig, amount);
+          await multisig.burn(
+            coin,
+            amount,
+            signers.map((s) => s.publicKey),
+            signers.map((s) => sign(s, digest)),
+          );
+        }
+
         it('should burn with valid coin and signers 0 and 1', async () => {
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+          await burn(100n, 100n, [S1, S2]);
         });
 
         it('should burn with signers 0 and 2', async () => {
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 100n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
+          await burn(100n, 100n, [S1, S3]);
         });
 
         it('should burn with signers 1 and 2', async () => {
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 100n, [PK2, PK3], [DUMMY_SIG, DUMMY_SIG]);
+          await burn(100n, 100n, [S2, S3]);
         });
 
         it('should burn partial amount', async () => {
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 50n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+          await burn(50n, 100n, [S1, S2]);
         });
 
         it('should handle zero burn amount', async () => {
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 0n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]);
+          await burn(0n, 100n, [S1, S2]);
         });
 
         it('should share nonce across mint and burn', async () => {
-          await multisig.mint(
-            100n,
-            USER_RECIPIENT,
-            [PK1, PK2],
-            [DUMMY_SIG, DUMMY_SIG],
-          );
+          await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
           expect(await multisig.getNonce()).toEqual(1n);
 
-          const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
-          await multisig.burn(coin, 50n, [PK1, PK3], [DUMMY_SIG, DUMMY_SIG]);
+          await burn(50n, 100n, [S1, S3]);
           expect(await multisig.getNonce()).toEqual(2n);
         });
       });
 
       it('should reject duplicate signer', async () => {
         const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+        const digest = await burnDigest(multisig, 100n);
         await expect(
-          multisig.burn(coin, 100n, [PK1, PK1], [DUMMY_SIG, DUMMY_SIG]),
+          multisig.burn(
+            coin,
+            100n,
+            [S1.publicKey, S1.publicKey],
+            [sign(S1, digest), sign(S1, digest)],
+          ),
         ).rejects.toThrow('Multisig: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
         const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+        const digest = await burnDigest(multisig, 100n);
         await expect(
           multisig.burn(
             coin,
             100n,
-            [PK1, NON_SIGNER_PK],
-            [DUMMY_SIG, DUMMY_SIG],
+            [S1.publicKey, OUTSIDER.publicKey],
+            [sign(S1, digest), sign(OUTSIDER, digest)],
           ),
         ).rejects.toThrow('Signer: not a signer');
+      });
+
+      it('should reject a signature from the wrong key', async () => {
+        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+        const digest = await burnDigest(multisig, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S3, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
       });
 
       it('should reject wrong token color', async () => {
         const wrongColor = new Uint8Array(32).fill(0xde);
         const coin = makeQualifiedCoin(wrongColor, 100n);
+        const digest = await burnDigest(multisig, 100n);
         await expect(
-          multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]),
+          multisig.burn(
+            coin,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
         ).rejects.toThrow('Multisig: coin not from this contract');
       });
 
       it('should reject insufficient coin value', async () => {
         const coin = makeQualifiedCoin(await multisig.getTokenType(), 10n);
+        const digest = await burnDigest(multisig, 100n);
         await expect(
-          multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]),
+          multisig.burn(
+            coin,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
         ).rejects.toThrow('Multisig: insufficient coin value');
       });
 
       it('should reject when amount exceeds value by 1', async () => {
         const coin = makeQualifiedCoin(await multisig.getTokenType(), 99n);
+        const digest = await burnDigest(multisig, 100n);
         await expect(
-          multisig.burn(coin, 100n, [PK1, PK2], [DUMMY_SIG, DUMMY_SIG]),
+          multisig.burn(
+            coin,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
         ).rejects.toThrow('Multisig: insufficient coin value');
       });
     });
@@ -435,8 +531,11 @@ describe('ShieldedMultiSigV3', () => {
 
       it('should isolate signers across instances with different salts', async () => {
         const salt2 = new Uint8Array(32).fill(0xcc);
-        const c1 = await multisig._calculateSignerId(PK1, INSTANCE_SALT);
-        const c2 = await multisig._calculateSignerId(PK1, salt2);
+        const c1 = await multisig._calculateSignerId(
+          S1.publicKey,
+          INSTANCE_SALT,
+        );
+        const c2 = await multisig._calculateSignerId(S1.publicKey, salt2);
         expect(c1).not.toEqual(c2);
       });
 
@@ -468,48 +567,39 @@ describe('ShieldedMultiSigV3', () => {
 
       it('should increment monotonically', async () => {
         for (let i = 0; i < 5; i++) {
-          await multisig.mint(
-            1n,
-            USER_RECIPIENT,
-            [PK1, PK2],
-            [DUMMY_SIG, DUMMY_SIG],
-          );
+          await mint(multisig, 1n, USER_RECIPIENT, [S1, S2]);
           expect(await multisig.getNonce()).toEqual(BigInt(i + 1));
         }
       });
     });
 
     describe('cross-instance replay', () => {
-      beforeEach(async () => {
-        multisig = await freshMultisig();
-      });
+      // The second instance needs a distinct deployed address so its message
+      // hash, which commits to `kernel.self()`, differs from the first's. Dry
+      // only: live deploys already differ, and live `create()` refuses an
+      // address other than the one actually deployed.
+      const OTHER_ADDRESS = '11'.repeat(32);
 
-      it('should derive different message hashes for different instances', async () => {
+      it('should reject a signature bound to another instance', async () => {
+        const instance1 = await freshMultisig();
         const instance2 = await ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,
           SIGNER_COMMITMENTS,
+          isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
         );
 
-        // With stub verification, both succeed independently.
-        // Once real ECDSA is available, a signature produced for one
-        // instance's message hash must not validate against the other's.
-        await multisig.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
-        await instance2.mint(
-          100n,
-          USER_RECIPIENT,
-          [PK1, PK2],
-          [DUMMY_SIG, DUMMY_SIG],
-        );
+        const digest1 = await mintDigest(instance1, USER_RECIPIENT, 100n);
+        const pubkeys = [S1.publicKey, S2.publicKey];
+        const sigs = [sign(S1, digest1), sign(S2, digest1)];
 
-        expect(await multisig.getNonce()).toEqual(1n);
-        expect(await instance2.getNonce()).toEqual(1n);
+        await instance1.mint(100n, USER_RECIPIENT, pubkeys, sigs);
+        expect(await instance1.getNonce()).toEqual(1n);
+
+        await expect(
+          instance2.mint(100n, USER_RECIPIENT, pubkeys, sigs),
+        ).rejects.toThrow('Multisig: invalid signature');
       });
     });
   });

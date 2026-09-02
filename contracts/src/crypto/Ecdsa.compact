@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (crypto/Ecdsa.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Ecdsa
+ * @description The low-s rule for secp256k1 ECDSA signatures.
+ *
+ * `secp256k1EcdsaVerify` accepts both `(r, s)` and `(r, n - s)`, so every valid
+ * signature has a second valid encoding that anyone can derive without the
+ * signing key. Its own documentation leaves the low-s constraint to the caller.
+ * This module is that constraint: reject `s > n / 2` and each signature has one
+ * encoding, which is what replay sets, nullifiers, and signature-derived
+ * identifiers rely on.
+ */
+module Ecdsa {
+  import CompactStandardLibrary;
+
+  /**
+   * @description Returns whether `s` is canonical, i.e. `s <= n / 2` where `n`
+   * is the secp256k1 group order.
+   *
+   * @circuitInfo k=13, rows=5125
+   *
+   * @param {Secp256k1Scalar} s - The `s` component of a signature.
+   * @returns {Boolean} True if `s` is in the low half.
+   */
+  export pure circuit isLowS(s: Secp256k1Scalar): Boolean {
+    const sBytes = (s as Bytes<32>) as Vector<32, Uint<8>>;
+    return fold(compareByteLe, true, sBytes, SECP256K1_HALF_ORDER_LE());
+  }
+
+  /**
+   * @description Fold callback over one little-endian byte pair. A differing
+   * pair overrides the running result, so the accumulator ends up holding the
+   * comparison at the most significant byte where `s` and `n / 2` differ. All
+   * pairs equal leaves the seed untouched, which is what makes the comparison
+   * inclusive.
+   *
+   * @param {Boolean} isLow - Result from the less significant bytes.
+   * @param {Uint<8>} sByte - Byte of `s`.
+   * @param {Uint<8>} halfByte - Byte of `n / 2`.
+   * @returns {Boolean} Updated result.
+   */
+  pure circuit compareByteLe(
+    isLow: Boolean,
+    sByte: Uint<8>,
+    halfByte: Uint<8>
+  ): Boolean {
+    return sByte == halfByte ? isLow : sByte < halfByte;
+  }
+
+  /**
+   * @description `n / 2` as little-endian bytes, matching the byte order of
+   * `Secp256k1Scalar as Bytes<32>`.
+   *
+   * @returns {Vector<32, Uint<8>>} The bytes of `n / 2`, least significant first.
+   */
+  pure circuit SECP256K1_HALF_ORDER_LE(): Vector<32, Uint<8>> {
+    // 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0
+    return [
+      160, 32, 27, 104, 70, 47, 233, 223,
+      29, 80, 164, 87, 115, 110, 87, 93,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 127
+    ];
+  }
+
+  // ─── Verification ───────────────────────────────────────────────────────────
+
+  /**
+   * @description Rejects a signature in the high half.
+   *
+   * @circuitInfo k=13, rows=5156
+   *
+   * Requirements:
+   *
+   * - `sig.s` must satisfy `s <= n / 2`.
+   *
+   * @param {Secp256k1EcdsaSignature} sig - The signature to check.
+   * @returns {[]} Empty tuple.
+   */
+  export pure circuit assertLowS(sig: Secp256k1EcdsaSignature): [] {
+    assert(isLowS(sig.s), "Ecdsa: high-s signature");
+  }
+
+  /**
+   * @description Verifies `sig` over `msgHash` under `pk`, accepting only the
+   * low-s encoding. Reports the result instead of asserting, so a caller can
+   * fold it into a count or a threshold.
+   *
+   * @circuitInfo k=16, rows=34056
+   *
+   * @param {Bytes<32>} msgHash - The digest that was signed.
+   * @param {Secp256k1EcdsaSignature} sig - The signature over `msgHash`.
+   * @param {Secp256k1Point} pk - The signer's public key.
+   * @returns {Boolean} True if the signature is valid and canonical.
+   */
+  export pure circuit secp256k1EcdsaVerifyLowS(
+    msgHash: Bytes<32>,
+    sig: Secp256k1EcdsaSignature,
+    pk: Secp256k1Point
+  ): Boolean {
+    // TODO: inline into the return once a guarded stdlib verify compiles.
+    // Short-circuiting `&&` puts it behind a guard, which trips an internal
+    // error in the compiler's missing-guard-workarounds pass.
+    const verified = secp256k1EcdsaVerify(msgHash, sig, pk);
+    return isLowS(sig.s) && verified;
+  }
+}

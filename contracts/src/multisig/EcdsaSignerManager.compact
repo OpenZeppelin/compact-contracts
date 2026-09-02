@@ -1,0 +1,229 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (multisig/EcdsaSignerManager.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module EcdsaSignerManager
+ * @description Threshold authorization over secp256k1 ECDSA approvals for
+ * multisig contracts.
+ *
+ * Signer identities are stored as commitments: `persistentHash` over the
+ * signer's public-key coordinates, an instance salt, and a domain separator.
+ * The salt is per-deployment, so the same public key yields a different
+ * commitment in every instance and cannot be correlated across contracts.
+ *
+ * Wraps `Signer<Bytes<32>>` for the registry and threshold. Consuming
+ * contracts own the digest: they compute the message hash their signers
+ * signed, then hand it to `assertApprovals` with the parallel public-key and
+ * signature vectors.
+ *
+ * The module's ledger is not exported, so a contract importing it under a
+ * prefix keeps the salt and the signer registry out of its generated
+ * `ledger()` reader.
+ */
+module EcdsaSignerManager {
+  import CompactStandardLibrary;
+  import "../crypto/Ecdsa" prefix Ecdsa_;
+  import "./Signer"<Bytes<32>> prefix Signer_;
+
+  // ─── State ──────────────────────────────────────────────────────────────────
+
+  ledger _instanceSalt: Bytes<32>;
+
+  // ─── Types ──────────────────────────────────────────────────────────────────
+
+  /**
+   * @description Input to `persistentHash` for computing signer commitments.
+   */
+  struct SignerCommitmentInput {
+    pkX: Bytes<32>,
+    pkY: Bytes<32>,
+    salt: Bytes<32>,
+    domain: Bytes<32>
+  }
+
+  /**
+   * @description Accumulator threaded through the approval fold: the running
+   * valid count, the previous commitment (for duplicate detection), and the
+   * digest every signature is checked against.
+   */
+  struct VerificationState {
+    validCount: Uint<8>,
+    prevCommitment: Bytes<32>,
+    msgHash: Bytes<32>
+  }
+
+  // ─── Initialization ─────────────────────────────────────────────────────────
+
+  /**
+   * @description Stores the instance salt and registers the initial signer set.
+   * Call from the consuming contract's constructor only.
+   *
+   * Requirements:
+   *
+   * - Can only be called once.
+   * - `instanceSalt` should be cryptographically random.
+   * - `signerCommitments` must not contain duplicates.
+   * - `threshold` must be non-zero and must not exceed `n`.
+   * - `threshold` must not exceed 2, the number of approvals `assertApprovals`
+   *   verifies.
+   *
+   * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
+   * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
+   * @param {Uint<8>} threshold - Minimum approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize<#n>(
+    instanceSalt: Bytes<32>,
+    signerCommitments: Vector<n, Bytes<32>>,
+    threshold: Uint<8>
+  ): [] {
+    _instanceSalt = disclose(instanceSalt);
+    assert(threshold <= 2, "EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)");
+    Signer_initialize<n>(signerCommitments, threshold);
+  }
+
+  // ─── Commitments ────────────────────────────────────────────────────────────
+
+  /**
+   * @description Computes a signer commitment from a secp256k1 public key,
+   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   *
+   * Pure, so the deployer can derive constructor commitments off-chain the
+   * same way the circuits derive them in-circuit.
+   *
+   * Requirements:
+   *
+   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
+   *
+   * @param {Secp256k1Point} pk - The secp256k1 public key.
+   * @param {Bytes<32>} salt - The instance salt.
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  export pure circuit calculateSignerId(
+    pk: Secp256k1Point,
+    salt: Bytes<32>
+  ): Bytes<32> {
+    return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+      pkX: secp256k1PointX(pk) as Bytes<32>,
+      pkY: secp256k1PointY(pk) as Bytes<32>,
+      salt: salt,
+      domain: pad(32, "multisig:signer:")
+    });
+  }
+
+  // ─── Approvals ──────────────────────────────────────────────────────────────
+
+  /**
+   * @description Verifies two approvals over `msgHash` and asserts the
+   * threshold is met.
+   *
+   * `pubkeys` and `signatures` are parallel: entry `i` of each belongs to the
+   * same signer.
+   *
+   * @dev Both entries are asserted, so the count handed to the threshold check
+   * is always 2 and a threshold below 2 admits nothing extra.
+   *
+   * @circuitInfo k=17, rows=64916
+   *
+   * Requirements:
+   *
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over `msgHash` and use the low-s encoding.
+   * - Signers must not be duplicates.
+   *
+   * @param {Bytes<32>} msgHash - The digest the signers approved.
+   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - Signatures over `msgHash`.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertApprovals(
+    msgHash: Bytes<32>,
+    pubkeys: Vector<2, Secp256k1Point>,
+    signatures: Vector<2, Secp256k1EcdsaSignature>
+  ): [] {
+    const initialState = VerificationState {
+      validCount: 0 as Uint<8>,
+      prevCommitment: pad(32, ""),
+      msgHash: msgHash
+    };
+
+    const finalState = fold(verifySignature, initialState, pubkeys, signatures);
+    Signer_assertThresholdMet(finalState.validCount);
+  }
+
+  /**
+   * @description Fold callback. Verifies one signer's approval.
+   *
+   * @notice Verification goes through `Ecdsa`'s low-s wrapper, so the high-s
+   * encoding of an approval is rejected as an invalid signature.
+   *
+   * @dev Duplicates are caught by comparing against the previous commitment
+   * alone, which is exhaustive only at width 2. Widening the approval vectors
+   * requires an all-pairs check.
+   *
+   * @param {VerificationState} state - Accumulator threaded through fold.
+   * @param {Secp256k1Point} pubkey - The signer's secp256k1 public key.
+   * @param {Secp256k1EcdsaSignature} signature - The signer's signature over `msgHash`.
+   * @returns {VerificationState} Updated accumulator.
+   */
+  circuit verifySignature(
+    state: VerificationState,
+    pubkey: Secp256k1Point,
+    signature: Secp256k1EcdsaSignature
+  ): VerificationState {
+    const commitment = calculateSignerId(pubkey, _instanceSalt);
+
+    assert(commitment != state.prevCommitment, "Multisig: duplicate signer");
+
+    Signer_assertSigner(commitment);
+
+    assert(
+      Ecdsa_secp256k1EcdsaVerifyLowS(state.msgHash, signature, pubkey),
+      "Multisig: invalid signature"
+    );
+
+    return VerificationState {
+      validCount: state.validCount + 1 as Uint<8>,
+      prevCommitment: commitment,
+      msgHash: state.msgHash
+    };
+  }
+
+  // ─── View ───────────────────────────────────────────────────────────────────
+
+  /**
+   * @description Returns the number of registered signers.
+   *
+   * @circuitInfo k=6, rows=34
+   *
+   * @returns {Uint<8>} The signer count.
+   */
+  export circuit getSignerCount(): Uint<8> {
+    return Signer_getSignerCount();
+  }
+
+  /**
+   * @description Returns the approval threshold.
+   *
+   * @circuitInfo k=6, rows=34
+   *
+   * @returns {Uint<8>} The threshold.
+   */
+  export circuit getThreshold(): Uint<8> {
+    return Signer_getThreshold();
+  }
+
+  /**
+   * @description Returns whether the given commitment is a registered signer.
+   *
+   * @circuitInfo k=8, rows=129
+   *
+   * @param {Bytes<32>} commitment - The signer commitment to check.
+   * @returns {Boolean} True if registered.
+   */
+  export circuit isSigner(commitment: Bytes<32>): Boolean {
+    return Signer_isSigner(commitment);
+  }
+}

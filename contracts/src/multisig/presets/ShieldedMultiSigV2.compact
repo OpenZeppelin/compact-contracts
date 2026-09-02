@@ -22,38 +22,13 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
+import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
 import "../ProposalManager" prefix Proposal_;
 import "../ShieldedTreasuryStateless" prefix Treasury_;
-import "../Signer"<Bytes<32>> prefix Signer_;
-
-// ─── Types ──────────────────────────────────────────────────────
-
-/**
- * @description Accumulator for fold-based signature verification.
- * Threads the valid count, previous commitment (for duplicate
- * detection), and message hash through each iteration.
- */
-export struct VerificationState {
-  validCount: Uint<8>,
-  prevCommitment: Bytes<32>,
-  msgHash: Bytes<32>
-}
-
-/**
- * @description Input to persistentHash for computing signer commitments.
- * Combines the ECDSA public key with an instance-specific salt and
- * domain separator to produce a unique, unlinkable commitment.
- */
-export struct SignerCommitmentInput {
-  pk: Bytes<64>,
-  salt: Bytes<32>,
-  domain: Bytes<32>
-}
 
 // ─── State ──────────────────────────────────────────────────────
 
 ledger _nonce: Counter;
-ledger _instanceSalt: Bytes<32>;
 
 // ─── Constructor ────────────────────────────────────────────────
 
@@ -61,13 +36,16 @@ ledger _instanceSalt: Bytes<32>;
  * @description Deploys the multisig with 3 signer commitments and
  * a threshold.
  *
- * Each commitment is computed off-chain as:
- * persistentHash(SignerCommitmentInput { pk, instanceSalt, domain })
- * where domain is pad(32, "MultiSig:signer:").
+ * Each commitment is `persistentHash(pkX, pkY, instanceSalt,
+ * "multisig:signer:")`. Use the exported `_calculateSignerId` circuit to
+ * derive them consistently with in-circuit verification.
  *
  * The instanceSalt should be a random value to prevent the same public
  * key from producing the same commitment across different multisig
  * deployments, breaking cross-contract signer correlation.
+ *
+ * @dev A threshold of 1 does not weaken `execute`, which always verifies two
+ * distinct registered signers.
  *
  * Requirements:
  *
@@ -88,8 +66,7 @@ constructor(
     thresh <= 2,
     "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
   );
-  _instanceSalt = disclose(instanceSalt);
-  Signer_initialize<3>(signerCommitments, thresh);
+  EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, thresh);
 }
 
 // ─── Deposit ────────────────────────────────────────────────────
@@ -106,6 +83,8 @@ constructor(
  * and extracting mt_index. Combined with the known ShieldedCoinInfo,
  * this produces the QualifiedShieldedCoinInfo needed for spending.
  *
+ * @circuitInfo k=13, rows=5898
+ *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  */
 export circuit deposit(coin: ShieldedCoinInfo): [] {
@@ -119,33 +98,30 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  *
  * The circuit reads the current nonce from the ledger, increments it,
  * then reconstructs the message hash that signers must have signed
- * off-chain: `persistentHash(nonce, recipient address, coin color, amount)`.
+ * off-chain: `persistentHash([domain, kernel.self(), nonce,
+ * persistentHash(to), coin color, amount])`. The digest is domain-separated
+ * and bound to the contract instance and the full recipient (kind and
+ * address), so a signature authorizes exactly one operation on one instance.
  *
- * Signatures are verified via fold over parallel pubkey and signature
- * vectors. Each public key is hashed with the instance salt to produce
- * a commitment, checked against the signer registry, and the signature
- * is verified against the message hash. Duplicate signers are rejected
- * via inequality check on adjacent commitments.
+ * Approvals are checked by `EcdsaSignerManager`, which derives each signer's
+ * commitment from their public key and the instance salt, rejects duplicates,
+ * and enforces the threshold.
  *
- * @notice ECDSA verification is stubbed. Replace stubVerifySignature
- * with ecdsaVerify when Compact ECDSA primitives are available.
- *
- * @notice Duplicate detection via != only works for exactly 2 signers.
- * Production contracts with larger signer sets need a different
- * uniqueness enforcement mechanism.
+ * @circuitInfo k=17, rows=98061
  *
  * Requirements:
  *
  * - Both public keys must hash to registered signer commitments.
- * - Both signatures must be valid over the message hash.
+ * - Both signatures must be valid over the message hash and use the low-s
+ *   encoding.
  * - Signers must not be duplicates.
  * - Coin value must be >= amount.
  *
  * @param {Proposal_Recipient} to - The recipient.
  * @param {Uint<128>} amount - The amount to send.
  * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
- * @param {Vector<2, Bytes<64>>} pubkeys - ECDSA public keys of approving signers.
- * @param {Vector<2, Bytes<64>>} signatures - ECDSA signatures over the operation.
+ * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+ * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the operation.
  *
  * @returns {ShieldedSendResult} The send result including any change.
  */
@@ -153,128 +129,97 @@ export circuit execute(
   to: Proposal_Recipient,
   amount: Uint<128>,
   coin: QualifiedShieldedCoinInfo,
-  pubkeys: Vector<2, Bytes<64>>,
-  signatures: Vector<2, Bytes<64>>
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
 ): ShieldedSendResult {
   // Increment nonce
   const currentNonce = _nonce;
   _nonce.increment(1);
 
   // Construct message hash
-  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+  const msgHash = persistentHash<Vector<6, Bytes<32>>>([
+    pad(32, "multisig:execute:"),
+    kernel.self().bytes,
     currentNonce as Bytes<32>,
-    to.address,
+    persistentHash<Proposal_Recipient>(to),
     coin.color,
     amount as Bytes<32>
   ]);
 
-  // Verify signatures via fold over parallel vectors
-  const initialState = VerificationState {
-    validCount: 0 as Uint<8>,
-    prevCommitment: pad(32, ""),
-    msgHash: msgHash
-  };
-
-  const finalState = fold(verifySignature, initialState, pubkeys, signatures);
-  Signer_assertThresholdMet(finalState.validCount);
+  EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
 
   // Execute transfer
   const normalizedRecipient = Proposal_toShieldedRecipient(to);
   return Treasury__send(coin, normalizedRecipient, amount);
 }
 
-// ─── Signature Verification ─────────────────────────────────────
+// ─── Commitments ────────────────────────────────────────────────
 
 /**
- * @description Fold callback. Verifies one signer's approval.
+ * @description Computes a signer commitment from a secp256k1 public key,
+ * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
  *
- * Computes the signer's commitment from their public key and the
- * instance salt, checks for duplicates against the previous commitment,
- * verifies registry membership, and validates the ECDSA signature.
+ * Pure, so the deployer can derive constructor commitments off-chain.
  *
- * @param {VerificationState} state - Accumulator threaded through fold.
- * @param {Bytes<64>} pubkey - The signer's ECDSA public key.
- * @param {Bytes<64>} signature - The signer's signature over msgHash.
+ * Requirements:
  *
- * @returns {VerificationState} Updated accumulator.
- */
-circuit verifySignature(
-  state: VerificationState,
-  pubkey: Bytes<64>,
-  signature: Bytes<64>
-): VerificationState {
-  const commitment = _calculateSignerId(pubkey, _instanceSalt);
-
-  // Duplicate detection — sufficient for 2 signers only
-  assert(commitment != state.prevCommitment, "Multisig: duplicate signer");
-
-  // Verify this commitment is a registered signer
-  Signer_assertSigner(commitment);
-
-  // TODO: Replace with actual ECDSA primitive when available
-  // assert(ecdsaVerify(pubkey, state.msgHash, signature), "Multisig: invalid signature");
-  assert(stubVerifySignature(pubkey, state.msgHash, signature), "Multisig: invalid signature");
-
-  return VerificationState {
-    validCount: state.validCount + 1 as Uint<8>,
-    prevCommitment: commitment,
-    msgHash: state.msgHash
-  };
-}
-
-/**
- * @description Computes a signer commitment from an ECDSA public key.
+ * - `pk` must not be the secp256k1 identity point, which has no coordinates.
  *
- * The commitment is persistentHash(pk, salt, domain) where:
- * - pk: the signer's ECDSA public key (64 bytes)
- * - salt: instance-specific random value (prevents cross-contract correlation)
- * - domain: "MultiSig:signer:" (domain separation)
- *
- * This is a pure circuit. It can be called off-chain by the deployer
- * to compute commitments for the constructor.
- *
- * @param {Bytes<64>} pk - The ECDSA public key.
+ * @param {Secp256k1Point} pk - The secp256k1 public key.
  * @param {Bytes<32>} salt - The instance salt.
  *
  * @returns {Bytes<32>} The signer commitment.
  */
 export pure circuit _calculateSignerId(
-  pk: Bytes<64>,
+  pk: Secp256k1Point,
   salt: Bytes<32>
 ): Bytes<32> {
-  return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
-    pk: pk,
-    salt: salt,
-    domain: pad(32, "MultiSig:signer:")
-  });
-}
-
-/**
- * @description Stub for ECDSA signature verification.
- * Always returns true. MUST be replaced before any non-test deployment.
- */
-circuit stubVerifySignature(
-  pubkey: Bytes<64>,
-  msgHash: Bytes<32>,
-  signature: Bytes<64>
-): Boolean {
-  return true;
+  return EcdsaSignerManager_calculateSignerId(pk, salt);
 }
 
 // ─── View ───────────────────────────────────────────────────────
 
+/**
+ * @description Returns the nonce the next `execute` digest will bind to.
+ *
+ * @circuitInfo k=6, rows=34
+ *
+ * @returns {Uint<64>} The current nonce.
+ */
 export circuit getNonce(): Uint<64> {
   return _nonce;
 }
 
+/**
+ * @description Returns the number of registered signers.
+ *
+ * @circuitInfo k=6, rows=34
+ *
+ * @returns {Uint<8>} The signer count.
+ */
 export circuit getSignerCount(): Uint<8> {
-  return Signer_getSignerCount();
+  return EcdsaSignerManager_getSignerCount();
 }
 
+/**
+ * @description Returns the approval threshold.
+ *
+ * @circuitInfo k=6, rows=34
+ *
+ * @returns {Uint<8>} The threshold.
+ */
 export circuit getThreshold(): Uint<8> {
-  return Signer_getThreshold();
+  return EcdsaSignerManager_getThreshold();
 }
 
+/**
+ * @description Returns whether the given commitment is a registered signer.
+ *
+ * @circuitInfo k=8, rows=129
+ *
+ * @param {Bytes<32>} commitment - The signer commitment to check.
+ * @returns {Boolean} True if registered.
+ */
 export circuit isSigner(commitment: Bytes<32>): Boolean {
-  return Signer_isSigner(commitment);
+  return EcdsaSignerManager_isSigner(commitment);
 }

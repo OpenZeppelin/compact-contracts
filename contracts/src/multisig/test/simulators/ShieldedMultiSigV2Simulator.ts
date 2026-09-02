@@ -1,7 +1,9 @@
+import type { Secp256k1Point } from '@midnight-ntwrk/compact-runtime';
 import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
+import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   type Ledger,
   ledger,
@@ -67,7 +69,7 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
   }
 
   public static calculateSignerId(
-    pk: Uint8Array,
+    pk: Secp256k1Point,
     salt: Uint8Array,
   ): Uint8Array {
     return pureCircuits._calculateSignerId(pk, salt);
@@ -81,8 +83,8 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     to: Recipient,
     amount: bigint,
     coin: QualifiedShieldedCoinInfo,
-    pubkeys: Uint8Array[],
-    signatures: Uint8Array[],
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
   ): Promise<ShieldedSendResult> {
     return this.circuits.impure.execute(to, amount, coin, pubkeys, signatures);
   }
