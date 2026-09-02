@@ -59,7 +59,7 @@
     "@midnight-ntwrk/midnight-js-protocol": "5.0.0-beta.7",
     "@midnight-ntwrk/midnight-js-types": "5.0.0-beta.7",
     "@midnight-ntwrk/testkit-js": "5.0.0-beta.7",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.4",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-beta.2",
     "@noble/curves": "^2.2.0",
     "@openzeppelin/compact-simulator": "^0.4.0",
