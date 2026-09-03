@@ -5,6 +5,7 @@ import { assertFunded } from './dust.js';
 import { FundedWallet } from './FundedWallet.js';
 import { fundFromDeployer } from './funding.js';
 import { LiveSimulatorBackend } from './LiveSimulatorBackend.js';
+import { publishLivePool } from './livePool.js';
 import { localEnv } from './network.js';
 import {
   MAX_LIVE_WORKERS,
@@ -106,6 +107,9 @@ const backend = new LiveSimulatorBackend(pool, env);
 
 backend.register();
 await pool.ensureReady();
+
+// Hand the built pool to specs that deploy outside the simulator (see livePool).
+publishLivePool(pool);
 
 // Worker ready: wallets funded, backend registered. Printed after the (slow)
 // wallet build, before any spec in this worker runs — a "we're live" pointer.
