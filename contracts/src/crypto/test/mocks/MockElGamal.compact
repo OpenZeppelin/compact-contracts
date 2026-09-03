@@ -13,107 +13,128 @@ import "../../ElGamal" prefix ElGamal_;
 
 export { ElGamal_Ciphertext }
 
-export pure circuit secretToScalar(secret: Bytes<32>): JubjubScalar {
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
+ledger _invocations: Counter;
+
+export circuit secretToScalar(secret: Bytes<32>): JubjubScalar {
+  _invocations.increment(1);
   return ElGamal_secretToScalar(secret);
 }
 
-export pure circuit derivePk(ek: Bytes<32>): JubjubPoint {
+export circuit derivePk(ek: Bytes<32>): JubjubPoint {
+  _invocations.increment(1);
   return ElGamal_derivePk(ek);
 }
 
-export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): JubjubScalar {
+export circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): JubjubScalar {
+  _invocations.increment(1);
   return ElGamal_expandRandomness(seed, tag);
 }
 
-export pure circuit encryptZero(): ElGamal_Ciphertext {
+export circuit encryptZero(): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_encryptZero();
 }
 
-export pure circuit encryptPoint(
+export circuit encryptPoint(
                       pk: JubjubPoint,
                       m: JubjubPoint,
                       r: JubjubScalar
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_encryptPoint(pk, m, r);
 }
 
-export pure circuit encrypt(
+export circuit encrypt(
                       pk: JubjubPoint,
                       value: Uint<128>,
                       r: JubjubScalar
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_encrypt(pk, value, r);
 }
 
-export pure circuit negate(ct: ElGamal_Ciphertext): ElGamal_Ciphertext {
+export circuit negate(ct: ElGamal_Ciphertext): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_negate(ct);
 }
 
-export pure circuit add(
+export circuit add(
                       a: ElGamal_Ciphertext,
                       b: ElGamal_Ciphertext
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_add(a, b);
 }
 
-export pure circuit sub(
+export circuit sub(
                       a: ElGamal_Ciphertext,
                       b: ElGamal_Ciphertext
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_sub(a, b);
 }
 
-export pure circuit scalarMul(
+export circuit scalarMul(
                       ct: ElGamal_Ciphertext,
                       k: JubjubScalar
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_scalarMul(ct, k);
 }
 
-export pure circuit addEncrypted(
+export circuit addEncrypted(
                       old: ElGamal_Ciphertext,
                       pk: JubjubPoint,
                       value: Uint<128>,
                       r: JubjubScalar
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_addEncrypted(old, pk, value, r);
 }
 
-export pure circuit subEncrypted(
+export circuit subEncrypted(
                       old: ElGamal_Ciphertext,
                       pk: JubjubPoint,
                       value: Uint<128>,
                       r: JubjubScalar
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_subEncrypted(old, pk, value, r);
 }
 
-export pure circuit rerandomize(
+export circuit rerandomize(
                       ct: ElGamal_Ciphertext,
                       pk: JubjubPoint,
                       r: JubjubScalar
                       ): ElGamal_Ciphertext {
+  _invocations.increment(1);
   return ElGamal_rerandomize(ct, pk, r);
 }
 
-export pure circuit assertKeyPair(pk: JubjubPoint, ek: Bytes<32>): [] {
+export circuit assertKeyPair(pk: JubjubPoint, ek: Bytes<32>): [] {
+  _invocations.increment(1);
   ElGamal_assertKeyPair(pk, ek);
 }
 
-export pure circuit assertDecryptsToPoint(
+export circuit assertDecryptsToPoint(
                  ct: ElGamal_Ciphertext,
                  pk: JubjubPoint,
                  ek: Bytes<32>,
                  m: JubjubPoint
                  ): [] {
+  _invocations.increment(1);
   ElGamal_assertDecryptsToPoint(ct, pk, ek, m);
 }
 
-export pure circuit assertDecryptsTo(
+export circuit assertDecryptsTo(
                  ct: ElGamal_Ciphertext,
                  pk: JubjubPoint,
                  ek: Bytes<32>,
                  claimedValue: Uint<128>
                  ): [] {
+  _invocations.increment(1);
   ElGamal_assertDecryptsTo(ct, pk, ek, claimedValue);
 }
