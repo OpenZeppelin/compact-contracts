@@ -6,28 +6,107 @@ inputs:
     description: "Skip Compact compiler installation"
     required: false
     default: "false"
+  turbo-cache-key:
+    description: "Cache-key prefix for the turbo build cache, after the runner OS. Set an empty string to skip the cache entirely, for a job that compiles nothing."
+    required: false
+    default: "turbo"
 
 runs:
   using: "composite"
   steps:
+    # Two jobs that share one key are a write race, since both save at the end:
+    # one wins and the other's slice is silently lost to whoever restores next.
+    # A job that compiles per target therefore passes a per-target key. A job
+    # that compiles nothing passes an empty one and skips the step: saving an
+    # empty cache under a key later jobs restore would leave them with nothing
+    # instead of an earlier commit's populated fallback.
+    #
+    # Keyed on the contract sources and the pinned compiler, NOT on the commit.
+    # A commit-keyed entry is written on every push whether or not anything it
+    # caches changed, and these entries are large — `token`'s slice is ~275 MB of
+    # ZK keys, so five commits had left five copies of it, and the repo was at
+    # 6.5 GB of a 10 GB budget. Past that ceiling GitHub evicts least-recently
+    # used, which would silently drop the dependency-tree cache below and undo
+    # what it saves. Content keys mean a docs-only or test-only commit reuses the
+    # existing entry rather than duplicating it.
     - name: Cache turbo build setup
+      if: ${{ inputs.turbo-cache-key != '' }}
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: .turbo
-        key: ${{ runner.os }}-turbo-${{ github.sha }}
+        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ hashFiles('contracts/src/**/*.compact', 'contracts/test/integration/**/*.compact', '.github/actions/setup/action.yml') }}
+        # Kept, so a source change still starts from the previous build rather
+        # than from nothing: turbo's store is content-addressed, so the tasks
+        # whose inputs did not move stay hits.
         restore-keys: |
-          ${{ runner.os }}-turbo-
+          ${{ runner.os }}-${{ inputs.turbo-cache-key }}-
+
+    # The materialised dependency tree, not just the package zips.
+    #
+    # `setup-node`'s `cache: yarn` restores `.yarn/cache` alone, so every job
+    # unpacked it into `node_modules` and rebuilt the native modules from source
+    # — `ssh2`, `classic-level`, `cpu-features`, `msgpackr-extract`,
+    # `protobufjs`, all reported as "must be built because it never has been
+    # before". That install was 24s of a 38s setup, in every job of a fan-out
+    # that is now one job per spec file (measured on run 32815780786).
+    #
+    # `.yarn/install-state.gz` is in the entry for the same reason: it is where
+    # yarn records which packages have been built, and without it a job with a
+    # fully restored `node_modules` still reports every native module as "must be
+    # built because it never has been before" and recompiles it. Restoring the
+    # tree alone took the install from 24s to 9s; the state file is what removes
+    # the rest.
+    #
+    # Caching the tree makes the install a no-op instead. It costs transfer:
+    # `node_modules` is 137 MB zstd-compressed against `.yarn/cache`'s 138 MB, so
+    # keeping both roughly doubles the entry — worth it, since a 275 MB entry
+    # restores in seconds (the turbo cache is that size and takes ~3s) and buys
+    # back 24s of CPU. The zips stay in the entry because they are what a miss
+    # needs: without them a cache miss fetches the whole tree over the network.
+    #
+    # Exact key only, no `restore-keys`: a tree restored from a different
+    # lockfile is worse than no tree at all, since `--immutable` would have to
+    # undo it. A miss then behaves exactly as it did before this step existed.
+    #
+    # The `v1` token is the manual version of the key. actions/cache never
+    # overwrites an existing key, so a change to the `path` list above would
+    # silently keep restoring the old, incomplete entry until the lockfile
+    # happens to move — bump the token together with any path-list change.
+    - name: Cache the dependency tree
+      id: deps-cache
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: |
+          node_modules
+          contracts/node_modules
+          .yarn/cache
+          .yarn/install-state.gz
+        key: ${{ runner.os }}-deps-v1-${{ hashFiles('yarn.lock', '.yarnrc.yml', '.nvmrc') }}
+
+    # A miss is expected only after a lockfile (or key-version) change; on any
+    # other run it means the entry was evicted or the key list drifted, and the
+    # job silently pays the full install. Make it visible in the annotations.
+    - name: Warn on a dependency cache miss
+      if: steps.deps-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: echo "::warning::deps cache miss — full install; expected only after a lockfile change"
 
     - name: Enable corepack
       shell: bash
       run: corepack enable
 
+    # `package-manager-cache: false` because the step above already owns the
+    # dependency cache; leaving `setup-node`'s own enabled would restore
+    # `.yarn/cache` a second time.
     - name: Setup Node.js
       uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version-file: ".nvmrc"
-        cache: "yarn"
+        package-manager-cache: false
 
+    # Unconditional even on a cache hit: with the tree and yarn's install state
+    # restored this is a fast no-op, and it is the check that a partial restore
+    # fails here rather than inside a spec.
     - name: Install dependencies
       shell: bash
       run: yarn install --immutable

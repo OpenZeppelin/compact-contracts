@@ -1,0 +1,96 @@
+name: Live compile
+
+# Builds one live target's contract slice with real ZK keys and uploads it for
+# that target's suite jobs to download.
+#
+# A reusable workflow rather than a matrix job, because `needs` in Actions is
+# job-level: a single compile matrix feeding a single suite matrix makes every
+# spec file wait for the slowest compile of ALL targets (`utils` compiles in 41s
+# and would sit behind `integration`). One compile job per target, each with its
+# own suite matrix downstream, is what lets a target's specs start as soon as
+# that target is built. `live.yml` pairs them.
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: "The live target to compile: a src/ category or `integration`"
+        required: true
+        type: string
+
+# Not inherited from the calling workflow: a reusable workflow gets its own env.
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  compile:
+    name: compile
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      # `setup-compact-action` runs `compact update` on every job, cache hit or
+      # miss, and that call queries the GitHub API. The action passes
+      # `github.token` to its install step but NOT to its update step, so the
+      # query goes out unauthenticated: 60 requests an hour per runner egress IP,
+      # shared by every job in the fan-out. Run 32812144831 hit the ceiling and
+      # `compile-integration` died in setup with
+      #
+      #   API rate limit exceeded for 20.25.10.69
+      #   Error: Failed to update ... Error: Failed to run compactc
+      #   Caused by: No default compiler set
+      #
+      # A cache hit is the fragile path, not the safe one: it skips the install
+      # step, so nothing has set the default compiler, and `compact update` is
+      # what sets it. Its failure is swallowed by `|| true` and the next line
+      # (`compact compile --version`) is what actually fails the job.
+      #
+      # A composite action's steps inherit the calling job's environment, so
+      # exporting the token here authenticates that query (1000 requests an hour)
+      # without patching the action. The upstream fix is for its update step to
+      # take `github.token` the way its install step already does.
+      GITHUB_TOKEN: ${{ github.token }}
+    # Real ZK key generation for one slice, plus the self-heal path's serial
+    # recompile if the tree comes back poisoned (#675).
+    timeout-minutes: 90
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # Recommended by turbo team
+
+      # Per-target turbo cache. One key shared by every compile job is a write
+      # race: they all save at the end, one wins, and the rest of the run
+      # restores a slice that is not theirs. Keyed on the commit with a
+      # target-scoped prefix to fall back on, so a night whose sources did not
+      # change restores instead of rebuilding. `live-` rather than `turbo-` so
+      # the regular checks' fallback prefix can never match these entries: they
+      # carry full ZK keys, hundreds of MB a PR check would fetch for nothing.
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+        with:
+          turbo-cache-key: live-${{ inputs.target }}
+
+      # Compiles and verifies the slice, then stops: no stack, no specs. Exits 2
+      # if the tree is still poisoned after the serial recompile.
+      - name: Compile the target
+        env:
+          TARGET: ${{ inputs.target }}
+        run: yarn test:live "$TARGET" --compile-only
+
+      # What this target's suite jobs consume. Retained a day: it is scratch for
+      # this run, not a release artifact. No compression, since ZK keys are
+      # high-entropy and gzip only costs time on them.
+      - name: Upload the compiled artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-artifacts-${{ inputs.target }}
+          path: contracts/artifacts
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error

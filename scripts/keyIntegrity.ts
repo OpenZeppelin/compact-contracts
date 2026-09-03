@@ -73,6 +73,29 @@ export function emptyKeyArtifacts(
   return empty;
 }
 
+/**
+ * Contracts under `sourceRoots` with no `artifacts/<name>/` directory at all.
+ *
+ * {@link emptyKeyArtifacts} scans what is on disk, so a directory that never
+ * arrived passes it silently — and a missing artifact fails the deploy exactly
+ * like a truncated key does. After a compile the case cannot arise (a successful
+ * compile wrote every directory), but a tree built elsewhere can be incomplete:
+ * a CI suite job downloads one, and a download that unpacked partially would
+ * otherwise reach the specs. Its consumers check this alongside the key scan.
+ *
+ * @param artifactsRoot - artifact tree to check (e.g. `contracts/artifacts`)
+ * @param sourceRoots - source trees whose contracts must all be present
+ * @returns contract names with no artifact directory, sorted
+ */
+export function missingKeyArtifacts(
+  artifactsRoot: string,
+  ...sourceRoots: string[]
+): string[] {
+  return [...compactContractNames(...sourceRoots)]
+    .filter((name) => !existsSync(path.join(artifactsRoot, name)))
+    .sort();
+}
+
 // Standalone CLI: `node scripts/keyIntegrity.ts` checks the repo's artifacts
 // against its sources — `src` plus the integration mocks, the two trees that
 // compile into `artifacts/` — and exits 1 if any has a truncated key.

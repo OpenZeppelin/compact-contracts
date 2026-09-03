@@ -1,0 +1,128 @@
+name: Live suite
+
+# Runs ONE live spec file against its own local stack, using the artifact tree
+# its target's compile job built. `live.yml` calls this once per spec file,
+# through a matrix per target.
+#
+# One job per file rather than per target because a target is one long serial run
+# (the 2026-08-24 nightly spent 5.75h in `live-token`) while the files are
+# independent: every job resets its own stack, so nothing one spec leaves on the
+# node can fail another, and a red job names the file that caused it.
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: "The live target this spec belongs to"
+        required: true
+        type: string
+      file:
+        description: "Spec path relative to `contracts/`, matching exactly one file"
+        required: true
+        type: string
+      name:
+        description: "The spec's name within its target, for the job and its artifacts"
+        required: true
+        type: string
+      test-filter:
+        description: >-
+          vitest -t regex scoping the run to one leg of a split file
+          (empty = the whole file). The plan job budgets legs at MAX_LEG_MS
+          of estimated duration (see scripts/ci/split.ts).
+        required: false
+        default: ""
+        type: string
+
+# Not inherited from the calling workflow: a reusable workflow gets its own env.
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  suite:
+    name: ${{ inputs.name }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    # One spec file: reset the stack, run it, and verify its failures with a
+    # second round. Far under the old per-target budget, but kept generous — a
+    # single multisig file has run over an hour.
+    timeout-minutes: 350
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # Recommended by turbo team
+
+      # No Compact compiler and no turbo cache: this job compiles nothing, and
+      # restoring a cache of build outputs it is about to download would only
+      # duplicate the transfer.
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+        with:
+          skip-compact: "true"
+          turbo-cache-key: ""
+
+      # Built once by this target's compile job. `--prebuilt` below refuses to
+      # rebuild, so a tree that arrives incomplete or with a truncated key aborts
+      # the job (exit 2) instead of reaching the specs, where a failed deploy
+      # would show up as a silently skipped suite.
+      - name: Download the compiled artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: live-artifacts-${{ inputs.target }}
+          path: contracts/artifacts
+
+      # The same entry point a local run uses, so the two-round flake semantics,
+      # the stack lifecycle, and the verdict are identical — the file is passed
+      # as a full path, which matches exactly one spec. The test-name pattern
+      # travels as an env var, not an argument: the runner appends it to every
+      # vitest spawn itself, so the round-2 flake re-run keeps the same slice,
+      # and its regex metacharacters never meet the shell. Empty means no
+      # pattern, which is what an unsplit leg passes.
+      - name: Run live suite
+        env:
+          TARGET: ${{ inputs.target }}
+          FILE: ${{ inputs.file }}
+          MIDNIGHT_LIVE_TEST_PATTERN: ${{ inputs.test-filter }}
+        run: yarn test:live "$TARGET" "$FILE" --prebuilt
+
+      # The runner tears the stack down itself on every exit path. This is the
+      # safety net for the one path it cannot cover: a job timeout or a cancel
+      # that kills it outright, leaving containers streaming into the logs about
+      # to be uploaded.
+      - name: Stop local stack
+        if: always()
+        run: make env-down
+
+      # The JSON verdict reports are tiny and useful on green runs too (flake
+      # trends). The service and worker logs can reach hundreds of MB after a
+      # multi-hour run, so those upload only when something failed.
+      - name: Upload live reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-reports-${{ inputs.target }}-${{ inputs.name }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: logs/live-*.json
+
+      # Two roots on purpose: the stack's container logs land in the repo-root
+      # `logs/` (the Makefile's), and the per-worker harness logs in
+      # `contracts/logs/` (vitest runs with `contracts/` as its cwd).
+      - name: Upload live logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-logs-${{ inputs.target }}-${{ inputs.name }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            contracts/logs/live-harness*.log
+            logs/node.log
+            logs/indexer.log
+            logs/proof-server.log
