@@ -858,7 +858,7 @@ module NonFungibleToken {
    * Requirements:
    *
    * - The contract is initialized.
-   * - `tokenId` must exist, unless `isExistenceRequired` is false.
+   * - `tokenId` must exist, unless `isExistenceRequired` is false and `auth` is zero.
    * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
    * or approved to operate on the token (by the owner).
    *
