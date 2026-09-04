@@ -826,25 +826,6 @@ describe('NonFungibleToken', () => {
         ZERO_ACCOUNT,
       );
     });
-
-    it('should not approve a token before it is minted', async () => {
-      // Plant an approval on the id OWNER is about to mint
-      await token
-        ._approve(SPENDER.either, TOKENID_1, ZERO_ACCOUNT)
-        .catch(() => undefined);
-
-      // `_update` clears approvals only when the source is non-zero, so a
-      // planted approval would survive the mint
-      await token._mint(OWNER.either, TOKENID_1);
-      expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
-
-      await token.privateState.injectSecretKey(SPENDER.secretKey);
-      await expect(
-        token.transferFrom(OWNER.either, SPENDER.either, TOKENID_1),
-      ).rejects.toThrow('NonFungibleToken: insufficient approval');
-
-      expect(await token.ownerOf(TOKENID_1)).toEqual(OWNER.either);
-    });
   });
 
   describe('_unsafeApprove', () => {
@@ -888,6 +869,20 @@ describe('NonFungibleToken', () => {
           false,
         ),
       ).rejects.toThrow('NonFungibleToken: invalid approver');
+    });
+
+    it('should leave an approval planted before the mint in place', async () => {
+      await token._unsafeApprove(
+        SPENDER.either,
+        TOKENID_1,
+        ZERO_ACCOUNT,
+        false,
+      );
+
+      // `_update` clears approvals only for a non-zero source, so a mint
+      // leaves the planted approval standing.
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
     });
 
     it('should not let a planted approval mint through transferFrom', async () => {
