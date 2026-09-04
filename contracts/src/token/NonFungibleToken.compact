@@ -58,7 +58,7 @@ pragma language_version >= 0.23.0;
  * or in ledger writes. Canonicalization zeroes out the inactive branch of the Either,
  * ensuring that two values with the same active branch always resolve to the same map key
  * regardless of what data the inactive branch carries. Write paths are canonicalized in
- * `_update` (for `_owners` and `_balances`), `_approve` (for `_tokenApprovals`), and
+ * `_update` (for `_owners` and `_balances`), `_unsafeApprove` (for `_tokenApprovals`), and
  * `_setApprovalForAll` (for `_operatorApprovals`). Read paths are canonicalized in
  * `balanceOf`, `isApprovedForAll`, and `_isAuthorized`.
  *
@@ -338,7 +338,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=3468
+   * @circuitInfo k=13, rows=3415
    *
    * Requirements:
    *
@@ -383,7 +383,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=2936
+   * @circuitInfo k=13, rows=2947
    *
    * Requirements:
    *
@@ -439,7 +439,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=4800
+   * @circuitInfo k=13, rows=4739
    *
    * Requirements:
    *
@@ -477,7 +477,7 @@ module NonFungibleToken {
    * are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=13, rows=4797
+   * @circuitInfo k=13, rows=4736
    *
    * Requirements:
    *
@@ -499,10 +499,13 @@ module NonFungibleToken {
                    ): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
-    // Setting an "auth" argument enables the `_isAuthorized` check which verifies that the token exists
-    // (fromAddress != 0). Therefore, it is not needed to verify that the return value is not 0 here.
     const auth = left<Bytes<32>, ContractAddress>(_computeAccountId());
     const previousOwner = _update(to, tokenId, auth);
+
+    // The `_isAuthorized` check inside `_update` already implies the token exists, but that
+    // holds only while approvals are never recorded for unminted tokens. Assert it directly
+    // so a misused `_unsafeApprove` cannot turn this circuit into an unauthorized mint.
+    assert(!Utils_isTargetZero(previousOwner), "NonFungibleToken: nonexistent token");
 
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     assert(previousOwner == canonFrom, "NonFungibleToken: incorrect owner");
@@ -643,8 +646,8 @@ module NonFungibleToken {
 
     // Execute the update
     if (!Utils_isTargetZero(disclose(fromAddress))) {
-      // Clear approval. No need to re-authorize
-      _approve(Utils_zeroAccount(), tokenId, Utils_zeroAccount());
+      // Clear approval. No need to re-authorize or re-read the owner
+      _unsafeApprove(Utils_zeroAccount(), tokenId, Utils_zeroAccount(), false);
       const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
       const newBalance = _balances.lookup(disclose(canonFrom)) - 1 as Uint<128>;
       _balances.insert(disclose(canonFrom), disclose(newBalance));
@@ -666,7 +669,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
-   * @circuitInfo k=11, rows=1473
+   * @circuitInfo k=11, rows=1411
    *
    * Requirements:
    *
@@ -690,7 +693,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1470
+   * @circuitInfo k=11, rows=1408
    *
    * Requirements:
    *
@@ -723,7 +726,7 @@ module NonFungibleToken {
    * The approval is cleared when the token is burned.
    * This circuit does not check if the sender is authorized to operate on the token.
    *
-   * @circuitInfo k=10, rows=509
+   * @circuitInfo k=10, rows=512
    *
    * Requirements:
    *
@@ -748,7 +751,7 @@ module NonFungibleToken {
    * interactions are supported in Compact. This restriction prevents assets from being inadvertently
    * locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=12, rows=2067
+   * @circuitInfo k=11, rows=2005
    *
    * Requirements:
    *
@@ -779,7 +782,7 @@ module NonFungibleToken {
    * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on the caller's identity.
    * It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=12, rows=2064
+   * @circuitInfo k=11, rows=2002
    *
    * Requirements:
    *
@@ -815,11 +818,12 @@ module NonFungibleToken {
   /**
    * @description Approve `to` to operate on `tokenId`.
    *
-   * @circuitInfo k=11, rows=1810
+   * @circuitInfo k=11, rows=1757
    *
    * Requirements:
    *
    * - The contract is initialized.
+   * - `tokenId` must exist.
    * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
    * or approved to operate on the token (by the owner).
    *
@@ -833,6 +837,43 @@ module NonFungibleToken {
                    tokenId: Uint<128>,
                    auth: Either<Bytes<32>, ContractAddress>
                    ): [] {
+    _unsafeApprove(to, tokenId, auth, true);
+  }
+
+  /**
+   * @description Approve `to` to operate on `tokenId`, requiring the token to exist
+   * only when `isExistenceRequired` is true.
+   *
+   * @circuitInfo k=11, rows=1870
+   *
+   * @warning Passing false skips the check that `tokenId` was minted. Both
+   * `_unsafeTransferFrom` and `_update` read that invariant back, so a planted approval
+   * can mint a token nobody authorized or outlive a later mint. Pass false only where
+   * the owner has already been read, as `_update` does.
+   *
+   * @dev Counterpart to Solidity's `_approve(to, tokenId, auth, bool emitEvent)`, where
+   * the flag also suppresses the `Approval` event. Compact has no events, so it carries
+   * the existence check alone.
+   *
+   * Requirements:
+   *
+   * - The contract is initialized.
+   * - `tokenId` must exist, unless `isExistenceRequired` is false and `auth` is zero.
+   * - If `auth` is non 0, then this function will check that `auth` is either the owner of the token,
+   * or approved to operate on the token (by the owner).
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} to - The target account to approve
+   * @param {Uint<128>} tokenId - The token to approve
+   * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner of the token
+   * @param {Boolean} isExistenceRequired - Whether `tokenId` must exist
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _unsafeApprove(
+                   to: Either<Bytes<32>, ContractAddress>,
+                   tokenId: Uint<128>,
+                   auth: Either<Bytes<32>, ContractAddress>,
+                   isExistenceRequired: Boolean
+                   ): [] {
     assertInitialized();
     // Canonicalize + normalize `to`
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
@@ -841,11 +882,14 @@ module NonFungibleToken {
     // Canonicalize auth
     const canonAuth = Utils_canonicalize<Bytes<32>, ContractAddress>(auth);
 
-    if (!Utils_isTargetZero(disclose(canonAuth))) {
+    // Avoid reading the owner unless necessary
+    if (disclose(isExistenceRequired) || !Utils_isTargetZero(disclose(canonAuth))) {
       const owner = _requireOwned(tokenId);
 
       // We do not use _isAuthorized because single-token approvals should not be able to call approve
-      assert((owner == disclose(canonAuth) || isApprovedForAll(owner, canonAuth)),
+      assert((Utils_isTargetZero(disclose(canonAuth)) ||
+              owner == disclose(canonAuth) ||
+              isApprovedForAll(owner, canonAuth)),
              "NonFungibleToken: invalid approver"
              );
     }
@@ -856,7 +900,7 @@ module NonFungibleToken {
   /**
    * @description Approve `operator` to operate on all of `owner` tokens.
    *
-   * @circuitInfo k=11, rows=1261
+   * @circuitInfo k=11, rows=1282
    *
    * Requirements:
    *
