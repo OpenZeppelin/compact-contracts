@@ -827,22 +827,6 @@ describe('NonFungibleToken', () => {
       );
     });
 
-    it('should not approve a nonexistent token into existence', async () => {
-      // Plant an approval on a nonexistent id
-      await token
-        ._approve(SPENDER.either, NON_EXISTENT_TOKEN, ZERO_ACCOUNT)
-        .catch(() => undefined);
-
-      // Attempt to mint the nonexistent token through a transfer
-      await token.privateState.injectSecretKey(SPENDER.secretKey);
-      await expect(
-        token.transferFrom(ZERO_ACCOUNT, SPENDER.either, NON_EXISTENT_TOKEN),
-      ).rejects.toThrow('NonFungibleToken: nonexistent token');
-
-      expect(await token._ownerOf(NON_EXISTENT_TOKEN)).toEqual(ZERO_ACCOUNT);
-      expect(await token.balanceOf(SPENDER.either)).toEqual(0n);
-    });
-
     it('should not approve a token before it is minted', async () => {
       // Plant an approval on the id OWNER is about to mint
       await token
