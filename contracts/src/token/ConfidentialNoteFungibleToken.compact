@@ -63,12 +63,13 @@ pragma language_version >= 0.23.0;
  *   knows a nonce derives the same nullifier and can race the owner for the
  *   single spend. This is also what lets a composer offer escrow-free
  *   clawback: two spends race for one `nf`, first to land wins.
- * - Freshness: `wit_NonceRandomness` MUST return a fresh secret seed per call.
- *   Outputs also bind their context (the spent `nf`, or the recipient for
+ * - Freshness: `wit_ConfidentialNoteNonceRandomness` MUST return a fresh
+ *   secret seed per call. Outputs bind their context (the spent `nf`, or the
+ *   recipient for
  *   `_mint`), and `_mintNote` rejects an already-issued nonce, so a repeated
  *   seed fails loudly instead of producing a dead note.
- * - Ownership: a spend proves `cm` binds `Hf(wit_SecretKey())`; no secret, no
- *   spend.
+ * - Ownership: a spend proves `cm` binds `Hf(wit_ConfidentialNoteSK())`; no
+ *   secret, no spend.
  * - No authorization on `_` circuits: `_mint`, `_mintNote`, `_transfer`,
  *   `_burn`, `_consumeNote` are ungated. Re-exporting one from a deployed
  *   contract is a permissionless mint or spend. The composer gates them.
@@ -88,16 +89,17 @@ pragma language_version >= 0.23.0;
  *
  * @notice Scope:
  * Note machinery only: no roles, no initialization. `transfer` and `burn` are
- * self-gated by `wit_SecretKey` and the caller's randomness witness. Created
- * notes return to the caller as a private result and reach recipients out of
- * band.
+ * self-gated by `wit_ConfidentialNoteSK` and the caller's randomness witness.
+ * Created notes return to the caller as a private result and reach recipients
+ * out of band.
  *
  * @notice Client-side duties:
  * - Identity: `pk = Hf(sk)` is this token's address, unrelated to the Zswap
  *   coin key. Derive `sk` from the wallet seed under a module-specific domain
  *   so one seed backup covers it, and share `pk` out of band.
- * - Implement the four witnesses: `wit_SecretKey`, `wit_InputNote`,
- *   `wit_Path`, `wit_NonceRandomness`.
+ * - Implement the four witnesses: `wit_ConfidentialNoteSK`,
+ *   `wit_ConfidentialNoteInputNote`, `wit_ConfidentialNotePath`,
+ *   `wit_ConfidentialNoteNonceRandomness`.
  * - Keep every note and its leaf position. There is no memo and no viewing
  *   key, so a chain rescan finds nothing: the seed restores identity, not
  *   balance. Notes need their own backup.
@@ -210,26 +212,26 @@ module ConfidentialNoteFungibleToken<#depth> {
   export ledger _issuedNonces: Set<Bytes<32>>;
 
   /**
-   * @witness wit_SecretKey
+   * @witness wit_ConfidentialNoteSK
    * @description Returns the caller's spend secret, from which the circuits
    * derive the identity `pk = Hf(sk)` that owns notes.
    *
    * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random
    * value.
    */
-  witness wit_SecretKey(): Bytes<32>;
+  witness wit_ConfidentialNoteSK(): Bytes<32>;
 
   /**
-   * @witness wit_InputNote
+   * @witness wit_ConfidentialNoteInputNote
    * @description Returns the note the next spend consumes. The wallet chooses
    * it; the circuit proves it exists and is unspent.
    *
    * @returns {Note} inputNote - The note to consume.
    */
-  witness wit_InputNote(): Note;
+  witness wit_ConfidentialNoteInputNote(): Note;
 
   /**
-   * @witness wit_Path
+   * @witness wit_ConfidentialNotePath
    * @description Returns the Merkle path proving `cm` is a leaf of the
    * commitment tree. The path stays witness, so only membership is proved.
    *
@@ -237,10 +239,10 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @returns {MerkleTreePath<depth, Bytes<32>>} path - The `depth`-entry path
    * from `cm` to a root the tree recognizes, current or historical.
    */
-  witness wit_Path(cm: Bytes<32>): MerkleTreePath<depth, Bytes<32>>;
+  witness wit_ConfidentialNotePath(cm: Bytes<32>): MerkleTreePath<depth, Bytes<32>>;
 
   /**
-   * @witness wit_NonceRandomness
+   * @witness wit_ConfidentialNoteNonceRandomness
    * @description Returns the seed the core derives its default output nonces
    * from.
    *
@@ -251,7 +253,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @returns {Bytes<32>} seed - A 32-byte cryptographically secure random
    * value.
    */
-  witness wit_NonceRandomness(): Bytes<32>;
+  witness wit_ConfidentialNoteNonceRandomness(): Bytes<32>;
 
   /**
    * @description Mints a note of `value` to `recipientPk` with a core-derived
@@ -299,7 +301,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    */
   circuit freshNonce(slot: Bytes<32>, binder: Field): Field {
     return degradeToTransient(persistentHash<NoncePreimage>(NoncePreimage {
-      seed: wit_NonceRandomness(),
+      seed: wit_ConfidentialNoteNonceRandomness(),
       domain: pad(32, "OZ:note:nonce:core"),
       slot: slot,
       binder: binder
@@ -425,13 +427,14 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description The caller's spend identity, `Hf(wit_SecretKey())`. Exposed
-   * so a composer authorizes spends the way the core does.
+   * @description The caller's spend identity,
+   * `Hf(wit_ConfidentialNoteSK())`. Exposed so a composer authorizes spends
+   * the way the core does.
    *
    * @return {Field} - The caller's spend identity.
    */
   export circuit _spenderPk(): Field {
-    return derivePk(wit_SecretKey());
+    return derivePk(wit_ConfidentialNoteSK());
   }
 
   /**
@@ -456,7 +459,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Note} - The note the next spend will consume.
    */
   export circuit _inputNote(): Note {
-    return wit_InputNote();
+    return wit_ConfidentialNoteInputNote();
   }
 
   /**
@@ -509,12 +512,12 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Note} - The consumed note, for the caller's value accounting.
    */
   export circuit _consumeNote(ownerPk: Field): Note {
-    const input = wit_InputNote();
+    const input = wit_ConfidentialNoteInputNote();
 
     // The root is public, but the path stays witness, so disclosing the root
     // does not say which leaf was consumed.
     const cm = commitOf(input, ownerPk);
-    const path = wit_Path(cm);
+    const path = wit_ConfidentialNotePath(cm);
     const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));
     assert(_commitments.checkRoot(root),
            "ConfidentialNoteFungibleToken: input root not recognized");
@@ -561,7 +564,8 @@ module ConfidentialNoteFungibleToken<#depth> {
    * Requirements:
    *
    * - The input note is committed in the tree and unspent.
-   * - The caller owns the input note (its commitment binds `Hf(wit_SecretKey())`).
+   * - The caller owns the input note (its commitment binds
+   *   `Hf(wit_ConfidentialNoteSK())`).
    * - `value <= input.value`.
    *
    * @param {Field} recipientPk - The identity receiving the output note.

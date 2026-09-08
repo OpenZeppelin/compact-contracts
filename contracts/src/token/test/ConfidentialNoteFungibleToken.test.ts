@@ -373,7 +373,7 @@ describe('ConfidentialNoteFungibleToken: burn', () => {
 
     await expectRejection(
       token.burn(30n),
-      'wit_Path: commitment not found in tree',
+      'wit_ConfidentialNotePath: commitment not found in tree',
     );
   });
 });
@@ -530,14 +530,14 @@ describe('ConfidentialNoteFungibleToken: _consumeNote', () => {
 
     await expectRejection(
       token._consumeNote(ALICE),
-      'wit_Path: commitment not found in tree',
+      'wit_ConfidentialNotePath: commitment not found in tree',
     );
   });
 
   it('should not consume a note under an owner pk it was not committed to', async () => {
     await expectRejection(
       token._consumeNote(BOB),
-      'wit_Path: commitment not found in tree',
+      'wit_ConfidentialNotePath: commitment not found in tree',
     );
   });
 
@@ -725,7 +725,7 @@ describe('ConfidentialNoteFungibleToken: transfer', () => {
 
     await expectRejection(
       token.transfer(BOB, 30n),
-      'wit_Path: commitment not found in tree',
+      'wit_ConfidentialNotePath: commitment not found in tree',
     );
   });
 
@@ -736,7 +736,7 @@ describe('ConfidentialNoteFungibleToken: transfer', () => {
 
     await expectRejection(
       token.transfer(CAROL, 30n),
-      'wit_Path: commitment not found in tree',
+      'wit_ConfidentialNotePath: commitment not found in tree',
     );
     expect(await isSpent(input)).toBe(false);
   });

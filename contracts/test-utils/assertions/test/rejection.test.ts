@@ -5,7 +5,7 @@ import {
   rejectionIncludes,
 } from '../rejection.js';
 
-const WITNESS_REASON = 'wit_Path: commitment not found in tree';
+const WITNESS_REASON = 'wit_ConfidentialNotePath: commitment not found in tree';
 
 /** The shape the live backend produces: the reason two `cause` levels down. */
 const liveWrapped = () => {

@@ -88,7 +88,7 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
     return this.circuits.impure.burn(value);
   }
 
-  /** The caller's spend identity, `Hf(wit_SecretKey())`. */
+  /** The caller's spend identity, `Hf(wit_ConfidentialNoteSK())`. */
   public _spenderPk(): Promise<bigint> {
     return this.circuits.impure._spenderPk();
   }

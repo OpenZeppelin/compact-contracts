@@ -51,40 +51,42 @@ export const ConfidentialNoteFungibleTokenPrivateState = {
 };
 
 export interface IConfidentialNoteFungibleTokenWitnesses<P> {
-  wit_SecretKey(context: WitnessContext<Ledger, P>): [P, Uint8Array];
-  wit_InputNote(context: WitnessContext<Ledger, P>): [P, Note];
-  wit_Path(
+  wit_ConfidentialNoteSK(context: WitnessContext<Ledger, P>): [P, Uint8Array];
+  wit_ConfidentialNoteInputNote(context: WitnessContext<Ledger, P>): [P, Note];
+  wit_ConfidentialNotePath(
     context: WitnessContext<Ledger, P>,
     cm: Uint8Array,
   ): [P, MerkleTreePath<Uint8Array>];
-  wit_NonceRandomness(context: WitnessContext<Ledger, P>): [P, Uint8Array];
+  wit_ConfidentialNoteNonceRandomness(
+    context: WitnessContext<Ledger, P>,
+  ): [P, Uint8Array];
 }
 
 export const ConfidentialNoteFungibleTokenWitnesses = (
   wallet: NoteWallet,
 ): IConfidentialNoteFungibleTokenWitnesses<ConfidentialNoteFungibleTokenPrivateState> => ({
-  wit_SecretKey(context) {
+  wit_ConfidentialNoteSK(context) {
     return [context.privateState, wallet.secretKey];
   },
-  wit_InputNote(context) {
+  wit_ConfidentialNoteInputNote(context) {
     return [context.privateState, wallet.inputNote];
   },
   // The circuit passes the input commitment; the wallet answers with its
   // Merkle path, read here from the live commitment tree.
-  wit_Path(context, cm) {
+  wit_ConfidentialNotePath(context, cm) {
     const planted = wallet.pathOverride;
     if (planted !== undefined) {
       return [context.privateState, planted];
     }
     const path = context.ledger.Core__commitments.findPathForLeaf(cm);
     if (path === undefined) {
-      throw new Error('wit_Path: commitment not found in tree');
+      throw new Error('wit_ConfidentialNotePath: commitment not found in tree');
     }
     return [context.privateState, path];
   },
   // Fresh and secret per call, as the module requires; a fixed seed is only
   // honored when a spec explicitly plants one.
-  wit_NonceRandomness(context) {
+  wit_ConfidentialNoteNonceRandomness(context) {
     return [
       context.privateState,
       wallet.nonceSeed ?? new Uint8Array(getRandomValues(Buffer.alloc(32))),
