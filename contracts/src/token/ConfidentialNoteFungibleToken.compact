@@ -4,7 +4,7 @@
 pragma language_version >= 0.23.0;
 
 /**
- * @module ConfidentialNoteFungibleToken
+ * @module ConfidentialNoteFungibleToken<#depth>
  * @description A note-based confidential token: amounts, sender, and recipient
  * are all hidden from the public ledger.
  *
@@ -34,6 +34,12 @@ pragma language_version >= 0.23.0;
  * own emission policy; `_mint` instead derives the core-default nonce. Like all
  * `_` circuits they carry no authorization — the composer gates them.
  *
+ * `#depth` is the commitment tree's depth, fixed at import time
+ * (`import "./ConfidentialNoteFungibleToken"<32> prefix Core_;`). It sets
+ * capacity at `2^depth` notes and the length of every Merkle path, so it is
+ * part of the deployed wire format: two instantiations at different depths are
+ * different contracts and share no notes.
+ *
  * @dev Nonces are spend-critical: the nullifier preimage is the nonce alone,
  * with no owner secret, so any party that knows a nonce derives the SAME
  * nullifier. Output nonces MUST therefore be unique and unpredictable, and
@@ -45,7 +51,7 @@ pragma language_version >= 0.23.0;
  * where an authorized spend and the owner's own spend race for one nullifier
  * and the first to land wins.
  */
-module ConfidentialNoteFungibleToken {
+module ConfidentialNoteFungibleToken<#depth> {
   import CompactStandardLibrary;
 
   /**
@@ -108,9 +114,10 @@ module ConfidentialNoteFungibleToken {
    * @dev History matters. A proof built against a slightly stale root still
    * verifies after later inserts, so concurrent spenders do not invalidate each
    * other's in-flight proofs.
-   * @type {HistoricMerkleTree<32, Bytes<32>>} _commitments - The commitment tree.
+   * @type {HistoricMerkleTree<depth, Bytes<32>>} _commitments - The commitment
+   * tree, holding up to `2^depth` leaves.
    */
-  export ledger _commitments: HistoricMerkleTree<32, Bytes<32>>;
+  export ledger _commitments: HistoricMerkleTree<depth, Bytes<32>>;
 
   /**
    * @description Published nullifiers: what has been spent. A nullifier is
@@ -153,10 +160,10 @@ module ConfidentialNoteFungibleToken {
    * without revealing which leaf.
    *
    * @param {Bytes<32>} cm - The input note's commitment.
-   * @returns {MerkleTreePath<32, Bytes<32>>} path - The path from `cm` to a
-   * root the tree recognizes, current or historical.
+   * @returns {MerkleTreePath<depth, Bytes<32>>} path - The `depth`-entry path
+   * from `cm` to a root the tree recognizes, current or historical.
    */
-  witness wit_Path(cm: Bytes<32>): MerkleTreePath<32, Bytes<32>>;
+  witness wit_Path(cm: Bytes<32>): MerkleTreePath<depth, Bytes<32>>;
 
   /**
    * @witness wit_NonceRandomness
@@ -448,7 +455,7 @@ module ConfidentialNoteFungibleToken {
     // reveals nothing about which leaf, since the path itself stays witness.
     const cm = commitOf(input, ownerPk);
     const path = wit_Path(cm);
-    const root = disclose(merkleTreePathRoot<32, Bytes<32>>(path));
+    const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));
     assert(_commitments.checkRoot(root),
            "ConfidentialNoteFungibleToken: input root not recognized");
     assert(cm == path.leaf,

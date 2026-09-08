@@ -9,7 +9,8 @@
 // contract must gate them (see the core's module doc). DO NOT deploy this mock.
 pragma language_version >= 0.23.0;
 import CompactStandardLibrary;
-import "../../ConfidentialNoteFungibleToken" prefix Core_;
+// Instantiated at depth 32, the deepest the ledger supports.
+import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
 
 export { Core_Note }
 

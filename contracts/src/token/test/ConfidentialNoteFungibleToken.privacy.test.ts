@@ -637,7 +637,7 @@ describe.skipIf(isLiveBackend())(
       '_commitments.insert(disclose(commitOf(note, ownerPk)));',
       'assert(!_issuedNonces.member(disclose(tag)),',
       '_issuedNonces.insert(disclose(tag));',
-      'const root = disclose(merkleTreePathRoot<32, Bytes<32>>(path));',
+      'const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));',
       'assert(!_nullifiers.member(disclose(nf)),',
       '_nullifiers.insert(disclose(nf));',
       // to the local caller only, across the exported-circuit boundary
@@ -666,7 +666,7 @@ describe.skipIf(isLiveBackend())(
         .map((line) => line.trim());
 
       expect(ledgerFields).toStrictEqual([
-        'export ledger _commitments: HistoricMerkleTree<32, Bytes<32>>;',
+        'export ledger _commitments: HistoricMerkleTree<depth, Bytes<32>>;',
         'export ledger _nullifiers: Set<Bytes<32>>;',
         'export ledger _issuedNonces: Set<Bytes<32>>;',
       ]);
