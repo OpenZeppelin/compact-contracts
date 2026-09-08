@@ -81,22 +81,28 @@ export interface ConcurrencyHarness<S = unknown> {
   attempt(pending: Pending): Promise<Attempt>;
 }
 
-/** A circuit as the generated contract exposes it. */
+/** A circuit as the generated contract exposes it. Async since runtime 0.18. */
 export type ImpureCircuit<P> = (
   context: CircuitContext<P>,
   ...args: never[]
-) => CircuitResults<P, unknown>;
+) => Promise<CircuitResults<P, unknown>>;
 
 /** The slice of a generated contract a harness drives. */
 export interface ReplayableContract<P> {
   initialState: (
     context: never,
     ...args: never[]
-  ) => {
-    currentPrivateState: P;
-    currentContractState: ContractState;
-    currentZswapLocalState: unknown;
-  };
+  ) =>
+    | {
+        currentPrivateState: P;
+        currentContractState: ContractState;
+        currentZswapLocalState: unknown;
+      }
+    | Promise<{
+        currentPrivateState: P;
+        currentContractState: ContractState;
+        currentZswapLocalState: unknown;
+      }>;
   impureCircuits: Record<string, ImpureCircuit<P>>;
 }
 

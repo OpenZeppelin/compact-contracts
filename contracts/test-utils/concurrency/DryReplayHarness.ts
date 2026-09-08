@@ -52,6 +52,12 @@ const BUDGET: RunningCost = {
 
 const DEFAULT_COIN_PUBLIC_KEY = '0'.repeat(64);
 
+/**
+ * Block time the constructor sees. Pinned because `createCircuitContext`
+ * defaults it to `Date.now()`, and a deployed ledger has to be reproducible.
+ */
+const DEPLOY_TIME = 0;
+
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -74,12 +80,27 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
   private readonly coinPublicKey: string;
   private readonly costModel = CostModel.initialCostModel();
 
-  constructor(options: HarnessOptions<P>) {
+  private constructor(options: HarnessOptions<P>, deployed: ChargedState) {
     this.contracts = options.contracts;
     this.privateState = options.privateState;
     this.address = options.contractAddress ?? dummyContractAddress();
     this.coinPublicKey = options.coinPublicKey ?? DEFAULT_COIN_PUBLIC_KEY;
-    this.current = this.deploy(options.deployer, options.constructorArgs ?? []);
+    this.current = deployed;
+  }
+
+  /**
+   * Deploys the shared ledger and returns a harness over it.
+   *
+   * A factory rather than a constructor: the contract constructor is async
+   * from runtime 0.18 on, and a constructor cannot await.
+   */
+  static async create<P>(
+    options: HarnessOptions<P>,
+  ): Promise<DryReplayHarness<P>> {
+    return new DryReplayHarness(
+      options,
+      await DryReplayHarness.deploy(options),
+    );
   }
 
   /** The ledger as it stands, for a spec that wants to read it. */
@@ -94,18 +115,28 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
   async build<R>(call: Call, at: ChargedState): Promise<Pending<R>> {
     const circuit = this.circuitFor(call);
     const context = createCircuitContext(
+      call.circuitId,
       this.address,
       this.coinPublicKey,
       at,
       this.privateState,
     );
-    const results = circuit(context, ...(call.args as never[]));
+    const results = await circuit(context, ...(call.args as never[]));
+
+    // Runtime 0.18 moved proof data onto the context, as one entry per call in
+    // the tree. The trace is depth-first, so the root circuit's is the last.
+    const proofData = results.context.callProofDataTrace.at(-1);
+    if (proofData === undefined) {
+      throw new Error(
+        `concurrency harness: '${call.circuitId}' produced no proof data`,
+      );
+    }
 
     const pending: DryPending<R> = {
       call,
       result: results.result as R,
-      transcript: results.proofData.publicTranscript,
-      effects: results.context.currentQueryContext.effects,
+      transcript: proofData.publicTranscript,
+      effects: results.context.callContext.currentQueryContext.effects,
       builtOn: at,
     };
     return pending;
@@ -183,33 +214,32 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
    * party's. `deployerName` names which, for a module whose initializer reads
    * one.
    */
-  private deploy(
-    deployerName: string | undefined,
-    constructorArgs: readonly unknown[],
-  ): ChargedState {
-    if (
-      deployerName !== undefined &&
-      this.contracts[deployerName] === undefined
-    ) {
+  private static async deploy<P>(
+    options: HarnessOptions<P>,
+  ): Promise<ChargedState> {
+    const { contracts, deployer: deployerName } = options;
+    if (deployerName !== undefined && contracts[deployerName] === undefined) {
       throw new Error(
         `concurrency harness: unknown deployer '${deployerName}'`,
       );
     }
     const deployer =
       deployerName === undefined
-        ? Object.values(this.contracts)[0]
-        : this.contracts[deployerName];
+        ? Object.values(contracts)[0]
+        : contracts[deployerName];
     if (deployer === undefined) {
       throw new Error('concurrency harness: no contracts given');
     }
     const manager = new CircuitContextManager(
       deployer,
-      this.privateState,
-      this.coinPublicKey,
-      this.address,
-      ...constructorArgs,
+      options.privateState,
+      options.coinPublicKey ?? DEFAULT_COIN_PUBLIC_KEY,
+      options.contractAddress ?? dummyContractAddress(),
+      DEPLOY_TIME,
+      ...(options.constructorArgs ?? []),
     );
-    return manager.getContext().currentQueryContext.state;
+    await manager.init();
+    return manager.getContext().callContext.currentQueryContext.state;
   }
 
   private circuitFor(call: Call) {
@@ -230,6 +260,6 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
 /** A harness that replays transcripts in memory. */
 export function createDryHarness<P>(
   options: HarnessOptions<P>,
-): DryReplayHarness<P> {
-  return new DryReplayHarness(options);
+): Promise<DryReplayHarness<P>> {
+  return DryReplayHarness.create(options);
 }

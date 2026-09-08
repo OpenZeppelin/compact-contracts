@@ -50,13 +50,13 @@ const noteParties = () =>
   });
 
 describe('DryReplayHarness against real state', () => {
-  let harness: ReturnType<typeof createDryHarness<PrivateState>>;
+  let harness: Awaited<ReturnType<typeof createDryHarness<PrivateState>>>;
   let wallets: Record<string, NoteWallet>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const { parties, contracts } = noteParties();
     wallets = { alice: parties.alice.wallet, bob: parties.bob.wallet };
-    harness = createDryHarness({ contracts, privateState: {} });
+    harness = await createDryHarness({ contracts, privateState: {} });
   });
 
   /** Mints a note to `ownerPk` and arms `actor` to spend it. */

@@ -51,14 +51,14 @@ const options = () => ({
 });
 
 describe('DryReplayHarness', () => {
-  it('should refuse to deploy with no contracts', () => {
-    expect(() => createDryHarness({ contracts: {}, privateState: {} })).toThrow(
-      'concurrency harness: no contracts given',
-    );
+  it('should refuse to deploy with no contracts', async () => {
+    await expect(
+      createDryHarness({ contracts: {}, privateState: {} }),
+    ).rejects.toThrow('concurrency harness: no contracts given');
   });
 
   it('should reject a call by an actor it does not know', async () => {
-    const harness = createDryHarness(options());
+    const harness = await createDryHarness(options());
     const snapshot = await harness.snapshot();
 
     // A lookup failure is a spec bug, and `build` is where it surfaces: only
@@ -72,7 +72,7 @@ describe('DryReplayHarness', () => {
   });
 
   it('should reject a circuit the actor does not have', async () => {
-    const harness = createDryHarness(options());
+    const harness = await createDryHarness(options());
     const snapshot = await harness.snapshot();
 
     await expect(
@@ -86,7 +86,7 @@ describe('DryReplayHarness', () => {
   });
 
   it('should surface a throwing circuit rather than scoring it', async () => {
-    const harness = createDryHarness(options());
+    const harness = await createDryHarness(options());
     const snapshot = await harness.snapshot();
 
     await expect(
@@ -98,7 +98,7 @@ describe('DryReplayHarness', () => {
   });
 
   it('should start from the deployed state', async () => {
-    const harness = createDryHarness(options());
+    const harness = await createDryHarness(options());
 
     expect(await harness.snapshot()).toBe(await harness.snapshot());
   });
@@ -133,28 +133,28 @@ describe('DryReplayHarness deployer', () => {
     };
   };
 
-  it('should deploy with the first party by default', () => {
+  it('should deploy with the first party by default', async () => {
     const { deployed, ...options } = recording();
 
-    createDryHarness(options);
+    await createDryHarness(options);
 
     expect(deployed).toStrictEqual(['alice']);
   });
 
-  it('should deploy with the named party', () => {
+  it('should deploy with the named party', async () => {
     const { deployed, ...options } = recording();
 
-    createDryHarness({ ...options, deployer: 'bob' });
+    await createDryHarness({ ...options, deployer: 'bob' });
 
     expect(deployed).toStrictEqual(['bob']);
   });
 
-  it('should reject a deployer it does not know', () => {
+  it('should reject a deployer it does not know', async () => {
     const { deployed, ...options } = recording();
 
-    expect(() => createDryHarness({ ...options, deployer: 'carol' })).toThrow(
-      "concurrency harness: unknown deployer 'carol'",
-    );
+    await expect(
+      createDryHarness({ ...options, deployer: 'carol' }),
+    ).rejects.toThrow("concurrency harness: unknown deployer 'carol'");
     // Nothing deployed: the name is checked before a constructor runs.
     expect(deployed).toStrictEqual([]);
   });
