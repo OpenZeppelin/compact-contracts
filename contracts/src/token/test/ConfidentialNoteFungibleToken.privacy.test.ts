@@ -793,7 +793,10 @@ describe.runIf(isLiveBackend())(
 
       const from = await indexerHead();
       const note = await token._mint(ownerPk, amount);
-      const published = await awaitPublishedTxs(from);
+      const published = await awaitPublishedTxs(
+        from,
+        token._backend.contractAddress,
+      );
 
       expect(published.length).toBeGreaterThan(0);
       const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
@@ -825,7 +828,10 @@ describe.runIf(isLiveBackend())(
 
       const from = await indexerHead();
       const [out] = await token.transfer(recipientPk, amount);
-      const published = await awaitPublishedTxs(from);
+      const published = await awaitPublishedTxs(
+        from,
+        token._backend.contractAddress,
+      );
       const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
 
       expect(wire).not.toContain(encoded(senderSk));
@@ -851,7 +857,10 @@ describe.runIf(isLiveBackend())(
 
       const from = await indexerHead();
       await token.burn(amount);
-      const published = await awaitPublishedTxs(from);
+      const published = await awaitPublishedTxs(
+        from,
+        token._backend.contractAddress,
+      );
       const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
 
       // The positive control: the scan above is only meaningful if this scan
@@ -892,7 +901,10 @@ describe.runIf(isLiveBackend())(
 
       const from = await indexerHead();
       await token.burn(1n);
-      const published = await awaitPublishedTxs(from);
+      const published = await awaitPublishedTxs(
+        from,
+        token._backend.contractAddress,
+      );
 
       const entryPoints = published.flatMap((tx) =>
         tx.calls.map((call) => call.entryPoint),

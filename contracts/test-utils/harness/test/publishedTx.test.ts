@@ -29,6 +29,9 @@ const ok = (data: unknown): Response =>
     json: async () => ({ data }),
   }) as unknown as Response;
 
+/** The contract under observation. Stub blocks carry calls to this address. */
+const ADDR = '0xc0ffee';
+
 const head = (height: number | null) => ({
   block: height === null ? null : { height },
 });
@@ -53,6 +56,25 @@ const blockWith = (
 const emptyBlock = (height: number) => ({
   block: { height, transactions: [] },
 });
+
+/** One call to `ADDR`, the shape a spec is waiting for. */
+const ourCall = { address: ADDR, entryPoint: 'transfer', state: '0xs' };
+
+/**
+ * Routes a stubbed request by its query. `heights` answers Head; `block`
+ * answers a per-block read from the height it was asked for.
+ */
+const indexerStub = (
+  heightFor: () => number | null,
+  block: (height: number) => unknown,
+) =>
+  vi.fn((_url: string, init?: unknown) => {
+    const body = JSON.parse(String((init as { body?: string })?.body));
+    if (body.query.includes('Head')) {
+      return Promise.resolve(ok(head(heightFor())));
+    }
+    return Promise.resolve(ok(block(body.variables.offset.height)));
+  });
 
 /** What undici raises when an `AbortSignal.timeout` fires, without the wait. */
 const timedOut = (): Promise<Response> => {
@@ -95,7 +117,7 @@ describe('awaitPublishedTxs timeout', () => {
     );
 
     const started = Date.now();
-    await expect(awaitPublishedTxs(0, 1, 300)).rejects.toThrow(
+    await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
       /timed out waiting for 1 transaction\(s\) after block 0 \(saw 0\)/,
     );
 
@@ -112,7 +134,7 @@ describe('awaitPublishedTxs timeout', () => {
     );
 
     try {
-      await awaitPublishedTxs(0, 1, 300);
+      await awaitPublishedTxs(0, ADDR, 1, 300);
       expect.unreachable('expected a throw');
     } catch (error) {
       expect((error as Error).cause).toBeInstanceOf(IndexerTimeout);
@@ -135,7 +157,7 @@ describe('awaitPublishedTxs timeout', () => {
     });
 
     try {
-      await awaitPublishedTxs(0, 1, 1_500);
+      await awaitPublishedTxs(0, ADDR, 1, 1_500);
       expect.unreachable('expected a throw');
     } catch (error) {
       expect((error as Error).message).toMatch(
@@ -165,7 +187,7 @@ describe('awaitPublishedTxs timeout', () => {
       },
     );
 
-    await expect(awaitPublishedTxs(0, 1, 300)).rejects.toThrow(
+    await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
       /timed out waiting for 1/,
     );
 
@@ -185,7 +207,9 @@ describe('protocol failures', () => {
       status: 503,
     } as unknown as Response);
 
-    await expect(awaitPublishedTxs(0, 1, 30_000)).rejects.toThrow(/HTTP 503/);
+    await expect(awaitPublishedTxs(0, ADDR, 1, 30_000)).rejects.toThrow(
+      /HTTP 503/,
+    );
     // Not retried: one call, and the deadline was never consulted.
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -261,5 +285,59 @@ describe('publishedTxsSince', () => {
 
     expect(await publishedTxsSince(0, '0xabc123')).toHaveLength(1);
     expect(await publishedTxsSince(0, '0xdeadbeef')).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Polling until the window fills
+// ---------------------------------------------------------------------------
+
+describe('awaitPublishedTxs polling', () => {
+  it('should return the txs once the indexer catches up', async () => {
+    // The lag this function exists to absorb: the node finalized the call, the
+    // indexer has not got the block yet.
+    let indexedHead = 0;
+    fetchMock = indexerStub(
+      () => indexedHead,
+      (height) => blockWith(height, [ourCall]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    setTimeout(() => {
+      indexedHead = 1;
+    }, 50);
+
+    const txs = await awaitPublishedTxs(0, ADDR, 1, 30_000);
+
+    expect(txs).toHaveLength(1);
+    expect(txs[0]?.hash).toBe('0xtx1');
+  });
+
+  it('should read every block in the window, oldest first', async () => {
+    fetchMock = indexerStub(
+      () => 3,
+      (height) => blockWith(height, [ourCall]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const txs = await awaitPublishedTxs(0, ADDR, 3, 30_000);
+
+    expect(txs.map((tx) => tx.hash)).toStrictEqual(['0xtx1', '0xtx2', '0xtx3']);
+  });
+
+  it('should ignore txs from another contract', async () => {
+    // A concurrent spec's traffic. Counting it would let this call return
+    // before the contract under test published anything.
+    fetchMock = indexerStub(
+      () => 1,
+      (height) =>
+        blockWith(height, [
+          { address: '0xsomeoneelse', entryPoint: 'transfer', state: '0xs' },
+        ]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
+      /expected 1 transaction\(s\) after block 0, saw 0/,
+    );
   });
 });

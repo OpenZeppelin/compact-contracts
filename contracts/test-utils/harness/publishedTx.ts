@@ -202,6 +202,9 @@ export async function publishedTxsSince(
  * asserts nothing.
  *
  * @param height - Exclusive lower bound, the head captured before the call.
+ * @param contractAddress - Only transactions carrying a call to this address
+ * count toward `min`. Required: a spec that waited on any traffic at all would
+ * pass on a concurrent spec's transactions.
  * @param min - How many transactions to wait for.
  * @param timeoutMs - Give up after this long. Enforced across requests, not only
  * between polls, so a stuck indexer cannot outlive it.
@@ -209,6 +212,7 @@ export async function publishedTxsSince(
  */
 export async function awaitPublishedTxs(
   height: number,
+  contractAddress: string,
   min = 1,
   timeoutMs = 120_000,
 ): Promise<PublishedTx[]> {
@@ -218,7 +222,7 @@ export async function awaitPublishedTxs(
 
   while (Date.now() < deadline) {
     try {
-      seen = await publishedTxsSince(height, undefined, deadline);
+      seen = await publishedTxsSince(height, contractAddress, deadline);
       // The indexer answered, so any earlier timeout is stale: a short window
       // from here on is a missing transaction, not a stuck indexer.
       lastTimeout = undefined;
