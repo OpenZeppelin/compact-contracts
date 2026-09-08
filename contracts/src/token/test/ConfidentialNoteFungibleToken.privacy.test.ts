@@ -89,28 +89,47 @@ type Trace = {
   output: AlignedValue;
 };
 
-class Probe {
-  readonly wallet: NoteWallet;
-  private readonly contract;
-  private readonly manager;
+/**
+ * Block time the probe deploys at. Pinned because `createCircuitContext`
+ * defaults it to `Date.now()`, and the differential layer needs two runs to
+ * agree on every input but the one under study.
+ */
+const PROBE_TIME = 0;
 
-  constructor() {
-    this.wallet = createNoteWallet();
+class Probe {
+  readonly wallet: NoteWallet = createNoteWallet();
+  private readonly contract = new MockCore(
+    ConfidentialNoteFungibleTokenWitnesses(this.wallet),
+  );
+  private readonly manager = new CircuitContextManager<PrivateState>(
+    this.contract,
+    {},
+    '0'.repeat(64),
+    dummyContractAddress(),
+    PROBE_TIME,
+  );
+
+  private constructor() {
     this.wallet.nonceSeed = SEED;
-    this.contract = new MockCore(
-      ConfidentialNoteFungibleTokenWitnesses(this.wallet),
-    );
-    this.manager = new CircuitContextManager(
-      this.contract,
-      {},
-      '0'.repeat(64),
-      dummyContractAddress(),
-    );
   }
 
-  private run<T>(call: () => CircuitResults<PrivateState, T>): [T, Trace] {
-    const { result, context, proofData } = call();
+  /** The contract constructor is async from runtime 0.18 on. */
+  static async create(): Promise<Probe> {
+    const probe = new Probe();
+    await probe.manager.init();
+    return probe;
+  }
+
+  private async run<T>(
+    call: () => Promise<CircuitResults<PrivateState, T>>,
+  ): Promise<[T, Trace]> {
+    const { result, context } = await call();
     this.manager.setContext(context);
+    // One entry per call in the tree, depth-first, so the root circuit is last.
+    const proofData = context.callProofDataTrace.at(-1);
+    if (proofData === undefined) {
+      throw new Error('probe: circuit produced no proof data');
+    }
     return [
       result,
       {
@@ -122,7 +141,7 @@ class Probe {
     ];
   }
 
-  mint(recipientPk: bigint, value: bigint): [Note, Trace] {
+  mint(recipientPk: bigint, value: bigint): Promise<[Note, Trace]> {
     return this.run(() =>
       this.contract.impureCircuits._mint(
         this.manager.getContext(),
@@ -132,7 +151,7 @@ class Probe {
     );
   }
 
-  transfer(recipientPk: bigint, value: bigint): [[Note, Note], Trace] {
+  transfer(recipientPk: bigint, value: bigint): Promise<[[Note, Note], Trace]> {
     return this.run(() =>
       this.contract.impureCircuits.transfer(
         this.manager.getContext(),
@@ -142,13 +161,13 @@ class Probe {
     );
   }
 
-  burn(value: bigint): [Note, Trace] {
+  burn(value: bigint): Promise<[Note, Trace]> {
     return this.run(() =>
       this.contract.impureCircuits.burn(this.manager.getContext(), value),
     );
   }
 
-  consumeNote(ownerPk: bigint): [Note, Trace] {
+  consumeNote(ownerPk: bigint): Promise<[Note, Trace]> {
     return this.run(() =>
       this.contract.impureCircuits._consumeNote(
         this.manager.getContext(),
@@ -163,7 +182,9 @@ class Probe {
   }
 
   get state() {
-    return ledger(this.manager.getContext().currentQueryContext.state.state);
+    return ledger(
+      this.manager.getContext().callContext.currentQueryContext.state.state,
+    );
   }
 }
 
@@ -253,9 +274,9 @@ describe.skipIf(isLiveBackend())(
     // The tree stores the hash of the leaf, so even the commitment stays off
     // the wire. What a mint does publish is the issued tag, twice: once for the
     // membership check and once for the insert.
-    it('should publish only the issued tag per mint, not the commitment itself', () => {
-      const probe = new Probe();
-      const [note, trace] = probe.mint(ALICE, 1000n);
+    it('should publish only the issued tag per mint, not the commitment itself', async () => {
+      const probe = await Probe.create();
+      const [note, trace] = await probe.mint(ALICE, 1000n);
       const commitment = core.commitOf(note, ALICE);
       const tag = core.issuedTagOf(note);
 
@@ -275,9 +296,9 @@ describe.skipIf(isLiveBackend())(
 
     // The tag is `H` of the nonce, so it reveals the nonce only to someone who
     // already has it. That is the trade the module's `_issuedNonces` doc names.
-    it('should publish the issued tag without publishing the nonce', () => {
-      const probe = new Probe();
-      const [note, trace] = probe.mint(ALICE, 1000n);
+    it('should publish the issued tag without publishing the nonce', async () => {
+      const probe = await Probe.create();
+      const [note, trace] = await probe.mint(ALICE, 1000n);
       const published = bytesIn(trace.transcript);
 
       expect(published).toContain(hex(core.issuedTagOf(note)));
@@ -286,9 +307,9 @@ describe.skipIf(isLiveBackend())(
       }
     });
 
-    it('should not carry the minted amount', () => {
-      const probe = new Probe();
-      const [, trace] = probe.mint(ALICE, 1000n);
+    it('should not carry the minted amount', async () => {
+      const probe = await Probe.create();
+      const [, trace] = await probe.mint(ALICE, 1000n);
       const published = bytesIn(trace.transcript);
 
       for (const encoding of encodingsOf(1000n)) {
@@ -296,9 +317,9 @@ describe.skipIf(isLiveBackend())(
       }
     });
 
-    it('should not carry the note nonce or the owner identity', () => {
-      const probe = new Probe();
-      const [note, trace] = probe.mint(ALICE, 1000n);
+    it('should not carry the note nonce or the owner identity', async () => {
+      const probe = await Probe.create();
+      const [note, trace] = await probe.mint(ALICE, 1000n);
       const published = bytesIn(trace.transcript);
 
       for (const encoding of encodingsOf(note.nonce)) {
@@ -309,11 +330,11 @@ describe.skipIf(isLiveBackend())(
       }
     });
 
-    it('should not carry the spend secret of a burn', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should not carry the spend secret of a burn', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       probe.spend(ALICE_SK, note);
-      const [, trace] = probe.burn(400n);
+      const [, trace] = await probe.burn(400n);
       const published = bytesIn(trace.transcript);
 
       expect(published).not.toContain(encoded(ALICE_SK));
@@ -325,31 +346,31 @@ describe.skipIf(isLiveBackend())(
     // The mirror image of the checks above: the secrets do exist, on the side
     // that never leaves the prover. Without this, a probe that simply failed to
     // read anything would satisfy every `not.toContain` above.
-    it('should carry the spend secret on the private side only', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should carry the spend secret on the private side only', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       probe.spend(ALICE_SK, note);
-      const [, trace] = probe.burn(400n);
+      const [, trace] = await probe.burn(400n);
 
       expect(bytesIn(trace.privateOutputs)).toContain(encoded(ALICE_SK));
       expect(bytesIn(trace.transcript)).not.toContain(encoded(ALICE_SK));
     });
 
-    it('should publish the nullifier of a spent note', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should publish the nullifier of a spent note', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       probe.spend(ALICE_SK, note);
-      const [, trace] = probe.burn(400n);
+      const [, trace] = await probe.burn(400n);
 
       expect(bytesIn(trace.transcript)).toContain(hex(core.nullifierOf(note)));
     });
 
-    it('should publish exactly two commitments, one nullifier and two tags per transfer', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should publish exactly two commitments, one nullifier and two tags per transfer', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       const before = probe.state;
       probe.spend(ALICE_SK, note);
-      const [[out, change]] = probe.transfer(BOB, 300n);
+      const [[out, change]] = await probe.transfer(BOB, 300n);
       const after = probe.state;
 
       expect(after.Core__commitments.firstFree()).toBe(
@@ -377,16 +398,22 @@ describe.skipIf(isLiveBackend())(
   'ConfidentialNoteFungibleToken privacy: indistinguishability',
   () => {
     /** A transfer of `value` to `recipientPk`, from an identical starting note. */
-    const transferTrace = (recipientPk: bigint, value: bigint): Trace => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    const transferTrace = async (
+      recipientPk: bigint,
+      value: bigint,
+    ): Promise<Trace> => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       probe.spend(ALICE_SK, note);
-      return probe.transfer(recipientPk, value)[1];
+      return (await probe.transfer(recipientPk, value))[1];
     };
 
-    const mintTrace = (recipientPk: bigint, value: bigint): Trace => {
-      const probe = new Probe();
-      return probe.mint(recipientPk, value)[1];
+    const mintTrace = async (
+      recipientPk: bigint,
+      value: bigint,
+    ): Promise<Trace> => {
+      const probe = await Probe.create();
+      return (await probe.mint(recipientPk, value))[1];
     };
 
     /**
@@ -419,44 +446,50 @@ describe.skipIf(isLiveBackend())(
         .uint8Array({ minLength: 32, maxLength: 32 })
         .map((sk) => core.derivePk(sk));
 
-    it('should mint with the same transcript shape for any amount', () => {
-      fc.assert(
-        fc.property(anyAmount(), anyAmount(), (a, b) => {
-          expect(shapeOf(mintTrace(ALICE, a).transcript)).toStrictEqual(
-            shapeOf(mintTrace(ALICE, b).transcript),
+    it('should mint with the same transcript shape for any amount', async () => {
+      await fc.assert(
+        fc.asyncProperty(anyAmount(), anyAmount(), async (a, b) => {
+          expect(shapeOf((await mintTrace(ALICE, a)).transcript)).toStrictEqual(
+            shapeOf((await mintTrace(ALICE, b)).transcript),
           );
         }),
         { numRuns: 15 },
       );
     });
 
-    it('should transfer with the same transcript shape for any amount', () => {
-      fc.assert(
-        fc.property(payableAmount(), payableAmount(), (a, b) => {
-          expect(shapeOf(transferTrace(BOB, a).transcript)).toStrictEqual(
-            shapeOf(transferTrace(BOB, b).transcript),
-          );
+    it('should transfer with the same transcript shape for any amount', async () => {
+      await fc.assert(
+        fc.asyncProperty(payableAmount(), payableAmount(), async (a, b) => {
+          expect(
+            shapeOf((await transferTrace(BOB, a)).transcript),
+          ).toStrictEqual(shapeOf((await transferTrace(BOB, b)).transcript));
         }),
         { numRuns: 10 },
       );
     });
 
-    it('should transfer with the same transcript shape for any recipient', () => {
-      fc.assert(
-        fc.property(anyRecipientPk(), anyRecipientPk(), (first, second) => {
-          expect(shapeOf(transferTrace(first, 300n).transcript)).toStrictEqual(
-            shapeOf(transferTrace(second, 300n).transcript),
-          );
-        }),
+    it('should transfer with the same transcript shape for any recipient', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          anyRecipientPk(),
+          anyRecipientPk(),
+          async (first, second) => {
+            expect(
+              shapeOf((await transferTrace(first, 300n)).transcript),
+            ).toStrictEqual(
+              shapeOf((await transferTrace(second, 300n)).transcript),
+            );
+          },
+        ),
         { numRuns: 10 },
       );
     });
 
-    it('should transfer with the same transcript length for any amount', () => {
-      fc.assert(
-        fc.property(payableAmount(), payableAmount(), (a, b) => {
-          const left = bytesIn(transferTrace(BOB, a).transcript);
-          const right = bytesIn(transferTrace(BOB, b).transcript);
+    it('should transfer with the same transcript length for any amount', async () => {
+      await fc.assert(
+        fc.asyncProperty(payableAmount(), payableAmount(), async (a, b) => {
+          const left = bytesIn((await transferTrace(BOB, a)).transcript);
+          const right = bytesIn((await transferTrace(BOB, b)).transcript);
 
           expect(left.length).toBe(right.length);
           expect(left.map(widthOf)).toStrictEqual(right.map(widthOf));
@@ -491,12 +524,15 @@ describe.skipIf(isLiveBackend())(
       }
     };
 
-    it('should move only one digest when the minted amount differs', () => {
-      fc.assert(
-        fc.property(anyAmount(), anyAmount(), (a, b) => {
+    it('should move only one digest when the minted amount differs', async () => {
+      await fc.assert(
+        fc.asyncProperty(anyAmount(), anyAmount(), async (a, b) => {
           fc.pre(a !== b);
 
-          const moved = drift(mintTrace(ALICE, a), mintTrace(ALICE, b));
+          const moved = drift(
+            await mintTrace(ALICE, a),
+            await mintTrace(ALICE, b),
+          );
 
           expect(moved).toHaveLength(1);
           expectOpaque(moved, [a, b, ALICE]);
@@ -507,18 +543,18 @@ describe.skipIf(isLiveBackend())(
 
     // Three, not one: the mint nonce binds the recipient, so the issued tag
     // moves with the leaf, and the tag is published twice.
-    it('should move only digests when the mint recipient differs', () => {
-      fc.assert(
-        fc.property(
+    it('should move only digests when the mint recipient differs', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           payableAmount(),
           anyRecipientPk(),
           anyRecipientPk(),
-          (value, first, second) => {
+          async (value, first, second) => {
             fc.pre(first !== second);
 
             const moved = drift(
-              mintTrace(first, value),
-              mintTrace(second, value),
+              await mintTrace(first, value),
+              await mintTrace(second, value),
             );
 
             expect(moved).toHaveLength(3);
@@ -532,20 +568,20 @@ describe.skipIf(isLiveBackend())(
     // The strongest claim in the file. Two transfers of wildly different
     // amounts publish byte-identical transactions except for the two output
     // leaf digests, and those are hashes.
-    it('should move only the two output digests when the amount differs', () => {
-      fc.assert(
-        fc.property(payableAmount(), payableAmount(), (a, b) => {
+    it('should move only the two output digests when the amount differs', async () => {
+      await fc.assert(
+        fc.asyncProperty(payableAmount(), payableAmount(), async (a, b) => {
           fc.pre(a !== b);
 
-          const probeA = new Probe();
-          const [inputA] = probeA.mint(ALICE, 1000n);
+          const probeA = await Probe.create();
+          const [inputA] = await probeA.mint(ALICE, 1000n);
           probeA.spend(ALICE_SK, inputA);
-          const [notesA, traceA] = probeA.transfer(BOB, a);
+          const [notesA, traceA] = await probeA.transfer(BOB, a);
 
-          const probeB = new Probe();
-          const [inputB] = probeB.mint(ALICE, 1000n);
+          const probeB = await Probe.create();
+          const [inputB] = await probeB.mint(ALICE, 1000n);
           probeB.spend(ALICE_SK, inputB);
-          const [notesB, traceB] = probeB.transfer(BOB, b);
+          const [notesB, traceB] = await probeB.transfer(BOB, b);
 
           // Same starting note, so the spend half of the transaction is
           // identical.
@@ -570,24 +606,24 @@ describe.skipIf(isLiveBackend())(
 
     // Only the recipient's own digest moves. The change note's digest does not,
     // so a watcher cannot even tell that the recipient changed.
-    it('should move only one digest when the recipient differs', () => {
-      fc.assert(
-        fc.property(
+    it('should move only one digest when the recipient differs', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           payableAmount(),
           anyRecipientPk(),
           anyRecipientPk(),
-          (value, first, second) => {
+          async (value, first, second) => {
             fc.pre(first !== second);
 
-            const probeA = new Probe();
-            const [inputA] = probeA.mint(ALICE, 1000n);
+            const probeA = await Probe.create();
+            const [inputA] = await probeA.mint(ALICE, 1000n);
             probeA.spend(ALICE_SK, inputA);
-            const [, traceA] = probeA.transfer(first, value);
+            const [, traceA] = await probeA.transfer(first, value);
 
-            const probeB = new Probe();
-            const [inputB] = probeB.mint(ALICE, 1000n);
+            const probeB = await Probe.create();
+            const [inputB] = await probeB.mint(ALICE, 1000n);
             probeB.spend(ALICE_SK, inputB);
-            const [, traceB] = probeB.transfer(second, value);
+            const [, traceB] = await probeB.transfer(second, value);
 
             const moved = drift(traceA, traceB);
             expect(moved).toHaveLength(1);
@@ -601,18 +637,18 @@ describe.skipIf(isLiveBackend())(
     // The nullifier depends on the nonce alone, so a caller who never held the
     // owner's secret publishes the same one. That is what makes an owner spend
     // and a clawback mutually exclusive, and why nonces are spend-critical.
-    it('should publish the same nullifier whoever consumes the note', () => {
-      const probeA = new Probe();
-      const [note] = probeA.mint(ALICE, 1000n);
+    it('should publish the same nullifier whoever consumes the note', async () => {
+      const probeA = await Probe.create();
+      const [note] = await probeA.mint(ALICE, 1000n);
       probeA.spend(ALICE_SK, note);
-      const [, traceA] = probeA.consumeNote(ALICE);
+      const [, traceA] = await probeA.consumeNote(ALICE);
 
       // A second deployment, same note, consumed by a caller holding Bob's
       // secret and naming Alice as the owner: the ungated clawback path.
-      const probeB = new Probe();
-      probeB.mint(ALICE, 1000n);
+      const probeB = await Probe.create();
+      await probeB.mint(ALICE, 1000n);
       probeB.spend(BOB_SK, note);
-      const [, traceB] = probeB.consumeNote(ALICE);
+      const [, traceB] = await probeB.consumeNote(ALICE);
 
       const nullifier = hex(core.nullifierOf(note));
       expect(bytesIn(traceA.transcript)).toContain(nullifier);
@@ -646,7 +682,7 @@ describe.skipIf(isLiveBackend())(
       'return [disclose(outNote), disclose(changeNote)];',
     ];
 
-    it('should disclose only at the reviewed sites', () => {
+    it('should disclose only at the reviewed sites', async () => {
       const sites = CORE_SOURCE.split('\n')
         .map((line) => line.trim())
         .filter((line) => line.includes('disclose(') && !line.startsWith('*'));
@@ -654,13 +690,13 @@ describe.skipIf(isLiveBackend())(
       expect(new Set(sites)).toStrictEqual(new Set(EXPECTED_DISCLOSURES));
     });
 
-    it('should not disclose a witness value directly', () => {
+    it('should not disclose a witness value directly', async () => {
       // `disclose(wit_...)` would publish a secret verbatim. Every legitimate
       // disclosure above publishes a hash, a root, or a locally-returned note.
       expect(CORE_SOURCE).not.toMatch(/disclose\(\s*wit_/);
     });
 
-    it('should write no public state outside the tree and the two sets', () => {
+    it('should write no public state outside the tree and the two sets', async () => {
       const ledgerFields = CORE_SOURCE.split('\n')
         .filter((line) => line.trim().startsWith('export ledger'))
         .map((line) => line.trim());
@@ -691,14 +727,14 @@ describe.skipIf(isLiveBackend())(
 describe.skipIf(isLiveBackend())(
   'ConfidentialNoteFungibleToken privacy: spendability under the pinned seed',
   () => {
-    it('should let the recipient spend the note a transfer created', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should let the recipient spend the note a transfer created', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       probe.spend(ALICE_SK, note);
-      const [[out]] = probe.transfer(BOB, 300n);
+      const [[out]] = await probe.transfer(BOB, 300n);
 
       probe.spend(BOB_SK, out);
-      const [change] = probe.burn(300n);
+      const [change] = await probe.burn(300n);
 
       expect(change.value).toBe(0n);
       expect(probe.state.Core__nullifiers.member(core.nullifierOf(out))).toBe(
@@ -706,37 +742,37 @@ describe.skipIf(isLiveBackend())(
       );
     });
 
-    it('should let the owner burn the change of a chained burn', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should let the owner burn the change of a chained burn', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
 
       probe.spend(ALICE_SK, note);
-      const [firstChange] = probe.burn(300n);
+      const [firstChange] = await probe.burn(300n);
       expect(firstChange.value).toBe(700n);
 
       probe.spend(ALICE_SK, firstChange);
-      const [secondChange] = probe.burn(200n);
+      const [secondChange] = await probe.burn(200n);
       expect(secondChange.value).toBe(500n);
 
       probe.spend(ALICE_SK, secondChange);
-      const [finalChange] = probe.burn(500n);
+      const [finalChange] = await probe.burn(500n);
 
       expect(finalChange.value).toBe(0n);
       expect(probe.state.Core__nullifiers.size()).toBe(3n);
     });
 
-    it('should let the sender spend the change of a chained transfer', () => {
-      const probe = new Probe();
-      const [note] = probe.mint(ALICE, 1000n);
+    it('should let the sender spend the change of a chained transfer', async () => {
+      const probe = await Probe.create();
+      const [note] = await probe.mint(ALICE, 1000n);
       probe.spend(ALICE_SK, note);
-      const [[, firstChange]] = probe.transfer(BOB, 300n);
+      const [[, firstChange]] = await probe.transfer(BOB, 300n);
 
       probe.spend(ALICE_SK, firstChange);
-      const [[, secondChange]] = probe.transfer(BOB, 100n);
+      const [[, secondChange]] = await probe.transfer(BOB, 100n);
       expect(secondChange.value).toBe(600n);
 
       probe.spend(ALICE_SK, secondChange);
-      const [finalChange] = probe.burn(600n);
+      const [finalChange] = await probe.burn(600n);
 
       expect(finalChange.value).toBe(0n);
       expect(probe.state.Core__nullifiers.size()).toBe(3n);
