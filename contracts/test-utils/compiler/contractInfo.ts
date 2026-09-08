@@ -7,7 +7,7 @@
  * misses: `CompactType<A>` (`compact-runtime`) is a runtime codec, not a static
  * shape; `SparseCompactADT` (same package) is tagged `'cell' | 'set' | 'list' |
  * 'map'`, a partial vocabulary for finding contract references. Every variant
- * below is derived from the 472 compiled artifacts in this monorepo, and
+ * below is derived from the compiled artifacts in this monorepo, and
  * {@link readContractInfo} rejects anything outside them.
  *
  * Circuit complexity (k, rows) is not here; see
@@ -291,7 +291,7 @@ export interface ContractInfo {
   readonly 'runtime-version': string;
   readonly circuits: readonly CircuitInfo[];
   readonly witnesses: readonly WitnessInfo[];
-  /** Child contracts. `unknown` because it is empty in all 472 artifacts here. */
+  /** Child contracts. `unknown` because it is empty in every artifact here. */
   readonly contracts: readonly unknown[];
   /**
    * The public ledger, in declaration order. Always present; `[]` when the
