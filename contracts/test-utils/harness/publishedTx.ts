@@ -78,7 +78,7 @@ const POLL_INTERVAL_MS = 1_000;
  * Kept distinct from a protocol failure so {@link awaitPublishedTxs} can poll
  * through transient slowness while a real indexer error still surfaces at once.
  */
-class IndexerTimeout extends Error {}
+export class IndexerTimeout extends Error {}
 
 /**
  * How long one request may take: its own ceiling, or whatever is left of the
@@ -205,6 +205,7 @@ export async function publishedTxsSince(
  * @param min - How many transactions to wait for.
  * @param timeoutMs - Give up after this long. Enforced across requests, not only
  * between polls, so a stuck indexer cannot outlive it.
+ * @throws On giving up. A timed-out request is kept as `cause`.
  */
 export async function awaitPublishedTxs(
   height: number,
@@ -213,16 +214,21 @@ export async function awaitPublishedTxs(
 ): Promise<PublishedTx[]> {
   const deadline = Date.now() + timeoutMs;
   let seen: PublishedTx[] = [];
+  let lastTimeout: IndexerTimeout | undefined;
 
   while (Date.now() < deadline) {
     try {
       seen = await publishedTxsSince(height, undefined, deadline);
+      // The indexer answered, so any earlier timeout is stale: a short window
+      // from here on is a missing transaction, not a stuck indexer.
+      lastTimeout = undefined;
     } catch (cause) {
       // Slowness is what this function exists to absorb, so keep polling while
       // time remains. A protocol failure is a real defect: surface it at once.
       if (!(cause instanceof IndexerTimeout)) {
         throw cause;
       }
+      lastTimeout = cause;
     }
     if (seen.length >= min) {
       return seen;
@@ -234,6 +240,16 @@ export async function awaitPublishedTxs(
     await new Promise((resolve) => setTimeout(resolve, pause));
   }
 
+  // A timeout and a short window are different failures: one says the indexer
+  // stopped answering, the other that it answered and the transactions are not
+  // there. Only the first has a cause worth keeping.
+  if (lastTimeout !== undefined) {
+    throw new Error(
+      `indexer: timed out waiting for ${min} transaction(s) after block ${height} ` +
+        `(saw ${seen.length}); last request: ${lastTimeout.message}`,
+      { cause: lastTimeout },
+    );
+  }
   throw new Error(
     `indexer: expected ${min} transaction(s) after block ${height}, saw ${seen.length}`,
   );

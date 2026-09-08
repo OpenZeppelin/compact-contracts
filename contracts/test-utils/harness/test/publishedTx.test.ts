@@ -10,6 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   awaitPublishedTxs,
+  IndexerTimeout,
   indexerHead,
   publishedTxsSince,
 } from '../publishedTx.js';
@@ -48,6 +49,18 @@ const blockWith = (
   },
 });
 
+/** A block the indexer has, carrying nothing. */
+const emptyBlock = (height: number) => ({
+  block: { height, transactions: [] },
+});
+
+/** What undici raises when an `AbortSignal.timeout` fires, without the wait. */
+const timedOut = (): Promise<Response> => {
+  const error = new Error('The operation was aborted due to timeout');
+  error.name = 'TimeoutError';
+  return Promise.reject(error);
+};
+
 /** Never settles until aborted, which is what a stuck indexer looks like. */
 const hang = (init?: { signal?: AbortSignal }): Promise<Response> =>
   new Promise((_resolve, reject) => {
@@ -83,12 +96,53 @@ describe('awaitPublishedTxs timeout', () => {
 
     const started = Date.now();
     await expect(awaitPublishedTxs(0, 1, 300)).rejects.toThrow(
-      /expected 1 transaction\(s\) after block 0, saw 0/,
+      /timed out waiting for 1 transaction\(s\) after block 0 \(saw 0\)/,
     );
 
     // The assertion that matters: bounded by the caller's deadline, not by
     // undici's far longer body timeout.
     expect(Date.now() - started).toBeLessThan(3_000);
+  });
+
+  // Without the cause, a spec that fails here sees only "saw 0" and cannot
+  // tell a stuck indexer from a contract that published nothing.
+  it('should keep the timeout as the cause of the failure', async () => {
+    fetchMock.mockImplementation(
+      (_url: string, init?: { signal?: AbortSignal }) => hang(init),
+    );
+
+    try {
+      await awaitPublishedTxs(0, 1, 300);
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      expect((error as Error).cause).toBeInstanceOf(IndexerTimeout);
+      expect(((error as Error).cause as Error).message).toMatch(/no response/);
+    }
+  });
+
+  // A stale cause would send a reader after a healthy indexer.
+  it('should report a short window, not a timeout, once the indexer answers again', async () => {
+    let call = 0;
+    fetchMock.mockImplementation((_url: string, init?: unknown) => {
+      call += 1;
+      if (call === 1) {
+        return timedOut();
+      }
+      const body = JSON.parse(String((init as { body?: string })?.body));
+      return Promise.resolve(
+        body.query.includes('Head') ? ok(head(1)) : ok(emptyBlock(1)),
+      );
+    });
+
+    try {
+      await awaitPublishedTxs(0, 1, 1_500);
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      expect((error as Error).message).toMatch(
+        /expected 1 transaction\(s\) after block 0, saw 0/,
+      );
+      expect((error as Error).cause).toBeUndefined();
+    }
   });
 
   it('should pass an abort signal on every request', async () => {
@@ -111,7 +165,9 @@ describe('awaitPublishedTxs timeout', () => {
       },
     );
 
-    await expect(awaitPublishedTxs(0, 1, 300)).rejects.toThrow(/expected 1/);
+    await expect(awaitPublishedTxs(0, 1, 300)).rejects.toThrow(
+      /timed out waiting for 1/,
+    );
 
     // One head plus a bounded handful of block reads, nowhere near 5000.
     expect(fetchMock.mock.calls.length).toBeLessThan(20);
