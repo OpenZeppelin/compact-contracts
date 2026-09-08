@@ -102,6 +102,18 @@ describe('rejection: expectRejection', () => {
     );
   });
 
+  it('should keep the rejection as the cause of the mismatch', async () => {
+    // The rendered chain is text; a spec that wants to assert on the object
+    // needs the object, and re-catching the call is not possible from here.
+    const rejection = liveWrapped();
+    try {
+      await expectRejection(Promise.reject(rejection), 'some other reason');
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      expect((error as Error).cause).toBe(rejection);
+    }
+  });
+
   it('should print the whole chain when the reason is absent', async () => {
     // The diagnostic IS the feature: a backend that wraps differently has to
     // report what it produced, not just "no match".

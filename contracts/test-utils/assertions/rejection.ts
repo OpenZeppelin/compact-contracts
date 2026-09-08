@@ -96,6 +96,7 @@ export async function expectRejection(
       .join('\n');
     throw new Error(
       `expected a rejection including\n  ${reason}\nbut the cause chain was:\n${chain}`,
+      { cause: thrown },
     );
   }
 }
