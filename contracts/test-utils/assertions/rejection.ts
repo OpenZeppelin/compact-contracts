@@ -27,8 +27,9 @@
 /**
  * Rendered text for every error reachable from `error`, outermost first.
  *
- * Breadth-first so the printed order matches how deeply each entry was nested,
- * which is what makes a failed match readable. Cycle-safe.
+ * Breadth-first, so a wrapper is always printed before what it wraps. Position
+ * is not nesting depth: an `AggregateError`'s children are siblings and take
+ * consecutive positions. Cycle-safe.
  */
 export function causeChain(error: unknown): string[] {
   const seen = new Set<unknown>();
@@ -94,7 +95,7 @@ export async function expectRejection(
   }
   if (!rejectionIncludes(thrown, reason)) {
     const chain = causeChain(thrown)
-      .map((text, depth) => `  [${depth}] ${text}`)
+      .map((text, index) => `  [${index}] ${text}`)
       .join('\n');
     throw new Error(
       `expected a rejection including\n  ${reason}\nbut the cause chain was:\n${chain}`,

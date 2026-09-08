@@ -122,6 +122,26 @@ describe('rejection: expectRejection', () => {
     }
   });
 
+  it('should label chain entries by position, not by nesting depth', async () => {
+    // Both children sit one level down, so consecutive labels are positions in
+    // the printed order rather than depths.
+    const aggregate = new AggregateError(
+      [new Error('left'), new Error('right')],
+      'several failed',
+    );
+
+    let message = '';
+    try {
+      await expectRejection(Promise.reject(aggregate), 'absent');
+    } catch (error) {
+      message = (error as Error).message;
+    }
+
+    expect(message).toContain('[0] AggregateError: several failed');
+    expect(message).toContain('[1] Error: left');
+    expect(message).toContain('[2] Error: right');
+  });
+
   it('should print the whole chain when the reason is absent', async () => {
     // The diagnostic IS the feature: a backend that wraps differently has to
     // report what it produced, not just "no match".
