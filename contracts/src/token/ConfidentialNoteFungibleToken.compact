@@ -15,9 +15,10 @@ pragma language_version >= 0.23.0;
  * nullifier `nf = H(domain, nonce)` marks the note spent. Spending proves that
  * the note's commitment is in the tree without revealing which leaf.
  *
- * The public ledger therefore holds only the commitment tree and the nullifier
- * set: no balances, no accounts, no supply. A transfer publishes one nullifier
- * and two commitments, and nothing else.
+ * The public ledger therefore holds three things, none of them an account: the
+ * commitment tree, the nullifier set, and the issued-nonce set. No balances,
+ * no supply. A transfer publishes one nullifier, two commitments, and two
+ * issued tags, and nothing else.
  *
  * The module is deliberately barebones — the note machinery and nothing else.
  * It holds no roles and needs no initialization. `transfer` and `burn` work out
@@ -75,9 +76,10 @@ module ConfidentialNoteFungibleToken {
   }
 
   /**
-   * @description Domain-separated preimage of a nullifier. It deliberately
-   * omits the owner, so the nullifier depends only on the note's nonce.
-   * @type {Bytes<32>} domain - The nullifier domain tag.
+   * @description Domain-separated preimage of a nullifier or an issued tag. It
+   * deliberately omits the owner, so both depend only on the note's nonce; the
+   * `domain` value alone keeps the two from colliding.
+   * @type {Bytes<32>} domain - The nullifier or issued-tag domain tag.
    * @type {Field} nonce - The note's nonce.
    */
   struct NullifierPreimage {
@@ -117,6 +119,13 @@ module ConfidentialNoteFungibleToken {
    * @type {Set<Bytes<32>>} _nullifiers - The spent-note nullifier set.
    */
   export ledger _nullifiers: Set<Bytes<32>>;
+
+  /**
+   * @description Issued-nonce tags, one per note ever committed. Separate from
+   * `_nullifiers` so that set keeps meaning "spent". See `_mintNote`.
+   * @type {Set<Bytes<32>>} _issuedNonces - The issued-tag set.
+   */
+  export ledger _issuedNonces: Set<Bytes<32>>;
 
   /**
    * @witness wit_SecretKey
@@ -170,7 +179,7 @@ module ConfidentialNoteFungibleToken {
    * `recipientPk` with a core-derived fresh nonce and returns it, so the caller
    * can hand it to the recipient out of band.
    *
-   * @circuitInfo k=14, rows=13190
+   * @circuitInfo k=15, rows=17410
    *
    * @notice The amount is NOT written to public state — issuance stays hidden
    * and only the hiding commitment appears on-chain. This is the property an
@@ -228,18 +237,63 @@ module ConfidentialNoteFungibleToken {
    * `ownerPk`. The composer decides who may create value, how the nonce was
    * produced, and how the note reaches its owner.
    *
-   * @circuitInfo k=13, rows=6766
+   * @circuitInfo k=14, rows=10986
+   *
+   * @notice The nonce is reserved in `_issuedNonces` first, so a duplicate
+   * fails the transaction instead of committing a note that is born dead.
+   * Every note in the tree therefore carries a nonce no other note has.
+   *
+   * @dev Why not `_nullifiers`: inserting `nf` spends the note at birth, and a
+   * member-only check discloses `nf` at mint, linking mint to spend, while
+   * still missing two duplicates that are both unspent.
+   *
+   * @dev Weak seed: the tag is `H(nonce)`, as guessable as `nf`. A proper seed
+   * leaks nothing new; a guessable one exposes at mint what `nf` exposes at
+   * spend, in return for catching the RNG break on the first duplicate.
+   *
+   * @dev Concurrency: reading a counter or the tree index would pin one shared
+   * value and serialize mints. `member` pins one key, so only the duplicate is
+   * rejected and distinct mints still commute.
    *
    * @warning No authorization and no value accounting. Re-exporting this from a
    * deployed contract is a permissionless mint.
+   *
+   * Requirements:
+   *
+   * - The note's nonce has not been issued before.
    *
    * @param {Note} note - The note to commit.
    * @param {Field} ownerPk - The identity that will own it.
    * @return {[]} - Empty tuple.
    */
   export circuit _mintNote(note: Note, ownerPk: Field): [] {
-    // Only the hiding commitment crosses to public state.
+    // Reserve the nonce first: a duplicate must fail before anything is
+    // committed. The tag pins one key, so distinct mints still commute.
+    const tag = issuedTagOf(note);
+    assert(!_issuedNonces.member(disclose(tag)),
+           "ConfidentialNoteFungibleToken: nonce already issued");
+    _issuedNonces.insert(disclose(tag));
+
+    // Only the tag and the hiding commitment cross to public state.
     _commitments.insert(disclose(commitOf(note, ownerPk)));
+  }
+
+  /**
+   * @description `tag = H(domain, nonce)`. Exported so off-chain viewers can
+   * check whether a nonce is already taken.
+   *
+   * @dev Distinct from `nullifierOf` only by its domain tag, so a tag never
+   * collides with a nullifier and neither set can be read as the other.
+   *
+   * @param {Note} note - The note to tag.
+   * @return {Bytes<32>} - The tag published in `_issuedNonces` when the note is
+   * committed.
+   */
+  export pure circuit issuedTagOf(note: Note): Bytes<32> {
+    return persistentHash<NullifierPreimage>(NullifierPreimage {
+      domain: pad(32, "OZ:note:issued"),
+      nonce: note.nonce
+    });
   }
 
   /**
@@ -267,7 +321,7 @@ module ConfidentialNoteFungibleToken {
    * @description Burns `value` from the caller's input note: spends the note
    * and re-issues only the change, so `value` leaves circulation.
    *
-   * @circuitInfo k=15, rows=32025
+   * @circuitInfo k=16, rows=36245
    *
    * @notice Both the burned amount and the burner stay hidden; publicly a burn
    * is indistinguishable from any other spend. The core writes no supply, so
@@ -340,7 +394,7 @@ module ConfidentialNoteFungibleToken {
    * @description UNGATED building block: consumes the input note owned by
    * `spenderPk` and re-issues only `changeNote`, so `value` leaves circulation.
    *
-   * @circuitInfo k=15, rows=19119
+   * @circuitInfo k=15, rows=23339
    *
    * @warning No authorization. The composer decides who may call this.
    *
@@ -434,7 +488,7 @@ module ConfidentialNoteFungibleToken {
    * caller, conserving value. Sender and recipient are both hidden; the public
    * ledger gains one nullifier and two commitments.
    *
-   * @circuitInfo k=16, rows=45061
+   * @circuitInfo k=16, rows=53501
    *
    * @notice Both notes return to the caller as a local private result, so the
    * wallet can hand the recipient note over out of band and track its own
@@ -475,7 +529,7 @@ module ConfidentialNoteFungibleToken {
    * `spenderPk` and commits `outNote` to `recipientPk` plus `changeNote` back
    * to the spender, conserving value exactly.
    *
-   * @circuitInfo k=15, rows=25732
+   * @circuitInfo k=16, rows=34172
    *
    * @notice Taking both output notes as parameters is what lets a composing
    * contract own its emission policy (audit-derived nonces, delivery records,

@@ -49,6 +49,10 @@ const isCommitted = async (note: Note, ownerPk: bigint): Promise<boolean> =>
 const isSpent = async (note: Note): Promise<boolean> =>
   (await publicState()).Core__nullifiers.member(core.nullifierOf(note));
 
+/** Has `note`'s nonce been reserved (is its issued tag published)? */
+const isIssued = async (note: Note): Promise<boolean> =>
+  (await publicState()).Core__issuedNonces.member(core.issuedTagOf(note));
+
 /** Number of leaves inserted so far. */
 const commitmentCount = async (): Promise<bigint> =>
   (await publicState()).Core__commitments.firstFree();
@@ -56,6 +60,10 @@ const commitmentCount = async (): Promise<bigint> =>
 /** Number of notes spent so far. */
 const nullifierCount = async (): Promise<bigint> =>
   (await publicState()).Core__nullifiers.size();
+
+/** Number of nonces reserved so far. */
+const issuedCount = async (): Promise<bigint> =>
+  (await publicState()).Core__issuedNonces.size();
 
 const pathFor = async (note: Note, ownerPk: bigint) => {
   const path = (await publicState()).Core__commitments.findPathForLeaf(
@@ -142,6 +150,11 @@ describe('ConfidentialNoteFungibleToken: _mint', () => {
     expect(await isCommitted(note, BOB)).toBe(false);
   });
 
+  it('should reserve the minted nonce', async () => {
+    const note = await token._mint(ALICE, 100n);
+    expect(await isIssued(note)).toBe(true);
+  });
+
   // The mint nonce binds the recipient, so one seed serving two recipients
   // still yields two live notes.
   it('should derive distinct nonces for two recipients under a reused seed', async () => {
@@ -188,25 +201,20 @@ describe('ConfidentialNoteFungibleToken: freshNonce', () => {
     expect(core.nullifierOf(second)).not.toEqual(core.nullifierOf(first));
   });
 
-  // Why `wit_NonceRandomness` must return a fresh secret seed per call: a reused
-  // seed re-derives the same note, and the two share one nullifier, so spending
-  // either one burns both.
-  it('should collapse two mints into one spendable note when the seed is reused', async () => {
+  // A reused seed re-derives the same nonce for one recipient, and two notes
+  // sharing a nonce share a nullifier. The issued-nonce set turns that into a
+  // failed transaction rather than a note that is born dead.
+  it('should reject a second mint when a reused seed repeats the nonce', async () => {
     token.wallet.nonceSeed = FIXED_SEED;
     const first = await token._mint(ALICE, 100n);
-    const second = await token._mint(ALICE, 100n);
 
-    expect(second).toStrictEqual(first);
-    expect(await commitmentCount()).toBe(2n);
-
-    spendAs(ALICE_SK, first);
-    await token.burn(100n);
-
-    expect(await isSpent(second)).toBe(true);
-    token.wallet.inputNote = second;
-    await expect(token.burn(100n)).rejects.toThrow(
-      'ConfidentialNoteFungibleToken: note already spent',
+    await expect(token._mint(ALICE, 100n)).rejects.toThrow(
+      'ConfidentialNoteFungibleToken: nonce already issued',
     );
+
+    expect(await commitmentCount()).toBe(1n);
+    expect(await isCommitted(first, ALICE)).toBe(true);
+    expect(await isSpent(first)).toBe(false);
   });
 });
 
@@ -228,25 +236,58 @@ describe('ConfidentialNoteFungibleToken: _mintNote', () => {
   });
 
   it('should commit distinct leaves for equal notes to distinct owners', async () => {
-    const forAlice = await token._mint(ALICE, 100n);
-    const sameValueForBob = { value: 100n, nonce: forAlice.nonce };
-    await token._mintNote(sameValueForBob, BOB);
+    const forAlice = { value: 100n, nonce: 111n };
+    const forBob = { value: 100n, nonce: 222n };
+    await token._mintNote(forAlice, ALICE);
+    await token._mintNote(forBob, BOB);
 
     expect(core.commitOf(forAlice, ALICE)).not.toEqual(
-      core.commitOf(sameValueForBob, BOB),
+      core.commitOf(forBob, BOB),
     );
     expect(await isCommitted(forAlice, ALICE)).toBe(true);
-    expect(await isCommitted(sameValueForBob, BOB)).toBe(true);
+    expect(await isCommitted(forBob, BOB)).toBe(true);
   });
 
-  // The tree is append-only and does not deduplicate; single-spend is the
-  // nullifier set's job, not the tree's.
-  it('should append a duplicate leaf when the same note is minted twice', async () => {
+  it('should reserve the nonce of a caller-built note', async () => {
     const note = { value: 42n, nonce: 12345n };
     await token._mintNote(note, ALICE);
+
+    expect(await isIssued(note)).toBe(true);
+  });
+
+  // The tree is append-only and does not deduplicate, so the issued-nonce set
+  // is what stops a second note from being committed onto one nullifier.
+  it('should reject the same note minted twice', async () => {
+    const note = { value: 42n, nonce: 12345n };
     await token._mintNote(note, ALICE);
 
-    expect(await commitmentCount()).toBe(2n);
+    await expect(token._mintNote(note, ALICE)).rejects.toThrow(
+      'ConfidentialNoteFungibleToken: nonce already issued',
+    );
+    expect(await commitmentCount()).toBe(1n);
+  });
+
+  it('should leave the ledger untouched when the nonce is already issued', async () => {
+    const note = { value: 42n, nonce: 12345n };
+    await token._mintNote(note, ALICE);
+    const commitments = await commitmentCount();
+    const nullifiers = await nullifierCount();
+    const issued = await issuedCount();
+
+    await expect(token._mintNote(note, ALICE)).rejects.toThrow();
+
+    expect(await commitmentCount()).toBe(commitments);
+    expect(await nullifierCount()).toBe(nullifiers);
+    expect(await issuedCount()).toBe(issued);
+  });
+
+  // The nonce alone is reserved, so a different owner or value does not free it.
+  it('should reject a reused nonce under a different owner', async () => {
+    await token._mintNote({ value: 42n, nonce: 12345n }, ALICE);
+
+    await expect(
+      token._mintNote({ value: 7n, nonce: 12345n }, BOB),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
   });
 });
 
@@ -432,6 +473,25 @@ describe('ConfidentialNoteFungibleToken: _burn', () => {
     ).rejects.toThrow(
       'ConfidentialNoteFungibleToken: burn does not conserve value',
     );
+  });
+
+  // No dedicated assert: the input's nonce was reserved when it was minted, so
+  // the change note's own reservation is what rejects it.
+  it('should not accept change that reuses the spent input nonce', async () => {
+    await expect(
+      token._burn(ALICE, 30n, { value: 70n, nonce: input.nonce }),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
+  });
+
+  // The mirror of the `_transfer` case: a nonce belonging to a different live
+  // note, which no input-note comparison would have caught.
+  it('should not accept change whose nonce is already issued', async () => {
+    const other = await token._mint(CAROL, 5n);
+    spendAs(ALICE_SK, input);
+
+    await expect(
+      token._burn(ALICE, 30n, { value: 70n, nonce: other.nonce }),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
   });
 });
 
@@ -741,6 +801,59 @@ describe('ConfidentialNoteFungibleToken: _transfer', () => {
     ).rejects.toThrow(
       'ConfidentialNoteFungibleToken: transfer does not conserve value',
     );
+  });
+
+  // One nonce is one nullifier, so two outputs sharing one would collapse into
+  // a single spendable note. The second output's reservation is what stops it.
+  it('should not accept outputs that share a nonce', async () => {
+    await expect(
+      token._transfer(
+        ALICE,
+        BOB,
+        { value: 30n, nonce: 111n },
+        { value: 70n, nonce: 111n },
+      ),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
+  });
+
+  // No dedicated assert: the input's nonce was reserved when it was minted.
+  it('should not accept an output that reuses the spent input nonce', async () => {
+    await expect(
+      token._transfer(
+        ALICE,
+        BOB,
+        { value: 30n, nonce: input.nonce },
+        { value: 70n, nonce: 222n },
+      ),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
+  });
+
+  it('should not accept change that reuses the spent input nonce', async () => {
+    await expect(
+      token._transfer(
+        ALICE,
+        BOB,
+        { value: 30n, nonce: 111n },
+        { value: 70n, nonce: input.nonce },
+      ),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
+  });
+
+  // The output notes go through `_mintNote`, so the reservation applies to a
+  // composer's own emission policy too. The nonce here belongs to another live
+  // note, which the input-nonce assert does not cover.
+  it('should not accept an output whose nonce is already issued', async () => {
+    const other = await token._mint(CAROL, 5n);
+    spendAs(ALICE_SK, input);
+
+    await expect(
+      token._transfer(
+        ALICE,
+        BOB,
+        { value: 30n, nonce: other.nonce },
+        { value: 70n, nonce: 222n },
+      ),
+    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
   });
 
   it('should leave the ledger untouched when conservation fails', async () => {

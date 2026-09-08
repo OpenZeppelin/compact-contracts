@@ -251,19 +251,39 @@ describe.skipIf(isLiveBackend())(
   'ConfidentialNoteFungibleToken privacy: the public transcript',
   () => {
     // The tree stores the hash of the leaf, so even the commitment stays off
-    // the wire: the transaction carries one opaque digest, and only a holder
-    // who can rebuild the note can recognise it.
-    it('should publish one opaque digest per mint, not the commitment itself', () => {
+    // the wire. What a mint does publish is the issued tag, twice: once for the
+    // membership check and once for the insert.
+    it('should publish only the issued tag per mint, not the commitment itself', () => {
       const probe = new Probe();
       const [note, trace] = probe.mint(ALICE, 1000n);
       const commitment = core.commitOf(note, ALICE);
+      const tag = core.issuedTagOf(note);
 
+      const digests = digestsIn(trace);
+      // Twice for the reservation (the member check and the insert), once for
+      // the tree leaf, which is a hash of the commitment rather than the
+      // commitment itself.
+      expect(digests).toHaveLength(3);
+      expect(digests.filter((digest) => digest === hex(tag))).toHaveLength(2);
+      expect(digests).not.toContain(hex(commitment));
       expect(bytesIn(trace.transcript)).not.toContain(hex(commitment));
-      expect(digestsIn(trace)).toHaveLength(1);
       // The note really was committed, so the assertions above are not vacuous.
       expect(
         probe.state.Core__commitments.findPathForLeaf(commitment) !== undefined,
       ).toBe(true);
+    });
+
+    // The tag is `H` of the nonce, so it reveals the nonce only to someone who
+    // already has it. That is the trade the module's `_issuedNonces` doc names.
+    it('should publish the issued tag without publishing the nonce', () => {
+      const probe = new Probe();
+      const [note, trace] = probe.mint(ALICE, 1000n);
+      const published = bytesIn(trace.transcript);
+
+      expect(published).toContain(hex(core.issuedTagOf(note)));
+      for (const encoding of encodingsOf(note.nonce)) {
+        expect(published).not.toContain(encoding);
+      }
     });
 
     it('should not carry the minted amount', () => {
@@ -324,12 +344,12 @@ describe.skipIf(isLiveBackend())(
       expect(bytesIn(trace.transcript)).toContain(hex(core.nullifierOf(note)));
     });
 
-    it('should publish exactly two commitments and one nullifier per transfer', () => {
+    it('should publish exactly two commitments, one nullifier and two tags per transfer', () => {
       const probe = new Probe();
       const [note] = probe.mint(ALICE, 1000n);
       const before = probe.state;
       probe.spend(ALICE_SK, note);
-      probe.transfer(BOB, 300n);
+      const [[out, change]] = probe.transfer(BOB, 300n);
       const after = probe.state;
 
       expect(after.Core__commitments.firstFree()).toBe(
@@ -337,6 +357,13 @@ describe.skipIf(isLiveBackend())(
       );
       expect(after.Core__nullifiers.size()).toBe(
         before.Core__nullifiers.size() + 1n,
+      );
+      expect(after.Core__issuedNonces.size()).toBe(
+        before.Core__issuedNonces.size() + 2n,
+      );
+      expect(after.Core__issuedNonces.member(core.issuedTagOf(out))).toBe(true);
+      expect(after.Core__issuedNonces.member(core.issuedTagOf(change))).toBe(
+        true,
       );
     });
   },
@@ -478,7 +505,9 @@ describe.skipIf(isLiveBackend())(
       );
     });
 
-    it('should move only one digest when the mint recipient differs', () => {
+    // Three, not one: the mint nonce binds the recipient, so the issued tag
+    // moves with the leaf, and the tag is published twice.
+    it('should move only digests when the mint recipient differs', () => {
       fc.assert(
         fc.property(
           payableAmount(),
@@ -492,7 +521,7 @@ describe.skipIf(isLiveBackend())(
               mintTrace(second, value),
             );
 
-            expect(moved).toHaveLength(1);
+            expect(moved).toHaveLength(3);
             expectOpaque(moved, [value, first, second]);
           },
         ),
@@ -606,6 +635,8 @@ describe.skipIf(isLiveBackend())(
     const EXPECTED_DISCLOSURES = [
       // to public state
       '_commitments.insert(disclose(commitOf(note, ownerPk)));',
+      'assert(!_issuedNonces.member(disclose(tag)),',
+      '_issuedNonces.insert(disclose(tag));',
       'const root = disclose(merkleTreePathRoot<32, Bytes<32>>(path));',
       'assert(!_nullifiers.member(disclose(nf)),',
       '_nullifiers.insert(disclose(nf));',
@@ -629,7 +660,7 @@ describe.skipIf(isLiveBackend())(
       expect(CORE_SOURCE).not.toMatch(/disclose\(\s*wit_/);
     });
 
-    it('should write no public state outside the tree and the nullifier set', () => {
+    it('should write no public state outside the tree and the two sets', () => {
       const ledgerFields = CORE_SOURCE.split('\n')
         .filter((line) => line.trim().startsWith('export ledger'))
         .map((line) => line.trim());
@@ -637,6 +668,7 @@ describe.skipIf(isLiveBackend())(
       expect(ledgerFields).toStrictEqual([
         'export ledger _commitments: HistoricMerkleTree<32, Bytes<32>>;',
         'export ledger _nullifiers: Set<Bytes<32>>;',
+        'export ledger _issuedNonces: Set<Bytes<32>>;',
       ]);
     });
   },
@@ -839,10 +871,12 @@ describe.runIf(isLiveBackend())(
       const state = await token.getPublicState();
       expect(Object.keys(state).sort()).toStrictEqual([
         'Core__commitments',
+        'Core__issuedNonces',
         'Core__nullifiers',
       ]);
       expect(state.Core__commitments.firstFree()).toBe(3n);
       expect(state.Core__nullifiers.size()).toBe(1n);
+      expect(state.Core__issuedNonces.size()).toBe(3n);
     });
 
     // A KNOWN, ACCEPTED LEAK, asserted so it stays a decision rather than a

@@ -82,10 +82,10 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 
 /**
  * Domain-separated hashes. The tags are permanent parts of the format:
- * `OZ:note:commit`, `OZ:note:null`, `OZ:note:nonce:core`, `OZ:note:mint`,
- * `OZ:note:out`, `OZ:note:chng`. So is each preimage's field order, and the
- * binder every derived nonce is taken over: the recipient for a mint, the
- * consumed note's nullifier for a spend.
+ * `OZ:note:commit`, `OZ:note:null`, `OZ:note:issued`, `OZ:note:nonce:core`,
+ * `OZ:note:mint`, `OZ:note:out`, `OZ:note:chng`. So is each preimage's field
+ * order, and the binder every derived nonce is taken over: the recipient for a
+ * mint, the consumed note's nullifier for a spend.
  *
  * `derivePk` has no tag of its own, and is pinned because every commitment is
  * taken over its output.
@@ -109,6 +109,15 @@ describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
     expect(hex(core.nullifierOf(NOTE))).toBe(
       '0xeea890f67c3c07ea1850ba30f4059f45313d9294dcd7fbffce5a393dd69ceff9',
     );
+  });
+
+  // Same preimage shape as the nullifier under a different domain, so the pair
+  // pins that the two tags cannot be read as one another.
+  it('should tag a known note to the pinned digest', () => {
+    expect(hex(core.issuedTagOf(NOTE))).toBe(
+      '0x20d63e4db2f5590754068c9cb78d7357944e203ccab2de1b48477d677fc7a87c',
+    );
+    expect(core.issuedTagOf(NOTE)).not.toEqual(core.nullifierOf(NOTE));
   });
 });
 
@@ -190,6 +199,13 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
         storage: 'Set',
         type: { 'type-name': 'Bytes', length: 32 },
       },
+      {
+        name: '_issuedNonces',
+        index: 2,
+        exported: true,
+        storage: 'Set',
+        type: { 'type-name': 'Bytes', length: 32 },
+      },
     ]);
   });
 
@@ -217,6 +233,7 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
     burn: { pure: false, proof: true },
     commitOf: { pure: true, proof: false },
     derivePk: { pure: true, proof: false },
+    issuedTagOf: { pure: true, proof: false },
     nullifierOf: { pure: true, proof: false },
     transfer: { pure: false, proof: true },
   };
@@ -266,6 +283,7 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
 
     const declared: Exhaustive<NameOf<Ledger>> = {
       Core__commitments: true,
+      Core__issuedNonces: true,
       Core__nullifiers: true,
     };
 

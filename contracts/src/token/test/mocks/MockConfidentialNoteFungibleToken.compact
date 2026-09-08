@@ -13,7 +13,7 @@ import "../../ConfidentialNoteFungibleToken" prefix Core_;
 
 export { Core_Note }
 
-export { Core__commitments, Core__nullifiers };
+export { Core__commitments, Core__nullifiers, Core__issuedNonces };
 
 export circuit _mint(recipientPk: Field, value: Uint<128>): Core_Note {
   return Core__mint(recipientPk, value);
@@ -57,6 +57,10 @@ export circuit _consumeNote(ownerPk: Field): Core_Note {
 
 export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
   return Core_nullifierOf(note);
+}
+
+export pure circuit issuedTagOf(note: Core_Note): Bytes<32> {
+  return Core_issuedTagOf(note);
 }
 
 export circuit transfer(recipientPk: Field, value: Uint<128>): [Core_Note, Core_Note] {

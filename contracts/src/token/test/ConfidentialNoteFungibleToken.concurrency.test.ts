@@ -15,11 +15,16 @@
  *
  * What each operation pins:
  *
- *   `_mint` / `_mintNote`   insert into `_commitments` only. Inserts append at the
- *                           LIVE first-free index, so they commute.
+ *   `_mint` / `_mintNote`   read `_issuedNonces.member(tag)`, pinning that ONE
+ *                           key, then insert into `_commitments` at the LIVE
+ *                           first-free index. Distinct nonces commute.
  *   `transfer` / `burn` /   read `_nullifiers.member(nf)`, pinning that ONE key,
  *   `_consumeNote`          and `checkRoot(root)`, which on a HistoricMerkleTree
  *                           pins "in history" and survives concurrent inserts.
+ *
+ * Two pinned key spaces, so the matrix holds one of them still: every call below
+ * emits a nonce nobody else emits, which isolates the nullifier axis. The mint
+ * axis gets its own describe at the foot of the file.
  *
  * `_mint` x `transfer` is the load-bearing row: swap `HistoricMerkleTree` for
  * `MerkleTree` and it fails, since plain `checkRoot` pins the CURRENT root. Nothing
@@ -79,8 +84,15 @@ const BOB = core.derivePk(labelledSecret('bob'));
 const NOTE_VALUE = 100n;
 const SPEND_VALUE = 30n;
 
-/** A caller-built note, for the one operation that takes one as an argument. */
-const CALLER_BUILT: Note = { value: 5n, nonce: 42n };
+/**
+ * A caller-built note, for the one operation that takes one as an argument. Per
+ * actor, because `_mintNote` reserves its nonce: one shared note would collide
+ * on that reservation and measure the wrong axis.
+ */
+const callerBuilt = (actor: string): Note => ({
+  value: 5n,
+  nonce: actor === 'alice' ? 42n : 43n,
+});
 
 // ---------------------------------------------------------------------------
 // The operation space, and the conflict model it is measured against
@@ -108,7 +120,8 @@ const SPENDS: Readonly<Record<Operation, boolean>> = {
 
 /**
  * The conflict model in one line: two calls built on one snapshot collide only
- * where they pin the same key, and the only pinned key here is a nullifier.
+ * where they pin the same key. Every call in this matrix emits its own nonce,
+ * so the only key two of them can share is a nullifier.
  *
  * @param first - The operation that lands.
  * @param second - The operation applied against the moved state.
@@ -216,7 +229,7 @@ describe.skipIf(isLiveBackend())(
           return {
             actor: actor.name,
             circuitId: '_mintNote',
-            args: [CALLER_BUILT, self],
+            args: [callerBuilt(actor.name), self],
           };
         case 'transfer':
           return {
@@ -264,5 +277,63 @@ describe.skipIf(isLiveBackend())(
         expect(verdict).toBe(testCase.expected);
       });
     }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// The other pinned key: an issued nonce
+// ---------------------------------------------------------------------------
+
+/**
+ * `_mintNote` reserves its output nonce, which gives mints a pinned key of their
+ * own. The claim is that it pins the KEY and not the set.
+ *
+ * That is the whole reason the reservation reads `Set.member` rather than a
+ * counter or the tree's next index. Either of those pins one value every mint
+ * shares, so one mint per block would land and the rest would be rejected
+ * against a moved state. Here only the duplicate is.
+ *
+ * Both cases go through the same build-then-replay path as the matrix, so a
+ * rejection is a pinned-read divergence in the verifying runtime, not a
+ * re-execution that happened to throw.
+ */
+describe.skipIf(isLiveBackend())(
+  'ConfidentialNoteFungibleToken: issued-nonce concurrency',
+  () => {
+    let harness: ConcurrencyHarness;
+
+    beforeEach(async () => {
+      const { contracts } = noteParties();
+      harness = await createConcurrencyHarness({
+        contracts,
+        privateState: {},
+      });
+    });
+
+    const mintNote = (actor: string, nonce: bigint, ownerPk: bigint): Call => ({
+      actor,
+      circuitId: '_mintNote',
+      args: [{ value: NOTE_VALUE, nonce }, ownerPk],
+    });
+
+    it('should let two mints of distinct nonces both land', async () => {
+      const verdict = await race(
+        harness,
+        mintNote('alice', 1n, ALICE),
+        mintNote('bob', 2n, BOB),
+      );
+
+      expect(verdict).toBe('both-landed');
+    });
+
+    it('should not let two mints of one nonce both land', async () => {
+      const verdict = await race(
+        harness,
+        mintNote('alice', 1n, ALICE),
+        mintNote('bob', 1n, BOB),
+      );
+
+      expect(verdict).toBe('second-rejected');
+    });
   },
 );
