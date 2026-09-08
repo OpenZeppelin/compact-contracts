@@ -9,7 +9,7 @@ pragma language_version >= 0.23.0;
  * A note-based confidential token: amounts, sender, and recipient are hidden
  * from the public ledger.
  *
- * @dev Vocabulary:
+ * @dev Notation:
  * - `H(...)`: `persistentHash` (SHA-256), a `Bytes<32>` digest.
  * - `Hf(...)`: `H` reduced to a `Field` via `degradeToTransient`.
  * - NOTE: a UTxO `(value, nonce)`. A balance is the sum of one's unspent notes.
