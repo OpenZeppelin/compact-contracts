@@ -5,51 +5,126 @@ pragma language_version >= 0.23.0;
 
 /**
  * @module ConfidentialNoteFungibleToken<#depth>
- * @description A note-based confidential token: amounts, sender, and recipient
- * are all hidden from the public ledger.
+ * @description
+ * A note-based confidential token: amounts, sender, and recipient are hidden
+ * from the public ledger.
  *
- * Vocabulary: the TOKEN is the asset; a NOTE is its internal value record (a
- * UTXO). A note is `(value, nonce)` owned by `pk = Hf(sk)`, a field-typed hash
- * of the owner's secret; a balance is the sum of one's unspent notes. The
- * commitment `cm = H(domain, value, nonce, pk)` goes in the tree, and the
- * nullifier `nf = H(domain, nonce)` marks the note spent. Spending proves that
- * the note's commitment is in the tree without revealing which leaf.
+ * @dev Vocabulary:
+ * - `H(...)`: `persistentHash` (SHA-256), a `Bytes<32>` digest.
+ * - `Hf(...)`: `H` reduced to a `Field` via `degradeToTransient`.
+ * - NOTE: a UTxO `(value, nonce)`. A balance is the sum of one's unspent notes.
+ * - `pk = Hf(sk)`: the owner identity.
+ * - `cm = H(domain, value, nonce, pk)`: the commitment stored in the tree.
+ * - `nf = H(domain, nonce)`: the nullifier that marks a note spent.
+ * - `tag = H(domain, nonce)`: the issued tag that reserves a nonce at mint.
  *
- * The public ledger therefore holds three things, none of them an account: the
- * commitment tree, the nullifier set, and the issued-nonce set. No balances,
- * no supply. A transfer publishes one nullifier, two commitments, and two
- * issued tags, and nothing else.
+ * @dev Derivations:
+ * `H` hashes the named preimage struct in Compact's encoding, not a byte
+ * concatenation. Do not reimplement it: `derivePk`, `commitOf`, `nullifierOf`
+ * and `issuedTagOf` are exported pure circuits, and the compatibility suite
+ * pins their vectors. A wrong derivation yields notes that cannot be found
+ * and identities that cannot spend.
  *
- * The module is deliberately barebones — the note machinery and nothing else.
- * It holds no roles and needs no initialization. `transfer` and `burn` work out
- * of the box because they are self-gated: spending requires the owner's secret
- * via `wit_SecretKey`, and output nonces come from the caller's own randomness
- * witness. Created notes are returned to the caller as a local, private result
- * (nothing extra goes on-chain), who hands them to recipients out of band.
- *
- * Value creation carries no default gate: `_mint` / `_mintNote` are ungated
- * building blocks, and the composing contract decides who may create value.
- * The `_`-prefixed blocks (`_mintNote`, `_transfer`, `_burn`, `_consumeNote`)
- * accept caller-built notes, so a composing contract can source nonces from its
- * own emission policy; `_mint` instead derives the core-default nonce. Like all
- * `_` circuits they carry no authorization — the composer gates them.
- *
+ * @dev Parameterization:
  * `#depth` is the commitment tree's depth, fixed at import time
  * (`import "./ConfidentialNoteFungibleToken"<32> prefix Core_;`). It sets
  * capacity at `2^depth` notes and the length of every Merkle path, so it is
  * part of the deployed wire format: two instantiations at different depths are
  * different contracts and share no notes.
  *
- * @dev Nonces are spend-critical: the nullifier preimage is the nonce alone,
- * with no owner secret, so any party that knows a nonce derives the SAME
- * nullifier. Output nonces MUST therefore be unique and unpredictable, and
- * `wit_NonceRandomness` MUST return a fresh, secret seed per invocation.
- * `transfer` / `burn` outputs additionally bind the spent note's nullifier, so
- * a repeated seed cannot re-derive an earlier spend's outputs; `_mint` binds
- * the recipient instead. That
- * same property is what lets a composing contract offer escrow-free clawback,
- * where an authorized spend and the owner's own spend race for one nullifier
- * and the first to land wins.
+ * @dev Compatibility:
+ * The wire format is the domain tags, the preimage struct layouts, and
+ * `depth`. Changing any of them orphans every existing note. The
+ * compatibility suite pins all three.
+ *
+ * @notice Privacy:
+ * - Public, per tx:
+ *   - The entry point, so the operation type.
+ *   - One `nf` per note spent.
+ *   - One `tag` and one opaque leaf digest per note created.
+ *   - The Merkle root the spend proves against.
+ *   - The transcript shape, which does not vary with amount or recipient.
+ * - Public, as state:
+ *   - The commitment tree, the nullifier set, the issued-nonce set.
+ *   - No balances, no accounts, no supply.
+ * - Private:
+ *   - Amounts.
+ *   - Sender and recipient `pk`s.
+ *   - Nonces and secret keys.
+ *   - Which leaf a spend consumes.
+ *   - The link between a mint and its spend, absent the nonce.
+ * - Counterparty: whoever knows a note's nonce derives its `tag` and `nf`, so
+ *   sees WHEN it is minted and spent, not by whom or for how much.
+ * - Auditability: no view key. Disclosure is per note, by sharing its nonce.
+ *   Supply is not tracked; a composer adds it.
+ *
+ * @notice Security:
+ * - Nonces are spend-critical: `nf` depends on the nonce alone, so anyone who
+ *   knows a nonce derives the same nullifier and can race the owner for the
+ *   single spend. This is also what lets a composer offer escrow-free
+ *   clawback: two spends race for one `nf`, first to land wins.
+ * - Freshness: `wit_NonceRandomness` MUST return a fresh secret seed per call.
+ *   Outputs also bind their context (the spent `nf`, or the recipient for
+ *   `_mint`), and `_mintNote` rejects an already-issued nonce, so a repeated
+ *   seed fails loudly instead of producing a dead note.
+ * - Ownership: a spend proves `cm` binds `Hf(wit_SecretKey())`; no secret, no
+ *   spend.
+ * - No authorization on `_` circuits: `_mint`, `_mintNote`, `_transfer`,
+ *   `_burn`, `_consumeNote` are ungated. Re-exporting one from a deployed
+ *   contract is a permissionless mint or spend. The composer gates them.
+ * - Atomicity: a failed assert rejects the whole tx before any state moves,
+ *   and the sender pays no fee.
+ *
+ * @notice Concurrency:
+ * - Tree and set inserts commute; two calls collide only where they pin the
+ *   same key.
+ * - Spends pin `_nullifiers.member(nf)`: only two spends of the SAME note
+ *   conflict.
+ * - Mints pin `_issuedNonces.member(tag)`: only a duplicate nonce conflicts.
+ * - `checkRoot` on the historic tree pins "root in history", so a proof built
+ *   against a stale root still lands after concurrent inserts.
+ * - Net: calls on distinct notes in one block all land; see the concurrency
+ *   suite for the exhaustive pairwise matrix.
+ *
+ * @notice Scope:
+ * Note machinery only: no roles, no initialization. `transfer` and `burn` are
+ * self-gated by `wit_SecretKey` and the caller's randomness witness. Created
+ * notes return to the caller as a private result and reach recipients out of
+ * band.
+ *
+ * @notice Client-side duties:
+ * - Implement the four witnesses: `wit_SecretKey`, `wit_InputNote`,
+ *   `wit_Path`, `wit_NonceRandomness`.
+ * - Keep every note and its leaf position. The contract stores no encrypted
+ *   memo; a lost nonce is a lost note, with no on-chain recovery.
+ * - Deliver notes to recipients out of band. A recipient should confirm the
+ *   leaf digest is in the tree before accepting.
+ *
+ * @notice Scalability:
+ * - Capacity: `2^depth` notes per deployment; every output, including a
+ *   zero-value change note, takes a leaf.
+ * - State growth: `_nullifiers` and `_issuedNonces` gain one entry per note,
+ *   and the historic tree keeps every past root. Nothing is pruned.
+ * - One input per spend and no note merging: a balance spread over N notes
+ *   needs N spends, and every transfer adds a change note.
+ * - Throughput follows the concurrency rules above: calls on distinct notes
+ *   commute.
+ * - Wallets need no chain scanning, since notes arrive out of band, but must
+ *   track Merkle paths, so an indexer over all leaves is required.
+ *
+ * @dev Performance:
+ * - Proving cost is per call and does not grow with the tree: the path is
+ *   always `depth` deep, and each level costs a fixed number of rows.
+ * - Cost is dominated by SHA-256. Every output pays the nonce, `cm` and `tag`
+ *   hashes; a spend adds the input `cm`, `nf` and the path on top.
+ * - `transfer` is the largest circuit. Per-circuit `k` and rows are on each
+ *   `@circuitInfo` line.
+ *
+ * @dev Composition:
+ * Value creation has no default gate. `_mint` / `_mintNote` are ungated, and
+ * the composer decides who may create value. The `_` circuits accept
+ * caller-built notes so a composer can run its own nonce policy; `_mint` uses
+ * the core default.
  */
 module ConfidentialNoteFungibleToken<#depth> {
   import CompactStandardLibrary;
