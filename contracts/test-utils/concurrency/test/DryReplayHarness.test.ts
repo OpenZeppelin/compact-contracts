@@ -3,8 +3,8 @@
  *
  * Deliberately no compiled artifact here: `test:harness` does not depend on the
  * `compile` task, so importing one would break a clean checkout. The replay
- * behaviour that genuinely needs real ledger state is pinned instead by the
- * `harness invariants` describe in a contract's own concurrency spec.
+ * behaviour that genuinely needs real ledger state is pinned instead by
+ * `src/token/test/DryReplayHarness.contract.test.ts`, in the `unit` project.
  */
 
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
