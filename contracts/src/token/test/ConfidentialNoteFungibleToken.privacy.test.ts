@@ -222,6 +222,22 @@ const DIGEST_MIN_HEX = 56;
 const digestsIn = (trace: Trace): string[] =>
   bytesIn(trace.transcript).filter((b) => b.length >= DIGEST_MIN_HEX);
 
+/**
+ * A published value's width, with every digest counted alike.
+ *
+ * The claim being made is that no operand's width tracks a secret. Digests are
+ * the exception that has to be normalised rather than asserted: the runtime
+ * zero-trims byte values, so a digest with a zero at either end is published a
+ * byte short. Comparing raw widths fails on that hash coincidence alone, the
+ * same trap `DIGEST_MIN_HEX` exists to absorb.
+ *
+ * It hides nothing the layer is looking for. A `Uint<128>` amount is at most 32
+ * hex wide, so an amount that leaked stays well under the digest bound and is
+ * still compared exactly.
+ */
+const widthOf = (bytes: string): number =>
+  bytes.length >= DIGEST_MIN_HEX ? DIGEST_MIN_HEX : bytes.length;
+
 const CORE_SOURCE = readFileSync(
   new URL('../ConfidentialNoteFungibleToken.compact', import.meta.url),
   'utf8',
@@ -416,9 +432,7 @@ describe.skipIf(isLiveBackend())(
           const right = bytesIn(transferTrace(BOB, b).transcript);
 
           expect(left.length).toBe(right.length);
-          expect(left.map((bytes) => bytes.length)).toStrictEqual(
-            right.map((bytes) => bytes.length),
-          );
+          expect(left.map(widthOf)).toStrictEqual(right.map(widthOf));
         }),
         { numRuns: 10 },
       );
