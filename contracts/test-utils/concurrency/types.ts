@@ -109,6 +109,15 @@ export interface HarnessOptions<P> {
   readonly contracts: Readonly<Record<string, ReplayableContract<P>>>;
   /** Private state handed to every circuit context. */
   readonly privateState: P;
+  /**
+   * Which party's instance runs the constructor. Defaults to the first named.
+   *
+   * The constructor's witnesses come from this party, so on a module with an
+   * initializer that reads one, the deployed ledger is seeded with that party's
+   * secrets. Only the dry backend honours it: the live backend deploys from the
+   * wallet pool's own deployer, which is not a party at all.
+   */
+  readonly deployer?: string;
   /** Constructor arguments, if the contract takes any. */
   readonly constructorArgs?: readonly unknown[];
   readonly contractAddress?: ContractAddress;

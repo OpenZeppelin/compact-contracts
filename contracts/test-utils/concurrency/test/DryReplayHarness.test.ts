@@ -28,6 +28,23 @@ const stubContract = (): ReplayableContract<Record<string, never>> =>
     },
   }) as unknown as ReplayableContract<Record<string, never>>;
 
+/** Like {@link stubContract}, but names itself when its constructor runs. */
+const recordingContract = (
+  deployed: string[],
+  name: string,
+): ReplayableContract<Record<string, never>> =>
+  ({
+    initialState: () => {
+      deployed.push(name);
+      return {
+        currentPrivateState: {},
+        currentContractState: new ContractState(),
+        currentZswapLocalState: {},
+      };
+    },
+    impureCircuits: {},
+  }) as unknown as ReplayableContract<Record<string, never>>;
+
 const options = () => ({
   contracts: { alice: stubContract() },
   privateState: {},
@@ -92,5 +109,53 @@ describe('createConcurrencyHarness', () => {
     expect(await createConcurrencyHarness(options())).toBeInstanceOf(
       DryReplayHarness,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Which party's instance runs the constructor
+// ---------------------------------------------------------------------------
+
+/**
+ * The constructor's witnesses are the deploying party's, so on a module with an
+ * initializer this decides whose secrets seed the shared ledger.
+ */
+describe('DryReplayHarness deployer', () => {
+  const recording = () => {
+    const deployed: string[] = [];
+    return {
+      deployed,
+      contracts: {
+        alice: recordingContract(deployed, 'alice'),
+        bob: recordingContract(deployed, 'bob'),
+      },
+      privateState: {},
+    };
+  };
+
+  it('should deploy with the first party by default', () => {
+    const { deployed, ...options } = recording();
+
+    createDryHarness(options);
+
+    expect(deployed).toStrictEqual(['alice']);
+  });
+
+  it('should deploy with the named party', () => {
+    const { deployed, ...options } = recording();
+
+    createDryHarness({ ...options, deployer: 'bob' });
+
+    expect(deployed).toStrictEqual(['bob']);
+  });
+
+  it('should reject a deployer it does not know', () => {
+    const { deployed, ...options } = recording();
+
+    expect(() => createDryHarness({ ...options, deployer: 'carol' })).toThrow(
+      "concurrency harness: unknown deployer 'carol'",
+    );
+    // Nothing deployed: the name is checked before a constructor runs.
+    expect(deployed).toStrictEqual([]);
   });
 });

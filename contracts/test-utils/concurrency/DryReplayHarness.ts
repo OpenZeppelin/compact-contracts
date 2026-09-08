@@ -79,7 +79,7 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
     this.privateState = options.privateState;
     this.address = options.contractAddress ?? dummyContractAddress();
     this.coinPublicKey = options.coinPublicKey ?? DEFAULT_COIN_PUBLIC_KEY;
-    this.current = this.deploy(options.constructorArgs ?? []);
+    this.current = this.deploy(options.deployer, options.constructorArgs ?? []);
   }
 
   /** The ledger as it stands, for a spec that wants to read it. */
@@ -176,9 +176,29 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
     ).state;
   }
 
-  /** Every actor shares one deployed ledger; it lives here, not on them. */
-  private deploy(constructorArgs: readonly unknown[]): ChargedState {
-    const [deployer] = Object.values(this.contracts);
+  /**
+   * Every actor shares one deployed ledger; it lives here, not on them.
+   *
+   * The constructor runs on ONE party's instance, so its witnesses are that
+   * party's. `deployerName` names which, for a module whose initializer reads
+   * one.
+   */
+  private deploy(
+    deployerName: string | undefined,
+    constructorArgs: readonly unknown[],
+  ): ChargedState {
+    if (
+      deployerName !== undefined &&
+      this.contracts[deployerName] === undefined
+    ) {
+      throw new Error(
+        `concurrency harness: unknown deployer '${deployerName}'`,
+      );
+    }
+    const deployer =
+      deployerName === undefined
+        ? Object.values(this.contracts)[0]
+        : this.contracts[deployerName];
     if (deployer === undefined) {
       throw new Error('concurrency harness: no contracts given');
     }
