@@ -643,6 +643,76 @@ describe.skipIf(isLiveBackend())(
 );
 
 // ---------------------------------------------------------------------------
+// Spendability under the pinned seed
+// ---------------------------------------------------------------------------
+
+/**
+ * Every probe above plants one fixed nonce seed, so the differential layer can
+ * compare two runs byte for byte. That is also the worst case for nonce
+ * derivation: every output of every call draws on the same randomness, and a
+ * derivation that leans on the seed alone hands the recipient a note whose
+ * nullifier is already published.
+ *
+ * These are spendability claims, not privacy claims, but they belong here: they
+ * only bite under the pinned seed this file installs.
+ */
+describe.skipIf(isLiveBackend())(
+  'ConfidentialNoteFungibleToken privacy: spendability under the pinned seed',
+  () => {
+    it('should let the recipient spend the note a transfer created', () => {
+      const probe = new Probe();
+      const [note] = probe.mint(ALICE, 1000n);
+      probe.spend(ALICE_SK, note);
+      const [[out]] = probe.transfer(BOB, 300n);
+
+      probe.spend(BOB_SK, out);
+      const [change] = probe.burn(300n);
+
+      expect(change.value).toBe(0n);
+      expect(probe.state.Core__nullifiers.member(core.nullifierOf(out))).toBe(
+        true,
+      );
+    });
+
+    it('should let the owner burn the change of a chained burn', () => {
+      const probe = new Probe();
+      const [note] = probe.mint(ALICE, 1000n);
+
+      probe.spend(ALICE_SK, note);
+      const [firstChange] = probe.burn(300n);
+      expect(firstChange.value).toBe(700n);
+
+      probe.spend(ALICE_SK, firstChange);
+      const [secondChange] = probe.burn(200n);
+      expect(secondChange.value).toBe(500n);
+
+      probe.spend(ALICE_SK, secondChange);
+      const [finalChange] = probe.burn(500n);
+
+      expect(finalChange.value).toBe(0n);
+      expect(probe.state.Core__nullifiers.size()).toBe(3n);
+    });
+
+    it('should let the sender spend the change of a chained transfer', () => {
+      const probe = new Probe();
+      const [note] = probe.mint(ALICE, 1000n);
+      probe.spend(ALICE_SK, note);
+      const [[, firstChange]] = probe.transfer(BOB, 300n);
+
+      probe.spend(ALICE_SK, firstChange);
+      const [[, secondChange]] = probe.transfer(BOB, 100n);
+      expect(secondChange.value).toBe(600n);
+
+      probe.spend(ALICE_SK, secondChange);
+      const [finalChange] = probe.burn(600n);
+
+      expect(finalChange.value).toBe(0n);
+      expect(probe.state.Core__nullifiers.size()).toBe(3n);
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Ground truth: the transaction as the chain stored it
 // ---------------------------------------------------------------------------
 
