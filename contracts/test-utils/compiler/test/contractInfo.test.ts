@@ -11,6 +11,8 @@ import {
   type CircuitInfo,
   type ContractInfo,
   circuitSurface,
+  ledgerSlots,
+  parseContractInfo,
   readContractInfo,
 } from '../contractInfo.js';
 
@@ -145,5 +147,171 @@ describe('readContractInfo', () => {
     } catch (error) {
       expect((error as Error).cause).toMatchObject({ code: 'ENOENT' });
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Validating the JSON against the declared unions
+// ---------------------------------------------------------------------------
+
+/**
+ * A tag the compiler has never emitted stands in for one a future compiler
+ * might. Reaching a use site as `undefined` is the failure being prevented.
+ */
+describe('parseContractInfo', () => {
+  const json = (info: unknown): string => JSON.stringify(info);
+
+  it('should reject an unrecognized type-name and name the union to extend', () => {
+    const base = contractInfo([circuit('c', false, true)]);
+
+    expect(() =>
+      parseContractInfo(
+        json({
+          ...base,
+          circuits: [
+            {
+              ...base.circuits[0],
+              'result-type': { 'type-name': 'Quaternion' },
+            },
+          ],
+        }),
+        'Fixture',
+      ),
+    ).toThrowError(
+      /unrecognized type-name 'Quaternion'.*add the variant to CompactTypeName/s,
+    );
+  });
+
+  it('should reject a type-name nested inside a struct', () => {
+    // The walk has to reach descriptors nested through structs, vectors and map
+    // values, not just the top level of each circuit.
+    const base = contractInfo([circuit('c', false, true)]);
+
+    expect(() =>
+      parseContractInfo(
+        json({
+          ...base,
+          circuits: [
+            {
+              ...base.circuits[0],
+              'result-type': {
+                'type-name': 'Struct',
+                name: 'Wrapper',
+                elements: [
+                  { name: 'inner', type: { 'type-name': 'Quaternion' } },
+                ],
+              },
+            },
+          ],
+        }),
+        'Fixture',
+      ),
+    ).toThrowError(/unrecognized type-name 'Quaternion'/);
+  });
+
+  it('should reject an unrecognized ledger storage kind', () => {
+    expect(() =>
+      parseContractInfo(
+        json({
+          ...contractInfo([]),
+          ledger: [
+            {
+              name: '_thing',
+              index: 0,
+              exported: true,
+              storage: 'Trie',
+              type: { 'type-name': 'Field' },
+            },
+          ],
+        }),
+        'Fixture',
+      ),
+    ).toThrowError(
+      /unrecognized ledger storage 'Trie'.*add the variant to LedgerStorage/s,
+    );
+  });
+
+  it('should reject metadata missing a required key', () => {
+    const { ledger: _dropped, ...withoutLedger } = contractInfo([]);
+
+    expect(() =>
+      parseContractInfo(json(withoutLedger), 'Fixture'),
+    ).toThrowError(/missing or non-array 'ledger'/);
+  });
+
+  it('should not report a validation failure as a missing build', () => {
+    // Both failures reach a caller through the same function; conflating them
+    // would send a reader off to recompile a contract that is already built.
+    let message = '';
+    try {
+      parseContractInfo(
+        json({
+          ...contractInfo([]),
+          ledger: [
+            {
+              name: '_thing',
+              index: 0,
+              exported: true,
+              storage: 'Trie',
+              type: { 'type-name': 'Field' },
+            },
+          ],
+        }),
+        'Fixture',
+      );
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      message = (error as Error).message;
+    }
+
+    expect(message).toMatch(/unrecognized ledger storage/);
+    expect(message).not.toMatch(/Compile the contract first/);
+  });
+
+  it('should accept metadata that uses every declared tag', () => {
+    const parsed = parseContractInfo(
+      json({
+        ...contractInfo([circuit('c', false, true)]),
+        ledger: [
+          {
+            name: '_cell',
+            index: 0,
+            exported: true,
+            storage: 'Cell',
+            type: { 'type-name': 'Boolean' },
+          },
+          { name: '_count', index: 1, exported: false, storage: 'Counter' },
+          {
+            name: '_tree',
+            index: 2,
+            exported: true,
+            storage: 'HistoricMerkleTree',
+            depth: 32,
+            type: { 'type-name': 'Bytes', length: 32 },
+          },
+          {
+            name: '_map',
+            index: 3,
+            exported: true,
+            storage: 'Map',
+            key: { 'type-name': 'Uint', maxval: 255 },
+            value: {
+              'type-name': 'Vector',
+              length: 2,
+              type: { 'type-name': 'Opaque', tsType: 'string' },
+            },
+          },
+        ],
+      }),
+      'Fixture',
+    );
+
+    expect(ledgerSlots(parsed)).toHaveLength(4);
+  });
+
+  it('should explain what to do when the text is not JSON', () => {
+    expect(() => parseContractInfo('{ not json', 'Fixture')).toThrowError(
+      /unreadable compiler metadata for 'Fixture'.*Compile the contract first/s,
+    );
   });
 });

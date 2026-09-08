@@ -7,7 +7,8 @@
  * misses: `CompactType<A>` (`compact-runtime`) is a runtime codec, not a static
  * shape; `SparseCompactADT` (same package) is tagged `'cell' | 'set' | 'list' |
  * 'map'`, a partial vocabulary for finding contract references. Every variant
- * below is derived from the 472 compiled artifacts in this monorepo.
+ * below is derived from the 472 compiled artifacts in this monorepo, and
+ * {@link readContractInfo} rejects anything outside them.
  *
  * Circuit complexity (k, rows) is not here; see
  * OpenZeppelin/compact-contracts#750.
@@ -25,22 +26,26 @@ import { readFileSync } from 'node:fs';
  * `List` and `Map` appear here as well as in {@link LedgerStorage} because a
  * `Map` slot's value may itself be a collection, written as a type descriptor.
  *
- * On an unrecognized name, add the variant. Widening to `string` defeats the
- * point.
+ * The array is the single source: the type is derived from it and so is the
+ * runtime check, so the two cannot drift. On an unrecognized name, add the
+ * variant here. Widening to `string` defeats the point.
  */
-export type CompactTypeName =
-  | 'Alias'
-  | 'Boolean'
-  | 'Bytes'
-  | 'Enum'
-  | 'Field'
-  | 'List'
-  | 'Map'
-  | 'Opaque'
-  | 'Struct'
-  | 'Tuple'
-  | 'Uint'
-  | 'Vector';
+const COMPACT_TYPE_NAMES = [
+  'Alias',
+  'Boolean',
+  'Bytes',
+  'Enum',
+  'Field',
+  'List',
+  'Map',
+  'Opaque',
+  'Struct',
+  'Tuple',
+  'Uint',
+  'Vector',
+] as const;
+
+export type CompactTypeName = (typeof COMPACT_TYPE_NAMES)[number];
 
 /** A struct field, or a circuit or witness parameter. */
 export interface NamedCompactType {
@@ -158,14 +163,17 @@ export type CompactTypeInfo =
 // ---------------------------------------------------------------------------
 
 /** Every ledger ADT the compiler emits as a slot's `storage`. */
-export type LedgerStorage =
-  | 'Cell'
-  | 'Counter'
-  | 'HistoricMerkleTree'
-  | 'List'
-  | 'Map'
-  | 'MerkleTree'
-  | 'Set';
+const LEDGER_STORAGE_KINDS = [
+  'Cell',
+  'Counter',
+  'HistoricMerkleTree',
+  'List',
+  'Map',
+  'MerkleTree',
+  'Set',
+] as const;
+
+export type LedgerStorage = (typeof LEDGER_STORAGE_KINDS)[number];
 
 /** What every ledger slot carries, whatever its storage kind. */
 interface LedgerSlotBase {
@@ -286,10 +294,10 @@ export interface ContractInfo {
   /** Child contracts. `unknown` because it is empty in all 472 artifacts here. */
   readonly contracts: readonly unknown[];
   /**
-   * The public ledger. ABSENT, not empty, when a contract declares no ledger
-   * state (64 of 472 artifacts). Prefer {@link ledgerSlots}.
+   * The public ledger, in declaration order. Always present; `[]` when the
+   * contract declares no ledger state.
    */
-  readonly ledger?: readonly LedgerSlot[];
+  readonly ledger: readonly LedgerSlot[];
 }
 
 /** A circuit reduced to the three facts that decide how a client may call it. */
@@ -325,13 +333,134 @@ export type Exhaustive<Names extends string, Value = true> = Record<
 // Reading
 // ---------------------------------------------------------------------------
 
+const TYPE_NAMES: ReadonlySet<string> = new Set(COMPACT_TYPE_NAMES);
+const STORAGE_KINDS: ReadonlySet<string> = new Set(LEDGER_STORAGE_KINDS);
+
+const REQUIRED_STRINGS = [
+  'compiler-version',
+  'language-version',
+  'runtime-version',
+] as const;
+
+const REQUIRED_ARRAYS = [
+  'circuits',
+  'witnesses',
+  'contracts',
+  'ledger',
+] as const;
+
+/**
+ * Rejects any `type-name` or `storage` outside the declared unions, wherever it
+ * is nested.
+ *
+ * A blanket walk rather than a shape-aware one: descriptors nest through
+ * structs, vectors, tuples, aliases and map values, and a walk keeps working
+ * when the compiler adds another position.
+ */
+function assertKnownTags(node: unknown, artifactName: string): void {
+  if (Array.isArray(node)) {
+    for (const child of node) assertKnownTags(child, artifactName);
+    return;
+  }
+  if (typeof node !== 'object' || node === null) {
+    return;
+  }
+  const record = node as Record<string, unknown>;
+
+  const typeName = record['type-name'];
+  if (typeof typeName === 'string' && !TYPE_NAMES.has(typeName)) {
+    throw new Error(
+      `readContractInfo: unrecognized type-name '${typeName}' in ` +
+        `'${artifactName}'; add the variant to CompactTypeName`,
+    );
+  }
+
+  const storage = record.storage;
+  if (typeof storage === 'string' && !STORAGE_KINDS.has(storage)) {
+    throw new Error(
+      `readContractInfo: unrecognized ledger storage '${storage}' in ` +
+        `'${artifactName}'; add the variant to LedgerStorage`,
+    );
+  }
+
+  for (const child of Object.values(record)) {
+    assertKnownTags(child, artifactName);
+  }
+}
+
+/**
+ * Checks the parsed JSON against the declared types, so a compiler that emits
+ * something new fails here instead of surfacing as `undefined` at a use site.
+ */
+function assertContractInfo(
+  parsed: unknown,
+  artifactName: string,
+): asserts parsed is ContractInfo {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(
+      `readContractInfo: '${artifactName}' metadata is not a JSON object`,
+    );
+  }
+  const root = parsed as Record<string, unknown>;
+
+  for (const key of REQUIRED_STRINGS) {
+    if (typeof root[key] !== 'string') {
+      throw new Error(
+        `readContractInfo: missing or non-string '${key}' in '${artifactName}'`,
+      );
+    }
+  }
+  for (const key of REQUIRED_ARRAYS) {
+    if (!Array.isArray(root[key])) {
+      throw new Error(
+        `readContractInfo: missing or non-array '${key}' in '${artifactName}'`,
+      );
+    }
+  }
+
+  assertKnownTags(parsed, artifactName);
+}
+
+/**
+ * Parses and validates one `contract-info.json` body.
+ *
+ * Split from {@link readContractInfo} so the validation can be exercised
+ * without writing an artifact to disk.
+ *
+ * @param text - The file's contents.
+ * @param artifactName - Names the source in any error raised.
+ * @throws If the text is not JSON, or carries a tag outside
+ * {@link CompactTypeName} or {@link LedgerStorage}.
+ */
+export function parseContractInfo(
+  text: string,
+  artifactName: string,
+): ContractInfo {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (cause) {
+    throw new Error(
+      `readContractInfo: unreadable compiler metadata for '${artifactName}'. ` +
+        'Compile the contract first, then re-run.',
+      { cause },
+    );
+  }
+
+  // Outside the catch: a validation failure is a real mismatch, not a missing
+  // build, and must not be reported as one.
+  assertContractInfo(parsed, artifactName);
+  return parsed;
+}
+
 /**
  * Loads the compiler metadata for a built artifact. Read at call time, so
  * importing this module never requires a compiled artifact.
  *
  * @param artifactName - The directory under `contracts/artifacts`, usually a
  *   mock, e.g. `MockConfidentialNoteFungibleToken`.
- * @throws If the artifact has not been built.
+ * @throws If the artifact has not been built, or if its metadata carries a tag
+ * outside {@link CompactTypeName} or {@link LedgerStorage}.
  */
 export function readContractInfo(artifactName: string): ContractInfo {
   const path = new URL(
@@ -339,8 +468,9 @@ export function readContractInfo(artifactName: string): ContractInfo {
     import.meta.url,
   );
 
+  let text: string;
   try {
-    return JSON.parse(readFileSync(path, 'utf8')) as ContractInfo;
+    text = readFileSync(path, 'utf8');
   } catch (cause) {
     throw new Error(
       `readContractInfo: no compiler metadata for '${artifactName}'. ` +
@@ -348,11 +478,13 @@ export function readContractInfo(artifactName: string): ContractInfo {
       { cause },
     );
   }
+
+  return parseContractInfo(text, artifactName);
 }
 
-/** Ledger slots in declaration order, `[]` where the compiler omitted the key. */
+/** Ledger slots in declaration order. */
 export function ledgerSlots(info: ContractInfo): readonly LedgerSlot[] {
-  return info.ledger ?? [];
+  return info.ledger;
 }
 
 /**
