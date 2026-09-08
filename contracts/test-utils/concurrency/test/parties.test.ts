@@ -60,6 +60,20 @@ describe('concurrency parties: createParties', () => {
     expect(contracts.bob).toBe(parties.bob.contract);
   });
 
+  // Both records are keyed by name, so a repeat would leave one party standing
+  // and the race would run an identity against itself.
+  it('should reject a duplicate party name', () => {
+    expect(() => createParties(['alice', 'bob', 'alice'], factory)).toThrow(
+      "createParties: duplicate party name 'alice'",
+    );
+  });
+
+  it('should reject a blank party name', () => {
+    expect(() => createParties(['alice', '   '], factory)).toThrow(
+      'createParties: party name at index 1 is blank',
+    );
+  });
+
   it('should return nothing for no names', () => {
     const { parties, contracts } = createParties([], factory);
 
