@@ -71,11 +71,13 @@ export function rejectionIncludes(error: unknown, reason: string): boolean {
  *
  * @param call - The pending call, e.g. `token.burn(30n)`.
  * @param reason - Substring to find, at any depth.
+ * @returns The rejection, so a caller can assert further on it (its `cause`,
+ * its type) without re-catching a call this already consumed.
  */
 export async function expectRejection(
   call: Promise<unknown>,
   reason: string,
-): Promise<void> {
+): Promise<unknown> {
   let thrown: unknown;
   let rejected = false;
   try {
@@ -99,4 +101,6 @@ export async function expectRejection(
       { cause: thrown },
     );
   }
+
+  return thrown;
 }

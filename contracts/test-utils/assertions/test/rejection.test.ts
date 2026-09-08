@@ -94,6 +94,14 @@ describe('rejection: expectRejection', () => {
     await expectRejection(Promise.reject(liveWrapped()), WITNESS_REASON);
   });
 
+  it('should return the rejection it matched', async () => {
+    const rejection = liveWrapped();
+
+    expect(
+      await expectRejection(Promise.reject(rejection), WITNESS_REASON),
+    ).toBe(rejection);
+  });
+
   it('should reject a call that resolved instead', async () => {
     await expect(
       expectRejection(Promise.resolve('fine'), WITNESS_REASON),
