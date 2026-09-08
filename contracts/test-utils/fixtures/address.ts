@@ -1,10 +1,10 @@
 import {
-  convertFieldToBytes,
+  convertBigintToBytes,
   type EncodedContractAddress,
   encodeCoinPublicKey,
   isContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
-import { encodeContractAddress } from '@midnight-ntwrk/ledger-v8';
+import { encodeContractAddress } from '@midnightntwrk/ledger-v9';
 
 type ZswapCoinPublicKey = { bytes: Uint8Array };
 
@@ -53,25 +53,11 @@ export const encodeToAddress = (str: string): EncodedContractAddress => {
 };
 
 /**
- * @description Generates an Either object for ZswapCoinPublicKey for testing.
- *              For use when an Either argument is expected.
- * @param str String to hexify and encode.
- * @returns Defined Either object for ZswapCoinPublicKey.
- */
-export const createEitherTestUser = (
-  str: string,
-): Either<ZswapCoinPublicKey, ContractAddress> => ({
-  is_left: true,
-  left: encodeToPK(str),
-  right: encodeToAddress(''),
-});
-
-/**
  * @description Builds an `Either<ZswapCoinPublicKey, ContractAddress>` bound to a
  * real coin public key (a 64-char hex string, e.g. a live wallet's
  * `getCoinPublicKey()`) instead of a hashed test string. The live backend uses
  * this so shielded sends target a recipient whose encryption key the node can
- * resolve (a fabricated key from `createEitherTestUser` has none).
+ * resolve (a fabricated key from a hashed test label has none).
  * @param coinPublicKey 64-char hex coin public key.
  * @returns Defined Either object for the given ZswapCoinPublicKey.
  */
@@ -103,7 +89,7 @@ const baseGeneratePubKeyPair = (
   ZswapCoinPublicKey | Either<ZswapCoinPublicKey, ContractAddress>,
 ] => {
   const pk = toHexPadded(str);
-  const zpk = asEither ? createEitherTestUser(str) : encodeToPK(str);
+  const zpk = asEither ? eitherUserFromCoinPublicKey(pk) : encodeToPK(str);
   return [pk, zpk];
 };
 
@@ -117,7 +103,7 @@ export const generateEitherPubKeyPair = (str: string) =>
   ];
 
 export const zeroUint8Array = (length = 32) =>
-  convertFieldToBytes(length, 0n, '');
+  convertBigintToBytes(length, 0n, '');
 
 export const ZERO_KEY = {
   is_left: true,

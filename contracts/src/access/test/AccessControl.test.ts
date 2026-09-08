@@ -1,7 +1,7 @@
 import {
   CompactTypeBytes,
   CompactTypeVector,
-  convertFieldToBytes,
+  convertBigintToBytes,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -59,11 +59,11 @@ const OP1_CONTRACT = eitherContract('CONTRACT_ADDRESS');
 
 // Roles
 const DEFAULT_ADMIN_ROLE = utils.zeroUint8Array();
-const OPERATOR_ROLE_1 = convertFieldToBytes(32, 1n, '');
-const OPERATOR_ROLE_2 = convertFieldToBytes(32, 2n, '');
-const OPERATOR_ROLE_3 = convertFieldToBytes(32, 3n, '');
-const CUSTOM_ADMIN_ROLE = convertFieldToBytes(32, 4n, '');
-const UNINITIALIZED_ROLE = convertFieldToBytes(32, 5n, '');
+const OPERATOR_ROLE_1 = convertBigintToBytes(32, 1n, '');
+const OPERATOR_ROLE_2 = convertBigintToBytes(32, 2n, '');
+const OPERATOR_ROLE_3 = convertBigintToBytes(32, 3n, '');
+const CUSTOM_ADMIN_ROLE = convertBigintToBytes(32, 4n, '');
+const UNINITIALIZED_ROLE = convertBigintToBytes(32, 5n, '');
 
 // Lists
 const operatorRolesList = [OPERATOR_ROLE_1, OPERATOR_ROLE_2];
@@ -567,7 +567,7 @@ describe('AccessControl', () => {
     });
 
     it('should allow overwriting admin role and transfer authority', async () => {
-      const NEW_ADMIN_ROLE = convertFieldToBytes(32, 99n, '');
+      const NEW_ADMIN_ROLE = convertBigintToBytes(32, 99n, '');
       const NEW_ADMIN = makeUser('NEW_ADMIN');
 
       await accessControl._grantRole(CUSTOM_ADMIN_ROLE, CUSTOM_ADMIN.either);

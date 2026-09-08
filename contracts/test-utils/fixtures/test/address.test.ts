@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   createEitherTestContractAddress,
   createEitherTestUnshieldedContract,
-  createEitherTestUser,
   createEitherTestUserAddress,
   eitherUserFromCoinPublicKey,
   encodeToAddress,
@@ -109,16 +108,6 @@ describe('address fixtures', () => {
       expect(eitherUserFromCoinPublicKey(pk)).toStrictEqual({
         is_left: true,
         left: { bytes: new Uint8Array(32).fill(0xab) },
-        right: { bytes: zeros() },
-      });
-    });
-  });
-
-  describe('createEitherTestUser', () => {
-    it('should build a left Either bound to the hashed public key', () => {
-      expect(createEitherTestUser('A')).toStrictEqual({
-        is_left: true,
-        left: { bytes: lastByte(A) },
         right: { bytes: zeros() },
       });
     });

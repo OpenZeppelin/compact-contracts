@@ -10,7 +10,7 @@
 // PRODUCTION contract must NEVER re-export them (see the base's DANGER note).
 // Doing so would be a permissionless mint / burn / escrow-burn. DO NOT deploy
 // this mock.
-pragma language_version >= 0.23.0;
+pragma language_version >= 0.26.0;
 import CompactStandardLibrary;
 import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;

@@ -1,3 +1,4 @@
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, it } from 'vitest';
 import { ComposedTokensSimulator } from '../fixtures/composedTokens.js';
 import { SharedInitCollisionSimulator } from '../fixtures/sharedInitCollision.js';
@@ -20,9 +21,13 @@ import { SharedInitCollisionSimulator } from '../fixtures/sharedInitCollision.js
  * The first block documents the bug (and would have to be deleted/inverted if
  * the compiler ever isolates transitive ledger state); the second block guards
  * the fix against regression.
+ *
+ * Dry-only: this is a compiler-semantics test. It constructs the simulators
+ * directly, never `.create()`, so nothing here deploys and the live backend has
+ * no bearing on the outcome.
  */
 
-describe('Initializable state isolation (#556)', () => {
+describe.skipIf(isLiveBackend())('Initializable state isolation (#556)', () => {
   describe('the bug — shared Initializable across same-directory modules', () => {
     it('should treat module B as initialized after only module A is initialized', async () => {
       const c = await SharedInitCollisionSimulator.create();

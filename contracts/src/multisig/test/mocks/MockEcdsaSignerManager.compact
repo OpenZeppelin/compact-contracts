@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../EcdsaSignerManager" prefix EcdsaSignerManager_;
+
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  threshold: Uint<8>
+) {
+  EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, threshold);
+}
+
+export circuit assertApprovals(
+  msgHash: Bytes<32>,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): [] {
+  return EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+}
+
+export pure circuit calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return EcdsaSignerManager_calculateSignerId(pk, salt);
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return EcdsaSignerManager_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return EcdsaSignerManager_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return EcdsaSignerManager_isSigner(commitment);
+}

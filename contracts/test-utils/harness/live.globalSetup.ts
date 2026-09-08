@@ -9,7 +9,11 @@ import { fetchCoinEvents, indexerHead } from './ledgerEvents.js';
  * of after a slow wallet build. Gated on `MIDNIGHT_BACKEND === 'live'` so a dry
  * `vitest run` that happens to glob the live tests is a no-op.
  *
- * It guards two things:
+ * It guards three things:
+ *   - **One live project per invocation.** Every live project derives its
+ *     wallets from the same `VITEST_POOL_ID` partition, so two of them in one
+ *     vitest run would spend the same genesis deployer's coins. See
+ *     {@link assertSoleLiveProject}.
  *   - **Freshness.** The live tests are not isolated from one another: they all
  *     run against the same node, so shielded-coin state left by an earlier run
  *     changes a later run's outcome (a coin re-spent against stale state is
@@ -48,6 +52,50 @@ const ENV_UP_HINT = "run 'yarn env:up' to reset the local stack";
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+// --- one live project per invocation ---------------------------------------
+
+// Parked on `globalThis`, not in a module-level binding: each project loads this
+// file through its OWN module runner, so a module variable would not be shared
+// between two projects in the same process.
+const PROJECT_CLAIM = '__midnightLiveProject';
+
+/**
+ * Reject a second live project in the same vitest invocation.
+ *
+ * Every live project builds its wallets from `walletSeedsFor(VITEST_POOL_ID)`,
+ * so worker 1 of `unit-live` and worker 1 of `integration-live` resolve to the
+ * SAME genesis deployer seed. Two pools would then balance transactions against
+ * one deployer's UTXO snapshot — the stale-UTXO race (node `Custom error: 103`)
+ * that `WalletPool.ensureReady`'s serial build exists to prevent — and both
+ * would write `logs/live-harness-w1.log`, interleaving two runs' diagnostics.
+ *
+ * The run lock below cannot catch this: it is deliberately reentrant for our own
+ * pid, precisely so one process CAN run several live globalSetups. So the claim
+ * is tracked separately here.
+ *
+ * @param project - the project whose globalSetup is running
+ * @param claimed - the project that already claimed this process, if any
+ */
+export function assertSoleLiveProject(
+  project: string,
+  claimed: string | undefined,
+): void {
+  if (claimed === undefined || claimed === project) return;
+  throw new Error(
+    `two live projects in one vitest run ('${claimed}' and '${project}'): ` +
+      'both derive their wallets from the same VITEST_POOL_ID partition, so ' +
+      "each project's worker 1 would spend the same genesis deployer's coins " +
+      '(node "Custom error: 103"). Pass one --project per invocation.',
+  );
+}
+
+/** Claim this process for `project`, or throw if another live project holds it. */
+function claimLiveProject(project: string): void {
+  const registry = globalThis as Record<string, unknown>;
+  assertSoleLiveProject(project, registry[PROJECT_CLAIM] as string | undefined);
+  registry[PROJECT_CLAIM] = project;
+}
 
 // --- lock ------------------------------------------------------------------
 
@@ -206,8 +254,15 @@ async function assertFreshNode(): Promise<void> {
   }
 }
 
-export default async function setup(): Promise<() => void> {
+/**
+ * Vitest calls this once per project, in the main process, passing that project.
+ * Typed structurally so this file keeps importing nothing but `node:` builtins.
+ */
+export default async function setup(project?: {
+  readonly name?: string;
+}): Promise<() => void> {
   if (process.env.MIDNIGHT_BACKEND !== 'live') return () => {};
+  claimLiveProject(project?.name ?? '(unnamed project)');
   const { reentrant } = acquireLock();
   try {
     if (process.env.MIDNIGHT_LIVE_ALLOW_DIRTY !== '1') await assertFreshNode();

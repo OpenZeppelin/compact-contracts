@@ -79,9 +79,11 @@ export function walletSeedsFor(
 export const WALLET_SEEDS: Readonly<Record<string, string>> = walletSeedsFor(1);
 
 /** The env var carrying an alias's coin public key (e.g. `MIDNIGHT_SIGNER1_COIN_PK`,
- * `MIDNIGHT_DEPLOYER_COIN_PK`). Specs read these to build a live signer set. */
+ * `MIDNIGHT_DEPLOYER_COIN_PK`). Specs read these to build a live signer set.
+ * Uppercases uniformly so publication and lookup agree for any alias casing;
+ * the `shieldedKey` fixture inlines the same mapping and must stay in sync. */
 export const coinPkEnv = (alias: string): string =>
-  `MIDNIGHT_${alias === 'deployer' ? 'DEPLOYER' : alias}_COIN_PK`;
+  `MIDNIGHT_${alias.toUpperCase()}_COIN_PK`;
 
 /**
  * Owns the pooled wallets for a worker. Builds each seed once (serially) via

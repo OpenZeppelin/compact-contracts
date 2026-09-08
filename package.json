@@ -22,6 +22,7 @@
     "test:coverage": "SKIP_ZK=true turbo run test:coverage --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts",
     "test:integration": "SKIP_ZK=true turbo run test:integration --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:integration:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts integration",
     "test:harness": "turbo run test:harness --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:harness:live": "turbo run test:harness:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "lint": "biome check .",
@@ -43,18 +44,19 @@
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
     "ip-address": "10.1.1",
-    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1"
+    "@midnight-ntwrk/compact-runtime": "0.19.0",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0"
+    "@midnight-ntwrk/compact-runtime": "0.19.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.6",
-    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@biomejs/biome": "^2.5.11",
     "@midnight-ntwrk/zswap": "^4.0.0",
-    "@types/node": "26.1.2",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@types/node": "26.4.0",
     "ts-node": "^10.9.2",
-    "turbo": "^2.10.7",
+    "turbo": "^2.10.11",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
   }

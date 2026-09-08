@@ -4,7 +4,7 @@ import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestRecipient } from '#test-utils/fixtures/shieldedKey.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   bytesToHex,
   isNonceSpent,
@@ -30,7 +30,7 @@ const TREASURY_ADDRESS = '7a'.repeat(32);
 // Assigned in `beforeAll` after `create()` syncs the wallet: on live the harness
 // then publishes MIDNIGHT_DEPLOYER_COIN_PK, so this resolves to the deployer's own
 // coin public key (an encryption key the node can resolve); dry → a synthetic user.
-let Z_RECIPIENT: ReturnType<typeof shieldedTestRecipient>;
+let Z_RECIPIENT: ReturnType<typeof shieldedTestKey>;
 
 // Delegates to the backend-aware builder: on live every coin gets a fresh random
 // nonce (the local node persists nullifiers across runs, so a fixed nonce would
@@ -58,7 +58,7 @@ describe('ShieldedTreasury', () => {
   // reuses this shared deploy.
   beforeAll(async () => {
     treasury = await freshTreasury();
-    Z_RECIPIENT = shieldedTestRecipient();
+    Z_RECIPIENT = shieldedTestKey();
   });
 
   describe('initial state', () => {
