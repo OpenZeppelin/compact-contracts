@@ -242,6 +242,32 @@ export class NonFungibleTokenSimulator extends NonFungibleTokenSimulatorBase {
   }
 
   /**
+   * @description Approve `to` to operate on `tokenId`, requiring the token to exist
+   * only when `isExistenceRequired` is true.
+   *
+   * WARNING: Passing false records the approval without verifying that `tokenId` was
+   * minted. See the module docs for the invariant this breaks.
+   *
+   * @param to The target account to approve
+   * @param tokenId The token to approve
+   * @param auth An account authorized to operate on all tokens held by the owner the token
+   * @param isExistenceRequired Whether `tokenId` must exist
+   */
+  public _unsafeApprove(
+    to: Either<Uint8Array, ContractAddress>,
+    tokenId: bigint,
+    auth: Either<Uint8Array, ContractAddress>,
+    isExistenceRequired: boolean,
+  ): Promise<[]> {
+    return this.circuits.impure._unsafeApprove(
+      to,
+      tokenId,
+      auth,
+      isExistenceRequired,
+    );
+  }
+
+  /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
    * Reverts if:
    * - `spender` does not have approval from `owner` for `tokenId`.
