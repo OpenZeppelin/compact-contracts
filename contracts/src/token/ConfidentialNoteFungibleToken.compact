@@ -93,12 +93,17 @@ pragma language_version >= 0.23.0;
  * band.
  *
  * @notice Client-side duties:
+ * - Identity: `pk = Hf(sk)` is this token's address, unrelated to the Zswap
+ *   coin key. Derive `sk` from the wallet seed under a module-specific domain
+ *   so one seed backup covers it, and share `pk` out of band.
  * - Implement the four witnesses: `wit_SecretKey`, `wit_InputNote`,
  *   `wit_Path`, `wit_NonceRandomness`.
- * - Keep every note and its leaf position. The contract stores no encrypted
- *   memo; a lost nonce is a lost note, with no on-chain recovery.
- * - Deliver notes to recipients out of band. A recipient should confirm the
- *   leaf digest is in the tree before accepting.
+ * - Keep every note and its leaf position. There is no memo and no viewing
+ *   key, so a chain rescan finds nothing: the seed restores identity, not
+ *   balance. Notes need their own backup.
+ * - Deliver notes to recipients over a channel you provide; the contract has
+ *   no inbox. A recipient should confirm the leaf digest is in the tree
+ *   before accepting.
  *
  * @notice Scalability:
  * - Capacity: `2^depth` notes per deployment; every output, including a
