@@ -133,9 +133,8 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description A unit of value. Ownership is not a field: a note belongs to
    * whoever's `pk` was bound into its commitment (see `commitOf`).
    * @type {Uint<128>} value - The amount the note carries.
-   * @type {Field} nonce - The note's unique, secret nonce. It provides the
-   * commitment's hiding entropy and is the sole nullifier preimage, so it is
-   * spend-critical (see the module's `@dev` note).
+   * @type {Field} nonce - The commitment's hiding entropy and the sole
+   * nullifier preimage, so it is spend-critical.
    */
   export struct Note {
     value: Uint<128>;
@@ -157,9 +156,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description Domain-separated preimage of a nullifier or an issued tag. It
-   * deliberately omits the owner, so both depend only on the note's nonce; the
-   * `domain` value alone keeps the two from colliding.
+   * @description Preimage of a nullifier or an issued tag. The owner is
+   * deliberately absent; `domain` alone keeps the two from colliding.
    * @type {Bytes<32>} domain - The nullifier or issued-tag domain tag.
    * @type {Field} nonce - The note's nonce.
    */
@@ -184,27 +182,24 @@ module ConfidentialNoteFungibleToken<#depth> {
 
   /**
    * @description Append-only tree of note commitments: what value exists. It
-   * never says whose or how much, and it does not prevent double-spends — that
-   * is `_nullifiers`' job.
-   * @dev History matters. A proof built against a slightly stale root still
-   * verifies after later inserts, so concurrent spenders do not invalidate each
-   * other's in-flight proofs.
+   * does not prevent double-spends; that is `_nullifiers`' job.
+   * @dev Historic, not plain:
+   * `checkRoot` accepts any past root, so a proof survives concurrent inserts.
    * @type {HistoricMerkleTree<depth, Bytes<32>>} _commitments - The commitment
    * tree, holding up to `2^depth` leaves.
    */
   export ledger _commitments: HistoricMerkleTree<depth, Bytes<32>>;
 
   /**
-   * @description Published nullifiers: what has been spent. A nullifier is
-   * unlinkable to its note's commitment, owner, or value, so the set reveals
-   * only how many spends have happened.
+   * @description Published nullifiers: what has been spent. Unlinkable to any
+   * commitment, owner, or value, so the set reveals only a spend count.
    * @type {Set<Bytes<32>>} _nullifiers - The spent-note nullifier set.
    */
   export ledger _nullifiers: Set<Bytes<32>>;
 
   /**
-   * @description Issued-nonce tags, one per note ever committed. Separate from
-   * `_nullifiers` so that set keeps meaning "spent". See `_mintNote`.
+   * @description One tag per note ever committed. Separate from `_nullifiers`
+   * so that set keeps meaning "spent". See `_mintNote`.
    * @type {Set<Bytes<32>>} _issuedNonces - The issued-tag set.
    */
   export ledger _issuedNonces: Set<Bytes<32>>;
@@ -231,8 +226,7 @@ module ConfidentialNoteFungibleToken<#depth> {
   /**
    * @witness wit_Path
    * @description Returns the Merkle path proving `cm` is a leaf of the
-   * commitment tree. The path stays private, so the proof reveals membership
-   * without revealing which leaf.
+   * commitment tree. The path stays witness, so only membership is proved.
    *
    * @param {Bytes<32>} cm - The input note's commitment.
    * @returns {MerkleTreePath<depth, Bytes<32>>} path - The `depth`-entry path
@@ -245,11 +239,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Returns the seed the core derives its default output nonces
    * from.
    *
-   * @dev MUST be fresh and secret per invocation. A reused seed re-derives an
-   * identical note, and because the nullifier depends only on the nonce, the
-   * two notes share one nullifier: spending either burns both. Every output
-   * also binds its context, the spent note's nullifier or the mint recipient,
-   * so a reused seed collides only within ONE such context.
+   * @dev Freshness is mandatory:
+   * MUST be fresh and secret per call. A reused seed re-derives an identical
+   * note; `_mintNote` rejects the duplicate rather than committing it.
    *
    * @returns {Bytes<32>} seed - A 32-byte cryptographically secure random
    * value.
@@ -257,23 +249,21 @@ module ConfidentialNoteFungibleToken<#depth> {
   witness wit_NonceRandomness(): Bytes<32>;
 
   /**
-   * @description UNGATED building block: mints a note of `value` to
-   * `recipientPk` with a core-derived fresh nonce and returns it, so the caller
-   * can hand it to the recipient out of band.
+   * @description Mints a note of `value` to `recipientPk` with a core-derived
+   * nonce and returns it.
    *
    * @circuitInfo k=15, rows=17410
    *
-   * @notice The amount is NOT written to public state — issuance stays hidden
-   * and only the hiding commitment appears on-chain. This is the property an
-   * account-based token cannot offer.
+   * @notice Hidden amount and recipient:
+   * The entry point makes the mint public; the amount and the recipient stay
+   * hidden. An account-based token cannot offer this.
    *
-   * @warning No authorization. The composer gates who may create value.
+   * @warning No authorization:
+   * The composer gates who may call this.
    *
-   * @dev Creation consumes no note, so the nonce binds `recipientPk` in place
-   * of a nullifier: a repeated seed collides only for two mints to the SAME
-   * recipient, where uniqueness rests on `wit_NonceRandomness` alone. A
-   * composer wanting its own emission policy builds the note and calls
-   * `_mintNote`.
+   * @dev Recipient-bound nonce:
+   * With no note consumed, the nonce binds `recipientPk` in place of a
+   * nullifier. A composer wanting its own nonce policy calls `_mintNote`.
    *
    * @param {Field} recipientPk - The identity receiving the note.
    * @param {Uint<128>} value - The amount to create.
@@ -285,8 +275,6 @@ module ConfidentialNoteFungibleToken<#depth> {
       nonce: freshNonce(pad(32, "OZ:note:mint"), recipientPk)
     };
     _mintNote(note, recipientPk);
-    // The note returns only to the local caller; revealing it on-chain would
-    // expose the nonce (spend-critical) and the amount.
     return disclose(note);
   }
 
@@ -294,11 +282,10 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Derives one output nonce from the caller's randomness witness,
    * the output's slot, and what the output is bound to.
    *
-   * @dev The `slot` tag separates the nonces of several outputs created in one
-   * invocation, which share a single witness call: without it, a transfer's
-   * output and change would collide on one nonce, hence one nullifier. The
-   * `binder` narrows a repeated seed to a single context, so a reused seed
-   * cannot re-derive an output of a different spend or a different recipient.
+   * @dev Slot and binder:
+   * Outputs of one invocation share a single witness call, so `slot` is what
+   * keeps them apart. `binder` scopes a repeated seed to one spend or one
+   * recipient.
    *
    * @param {Bytes<32>} slot - The per-output domain tag.
    * @param {Field} binder - What the output is tied to: the consumed note's
@@ -315,30 +302,30 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description UNGATED building block: commits a caller-built note to
-   * `ownerPk`. The composer decides who may create value, how the nonce was
-   * produced, and how the note reaches its owner.
+   * @description Commits a caller-built note to `ownerPk`. No value
+   * accounting: the caller owns conservation.
    *
    * @circuitInfo k=14, rows=10986
    *
-   * @notice The nonce is reserved in `_issuedNonces` first, so a duplicate
-   * fails the transaction instead of committing a note that is born dead.
-   * Every note in the tree therefore carries a nonce no other note has.
+   * @notice Nonce reservation:
+   * A duplicate nonce fails the transaction instead of committing a note born
+   * dead, so every note in the tree carries a nonce no other note has.
    *
-   * @dev Why not `_nullifiers`: inserting `nf` spends the note at birth, and a
-   * member-only check discloses `nf` at mint, linking mint to spend, while
-   * still missing two duplicates that are both unspent.
+   * @dev Why not `_nullifiers`:
+   * Inserting `nf` would spend the note at birth. A member-only check would
+   * disclose `nf` at mint, linking mint to spend, and would miss two unspent
+   * duplicates.
    *
-   * @dev Weak seed: the tag is `H(nonce)`, as guessable as `nf`. A proper seed
-   * leaks nothing new; a guessable one exposes at mint what `nf` exposes at
-   * spend, in return for catching the RNG break on the first duplicate.
+   * @dev Weak seed:
+   * The tag is as guessable as `nf`. A guessable seed exposes at mint what
+   * `nf` exposes at spend, in return for catching the RNG break at once.
    *
-   * @dev Concurrency: reading a counter or the tree index would pin one shared
-   * value and serialize mints. `member` pins one key, so only the duplicate is
-   * rejected and distinct mints still commute.
+   * @dev Why a set:
+   * A counter or the tree index would pin one shared value and serialize
+   * mints. `member` pins one key.
    *
-   * @warning No authorization and no value accounting. Re-exporting this from a
-   * deployed contract is a permissionless mint.
+   * @warning No authorization:
+   * The composer gates who may call this.
    *
    * Requirements:
    *
@@ -349,14 +336,11 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {[]} - Empty tuple.
    */
   export circuit _mintNote(note: Note, ownerPk: Field): [] {
-    // Reserve the nonce first: a duplicate must fail before anything is
-    // committed. The tag pins one key, so distinct mints still commute.
+    // Reserve before committing, so a duplicate fails with nothing written.
     const tag = issuedTagOf(note);
     assert(!_issuedNonces.member(disclose(tag)),
            "ConfidentialNoteFungibleToken: nonce already issued");
     _issuedNonces.insert(disclose(tag));
-
-    // Only the tag and the hiding commitment cross to public state.
     _commitments.insert(disclose(commitOf(note, ownerPk)));
   }
 
@@ -364,8 +348,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description `tag = H(domain, nonce)`. Exported so off-chain viewers can
    * check whether a nonce is already taken.
    *
-   * @dev Distinct from `nullifierOf` only by its domain tag, so a tag never
-   * collides with a nullifier and neither set can be read as the other.
+   * @dev Domain separation:
+   * Only the domain distinguishes this from `nullifierOf`, so neither set can
+   * be read as the other.
    *
    * @param {Note} note - The note to tag.
    * @return {Bytes<32>} - The tag published in `_issuedNonces` when the note is
@@ -382,9 +367,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description `cm = H(domain, value, nonce, pk)`. Exported so off-chain
    * viewers can recompute commitments for notes they recover.
    *
-   * @notice The commitment binds all three of value, nonce, and owner, which is
-   * what makes ownership unforgeable: a non-owner's `pk` hashes to a leaf that
-   * is not in the tree, so no membership proof exists for it.
+   * @notice Unforgeable ownership:
+   * Binding the owner is what enforces it: a non-owner's `pk` hashes to a leaf
+   * that is not in the tree, so no membership proof exists.
    *
    * @param {Note} note - The note to commit to.
    * @param {Field} pk - The identity that owns the note.
@@ -405,9 +390,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @circuitInfo k=16, rows=36245
    *
-   * @notice Both the burned amount and the burner stay hidden; publicly a burn
-   * is indistinguishable from any other spend. The core writes no supply, so
-   * nothing on the ledger records that value was destroyed.
+   * @notice No supply record:
+   * The core writes no supply, so nothing on the ledger records that value was
+   * destroyed. The amount and the burner stay hidden.
    *
    * Requirements:
    *
@@ -424,8 +409,7 @@ module ConfidentialNoteFungibleToken<#depth> {
     const input = _inputNote();
     assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
 
-    // Peeked, not consumed: `_burn` publishes the nullifier. Binding it here
-    // keeps the change note off any earlier spend's nonce.
+    // Peeked, not consumed: `_burn` is what publishes the nullifier.
     const spendId = degradeToTransient(nullifierOf(input));
     const changeNote = Note {
       value: (input.value - value) as Uint<128>,
@@ -436,9 +420,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description Building block: the caller's spend identity,
-   * `Hf(wit_SecretKey())`. Exposed so composing contracts authorize spends
-   * the way the core does.
+   * @description The caller's spend identity, `Hf(wit_SecretKey())`. Exposed
+   * so a composer authorizes spends the way the core does.
    *
    * @return {Field} - The caller's spend identity.
    */
@@ -447,8 +430,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description Field-typed identity hash: `pk = Hf(sk)`. Exported so
-   * wallets, auditors, and tests derive identities the way the circuits do.
+   * @description `pk = Hf(sk)`. Exported so wallets and auditors derive
+   * identities the way the circuits do.
    *
    * @param {Bytes<32>} sk - The owner's spend secret.
    * @return {Field} - The spend identity that owns notes.
@@ -458,13 +441,12 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description Building block: peek at the input note about to be consumed
-   * (the same witness `_consumeNote` reads), so a composing contract can size
-   * the change and run its emission policy BEFORE the spend.
+   * @description Peeks at the note the next spend consumes, so a composer can
+   * size the change before spending. Reads the witness `_consumeNote` reads.
    *
-   * @dev The peek is not trusted. Any mismatch with what the composer then
-   * passes to `_transfer` / `_burn` is caught by their conservation asserts,
-   * which re-read this same witness.
+   * @dev Peek is untrusted:
+   * A mismatch with what the composer then passes to `_transfer` / `_burn` is
+   * caught by their conservation asserts, which re-read this witness.
    *
    * @return {Note} - The note the next spend will consume.
    */
@@ -478,7 +460,8 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @circuitInfo k=15, rows=23339
    *
-   * @warning No authorization. The composer decides who may call this.
+   * @warning No authorization:
+   * The composer gates who may call this.
    *
    * Requirements:
    *
@@ -499,20 +482,17 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description UNGATED building block and the heart of the module: consumes
-   * the witness-supplied input note owned by `ownerPk`. It proves the note's
-   * commitment is in the tree at some historical root without revealing which
-   * leaf, checks the note is unspent, and publishes its nullifier.
+   * @description The heart of the module: consumes the witness-supplied note
+   * owned by `ownerPk` and publishes its nullifier.
    *
    * @circuitInfo k=14, rows=12248
    *
-   * @notice Used by `_transfer` / `_burn`, and directly by custom spend paths
-   * such as clawback, where `ownerPk` is the target's identity and the
-   * authorization is the caller's own.
+   * @notice Where it is used:
+   * By `_transfer` / `_burn`, and by custom spend paths such as clawback,
+   * where `ownerPk` is the target and the authorization is the caller's own.
    *
-   * @warning No authorization: the caller need not own the note. Anyone holding
-   * a note's nonce and its owner's `pk` can nullify it, which is deliberate
-   * (see the module's `@dev` note) and is why nonces must stay secret.
+   * @warning No authorization:
+   * The composer gates who may call this.
    *
    * Requirements:
    *
@@ -526,8 +506,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   export circuit _consumeNote(ownerPk: Field): Note {
     const input = wit_InputNote();
 
-    // Membership at some historical root. The root is public; disclosing it
-    // reveals nothing about which leaf, since the path itself stays witness.
+    // The root is public, but the path stays witness, so disclosing the root
+    // does not say which leaf was consumed.
     const cm = commitOf(input, ownerPk);
     const path = wit_Path(cm);
     const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));
@@ -536,7 +516,6 @@ module ConfidentialNoteFungibleToken<#depth> {
     assert(cm == path.leaf,
            "ConfidentialNoteFungibleToken: path does not match input commitment");
 
-    // Single-spend: the shared nullifier can be consumed exactly once.
     const nf = nullifierOf(input);
     assert(!_nullifiers.member(disclose(nf)),
            "ConfidentialNoteFungibleToken: note already spent");
@@ -549,9 +528,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description `nf = H(domain, nonce)` — derivable by anyone who knows the
    * nonce. Exported so off-chain viewers can watch a note's consumption.
    *
-   * @dev The preimage omits any owner secret by design. Every party that learns
-   * a nonce derives the same nullifier and races the owner for the single
-   * spend, which is what makes clawback escrow-free in a composing contract.
+   * @dev Owner-free preimage:
+   * Omitting the owner secret is what makes clawback escrow-free: two parties
+   * knowing the nonce race for one spend.
    *
    * @param {Note} note - The note to nullify.
    * @return {Bytes<32>} - The nullifier published in `_nullifiers` when the
@@ -565,16 +544,14 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description Fully-private transfer: spends the caller's input note and
-   * creates a recipient note of `value` plus a change note back to the
-   * caller, conserving value. Sender and recipient are both hidden; the public
-   * ledger gains one nullifier and two commitments.
+   * @description Spends the caller's input note and creates a recipient note
+   * of `value` plus a change note back to the caller, conserving value.
    *
    * @circuitInfo k=16, rows=53501
    *
-   * @notice Both notes return to the caller as a local private result, so the
-   * wallet can hand the recipient note over out of band and track its own
-   * change. Nothing beyond the two commitments reaches the ledger.
+   * @notice Local private result:
+   * Both notes return to the caller, who hands the recipient note over out of
+   * band and keeps the change.
    *
    * Requirements:
    *
@@ -591,8 +568,7 @@ module ConfidentialNoteFungibleToken<#depth> {
     const input = _inputNote();
     assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
 
-    // Peeked, not consumed: `_transfer` publishes the nullifier. Binding it
-    // here keeps both outputs off any earlier spend's nonces.
+    // Peeked, not consumed: `_transfer` is what publishes the nullifier.
     const spendId = degradeToTransient(nullifierOf(input));
     const outNote = Note {
       value: value,
@@ -607,18 +583,17 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description UNGATED building block: consumes the input note owned by
-   * `spenderPk` and commits `outNote` to `recipientPk` plus `changeNote` back
-   * to the spender, conserving value exactly.
+   * @description Consumes the input note owned by `spenderPk` and commits
+   * `outNote` to `recipientPk` plus `changeNote` back, conserving value.
    *
    * @circuitInfo k=16, rows=34172
    *
-   * @notice Taking both output notes as parameters is what lets a composing
-   * contract own its emission policy (audit-derived nonces, delivery records,
-   * supply accounting) while the core still enforces conservation.
+   * @notice Caller-built outputs:
+   * Taking both notes as parameters lets a composer run its own emission
+   * policy while the core still enforces conservation.
    *
-   * @warning No authorization. Whoever supplies a valid input note and its path
-   * can spend it; the composer decides who may call this.
+   * @warning No authorization:
+   * The composer gates who may call this.
    *
    * Requirements:
    *
