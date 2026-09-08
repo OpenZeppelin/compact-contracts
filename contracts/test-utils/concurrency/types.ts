@@ -31,6 +31,16 @@ import type {
 /** How a pair of calls built on one snapshot turned out. */
 export type Outcome = 'both-landed' | 'second-rejected';
 
+/**
+ * The verdict, plus the rejection reason when there is one.
+ *
+ * Carrying the reason lets a spec assert that a conflict was rejected FOR the
+ * divergence it set up, rather than for any reason at all.
+ */
+export type RaceResult =
+  | { readonly outcome: 'both-landed' }
+  | { readonly outcome: 'second-rejected'; readonly reason: string };
+
 /** One circuit invocation, named the same way on either backend. */
 export interface Call {
   /** Which party's keys and notes answer the witnesses. */

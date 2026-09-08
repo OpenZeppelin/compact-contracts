@@ -274,7 +274,11 @@ describe.skipIf(isLiveBackend())(
           callFor(secondParty, testCase.second),
         );
 
-        expect(verdict).toBe(testCase.expected);
+        expect(verdict.outcome).toBe(testCase.expected);
+        if (verdict.outcome === 'second-rejected') {
+          // Rejected for the divergence this case set up, not for nothing.
+          expect(verdict.reason).not.toBe('');
+        }
       });
     }
   },
@@ -323,7 +327,7 @@ describe.skipIf(isLiveBackend())(
         mintNote('bob', 2n, BOB),
       );
 
-      expect(verdict).toBe('both-landed');
+      expect(verdict.outcome).toBe('both-landed');
     });
 
     it('should not let two mints of one nonce both land', async () => {
@@ -333,7 +337,7 @@ describe.skipIf(isLiveBackend())(
         mintNote('bob', 1n, BOB),
       );
 
-      expect(verdict).toBe('second-rejected');
+      expect(verdict.outcome).toBe('second-rejected');
     });
   },
 );
