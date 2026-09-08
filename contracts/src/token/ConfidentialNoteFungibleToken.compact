@@ -259,7 +259,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Mints a note of `value` to `recipientPk` with a core-derived
    * nonce and returns it.
    *
-   * @circuitInfo k=15, rows=17410
+   * @circuitInfo k=15, rows=17317
    *
    * @notice Hidden amount and recipient:
    * The entry point makes the mint public; the amount and the recipient stay
@@ -312,7 +312,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Commits a caller-built note to `ownerPk`. No value
    * accounting: the caller owns conservation.
    *
-   * @circuitInfo k=14, rows=10986
+   * @circuitInfo k=14, rows=10924
    *
    * @notice Nonce reservation:
    * A duplicate nonce fails the transaction instead of committing a note born
@@ -395,7 +395,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Burns `value` from the caller's input note: spends the note
    * and re-issues only the change, so `value` leaves circulation.
    *
-   * @circuitInfo k=16, rows=36245
+   * @circuitInfo k=16, rows=35953
    *
    * @notice No supply record:
    * The core writes no supply, so nothing on the ledger records that value was
@@ -466,7 +466,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description UNGATED building block: consumes the input note owned by
    * `spenderPk` and re-issues only `changeNote`, so `value` leaves circulation.
    *
-   * @circuitInfo k=15, rows=23339
+   * @circuitInfo k=15, rows=23147
    *
    * @warning No authorization:
    * The composer gates who may call this.
@@ -493,7 +493,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description The heart of the module: consumes the witness-supplied note
    * owned by `ownerPk` and publishes its nullifier.
    *
-   * @circuitInfo k=14, rows=12248
+   * @circuitInfo k=14, rows=12122
    *
    * @notice Where it is used:
    * By `_transfer` / `_burn`, and by custom spend paths such as clawback,
@@ -555,7 +555,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Spends the caller's input note and creates a recipient note
    * of `value` plus a change note back to the caller, conserving value.
    *
-   * @circuitInfo k=16, rows=53501
+   * @circuitInfo k=16, rows=53110
    *
    * @notice Local private result:
    * Both notes return to the caller, who hands the recipient note over out of
@@ -595,7 +595,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Consumes the input note owned by `spenderPk` and commits
    * `outNote` to `recipientPk` plus `changeNote` back, conserving value.
    *
-   * @circuitInfo k=16, rows=34172
+   * @circuitInfo k=16, rows=33899
    *
    * @notice Caller-built outputs:
    * Taking both notes as parameters lets a composer run its own emission
