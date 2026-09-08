@@ -7,7 +7,7 @@
 // is a permissionless mint, and re-exporting `_consumeNote` / `_transfer` /
 // `_burn` lets any caller spend a note whose nonce they know. A PRODUCTION
 // contract must gate them (see the core's module doc). DO NOT deploy this mock.
-pragma language_version >= 0.23.0;
+pragma language_version >= 0.26.0;
 import CompactStandardLibrary;
 // Instantiated at depth 32, the deepest the ledger supports.
 import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
