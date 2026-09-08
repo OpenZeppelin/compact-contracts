@@ -22,6 +22,7 @@ export {
   CFT__pending,
   CFT__encryptionKeys,
   CFT__memos,
+  CFT__creditEpochs,
   CFT__escrow,
   CFT__name,
   CFT__symbol,
