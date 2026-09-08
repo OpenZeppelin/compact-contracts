@@ -36,7 +36,10 @@ pragma language_version >= 0.23.0;
  * @dev Nonces are spend-critical: the nullifier preimage is the nonce alone,
  * with no owner secret, so any party that knows a nonce derives the SAME
  * nullifier. Output nonces MUST therefore be unique and unpredictable, and
- * `wit_NonceRandomness` MUST return a fresh, secret seed per invocation. That
+ * `wit_NonceRandomness` MUST return a fresh, secret seed per invocation.
+ * `transfer` / `burn` outputs additionally bind the spent note's nullifier, so
+ * a repeated seed cannot re-derive an earlier spend's outputs; `_mint` binds
+ * the recipient instead. That
  * same property is what lets a composing contract offer escrow-free clawback,
  * where an authorized spend and the owner's own spend race for one nullifier
  * and the first to land wins.
@@ -80,6 +83,20 @@ module ConfidentialNoteFungibleToken {
   struct NullifierPreimage {
     domain: Bytes<32>;
     nonce: Field;
+  }
+
+  /**
+   * @description Domain-separated preimage of a derived output nonce.
+   * @type {Bytes<32>} seed - The caller's per-invocation randomness.
+   * @type {Bytes<32>} domain - The nonce domain tag.
+   * @type {Bytes<32>} slot - The per-output tag.
+   * @type {Field} binder - What the output is tied to.
+   */
+  struct NoncePreimage {
+    seed: Bytes<32>;
+    domain: Bytes<32>;
+    slot: Bytes<32>;
+    binder: Field;
   }
 
   /**
@@ -139,7 +156,9 @@ module ConfidentialNoteFungibleToken {
    *
    * @dev MUST be fresh and secret per invocation. A reused seed re-derives an
    * identical note, and because the nullifier depends only on the nonce, the
-   * two notes share one nullifier: spending either burns both.
+   * two notes share one nullifier: spending either burns both. Every output
+   * also binds its context, the spent note's nullifier or the mint recipient,
+   * so a reused seed collides only within ONE such context.
    *
    * @returns {Bytes<32>} seed - A 32-byte cryptographically secure random
    * value.
@@ -151,7 +170,7 @@ module ConfidentialNoteFungibleToken {
    * `recipientPk` with a core-derived fresh nonce and returns it, so the caller
    * can hand it to the recipient out of band.
    *
-   * @circuitInfo k=14, rows=10964
+   * @circuitInfo k=14, rows=13190
    *
    * @notice The amount is NOT written to public state — issuance stays hidden
    * and only the hiding commitment appears on-chain. This is the property an
@@ -159,12 +178,21 @@ module ConfidentialNoteFungibleToken {
    *
    * @warning No authorization. The composer gates who may create value.
    *
+   * @dev Creation consumes no note, so the nonce binds `recipientPk` in place
+   * of a nullifier: a repeated seed collides only for two mints to the SAME
+   * recipient, where uniqueness rests on `wit_NonceRandomness` alone. A
+   * composer wanting its own emission policy builds the note and calls
+   * `_mintNote`.
+   *
    * @param {Field} recipientPk - The identity receiving the note.
    * @param {Uint<128>} value - The amount to create.
    * @return {Note} - The new note, returned as a local private result.
    */
   export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
-    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:mint")) };
+    const note = Note {
+      value: value,
+      nonce: freshNonce(pad(32, "OZ:note:mint"), recipientPk)
+    };
     _mintNote(note, recipientPk);
     // The note returns only to the local caller; revealing it on-chain would
     // expose the nonce (spend-critical) and the amount.
@@ -172,19 +200,27 @@ module ConfidentialNoteFungibleToken {
   }
 
   /**
-   * @description Derives one output nonce from the caller's randomness witness.
+   * @description Derives one output nonce from the caller's randomness witness,
+   * the output's slot, and what the output is bound to.
    *
    * @dev The `slot` tag separates the nonces of several outputs created in one
    * invocation, which share a single witness call: without it, a transfer's
-   * output and change would collide on one nonce, hence one nullifier. It also
-   * keeps a mint's nonce off the tag a transfer's output uses.
+   * output and change would collide on one nonce, hence one nullifier. The
+   * `binder` narrows a repeated seed to a single context, so a reused seed
+   * cannot re-derive an output of a different spend or a different recipient.
    *
    * @param {Bytes<32>} slot - The per-output domain tag.
+   * @param {Field} binder - What the output is tied to: the consumed note's
+   * nullifier for a spend, the recipient for a mint.
    * @return {Field} - The output note's nonce.
    */
-  circuit freshNonce(slot: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<Vector<3, Bytes<32>>>(
-      [wit_NonceRandomness(), pad(32, "OZ:note:nonce:core"), slot]));
+  circuit freshNonce(slot: Bytes<32>, binder: Field): Field {
+    return degradeToTransient(persistentHash<NoncePreimage>(NoncePreimage {
+      seed: wit_NonceRandomness(),
+      domain: pad(32, "OZ:note:nonce:core"),
+      slot: slot,
+      binder: binder
+    }));
   }
 
   /**
@@ -231,7 +267,7 @@ module ConfidentialNoteFungibleToken {
    * @description Burns `value` from the caller's input note: spends the note
    * and re-issues only the change, so `value` leaves circulation.
    *
-   * @circuitInfo k=15, rows=25584
+   * @circuitInfo k=15, rows=32025
    *
    * @notice Both the burned amount and the burner stay hidden; publicly a burn
    * is indistinguishable from any other spend. The core writes no supply, so
@@ -252,9 +288,12 @@ module ConfidentialNoteFungibleToken {
     const input = _inputNote();
     assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
 
+    // Peeked, not consumed: `_burn` publishes the nullifier. Binding it here
+    // keeps the change note off any earlier spend's nonce.
+    const spendId = degradeToTransient(nullifierOf(input));
     const changeNote = Note {
       value: (input.value - value) as Uint<128>,
-      nonce: freshNonce(pad(32, "OZ:note:chg"))
+      nonce: freshNonce(pad(32, "OZ:note:chng"), spendId)
     };
     _burn(pk, value, changeNote);
     return disclose(changeNote);
@@ -395,7 +434,7 @@ module ConfidentialNoteFungibleToken {
    * caller, conserving value. Sender and recipient are both hidden; the public
    * ledger gains one nullifier and two commitments.
    *
-   * @circuitInfo k=16, rows=36394
+   * @circuitInfo k=16, rows=45061
    *
    * @notice Both notes return to the caller as a local private result, so the
    * wallet can hand the recipient note over out of band and track its own
@@ -416,10 +455,16 @@ module ConfidentialNoteFungibleToken {
     const input = _inputNote();
     assert(input.value >= value, "ConfidentialNoteFungibleToken: insufficient note value");
 
-    const outNote = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:out")) };
+    // Peeked, not consumed: `_transfer` publishes the nullifier. Binding it
+    // here keeps both outputs off any earlier spend's nonces.
+    const spendId = degradeToTransient(nullifierOf(input));
+    const outNote = Note {
+      value: value,
+      nonce: freshNonce(pad(32, "OZ:note:out"), spendId)
+    };
     const changeNote = Note {
       value: (input.value - value) as Uint<128>,
-      nonce: freshNonce(pad(32, "OZ:note:chg"))
+      nonce: freshNonce(pad(32, "OZ:note:chng"), spendId)
     };
     _transfer(pk, recipientPk, outNote, changeNote);
     return [disclose(outNote), disclose(changeNote)];

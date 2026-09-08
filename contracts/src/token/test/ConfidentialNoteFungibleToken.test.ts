@@ -142,6 +142,24 @@ describe('ConfidentialNoteFungibleToken: _mint', () => {
     expect(await isCommitted(note, BOB)).toBe(false);
   });
 
+  // The mint nonce binds the recipient, so one seed serving two recipients
+  // still yields two live notes.
+  it('should derive distinct nonces for two recipients under a reused seed', async () => {
+    token.wallet.nonceSeed = FIXED_SEED;
+    const forAlice = await token._mint(ALICE, 100n);
+    const forBob = await token._mint(BOB, 100n);
+
+    expect(forBob.nonce).not.toBe(forAlice.nonce);
+
+    spendAs(ALICE_SK, forAlice);
+    await token.burn(100n);
+    spendAs(BOB_SK, forBob);
+    await token.burn(100n);
+
+    expect(await isSpent(forAlice)).toBe(true);
+    expect(await isSpent(forBob)).toBe(true);
+  });
+
   it('should mint a zero-value note that is spendable padding', async () => {
     const note = await token._mint(ALICE, 0n);
     expect(note.value).toBe(0n);

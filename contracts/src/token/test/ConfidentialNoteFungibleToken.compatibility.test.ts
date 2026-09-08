@@ -83,7 +83,9 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 /**
  * Domain-separated hashes. The tags are permanent parts of the format:
  * `OZ:note:commit`, `OZ:note:null`, `OZ:note:nonce:core`, `OZ:note:mint`,
- * `OZ:note:out`, `OZ:note:chg`.
+ * `OZ:note:out`, `OZ:note:chng`. So is each preimage's field order, and the
+ * binder every derived nonce is taken over: the recipient for a mint, the
+ * consumed note's nullifier for a spend.
  *
  * `derivePk` has no tag of its own, and is pinned because every commitment is
  * taken over its output.
@@ -131,7 +133,7 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     const minted = await token._mint(ALICE, 100n);
 
     expect(minted.nonce).toBe(
-      442709219783900368166983280911338790614433545701023948062041961016416292288n,
+      241275227332301908586666142629960350353134460898077164612759783949584485693n,
     );
   });
 
@@ -145,9 +147,10 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     const [, change] = await token.transfer(BOB, 30n);
 
     // A different slot tag from the output note, which is why one reused seed
-    // still yields two distinct nonces.
+    // still yields two distinct nonces. The vector also covers the spend
+    // binder: it is taken over the minted note's nullifier.
     expect(change.nonce).toBe(
-      55310597546632184040479428936926702560855239758036834627964489285919135708n,
+      96849518524355951410940220432437154467392508675487786283505373914998635393n,
     );
   });
 });
