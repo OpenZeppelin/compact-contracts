@@ -164,7 +164,7 @@ module ConfidentialNoteFungibleToken {
    * @return {Note} - The new note, returned as a local private result.
    */
   export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
-    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:out")) };
+    const note = Note { value: value, nonce: freshNonce(pad(32, "OZ:note:mint")) };
     _mintNote(note, recipientPk);
     // The note returns only to the local caller; revealing it on-chain would
     // expose the nonce (spend-critical) and the amount.
@@ -176,7 +176,8 @@ module ConfidentialNoteFungibleToken {
    *
    * @dev The `slot` tag separates the nonces of several outputs created in one
    * invocation, which share a single witness call: without it, a transfer's
-   * output and change would collide on one nonce, hence one nullifier.
+   * output and change would collide on one nonce, hence one nullifier. It also
+   * keeps a mint's nonce off the tag a transfer's output uses.
    *
    * @param {Bytes<32>} slot - The per-output domain tag.
    * @return {Field} - The output note's nonce.

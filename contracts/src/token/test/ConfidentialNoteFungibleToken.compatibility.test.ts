@@ -82,8 +82,8 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 
 /**
  * Domain-separated hashes. The tags are permanent parts of the format:
- * `OZ:note:commit`, `OZ:note:null`, `OZ:note:nonce:core`, `OZ:note:out`,
- * `OZ:note:chg`.
+ * `OZ:note:commit`, `OZ:note:null`, `OZ:note:nonce:core`, `OZ:note:mint`,
+ * `OZ:note:out`, `OZ:note:chg`.
  *
  * `derivePk` has no tag of its own, and is pinned because every commitment is
  * taken over its output.
@@ -131,7 +131,7 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     const minted = await token._mint(ALICE, 100n);
 
     expect(minted.nonce).toBe(
-      141839877545769226285799287554416334503102257183126676284284147282857489951n,
+      442709219783900368166983280911338790614433545701023948062041961016416292288n,
     );
   });
 
