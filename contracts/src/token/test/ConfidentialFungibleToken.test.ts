@@ -809,6 +809,11 @@ describe.skipIf(isLiveBackend())(
 // ---------------------------------------------------------------------------
 
 describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
+  // A wallet reads its epoch alongside its memos, then passes it back to
+  // `clearMemos`
+  const currentEpoch = async (accountId: Uint8Array): Promise<bigint> =>
+    (await cft.getPublicState()).CFT__creditEpochs.lookup(accountId).read();
+
   beforeEach(async () => {
     cft = await ConfidentialFungibleTokenSimulator.create(
       NAME,
@@ -838,11 +843,47 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(1n);
 
-    await cft.clearMemos();
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
 
     expect(
       (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
     ).toBe(0n);
+  });
+
+  it('rejects a clearMemos whose epoch is stale', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+    await cft._mint(ALICE.accountId, 10n);
+
+    // The wallet reads its list and epoch here.
+    const seen = await currentEpoch(ALICE.accountId);
+
+    // A third party credits the same account before the prune is included.
+    await cft._mint(ALICE.accountId, 25n);
+
+    await expect(cft.clearMemos(seen)).rejects.toThrow(
+      'ConfidentialFungibleToken: memo list changed',
+    );
+
+    // The unseen memo is still there to be folded in.
+    expect(
+      (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
+    ).toBe(2n);
+
+    // Recovery: the wallet re-reads the epoch and retries, which succeeds.
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
+    expect(
+      (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length(),
+    ).toBe(0n);
+  });
+
+  it('reverts when the caller has no memo list', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+
+    await expect(cft.clearMemos(0n)).rejects.toThrow(
+      'ConfidentialFungibleToken: no memo list',
+    );
   });
 
   // The credit nonce comes from `_creditEpochs`, which only ever increases. If
@@ -861,7 +902,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
     await cft._mint(ALICE.accountId, 10n);
     const before = await newest();
 
-    await cft.clearMemos();
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
 
     await cft._mint(ALICE.accountId, 10n);
     expect(await newest()).not.toStrictEqual(before);
@@ -875,12 +916,56 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
     const first = await cft.pendingOf(ALICE.accountId);
 
     await cft.sweep();
-    await cft.clearMemos();
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
 
     await cft._mint(ALICE.accountId, 10n);
     const second = await cft.pendingOf(ALICE.accountId);
 
     expect(second).not.toStrictEqual(first);
+  });
+
+  // Note: the stale-epoch test above builds the prune AFTER the credit, so the
+  // in-circuit assert refuses it. A prune built BEFORE the credit passes that
+  // assert and has to be rejected at replay instead
+  it('replays a captured prune against unchanged state', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+    await cft._mint(ALICE.accountId, 10n);
+
+    const memoLen = async () =>
+      (await cft.getPublicState()).CFT__memos.lookup(ALICE.accountId).length();
+    const epoch = async () =>
+      (await cft.getPublicState()).CFT__creditEpochs.lookup(
+        ALICE.accountId,
+      ).read();
+
+    const before = await memoLen();
+    const prune = await cft.captureTranscript('clearMemos', await epoch());
+
+    // Capturing builds the call without committing it.
+    expect(await memoLen()).toBe(before);
+
+    expect(() => cft.replayTranscript(prune)).not.toThrow();
+  });
+
+  it('rejects a prune built before a credit when the node replays it', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+    await cft._mint(ALICE.accountId, 10n);
+
+    const epoch = async () =>
+      (await cft.getPublicState()).CFT__creditEpochs.lookup(
+        ALICE.accountId,
+      ).read();
+
+    // Built against pre-credit state, so it carries the epoch as it was then.
+    const prune = await cft.captureTranscript('clearMemos', await epoch());
+
+    await cft._mint(ALICE.accountId, 10n);
+
+    expect(() => cft.replayTranscript(prune)).toThrow(
+      /mismatch between expected .* and actual .* read/,
+    );
   });
 
   it('advances the credit epoch on every credit, and a prune does not reset it', async () => {
@@ -895,7 +980,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
     await cft._mint(ALICE.accountId, 10n);
     expect(await epoch()).toBe(1n);
 
-    await cft.clearMemos();
+    await cft.clearMemos(await currentEpoch(ALICE.accountId));
     expect(await epoch()).toBe(1n);
 
     await cft._mint(ALICE.accountId, 10n);
@@ -931,9 +1016,14 @@ describe.skipIf(isLiveBackend())(
     const asAttacker = () =>
       cft.privateState.switchIdentity(ALICE.secretKey, BOB.encryptionKey);
 
+    const currentEpoch = async (accountId: Uint8Array): Promise<bigint> =>
+      (await cft.getPublicState()).CFT__creditEpochs.lookup(accountId).read();
+
     it('rejects clearMemos from a caller without the registered encryption key', async () => {
       await asAttacker();
-      await expect(cft.clearMemos()).rejects.toThrow('wrong encryption key');
+      await expect(
+        cft.clearMemos(await currentEpoch(ALICE.accountId)),
+      ).rejects.toThrow('wrong encryption key');
     });
 
     it('rejects sweep from a caller without the registered encryption key', async () => {
@@ -946,13 +1036,15 @@ describe.skipIf(isLiveBackend())(
         CHARLIE.secretKey,
         CHARLIE.encryptionKey,
       );
-      await expect(cft.clearMemos()).rejects.toThrow('not registered');
+      await expect(cft.clearMemos(0n)).rejects.toThrow('not registered');
       await expect(cft.sweep()).rejects.toThrow('not registered');
     });
 
     it('leaves the account spendable after a blocked prune-and-sweep', async () => {
       await asAttacker();
-      await expect(cft.clearMemos()).rejects.toThrow('wrong encryption key');
+      await expect(
+        cft.clearMemos(await currentEpoch(ALICE.accountId)),
+      ).rejects.toThrow('wrong encryption key');
       await expect(cft.sweep()).rejects.toThrow('wrong encryption key');
 
       // Alice still has the memo, so she can still learn the credit and spend.

@@ -98,8 +98,8 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
     return this.circuits.impure.sweep();
   }
 
-  public clearMemos(): Promise<[]> {
-    return this.circuits.impure.clearMemos();
+  public clearMemos(expectedEpoch: bigint): Promise<[]> {
+    return this.circuits.impure.clearMemos(expectedEpoch);
   }
 
   public balanceOf(account: Uint8Array): Promise<ElGamal_Ciphertext> {

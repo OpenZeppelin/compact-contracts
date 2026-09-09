@@ -1,4 +1,11 @@
 import {
+  type AlignedValue,
+  type CircuitContext,
+  type CircuitResults,
+  CostModel,
+  type Transcript,
+} from '@midnight-ntwrk/compact-runtime';
+import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
@@ -13,6 +20,25 @@ import {
   ConfidentialFungibleTokenWitnesses,
   DEFAULT_RANDOMNESS_SEED,
 } from '../witnesses/ConfidentialFungibleTokenWitnesses.js';
+
+/**
+ * The backend internals `captureTranscript` reaches through
+ * @dev tmp solution. This is a fragile workaround until
+ * the simulator provides a better approach
+ */
+type SimulatorInternals = {
+  _backend: {
+    sim: {
+      contract: {
+        impureCircuits: Record<
+          string,
+          (ctx: unknown, ...args: unknown[]) => Promise<CircuitResults>
+        >;
+      };
+      circuitContext: CircuitContext;
+    };
+  };
+};
 
 /**
  * Type constructor args
@@ -180,8 +206,8 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     return this.circuits.impure._burnFrom(fromAddress, value);
   }
 
-  public clearMemos() {
-    return this.circuits.impure.clearMemos();
+  public clearMemos(expectedEpoch: bigint) {
+    return this.circuits.impure.clearMemos(expectedEpoch);
   }
 
   public register(): Promise<Uint8Array> {
@@ -200,6 +226,56 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
    */
   public computeAccountId(secretKey: Uint8Array): Promise<Uint8Array> {
     return this.circuits.pure.computeAccountId(secretKey);
+  }
+
+  /**
+   * @description Builds a circuit call against the CURRENT state and returns the
+   * public transcript it would submit, WITHOUT committing it. Pair with
+   * `replayTranscript` to check what the node does when state moves underneath a
+   * built-but-unapplied tx: a pinned read that no longer matches is
+   * rejected at replay, which is a different mechanism from an in-circuit assert
+   * and is not otherwise reachable from a dry test.
+   */
+  public async captureTranscript(
+    circuit: string,
+    ...args: unknown[]
+  ): Promise<Transcript<AlignedValue>> {
+    const sim = (this as unknown as SimulatorInternals)._backend.sim;
+    const built = await sim.contract.impureCircuits[circuit](
+      sim.circuitContext,
+      ...args,
+    );
+    // The root call is the last entry of the trace; the transcript no longer
+    // rides on the result itself since compact-runtime 0.18
+    const trace = built.context.callProofDataTrace;
+    const call = trace[trace.length - 1];
+    const g = built.gasCost;
+    return {
+      program: call.publicTranscript,
+      effects: built.context.callContext.currentQueryContext.effects,
+      // A budget, not a measurement: replay costs differ slightly from the build,
+      // and an exact figure fails with "ran out of gas budget" before any read is
+      // compared, which would look like a rejection for the wrong reason
+      gas: {
+        readTime: g.readTime * 100n,
+        computeTime: g.computeTime * 100n,
+        bytesWritten: g.bytesWritten * 100n,
+        bytesDeleted: g.bytesDeleted * 100n,
+      },
+    };
+  }
+
+  /**
+   * @description Replays a captured transcript against the current state in
+   * verifying mode, exactly as a node does when applying a transaction. Throws
+   * if a pinned read no longer matches.
+   */
+  public replayTranscript(t: Transcript<AlignedValue>): void {
+    const sim = (this as unknown as SimulatorInternals)._backend.sim;
+    sim.circuitContext.callContext.currentQueryContext.runTranscript(
+      t,
+      CostModel.initialCostModel(),
+    );
   }
 
   public readonly privateState = {
