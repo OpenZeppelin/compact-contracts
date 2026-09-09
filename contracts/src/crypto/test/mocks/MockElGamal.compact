@@ -133,7 +133,7 @@ export circuit assertDecryptsTo(
                  ct: ElGamal_Ciphertext,
                  pk: JubjubPoint,
                  ek: Bytes<32>,
-                 claimedValue: Uint<128>
+                 claimedValue: Uint<248>
                  ): [] {
   _invocations.increment(1);
   ElGamal_assertDecryptsTo(ct, pk, ek, claimedValue);

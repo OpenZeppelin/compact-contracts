@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Widen the CFT balance claim and ElGamal `assertDecryptsTo` to `Uint<248>`, so a balance accumulated past the per-transfer bound stays spendable (#831)
 - **Breaking:** (#906)
   - `ShieldedMultiSigV2`
     - Sign `execute` as EIP-712 typed data instead of

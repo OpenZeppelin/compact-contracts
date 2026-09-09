@@ -100,7 +100,19 @@ pragma language_version >= 0.26.0;
  * memo delivers the amount directly (no discrete-log recovery), so the former
  * `2^48` cap that kept wallet-side BSGS tractable is gone. Amounts stay well under
  * the Jubjub scalar-field order, so the homomorphic balance sums (and the
- * `g^value` encoding) do not wrap. Balances remain Uint<128>.
+ * `g^value` encoding) do not wrap at any plausible scale. Accumulation makes
+ * that a resource bound rather than an invariant: ~2^124 maximal credits into
+ * one account reach `l`, past which the stored point encodes the sum MOD `l` and
+ * the balance verifies against a smaller number than was deposited.
+ *
+ * @dev Balance claims are `Uint<248>`, wider than the per-transfer bound. A
+ * balance grows by homomorphic addition with no running total to bound, so a
+ * long enough run of in-range credits could otherwise push the stored quantity
+ * past what any `Uint<128>` claim can state, leaving the balance unspendable.
+ * The 120-bit gap between the claim width and the transfer bound puts that at
+ * ~2^120 credits. The two widths are therefore coupled: raising
+ * `MAX_TRANSFER_VALUE` narrows the gap, and 248 is the widest `Uint` Compact
+ * offers, so the claim cannot absorb it.
  *
  * @dev Value delivery via memo channel. Every credit made through `_credit`
  * (mint / transfer / transferFrom) pushes an ECDH one-time-pad memo (see
@@ -376,8 +388,9 @@ module ConfidentialFungibleToken {
    * well under the Jubjub scalar-field order, so homomorphic sums do not wrap.
    *
    * @notice This equals the argument type's own maximum, so the per-op check is
-   * effectively a no-op, retained as a single explicit ceiling / documentation
-   * point. Removing the now-vestigial check entirely is a follow-up cleanup.
+   * redundant today. KEEP IT: it compares against a hard constant rather than
+   * the argument type, so it still catches a later widening of the transfer
+   * type — which is what the balance-claim width is sized against.
    */
   export pure circuit MAX_TRANSFER_VALUE(): Uint<128> {
     return 340282366920938463463374607431768211455; // 2^128 - 1
@@ -412,7 +425,7 @@ module ConfidentialFungibleToken {
    * The ciphertext is passed explicitly so the wallet can route to the right
    * cached plaintext by ciphertext identity. This avoids call-order
    * conventions (which would be brittle to circuit refactors) and lets the
-   * wallet maintain a `Map<ElGamal_Ciphertext, Uint128>` lookup.
+   * wallet maintain a `Map<ElGamal_Ciphertext, Uint248>` lookup.
    *
    * Verified in-circuit by `ElGamal_assertDecryptsTo`: a wrong plaintext
    * fails the assertion `Dec(ct, EK) == claimedValue`.
@@ -420,7 +433,7 @@ module ConfidentialFungibleToken {
    * @param ct - The ciphertext whose plaintext is being requested.
    * @returns The wallet's cached plaintext for `ct`.
    */
-  witness wit_PlaintextBalance(ct: ElGamal_Ciphertext): Uint<128>;
+  witness wit_PlaintextBalance(ct: ElGamal_Ciphertext): Uint<248>;
 
   /**
    * @witness wit_RandomnessSeed
@@ -807,7 +820,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @constraints k=14, rows=12860
+   * @constraints k=14, rows=13000
    *
    * Requirements:
    *
@@ -831,7 +844,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @constraints k=16, rows=39598
+   * @constraints k=16, rows=39734
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -869,7 +882,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @constraints k=16, rows=39587
+   * @constraints k=16, rows=39723
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -944,7 +957,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @constraints k=16, rows=40913
+   * @constraints k=16, rows=41049
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -1028,7 +1041,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @constraints k=16, rows=59881
+   * @constraints k=16, rows=60129
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1195,8 +1208,14 @@ module ConfidentialFungibleToken {
 
     const ek = wit_ConfidentialTokenEK();
     const spenderPk = _encryptionKeys.lookup(disclose(spenderId));
-    const escrowPlaintext = wit_PlaintextBalance(entry.spenderCt);
-    ElGamal_assertDecryptsTo(entry.spenderCt, spenderPk, ek, escrowPlaintext);
+    // Balance claims are `Uint<248>`, but an escrow cannot legitimately exceed
+    // the transfer bound: `approve` caps it at `Uint<128>` and replaces rather
+    // than stacks, and `_spendEscrow` only reduces it. Narrowing states that
+    // invariant here instead of leaving it to inspection of those two circuits.
+    // The cast fails closed, so an out-of-range claim aborts rather than wraps.
+    const escrowPlaintext =
+      wit_PlaintextBalance(entry.spenderCt) as Uint<128>;
+    ElGamal_assertDecryptsTo(entry.spenderCt, spenderPk, ek, escrowPlaintext as Uint<248>);
     assert(escrowPlaintext >= value,
            "ConfidentialFungibleToken: insufficient allowance");
 
@@ -1234,7 +1253,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @constraints k=16, rows=33128
+   * @constraints k=16, rows=33376
    *
    * Requirements:
    *
