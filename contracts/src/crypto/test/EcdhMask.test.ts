@@ -74,17 +74,23 @@ describe('EcdhMask', () => {
       expect(await contract.decrypt(ciphertext, ek, DOMAIN)).toBe(max);
     });
 
-    it('round-trips through the real crypto/ElGamal key derivation', async () => {
-      // The CFT memo path derives the recipient pair from a Bytes<32> EK via
-      // crypto/ElGamal: pk = derivePk(EK), ekScalar = secretToScalar(EK). Pin
-      // that shared-key infrastructure end to end rather than using raw scalars.
-      const elgamal = await ElGamalSimulator.create();
-      const ekBytes = new Uint8Array(32).fill(0x11);
-      const pk = await elgamal.derivePk(ekBytes);
-      const ekScalar = await elgamal.secretToScalar(ekBytes);
-      const ciphertext = await contract.encrypt(pk, 4242n, 99n, DOMAIN);
-      expect(await contract.decrypt(ciphertext, ekScalar, DOMAIN)).toBe(4242n);
-    });
+    // Dry only: MockElGamal is over the local-node deploy block limit.
+    it.skipIf(isLiveBackend())(
+      'round-trips through the real crypto/ElGamal key derivation',
+      async () => {
+        // The CFT memo path derives the recipient pair from a Bytes<32> EK via
+        // crypto/ElGamal: pk = derivePk(EK), ekScalar = secretToScalar(EK). Pin
+        // that shared-key infrastructure end to end rather than using raw scalars.
+        const elgamal = await ElGamalSimulator.create();
+        const ekBytes = new Uint8Array(32).fill(0x11);
+        const pk = await elgamal.derivePk(ekBytes);
+        const ekScalar = await elgamal.secretToScalar(ekBytes);
+        const ciphertext = await contract.encrypt(pk, 4242n, 99n, DOMAIN);
+        expect(await contract.decrypt(ciphertext, ekScalar, DOMAIN)).toBe(
+          4242n,
+        );
+      },
+    );
 
     it('round-trips for arbitrary keys, ephemerals, and values (property)', async () => {
       await fc.assert(
