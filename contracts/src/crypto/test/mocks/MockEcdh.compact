@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the Ecdh module's pure circuits so they can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+import "../../Ecdh" prefix Ecdh_;
+
+export { Ecdh_SharedSecret }
+
+export pure circuit deriveShared(recipientPk: JubjubPoint, e: JubjubScalar): Ecdh_SharedSecret {
+  return Ecdh_deriveShared(recipientPk, e);
+}
+
+export pure circuit recoverShared(ephemeralPk: JubjubPoint, ekScalar: JubjubScalar): JubjubPoint {
+  return Ecdh_recoverShared(ephemeralPk, ekScalar);
+}
