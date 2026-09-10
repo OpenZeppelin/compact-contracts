@@ -150,6 +150,16 @@ module Utils {
    * ## ID Derivation
    * `accountId = persistentHash(secretKey)`
    *
+   * @dev The absence of a domain-separation tag is DELIBERATE. This identifier
+   * is global by design: the same key material yields the same identity in
+   * every module deriving one, so a user who wishes to carry one identity
+   * across modules can. Modules wanting a per-deployment, unlinkable identity
+   * should not use this circuit.
+   *
+   * @dev NOT FOR PRIVATE DERIVATION. This returns an identifier, not a secret,
+   * and the construction is untagged. A circuit deriving a PRIVATE value from a
+   * secret MUST use its own domain-separation tag.
+   *
    * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
    *
    * @returns {Bytes<32>} accountId - The computed account identifier.

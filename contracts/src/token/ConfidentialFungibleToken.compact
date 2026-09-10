@@ -11,7 +11,17 @@ pragma language_version >= 0.23.0;
  * follows the same pattern as `FungibleToken`: a witness-derived
  * `accountId = persistentHash(secretKey)`. Encryption uses a separate witness
  * `wit_ConfidentialTokenEK` to derive an ElGamal keypair `(ek, pk)` via
- * `ElGamal_derivePk`, where `pk = g^degradeToTransient(persistentHash(EK))`.
+ * `ElGamal_derivePk`, where
+ * `pk = g^degradeToTransient(persistentHash([ElGamal domain tag, EK]))`.
+ *
+ * @notice Sharing key material between the two witnesses is PERMITTED. The
+ * account identifier is an untagged hash of the SK and is published as a ledger
+ * map key; the encryption scalar is a DOMAIN-SEPARATED hash of the EK. Because
+ * the two derivations are tagged differently, a wallet may return the same
+ * value from `wit_ConfidentialTokenSK` and `wit_ConfidentialTokenEK`, or derive
+ * both from one master secret, without the published identifier revealing the
+ * encryption key. The domain separation is what makes that safe. Do not remove
+ * it. See `ElGamal.secretToScalar`.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
@@ -266,6 +276,7 @@ module ConfidentialFungibleToken {
   import CompactStandardLibrary;
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
+  import "../utils/Utils" prefix Utils_;
 
   // ---------------------------------------------------------------------------
   // Types
@@ -575,7 +586,7 @@ module ConfidentialFungibleToken {
    * `wit_ConfidentialTokenEK` and initializes their balance to an encryption of
    * zero. Registration is a prerequisite for sending or receiving.
    *
-   * @circuitInfo k=13, rows=6203
+   * @circuitInfo k=13, rows=8100
    *
    * @notice Returns the caller's `accountId`. A composing contract can gate on
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
@@ -805,7 +816,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @circuitInfo k=14, rows=14823
+   * @circuitInfo k=15, rows=16720
    *
    * Requirements:
    *
@@ -829,7 +840,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @circuitInfo k=16, rows=41804
+   * @circuitInfo k=16, rows=43701
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -867,7 +878,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @circuitInfo k=16, rows=41793
+   * @circuitInfo k=16, rows=43690
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -909,7 +920,7 @@ module ConfidentialFungibleToken {
    * to change, which is what would otherwise invalidate the victim's in-flight
    * spend proofs (a liveness grief).
    *
-   * @circuitInfo k=13, rows=5688
+   * @circuitInfo k=13, rows=7585
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -942,7 +953,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @circuitInfo k=16, rows=43217
+   * @circuitInfo k=16, rows=45114
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -1026,7 +1037,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=17, rows=70449
+   * ???? @circuitInfo k=16, rows=72346
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1073,7 +1084,7 @@ module ConfidentialFungibleToken {
    * therefore reads its memo list and its epoch together, folds the memos into
    * its cache, and passes that epoch back here.
    *
-   * @circuitInfo k=13, rows=5156
+   * @circuitInfo k=13, rows=7053
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -1163,11 +1174,15 @@ module ConfidentialFungibleToken {
    * `persistentHash(sk)`. Pure, so a wallet can compute its own account
    * identifier off-chain (no proof) before transacting.
    *
+   * @dev Delegates to `Utils.computeAccountId` rather than reimplementing the
+   * hash. The identifier is deliberately GLOBAL. The same key material yields
+   * the same id in every module that derives it.
+   *
    * @param {Bytes<32>} sk - The account secret key.
    * @return {Bytes<32>} - The derived accountId.
    */
   export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([sk]);
+    return Utils_computeAccountId(sk);
   }
 
   /**
@@ -1271,7 +1286,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @circuitInfo k=16, rows=43479
+   * ???? @circuitInfo k=16, rows=45376
    *
    * Requirements:
    *
