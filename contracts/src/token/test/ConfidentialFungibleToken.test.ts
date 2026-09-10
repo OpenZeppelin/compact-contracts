@@ -6,13 +6,11 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
-// The ElGamal pure circuits double as an off-circuit "mirror." They let a test
-// predict a ciphertext the contract will produce internally (e.g. the
-// post-refund balance in `approve`) so its plaintext can be cached ahead of the
-// witness query. They are pure (no proof), so this is cheap.
-import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+// The crypto simulators double as an off-chain mirror to predict ciphertexts
+// the contract derives internally.
+import { EcdhMaskSimulator } from '../../crypto/test/simulators/EcdhMaskSimulator.js';
+import { ElGamalSimulator } from '../../crypto/test/simulators/ElGamalSimulator.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
 
@@ -78,6 +76,15 @@ const SYMBOL = 'CT';
 const DECIMALS = 6n;
 
 let cft: ConfidentialFungibleTokenSimulator;
+let elgamal: ElGamalSimulator;
+let ecdhMask: EcdhMaskSimulator;
+
+// `create()` deploys on the live backend, and every mirror call site is dry-only.
+beforeAll(async () => {
+  if (isLiveBackend()) return;
+  elgamal = await ElGamalSimulator.create();
+  ecdhMask = await EcdhMaskSimulator.create();
+});
 
 describe.skipIf(isLiveBackend())(
   'ConfidentialFungibleToken: registration',
@@ -488,7 +495,7 @@ describe.skipIf(isLiveBackend())(
       );
       const ownerCt = (await cft.allowance(ALICE.accountId, BOB.accountId))
         .ownerCt;
-      const refunded = elgamal.add(
+      const refunded = await elgamal.add(
         await cft.balanceOf(ALICE.accountId),
         ownerCt,
       );
@@ -636,7 +643,7 @@ describe.skipIf(isLiveBackend())(
       const escrowOwnerCt = (
         await cft.allowance(ALICE.accountId, BOB.accountId)
       ).ownerCt;
-      const refunded = elgamal.add(
+      const refunded = await elgamal.add(
         await cft.balanceOf(ALICE.accountId),
         escrowOwnerCt,
       );
@@ -678,8 +685,8 @@ describe.skipIf(isLiveBackend())(
         ALICE.encryptionKey,
       );
       const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-      const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
-      const remaining = ecdhMask.decrypt(
+      const aliceEk = await elgamal.secretToScalar(ALICE.encryptionKey);
+      const remaining = await ecdhMask.decrypt(
         escrow.ownerMemo,
         aliceEk,
         OWNER_MEMO_DOMAIN,
@@ -688,7 +695,7 @@ describe.skipIf(isLiveBackend())(
 
       // She proves the post-refund balance (spendable 60 + refunded remaining 15 =
       // 75) using the decrypted remaining, then re-approves Bob for 20
-      const refunded = elgamal.add(
+      const refunded = await elgamal.add(
         await cft.balanceOf(ALICE.accountId),
         escrow.ownerCt,
       );
@@ -720,7 +727,7 @@ describe.skipIf(isLiveBackend())(
         ALICE.encryptionKey,
       );
       const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-      const refunded = elgamal.add(
+      const refunded = await elgamal.add(
         await cft.balanceOf(ALICE.accountId),
         escrow.ownerCt,
       );
@@ -734,7 +741,7 @@ describe.skipIf(isLiveBackend())(
       await approveBob(100n, 40n);
 
       const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
-      const refunded = elgamal.add(
+      const refunded = await elgamal.add(
         await cft.balanceOf(ALICE.accountId),
         escrow.ownerCt,
       );
@@ -1005,9 +1012,9 @@ describe.skipIf(isLiveBackend())(
       const memos = [...memoList];
       expect(memos.length).toBe(1);
 
-      const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
+      const bobEk = await elgamal.secretToScalar(BOB.encryptionKey);
       expect(
-        ecdhMask.decrypt(memos[0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
+        await ecdhMask.decrypt(memos[0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
       ).toBe(250n);
     });
 
@@ -1032,9 +1039,9 @@ describe.skipIf(isLiveBackend())(
       const memoList = (await cft.getPublicState()).CFT__memos.lookup(
         BOB.accountId,
       );
-      const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
+      const bobEk = await elgamal.secretToScalar(BOB.encryptionKey);
       expect(
-        ecdhMask.decrypt(
+        await ecdhMask.decrypt(
           [...memoList][0],
           bobEk,
           padTag('OZ_CFT_ecdh_memo_v1'),
@@ -1133,9 +1140,9 @@ describe('ConfidentialFungibleToken: receive-path smoke', () => {
       const memoList = (await cft.getPublicState()).CFT__memos.lookup(
         ALICE.accountId,
       );
-      const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
+      const aliceEk = await elgamal.secretToScalar(ALICE.encryptionKey);
       expect(
-        ecdhMask.decrypt(
+        await ecdhMask.decrypt(
           [...memoList][0],
           aliceEk,
           padTag('OZ_CFT_ecdh_memo_v1'),

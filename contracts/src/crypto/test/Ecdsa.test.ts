@@ -68,28 +68,28 @@ describe('Ecdsa', () => {
   // rest are the mauled twins.
   // -------------------------------------------------------------------------
   describe('isLowS', () => {
-    it('accepts the zero scalar', () => {
-      expect(EcdsaSimulator.isLowS(0n)).toBe(true);
+    it('accepts the zero scalar', async () => {
+      expect(await contract.isLowS(0n)).toBe(true);
     });
 
-    it('accepts the smallest non-zero scalar', () => {
-      expect(EcdsaSimulator.isLowS(1n)).toBe(true);
+    it('accepts the smallest non-zero scalar', async () => {
+      expect(await contract.isLowS(1n)).toBe(true);
     });
 
-    it('accepts s just below n/2', () => {
-      expect(EcdsaSimulator.isLowS(HALF_N - 1n)).toBe(true);
+    it('accepts s just below n/2', async () => {
+      expect(await contract.isLowS(HALF_N - 1n)).toBe(true);
     });
 
-    it('accepts s = n/2', () => {
-      expect(EcdsaSimulator.isLowS(HALF_N)).toBe(true);
+    it('accepts s = n/2', async () => {
+      expect(await contract.isLowS(HALF_N)).toBe(true);
     });
 
-    it('rejects s = n/2 + 1', () => {
-      expect(EcdsaSimulator.isLowS(HALF_N + 1n)).toBe(false);
+    it('rejects s = n/2 + 1', async () => {
+      expect(await contract.isLowS(HALF_N + 1n)).toBe(false);
     });
 
-    it('rejects the largest scalar', () => {
-      expect(EcdsaSimulator.isLowS(SECP256K1_N - 1n)).toBe(false);
+    it('rejects the largest scalar', async () => {
+      expect(await contract.isLowS(SECP256K1_N - 1n)).toBe(false);
     });
   });
 
