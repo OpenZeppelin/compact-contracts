@@ -25,7 +25,30 @@ const domain = (label: string): Uint8Array => {
 };
 const DOMAIN = domain('ecdh_mask_test');
 
+// A fixed encrypt input/output pair, recorded before encrypt delegated to
+// crypto/Ecdh, under its own tag so a change to the tests above cannot move it.
+const GOLDEN_VALUE = (1n << 127n) + 12345n;
+const GOLDEN_E = 424242n;
+const GOLDEN_DOMAIN = domain('ecdh_mask_golden');
+const GOLDEN_CIPHERTEXT = {
+  ephemeralPk: {
+    x: 29744007854499136538279777804045376227924513599493318762246204369493933045815n,
+    y: 2604409624680019572520314011984821445135836579833696274586703556773097648664n,
+  },
+  ct: 92943607126214901997092911019500281461782473933829915198787051090573790098n,
+};
+
 describe('EcdhMask', () => {
+  describe('encrypt golden vector', () => {
+    it('reproduces the pinned ciphertext bit for bit', () => {
+      // encrypt's output is part of its API, so an importer that recompiles
+      // still decrypts what it wrote before the split.
+      expect(
+        pureCircuits.encrypt(PK, GOLDEN_VALUE, GOLDEN_E, GOLDEN_DOMAIN),
+      ).toStrictEqual(GOLDEN_CIPHERTEXT);
+    });
+  });
+
   describe('encrypt / decrypt round-trip', () => {
     it('recovers the encrypted value', () => {
       const ciphertext = pureCircuits.encrypt(PK, 1000n, 42n, DOMAIN);
@@ -109,16 +132,18 @@ describe('EcdhMask', () => {
   });
 
   describe('weak-input guards', () => {
+    // Both guards now live in crypto/Ecdh, so encrypt raises that module's
+    // messages. The guards themselves are covered in Ecdh.test.ts.
     it('rejects encryption to the identity public key', () => {
       const identity = ecMulGenerator(0n);
       expect(() => pureCircuits.encrypt(identity, 1000n, 42n, DOMAIN)).toThrow(
-        'identity pk',
+        'Ecdh: identity pk',
       );
     });
 
     it('rejects a zero ephemeral', () => {
       expect(() => pureCircuits.encrypt(PK, 1000n, 0n, DOMAIN)).toThrow(
-        'zero ephemeral',
+        'Ecdh: zero ephemeral',
       );
     });
   });

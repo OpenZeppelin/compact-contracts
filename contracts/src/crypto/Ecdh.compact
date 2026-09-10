@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/Ecdh.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Ecdh
+ * @description Stateless Diffie-Hellman key agreement over Jubjub. Splits into
+ * the two halves of one exchange: `deriveShared` runs the sender side and
+ * returns the ephemeral public key to publish alongside the shared secret, and
+ * `recoverShared` runs the recipient side from that published point. The module
+ * agrees on a point and nothing more: deriving keys, masks or nonces from it
+ * belongs to the consumer (`crypto/EcdhMask` for hybrid encryption).
+ *
+ * Construction (recipient key `pk = g^ek`, ephemeral scalar `e` fresh per call):
+ *   E = g^e                        (ephemeral public key, published)
+ *   S = pk^e = g^{ek*e} = E^ek     (shared secret point, never published)
+ *
+ * @dev Future APIs.
+ * - `deriveEphemeral(seed: Bytes<32>, nonce: Field): JubjubScalar` — a canonical
+ *   `e` for consumers, making the uniqueness half of the freshness rule true by
+ *   construction rather than a precondition.
+ * - `assertValidPk(pk)` / `isIdentity(pk): Boolean` — reject an identity key
+ *   where it is registered. The `deriveShared` guard fires on the sender's
+ *   transaction, so a bad key costs the sender, not the registrant.
+ * - Jubjub key-pair derivation lives in `crypto/ElGamal` (`derivePk`,
+ *   `secretToScalar`); a shared key module is its natural home.
+ *
+ * @dev Freshness and secrecy precondition (CRITICAL). `e` MUST be both unique per
+ * call to the same recipient AND secret (unpredictable to observers), even across
+ * circuit invocations that reuse a randomness seed.
+ *
+ * Uniqueness: a repeated `e` to one recipient repeats `S`, so every key, mask or
+ * nonce a consumer derives from `S` repeats too. Where that derivation is a
+ * one-time pad (`crypto/EcdhMask`) the reuse is catastrophic: subtracting two
+ * ciphertexts recovers both plaintexts.
+ *
+ * Secrecy: `recipientPk` is public, so anyone who learns `e` recomputes
+ * `S = recipientPk^e` and everything derived from it. A unique but PREDICTABLE
+ * `e` (a plain counter, a public nonce) therefore breaks confidentiality
+ * completely. `e` must be high-entropy and secret, exactly like an ElGamal
+ * encryption randomness (see `crypto/ElGamal`), not merely distinct.
+ *
+ * The caller supplies `e` and owns both properties, e.g. by expanding a secret
+ * per-invocation seed bound to a per-recipient-unique nonce (a monotonic index).
+ * This is stronger than exponential ElGamal's uniqueness requirement (there,
+ * reuse merely leaks plaintext equality); do not treat `e` as "any randomness."
+ *
+ * @dev Weak inputs. Two degenerate inputs collapse `S` to the identity point,
+ * which every observer can compute: `recipientPk = identity` gives `S = identity`
+ * for any `e`, and `e = 0` gives `S = identity` for any key. Anything a consumer
+ * derives from such an `S` is public. The identity is a valid subgroup point, so
+ * the runtime subgroup guarantee does NOT catch it; `deriveShared` therefore
+ * asserts `recipientPk != identity` and `ephemeralPk (= g^e) != identity`, and
+ * every sender path reaches both through it. Guarding the ephemeral POINT rather
+ * than the scalar subsumes `e != 0` and stays correct regardless of how the
+ * runtime treats an out-of-range scalar: `g^e = identity` captures both `e = 0`
+ * and any `e ≡ 0 (mod ℓ)`. (Guarding `e != 0` directly would instead lean on the
+ * runtime faulting `ecMul` for scalars `≥ ℓ`; the point guard removes that
+ * dependency.) These are the only weak inputs (for a subgroup key,
+ * `S = identity` iff the ephemeral point is the identity).
+ *
+ * @dev Subgroup membership. Secrecy of `S` relies on the runtime constraining
+ * every `JubjubPoint` into the prime-order subgroup (argued in `crypto/ElGamal`),
+ * so a caller cannot hand in a low-order point that leaks `ekScalar`.
+ *
+ * @dev No ledger state, no witnesses. Both circuits are pure and take their keys
+ * and randomness as explicit arguments. `recoverShared` is exposed for
+ * wallet/off-chain use (recovering a received value needs no proof); the on-chain
+ * path only ever calls `deriveShared`.
+ */
+module Ecdh {
+  import CompactStandardLibrary;
+
+  /**
+   * @description One sender-side ECDH step: the ephemeral public key to publish
+   * and the shared secret point to derive from.
+   *
+   * @notice `sShared` is secret. Keep it a circuit local; disclosing it opens
+   * everything derived from it.
+   */
+  export struct SharedSecret {
+    ephemeralPk: JubjubPoint;
+    sShared: JubjubPoint;
+  }
+
+  /**
+   * @description Runs the sender's ECDH step: the ephemeral public key `g^e` to
+   * publish and the shared secret `pk^e` to derive from. The single site of the
+   * weak-input guards.
+   *
+   * @notice `e` MUST be fresh per call and secret (see the module freshness
+   * precondition).
+   *
+   * @circuitInfo k=11, rows=1385
+   *
+   * Requirements:
+   *
+   * - `recipientPk` is not the identity point.
+   * - `e` is non-zero, a valid Jubjub scalar (`< ℓ`), secret, and fresh per call.
+   *
+   * @param recipientPk - The recipient's Jubjub public key (`g^ek`).
+   * @param e - A fresh ephemeral scalar.
+   * @return `{ ephemeralPk = g^e, sShared = recipientPk^e }`.
+   */
+  export pure circuit deriveShared(recipientPk: JubjubPoint, e: JubjubScalar): SharedSecret {
+    const identity = ecMulGenerator(0 as JubjubScalar);
+    // An identity key gives S = identity for every `e`.
+    assert(recipientPk != identity, "Ecdh: identity pk");
+    const ephemeralPk = ecMulGenerator(e);
+    // Guarding the POINT subsumes `e == 0` and any `e ≡ 0 (mod ℓ)` (see the
+    // weak-inputs note).
+    assert(ephemeralPk != identity, "Ecdh: zero ephemeral");
+    return SharedSecret { ephemeralPk: ephemeralPk, sShared: ecMul(recipientPk, e) };
+  }
+
+  /**
+   * @description The recipient's half of `deriveShared`: recomputes `S = E^ek`
+   * from a published ephemeral public key.
+   *
+   * @dev Never asserts. A wrong `ekScalar` yields an unrelated point, so a wallet
+   * scanning exchanges not addressed to it learns nothing from this circuit and
+   * the module exposes no key-correctness oracle.
+   *
+   * @circuitInfo k=9, rows=440
+   *
+   * @param ephemeralPk - The sender's published `g^e`.
+   * @param ekScalar - The recipient's secret scalar.
+   * @return The ECDH shared secret point.
+   */
+  export pure circuit recoverShared(ephemeralPk: JubjubPoint, ekScalar: JubjubScalar): JubjubPoint {
+    return ecMul(ephemeralPk, ekScalar);
+  }
+}
