@@ -176,7 +176,7 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
-   * @circuitInfo k=6, rows=33
+   * @circuitInfo k=6, rows=31
    *
    * Requirements:
    *
@@ -241,7 +241,7 @@ module MultiToken {
   /**
    * @description Returns the amount of `id` tokens owned by `account`.
    *
-   * @circuitInfo k=10, rows=875
+   * @circuitInfo k=10, rows=867
    *
    * Requirements:
    *
@@ -270,7 +270,7 @@ module MultiToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=2944
+   * @circuitInfo k=13, rows=2938
    *
    * Requirements:
    *
@@ -295,7 +295,7 @@ module MultiToken {
   /**
    * @description Queries if `operator` is an authorized operator for `account`.
    *
-   * @circuitInfo k=11, rows=1343
+   * @circuitInfo k=11, rows=1347
    *
    * Requirements:
    *
@@ -332,7 +332,7 @@ module MultiToken {
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=13, rows=4926
+   * @circuitInfo k=13, rows=4833
    *
    * Requirements:
    *
@@ -369,7 +369,7 @@ module MultiToken {
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=12, rows=2450
+   * @circuitInfo k=12, rows=2381
    *
    * Requirements:
    *
@@ -462,7 +462,7 @@ module MultiToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=13, rows=4925
+   * @circuitInfo k=13, rows=4832
    *
    * Requirements:
    *
@@ -504,7 +504,7 @@ module MultiToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=12, rows=2449
+   * @circuitInfo k=12, rows=2380
    *
    * Requirements:
    *
@@ -546,7 +546,7 @@ module MultiToken {
    * `https://token-cdn-domain/000000000000000000000000000000000000000000000000000000000004cce0.json`
    * for token type ID 0x4cce0.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -567,7 +567,7 @@ module MultiToken {
    * interactions are supported in Compact. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=11, rows=1531
+   * @circuitInfo k=11, rows=1449
    *
    * Requirements:
    *
@@ -596,7 +596,7 @@ module MultiToken {
    * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=11, rows=1530
+   * @circuitInfo k=11, rows=1448
    *
    * Requirements:
    *
@@ -621,7 +621,7 @@ module MultiToken {
   /**
    * @description Destroys a `value` amount of tokens of type `id` from `fromAddress`.
    *
-   * @circuitInfo k=11, rows=1222
+   * @circuitInfo k=11, rows=1275
    *
    * Requirements:
    *
@@ -649,7 +649,7 @@ module MultiToken {
    * @notice This circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *
-   * @circuitInfo k=11, rows=1279
+   * @circuitInfo k=11, rows=1280
    *
    * Requirements:
    *

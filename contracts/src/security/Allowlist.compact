@@ -41,7 +41,7 @@ module Allowlist {
   /**
    * @description Returns whether `account` is currently allowed.
    *
-   * @circuitInfo k=9, rows=305
+   * @circuitInfo k=9, rows=303
    *
    * @param {Bytes<32>} account - The account to query.
    * @return {Boolean} - True if `account` is a member of the allowlist.
@@ -58,7 +58,7 @@ module Allowlist {
    * @description Asserts that `account` is allowed. The composing contract
    * decides when this gate applies.
    *
-   * @circuitInfo k=9, rows=305
+   * @circuitInfo k=9, rows=303
    *
    * Requirements:
    *
@@ -78,7 +78,7 @@ module Allowlist {
   /**
    * @description Adds `account` to the allowlist.
    *
-   * @circuitInfo k=9, rows=303
+   * @circuitInfo k=9, rows=301
    *
    * @param {Bytes<32>} account - The account to allow.
    * @return {[]} - Empty tuple.
@@ -90,7 +90,7 @@ module Allowlist {
   /**
    * @description Removes `account` from the allowlist.
    *
-   * @circuitInfo k=9, rows=303
+   * @circuitInfo k=9, rows=301
    *
    * @param {Bytes<32>} account - The account to disallow.
    * @return {[]} - Empty tuple.

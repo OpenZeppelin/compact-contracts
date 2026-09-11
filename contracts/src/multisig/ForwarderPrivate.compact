@@ -76,7 +76,7 @@ module ForwarderPrivate {
    * @description Receives a shielded coin into the forwarder's custody.
    * No ledger write — coins dwell at the contract address until drained.
    *
-   * @circuitInfo k=13, rows=6538
+   * @circuitInfo k=13, rows=6522
    *
    * Requirements:
    *
@@ -110,7 +110,7 @@ module ForwarderPrivate {
    * would defeat the private-parent guarantee. A coin public key is encrypted
    * inside the Zswap output and never appears on the public transcript.
    *
-   * @circuitInfo k=15, rows=23937
+   * @circuitInfo k=15, rows=23837
    *
    * Requirements:
    *

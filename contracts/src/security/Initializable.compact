@@ -31,7 +31,7 @@ module Initializable {
   /**
    * @description Initializes the state thus ensuring the calling circuit can only be called once.
    *
-   * @circuitInfo k=10, rows=38
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -47,7 +47,7 @@ module Initializable {
   /**
    * @description Asserts that the contract has been initialized, throwing an error if not.
    *
-   * @circuitInfo k=10, rows=31
+   * @circuitInfo k=6, rows=25
    *
    * Requirements:
    *
@@ -62,7 +62,7 @@ module Initializable {
   /**
    * @description Asserts that the contract has not been initialized, throwing an error if it has.
    *
-   * @circuitInfo k=10, rows=35
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *

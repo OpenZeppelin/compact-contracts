@@ -83,7 +83,7 @@ constructor(
  * and extracting mt_index. Combined with the known ShieldedCoinInfo,
  * this produces the QualifiedShieldedCoinInfo needed for spending.
  *
- * @circuitInfo k=13, rows=5898
+ * @circuitInfo k=13, rows=5898 (zkir-v3)
  *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  */
@@ -107,7 +107,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * commitment from their public key and the instance salt, rejects duplicates,
  * and enforces the threshold.
  *
- * @circuitInfo k=17, rows=98061
+ * @circuitInfo k=17, rows=98061 (zkir-v3)
  *
  * Requirements:
  *
@@ -182,7 +182,7 @@ export pure circuit _calculateSignerId(
 /**
  * @description Returns the nonce the next `execute` digest will bind to.
  *
- * @circuitInfo k=6, rows=34
+ * @circuitInfo k=6, rows=34 (zkir-v3)
  *
  * @returns {Uint<64>} The current nonce.
  */
@@ -193,7 +193,7 @@ export circuit getNonce(): Uint<64> {
 /**
  * @description Returns the number of registered signers.
  *
- * @circuitInfo k=6, rows=34
+ * @circuitInfo k=6, rows=34 (zkir-v3)
  *
  * @returns {Uint<8>} The signer count.
  */
@@ -204,7 +204,7 @@ export circuit getSignerCount(): Uint<8> {
 /**
  * @description Returns the approval threshold.
  *
- * @circuitInfo k=6, rows=34
+ * @circuitInfo k=6, rows=34 (zkir-v3)
  *
  * @returns {Uint<8>} The threshold.
  */
@@ -215,7 +215,7 @@ export circuit getThreshold(): Uint<8> {
 /**
  * @description Returns whether the given commitment is a registered signer.
  *
- * @circuitInfo k=8, rows=129
+ * @circuitInfo k=8, rows=129 (zkir-v3)
  *
  * @param {Bytes<32>} commitment - The signer commitment to check.
  * @returns {Boolean} True if registered.

@@ -59,7 +59,7 @@ module NativeShieldedTokenDerivedNonce {
    * @notice The derivation input is public ledger state, so mints using this
    * nonce are recipient-public; see the module notes.
    *
-   * @circuitInfo k=9, rows=451
+   * @circuitInfo k=9, rows=447
    *
    * @return {Bytes<32>} - The next derived coin nonce.
    */

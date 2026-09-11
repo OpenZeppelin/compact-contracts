@@ -311,6 +311,8 @@ module ShieldedAccessControl {
   /**
    * @description Reverts if caller cannot provide a valid proof of ownership for `role`.
    *
+   * @circuitInfo k=15, rows=16997
+   *
    * Requirements:
    *
    * - caller must prove ownership of `role`.
@@ -336,6 +338,8 @@ module ShieldedAccessControl {
    * @description Returns `true` if a caller proves ownership of `role` and is not revoked. MAY return false for a legitimately credentialed
    * caller if the proving environment supplies an invalid Merkle path. This circuit will never return true for an
    * unauthorized caller.
+   *
+   * @circuitInfo k=15, rows=16997
    *
    * Requirements:
    *
@@ -392,6 +396,8 @@ module ShieldedAccessControl {
    * limited Merkle tree storage slots. Once revoked, a role cannot be re-granted to the same `accountId`. A new
    * `accountId` must be generated to be re-authorized for a revoked `role`.
    *
+   * @circuitInfo k=15, rows=28995
+   *
    * Requirements:
    *
    * - caller must prove they're an admin for `role`.
@@ -434,6 +440,8 @@ module ShieldedAccessControl {
    * but are otherwise benign. A single nullifier invalidates all duplicate commitments.
    * Implementing contracts are responsible for mitigating tree exhaustion risk.
    *
+   * @circuitInfo k=14, rows=12250
+   *
    * Requirements:
    *
    * - The `(role, accountId)` pairing must not be already revoked.
@@ -466,6 +474,8 @@ module ShieldedAccessControl {
    * @warning Outside observers may be able to use timing and pattern analysis to weaken pseudonymity
    * guarantees if renounceRole is used in tandem with other on-chain actions.
    *
+   * @circuitInfo k=14, rows=14440
+   *
    * Requirements:
    *
    * - The caller must provide a valid `accountId` for the role.
@@ -496,6 +506,8 @@ module ShieldedAccessControl {
    * `_roleCommitmentNullifiers` set. Once revoked, a new `accountId` must be generated to be re-authorized for
    * `role`. At this time, proofs of non-membership on values in the Merkle tree LDT are not possible
    * so a `(role, accountId)` pairing that does not exist can still be revoked.
+   *
+   * @circuitInfo k=15, rows=27005
    *
    * Requirements:
    *
@@ -532,6 +544,8 @@ module ShieldedAccessControl {
    *
    * @warning Exposing this circuit directly in an implementing contract would allow anyone to revoke
    * roles without authorization. It must be wrapped with appropriate access control.
+   *
+   * @circuitInfo k=14, rows=10260
    *
    * Requirements:
    *
@@ -599,6 +613,8 @@ module ShieldedAccessControl {
    *
    * To change a role's admin use {_setRoleAdmin}.
    *
+   * @circuitInfo k=9, rows=374
+   *
    * Disclosures:
    *
    * - A role identifier.
@@ -620,6 +636,8 @@ module ShieldedAccessControl {
    *
    * @warning Exposing this circuit directly in an implementing contract would allow anyone to assign
    * arbitrary admin roles without authorization. It must be wrapped with appropriate access control.
+   *
+   * @circuitInfo k=10, rows=581
    *
    * Disclosures:
    *
@@ -706,6 +724,8 @@ module ShieldedAccessControl {
    * This prevents commitment collisions across deployments.
    * - `commitmentDomain`: Domain separator `"ShieldedAccessControl:commitment"` (padded to 32 bytes) to prevent
    * hash collisions when extending the module or using similar commitment schemes.
+   *
+   * @circuitInfo k=13, rows=6404
    *
    * @param {RoleIdentifier} role - The role identifier.
    * @param {AccountIdentifier} accountId - The unique identifier of the account.
