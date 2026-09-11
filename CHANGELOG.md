@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Under `--feature-zkir-v3`, exporting `ElGamal.derivePk` as an impure circuit panics with `ZkStdLibArch must enable jubjub` ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)). There is no source workaround.
 - `@openzeppelin/compact-cli` `0.0.3` pins `@openzeppelin/compact-builder` to `0.0.4`, which reports a failed compile as success on Linux and writes no artifact. This is fixed in `compact-builder` `0.0.5` ([OpenZeppelin/compact-tools#162](https://github.com/OpenZeppelin/compact-tools/pull/162)); a `compact-cli` patch release picking it up follows, after which this repo bumps it. Until then, check that `artifacts/<Name>/compiler/contract-info.json` exists after a compile.
 
+### Changed
+
+- Refactor ProposalManager (#780)
+  - Support configurable expiry deadlines, improve proposal status
+
 ## 0.3.0-alpha.2 (2026-08-11)
 
 ### Changed

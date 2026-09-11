@@ -56,7 +56,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 export circuit createShieldedProposal(
   to: Proposal_Recipient,
   color: Bytes<32>,
-  amount: Uint<128>
+  amount: Uint<128>,
+  expiry: Uint<64>
 ): Uint<64> {
   const callerPK = getCaller();
   Signer_assertSigner(callerPK);
@@ -67,7 +68,7 @@ export circuit createShieldedProposal(
     "ShieldedMultiSig: recipient must be a shielded user or contract"
   );
 
-  return Proposal__createProposal(to, color, amount);
+  return Proposal__createProposal(to, color, amount, expiry);
 }
 
 export circuit approveProposal(id: Uint<64>): [] {
@@ -196,6 +197,14 @@ export circuit getProposal(id: Uint<64>): Proposal_Proposal {
 
 export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
   return Proposal_getProposalStatus(id);
+}
+
+export pure circuit executedState(): Uint<64> {
+  return Proposal_executedState();
+}
+
+export pure circuit cancelledState(): Uint<64> {
+  return Proposal_cancelledState();
 }
 
 // IShieldedTreasury

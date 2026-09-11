@@ -5,6 +5,7 @@ import {
 import {
   type Ledger,
   ledger,
+  pureCircuits,
   Contract as ShieldedMultiSig,
 } from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
@@ -24,7 +25,7 @@ type Proposal = {
   to: Recipient;
   color: Uint8Array;
   amount: bigint;
-  status: number;
+  state: bigint;
 };
 
 type ShieldedMultiSigArgs = readonly [
@@ -64,6 +65,15 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     ) as Promise<ShieldedMultiSigSimulator>;
   }
 
+  // Pure circuits (state sentinels)
+  public executedState(): bigint {
+    return pureCircuits.executedState();
+  }
+
+  public cancelledState(): bigint {
+    return pureCircuits.cancelledState();
+  }
+
   // Deposit
   public deposit(coin: ShieldedCoinInfo): Promise<[]> {
     return this.circuits.impure.deposit(coin);
@@ -74,8 +84,14 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
     to: Recipient,
     color: Uint8Array,
     amount: bigint,
+    expiry: bigint,
   ): Promise<bigint> {
-    return this.circuits.impure.createShieldedProposal(to, color, amount);
+    return this.circuits.impure.createShieldedProposal(
+      to,
+      color,
+      amount,
+      expiry,
+    );
   }
 
   public approveProposal(id: bigint): Promise<[]> {
