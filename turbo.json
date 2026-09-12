@@ -2,8 +2,10 @@
   "$schema": "https://turbo.build/schema.json",
   "globalPassThroughEnv": [
     "GITHUB_ACTIONS",
+    "GITHUB_OUTPUT",
     "GITHUB_STEP_SUMMARY",
-    "MIDNIGHT_LIVE_KEEP_ENV"
+    "MIDNIGHT_LIVE_KEEP_ENV",
+    "MIDNIGHT_LIVE_TEST_PATTERN"
   ],
   "tasks": {
     "compile:crypto": {
@@ -58,7 +60,11 @@
     "compile:integration": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["test/integration/**/*.compact"],
+      "inputs": [
+        "test/integration/**/*.compact",
+        "src/**/*.compact",
+        "!src/archive/**"
+      ],
       "outputLogs": "new-only",
       "outputs": ["artifacts/**/"]
     },
@@ -95,6 +101,10 @@
       "cache": false
     },
     "test:harness": {
+      "outputs": [],
+      "cache": false
+    },
+    "test:scripts": {
       "outputs": [],
       "cache": false
     },

@@ -3,16 +3,53 @@ import { CONTRACTS, PROGRESS_REPORTER, rel, VITEST_BIN } from './paths.ts';
 import { run } from './shell.ts';
 import type { LiveTarget } from './targets.ts';
 
-interface JsonTestResult {
+/** One test in a vitest JSON report. Exported (with the containers below) so
+ * the plan-side weighting (`scripts/ci/weights.ts`) reads the same shape this
+ * runner does instead of keeping a second definition of the format. */
+export interface JsonAssertionResult {
+  /** The describe names and the test name, space-joined — the same form a
+   * `-t` pattern is matched against. */
+  readonly fullName: string;
+  readonly status: string;
+  /** Wall-clock milliseconds. Absent on a test that never ran (skipped by a
+   * pattern or `.skipIf`). */
+  readonly duration?: number;
+  /** The failure's rendered message(s) — usually one entry, the error message
+   * plus its stack. Empty (or absent) on a pass or a skip. */
+  readonly failureMessages?: readonly string[];
+}
+export interface JsonTestResult {
+  /** The spec file's path, as vitest saw it (absolute on this runner). */
   readonly name: string;
   readonly status: string;
+  readonly assertionResults?: readonly JsonAssertionResult[];
 }
-interface JsonReport {
+export interface JsonReport {
   readonly testResults?: readonly JsonTestResult[];
+}
+
+/** Parse a report body, or `undefined` for one a killed vitest left truncated.
+ * The runner's own reads go through {@link VitestRunner} (which also handles a
+ * missing file and names the path in its log); this is the shared piece. */
+export function parseJsonReport(body: string): JsonReport | undefined {
+  try {
+    return JSON.parse(body) as JsonReport;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Spawns vitest against one live project and reads back its JSON report. */
 export class VitestRunner {
+  /** A `-t` (testNamePattern) regex every run gets, empty for none. Held here
+   * so round 2 re-runs a failed file under the same slice as round 1 — a CI
+   * leg of a split file must never widen back to the whole file. */
+  readonly #testPattern: string;
+
+  constructor(testPattern = '') {
+    this.#testPattern = testPattern;
+  }
+
   /**
    * Run one live project.
    *
@@ -46,6 +83,9 @@ export class VitestRunner {
         `--reporter=${PROGRESS_REPORTER}`,
         '--reporter=json',
         `--outputFile.json=${reportPath}`,
+        // The pattern travels as one argv element, so its regex metacharacters
+        // never meet a shell.
+        ...(this.#testPattern === '' ? [] : ['-t', this.#testPattern]),
         ...fileFilters,
       ],
       { ...process.env, MIDNIGHT_BACKEND: 'live', ...extraEnv },
@@ -62,24 +102,66 @@ export class VitestRunner {
    *   infrastructure abort rather than a test failure.
    */
   fileStatuses(reportPath: string): Map<string, string> | undefined {
+    const report = this.#report(reportPath);
+    if (report === undefined) return undefined;
+    return new Map(
+      (report.testResults ?? []).map((r) => [r.name, r.status] as const),
+    );
+  }
+
+  /**
+   * Every full test name the report carries, executed or not — vitest lists
+   * the tests a `-t` pattern skipped too, in the same space-joined form the
+   * pattern is matched against. That is what lets the orchestrator tell a
+   * pattern that matched nothing (its names are absent) from a slice whose
+   * tests were all runtime-skipped (`.skipIf`; the names are present).
+   *
+   * @returns `undefined` under the same conditions as {@link fileStatuses}
+   */
+  reportedTestNames(reportPath: string): string[] | undefined {
+    const report = this.#report(reportPath);
+    if (report === undefined) return undefined;
+    return (report.testResults ?? []).flatMap((r) =>
+      (r.assertionResults ?? []).map((a) => a.fullName),
+    );
+  }
+
+  /**
+   * For each file in the report, the failure messages of its failed tests —
+   * one inner array per failed test, so a caller can tell "every failed test
+   * says X" from "one of them does". A file whose failure never reached an
+   * assertion (a hook crash reported only at file level) gets an empty list,
+   * which readers must treat as "cause unknown".
+   *
+   * @returns `undefined` under the same conditions as {@link fileStatuses}
+   */
+  failedTestMessages(reportPath: string): Map<string, string[][]> | undefined {
+    const report = this.#report(reportPath);
+    if (report === undefined) return undefined;
+    return new Map(
+      (report.testResults ?? []).map(
+        (r) =>
+          [
+            r.name,
+            (r.assertionResults ?? [])
+              .filter((a) => a.status === 'failed')
+              .map((a) => [...(a.failureMessages ?? [])]),
+          ] as const,
+      ),
+    );
+  }
+
+  #report(reportPath: string): JsonReport | undefined {
     if (!existsSync(reportPath)) return undefined;
-    let report: JsonReport;
-    try {
-      report = JSON.parse(readFileSync(reportPath, 'utf8')) as JsonReport;
-    } catch (e) {
+    const report = parseJsonReport(readFileSync(reportPath, 'utf8'));
+    if (report === undefined) {
       // A killed vitest can leave a partial report that still passes `existsSync`,
       // so parsing is a second way to have no result — not an exception to throw
       // through the callers, which are written to abort gracefully on `undefined`.
       // Named here because the caller's message ("produced no results file")
       // would otherwise misdescribe an unreadable one.
-      console.log(
-        `\ncould not read ${rel(reportPath)}: ` +
-          `${e instanceof Error ? e.message : String(e)}`,
-      );
-      return undefined;
+      console.log(`\ncould not read ${rel(reportPath)}: not valid JSON`);
     }
-    return new Map(
-      (report.testResults ?? []).map((r) => [r.name, r.status] as const),
-    );
+    return report;
   }
 }

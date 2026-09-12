@@ -1,0 +1,503 @@
+name: Live Test Suite
+
+# The live suite runs the live targets against a real local stack (node, indexer,
+# proof server, via `make env-up`) with real ZK proofs, so a run takes hours, not
+# minutes. It is deliberately separate from the regular PR checks and is never a
+# required one:
+#   - nightly on main, as the regression safety net (a failure is mirrored into a
+#     `live-nightly` tracking issue, which closes on the next green run)
+#   - on demand via workflow_dispatch, optionally scoped to one target or a file
+#     filter within it
+#   - on a PR, opt-in, by applying a `live-tests:<target>` label, or
+#     `live-tests:all` for every target (re-apply to re-run). The bare
+#     `live-tests` label is rejected by the plan job: per-file legs would make it
+#     60+ checks on the PR, so the full fan-out has to be spelled out. One label
+#     rather than one per target because the concurrency group is keyed by PR,
+#     so seven labels would cancel down to whichever was applied last.
+#
+# One plan job, then a PIPELINE PER TARGET:
+#
+#   plan ─┬─ compile-access ── live-access   (7 spec files, in parallel)
+#         ├─ compile-crypto ── live-crypto   (3)
+#         ├─ compile-token  ── live-token    (16)
+#         └─ ...                             (46 spec files over 7 targets)
+#
+# Each target's spec files start the moment THAT target is built. The shape is
+# forced by Actions: `needs` is job-level, so a single compile matrix feeding a
+# single suite matrix makes every spec file wait for the slowest compile of all
+# targets — measured on run 32810453735, `utils` compiled in 41s and `crypto` in
+# 67s while `token` and `integration` ran for many minutes, so 15 spec jobs would
+# have idled behind them. There is no per-matrix-leg dependency edge to express
+# this with, hence one literal job pair per target.
+#
+# Two consequences of that literalness:
+#   - the steps live in reusable workflows (`live-compile.yml`, `live-suite.yml`)
+#     so the pairs below stay declarations rather than 14 copies of a job;
+#   - KNOWN_TARGETS has to be kept in step with the pairs, and the plan job fails
+#     in seconds if a discovered `src/` category has no pair (`live-ci.ts`), so a
+#     new category can never be silently missing from the live run.
+#
+# Per spec file rather than per target because a target is one long serial job
+# (the 2026-08-24 nightly spent 5.75h in `live-token`) while the files are
+# independent: every suite job resets its own stack, so nothing one spec leaves on
+# the node can fail another. The compile layer is what makes that affordable — 16
+# token spec jobs must not mean 16 token compiles. A file over the leg budget
+# (MAX_LEG_MS in scripts/ci/split.ts, weighed by the previous run's measured
+# per-test durations when the plan job could download its reports, by test count
+# otherwise) fans out further: several legs of the same file,
+# each scoped by a vitest test-name pattern (`testFilter` in the leg), so one
+# big file cannot set the whole run's wall clock either.
+#
+# Every `run:` here is a one-liner. The logic behind the ones that are not calls
+# to the runner lives in `scripts/live-ci.ts`, where it is unit tested and can be
+# run locally (`yarn test:scripts`).
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        # A free-form string, not a `choice`: the valid set is whatever
+        # `scripts/live/targets.ts` discovers, and a dropdown enumerated here
+        # would silently go stale as categories join. The plan job validates the
+        # value against that list and fails in seconds with the valid names.
+        description: "Live target: a src/ category, `integration`, or `all`"
+        required: false
+        default: all
+      filter:
+        # A substring of a spec file's path, as vitest matches it. It narrows the
+        # matrix to the files it selects, and drops the targets it matches
+        # nothing under: a live target that runs no file is an abort in the
+        # runner rather than a pass.
+        description: "Vitest file filter within the target (e.g. Forwarder)"
+        required: false
+        default: ""
+  pull_request:
+    types: [labeled]
+
+# Deny by default, at the workflow level rather than per job.
+#
+# The 14 job pairs below are `uses:` declarations with no steps of their own, and
+# a job without a `permissions:` block inherits whatever the repository's default
+# GITHUB_TOKEN scope happens to be — which CodeQL flags, once per job. Setting the
+# floor here covers all of them in one place instead of adding 14 identical blocks
+# to jobs whose whole point is to stay one-liners. The two jobs that need more
+# (`plan` reads a previous run's artifacts, `report-nightly` writes the tracking
+# issue and prunes caches) declare it themselves, and a job-level block replaces
+# this one rather than adding to it. The reusable workflows both pin
+# `contents: read` on their own jobs, which is what a called workflow is capped at
+# here.
+permissions:
+  contents: read
+
+concurrency:
+  # Keyed by trigger as well as ref, so a manual dispatch on main does not cancel
+  # the nightly it was meant to complement.
+  group: live-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Plan the pipelines
+    # `pull_request: labeled` fires for every label; only ours starts a run. The
+    # label itself carries the scope, and the plan step reads it. The bare label
+    # still passes this gate on purpose: the plan job rejects it with the scoped
+    # form to use, and skipping it here would fail silently instead.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.label.name == 'live-tests'
+      || startsWith(github.event.label.name, 'live-tests:')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      # For the timing-history step: downloading a previous run's artifacts.
+      actions: read
+    timeout-minutes: 5
+    outputs:
+      # `targets` gates the compile jobs; one `legs-<target>` per target feeds
+      # that target's suite matrix. Output names must be literals, so there is
+      # one line here per pair below.
+      targets: ${{ steps.plan.outputs.targets }}
+      legs-access: ${{ steps.plan.outputs.legs-access }}
+      legs-crypto: ${{ steps.plan.outputs.legs-crypto }}
+      legs-multisig: ${{ steps.plan.outputs.legs-multisig }}
+      legs-security: ${{ steps.plan.outputs.legs-security }}
+      legs-token: ${{ steps.plan.outputs.legs-token }}
+      legs-utils: ${{ steps.plan.outputs.legs-utils }}
+      legs-integration: ${{ steps.plan.outputs.legs-integration }}
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The script only imports node builtins, so this job needs a Node but no
+      # `yarn install` (and no Compact compiler).
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      # Best-effort: the previous completed run's `live-reports-*` artifacts
+      # carry per-test durations, which weight the leg packing so a heavy file
+      # splits finer than its test count suggests. No history — first run,
+      # expired artifacts (14-day retention), an API hiccup — just means the
+      # matrix step packs by count, so this must never fail the plan: the
+      # script always exits 0 and `continue-on-error` is belt and braces.
+      # The gh CLI is preinstalled on the runner; still no `yarn install` here.
+      - name: Fetch the previous run's timing reports
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOW: live.yml
+          OUT_DIR: ${{ runner.temp }}/live-history
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts fetch-reports
+
+      # TARGET and FILTER are empty on every trigger but workflow_dispatch, LABEL
+      # on every trigger but a PR label. The script resolves whichever is set.
+      # KNOWN_TARGETS is the pairs below: a discovered target missing from it
+      # fails this job rather than going unrun.
+      - name: Resolve the per-target pipelines
+        id: plan
+        env:
+          TARGET: ${{ inputs.target }}
+          LABEL: ${{ github.event.label.name }}
+          FILTER: ${{ inputs.filter }}
+          KNOWN_TARGETS: access crypto multisig security token utils integration
+          LIVE_REPORTS_DIR: ${{ runner.temp }}/live-history
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
+
+  # One pair per live target, below. Both jobs are skipped when the run's scope
+  # (a dispatch target, a `live-tests:<target>` label, or a file filter) leaves
+  # the target with nothing to run, and `live-<target>` is skipped when its own
+  # compile fails — a target's failure costs that target's spec jobs and no
+  # others.
+
+  compile-access:
+    name: compile-access
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'access') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: access
+
+  live-access:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-access · ${{ matrix.name }}
+    needs: [plan, compile-access]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-access.result == 'success'
+      && needs.plan.outputs.legs-access != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-access) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: access
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-crypto:
+    name: compile-crypto
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'crypto') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: crypto
+
+  live-crypto:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-crypto · ${{ matrix.name }}
+    needs: [plan, compile-crypto]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-crypto.result == 'success'
+      && needs.plan.outputs.legs-crypto != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-crypto) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: crypto
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-multisig:
+    name: compile-multisig
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'multisig') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: multisig
+
+  live-multisig:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-multisig · ${{ matrix.name }}
+    needs: [plan, compile-multisig]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-multisig.result == 'success'
+      && needs.plan.outputs.legs-multisig != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-multisig) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: multisig
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-security:
+    name: compile-security
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'security') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: security
+
+  live-security:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-security · ${{ matrix.name }}
+    needs: [plan, compile-security]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-security.result == 'success'
+      && needs.plan.outputs.legs-security != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-security) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: security
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-token:
+    name: compile-token
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'token') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: token
+
+  live-token:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-token · ${{ matrix.name }}
+    needs: [plan, compile-token]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-token.result == 'success'
+      && needs.plan.outputs.legs-token != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-token) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: token
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-utils:
+    name: compile-utils
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'utils') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: utils
+
+  live-utils:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-utils · ${{ matrix.name }}
+    needs: [plan, compile-utils]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-utils.result == 'success'
+      && needs.plan.outputs.legs-utils != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-utils) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: utils
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-integration:
+    name: compile-integration
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'integration') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: integration
+
+  live-integration:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-integration · ${{ matrix.name }}
+    needs: [plan, compile-integration]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-integration.result == 'success'
+      && needs.plan.outputs.legs-integration != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-integration) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: integration
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  # A failed scheduled run only emails the workflow author, which is easy to miss.
+  # `live-ci.ts nightly` mirrors the nightly state into a `live-nightly` tracking
+  # issue instead: opened (or commented) on failure, closed on the next green run.
+  report-nightly:
+    name: Report nightly result
+    needs:
+      - plan
+      - compile-access
+      - compile-crypto
+      - compile-multisig
+      - compile-security
+      - compile-token
+      - compile-utils
+      - compile-integration
+      - live-access
+      - live-crypto
+      - live-multisig
+      - live-security
+      - live-token
+      - live-utils
+      - live-integration
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+      # For the cache-pruning step: deleting cache entries is a write.
+      actions: write
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      # PLAN_RESULT and COMPILE_RESULT are how the script separates "nothing was
+      # tested" from "the suite passed": a spec job that never started reports
+      # `skipped`, not `failure`, and a nightly that tested nothing is a failed
+      # nightly whichever layer stopped it. Both aggregates take the worst result
+      # across the per-target jobs, since `needs.*.result` is per job here.
+      - name: Report to the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SUITE_RESULT: "${{ needs.live-access.result }} ${{ needs.live-crypto.result }} ${{ needs.live-multisig.result }} ${{ needs.live-security.result }} ${{ needs.live-token.result }} ${{ needs.live-utils.result }} ${{ needs.live-integration.result }}"
+          PLAN_RESULT: ${{ needs.plan.result }}
+          COMPILE_RESULT: "${{ needs.compile-access.result }} ${{ needs.compile-crypto.result }} ${{ needs.compile-multisig.result }} ${{ needs.compile-security.result }} ${{ needs.compile-token.result }} ${{ needs.compile-utils.result }} ${{ needs.compile-integration.result }}"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts nightly
+
+      # The cache entries here are large (a deps tree or a per-target turbo
+      # slice is ~275 MB) against a 10 GB repo budget, past which GitHub evicts
+      # least-recently-used — i.e. whatever the next run was about to need. The
+      # nightly prunes deliberately instead: superseded entries (an older hash
+      # under the same key prefix and ref) and anything not restored in 7 days
+      # (`scripts/ci/caches.ts`). After the report on purpose, so a gh hiccup
+      # here can never block the tracking issue.
+      - name: Prune stale action caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts prune-caches
