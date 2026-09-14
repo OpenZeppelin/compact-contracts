@@ -51,10 +51,18 @@ const MIXED = constructJubjubPoint(Q - IN_SUBGROUP.x, Q - IN_SUBGROUP.y);
 
 let contract: CurveOpsSimulator;
 
-// A trap fires while the circuit is evaluated locally, before any proof, so
-// the rejections below hold on the live backend too.
-const traps = (call: Promise<unknown>): Promise<void> =>
-  expect(call).rejects.toThrow();
+// The rejections below pin their fault message: a bare `toThrow()` would also
+// accept a deploy or provider failure on the live backend. Dry surfaces the
+// runtime fault verbatim, live wraps it as `Error executing circuit '<id>'`
+// unless it is a CompactError, so the point patterns accept either form.
+//
+// An off-subgroup or malformed point is rejected either by the embedded-curve
+// gadget, as a WASM trap, or by the built-in point decoder. `^unreachable$` is
+// anchored so a "network is unreachable" provider error cannot match.
+const CURVE_GADGET_TRAP = /^unreachable$|Error executing circuit/m;
+const POINT_DECODE_FAULT =
+  /failed to decode for built-in type EmbeddedGroupAffine|Error executing circuit/;
+const SCALAR_RANGE_FAULT = /expected value of type JubjubScalar/;
 
 describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
   beforeAll(async () => {
@@ -71,11 +79,15 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
   // -------------------------------------------------------------------------
   describe('mixed-order point (order 2*ℓ) — the decisive case', () => {
     it('TRAPS ecMul on a mixed-order point (genuine subgroup enforcement)', async () => {
-      await traps(contract.doEcMul(MIXED, 3n));
+      await expect(contract.doEcMul(MIXED, 3n)).rejects.toThrow(
+        CURVE_GADGET_TRAP,
+      );
     });
 
     it('TRAPS ecAdd on a mixed-order point', async () => {
-      await traps(contract.doEcAdd(MIXED, IN_SUBGROUP));
+      await expect(contract.doEcAdd(MIXED, IN_SUBGROUP)).rejects.toThrow(
+        CURVE_GADGET_TRAP,
+      );
     });
   });
 
@@ -90,15 +102,21 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
     });
 
     it('TRAPS on an on-curve order-2 point (off-subgroup)', async () => {
-      await traps(contract.doEcMul(ORDER_2, 3n));
+      await expect(contract.doEcMul(ORDER_2, 3n)).rejects.toThrow(
+        CURVE_GADGET_TRAP,
+      );
     });
 
     it('TRAPS on an off-curve point', async () => {
-      await traps(contract.doEcMul(OFF_CURVE, 3n));
+      await expect(contract.doEcMul(OFF_CURVE, 3n)).rejects.toThrow(
+        POINT_DECODE_FAULT,
+      );
     });
 
     it('TRAPS on a garbage point', async () => {
-      await traps(contract.doEcMul(GARBAGE, 3n));
+      await expect(contract.doEcMul(GARBAGE, 3n)).rejects.toThrow(
+        CURVE_GADGET_TRAP,
+      );
     });
   });
 
@@ -113,15 +131,21 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
     });
 
     it('TRAPS when an order-2 point is added', async () => {
-      await traps(contract.doEcAdd(ORDER_2, IN_SUBGROUP));
+      await expect(contract.doEcAdd(ORDER_2, IN_SUBGROUP)).rejects.toThrow(
+        CURVE_GADGET_TRAP,
+      );
     });
 
     it('TRAPS when an off-curve point is added', async () => {
-      await traps(contract.doEcAdd(OFF_CURVE, IN_SUBGROUP));
+      await expect(contract.doEcAdd(OFF_CURVE, IN_SUBGROUP)).rejects.toThrow(
+        POINT_DECODE_FAULT,
+      );
     });
 
     it('TRAPS when a garbage point is added', async () => {
-      await traps(contract.doEcAdd(GARBAGE, IN_SUBGROUP));
+      await expect(contract.doEcAdd(GARBAGE, IN_SUBGROUP)).rejects.toThrow(
+        CURVE_GADGET_TRAP,
+      );
     });
   });
 
@@ -141,7 +165,7 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
     });
 
     it('TRAPS on scalar == ell (out of range)', async () => {
-      await traps(contract.genMul(L));
+      await expect(contract.genMul(L)).rejects.toThrow(SCALAR_RANGE_FAULT);
     });
   });
 });
