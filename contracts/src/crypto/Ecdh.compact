@@ -33,7 +33,8 @@ pragma language_version >= 0.26.0;
  * Uniqueness: a repeated `e` to one recipient repeats `S`, so every key, mask or
  * nonce a consumer derives from `S` repeats too. Where that derivation is a
  * one-time pad (`crypto/EcdhMask`) the reuse is catastrophic: subtracting two
- * ciphertexts recovers both plaintexts.
+ * ciphertexts reveals the plaintext difference, and either plaintext once the
+ * other is known or constrained.
  *
  * Secrecy: `recipientPk` is public, so anyone who learns `e` recomputes
  * `S = recipientPk^e` and everything derived from it. A unique but PREDICTABLE
