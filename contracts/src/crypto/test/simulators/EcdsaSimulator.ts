@@ -7,7 +7,6 @@ import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
   Contract as MockEcdsa,
-  pureCircuits,
 } from '../../../../artifacts/MockEcdsa/contract/index.js';
 
 // The Ecdsa module is stateless and declares no witnesses, so the private
@@ -52,10 +51,9 @@ export class EcdsaSimulator extends EcdsaSimulatorBase {
 
   /**
    * @description Whether `s <= n/2`, the canonical half of the scalar range.
-   * Pure, so callers can classify a signature without a deploy.
    */
-  public static isLowS(s: bigint): boolean {
-    return pureCircuits.isLowS(s);
+  public isLowS(s: bigint): Promise<boolean> {
+    return this.circuits.impure.isLowS(s);
   }
 
   /**
