@@ -1,4 +1,7 @@
-import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
+import {
+  constructJubjubPoint,
+  ecMulGenerator,
+} from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
 import { pureCircuits } from '../../../artifacts/MockEcdh/contract/index.js';
 
@@ -15,6 +18,14 @@ const L =
 const EK = 111222333444555n;
 const PK = ecMulGenerator(EK);
 const IDENTITY = ecMulGenerator(0n);
+
+// Jubjub base field modulus q.
+const Q =
+  52435875175126190479447740508185965837690552500527637822603658699938581184513n;
+// Coordinate negation of a subgroup point: on-curve, order 2*L, not low-order.
+const MIXED_ORDER = constructJubjubPoint(Q - PK.x, Q - PK.y);
+// Fails the twisted Edwards equation.
+const OFF_CURVE = constructJubjubPoint(1n, 1n);
 
 describe('Ecdh', () => {
   describe('weak-input guards', () => {
@@ -58,6 +69,32 @@ describe('Ecdh', () => {
       expect(pureCircuits.deriveShared(PK, 1n).sShared).not.toStrictEqual(
         pureCircuits.deriveShared(PK, 2n).sShared,
       );
+    });
+
+    it('is symmetric: deriveShared(g^a, b) and deriveShared(g^b, a) agree', () => {
+      const a = 31337n;
+      const b = EK;
+      expect(
+        pureCircuits.deriveShared(ecMulGenerator(a), b).sShared,
+      ).toStrictEqual(pureCircuits.deriveShared(ecMulGenerator(b), a).sShared);
+    });
+  });
+
+  describe('subgroup boundary', () => {
+    it('traps deriveShared on a mixed-order recipient key', () => {
+      expect(() => pureCircuits.deriveShared(MIXED_ORDER, 42n)).toThrow();
+    });
+
+    it('traps deriveShared on an off-curve recipient key', () => {
+      expect(() => pureCircuits.deriveShared(OFF_CURVE, 42n)).toThrow();
+    });
+
+    it('traps recoverShared on a mixed-order ephemeral point', () => {
+      expect(() => pureCircuits.recoverShared(MIXED_ORDER, EK)).toThrow();
+    });
+
+    it('traps recoverShared on an off-curve ephemeral point', () => {
+      expect(() => pureCircuits.recoverShared(OFF_CURVE, EK)).toThrow();
     });
   });
 
