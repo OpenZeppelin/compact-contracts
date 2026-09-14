@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
+import {
   NativeShieldedTokenFamilySimulator,
   type NativeShieldedTokenFamilySimulator as Sim,
 } from './simulators/NativeShieldedTokenFamilySimulator.js';
@@ -23,9 +27,17 @@ const DOMAIN_B = b32('domain-B');
 const INIT = true;
 const BAD_INIT = false;
 const AMOUNT = 1_000n;
+const PARTIAL = 600n;
+const MAX_U64 = (1n << 64n) - 1n;
+
+// The simulator's default contract address is zero, which `_mintToSelf` rejects
+// as a zero recipient, so the deploy pins a non-zero address.
+const SELF_ADDRESS = utils.toHexPadded('SELF');
 
 const deploy = (init = INIT): Promise<NativeShieldedTokenFamilySimulator> =>
-  NativeShieldedTokenFamilySimulator.create(NAME, SYMBOL, DECIMALS, init);
+  NativeShieldedTokenFamilySimulator.create(NAME, SYMBOL, DECIMALS, init, {
+    contractAddress: SELF_ADDRESS,
+  });
 
 let token: NativeShieldedTokenFamilySimulator;
 
@@ -59,6 +71,7 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       ['decimals', []],
       ['tokenColor', [DOMAIN_A]],
       ['_mint', [DOMAIN_A, RECIPIENT, AMOUNT, b32('n')]],
+      ['_mintToSelf', [DOMAIN_A, AMOUNT, b32('n')]],
       [
         '_burn',
         [
@@ -97,8 +110,25 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       const nonce = b32('m-a');
       const coin = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, nonce);
       expect(coin.value).toBe(AMOUNT);
-      expect(coin.nonce).toEqual(nonce);
-      expect(coin.color).toEqual(await token.tokenColor(DOMAIN_A));
+      expect(coin.nonce).toStrictEqual(nonce);
+      expect(coin.color).toStrictEqual(await token.tokenColor(DOMAIN_A));
+    });
+
+    it('should mint distinct coins of one color for distinct nonces', async () => {
+      const first = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, b32('m-1'));
+      const second = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, b32('m-2'));
+      expect(second.nonce).not.toStrictEqual(first.nonce);
+      expect(second.color).toStrictEqual(first.color);
+      expect(second.value).toBe(first.value);
+    });
+
+    it('should mint the maximum Uint<64> amount and reject one above it', async () => {
+      const coin = await token._mint(DOMAIN_A, RECIPIENT, MAX_U64, b32('max'));
+      expect(coin.value).toBe(MAX_U64);
+      // Above the bound the argument marshaller rejects before any circuit runs.
+      await expect(
+        token._mint(DOMAIN_A, RECIPIENT, MAX_U64 + 1n, b32('over')),
+      ).rejects.toThrow();
     });
 
     it('should revert on a zero recipient', async () => {
@@ -108,13 +138,66 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
     });
   });
 
+  describe('_mintToSelf (per domain)', () => {
+    beforeEach(async () => {
+      token = await deploy(INIT);
+    });
+
+    it('should return a coin with color = tokenColor(domain), value, nonce', async () => {
+      const nonce = b32('self-m-a');
+      const coin = await token._mintToSelf(DOMAIN_A, AMOUNT, nonce);
+      expect(coin.value).toBe(AMOUNT);
+      expect(coin.nonce).toStrictEqual(nonce);
+      expect(coin.color).toStrictEqual(await token.tokenColor(DOMAIN_A));
+    });
+
+    it('should keep distinct domains on distinct colors', async () => {
+      const a = await token._mintToSelf(DOMAIN_A, AMOUNT, b32('self-a'));
+      const b = await token._mintToSelf(DOMAIN_B, AMOUNT, b32('self-b'));
+      expect(a.color).not.toStrictEqual(b.color);
+    });
+  });
+
+  // `@ts-expect-error` is the guarantee; the runtime throw is the argument
+  // marshaller's backstop.
+  describe('retired Either recipient shape', () => {
+    beforeEach(async () => {
+      token = await deploy(INIT);
+    });
+
+    it('should reject an Either recipient on _mint', async () => {
+      await expect(
+        token._mint(
+          DOMAIN_A,
+          // @ts-expect-error retired Either recipient shape
+          utils.createEitherTestUser('RECIPIENT'),
+          AMOUNT,
+          b32('e'),
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('should reject an Either refundTo on _burn', async () => {
+      const colorA = await token.tokenColor(DOMAIN_A);
+      await expect(
+        token._burn(
+          DOMAIN_A,
+          { nonce: b32('coin'), color: colorA, value: AMOUNT },
+          PARTIAL,
+          // @ts-expect-error retired Either recipient shape
+          utils.createEitherTestUser('REFUND_TO'),
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('multi-domain isolation', () => {
     beforeEach(async () => {
       token = await deploy(INIT);
     });
 
     it('should give distinct colors to distinct domains', async () => {
-      expect(await token.tokenColor(DOMAIN_A)).not.toEqual(
+      expect(await token.tokenColor(DOMAIN_A)).not.toStrictEqual(
         await token.tokenColor(DOMAIN_B),
       );
     });
@@ -157,19 +240,28 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       ).rejects.toThrow('NativeShieldedToken: invalid refund target');
     });
 
-    it('should return none on a full burn and some(refund) on a partial burn', async () => {
-      expect(
-        (await token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT, REFUND_TO))
-          .is_some,
-      ).toBe(false);
-      const partial = await token._burn(
+    it('should return none on a full burn', async () => {
+      const coin = await token._mint(
         DOMAIN_A,
-        coinOf(AMOUNT),
-        600n,
-        REFUND_TO,
+        RECIPIENT,
+        AMOUNT,
+        b32('burn-full'),
       );
-      expect(partial.is_some).toBe(true);
-      expect(partial.value.value).toBe(AMOUNT - 600n);
+      const res = await token._burn(DOMAIN_A, coin, AMOUNT, REFUND_TO);
+      expect(res.is_some).toBe(false);
+    });
+
+    it('should return some(refund) with refund.value == coin.value - amount on a partial burn', async () => {
+      const coin = await token._mint(
+        DOMAIN_A,
+        RECIPIENT,
+        AMOUNT,
+        b32('burn-part'),
+      );
+      const res = await token._burn(DOMAIN_A, coin, PARTIAL, REFUND_TO);
+      expect(res.is_some).toBe(true);
+      expect(res.value.value).toBe(AMOUNT - PARTIAL);
+      expect(res.value.color).toStrictEqual(colorA);
     });
   });
 
@@ -187,19 +279,48 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       mt_index: 0n,
     });
 
-    it('should return change on a partial burn and none on a full burn', async () => {
-      expect(
-        (await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), 600n)).is_some,
-      ).toBe(true);
-      expect(
-        (await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT)).is_some,
-      ).toBe(false);
-    });
+    const heldCoin = async (value: bigint, label: string) =>
+      getQualifiedShieldedCoinInfo(
+        contractOwner(token),
+        await token._mintToSelf(DOMAIN_A, value, b32(label)),
+      );
 
     it('should reject a wrong-color coin', async () => {
       await expect(
         token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT, b32('wrong')), AMOUNT),
       ).rejects.toThrow('NativeShieldedToken: wrong token');
+    });
+
+    it('should revert when amount > coin.value', async () => {
+      await expect(
+        token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT + 1n),
+      ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+    });
+
+    it('should return none on a full burn', async () => {
+      const coin = await heldCoin(AMOUNT, 'self-full');
+      const res = await token._burnFromSelf(DOMAIN_A, coin, AMOUNT);
+      expect(res.is_some).toBe(false);
+    });
+
+    it('should return change on a partial burn and keep it spendable', async () => {
+      const coin = await heldCoin(AMOUNT, 'self-part');
+      const res = await token._burnFromSelf(DOMAIN_A, coin, PARTIAL);
+      expect(res.is_some).toBe(true);
+      expect(res.value.value).toBe(AMOUNT - PARTIAL);
+      expect(res.value.color).toStrictEqual(colorA);
+
+      // Spending the change proves the contract received it, not just returned it.
+      const change = await getQualifiedShieldedCoinInfo(
+        contractOwner(token),
+        res.value,
+      );
+      const second = await token._burnFromSelf(
+        DOMAIN_A,
+        change,
+        AMOUNT - PARTIAL,
+      );
+      expect(second.is_some).toBe(false);
     });
   });
 });

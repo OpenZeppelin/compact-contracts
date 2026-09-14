@@ -66,6 +66,13 @@ export circuit _mint(
   return NativeShieldedToken__mint(recipient, amount, nonce);
 }
 
+export circuit _mintToSelf(
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  return NativeShieldedToken__mintToSelf(amount, nonce);
+}
+
 export circuit _burn(
   coin: ShieldedCoinInfo,
   amount: Uint<128>,

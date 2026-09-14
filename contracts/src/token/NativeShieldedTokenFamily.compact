@@ -26,8 +26,9 @@ pragma language_version >= 0.23.0;
  * set of core state (a single init flag and one name/symbol/decimals).
  * Pick one flavor per contract.
  *
- * @notice Recipients must be coin public keys. A contract-addressed coin
- * would be unclaimable, making the transaction malformed.
+ * @notice Recipients must be coin public keys: contract-addressed recipients
+ * are not supported at this layer. For a coin the contract holds itself, use
+ * `_mintToSelf`, which mints to `kernel.self()` and claims it in the same call.
  *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
@@ -189,7 +190,7 @@ module NativeShieldedTokenFamily {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=10748
+   * @circuitInfo k=14, rows=10750
    *
    * Requirements:
    *
@@ -209,7 +210,48 @@ module NativeShieldedTokenFamily {
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
-    return Core__mint(domain, recipient, amount, nonce);
+    return Core__mint(
+      domain,
+      left<ZswapCoinPublicKey, ContractAddress>(recipient),
+      amount,
+      nonce
+    );
+  }
+
+  /**
+   * @description Mints `amount` of the token identified by `domain` to this
+   * contract itself, claiming the coin in the same call. Forwards to
+   * `NativeShieldedTokenCore._mint` with `right(kernel.self())`.
+   *
+   * @dev Nonce uniqueness is the caller's responsibility, as in `_mint`. Spend
+   * the coin later with `_burnFromSelf`, once it carries an `mt_index`.
+   *
+   * @notice The consumer SHOULD persist the returned coin info in its own
+   * ledger state: it is the contract's holding and is not otherwise
+   * recoverable.
+   *
+   * @circuitInfo k=14, rows=16346
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
+   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   */
+  export circuit _mintToSelf(
+                   domain: Bytes<32>,
+                   amount: Uint<64>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    return Core__mint(
+      domain,
+      right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+      amount,
+      nonce
+    );
   }
 
   /**
@@ -254,7 +296,12 @@ module NativeShieldedTokenFamily {
                    amount: Uint<128>,
                    refundTo: ZswapCoinPublicKey
                    ): Maybe<ShieldedCoinInfo> {
-    return Core__burn(domain, coin, amount, refundTo);
+    return Core__burn(
+      domain,
+      coin,
+      amount,
+      left<ZswapCoinPublicKey, ContractAddress>(refundTo)
+    );
   }
 
   /**

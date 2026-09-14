@@ -125,6 +125,18 @@ export class NativeShieldedTokenSimulator extends NativeShieldedTokenSimulatorBa
   }
 
   /**
+   * @description Mints `amount` to the contract itself, claimed in the same
+   * call.
+   * @returns The newly created coin's info (nonce, color, value).
+   */
+  public _mintToSelf(
+    amount: bigint,
+    nonce: Uint8Array,
+  ): Promise<ShieldedCoinInfo> {
+    return this.circuits.impure._mintToSelf(amount, nonce);
+  }
+
+  /**
    * @description Burns `amount` from a same-tx `coin`, routing change to
    * `refundTo`.
    * @returns The refund coin created for `refundTo`, or `none` on a full burn.

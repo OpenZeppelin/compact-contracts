@@ -125,6 +125,18 @@ export class NativeShieldedTokenFamilySimulator extends NativeShieldedTokenFamil
     return this.circuits.impure._mint(domain, recipient, amount, nonce);
   }
 
+  /**
+   * @description Mints `amount` of the `domain` token to the contract itself,
+   * claimed in the same call.
+   */
+  public _mintToSelf(
+    domain: Uint8Array,
+    amount: bigint,
+    nonce: Uint8Array,
+  ): Promise<ShieldedCoinInfo> {
+    return this.circuits.impure._mintToSelf(domain, amount, nonce);
+  }
+
   /** @description Burns `amount` from a same-tx `coin` of `domain`. */
   public _burn(
     domain: Uint8Array,
