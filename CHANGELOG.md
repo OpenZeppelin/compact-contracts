@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Widen the CFT balance claim and ElGamal `assertDecryptsTo` to `Uint<248>`, so a balance accumulated past the per-transfer bound stays spendable (#831)
-- Restrict `NativeShieldedToken` / `NativeShieldedTokenFamily` mint recipients and burn refund targets to `ZswapCoinPublicKey`. A contract-addressed coin must be claimed as a shielded receive by the recipient contract in the same transaction, which the module cannot arrange without cross-contract calls, so such transactions were always rejected by the node (audit H-03).
+- Change `NativeShieldedToken` / `NativeShieldedTokenFamily` `_mint` recipient and `_burn` refund recipient to `ZswapCoinPublicKey`, add `_mintToSelf`, and restrict `NativeShieldedTokenCore` contract-addressed recipients to the contract itself (#833)
 - Remove the initialization guard from `Signer`'s `assertSigner`, `assertThresholdMet`, `getSignerCount`, and `getThreshold` (#761)
 - Consolidate the duplicate multisig signer registries onto `Signer`, removing `SignerManager` (#760)
 - Rename the contract-compilation scripts and Turbo tasks from `compact` / `compact:*` to `compile` / `compile:*`, and the Biome scripts from `fmt-and-lint` / `fmt-and-lint:*` to `lint` / `lint:*`. (#680)
