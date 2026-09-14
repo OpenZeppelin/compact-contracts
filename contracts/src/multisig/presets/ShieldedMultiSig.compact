@@ -53,10 +53,34 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 
 // ─── Proposals ───────────────────────────────────────────────────────────
 
+/**
+ * @description Creates a proposal to transfer shielded tokens out of the
+ * treasury.
+ *
+ * @notice This preset places no upper bound on `expiry`. A far-future value
+ * leaves a proposal executable indefinitely once it reaches the threshold;
+ * impose a cap here if a deployment needs a bounded lifetime.
+ *
+ * Requirements:
+ *
+ * - Caller must be a signer.
+ * - `to.kind` must be `ShieldedUser` or `Contract`.
+ * - `amount` must be greater than 0.
+ * - `expiry` must be in the future and greater than `cancelledState()`.
+ *
+ * @param {Proposal_Recipient} to - The payout recipient.
+ * @param {Bytes<32>} color - The token color.
+ * @param {Uint<128>} amount - The amount to transfer.
+ * @param {Uint<64>} expiry - Seconds since the Unix epoch, at and after which
+ * the proposal is inert.
+ *
+ * @returns {Uint<64>} The new proposal ID.
+ */
 export circuit createShieldedProposal(
   to: Proposal_Recipient,
   color: Bytes<32>,
-  amount: Uint<128>
+  amount: Uint<128>,
+  expiry: Uint<64>
 ): Uint<64> {
   const callerPK = getCaller();
   Signer_assertSigner(callerPK);
@@ -67,7 +91,7 @@ export circuit createShieldedProposal(
     "ShieldedMultiSig: recipient must be a shielded user or contract"
   );
 
-  return Proposal__createProposal(to, color, amount);
+  return Proposal__createProposal(to, color, amount, expiry);
 }
 
 export circuit approveProposal(id: Uint<64>): [] {
@@ -196,6 +220,14 @@ export circuit getProposal(id: Uint<64>): Proposal_Proposal {
 
 export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
   return Proposal_getProposalStatus(id);
+}
+
+export pure circuit executedState(): Uint<64> {
+  return Proposal_executedState();
+}
+
+export pure circuit cancelledState(): Uint<64> {
+  return Proposal_cancelledState();
 }
 
 // IShieldedTreasury

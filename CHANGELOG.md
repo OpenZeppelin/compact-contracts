@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed (breaking)
+
+- Refactor `ProposalManager` (#780)
+  - `Proposal.status` → `state: Uint<64>`, overlaying lifecycle and expiry
+  - `_createProposal` / `createShieldedProposal` require `expiry`
+  - `getProposalStatus` returns `Inactive` for unknown ids instead of failing
+
 ## 0.4.0-alpha.1 (2026-09-02)
 
 ### Added
