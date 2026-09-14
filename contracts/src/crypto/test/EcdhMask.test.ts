@@ -2,6 +2,7 @@ import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { pureCircuits as ecdh } from '../../../artifacts/MockEcdh/contract/index.js';
 import { EcdhMaskSimulator } from './simulators/EcdhMaskSimulator.js';
 import { ElGamalSimulator } from './simulators/ElGamalSimulator.js';
 
@@ -10,6 +11,10 @@ import { ElGamalSimulator } from './simulators/ElGamalSimulator.js';
 // valid scalar.
 const L =
   6554484396890773809930967563523245729705921265872317281365359162392183254199n;
+
+// Compact `Field` modulus (BLS12-381 scalar field).
+const P =
+  52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
 // A recipient's secret scalar and their derived public key g^ek.
 const EK = 111222333444555n;
@@ -54,6 +59,17 @@ describe('EcdhMask', () => {
       expect(
         await contract.encrypt(PK, GOLDEN_VALUE, GOLDEN_E, GOLDEN_DOMAIN),
       ).toStrictEqual(GOLDEN_CIPHERTEXT);
+    });
+  });
+
+  describe('composition with crypto/Ecdh', () => {
+    it('encrypt equals deriveShared then kdf then add', async () => {
+      const shared = ecdh.deriveShared(PK, 42n);
+      const mask = await contract.kdf(shared.sShared, DOMAIN);
+      expect(await contract.encrypt(PK, 1000n, 42n, DOMAIN)).toStrictEqual({
+        ephemeralPk: shared.ephemeralPk,
+        ct: (1000n + mask) % P,
+      });
     });
   });
 
