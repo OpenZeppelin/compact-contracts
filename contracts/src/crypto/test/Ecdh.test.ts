@@ -27,6 +27,12 @@ const MIXED_ORDER = constructJubjubPoint(Q - PK.x, Q - PK.y);
 // Fails the twisted Edwards equation.
 const OFF_CURVE = constructJubjubPoint(1n, 1n);
 
+// Runtime error text: the subgroup check trips on an on-curve point outside
+// the prime-order subgroup; an off-curve point fails to decode as a point.
+const SUBGROUP_TRAP = 'unreachable';
+const OFF_CURVE_DECODE =
+  'failed to decode for built-in type EmbeddedGroupAffine after successful typecheck';
+
 describe('Ecdh', () => {
   describe('weak-input guards', () => {
     it('rejects the identity public key', () => {
@@ -82,19 +88,27 @@ describe('Ecdh', () => {
 
   describe('subgroup boundary', () => {
     it('traps deriveShared on a mixed-order recipient key', () => {
-      expect(() => pureCircuits.deriveShared(MIXED_ORDER, 42n)).toThrow();
+      expect(() => pureCircuits.deriveShared(MIXED_ORDER, 42n)).toThrow(
+        SUBGROUP_TRAP,
+      );
     });
 
     it('traps deriveShared on an off-curve recipient key', () => {
-      expect(() => pureCircuits.deriveShared(OFF_CURVE, 42n)).toThrow();
+      expect(() => pureCircuits.deriveShared(OFF_CURVE, 42n)).toThrow(
+        OFF_CURVE_DECODE,
+      );
     });
 
     it('traps recoverShared on a mixed-order ephemeral point', () => {
-      expect(() => pureCircuits.recoverShared(MIXED_ORDER, EK)).toThrow();
+      expect(() => pureCircuits.recoverShared(MIXED_ORDER, EK)).toThrow(
+        SUBGROUP_TRAP,
+      );
     });
 
     it('traps recoverShared on an off-curve ephemeral point', () => {
-      expect(() => pureCircuits.recoverShared(OFF_CURVE, EK)).toThrow();
+      expect(() => pureCircuits.recoverShared(OFF_CURVE, EK)).toThrow(
+        OFF_CURVE_DECODE,
+      );
     });
   });
 
