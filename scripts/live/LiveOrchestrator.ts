@@ -298,10 +298,10 @@ export class LiveOrchestrator {
 
       filesRun += statuses.size;
       // A file is only exempt from round 2 when the report can prove every
-      // one of its failures deterministic; an unreadable second read (should
-      // not happen — `fileStatuses` just parsed this file) or a hook-level
-      // crash with no failed assertions proves nothing, so `cause` stays
-      // unset and the file keeps its flake check.
+      // one of its failures deterministic, a hook-level crash included; an
+      // unreadable second read (should not happen — `fileStatuses` just
+      // parsed this file) proves nothing, so `cause` stays unset and the file
+      // keeps its flake check.
       const failureMessages = this.#runner.failedTestMessages(reportPath);
       failed.push(
         ...targetFailed.map((file) => ({

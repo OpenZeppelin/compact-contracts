@@ -199,6 +199,37 @@ describe('VitestRunner.failedTestMessages', () => {
     );
   });
 
+  it('appends a file-level hook message after the failed tests', () => {
+    const p = report(
+      'hook.json',
+      JSON.stringify({
+        testResults: [
+          {
+            name: 'a.test.ts',
+            status: 'failed',
+            message: 'Error: afterAll teardown failed',
+            assertionResults: [
+              {
+                fullName: 'A fails',
+                status: 'failed',
+                failureMessages: ['Error: Custom error: 186'],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(new VitestRunner().failedTestMessages(p)).toStrictEqual(
+      new Map([
+        [
+          'a.test.ts',
+          [['Error: Custom error: 186'], ['Error: afterAll teardown failed']],
+        ],
+      ]),
+    );
+  });
+
   it('reports no result when the report is missing', () => {
     expect(
       new VitestRunner().failedTestMessages(path.join(dir, 'absent.json')),

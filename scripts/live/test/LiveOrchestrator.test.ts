@@ -309,6 +309,29 @@ describe('LiveOrchestrator', () => {
 
     expect(ran).toHaveLength(2);
   });
+
+  it('keeps round 2 for a deterministic assertion beside a hook failure', async () => {
+    // The runner lists the file-level hook message as one more failure; it
+    // matches no fingerprint, so the file is not proven deterministic.
+    await roundOver({
+      fileStatuses: () => new Map([['a.test.ts', 'failed']]),
+      failedTestMessages: () =>
+        new Map([
+          [
+            'a.test.ts',
+            [
+              ['Error: Custom error: 186\n    at _mint…'],
+              ['Error: afterAll teardown failed'],
+            ],
+          ],
+        ]),
+    }).run();
+
+    expect(ran).toHaveLength(2);
+    expect(verdicts).toStrictEqual([
+      { flaky: [], real: ['a.test.ts'], causes: new Map() },
+    ]);
+  });
 });
 
 describe('classify', () => {

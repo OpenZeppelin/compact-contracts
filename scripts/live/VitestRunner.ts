@@ -22,6 +22,9 @@ export interface JsonTestResult {
   /** The spec file's path, as vitest saw it (absolute on this runner). */
   readonly name: string;
   readonly status: string;
+  /** The first file-level error's message (a `beforeAll`/`afterAll` hook
+   * failure); empty when the file itself did not fail. */
+  readonly message?: string;
   readonly assertionResults?: readonly JsonAssertionResult[];
 }
 export interface JsonReport {
@@ -129,9 +132,8 @@ export class VitestRunner {
   /**
    * For each file in the report, the failure messages of its failed tests —
    * one inner array per failed test, so a caller can tell "every failed test
-   * says X" from "one of them does". A file whose failure never reached an
-   * assertion (a hook crash reported only at file level) gets an empty list,
-   * which readers must treat as "cause unknown".
+   * says X" from "one of them does". A file-level failure (a hook crash) is
+   * one more entry after the tests, so it counts as a failure of its own.
    *
    * @returns `undefined` under the same conditions as {@link fileStatuses}
    */
@@ -139,15 +141,13 @@ export class VitestRunner {
     const report = this.#report(reportPath);
     if (report === undefined) return undefined;
     return new Map(
-      (report.testResults ?? []).map(
-        (r) =>
-          [
-            r.name,
-            (r.assertionResults ?? [])
-              .filter((a) => a.status === 'failed')
-              .map((a) => [...(a.failureMessages ?? [])]),
-          ] as const,
-      ),
+      (report.testResults ?? []).map((r) => {
+        const failures = (r.assertionResults ?? [])
+          .filter((a) => a.status === 'failed')
+          .map((a) => [...(a.failureMessages ?? [])]);
+        if (r.message) failures.push([r.message]);
+        return [r.name, failures] as const;
+      }),
     );
   }
 
