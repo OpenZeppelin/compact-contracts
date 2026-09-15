@@ -5,50 +5,51 @@ import {
 import {
   type ContractAddress,
   type Either,
-  Contract as ForwarderUnshielded,
+  Contract as ForwarderShielded,
   ledger,
-  type UserAddress,
-} from '../../../../../artifacts/ForwarderUnshielded/contract/index.js';
+  type ShieldedCoinInfo,
+  type ZswapCoinPublicKey,
+} from '../../../../../artifacts/ShieldedDepositForwarder/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
-type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
+type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 
-const ForwarderUnshieldedSimulatorBase = createSimulator<
+const ForwarderShieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ForwarderUnshielded<EmptyPrivateState>,
-  ForwarderUnshieldedArgs
+  ForwarderShielded<EmptyPrivateState>,
+  ForwarderShieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderUnshielded<EmptyPrivateState>(witnesses),
+    new ForwarderShielded<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parent) => [parent],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ForwarderUnshielded',
+  artifactName: 'ShieldedDepositForwarder',
 });
 
-export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBase {
+export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
   static async create(
-    parent: UserAddress,
+    parent: ZswapCoinPublicKey,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ForwarderUnshieldedSimulator> {
+  ): Promise<ForwarderShieldedSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [parent],
       options,
-    ) as Promise<ForwarderUnshieldedSimulator>;
+    ) as Promise<ForwarderShieldedSimulator>;
   }
 
-  public deposit(color: Uint8Array, amount: bigint): Promise<[]> {
-    return this.circuits.impure.deposit(color, amount);
+  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
+    return this.circuits.impure.deposit(coin);
   }
 
-  public getParent(): Promise<Either<ContractAddress, UserAddress>> {
+  public getParent(): Promise<Either<ZswapCoinPublicKey, ContractAddress>> {
     return this.circuits.impure.getParent();
   }
 }

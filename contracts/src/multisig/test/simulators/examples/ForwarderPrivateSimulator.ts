@@ -10,7 +10,7 @@ import {
   type ShieldedCoinInfo,
   type ShieldedSendResult,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/ForwarderPrivate/contract/index.js';
+} from '../../../../../artifacts/PrivateParentForwarder/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderPrivateArgs = readonly [parentCommitment: Uint8Array];
@@ -28,7 +28,7 @@ const ForwarderPrivateSimulatorBase = createSimulator<
   contractArgs: (parentCommitment) => [parentCommitment],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ForwarderPrivate',
+  artifactName: 'PrivateParentForwarder',
 });
 
 export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {
