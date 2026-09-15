@@ -20,7 +20,7 @@ const ZERO_KEY = utils.ZERO_KEY.left;
 const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
-describe('ShieldedDepositForwarder', () => {
+describe('ForwarderShieldedExample', () => {
   it('should store the parent passed to the constructor in the left arm', async () => {
     const fwd = await ForwarderShieldedSimulator.create(PARENT);
     const parent = await fwd.getParent();

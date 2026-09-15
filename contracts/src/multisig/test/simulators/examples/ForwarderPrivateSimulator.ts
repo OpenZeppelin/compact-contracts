@@ -3,14 +3,14 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
-  Contract as ForwarderPrivate,
+  Contract as ForwarderPrivateExample,
   ledger,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ShieldedSendResult,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/PrivateParentForwarder/contract/index.js';
+} from '../../../../../artifacts/ForwarderPrivateExample/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderPrivateArgs = readonly [parentCommitment: Uint8Array];
@@ -19,16 +19,16 @@ const ForwarderPrivateSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ForwarderPrivate<EmptyPrivateState>,
+  ForwarderPrivateExample<EmptyPrivateState>,
   ForwarderPrivateArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderPrivate<EmptyPrivateState>(witnesses),
+    new ForwarderPrivateExample<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parentCommitment) => [parentCommitment],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'PrivateParentForwarder',
+  artifactName: 'ForwarderPrivateExample',
 });
 
 export class ForwarderPrivateSimulator extends ForwarderPrivateSimulatorBase {

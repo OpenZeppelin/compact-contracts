@@ -5,10 +5,10 @@ import {
 import {
   type ContractAddress,
   type Either,
-  Contract as ForwarderUnshielded,
+  Contract as ForwarderUnshieldedExample,
   ledger,
   type UserAddress,
-} from '../../../../../artifacts/UnshieldedDepositForwarder/contract/index.js';
+} from '../../../../../artifacts/ForwarderUnshieldedExample/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
 
 type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
@@ -17,16 +17,16 @@ const ForwarderUnshieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ForwarderUnshielded<EmptyPrivateState>,
+  ForwarderUnshieldedExample<EmptyPrivateState>,
   ForwarderUnshieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderUnshielded<EmptyPrivateState>(witnesses),
+    new ForwarderUnshieldedExample<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parent) => [parent],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'UnshieldedDepositForwarder',
+  artifactName: 'ForwarderUnshieldedExample',
 });
 
 export class ForwarderUnshieldedSimulator extends ForwarderUnshieldedSimulatorBase {

@@ -28,7 +28,7 @@ function commitment(parent: Uint8Array, opSecret: Uint8Array): Uint8Array {
   return ForwarderPrivateSimulator.calculateParentCommitment(parent, opSecret);
 }
 
-describe('PrivateParentForwarder', () => {
+describe('ForwarderPrivateExample', () => {
   it('should store the parentCommitment passed to the constructor', async () => {
     const c = commitment(PARENT_BYTES, OP_SECRET);
     const fwd = await ForwarderPrivateSimulator.create(c);

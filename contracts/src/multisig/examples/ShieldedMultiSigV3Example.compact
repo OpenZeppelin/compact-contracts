@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/NativeShieldedTokenIssuer.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedMultiSigV3Example.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title NativeShieldedTokenIssuer
+ * @title ShieldedMultiSigV3Example
  * @description Deployable reference contract for the `ShieldedMultiSigV3`
  * preset: a native shielded token whose supply enters only through an
  * ECDSA-authorized mint and leaves only through an ECDSA-authorized burn.

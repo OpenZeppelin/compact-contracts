@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/UnshieldedDepositForwarder.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ForwarderUnshieldedExample.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title UnshieldedDepositForwarder
+ * @title ForwarderUnshieldedExample
  * @description Public-parent forwarder for unshielded coins. Receives
  * an unshielded amount of a given color and atomically forwards it to
  * the configured parent recipient, a user address.
