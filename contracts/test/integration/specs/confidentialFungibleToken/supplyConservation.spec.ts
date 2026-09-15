@@ -121,13 +121,25 @@ describe.skipIf(isLiveBackend())(
       await cft.burn(10n);
       expect(await cft.totalSupply()).toBe(90n);
 
-      // Alice burns her remaining 70: the total drops to exactly Bob's
-      // remaining 20.
+      // Alice burns her remaining 70, leaving exactly Bob's 20. Both balances
+      // are pinned by the witness before the supply reaches zero.
       await actAs(cft, ALICE);
       const aliceBalance = await cft.balanceOf(ALICE.accountId);
       await cft.privateState.cachePlaintext(aliceBalance, 70n);
       await cft.burn(70n);
       expect(await cft.totalSupply()).toBe(20n);
+
+      const aliceBalanceAfter = await cft.balanceOf(ALICE.accountId);
+      await cft.privateState.cachePlaintext(aliceBalanceAfter, 0n);
+      await expect(cft.burn(1n)).rejects.toThrow(
+        'ConfidentialFungibleToken: insufficient balance',
+      );
+
+      await actAs(cft, BOB);
+      const bobBalanceAfter = await cft.balanceOf(BOB.accountId);
+      await cft.privateState.cachePlaintext(bobBalanceAfter, 20n);
+      await cft.burn(20n);
+      expect(await cft.totalSupply()).toBe(0n);
     });
   },
 );

@@ -25,13 +25,19 @@ describe.skipIf(isLiveBackend())(
       cft = await deployCft();
     });
 
-    it('should debit the caller and decrease totalSupply', async () => {
+    it('should debit the caller by exactly the burned value and decrease totalSupply', async () => {
       await registerAs(cft, ALICE);
       await fundAs(cft, ALICE, 100n);
 
       await cft.burn(40n);
 
       expect(await cft.totalSupply()).toBe(60n);
+
+      // A burn(60) only proves with a 60 witness, so the first burn debited exactly 40.
+      const aliceBalance = await cft.balanceOf(ALICE.accountId);
+      await cft.privateState.cachePlaintext(aliceBalance, 60n);
+      await cft.burn(60n);
+      expect(await cft.totalSupply()).toBe(0n);
     });
 
     it('should allow burning the entire balance', async () => {
