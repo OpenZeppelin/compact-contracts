@@ -56,6 +56,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 2 # Recommended by turbo team
 
       # No Compact compiler and no turbo cache: this job compiles nothing, and
