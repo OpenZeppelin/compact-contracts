@@ -20,10 +20,11 @@ import {
 //
 // The simulator executes sequentially, so these specs prove the CAUSE rather
 // than replay the race: with all witness randomness pinned, they show a
-// credit's output is a deterministic function of the recipient's prior state
-// (same inputs + different pre-state => different transcript), that credits
-// to distinct recipients touch disjoint state (no conflict), and that sweep
-// writes the same contested cell.
+// credit's output depends on the recipient's prior state (same inputs +
+// different pre-state => different transcript), that a credit leaves other
+// recipients' cells untouched, that sweep writes the same contested pending
+// cell, and that every composed supply op rewrites one public totalSupply
+// cell, so supply ops serialize regardless of recipient.
 // ---------------------------------------------------------------------------
 
 const FIXED_SEED = new Uint8Array(32).fill(7);
@@ -76,7 +77,7 @@ describe.skipIf(isLiveBackend())(
       expect(memos[0]).not.toEqual(memos[1]);
     });
 
-    it('should keep credits to distinct recipients on disjoint state', async () => {
+    it('should leave another recipient’s cells untouched by a credit', async () => {
       await registerAs(cft, ALICE);
       await registerAs(cft, BOB);
       await actAs(cft, ALICE);
@@ -89,14 +90,37 @@ describe.skipIf(isLiveBackend())(
         ALICE.accountId,
       ).length();
 
-      // Bob's credit reads and writes only Bob's cells: Alice's pending
-      // ciphertext and memo list are untouched, so the two credits could land
-      // in the same block without conflict.
+      // Bob's credit reads and writes only Bob's pending and memo cells;
+      // Alice's are untouched. The composed mint still rewrites the shared
+      // totalSupply cell, so the two mints serialize there (next case).
       await cft.mint(BOB.accountId, 50n);
       expect(await cft.pendingOf(ALICE.accountId)).toEqual(alicePending);
       const afterLedger = await cft.getPublicState();
       expect(afterLedger.Token__memos.lookup(ALICE.accountId).length()).toBe(
         aliceMemos,
+      );
+    });
+
+    it('should serialize supply ops on the shared totalSupply cell', async () => {
+      const other = await deployCft();
+      for (const sim of [cft, other]) {
+        await registerAs(sim, ALICE);
+        await registerAs(sim, BOB);
+        await sim.privateState.setRandomnessSeed(FIXED_SEED);
+      }
+      await cft.mint(ALICE.accountId, 50n);
+
+      // The same credit to Bob against two supply pre-states writes the same
+      // recipient cells but a different totalSupply value, so mint, burn, and
+      // burnFrom all pin that one cell and serialize with each other regardless
+      // of recipient.
+      await cft.mint(BOB.accountId, 50n);
+      await other.mint(BOB.accountId, 50n);
+
+      expect((await cft.getPublicState()).Supply__totalSupply).toBe(100n);
+      expect((await other.getPublicState()).Supply__totalSupply).toBe(50n);
+      expect(await cft.pendingOf(BOB.accountId)).toEqual(
+        await other.pendingOf(BOB.accountId),
       );
     });
 
