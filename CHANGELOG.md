@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Bump `@openzeppelin/compact-cli` `^0.0.3` → `^0.1.1`, which picks up `@openzeppelin/compact-builder` `0.0.5` so a failed `compact compile` fails the build. `0.0.4` ran the compiler under `script -qc`, which exits 0 whatever the compiler did, so `compile` and `build` reported `✔ Compiled` and wrote no artifact ([OpenZeppelin/compact-tools#162](https://github.com/OpenZeppelin/compact-tools/pull/162)). `compact-cli` `0.1.1` requires Node 24, so `engines.node` is raised `>=22` → `>=24`, matching `.nvmrc`. Fixes #894.
+- Pass `--feature-zkir-v3` in the aggregate `compile` and `build` scripts, which previously swallowed the failure of every file needing ZKIR v3. `crypto/Ecdsa`, `multisig/EcdsaSignerManager`, their mocks, and the `ShieldedMultiSigV2` / `ShieldedMultiSigV3` presets now produce artifacts from a plain `yarn compile` (63 → 69).
+
 ## 0.4.0-alpha.1 (2026-09-02)
 
 ### Added
