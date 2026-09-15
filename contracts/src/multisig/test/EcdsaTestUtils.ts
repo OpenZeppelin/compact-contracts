@@ -75,7 +75,7 @@ export function recipientHash(recipient: EitherRecipient): Uint8Array {
 
 // ─── Per-preset message hashes ──────────────────────────────────
 
-/** ShieldedMultiSigV3 `mint` digest. `contractAddress` is `kernel.self().bytes`. */
+/** NativeShieldedTokenIssuer `mint` digest. `contractAddress` is `kernel.self().bytes`. */
 export function mintMsgHash(params: {
   contractAddress: Uint8Array;
   recipient: EitherRecipient;
@@ -91,7 +91,7 @@ export function mintMsgHash(params: {
   ]);
 }
 
-/** ShieldedMultiSigV3 `burn` digest. */
+/** NativeShieldedTokenIssuer `burn` digest. */
 export function burnMsgHash(params: {
   contractAddress: Uint8Array;
   opNonce: bigint;
