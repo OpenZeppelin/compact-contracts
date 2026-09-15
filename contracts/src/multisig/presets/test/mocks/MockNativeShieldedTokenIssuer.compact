@@ -48,6 +48,13 @@ constructor(
   }
 }
 
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return NativeShieldedTokenIssuer__calculateSignerId(pk, salt);
+}
+
 export circuit mint(
   amount: Uint<64>,
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -64,13 +71,6 @@ export circuit burn(
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): Maybe<ShieldedCoinInfo> {
   return NativeShieldedTokenIssuer_burn(coin, amount, pubkeys, signatures);
-}
-
-export pure circuit _calculateSignerId(
-  pk: Secp256k1Point,
-  salt: Bytes<32>
-): Bytes<32> {
-  return NativeShieldedTokenIssuer__calculateSignerId(pk, salt);
 }
 
 export circuit getNonce(): Uint<64> {
