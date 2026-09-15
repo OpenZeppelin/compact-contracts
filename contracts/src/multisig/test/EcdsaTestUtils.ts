@@ -123,7 +123,7 @@ const RecipientType: CompactType<KindRecipient> = {
     RecipientKindEnum.toValue(value.kind).concat(B32.toValue(value.address)),
 };
 
-/** ShieldedMultiSigV2 `execute` digest. `contractAddress` is `kernel.self().bytes`. */
+/** NativeShieldedStatelessTreasury `execute` digest. `contractAddress` is `kernel.self().bytes`. */
 export function executeMsgHash(params: {
   contractAddress: Uint8Array;
   nonce: bigint;

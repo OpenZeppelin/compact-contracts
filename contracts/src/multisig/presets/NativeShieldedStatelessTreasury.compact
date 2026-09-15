@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/ShieldedMultiSigV2.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/NativeShieldedStatelessTreasury.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @module ShieldedMultiSigV2
+ * @module NativeShieldedStatelessTreasury
  * @description Privacy-preserving 2-of-3 multisig contract.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
@@ -19,7 +19,7 @@ pragma language_version >= 0.26.0;
  * through ZswapOutput events from the indexer, constructs QualifiedShieldedCoinInfo
  * off-chain, and provides it as a circuit parameter for spending.
  */
-module ShieldedMultiSigV2 {
+module NativeShieldedStatelessTreasury {
   import CompactStandardLibrary;
 
   import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
@@ -72,7 +72,7 @@ module ShieldedMultiSigV2 {
   ): [] {
     assert(
       thresh <= 2,
-      "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
+      "NativeShieldedStatelessTreasury: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
     );
     EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, thresh);
   }
