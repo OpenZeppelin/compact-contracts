@@ -11,7 +11,7 @@ import {
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
 import { executeMsgHash } from '../../test/EcdsaTestUtils.js';
-import { ShieldedMultiSigV2Simulator } from './simulators/ShieldedMultiSigV2Simulator.js';
+import { NativeShieldedStatelessTreasurySimulator } from './simulators/NativeShieldedStatelessTreasurySimulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 
@@ -30,15 +30,15 @@ const S2 = signerFromLabel('v2-signer-2');
 const S3 = signerFromLabel('v2-signer-3');
 const OUTSIDER = signerFromLabel('v2-outsider');
 
-const COMMITMENT1 = ShieldedMultiSigV2Simulator.calculateSignerId(
+const COMMITMENT1 = NativeShieldedStatelessTreasurySimulator.calculateSignerId(
   S1.publicKey,
   INSTANCE_SALT,
 );
-const COMMITMENT2 = ShieldedMultiSigV2Simulator.calculateSignerId(
+const COMMITMENT2 = NativeShieldedStatelessTreasurySimulator.calculateSignerId(
   S2.publicKey,
   INSTANCE_SALT,
 );
-const COMMITMENT3 = ShieldedMultiSigV2Simulator.calculateSignerId(
+const COMMITMENT3 = NativeShieldedStatelessTreasurySimulator.calculateSignerId(
   S3.publicKey,
   INSTANCE_SALT,
 );
@@ -73,12 +73,12 @@ function makeQualifiedCoin(
 const hexBytes = (hex: string): Uint8Array =>
   Uint8Array.from(Buffer.from(hex, 'hex'));
 
-let multisig: ShieldedMultiSigV2Simulator;
+let multisig: NativeShieldedStatelessTreasurySimulator;
 
 // The digest `execute` computes: persistentHash([domain, self, nonce,
 // persistentHash(to), coin.color, amount]).
 async function executeDigest(
-  m: ShieldedMultiSigV2Simulator,
+  m: NativeShieldedStatelessTreasurySimulator,
   to: { kind: number; address: Uint8Array },
   coin: { color: Uint8Array },
   amount: bigint,
@@ -95,17 +95,17 @@ async function executeDigest(
 // A fresh 2-of-3 stateless multisig. Mutating groups build one per test
 // (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
 const freshMultisig = () =>
-  ShieldedMultiSigV2Simulator.create(
+  NativeShieldedStatelessTreasurySimulator.create(
     INSTANCE_SALT,
     SIGNER_COMMITMENTS,
     2n,
     true,
   );
 
-describe('ShieldedMultiSigV2', () => {
+describe('NativeShieldedStatelessTreasury', () => {
   describe('constructor', () => {
     it('should initialize with 2-of-3 threshold', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await NativeShieldedStatelessTreasurySimulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -116,7 +116,7 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should initialize with 1-of-3 threshold', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await NativeShieldedStatelessTreasurySimulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         1n,
@@ -127,7 +127,7 @@ describe('ShieldedMultiSigV2', () => {
 
     it('should fail with zero threshold', async () => {
       await expect(
-        ShieldedMultiSigV2Simulator.create(
+        NativeShieldedStatelessTreasurySimulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
           0n,
@@ -138,19 +138,19 @@ describe('ShieldedMultiSigV2', () => {
 
     it('should fail with threshold greater than 2', async () => {
       await expect(
-        ShieldedMultiSigV2Simulator.create(
+        NativeShieldedStatelessTreasurySimulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
           3n,
           true,
         ),
       ).rejects.toThrow(
-        'ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)',
+        'NativeShieldedStatelessTreasury: threshold cannot exceed 2 (execute verifies at most 2 signatures)',
       );
     });
 
     it('should register all signer commitments', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await NativeShieldedStatelessTreasurySimulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -162,21 +162,22 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should reject a non-signer commitment', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await NativeShieldedStatelessTreasurySimulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
         true,
       );
-      const unknown = ShieldedMultiSigV2Simulator.calculateSignerId(
-        OUTSIDER.publicKey,
-        INSTANCE_SALT,
-      );
+      const unknown =
+        NativeShieldedStatelessTreasurySimulator.calculateSignerId(
+          OUTSIDER.publicKey,
+          INSTANCE_SALT,
+        );
       expect(await multisig.isSigner(unknown)).toEqual(false);
     });
 
     it('fails when initialized twice', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await NativeShieldedStatelessTreasurySimulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         2n,
@@ -417,7 +418,7 @@ describe('ShieldedMultiSigV2', () => {
 
       it('should reject a signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await ShieldedMultiSigV2Simulator.create(
+        const instance2 = await NativeShieldedStatelessTreasurySimulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
           2n,

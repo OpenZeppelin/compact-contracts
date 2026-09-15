@@ -1,0 +1,374 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/NativeShieldedStatelessTreasury.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module NativeShieldedStatelessTreasury
+ * @description A 2-of-3 ECDSA multisig treasury for shielded coins. Anyone may
+ * deposit; value leaves only through `execute`, a single tx carrying two
+ * registered signers' approvals, so no single party can spend. There is no
+ * proposal lifecycle: signatures are collected off-chain and verified in that
+ * one tx.
+ *
+ * Composes `EcdsaSignerManager` (signer commitments, approval checks),
+ * `ShieldedTreasuryStateless` as `Treasury_` (deposit and send, no coin state
+ * on the ledger) and `ProposalManager` as `Proposal_` for its `Recipient` type
+ * and `toShieldedRecipient` alone.
+ *
+ * @dev Notation:
+ * - `H<T>(...)`: `persistentHash<T>` (SHA-256) over the Compact encoding of
+ *   `T`, a `Bytes<32>` digest.
+ * - `self`: `kernel.self().bytes`, this contract's address.
+ * - `nonce`: the `_nonce` value read at the start of `execute`, the signature
+ *   replay counter.
+ * - `cm`: a signer commitment, the registry key.
+ *
+ * @dev Derivations:
+ * - Execute digest: `H<Vector<6, Bytes<32>>>([pad(32, "multisig:execute:"),
+ *   self, nonce as Bytes<32>, H<Proposal_Recipient>(to), coin.color, amount as
+ *   Bytes<32>])`.
+ * - Signer commitment: `cm = H<SignerCommitmentInput>({ pkX, pkY, salt,
+ *   domain: pad(32, "multisig:signer:") })`, `pkX` / `pkY` the affine
+ *   coordinates as `Bytes<32>`. `_calculateSignerId` is the exported pure
+ *   circuit.
+ * - Encoding: `H` hashes the Compact encoding, not a byte concatenation.
+ *   `contracts/src/multisig/test/EcdsaTestUtils.ts` pins the TS mirror
+ *   (`executeMsgHash`).
+ *
+ * @dev Parameterization:
+ * The signer set is `Vector<3, Bytes<32>>` and the approval vectors are
+ * `Vector<2>`. `instanceSalt` and `thresh` are per-deployment `initialize`
+ * values, fixed for the contract's life; `thresh` is capped at 2.
+ *
+ * @dev Compatibility:
+ * The wire format a signer implementation has to match is the execute digest
+ * layout, the domain tags (`multisig:execute:`, `multisig:signer:`), the `cm`
+ * preimage struct, the `Recipient` encoding (kind tag then address) and the
+ * `Vector<2>` / `Vector<3>` shapes. Changing any of them breaks every existing
+ * signer setup. The test suite pins them through `EcdsaTestUtils.ts`.
+ *
+ * @notice Privacy:
+ * - Public, per tx:
+ *   - Entry point: deposit vs execute.
+ *   - Approvers: the two signer commitments (`disclose(commitment)` in
+ *     `Signer_assertSigner`), so WHICH two of the three signers approved.
+ *   - Deposit: the received coin (`disclose(coin)` in `Treasury__deposit`), so
+ *     its nonce, color and value.
+ *   - Execute: the spent coin (`mt_index` included), the recipient, the
+ *     amount, the nullifier, and the change coin. `execute` returns the
+ *     `ShieldedSendResult` from its entry point, which publishes the sent and
+ *     change coins in plaintext (see `ShieldedTreasuryStateless._send`).
+ * - Public, as state:
+ *   - Cells: `_nonce`, `_instanceSalt`, the signer commitment set, signer
+ *     count and threshold. Only `_nonce` reaches the implementing contract's
+ *     `ledger()` reader; the rest sit behind prefixed imports and are read
+ *     through the view circuits.
+ *   - Absent: no coin map, no balances, no received or sent totals.
+ * - Private:
+ *   - Signer material: public keys and signatures are verified in-circuit,
+ *     never disclosed.
+ *   - Operation data: nothing; recipient, amount and coin are disclosed.
+ * - Signer identity: keys sit behind `cm` with a public salt, so an observer
+ *   holding a candidate key can test membership; one without cannot correlate
+ *   a signer across deployments.
+ * - Auditability: every deposit and every spend discloses its coin, so the
+ *   treasury's holdings are reconstructable from the transcripts although no
+ *   balance is stored. A coin commitment is a hash of the coin's data, so a
+ *   receive and its later spend are linkable.
+ *
+ * @notice Security:
+ * - Digest binding: the digest binds the operation tag, `self`, `nonce`, the
+ *   recipient (kind and address), `coin.color` and `amount`, so a signature
+ *   authorizes one spend on one instance at one nonce, and is neither
+ *   replayable nor redirectable.
+ * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
+ *   high-s encoding is an invalid signature.
+ * - Distinct signers: `assertApprovals` asserts both entries and rejects a
+ *   repeated commitment, so two distinct registered signers are always
+ *   required. A threshold of 1 therefore admits nothing extra, and
+ *   `initialize` rejects a threshold above 2, the number of approvals
+ *   `execute` verifies.
+ * - Open deposits: `deposit` has no access control, by design. Only `execute`
+ *   moves value out.
+ * - No coin bookkeeping: with no coin registry, a double spend or a coin the
+ *   contract does not own is rejected by the protocol at application time
+ *   rather than by an assert here. Sufficiency (`coin.value >= amount`) is
+ *   likewise left to `sendShielded`.
+ * - Immutable signer set: no signer reconfiguration circuit is exported, so
+ *   the three commitments and the threshold are fixed. Losing two of the three
+ *   keys freezes spending.
+ * - Atomicity: a failed assert rejects the whole tx before any state moves;
+ *   the nonce does not advance and the sender pays no fee.
+ *
+ * @notice Concurrency:
+ * - Replay nonce: `execute` reads `_nonce` into the digest. The read is
+ *   pinned, so any two executes in one block conflict: at most one lands per
+ *   block, and the losing signer pair re-signs at the next nonce.
+ * - `getNonce`: submitted as a tx it pins `_nonce` and conflicts with a
+ *   same-block `execute`.
+ * - Deposits: `deposit` writes no ledger state, so it commutes with
+ *   everything, a same-block `execute` included.
+ * - Views: the signer views read only state written by `initialize`, so they
+ *   commute with everything.
+ *
+ * @notice Scope:
+ * Deposit and send only. No mint, no burn, no unshielded rail, and no
+ * on-chain proposal: `ProposalManager` supplies the `Recipient` type and
+ * `toShieldedRecipient`, while its `_proposals` map and `_nextProposalId` are
+ * allocated by the import and never written. `toShieldedRecipient` accepts the
+ * `ShieldedUser` and `Contract` kinds and rejects `UnshieldedUser`. Coins the
+ * treasury holds are ordinary Zswap coins it neither tracks nor restricts.
+ *
+ * @notice Client-side duties:
+ * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
+ *   `_calculateSignerId(pk, salt)`, pass the three as `signerCommitments`.
+ * - Per operation: read `getNonce()`, rebuild the digest as
+ *   `EcdsaTestUtils.ts` does, collect two low-s signatures off-chain, submit
+ *   keys and signatures in matching `Vector<2>` positions.
+ * - Coin tracking: keep the treasury's coins off-chain, recovering each coin's
+ *   `mt_index` from the indexer's `ZswapOutput` / ledger events to build the
+ *   `QualifiedShieldedCoinInfo` that `execute` takes.
+ * - Change coin: persist the one `execute` returns. `sendShielded` emits it as
+ *   a fresh self-owned output, and it replaces the spent coin as the
+ *   treasury's holding.
+ *
+ * @notice Scalability:
+ * - Throughput: one `execute` per block (see Concurrency). Deposits write no
+ *   ledger state, so they do not contend.
+ * - State: constant-size, one counter and a three-entry signer set. Nothing
+ *   grows per deposit or spend.
+ * - Coins: no merge circuit, so the off-chain pool gains one coin per deposit
+ *   and `execute` spends exactly one of them. A spend larger than the largest
+ *   single coin is not expressible.
+ * - Amounts: `execute` takes `Uint<128>`.
+ *
+ * @dev Performance:
+ * - Largest circuit: `execute` (k=17, rows=98061), dominated by the two
+ *   secp256k1 ECDSA verifications in `assertApprovals` (k=17, rows=64916 on
+ *   its own).
+ * - `deposit` is k=13, rows=5898; the views run k=6 to k=8. Per-circuit `k`
+ *   and rows are on each `@circuitInfo` line, measured with
+ *   `--feature-zkir-v3` on compiler 0.34.0.
+ *
+ * @dev Composition:
+ * - Recorded intent: wire in the rest of `ProposalManager` for an on-chain
+ *   proposal lifecycle, at the cost its own `@warning` names: every proposal's
+ *   recipient, color and amount becomes public.
+ * - On-chain balances: swap `ShieldedTreasuryStateless` for `ShieldedTreasury`
+ *   to get one merged UTXO per color and cumulative totals, both published.
+ * - Unshielded rail: pair `Proposal_toUnshieldedRecipient` with
+ *   `UnshieldedTreasury`; this preset wires only the shielded one.
+ * - Other thresholds: widen `Vector<2>` in `execute` and
+ *   `EcdsaSignerManager_assertApprovals` (its duplicate check is exhaustive
+ *   only at width 2) and `Vector<3>` in `initialize`.
+ */
+module NativeShieldedStatelessTreasury {
+  import CompactStandardLibrary;
+
+  import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
+  import "../ProposalManager" prefix Proposal_;
+  import "../ShieldedTreasuryStateless" prefix Treasury_;
+
+  // Implementing contracts need this for the re-exported `execute` signature.
+  // Importing `ProposalManager` again instead would give them a second,
+  // unwritten copy of its state.
+  export { Proposal_Recipient };
+
+  /**
+   * @description Signature replay counter. `execute` reads it into its digest
+   * and increments it; `getNonce` returns the value the next digest binds to.
+   * The read is pinned, so at most one `execute` lands per block. Exported,
+   * so it is the only key the implementing contract's `ledger()` reader
+   * surfaces.
+   */
+  // TODO: move to a shared utils/Nonces module once one exists.
+  export ledger _nonce: Counter;
+
+  /**
+   * @description Registers 3 signer commitments and the approval threshold.
+   *
+   * @notice Call from the implementing contract's constructor only. A second
+   * call reverts with "Signer: contract already initialized".
+   *
+   * Each commitment is `persistentHash(pkX, pkY, instanceSalt,
+   * "multisig:signer:")`. Use the exported `_calculateSignerId` circuit to
+   * derive them consistently with in-circuit verification.
+   *
+   * The instanceSalt should be a random value to prevent the same public
+   * key from producing the same commitment across different multisig
+   * deployments, breaking cross-contract signer correlation.
+   *
+   * @dev A threshold of 1 does not weaken `execute`, which always verifies two
+   * distinct registered signers.
+   *
+   * Requirements:
+   *
+   * - `thresh` must be > 0 and <= 2 (matches the 2-signature `execute` surface).
+   * - `signerCommitments` must not contain duplicates.
+   * - `instanceSalt` should be cryptographically random.
+   *
+   * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
+   * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+   * @param {Uint<8>} thresh - Minimum approvals required.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize(
+    instanceSalt: Bytes<32>,
+    signerCommitments: Vector<3, Bytes<32>>,
+    thresh: Uint<8>,
+  ): [] {
+    assert(
+      thresh <= 2,
+      "NativeShieldedStatelessTreasury: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
+    );
+    EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, thresh);
+  }
+
+  /**
+   * @description Computes a signer commitment from a secp256k1 public key,
+   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   *
+   * Pure, so the deployer can derive constructor commitments off-chain.
+   *
+   * Requirements:
+   *
+   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
+   *
+   * @param {Secp256k1Point} pk - The secp256k1 public key.
+   * @param {Bytes<32>} salt - The instance salt.
+   *
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  export pure circuit _calculateSignerId(
+    pk: Secp256k1Point,
+    salt: Bytes<32>
+  ): Bytes<32> {
+    return EcdsaSignerManager_calculateSignerId(pk, salt);
+  }
+
+  /**
+   * @description Receives a shielded coin into the multisig treasury.
+   *
+   * No access control which allows anyone to deposit. The coin is claimed at the
+   * protocol level through receiveShielded. No coin data is stored on the
+   * public ledger, preserving full balance privacy.
+   *
+   * The operator discovers the coin's Merkle tree index by subscribing
+   * to ZswapOutput events via the indexer, filtering by contract address,
+   * and extracting mt_index. Combined with the known ShieldedCoinInfo,
+   * this produces the QualifiedShieldedCoinInfo needed for spending.
+   *
+   * @circuitInfo k=13, rows=5898 (zkir-v3)
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   */
+  export circuit deposit(coin: ShieldedCoinInfo): [] {
+    Treasury__deposit(coin);
+  }
+
+  /**
+   * @description Executes a shielded send authorized by threshold signatures.
+   *
+   * The circuit reads the current nonce from the ledger, increments it,
+   * then reconstructs the message hash that signers must have signed
+   * off-chain: `persistentHash([domain, kernel.self(), nonce,
+   * persistentHash(to), coin color, amount])`. The digest is domain-separated
+   * and bound to the contract instance and the full recipient (kind and
+   * address), so a signature authorizes exactly one operation on one instance.
+   *
+   * Approvals are checked by `EcdsaSignerManager`, which derives each signer's
+   * commitment from their public key and the instance salt, rejects duplicates,
+   * and enforces the threshold.
+   *
+   * @circuitInfo k=17, rows=98061 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - Both public keys must hash to registered signer commitments.
+   * - Both signatures must be valid over the message hash and use the low-s
+   *   encoding.
+   * - Signers must not be duplicates.
+   * - Coin value must be >= amount.
+   *
+   * @param {Proposal_Recipient} to - The recipient.
+   * @param {Uint<128>} amount - The amount to send.
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
+   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the operation.
+   *
+   * @returns {ShieldedSendResult} The send result including any change.
+   */
+  export circuit execute(
+    to: Proposal_Recipient,
+    amount: Uint<128>,
+    coin: QualifiedShieldedCoinInfo,
+    pubkeys: Vector<2, Secp256k1Point>,
+    signatures: Vector<2, Secp256k1EcdsaSignature>
+  ): ShieldedSendResult {
+    // Increment nonce
+    const currentNonce = _nonce;
+    _nonce.increment(1);
+
+    // Construct message hash
+    const msgHash = persistentHash<Vector<6, Bytes<32>>>([
+      pad(32, "multisig:execute:"),
+      kernel.self().bytes,
+      currentNonce as Bytes<32>,
+      persistentHash<Proposal_Recipient>(to),
+      coin.color,
+      amount as Bytes<32>
+    ]);
+
+    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+
+    // Execute transfer
+    const normalizedRecipient = Proposal_toShieldedRecipient(to);
+    return Treasury__send(coin, normalizedRecipient, amount);
+  }
+
+  /**
+   * @description Returns the nonce the next `execute` digest will bind to.
+   *
+   * @circuitInfo k=6, rows=34 (zkir-v3)
+   *
+   * @returns {Uint<64>} The current nonce.
+   */
+  export circuit getNonce(): Uint<64> {
+    return _nonce;
+  }
+
+  /**
+   * @description Returns the number of registered signers.
+   *
+   * @circuitInfo k=6, rows=34 (zkir-v3)
+   *
+   * @returns {Uint<8>} The signer count.
+   */
+  export circuit getSignerCount(): Uint<8> {
+    return EcdsaSignerManager_getSignerCount();
+  }
+
+  /**
+   * @description Returns the approval threshold.
+   *
+   * @circuitInfo k=6, rows=34 (zkir-v3)
+   *
+   * @returns {Uint<8>} The threshold.
+   */
+  export circuit getThreshold(): Uint<8> {
+    return EcdsaSignerManager_getThreshold();
+  }
+
+  /**
+   * @description Returns whether the given commitment is a registered signer.
+   *
+   * @circuitInfo k=8, rows=129 (zkir-v3)
+   *
+   * @param {Bytes<32>} commitment - The signer commitment to check.
+   * @returns {Boolean} True if registered.
+   */
+  export circuit isSigner(commitment: Bytes<32>): Boolean {
+    return EcdsaSignerManager_isSigner(commitment);
+  }
+}

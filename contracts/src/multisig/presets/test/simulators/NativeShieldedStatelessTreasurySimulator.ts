@@ -7,9 +7,9 @@ import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   type Ledger,
   ledger,
-  Contract as MockShieldedMultiSigV2,
+  Contract as MockNativeShieldedStatelessTreasury,
   pureCircuits,
-} from '../../../../../artifacts/MockShieldedMultiSigV2/contract/index.js';
+} from '../../../../../artifacts/MockNativeShieldedStatelessTreasury/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -28,22 +28,22 @@ type ShieldedSendResult = {
   sent: ShieldedCoinInfo;
 };
 
-type ShieldedMultiSigV2Args = readonly [
+type NativeShieldedStatelessTreasuryArgs = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   thresh: bigint,
   isInit: boolean,
 ];
 
-const ShieldedMultiSigV2SimulatorBase = createSimulator<
+const NativeShieldedStatelessTreasurySimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockShieldedMultiSigV2<EmptyPrivateState>,
-  ShieldedMultiSigV2Args
+  MockNativeShieldedStatelessTreasury<EmptyPrivateState>,
+  NativeShieldedStatelessTreasuryArgs
 >({
   contractFactory: (witnesses) =>
-    new MockShieldedMultiSigV2<EmptyPrivateState>(witnesses),
+    new MockNativeShieldedStatelessTreasury<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (instanceSalt, signerCommitments, thresh, isInit) => [
     instanceSalt,
@@ -53,10 +53,10 @@ const ShieldedMultiSigV2SimulatorBase = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockShieldedMultiSigV2',
+  artifactName: 'MockNativeShieldedStatelessTreasury',
 });
 
-export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
+export class NativeShieldedStatelessTreasurySimulator extends NativeShieldedStatelessTreasurySimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
@@ -66,12 +66,12 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigV2Simulator> {
+  ): Promise<NativeShieldedStatelessTreasurySimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [instanceSalt, signerCommitments, thresh, isInit],
       options,
-    ) as Promise<ShieldedMultiSigV2Simulator>;
+    ) as Promise<NativeShieldedStatelessTreasurySimulator>;
   }
 
   public initialize(
