@@ -93,10 +93,24 @@ module FungibleToken {
   export ledger _allowances: Map<Either<Bytes<32>, ContractAddress>,
                                  Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>;
 
+  /**
+   * @description Total tokens in circulation. `_update` raises it on a mint and
+   * lowers it on a burn, rejecting an increase that would overflow `Uint<128>`.
+   */
   export ledger _totalSupply: Uint<128>;
 
+  /**
+   * @description The token's human-readable name, set once at construction.
+   */
   export sealed ledger _name: Opaque<"string">;
+  /**
+   * @description The token's ticker symbol, set once at construction.
+   */
   export sealed ledger _symbol: Opaque<"string">;
+  /**
+   * @description The number of decimals used to display balances, set once at
+   * construction. Purely presentational; no circuit scales by it.
+   */
   export sealed ledger _decimals: Uint<8>;
 
 

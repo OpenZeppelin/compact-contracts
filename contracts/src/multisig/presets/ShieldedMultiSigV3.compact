@@ -51,8 +51,21 @@ export { ZswapCoinPublicKey };
 
 // ─── State ──────────────────────────────────────────────────────
 
+/**
+ * @description Monotonic operation counter. Each mint and burn reads it as that
+ * operation's nonce and then increments, so no two operations share one.
+ */
 export ledger _counter: Counter;
+/**
+ * @description The nonce for the next minted coin. Set at construction and
+ * evolved from `_counter` on every mint.
+ */
 export ledger _coinNonce: Bytes<32>;
+/**
+ * @description The domain separator for the token this multisig mints. The coin
+ * color is `tokenType(_tokenDomain, kernel.self())`, so it is bound to this
+ * contract instance. Set once at construction.
+ */
 export sealed ledger _tokenDomain: Bytes<32>;
 
 // ─── Constructor ────────────────────────────────────────────────

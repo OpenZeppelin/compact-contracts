@@ -41,8 +41,34 @@ module ShieldedTreasury {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description The treasury's shielded holdings, one coin per token color.
+   * A deposit of an existing color merges into the stored coin rather than
+   * adding a second entry.
+   * @type {Bytes<32>} color - The token color.
+   * @type {QualifiedShieldedCoinInfo} coin - The coin the treasury holds of it.
+   * @type {Map<color, coin>}
+   * @type {Map<Bytes<32>, QualifiedShieldedCoinInfo>} _coins
+   */
   export ledger _coins: Map<Bytes<32>, QualifiedShieldedCoinInfo>;
+  /**
+   * @description Lifetime deposits per token color. Only ever increases, so it
+   * is a running total rather than a balance; pair it with `_sent` to derive
+   * what the treasury still holds.
+   * @type {Bytes<32>} color - The token color.
+   * @type {Uint<128>} total - The amount deposited over the contract's life.
+   * @type {Map<color, total>}
+   * @type {Map<Bytes<32>, Uint<128>>} _received
+   */
   export ledger _received: Map<Bytes<32>, Uint<128>>;
+  /**
+   * @description Lifetime payouts per token color. The counterpart to
+   * `_received`; also only ever increases.
+   * @type {Bytes<32>} color - The token color.
+   * @type {Uint<128>} total - The amount sent over the contract's life.
+   * @type {Map<color, total>}
+   * @type {Map<Bytes<32>, Uint<128>>} _sent
+   */
   export ledger _sent: Map<Bytes<32>, Uint<128>>;
 
   // ─── Deposit ────────────────────────────────────────────────────

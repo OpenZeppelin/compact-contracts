@@ -199,6 +199,10 @@ module ShieldedAccessControl {
   /**
    * @ledger _adminRoles
    * @description Mapping from a role identifier to an admin role identifier.
+   * @type {RoleIdentifier} role - The role being administered.
+   * @type {RoleIdentifier} adminRole - The role permitted to grant and revoke it.
+   * @type {Map<role, adminRole>}
+   * @type {Map<RoleIdentifier, RoleIdentifier>} _adminRoles
    */
   export ledger _adminRoles: Map<RoleIdentifier, RoleIdentifier>;
 

@@ -12,6 +12,10 @@ pragma language_version >= 0.26.0;
 module Pausable {
   import CompactStandardLibrary;
 
+  /**
+   * @description Whether the contract is paused. Consuming contracts gate
+   * state-changing circuits on it via `assertPaused` / `assertNotPaused`.
+   */
   export ledger _isPaused: Boolean;
 
   /**

@@ -67,8 +67,20 @@ module Signer<T> {
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
+  /**
+   * @description The registered signer set. `T` is chosen by the consuming
+   * contract, so a signer is whatever identity that contract authenticates.
+   */
   export ledger _signers: Set<T>;
+  /**
+   * @description The number of registered signers.
+   */
   export ledger _signerCount: Uint<8>;
+  /**
+   * @description How many approvals an action requires. Never zero once
+   * initialized, and removals that would drop `_signerCount` below it are
+   * rejected.
+   */
   export ledger _threshold: Uint<8>;
 
   /**

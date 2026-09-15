@@ -33,7 +33,24 @@ import "../Signer"<Either<ZswapCoinPublicKey, ContractAddress>> prefix Signer_;
 
 // ─── State ───────────────────────────────────────────────────────────────
 
+/**
+ * @description Which signers have approved which proposal. The inner map is
+ * created lazily on a proposal's first approval, and revoking removes the
+ * signer's entry rather than setting it false.
+ * @type {Uint<64>} id - The proposal identifier.
+ * @type {Either<ZswapCoinPublicKey, ContractAddress>} signer - The approving signer.
+ * @type {Boolean} approved - Always true where present.
+ * @type {Map<id, Map<signer, approved>>}
+ * @type {Map<Uint<64>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>} _proposalApprovals
+ */
 export ledger _proposalApprovals: Map<Uint<64>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+/**
+ * @description How many signers have approved each proposal. Absent means zero.
+ * @type {Uint<64>} id - The proposal identifier.
+ * @type {Uint<8>} count - The number of current approvals.
+ * @type {Map<id, count>}
+ * @type {Map<Uint<64>, Uint<8>>} _approvalCount
+ */
 export ledger _approvalCount: Map<Uint<64>, Uint<8>>;
 
 // ─── Constructor ─────────────────────────────────────────────────────────
