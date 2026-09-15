@@ -191,8 +191,6 @@ module NativeShieldedTokenIssuer {
   import "../../token/NativeShieldedToken" prefix NST_;
   import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix NSTDerivedNonce_;
 
-  // ─── State ──────────────────────────────────────────────────────
-
   /**
    * @description Signature replay counter. `mint` and `burn` read it into
    * their digest and increment it; `getNonce` returns the value the next
@@ -202,8 +200,6 @@ module NativeShieldedTokenIssuer {
    */
   // TODO: move to a shared utils/Nonces module once one exists; stays separate from DerivedNonce's counter.
   export ledger _counter: Counter;
-
-  // ─── Initialization ─────────────────────────────────────────────
 
   /**
    * @description Registers the signer set and initializes the token metadata
@@ -241,7 +237,26 @@ module NativeShieldedTokenIssuer {
     NST_initialize(tokenDomain, name_, symbol_, decimals_);
   }
 
-  // ─── Mint ───────────────────────────────────────────────────────
+  /**
+   * @description Computes a signer commitment from a secp256k1 public key,
+   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   *
+   * Pure, so the deployer can derive constructor commitments off-chain.
+   *
+   * Requirements:
+   *
+   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
+   *
+   * @param {Secp256k1Point} pk - The secp256k1 public key.
+   * @param {Bytes<32>} salt - The instance salt.
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  export pure circuit _calculateSignerId(
+    pk: Secp256k1Point,
+    salt: Bytes<32>
+  ): Bytes<32> {
+    return EcdsaSignerManager_calculateSignerId(pk, salt);
+  }
 
   /**
    * @description Mints a new shielded coin of this contract's token to
@@ -295,8 +310,6 @@ module NativeShieldedTokenIssuer {
     return NST__mint(canonRecipient, amount, NSTDerivedNonce__deriveNonce());
   }
 
-  // ─── Burn ───────────────────────────────────────────────────────
-
   /**
    * @description Burns `amount` from a coin this contract holds, authorized
    * by threshold signatures.
@@ -344,31 +357,6 @@ module NativeShieldedTokenIssuer {
 
     return NST__burnFromSelf(coin, amount);
   }
-
-  // ─── Commitments ────────────────────────────────────────────────
-
-  /**
-   * @description Computes a signer commitment from a secp256k1 public key,
-   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
-   *
-   * Pure, so the deployer can derive constructor commitments off-chain.
-   *
-   * Requirements:
-   *
-   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
-   *
-   * @param {Secp256k1Point} pk - The secp256k1 public key.
-   * @param {Bytes<32>} salt - The instance salt.
-   * @returns {Bytes<32>} The signer commitment.
-   */
-  export pure circuit _calculateSignerId(
-    pk: Secp256k1Point,
-    salt: Bytes<32>
-  ): Bytes<32> {
-    return EcdsaSignerManager_calculateSignerId(pk, salt);
-  }
-
-  // ─── View ───────────────────────────────────────────────────────
 
   /**
    * @description Returns the counter the next mint or burn digest will bind to.
