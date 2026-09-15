@@ -15,28 +15,31 @@ import "../../ShieldedMultiSigV3" prefix ShieldedMultiSigV3_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-import { _counter, _coinNonce, _tokenDomain } from "../../ShieldedMultiSigV3";
-export { _counter, _coinNonce, _tokenDomain };
+import { _counter } from "../../ShieldedMultiSigV3";
+export { _counter };
 
 /**
  * @description `isInit` is a param for testing.
  *
  * If `isInit` is false, the constructor will not initialize the contract,
- * leaving the signer registry empty so the pre-initialization guards can be
- * exercised. The preset `initialize` is intentionally NOT exposed as a
- * circuit: it writes the `sealed` `_tokenDomain`, which the sealed-write rule
- * confines to constructor execution.
+ * leaving the signer registry empty and the token uninitialized so the
+ * pre-initialization guards can be exercised. The preset `initialize` is
+ * intentionally NOT exposed as a circuit: it writes the token module's
+ * `sealed` domain, which the sealed-write rule confines to constructor
+ * execution.
 */
 constructor(
   instanceSalt: Bytes<32>,
-  initCoinNonce: Bytes<32>,
   tokenDomain: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
   signerCommitments: Vector<3, Bytes<32>>,
   isInit: Boolean
 ) {
   if (disclose(isInit)) {
     EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
-    ShieldedMultiSigV3_initialize(initCoinNonce, tokenDomain);
+    ShieldedMultiSigV3_initialize(tokenDomain, name_, symbol_, decimals_);
   }
 }
 
@@ -45,7 +48,7 @@ export circuit mint(
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
-): [] {
+): ShieldedCoinInfo {
   return ShieldedMultiSigV3_mint(amount, recipient, pubkeys, signatures);
 }
 
@@ -54,7 +57,7 @@ export circuit burn(
   amount: Uint<64>,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
-): [] {
+): Maybe<ShieldedCoinInfo> {
   return ShieldedMultiSigV3_burn(coin, amount, pubkeys, signatures);
 }
 
@@ -69,12 +72,20 @@ export circuit getNonce(): Uint<64> {
   return ShieldedMultiSigV3_getNonce();
 }
 
-export circuit getTokenDomain(): Bytes<32> {
-  return ShieldedMultiSigV3_getTokenDomain();
+export circuit name(): Opaque<"string"> {
+  return ShieldedMultiSigV3_name();
 }
 
-export circuit getTokenType(): Bytes<32> {
-  return ShieldedMultiSigV3_getTokenType();
+export circuit symbol(): Opaque<"string"> {
+  return ShieldedMultiSigV3_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return ShieldedMultiSigV3_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return ShieldedMultiSigV3_tokenColor();
 }
 
 export circuit getSignerCount(): Uint<8> {

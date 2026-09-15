@@ -16,18 +16,20 @@ pragma language_version >= 0.26.0;
  * - Change coins from partial burns handled by the transaction layer
  * - Operator discovers coins via ZswapOutput events from the indexer
  *
- * Uses Midnight's native shielded token primitives:
+ * Mint and burn are delegated to `NativeShieldedToken`, and coin nonces to
+ * `NativeShieldedTokenDerivedNonce`:
  *
- * - `mint` creates a new UTXO via `mintShieldedToken`, addressed to the
- *   contract. No external coin input; supply is produced on-chain.
- * - `burn` consumes a UTXO via `sendShielded` to `shieldedBurnAddress()`. Only
- *   coins of this contract's token type can be burned. Change is handled
- *   automatically by the transaction layer.
+ * - `mint` creates a new UTXO of this contract's token through `NST__mint`,
+ *   addressed to the provided recipient. No external coin input; supply is
+ *   produced on-chain.
+ * - `burn` destroys value from a coin the contract already holds through
+ *   `NST__burnFromSelf`. Only coins of this contract's color can be burned,
+ *   and the change is auto-received by the contract and returned.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public keys
- * combined with an instance salt and domain separator. A counter
- * provides replay protection, and also feeds `evolveNonce` to produce
- * unique coin nonces on each mint.
+ * combined with an instance salt and domain separator. A counter provides
+ * replay protection for the signed digests; coin nonces come from the
+ * derived-nonce extension's own counter.
  *
  * Operation domain prefixes ("multisig:mint:" / "multisig:burn:") in the message
  * hash prevent signatures for one operation type from being replayed as
@@ -46,68 +48,54 @@ module ShieldedMultiSigV3 {
 
   import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
   import "../../utils/Utils" prefix Utils_;
+  import "../../token/NativeShieldedToken" prefix NST_;
+  import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix NSTDerivedNonce_;
 
   // ─── State ──────────────────────────────────────────────────────
 
   export ledger _counter: Counter;
-  export ledger _coinNonce: Bytes<32>;
-  export sealed ledger _tokenDomain: Bytes<32>;
 
   // ─── Initialization ─────────────────────────────────────────────
 
   /**
-   * @description Sets the token domain and the initial coin nonce.
+   * @description Initializes the token metadata and domain.
    *
    * @notice Call from the implementing contract's constructor only. It writes
-   * the `sealed` `_tokenDomain`, so implementing contracts MUST NOT expose it
-   * as a post-deploy circuit. The same constructor must register the signer set
-   * through `EcdsaSignerManager_initialize<3>` with a threshold of 2.
+   * the token module's `sealed` domain, so implementing contracts MUST NOT
+   * expose it as a post-deploy circuit. The same constructor must register the
+   * signer set through `EcdsaSignerManager_initialize<3>` with a threshold of 2.
    *
-   * `tokenDomain` is used with `kernel.self()` to derive the token color
-   * via `tokenType(_tokenDomain, kernel.self())`. Only coins of this color
-   * can be burned through this contract.
+   * The token color is `tokenType(tokenDomain, kernel.self())`. Only coins
+   * of this color can be burned through this contract.
    *
-   * `initCoinNonce` seeds the `evolveNonce` chain used to produce unique
-   * mint nonces. It must be cryptographically random.
-   *
-   * Requirements:
-   *
-   * - `initCoinNonce` should be cryptographically random.
-   *
-   * @param {Bytes<32>} initCoinNonce - Initial coin nonce seed.
-   * @param {Bytes<32>} tokenDomain - Domain string used to derive this contract's token color.
+   * @param {Bytes<32>} tokenDomain - Domain separator for this contract's token color.
+   * @param {Opaque<"string">} name_ - The token name.
+   * @param {Opaque<"string">} symbol_ - The token symbol.
+   * @param {Uint<8>} decimals_ - The token decimals.
    * @returns {[]} Empty tuple.
    */
   export circuit initialize(
-    initCoinNonce: Bytes<32>,
     tokenDomain: Bytes<32>,
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
   ): [] {
-    _coinNonce = disclose(initCoinNonce);
-    _tokenDomain = disclose(tokenDomain);
+    NST_initialize(tokenDomain, name_, symbol_, decimals_);
   }
 
   // ─── Mint ───────────────────────────────────────────────────────
 
   /**
-   * @description Mints a new shielded coin addressed to the specified
-   * recipient, authorized by threshold signatures.
+   * @description Mints a new shielded coin of this contract's token to
+   * `recipient`, authorized by threshold signatures.
    *
-   * Creates a new UTXO of this contract's token type via `mintShieldedToken`,
-   * addressed to the provided recipient. No external coin input is required;
-   * supply is produced on-chain.
+   * The coin nonce comes from `NativeShieldedTokenDerivedNonce`, so the mint
+   * is recipient-public.
    *
-   * The message hash commits to:
-   *   - operation domain ("multisig:mint:" for burn op replay protection)
-   *   - contract address (cross-instance replay protection)
-   *   - recipient (redirection protection)
-   *   - counter value (replay protection)
-   *   - amount
+   * @notice The returned coin info is the only copy available to the
+   * recipient; deliver it out of band.
    *
-   * Coin nonce uniqueness is guaranteed by `evolveNonce(_counter, _coinNonce)`
-   * after the counter has been incremented, binding each mint's nonce to a
-   * distinct counter value.
-   *
-   * @constraints k=17, rows=84506 (zkir-v3)
+   * @constraints k=17, rows=84546 (zkir-v3)
    *
    * Requirements:
    *
@@ -115,18 +103,20 @@ module ShieldedMultiSigV3 {
    * - Both signatures must be valid over the mint message hash.
    * - Signers must not be duplicates.
    * - Threshold must be met.
+   * - `recipient` is not zero.
    *
    * @param {Uint<64>} amount - The token amount to mint.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The address to receive the minted tokens.
    * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
    * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
+   * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mint(
     amount: Uint<64>,
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
     pubkeys: Vector<2, Secp256k1Point>,
     signatures: Vector<2, Secp256k1EcdsaSignature>
-  ): [] {
+  ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
 
@@ -144,34 +134,21 @@ module ShieldedMultiSigV3 {
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
 
-    _coinNonce = evolveNonce(_counter, _coinNonce);
-    mintShieldedToken(_tokenDomain, disclose(amount), _coinNonce, disclose(canonRecipient));
+    return NST__mint(canonRecipient, amount, NSTDerivedNonce__deriveNonce());
   }
 
   // ─── Burn ───────────────────────────────────────────────────────
 
   /**
-   * @description Burns a shielded coin of this contract's token type,
-   * authorized by threshold signatures.
+   * @description Burns `amount` from a coin this contract holds, authorized
+   * by threshold signatures.
    *
-   * Sends the specified amount of the supplied coin to `shieldedBurnAddress()` via
-   * `sendShielded`. The nullifier is submitted on-chain, permanently marking
-   * the UTXO as spent.
+   * The operator supplies the `QualifiedShieldedCoinInfo` from the off-chain
+   * UTXO pool. On a partial burn the change is auto-received by the contract
+   * and returned; it replaces `coin` as the contract's holding, so the
+   * operator must persist it.
    *
-   * Change handling is automatic: if `amount < coin.value`, the transaction
-   * layer creates a change output addressed back to the contract. The operator
-   * discovers this change coin via `nextZswapLocalState.outputs` in the
-   * transaction's private result, then discovers its mt_index from the
-   * indexer events using the standard flow. No contract-level change logic
-   * is required.
-   *
-   * Only coins of this contract's token type can be burned. The operator
-   * supplies the `QualifiedShieldedCoinInfo` from the off-chain UTXO pool.
-   *
-   * The "multisig:burn:" domain prefix ensures burn signatures cannot be replayed
-   * as mint operations for the same parameters.
-   *
-   * @constraints k=17, rows=92170 (zkir-v3)
+   * @constraints k=17, rows=92252 (zkir-v3)
    *
    * Requirements:
    *
@@ -179,20 +156,22 @@ module ShieldedMultiSigV3 {
    * - Both signatures must be valid over the burn message hash.
    * - Signers must not be duplicates.
    * - Threshold must be met.
-   * - coin.color must equal tokenType(_tokenDomain, kernel.self()).
-   * - coin.value must be >= amount.
+   * - `coin.color` is this contract's token color.
+   * - `amount` is less than or equal to `coin.value`.
    *
-   * @param {QualifiedShieldedCoinInfo} coin - The coin to burn (from operator's UTXO pool).
+   * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<64>} amount - The token amount to burn.
    * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
    * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
+   * @returns {Maybe<ShieldedCoinInfo>} The change coin retained by the
+   * contract, or `none` if the coin was burned in full.
    */
   export circuit burn(
     coin: QualifiedShieldedCoinInfo,
     amount: Uint<64>,
     pubkeys: Vector<2, Secp256k1Point>,
     signatures: Vector<2, Secp256k1EcdsaSignature>
-  ): [] {
+  ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
 
@@ -205,10 +184,7 @@ module ShieldedMultiSigV3 {
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
 
-    assert(coin.color == tokenType(_tokenDomain, kernel.self()), "Multisig: coin not from this contract");
-    assert(coin.value >= amount, "Multisig: insufficient coin value");
-
-    sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
+    return NST__burnFromSelf(coin, amount);
   }
 
   // ─── Commitments ────────────────────────────────────────────────
@@ -248,25 +224,48 @@ module ShieldedMultiSigV3 {
   }
 
   /**
-   * @description Returns the domain separator this contract's token type derives from.
+   * @description Returns the token name.
    *
-   * @constraints k=6, rows=57 (zkir-v3)
+   * @constraints k=6, rows=45 (zkir-v3)
    *
-   * @returns {Bytes<32>} The token domain.
+   * @returns {Opaque<"string">} The token name.
    */
-  export circuit getTokenDomain(): Bytes<32> {
-    return _tokenDomain;
+  export circuit name(): Opaque<"string"> {
+    return NST_name();
   }
 
   /**
-   * @description Returns this contract's token type.
+   * @description Returns the token symbol.
    *
-   * @constraints k=13, rows=3836 (zkir-v3)
+   * @constraints k=6, rows=45 (zkir-v3)
    *
-   * @returns {Bytes<32>} The token type.
+   * @returns {Opaque<"string">} The token symbol.
    */
-  export circuit getTokenType(): Bytes<32> {
-    return tokenType(_tokenDomain, kernel.self());
+  export circuit symbol(): Opaque<"string"> {
+    return NST_symbol();
+  }
+
+  /**
+   * @description Returns the token decimals.
+   *
+   * @constraints k=6, rows=45 (zkir-v3)
+   *
+   * @returns {Uint<8>} The decimals value.
+   */
+  export circuit decimals(): Uint<8> {
+    return NST_decimals();
+  }
+
+  /**
+   * @description Returns this contract's token color,
+   * `tokenType(tokenDomain, kernel.self())`.
+   *
+   * @constraints k=13, rows=3847 (zkir-v3)
+   *
+   * @returns {Bytes<32>} The coin color.
+   */
+  export circuit tokenColor(): Bytes<32> {
+    return NST_tokenColor();
   }
 
   /**
