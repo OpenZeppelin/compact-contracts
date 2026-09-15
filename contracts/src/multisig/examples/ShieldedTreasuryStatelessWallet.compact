@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedTreasuryStatelessWallet.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @title ShieldedTreasuryStatelessWallet
+ * @description Deployable reference contract for the `ShieldedMultiSigV2`
+ * preset: a 2-of-3 wallet whose spends are authorized by ECDSA signatures
+ * collected off-chain and verified in a single transaction.
+ *
+ * Coin data never reaches the public ledger. The operator tracks the wallet's
+ * UTXOs off-chain and passes the coin to spend as a circuit argument.
+ */
+
+import CompactStandardLibrary;
+
+import "../presets/ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
+
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+
+/**
+ * @description Deploys the wallet with 3 signer commitments and a threshold.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+ * @param {Uint<8>} thresh - Minimum approvals required.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  thresh: Uint<8>,
+) {
+  ShieldedMultiSigV2_initialize(instanceSalt, signerCommitments, thresh);
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return ShieldedMultiSigV2_deposit(coin);
+}
+
+export circuit execute(
+  to: ShieldedMultiSigV2_Proposal_Recipient,
+  amount: Uint<128>,
+  coin: QualifiedShieldedCoinInfo,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): ShieldedSendResult {
+  return ShieldedMultiSigV2_execute(to, amount, coin, pubkeys, signatures);
+}
+
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return ShieldedMultiSigV2__calculateSignerId(pk, salt);
+}
+
+export circuit getNonce(): Uint<64> {
+  return ShieldedMultiSigV2_getNonce();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return ShieldedMultiSigV2_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return ShieldedMultiSigV2_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return ShieldedMultiSigV2_isSigner(commitment);
+}
