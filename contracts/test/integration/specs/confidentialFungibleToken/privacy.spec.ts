@@ -17,10 +17,17 @@ import {
 // What must stay hidden: balance, pending, and escrow amounts (ElGamal
 // ciphertexts), the approve cap, and every transfer amount. What is disclosed
 // by design: the totalSupply cell, so each mint/burn amount leaks through its
-// delta ("public supply"), and the counterparty graph (account ids and memo
-// growth) on every credit. The witness-binding cases assert that a hostile
-// wallet cannot fake the hidden values it is asked to prove.
+// delta ("public supply"), the counterparty graph (account ids and memo
+// growth) on every credit, and the (owner, spender) pair of every escrow. The
+// witness-binding cases assert that a hostile wallet cannot fake the hidden
+// values it is asked to prove.
 // ---------------------------------------------------------------------------
+
+// The only shapes the public ledger may hold for a value: an ElGamal point
+// pair, or an ECDH memo. Any extra field is a plaintext leak.
+const POINT = { x: expect.any(BigInt), y: expect.any(BigInt) };
+const CIPHERTEXT = { c1: POINT, c2: POINT };
+const MEMO = { ephemeralPk: POINT, ct: expect.any(BigInt) };
 
 let cft: ConfidentialFungibleTokenPublicSupplySimulator;
 
@@ -42,19 +49,20 @@ describe.skipIf(isLiveBackend())(
       // Balance and pending cells are ElGamal point pairs, not integers.
       const balance = ledger.Token__balances.lookup(ALICE.accountId);
       const pending = ledger.Token__pending.lookup(ALICE.accountId);
-      for (const ct of [balance, pending]) {
-        expect(typeof ct.c1.x).toBe('bigint');
-        expect(typeof ct.c2.x).toBe('bigint');
-      }
+      expect(balance).toStrictEqual(CIPHERTEXT);
+      expect(pending).toStrictEqual(CIPHERTEXT);
 
-      // The escrow entry carries two ciphertext copies and an encrypted owner
-      // memo; the approved cap (40) appears nowhere in clear. The two copies
-      // encrypt the same amount under different keys, so they must not be equal.
+      // Two ciphertext copies plus the owner memo, and nothing else: the
+      // approved cap never appears in clear. The copies encrypt the same amount
+      // under different keys, so they differ.
       const entry = ledger.Token__escrow.lookup(ALICE.accountId).lookup(
         BOB.accountId,
       );
-      expect(typeof entry.spenderCt.c1.x).toBe('bigint');
-      expect(typeof entry.ownerCt.c1.x).toBe('bigint');
+      expect(entry).toStrictEqual({
+        spenderCt: CIPHERTEXT,
+        ownerCt: CIPHERTEXT,
+        ownerMemo: MEMO,
+      });
       expect(entry.spenderCt).not.toEqual(entry.ownerCt);
     });
 
@@ -96,11 +104,14 @@ describe.skipIf(isLiveBackend())(
       expect(await cft.totalSupply()).toBe(100n);
 
       // The graph metadata IS visible: an observer sees Bob received a credit
-      // (his memo list grew), just not how much.
+      // (his memo list grew). The memo delivers the amount only inside the
+      // ECDH ciphertext.
       const after = await cft.getPublicState();
       expect(after.Token__memos.lookup(BOB.accountId).length()).toBe(
         bobMemosBefore + 1n,
       );
+      const newMemo = [...after.Token__memos.lookup(BOB.accountId)][0];
+      expect(newMemo).toStrictEqual(MEMO);
     });
 
     it('should disclose mint and burn amounts through the supply delta (by design)', async () => {
