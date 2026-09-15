@@ -5,12 +5,15 @@ import {
 import {
   type ContractAddress,
   type Either,
-  Contract as ForwarderShielded,
+  Contract as ForwarderShieldedExample,
   ledger,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/ForwarderShielded/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
+} from '../../../../../artifacts/ForwarderShieldedExample/contract/index.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 
@@ -18,16 +21,16 @@ const ForwarderShieldedSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ForwarderShielded<EmptyPrivateState>,
+  ForwarderShieldedExample<EmptyPrivateState>,
   ForwarderShieldedArgs
 >({
   contractFactory: (witnesses) =>
-    new ForwarderShielded<EmptyPrivateState>(witnesses),
+    new ForwarderShieldedExample<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (parent) => [parent],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ForwarderShielded',
+  artifactName: 'ForwarderShieldedExample',
 });
 
 export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {

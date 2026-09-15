@@ -7,10 +7,13 @@ import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   type Ledger,
   ledger,
+  Contract as MockShieldedMultiSigV2,
   pureCircuits,
-  Contract as ShieldedMultiSigV2,
-} from '../../../../artifacts/ShieldedMultiSigV2/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
+} from '../../../../../artifacts/MockShieldedMultiSigV2/contract/index.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };
@@ -29,26 +32,28 @@ type ShieldedMultiSigV2Args = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   thresh: bigint,
+  isInit: boolean,
 ];
 
 const ShieldedMultiSigV2SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ShieldedMultiSigV2<EmptyPrivateState>,
+  MockShieldedMultiSigV2<EmptyPrivateState>,
   ShieldedMultiSigV2Args
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV2<EmptyPrivateState>(witnesses),
+    new MockShieldedMultiSigV2<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, thresh) => [
+  contractArgs: (instanceSalt, signerCommitments, thresh, isInit) => [
     instanceSalt,
     signerCommitments,
     thresh,
+    isInit,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedMultiSigV2',
+  artifactName: 'MockShieldedMultiSigV2',
 });
 
 export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
@@ -56,6 +61,7 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
     thresh: bigint,
+    isInit: boolean,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
@@ -63,9 +69,21 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
   ): Promise<ShieldedMultiSigV2Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitments, thresh],
+      [instanceSalt, signerCommitments, thresh, isInit],
       options,
     ) as Promise<ShieldedMultiSigV2Simulator>;
+  }
+
+  public initialize(
+    instanceSalt: Uint8Array,
+    signerCommitments: Uint8Array[],
+    thresh: bigint,
+  ): Promise<[]> {
+    return this.circuits.impure.initialize(
+      instanceSalt,
+      signerCommitments,
+      thresh,
+    );
   }
 
   public static calculateSignerId(

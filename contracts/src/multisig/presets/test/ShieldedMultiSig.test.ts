@@ -54,38 +54,61 @@ let multisig: ShieldedMultiSigSimulator;
 // A fresh 2-of-3 multisig. Mutating groups deploy one per test (`beforeEach`);
 // read-only groups deploy one per group (`beforeAll`) to save a live deploy tx.
 const freshMultisig = () =>
-  ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
+  ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD, true);
 
 describe('ShieldedMultiSig', () => {
   describe('constructor', () => {
     it('should initialize with signers and threshold', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
+      multisig = await ShieldedMultiSigSimulator.create(
+        SIGNERS,
+        THRESHOLD,
+        true,
+      );
       expect(await multisig.getSignerCount()).toEqual(BigInt(SIGNERS.length));
       expect(await multisig.getThreshold()).toEqual(THRESHOLD);
     });
 
     it('should register all signers', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
+      multisig = await ShieldedMultiSigSimulator.create(
+        SIGNERS,
+        THRESHOLD,
+        true,
+      );
       for (const signer of SIGNERS) {
         expect(await multisig.isSigner(signer)).toEqual(true);
       }
     });
 
     it('should reject non-signers', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD);
+      multisig = await ShieldedMultiSigSimulator.create(
+        SIGNERS,
+        THRESHOLD,
+        true,
+      );
       expect(await multisig.isSigner(Z_NON_SIGNER)).toEqual(false);
     });
 
     it('should fail with zero threshold', async () => {
       await expect(
-        ShieldedMultiSigSimulator.create(SIGNERS, 0n),
+        ShieldedMultiSigSimulator.create(SIGNERS, 0n, true),
       ).rejects.toThrow('Signer: threshold must not be zero');
     });
 
     it('should fail with threshold exceeding signer count', async () => {
       await expect(
-        ShieldedMultiSigSimulator.create(SIGNERS, 4n),
+        ShieldedMultiSigSimulator.create(SIGNERS, 4n, true),
       ).rejects.toThrow('Signer: threshold exceeds signer count');
+    });
+
+    it('fails when initialized twice', async () => {
+      multisig = await ShieldedMultiSigSimulator.create(
+        SIGNERS,
+        THRESHOLD,
+        true,
+      );
+      await expect(multisig.initialize(SIGNERS, THRESHOLD)).rejects.toThrow(
+        'Signer: contract already initialized',
+      );
     });
   });
 

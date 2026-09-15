@@ -5,9 +5,12 @@ import {
 import {
   type Ledger,
   ledger,
-  Contract as ShieldedMultiSig,
-} from '../../../../artifacts/ShieldedMultiSig/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
+  Contract as MockShieldedMultiSig,
+} from '../../../../../artifacts/MockShieldedMultiSig/contract/index.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;
@@ -30,28 +33,30 @@ type Proposal = {
 type ShieldedMultiSigArgs = readonly [
   signers: EitherPKAddress[],
   thresh: bigint,
+  isInit: boolean,
 ];
 
 const ShieldedMultiSigSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ShieldedMultiSig<EmptyPrivateState>,
+  MockShieldedMultiSig<EmptyPrivateState>,
   ShieldedMultiSigArgs
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSig<EmptyPrivateState>(witnesses),
+    new MockShieldedMultiSig<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (signers, thresh) => [signers, thresh],
+  contractArgs: (signers, thresh, isInit) => [signers, thresh, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedMultiSig',
+  artifactName: 'MockShieldedMultiSig',
 });
 
 export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
   static async create(
     signers: EitherPKAddress[],
     thresh: bigint,
+    isInit: boolean,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
@@ -59,9 +64,13 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
   ): Promise<ShieldedMultiSigSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [signers, thresh],
+      [signers, thresh, isInit],
       options,
     ) as Promise<ShieldedMultiSigSimulator>;
+  }
+
+  public initialize(signers: EitherPKAddress[], thresh: bigint): Promise<[]> {
+    return this.circuits.impure.initialize(signers, thresh);
   }
 
   // Deposit

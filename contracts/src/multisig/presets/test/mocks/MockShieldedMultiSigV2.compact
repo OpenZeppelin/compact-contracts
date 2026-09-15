@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+
+/**
+ * @description `isInit` is a param for testing.
+ *
+ * If `isInit` is false, the constructor will not initialize the contract,
+ * leaving the signer registry empty so the pre-initialization guards can be
+ * exercised.
+*/
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  thresh: Uint<8>,
+  isInit: Boolean
+) {
+  if (disclose(isInit)) {
+    ShieldedMultiSigV2_initialize(instanceSalt, signerCommitments, thresh);
+  }
+}
+
+// Exposed in order to test that contracts cannot be reinitialized.
+// DO NOT EXPOSE in production
+export circuit initialize(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  thresh: Uint<8>
+): [] {
+  return ShieldedMultiSigV2_initialize(instanceSalt, signerCommitments, thresh);
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return ShieldedMultiSigV2_deposit(coin);
+}
+
+export circuit execute(
+  to: ShieldedMultiSigV2_Proposal_Recipient,
+  amount: Uint<128>,
+  coin: QualifiedShieldedCoinInfo,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): ShieldedSendResult {
+  return ShieldedMultiSigV2_execute(to, amount, coin, pubkeys, signatures);
+}
+
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return ShieldedMultiSigV2__calculateSignerId(pk, salt);
+}
+
+export circuit getNonce(): Uint<64> {
+  return ShieldedMultiSigV2_getNonce();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return ShieldedMultiSigV2_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return ShieldedMultiSigV2_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return ShieldedMultiSigV2_isSigner(commitment);
+}

@@ -12,7 +12,7 @@ import {
   burnMsgHash,
   type EitherRecipient,
   mintMsgHash,
-} from './EcdsaTestUtils.js';
+} from '../../test/EcdsaTestUtils.js';
 import {
   calculateSignerId,
   ShieldedMultiSigV3Simulator,
@@ -128,6 +128,7 @@ const freshMultisig = () =>
     INIT_COIN_NONCE,
     TOKEN_DOMAIN,
     SIGNER_COMMITMENTS,
+    true,
   );
 
 describe('ShieldedMultiSigV3', () => {
@@ -138,6 +139,7 @@ describe('ShieldedMultiSigV3', () => {
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
         SIGNER_COMMITMENTS,
+        true,
       );
       expect(await multisig.getSignerCount()).toEqual(3n);
       expect(await multisig.getThreshold()).toEqual(2n);
@@ -149,6 +151,7 @@ describe('ShieldedMultiSigV3', () => {
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
         SIGNER_COMMITMENTS,
+        true,
       );
       for (const commitment of SIGNER_COMMITMENTS) {
         expect(await multisig.isSigner(commitment)).toEqual(true);
@@ -161,6 +164,7 @@ describe('ShieldedMultiSigV3', () => {
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
         SIGNER_COMMITMENTS,
+        true,
       );
       const unknown = await multisig._calculateSignerId(
         OUTSIDER.publicKey,
@@ -176,6 +180,7 @@ describe('ShieldedMultiSigV3', () => {
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,
           [COMMITMENT1, COMMITMENT1, COMMITMENT2],
+          true,
         ),
       ).rejects.toThrow('Signer: signer already active');
     });
@@ -186,6 +191,7 @@ describe('ShieldedMultiSigV3', () => {
         INIT_COIN_NONCE,
         TOKEN_DOMAIN,
         SIGNER_COMMITMENTS,
+        true,
       );
       expect(await multisig.getTokenDomain()).toEqual(TOKEN_DOMAIN);
     });
@@ -548,6 +554,7 @@ describe('ShieldedMultiSigV3', () => {
           INIT_COIN_NONCE,
           altDomain,
           SIGNER_COMMITMENTS,
+          true,
         );
 
         expect(await multisig.getTokenType()).not.toEqual(
@@ -587,6 +594,7 @@ describe('ShieldedMultiSigV3', () => {
           INIT_COIN_NONCE,
           TOKEN_DOMAIN,
           SIGNER_COMMITMENTS,
+          true,
           isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
         );
 

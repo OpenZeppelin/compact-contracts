@@ -1,7 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
-import { ForwarderUnshieldedSimulator } from '../simulators/presets/ForwarderUnshieldedSimulator.js';
+import { ForwarderUnshieldedSimulator } from './simulators/ForwarderUnshieldedSimulator.js';
 
 // The constructor takes a `UserAddress` (the supported arm). The `_parent`
 // ledger field stays a generic `Either`; `initialize` stores the address in the
@@ -15,7 +15,7 @@ const ZERO_ADDR = utils.ZERO_USER_ADDRESS.right;
 const COLOR = isLiveBackend() ? new Uint8Array(32) : new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 
-describe('ForwarderUnshielded preset', () => {
+describe('ForwarderUnshieldedExample', () => {
   it('should store the parent passed to the constructor in the right arm', async () => {
     const fwd = await ForwarderUnshieldedSimulator.create(PARENT);
     const parent = await fwd.getParent();

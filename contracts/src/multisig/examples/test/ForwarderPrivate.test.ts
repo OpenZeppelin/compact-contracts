@@ -8,7 +8,7 @@ import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
 } from '#test-utils/harness/NativeShieldedTokenTracker.js';
-import { ForwarderPrivateSimulator } from '../simulators/presets/ForwarderPrivateSimulator.js';
+import { ForwarderPrivateSimulator } from './simulators/ForwarderPrivateSimulator.js';
 
 // The drain parent is a `ZswapCoinPublicKey` (`{ bytes }`); the commitment is
 // over its raw 32 bytes (`calculateParentCommitment(parent.bytes, opSecret)`).
@@ -28,7 +28,7 @@ function commitment(parent: Uint8Array, opSecret: Uint8Array): Uint8Array {
   return ForwarderPrivateSimulator.calculateParentCommitment(parent, opSecret);
 }
 
-describe('ForwarderPrivate preset', () => {
+describe('ForwarderPrivateExample', () => {
   it('should store the parentCommitment passed to the constructor', async () => {
     const c = commitment(PARENT_BYTES, OP_SECRET);
     const fwd = await ForwarderPrivateSimulator.create(c);

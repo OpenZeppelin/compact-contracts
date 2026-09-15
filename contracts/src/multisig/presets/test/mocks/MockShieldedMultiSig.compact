@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../ShieldedMultiSig" prefix ShieldedMultiSig_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, ShieldedSendResult };
+
+import { _proposalApprovals, _approvalCount } from "../../ShieldedMultiSig";
+export { _proposalApprovals, _approvalCount };
+
+/**
+ * @description `isInit` is a param for testing.
+ *
+ * If `isInit` is false, the constructor will not initialize the contract,
+ * leaving the signer registry empty so the pre-initialization guards can be
+ * exercised.
+*/
+constructor(
+  signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
+  thresh: Uint<8>,
+  isInit: Boolean
+) {
+  if (disclose(isInit)) {
+    ShieldedMultiSig_initialize(signers, thresh);
+  }
+}
+
+// Exposed in order to test that contracts cannot be reinitialized.
+// DO NOT EXPOSE in production
+export circuit initialize(
+  signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
+  thresh: Uint<8>
+): [] {
+  return ShieldedMultiSig_initialize(signers, thresh);
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return ShieldedMultiSig_deposit(coin);
+}
+
+export circuit createShieldedProposal(
+  to: ShieldedMultiSig_Proposal_Recipient,
+  color: Bytes<32>,
+  amount: Uint<128>
+): Uint<64> {
+  return ShieldedMultiSig_createShieldedProposal(to, color, amount);
+}
+
+export circuit approveProposal(id: Uint<64>): [] {
+  return ShieldedMultiSig_approveProposal(id);
+}
+
+export circuit revokeApproval(id: Uint<64>): [] {
+  return ShieldedMultiSig_revokeApproval(id);
+}
+
+export circuit executeShieldedProposal(id: Uint<64>): ShieldedSendResult {
+  return ShieldedMultiSig_executeShieldedProposal(id);
+}
+
+export circuit isProposalApprovedBySigner(
+  id: Uint<64>,
+  signer: Either<ZswapCoinPublicKey, ContractAddress>
+): Boolean {
+  return ShieldedMultiSig_isProposalApprovedBySigner(id, signer);
+}
+
+export circuit getApprovalCount(id: Uint<64>): Uint<8> {
+  return ShieldedMultiSig_getApprovalCount(id);
+}
+
+export circuit getProposal(id: Uint<64>): ShieldedMultiSig_Proposal_Proposal {
+  return ShieldedMultiSig_getProposal(id);
+}
+
+export circuit getProposalStatus(id: Uint<64>): ShieldedMultiSig_Proposal_ProposalStatus {
+  return ShieldedMultiSig_getProposalStatus(id);
+}
+
+export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
+  return ShieldedMultiSig_getTokenBalance(color);
+}
+
+export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
+  return ShieldedMultiSig_getReceivedTotal(color);
+}
+
+export circuit getSentTotal(color: Bytes<32>): Uint<128> {
+  return ShieldedMultiSig_getSentTotal(color);
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return ShieldedMultiSig_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return ShieldedMultiSig_getThreshold();
+}
+
+export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
+  return ShieldedMultiSig_isSigner(account);
+}
