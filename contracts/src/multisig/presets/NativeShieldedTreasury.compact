@@ -170,7 +170,20 @@ module NativeShieldedTreasury {
 
   // ─── State ───────────────────────────────────────────────────────────────
 
+  /**
+   * @description Which signer approves which proposal, keyed by proposal id
+   * then by signer. `approveProposal` and `revokeApproval` write it;
+   * `isProposalApprovedBySigner` reads it. Entries are never reclaimed, so it
+   * grows with the proposal count.
+   */
   export ledger _proposalApprovals: Map<Uint<64>, Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>;
+
+  /**
+   * @description Running approval count per proposal, kept in step with
+   * `_proposalApprovals`. `executeShieldedProposal` reads it through
+   * `getApprovalCount` to check the threshold. A read-modify-write, so two
+   * approvals on one proposal conflict in a block.
+   */
   export ledger _approvalCount: Map<Uint<64>, Uint<8>>;
 
   // ─── Initialization ──────────────────────────────────────────────────────
