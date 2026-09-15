@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (multisig/examples/ShieldedMultiSigV2Example.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (multisig/examples/NativeShieldedStatelessTreasuryExample.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title ShieldedMultiSigV2Example
- * @description Deployable reference contract for the `ShieldedMultiSigV2`
+ * @title NativeShieldedStatelessTreasuryExample
+ * @description Deployable reference contract for the `NativeShieldedStatelessTreasury`
  * preset: a 2-of-3 wallet whose spends are authorized by ECDSA signatures
  * collected off-chain and verified in a single transaction.
  *
@@ -15,13 +15,13 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../presets/ShieldedMultiSigV2"<2> prefix ShieldedMultiSigV2_;
+import "../presets/NativeShieldedStatelessTreasury"<2> prefix NativeShieldedStatelessTreasury_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
 // Surface the preset's domain separator unprefixed so `ledger()` readers see
 // the key name the preset published.
-import { _domainSeparator } from "../presets/ShieldedMultiSigV2"<2>;
+import { _domainSeparator } from "../presets/NativeShieldedStatelessTreasury"<2>;
 export { _domainSeparator };
 
 /**
@@ -34,42 +34,42 @@ constructor(
   instanceSalt: Bytes<32>,
   signerCommitments: Vector<3, Bytes<32>>
 ) {
-  ShieldedMultiSigV2_initialize<3>(instanceSalt, signerCommitments);
+  NativeShieldedStatelessTreasury_initialize<3>(instanceSalt, signerCommitments);
 }
 
 export circuit deposit(coin: ShieldedCoinInfo): [] {
-  return ShieldedMultiSigV2_deposit(coin);
+  return NativeShieldedStatelessTreasury_deposit(coin);
 }
 
 export circuit execute(
-  to: ShieldedMultiSigV2_Proposal_Recipient,
+  to: NativeShieldedStatelessTreasury_Proposal_Recipient,
   amount: Uint<128>,
   coin: QualifiedShieldedCoinInfo,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): ShieldedSendResult {
-  return ShieldedMultiSigV2_execute(to, amount, coin, pubkeys, signatures);
+  return NativeShieldedStatelessTreasury_execute(to, amount, coin, pubkeys, signatures);
 }
 
 export pure circuit _calculateSignerId(
   pk: Secp256k1Point,
   salt: Bytes<32>
 ): Bytes<32> {
-  return ShieldedMultiSigV2__calculateSignerId(pk, salt);
+  return NativeShieldedStatelessTreasury__calculateSignerId(pk, salt);
 }
 
 export circuit getNonce(): Uint<64> {
-  return ShieldedMultiSigV2_getNonce();
+  return NativeShieldedStatelessTreasury_getNonce();
 }
 
 export circuit getSignerCount(): Uint<8> {
-  return ShieldedMultiSigV2_getSignerCount();
+  return NativeShieldedStatelessTreasury_getSignerCount();
 }
 
 export circuit getThreshold(): Uint<8> {
-  return ShieldedMultiSigV2_getThreshold();
+  return NativeShieldedStatelessTreasury_getThreshold();
 }
 
 export circuit isSigner(commitment: Bytes<32>): Boolean {
-  return ShieldedMultiSigV2_isSigner(commitment);
+  return NativeShieldedStatelessTreasury_isSigner(commitment);
 }

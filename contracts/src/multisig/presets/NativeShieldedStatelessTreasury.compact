@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (multisig/presets/ShieldedMultiSigV2.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (multisig/presets/NativeShieldedStatelessTreasury.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @module ShieldedMultiSigV2
+ * @module NativeShieldedStatelessTreasury
  * @description Privacy-preserving threshold multisig contract.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
@@ -15,9 +15,10 @@ pragma language_version >= 0.26.0;
  * coin selection) happens off-chain.
  *
  * `t` is the approval width and the threshold: `execute` verifies exactly
- * `t` distinct signers. Import as `"../presets/ShieldedMultiSigV2"<t>`; the
- * implementing contract fixes the signer count `n` at `initialize`. Import
- * one width per contract: two widths share one signer registry, see
+ * `t` distinct signers. Import as
+ * `"../presets/NativeShieldedStatelessTreasury"<t>`; the implementing
+ * contract fixes the signer count `n` at `initialize`. Import one width per
+ * contract: two widths share one signer registry, see
  * `Secp256k1EcdsaMultisig`.
  *
  * Treasury is fully stateless meaning coin data is not stored on the public ledger.
@@ -31,7 +32,7 @@ pragma language_version >= 0.26.0;
  * constructor by calling this module's `initialize`, and MUST NOT import
  * `Signer` or `Secp256k1EcdsaMultisig` directly.
  */
-module ShieldedMultiSigV2<#t> {
+module NativeShieldedStatelessTreasury<#t> {
   import CompactStandardLibrary;
 
   import "../Secp256k1EcdsaMultisig"<t> prefix Secp256k1EcdsaMultisig_;
@@ -96,7 +97,7 @@ module ShieldedMultiSigV2<#t> {
   ): [] {
     Secp256k1EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
 
-    const hashedName = keccak256<Bytes<18>>(pad(18, "ShieldedMultiSigV2"));
+    const hashedName = keccak256<Bytes<31>>(pad(31, "NativeShieldedStatelessTreasury"));
     const hashedVersion = keccak256<Bytes<1>>(pad(1, "1"));
     _domainSeparator = Eip712_domainSeparator(
       hashedName,
@@ -212,7 +213,7 @@ module ShieldedMultiSigV2<#t> {
 
     assert(
       to.kind == Proposal_RecipientKind.ShieldedUser,
-      "ShieldedMultiSigV2: recipient must be a coin public key"
+      "NativeShieldedStatelessTreasury: recipient must be a coin public key"
     );
     const recipient = left<ZswapCoinPublicKey, ContractAddress>(
       ZswapCoinPublicKey { bytes: to.address }

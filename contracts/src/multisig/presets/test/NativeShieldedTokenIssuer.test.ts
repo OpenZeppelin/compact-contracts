@@ -1526,7 +1526,7 @@ describe('NativeShieldedTokenIssuer', () => {
         multisig = await freshMultisig();
       });
 
-      it('should reject a ShieldedMultiSigV2 execute signature', async () => {
+      it('should reject a NativeShieldedStatelessTreasury execute signature', async () => {
         const digest = executeMsgHash({
           contractAddress: addrBytes(multisig),
           instanceSalt: INSTANCE_SALT,
