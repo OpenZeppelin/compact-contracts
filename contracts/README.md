@@ -9,12 +9,19 @@ The `src/` directory is organized by module category. Each module follows the sa
 ```
 <module>/
 ├── <Contract>.compact          # Contract source
+├── presets/                    # Curated modules composing the module's contracts
+├── examples/                   # Deployable reference contracts (compile-only)
 └── test/
     ├── <Contract>.test.ts      # Test suite
     ├── mocks/                  # Mock contracts (test-only — see warning below)
     ├── simulators/             # Simulator helpers for testing
     └── witnesses/              # TypeScript witness implementations (test-only)
 ```
+
+A preset is library code, so it is imported, not deployed. Each one ships a
+deployable contract under `examples/` and carries its test coverage on
+`test/mocks/Mock<Preset>.compact`; the `examples/` contracts are compiled but
+not tested.
 
 ## > ⚠️ Mock Contracts Are For Testing Only
 
