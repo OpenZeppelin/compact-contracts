@@ -5,8 +5,8 @@ import {
 import {
   type Ledger,
   ledger,
-  Contract as MockShieldedMultiSig,
-} from '../../../../../artifacts/MockShieldedMultiSig/contract/index.js';
+  Contract as MockNativeShieldedTreasury,
+} from '../../../../../artifacts/MockNativeShieldedTreasury/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -30,29 +30,29 @@ type Proposal = {
   status: number;
 };
 
-type ShieldedMultiSigArgs = readonly [
+type NativeShieldedTreasuryArgs = readonly [
   signers: EitherPKAddress[],
   thresh: bigint,
   isInit: boolean,
 ];
 
-const ShieldedMultiSigSimulatorBase = createSimulator<
+const NativeShieldedTreasurySimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockShieldedMultiSig<EmptyPrivateState>,
-  ShieldedMultiSigArgs
+  MockNativeShieldedTreasury<EmptyPrivateState>,
+  NativeShieldedTreasuryArgs
 >({
   contractFactory: (witnesses) =>
-    new MockShieldedMultiSig<EmptyPrivateState>(witnesses),
+    new MockNativeShieldedTreasury<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (signers, thresh, isInit) => [signers, thresh, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockShieldedMultiSig',
+  artifactName: 'MockNativeShieldedTreasury',
 });
 
-export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
+export class NativeShieldedTreasurySimulator extends NativeShieldedTreasurySimulatorBase {
   static async create(
     signers: EitherPKAddress[],
     thresh: bigint,
@@ -61,12 +61,12 @@ export class ShieldedMultiSigSimulator extends ShieldedMultiSigSimulatorBase {
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigSimulator> {
+  ): Promise<NativeShieldedTreasurySimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [signers, thresh, isInit],
       options,
-    ) as Promise<ShieldedMultiSigSimulator>;
+    ) as Promise<NativeShieldedTreasurySimulator>;
   }
 
   public initialize(signers: EitherPKAddress[], thresh: bigint): Promise<[]> {

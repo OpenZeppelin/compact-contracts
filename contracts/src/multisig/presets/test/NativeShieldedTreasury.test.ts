@@ -4,7 +4,7 @@ import {
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
-import { ShieldedMultiSigSimulator } from './simulators/ShieldedMultiSigSimulator.js';
+import { NativeShieldedTreasurySimulator } from './simulators/NativeShieldedTreasurySimulator.js';
 
 const ProposalStatus = { Inactive: 0, Active: 1, Executed: 2, Cancelled: 3 };
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
@@ -49,17 +49,17 @@ function makeCoin(
   return encodeShieldedCoinInfo(color, value, nonce);
 }
 
-let multisig: ShieldedMultiSigSimulator;
+let multisig: NativeShieldedTreasurySimulator;
 
 // A fresh 2-of-3 multisig. Mutating groups deploy one per test (`beforeEach`);
 // read-only groups deploy one per group (`beforeAll`) to save a live deploy tx.
 const freshMultisig = () =>
-  ShieldedMultiSigSimulator.create(SIGNERS, THRESHOLD, true);
+  NativeShieldedTreasurySimulator.create(SIGNERS, THRESHOLD, true);
 
-describe('ShieldedMultiSig', () => {
+describe('NativeShieldedTreasury', () => {
   describe('constructor', () => {
     it('should initialize with signers and threshold', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(
+      multisig = await NativeShieldedTreasurySimulator.create(
         SIGNERS,
         THRESHOLD,
         true,
@@ -69,7 +69,7 @@ describe('ShieldedMultiSig', () => {
     });
 
     it('should register all signers', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(
+      multisig = await NativeShieldedTreasurySimulator.create(
         SIGNERS,
         THRESHOLD,
         true,
@@ -80,7 +80,7 @@ describe('ShieldedMultiSig', () => {
     });
 
     it('should reject non-signers', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(
+      multisig = await NativeShieldedTreasurySimulator.create(
         SIGNERS,
         THRESHOLD,
         true,
@@ -90,18 +90,18 @@ describe('ShieldedMultiSig', () => {
 
     it('should fail with zero threshold', async () => {
       await expect(
-        ShieldedMultiSigSimulator.create(SIGNERS, 0n, true),
+        NativeShieldedTreasurySimulator.create(SIGNERS, 0n, true),
       ).rejects.toThrow('Signer: threshold must not be zero');
     });
 
     it('should fail with threshold exceeding signer count', async () => {
       await expect(
-        ShieldedMultiSigSimulator.create(SIGNERS, 4n, true),
+        NativeShieldedTreasurySimulator.create(SIGNERS, 4n, true),
       ).rejects.toThrow('Signer: threshold exceeds signer count');
     });
 
     it('fails when initialized twice', async () => {
-      multisig = await ShieldedMultiSigSimulator.create(
+      multisig = await NativeShieldedTreasurySimulator.create(
         SIGNERS,
         THRESHOLD,
         true,
@@ -246,7 +246,7 @@ describe('ShieldedMultiSig', () => {
               .as('SIGNER1')
               .createShieldedProposal(to, COLOR, PROPOSAL_AMOUNT),
           ).rejects.toThrow(
-            'ShieldedMultiSig: recipient must be a shielded user or contract',
+            'NativeShieldedTreasury: recipient must be a shielded user or contract',
           );
         });
 
@@ -300,7 +300,7 @@ describe('ShieldedMultiSig', () => {
           await multisig.as('SIGNER1').approveProposal(proposalId);
           await expect(
             multisig.as('SIGNER1').approveProposal(proposalId),
-          ).rejects.toThrow('Multisig: already approved');
+          ).rejects.toThrow('NativeShieldedTreasury: already approved');
         });
 
         it('should fail for non-existing proposal', async () => {
@@ -350,7 +350,7 @@ describe('ShieldedMultiSig', () => {
         it('should fail if not yet approved', async () => {
           await expect(
             multisig.as('SIGNER2').revokeApproval(proposalId),
-          ).rejects.toThrow('Multisig: not approved');
+          ).rejects.toThrow('NativeShieldedTreasury: not approved');
         });
 
         it('should allow re-approval after revoke', async () => {
