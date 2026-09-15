@@ -10,7 +10,7 @@ The `src/` directory is organized by module category. Each module follows the sa
 <module>/
 ├── <Contract>.compact          # Contract source
 ├── presets/                    # Curated modules composing the module's contracts
-├── examples/                   # Deployable reference contracts (compile-only)
+├── examples/                   # <Preset>Example.compact — deployable, compile-only
 └── test/
     ├── <Contract>.test.ts      # Test suite
     ├── mocks/                  # Mock contracts (test-only — see warning below)

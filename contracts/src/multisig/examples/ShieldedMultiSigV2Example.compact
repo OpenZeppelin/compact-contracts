@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedTreasuryStatelessWallet.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedMultiSigV2Example.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title ShieldedTreasuryStatelessWallet
+ * @title ShieldedMultiSigV2Example
  * @description Deployable reference contract for the `ShieldedMultiSigV2`
  * preset: a 2-of-3 wallet whose spends are authorized by ECDSA signatures
  * collected off-chain and verified in a single transaction.

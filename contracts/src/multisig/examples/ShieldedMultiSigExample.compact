@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedTreasuryWallet.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedMultiSigExample.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title ShieldedTreasuryWallet
+ * @title ShieldedMultiSigExample
  * @description Deployable reference contract for the `ShieldedMultiSig`
  * preset: a shielded treasury whose signers approve proposals that spend it
  * once the threshold is met.

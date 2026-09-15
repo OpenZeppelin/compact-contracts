@@ -15,7 +15,7 @@ const ZERO_ADDR = utils.ZERO_USER_ADDRESS.right;
 const COLOR = isLiveBackend() ? new Uint8Array(32) : new Uint8Array(32).fill(1);
 const AMOUNT = 1000n;
 
-describe('UnshieldedDepositForwarder', () => {
+describe('ForwarderUnshieldedExample', () => {
   it('should store the parent passed to the constructor in the right arm', async () => {
     const fwd = await ForwarderUnshieldedSimulator.create(PARENT);
     const parent = await fwd.getParent();
