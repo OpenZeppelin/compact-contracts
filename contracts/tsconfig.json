@@ -1,11 +1,11 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
   "include": [
-    "src/**/test/witnesses/**/*.ts"
+    "src/**/test/**/*.ts",
+    "test-utils/**/*.ts"
   ],
   "exclude": ["src/archive/"],
   "compilerOptions": {
-    "rootDir": "src",
     "outDir": "dist",
     "types": ["node"],
     "declaration": true,

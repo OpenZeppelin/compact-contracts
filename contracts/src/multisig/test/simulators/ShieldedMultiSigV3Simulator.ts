@@ -5,14 +5,18 @@ import {
 } from '@openzeppelin/compact-simulator';
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
-  type ContractAddress,
-  type Either,
   ledger,
   pureCircuits,
   Contract as ShieldedMultiSigV3Contract,
   type ZswapCoinPublicKey,
 } from '../../../../artifacts/ShieldedMultiSigV3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
+
+// `ShieldedMultiSigV3.compact` re-exports `ZswapCoinPublicKey` only, so the
+// remaining `mint` recipient arms are spelled as the shapes compactc inlines
+// into the generated circuit signature.
+type ContractAddress = { bytes: Uint8Array };
+type Either<L, R> = { is_left: boolean; left: L; right: R };
 
 type ShieldedMultiSigV3Args = readonly [
   instanceSalt: Uint8Array,
