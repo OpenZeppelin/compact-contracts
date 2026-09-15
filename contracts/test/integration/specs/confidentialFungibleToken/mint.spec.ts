@@ -96,7 +96,9 @@ describe.skipIf(isLiveBackend())(
       await actAs(cft, ALICE);
       // Alice does not register.
 
-      await expect(cft.mint(ALICE.accountId, 100n)).rejects.toThrow();
+      await expect(cft.mint(ALICE.accountId, 100n)).rejects.toThrow(
+        'ConfidentialFungibleToken: receiver not registered',
+      );
     });
 
     it('should treat a zero-value mint as a no-op (no semantic restriction)', async () => {

@@ -75,12 +75,13 @@ describe.skipIf(isLiveBackend())(
       await actAs(cft, ALICE);
       // Alice does not register.
 
-      await expect(cft.burn(50n)).rejects.toThrow();
+      await expect(cft.burn(50n)).rejects.toThrow(
+        'ConfidentialFungibleToken: sender not registered',
+      );
     });
 
     it('should fail with a hostile plaintext witness', async () => {
       await registerAs(cft, ALICE);
-      await actAs(cft, ALICE);
       await cft.mint(ALICE.accountId, 100n);
       await cft.sweep();
       const aliceBalance = await cft.balanceOf(ALICE.accountId);
