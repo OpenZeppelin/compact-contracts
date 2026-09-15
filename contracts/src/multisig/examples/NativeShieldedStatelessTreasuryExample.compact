@@ -20,6 +20,12 @@ import "../presets/NativeShieldedStatelessTreasury" prefix NativeShieldedStatele
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
+// Surface the preset's replay counter unprefixed so `ledger()` readers keep the
+// key name the preset published as a contract. The signer registry's state stays
+// behind its prefixed import and is read through the view circuits.
+import { _nonce } from "../presets/NativeShieldedStatelessTreasury";
+export { _nonce };
+
 /**
  * @description Deploys the wallet with 3 signer commitments and a threshold.
  *
