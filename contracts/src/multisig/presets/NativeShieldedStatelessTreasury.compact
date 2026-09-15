@@ -5,32 +5,187 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module NativeShieldedStatelessTreasury
- * @description Privacy-preserving threshold multisig contract.
+ * @description
+ * A threshold ECDSA multisig treasury for shielded coins. Anyone may
+ * deposit; value leaves only through `execute`, a single tx carrying `t`
+ * registered signers' approvals. There is no proposal lifecycle: signatures
+ * are collected off-chain and verified in that one tx.
  *
- * Signer identities are stored as commitments: hashes of ECDSA public
- * keys combined with an instance salt and domain separator. Signature
- * verification happens in a single transaction with no multi-step
- * proposal lifecycle. The contract enforces threshold authorization
- * and replay protection. All other coordination (signature collection,
- * coin selection) happens off-chain.
+ * Composes `Secp256k1EcdsaMultisig` (signer commitments, approval checks),
+ * `ShieldedTreasuryStateless` as `Treasury_` (deposit and send, no coin
+ * state on the ledger) and `ProposalManager` as `Proposal_` for its
+ * `Recipient` and `RecipientKind` types alone.
  *
- * `t` is the approval width and the threshold: `execute` verifies exactly
- * `t` distinct signers. Import as
- * `"../presets/NativeShieldedStatelessTreasury"<t>`; the implementing
- * contract fixes the signer count `n` at `initialize`. Import one width per
- * contract: two widths share one signer registry, see
- * `Secp256k1EcdsaMultisig`.
+ * @dev Notation:
+ * - `H<T>(...)`: `persistentHash<T>` (SHA-256) over the Compact encoding of
+ *   `T`, a `Bytes<32>` digest.
+ * - `keccak(...)`: `keccak256` over the concatenation of its 32-byte words.
+ * - `DS`: `_domainSeparator`, the EIP-712 domain separator fixed at
+ *   construction.
+ * - `self`: `kernel.self().bytes`, this contract's address.
+ * - `nonce`: the `_nonce` value read at the start of `execute`, the
+ *   signature replay counter.
+ * - `cm`: a signer commitment, the registry key.
  *
- * Treasury is fully stateless meaning coin data is not stored on the public ledger.
- * Deposits call receiveShielded only. The operator discovers coin indices
- * through ZswapOutput events from the indexer, constructs QualifiedShieldedCoinInfo
- * off-chain, and provides it as a circuit parameter for spending.
- *
- * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
+ * @dev Derivations:
+ * - Domain separator: `DS = Eip712_domainSeparator(
+ *   keccak("NativeShieldedStatelessTreasury"), keccak("1"), instanceSalt)`,
+ *   the EIP-712 domain `(name, version, salt)`. `chainId` and
+ *   `verifyingContract` are absent: no network id is available in-circuit
+ *   and a 32-byte address does not fit `address`. `self` inside the struct
+ *   separates deployments instead.
+ * - Execute digest: `keccak(0x1901 ‖ DS ‖ keccak([EXECUTE_TYPEHASH, self,
+ *   uint64Word(nonce), uint8Word(to.kind), to.address, coin.color,
+ *   uint128Word(amount)]))`.
+ * - Type hash: `EXECUTE_TYPEHASH = keccak("Execute(bytes32 contractAddress,
+ *   uint256 nonce,uint8 recipientKind,bytes32 recipient,bytes32 coinColor,
+ *   uint256 amount)")`, written as a literal word.
+ * - Signer commitment: `cm = H<SignerCommitmentInput>({ pkX, pkY, salt,
+ *   domain: pad(32, "Secp256k1EcdsaMultisig:signer") })`, `pkX` / `pkY`
+ *   the affine coordinates as `Bytes<32>`. `_calculateSignerId` is the
+ *   exported pure circuit.
+ * - Encoding: `H` hashes the Compact encoding, not a byte concatenation.
+ *   Digest integers are big-endian ABI words (`utils/EvmAbi`), so an EVM
+ *   signer's typed-data encoder reproduces them.
+ *   `contracts/src/multisig/test/EcdsaTestUtils.ts` pins the digest through
+ *   ethers (`executeMsgHash`).
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
  * `Signer` or `Secp256k1EcdsaMultisig` directly.
+ *
+ * @dev Parameterization:
+ * `t` is the approval width and the threshold, fixed at import
+ * (`"../presets/NativeShieldedStatelessTreasury"<t>`): `execute` verifies
+ * exactly `t` distinct signers. The implementing contract fixes the signer
+ * count `n` at `initialize`. Import one width per contract: two widths share
+ * one signer registry, see `Secp256k1EcdsaMultisig`.
+ * `NativeShieldedStatelessTreasuryExample` fixes 2-of-3. The `@constraints`
+ * tag on `execute` is measured at `t = 2`.
+ *
+ * @dev Compatibility:
+ * The wire format the signers implement is the EIP-712 domain
+ * (`NativeShieldedStatelessTreasury`, version `1`, salt), the `Execute` type
+ * string, the `Secp256k1EcdsaMultisig:signer` commitment domain (owned by
+ * `Secp256k1EcdsaMultisig`), the `cm` preimage struct, and the `Vector<t>` /
+ * `Vector<n>` shapes the implementing contract fixes. Changing any of them
+ * breaks every existing signer setup. The test suite pins them through
+ * `EcdsaTestUtils.ts`.
+ *
+ * @notice Privacy:
+ * - Public, per tx:
+ *   - Entry point: `deposit` or `execute`.
+ *   - Approvers: the `t` signer commitments (`disclose(commitment)` in
+ *     `Signer_assertSigner`), so WHICH signers approved.
+ *   - Deposit: the coin commitment as a receive claim, with this contract
+ *     named in the Zswap output (`disclose(coin)` in `Treasury__deposit`).
+ *   - Execute: the spent coin's nullifier, and the sent and change coins in
+ *     plaintext (`nonce`, `color`, `value`). `execute` returns the
+ *     `ShieldedSendResult` from its entry point, which publishes both coins
+ *     (see the warning on `ShieldedTreasuryStateless._send`). The recipient
+ *     is not published, but with the sent coin known a candidate key can be
+ *     tested against its commitment.
+ * - Public, as state:
+ *   - Cells: `_nonce`, `_domainSeparator`, and the `Secp256k1EcdsaMultisig`
+ *     cells (`_signers`, `_signerCount`, `_threshold`, `_instanceSalt`)
+ *     behind its prefix. Only `_domainSeparator` is exported, so it alone
+ *     can reach an implementing contract's `ledger()` reader; the rest are
+ *     read through the view circuits.
+ *   - Absent: no coin map, no balances, no received or sent totals.
+ * - Private:
+ *   - Signer material: public keys and signatures are verified in-circuit,
+ *     never disclosed.
+ *   - Operation data: the recipient, up to the commitment test above.
+ * - Signer identity: keys sit behind `cm` with a public salt, so an observer
+ *   holding a candidate key can test membership; one without cannot
+ *   correlate a signer across deployments.
+ * - Auditability: no balance is stored, but a coin commitment is a hash of
+ *   the coin's data, so whoever knows a held coin can link its receive to
+ *   its later spend. `execute` publishes every change coin, so the spend of
+ *   one is linkable by anyone.
+ *
+ * @notice Security:
+ * - Digest binding: the `Execute` struct binds its type hash, `self`,
+ *   `nonce`, the recipient kind and address, `coin.color` and `amount` under
+ *   `DS`, so a signature authorizes one spend on one instance at one nonce,
+ *   and is neither replayable nor redirectable. Removing the `self` word
+ *   removes cross-instance replay protection, since `DS` cannot carry the
+ *   address.
+ * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
+ *   high-s encoding is an invalid signature.
+ * - Distinct signers: `assertApprovals` takes exactly `t` keys and rejects a
+ *   repeated commitment, so no set of fewer than `t` registered signers
+ *   moves value. `initialize` rejects `n < t`.
+ * - Recipient kind: `execute` rejects any recipient but a `ShieldedUser`. A
+ *   contract-addressed coin would be unclaimable, making the transaction
+ *   malformed.
+ * - Open deposits: `deposit` has no access control, by design. Only
+ *   `execute` moves value out.
+ * - No coin bookkeeping: with no coin registry, a double spend or a coin the
+ *   contract does not own is rejected by the protocol at application time
+ *   rather than by an assert here. Sufficiency (`coin.value >= amount`) is
+ *   likewise left to `sendShielded`.
+ * - Immutable signer set: no signer reconfiguration circuit is exported, so
+ *   the commitments and the threshold are fixed. Losing more than `n - t`
+ *   keys freezes spending.
+ * - Atomicity: a failed assert rejects the whole tx before any state moves;
+ *   the nonce does not advance and the sender pays no fee.
+ *
+ * @notice Concurrency:
+ * - Replay nonce: `execute` reads `_nonce` into the digest. The read is
+ *   pinned, so any two executes in one block conflict: at most one lands per
+ *   block, and the losing signers re-sign at the next nonce.
+ * - `getNonce`: submitted as a tx it pins `_nonce` and conflicts with a
+ *   same-block `execute`.
+ * - Deposits: `deposit` writes no ledger state, so it commutes with
+ *   everything, a same-block `execute` included.
+ * - Views: the signer views read only state written by `initialize`, so they
+ *   commute with everything.
+ *
+ * @notice Scope:
+ * Deposit and send only. No mint, no burn, no unshielded rail, and no
+ * on-chain proposal: `ProposalManager` is imported for `Proposal_Recipient`
+ * and `Proposal_RecipientKind` only, while its `_proposals` map and
+ * `_nextProposalId` are allocated by the import and never written. `execute`
+ * checks `to.kind` itself rather than calling `toShieldedRecipient`. Coins
+ * the treasury holds are ordinary Zswap coins it neither tracks nor
+ * restricts.
+ *
+ * @notice Client-side duties:
+ * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
+ *   `_calculateSignerId(pk, salt)`, pass them as `signerCommitments`.
+ * - Per operation: read `getNonce()`, rebuild the digest as
+ *   `EcdsaTestUtils.ts` does, collect `t` low-s signatures off-chain, submit
+ *   keys and signatures in matching `Vector<t>` positions.
+ * - Coin tracking: keep the treasury's coins off-chain, recovering each
+ *   coin's `mt_index` from the indexer's `ZswapOutput` / ledger events to
+ *   build the `QualifiedShieldedCoinInfo` that `execute` takes.
+ * - Change coin: persist the one `execute` returns. `sendShielded` emits it
+ *   as a fresh self-owned output, and it replaces the spent coin as the
+ *   treasury's holding.
+ *
+ * @notice Scalability:
+ * - Throughput: one `execute` per block (see Concurrency). Deposits write no
+ *   ledger state, so they do not contend.
+ * - State: constant-size, one counter, the domain separator and an
+ *   `n`-entry signer set. Nothing grows per deposit or spend.
+ * - Coins: no merge circuit, so the off-chain pool gains one coin per
+ *   deposit and `execute` spends exactly one of them. A spend larger than
+ *   the largest single coin is not expressible.
+ * - Amounts: `execute` takes `Uint<128>`.
+ *
+ * @dev Composition:
+ * - On-chain balances: swap `ShieldedTreasuryStateless` for
+ *   `ShieldedTreasury` to get one merged UTXO per color and cumulative
+ *   totals, both published.
+ * - Unshielded rail: pair `Proposal_toUnshieldedRecipient` with
+ *   `UnshieldedTreasury`; this preset wires only the shielded one.
+ * - Other thresholds: import at another `t` (see Parameterization).
+ * - Proposal lifecycle: wire in the rest of `ProposalManager` for on-chain
+ *   proposals, at the cost its own `@warning` names: every proposal's
+ *   recipient, color and amount becomes public.
+ *
+ * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
 module NativeShieldedStatelessTreasury<#t> {
   import CompactStandardLibrary;
