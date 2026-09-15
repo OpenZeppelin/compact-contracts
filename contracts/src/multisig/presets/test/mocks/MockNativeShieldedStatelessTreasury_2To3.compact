@@ -14,8 +14,8 @@ import "../../NativeShieldedStatelessTreasury"<2> prefix NativeShieldedStateless
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
-import { _domainSeparator } from "../../NativeShieldedStatelessTreasury"<2>;
-export { _domainSeparator };
+import { _nonce, _domainSeparator } from "../../NativeShieldedStatelessTreasury"<2>;
+export { _nonce, _domainSeparator };
 
 /**
  * @description `isInit` is a param for testing.

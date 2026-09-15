@@ -19,10 +19,10 @@ import "../presets/NativeShieldedStatelessTreasury"<2> prefix NativeShieldedStat
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
-// Surface the preset's domain separator unprefixed so `ledger()` readers see
-// the key name the preset published.
-import { _domainSeparator } from "../presets/NativeShieldedStatelessTreasury"<2>;
-export { _domainSeparator };
+// Surface the preset's replay counter and domain separator unprefixed so
+// `ledger()` readers see the key names the preset published.
+import { _nonce, _domainSeparator } from "../presets/NativeShieldedStatelessTreasury"<2>;
+export { _nonce, _domainSeparator };
 
 /**
  * @description Deploys the wallet with 3 signer commitments.

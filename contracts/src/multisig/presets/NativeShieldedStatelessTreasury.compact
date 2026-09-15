@@ -88,9 +88,9 @@ pragma language_version >= 0.26.0;
  * - Public, as state:
  *   - Cells: `_nonce`, `_domainSeparator`, and the `Secp256k1EcdsaMultisig`
  *     cells (`_signers`, `_signerCount`, `_threshold`, `_instanceSalt`)
- *     behind its prefix. Only `_domainSeparator` is exported, so it alone
- *     can reach an implementing contract's `ledger()` reader; the rest are
- *     read through the view circuits.
+ *     behind its prefix. `_nonce` and `_domainSeparator` are exported, so an
+ *     implementing contract can surface them in its `ledger()` reader, as
+ *     the example does; the rest are read through the view circuits.
  *   - Absent: no coin map, no balances, no received or sent totals.
  * - Private:
  *   - Signer material: public keys and signatures are verified in-circuit,
@@ -202,10 +202,12 @@ module NativeShieldedStatelessTreasury<#t> {
   export { Proposal_Recipient };
 
   /**
-   * @description Monotonic operation counter. `execute` reads it as that
-   * operation's nonce and then increments, so no two executions share one.
+   * @description Signature replay counter. `execute` reads it into its
+   * digest and increments it; `getNonce` returns the value the next digest
+   * binds to. The read is pinned, so at most one `execute` lands per block.
+   * Exported so the implementing contract's `ledger()` reader can surface it.
    */
-  ledger _nonce: Counter;
+  export ledger _nonce: Counter;
 
   /**
    * @description The EIP-712 domain separator every `execute` digest is built
