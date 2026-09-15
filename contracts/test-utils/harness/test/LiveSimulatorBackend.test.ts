@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // no artifact on disk.
 const { registerSpy, createContextSpy, deploySpy } = vi.hoisted(() => ({
   registerSpy: vi.fn(),
-  createContextSpy: vi.fn(() => ({ liveContext: true })),
-  deploySpy: vi.fn(async () => ({
+  createContextSpy: vi.fn((_options: unknown) => ({ liveContext: true })),
+  deploySpy: vi.fn(async (_providers: unknown) => ({
     deployTxData: { public: { contractAddress: 'abc123' } },
   })),
 }));
