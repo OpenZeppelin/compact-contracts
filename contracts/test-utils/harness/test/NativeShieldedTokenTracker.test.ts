@@ -2,7 +2,7 @@ import {
   decodeShieldedCoinInfo,
   type EncodedShieldedCoinInfo,
 } from '@midnight-ntwrk/compact-runtime';
-import { coinCommitment, ZswapOutput } from '@midnight-ntwrk/ledger-v8';
+import { coinCommitment, ZswapOutput } from '@midnightntwrk/ledger-v9';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchCoinEvents, indexerHead } from '../ledgerEvents.js';

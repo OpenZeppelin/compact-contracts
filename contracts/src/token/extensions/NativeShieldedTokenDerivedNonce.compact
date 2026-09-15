@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.3.0-alpha.2 (token/extensions/NativeShieldedTokenDerivedNonce.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (token/extensions/NativeShieldedTokenDerivedNonce.compact)
 
-pragma language_version >= 0.23.0;
+pragma language_version >= 0.26.0;
 
 /**
  * @module NativeShieldedTokenDerivedNonce
@@ -59,7 +59,7 @@ module NativeShieldedTokenDerivedNonce {
    * @notice The derivation input is public ledger state, so mints using this
    * nonce are recipient-public; see the module notes.
    *
-   * @circuitInfo k=9, rows=451
+   * @constraints k=9, rows=447
    *
    * @return {Bytes<32>} - The next derived coin nonce.
    */

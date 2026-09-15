@@ -1,7 +1,9 @@
+import type { Secp256k1Point } from '@midnight-ntwrk/compact-runtime';
 import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
+import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   type ContractAddress,
   type Either,
@@ -59,7 +61,7 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
   }
 
   public _calculateSignerId(
-    pk: Uint8Array,
+    pk: Secp256k1Point,
     salt: Uint8Array,
   ): Promise<Uint8Array> {
     return this.circuits.pure._calculateSignerId(pk, salt);
@@ -68,8 +70,8 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
   public mint(
     amount: bigint,
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-    pubkeys: Uint8Array[],
-    signatures: Uint8Array[],
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
   ): Promise<[]> {
     return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
   }
@@ -82,8 +84,8 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
       mt_index: bigint;
     },
     amount: bigint,
-    pubkeys: Uint8Array[],
-    signatures: Uint8Array[],
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
   ): Promise<[]> {
     return this.circuits.impure.burn(coin, amount, pubkeys, signatures);
   }
@@ -117,7 +119,7 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
 // domain ("multisig:signer:"). Pure standalone circuit so commitments can be
 // calculated before contract instantiation.
 export function calculateSignerId(
-  pk: Uint8Array,
+  pk: Secp256k1Point,
   salt: Uint8Array,
 ): Uint8Array {
   return pureCircuits._calculateSignerId(pk, salt);

@@ -3,7 +3,7 @@ import { UNDEPLOYED_FEE_OVERHEAD } from '../dust.js';
 
 const NIGHT_RAW = 'night-raw-token';
 
-// Mock testkit + ledger-v8 so we can drive FundedWallet.build with no node and
+// Mock testkit + ledger so we can drive FundedWallet.build with no node and
 // assert the wiring that matters: the dust fee overhead is applied, the wallet
 // starts without the fire-and-forget fund wait, and both balances are reported.
 const m = vi.hoisted(() => {
@@ -64,7 +64,7 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', () => ({
   unshieldedToken: () => ({ raw: NIGHT_RAW }),
 }));
 
-vi.mock('@midnight-ntwrk/ledger-v8', () => ({
+vi.mock('@midnightntwrk/ledger-v9', () => ({
   ZswapSecretKeys: { fromSeed: vi.fn(() => ({ kind: 'zswap' })) },
   DustSecretKey: { fromSeed: vi.fn(() => ({ kind: 'dust' })) },
 }));

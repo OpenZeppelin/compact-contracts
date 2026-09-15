@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Ecdsa module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Ecdsa" prefix Ecdsa_;
+
+// Keeps assertLowS and secp256k1EcdsaVerifyLowS impure. Without a ledger
+// write the compiler promotes them to pure, and the artifact ships without
+// ZKIR or proving keys, leaving the low-s path evaluated but never proven.
+ledger _invocations: Counter;
+
+export pure circuit isLowS(s: Secp256k1Scalar): Boolean {
+  return Ecdsa_isLowS(s);
+}
+
+export circuit assertLowS(sig: Secp256k1EcdsaSignature): [] {
+  _invocations.increment(1);
+  Ecdsa_assertLowS(sig);
+}
+
+export circuit secp256k1EcdsaVerifyLowS(
+  msgHash: Bytes<32>,
+  sig: Secp256k1EcdsaSignature,
+  pk: Secp256k1Point
+): Boolean {
+  _invocations.increment(1);
+  return Ecdsa_secp256k1EcdsaVerifyLowS(msgHash, sig, pk);
+}

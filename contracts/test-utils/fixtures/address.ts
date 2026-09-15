@@ -1,10 +1,10 @@
 import {
-  convertFieldToBytes,
+  convertBigintToBytes,
   type EncodedContractAddress,
   encodeCoinPublicKey,
   isContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
-import { encodeContractAddress } from '@midnight-ntwrk/ledger-v8';
+import { encodeContractAddress } from '@midnightntwrk/ledger-v9';
 
 type ZswapCoinPublicKey = { bytes: Uint8Array };
 
@@ -103,7 +103,7 @@ export const generateEitherPubKeyPair = (str: string) =>
   ];
 
 export const zeroUint8Array = (length = 32) =>
-  convertFieldToBytes(length, 0n, '');
+  convertBigintToBytes(length, 0n, '');
 
 export const ZERO_KEY = {
   is_left: true,

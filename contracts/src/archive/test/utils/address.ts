@@ -1,8 +1,8 @@
 import {
-  convertFieldToBytes,
+  convertBigintToBytes,
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
-import { encodeContractAddress } from '@midnight-ntwrk/ledger-v8';
+import { encodeContractAddress } from '@midnightntwrk/ledger-v9';
 import type * as Compact from '../../../../artifacts/MockShieldedToken/contract/index.js';
 
 const PREFIX_ADDRESS = '0200';
@@ -70,12 +70,12 @@ export const createEitherTestContractAddress = (str: string) => {
 
 export const ZERO_KEY = {
   is_left: true,
-  left: { bytes: convertFieldToBytes(32, 0n, '') },
+  left: { bytes: convertBigintToBytes(32, 0n, '') },
   right: encodeToAddress(''),
 };
 
 export const ZERO_ADDRESS = {
   is_left: false,
   left: encodeToPK(''),
-  right: { bytes: convertFieldToBytes(32, 0n, '') },
+  right: { bytes: convertBigintToBytes(32, 0n, '') },
 };

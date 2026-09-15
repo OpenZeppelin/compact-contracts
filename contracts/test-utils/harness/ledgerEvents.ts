@@ -1,4 +1,4 @@
-import { Event, type EventDetails } from '@midnight-ntwrk/ledger-v8';
+import { Event, type EventDetails } from '@midnightntwrk/ledger-v9';
 
 /**
  * Live transport for the indexer's global zswap ledger-event stream — the source

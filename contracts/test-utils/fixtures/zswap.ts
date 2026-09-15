@@ -6,8 +6,8 @@
  * The dry (in-memory) simulator does NOT enforce the ledger's nullifier set,
  * so it will happily let a circuit spend the same coin twice — a node would
  * reject that as a double spend. But the simulator DOES record every spend and
- * every created coin in the circuit's `currentZswapLocalState`. Reading that
- * lets a unit test catch a whole class of coin-handling bugs without a node:
+ * every created coin in the circuit's Zswap local state. Reading that lets a
+ * unit test catch a whole class of coin-handling bugs without a node:
  * in particular, a circuit that emits a change coin, immediately re-spends it
  * (revealing its nullifier), and then persists/returns that same coin as if it
  * were still spendable. See the `ShieldedTreasury` / `ForwarderPrivate`
@@ -49,16 +49,26 @@ export type ZswapLocalState = {
 export function zswapLocalState(sim: unknown): ZswapLocalState {
   // The circuit context lives on the wrapped synchronous simulator inside the
   // backend; the public simulator surface intentionally does not re-export it.
-  const state = (
+  // Zswap state is keyed by contract address (each contract in a call tree
+  // keeps its own), so read the entry contract's entry.
+  const backend = (
     sim as {
       _backend?: {
-        sim?: { circuitContext?: { currentZswapLocalState?: ZswapLocalState } };
+        contractAddress?: string;
+        sim?: {
+          circuitContext?: {
+            zswapLocalStates?: Record<string, ZswapLocalState>;
+          };
+        };
       };
     }
-  )?._backend?.sim?.circuitContext?.currentZswapLocalState;
+  )?._backend;
+  const states = backend?.sim?.circuitContext?.zswapLocalStates;
+  const address = backend?.contractAddress;
+  const state = states && address ? states[address] : undefined;
   if (!state) {
     throw new Error(
-      'Could not read currentZswapLocalState from simulator. This helper ' +
+      'Could not read the Zswap local state from simulator. This helper ' +
         'targets the dry (in-memory) backend produced by createSimulator.',
     );
   }

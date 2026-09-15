@@ -8,11 +8,11 @@
 // future runtime stops enforcing subgroup membership on curve ops, that test
 // fails loudly. DO NOT deploy.
 
-pragma language_version >= 0.23.0;
+pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-export pure circuit doEcMul(p: JubjubPoint, k: Field): JubjubPoint {
+export pure circuit doEcMul(p: JubjubPoint, k: JubjubScalar): JubjubPoint {
   return ecMul(p, k);
 }
 
@@ -20,6 +20,6 @@ export pure circuit doEcAdd(a: JubjubPoint, b: JubjubPoint): JubjubPoint {
   return ecAdd(a, b);
 }
 
-export pure circuit genMul(k: Field): JubjubPoint {
+export pure circuit genMul(k: JubjubScalar): JubjubPoint {
   return ecMulGenerator(k);
 }
