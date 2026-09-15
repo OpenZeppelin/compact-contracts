@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/ShieldedMultiSigExample.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/NativeShieldedTreasuryExample.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title ShieldedMultiSigExample
- * @description Deployable reference contract for the `ShieldedMultiSig`
+ * @title NativeShieldedTreasuryExample
+ * @description Deployable reference contract for the `NativeShieldedTreasury`
  * preset: a shielded treasury whose signers approve proposals that spend it
  * once the threshold is met.
  *
@@ -16,14 +16,14 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../presets/ShieldedMultiSig" prefix ShieldedMultiSig_;
+import "../presets/NativeShieldedTreasury" prefix NativeShieldedTreasury_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either };
 export { ShieldedCoinInfo, ShieldedSendResult };
 
 // Surface the preset's approval state unprefixed so `ledger()` readers keep
 // the key names the preset published as a contract.
-import { _proposalApprovals, _approvalCount } from "../presets/ShieldedMultiSig";
+import { _proposalApprovals, _approvalCount } from "../presets/NativeShieldedTreasury";
 export { _proposalApprovals, _approvalCount };
 
 /**
@@ -41,72 +41,72 @@ constructor(
   signers: Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>,
   thresh: Uint<8>
 ) {
-  ShieldedMultiSig_initialize(signers, thresh);
+  NativeShieldedTreasury_initialize(signers, thresh);
 }
 
 export circuit deposit(coin: ShieldedCoinInfo): [] {
-  return ShieldedMultiSig_deposit(coin);
+  return NativeShieldedTreasury_deposit(coin);
 }
 
 export circuit createShieldedProposal(
-  to: ShieldedMultiSig_Proposal_Recipient,
+  to: NativeShieldedTreasury_Proposal_Recipient,
   color: Bytes<32>,
   amount: Uint<128>
 ): Uint<64> {
-  return ShieldedMultiSig_createShieldedProposal(to, color, amount);
+  return NativeShieldedTreasury_createShieldedProposal(to, color, amount);
 }
 
 export circuit approveProposal(id: Uint<64>): [] {
-  return ShieldedMultiSig_approveProposal(id);
+  return NativeShieldedTreasury_approveProposal(id);
 }
 
 export circuit revokeApproval(id: Uint<64>): [] {
-  return ShieldedMultiSig_revokeApproval(id);
+  return NativeShieldedTreasury_revokeApproval(id);
 }
 
 export circuit executeShieldedProposal(id: Uint<64>): ShieldedSendResult {
-  return ShieldedMultiSig_executeShieldedProposal(id);
+  return NativeShieldedTreasury_executeShieldedProposal(id);
 }
 
 export circuit isProposalApprovedBySigner(
   id: Uint<64>,
   signer: Either<ZswapCoinPublicKey, ContractAddress>
 ): Boolean {
-  return ShieldedMultiSig_isProposalApprovedBySigner(id, signer);
+  return NativeShieldedTreasury_isProposalApprovedBySigner(id, signer);
 }
 
 export circuit getApprovalCount(id: Uint<64>): Uint<8> {
-  return ShieldedMultiSig_getApprovalCount(id);
+  return NativeShieldedTreasury_getApprovalCount(id);
 }
 
-export circuit getProposal(id: Uint<64>): ShieldedMultiSig_Proposal_Proposal {
-  return ShieldedMultiSig_getProposal(id);
+export circuit getProposal(id: Uint<64>): NativeShieldedTreasury_Proposal_Proposal {
+  return NativeShieldedTreasury_getProposal(id);
 }
 
-export circuit getProposalStatus(id: Uint<64>): ShieldedMultiSig_Proposal_ProposalStatus {
-  return ShieldedMultiSig_getProposalStatus(id);
+export circuit getProposalStatus(id: Uint<64>): NativeShieldedTreasury_Proposal_ProposalStatus {
+  return NativeShieldedTreasury_getProposalStatus(id);
 }
 
 export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
-  return ShieldedMultiSig_getTokenBalance(color);
+  return NativeShieldedTreasury_getTokenBalance(color);
 }
 
 export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
-  return ShieldedMultiSig_getReceivedTotal(color);
+  return NativeShieldedTreasury_getReceivedTotal(color);
 }
 
 export circuit getSentTotal(color: Bytes<32>): Uint<128> {
-  return ShieldedMultiSig_getSentTotal(color);
+  return NativeShieldedTreasury_getSentTotal(color);
 }
 
 export circuit getSignerCount(): Uint<8> {
-  return ShieldedMultiSig_getSignerCount();
+  return NativeShieldedTreasury_getSignerCount();
 }
 
 export circuit getThreshold(): Uint<8> {
-  return ShieldedMultiSig_getThreshold();
+  return NativeShieldedTreasury_getThreshold();
 }
 
 export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
-  return ShieldedMultiSig_isSigner(account);
+  return NativeShieldedTreasury_isSigner(account);
 }

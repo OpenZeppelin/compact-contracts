@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/ShieldedMultiSig.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/NativeShieldedTreasury.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @module ShieldedMultiSig
+ * @module NativeShieldedTreasury
  * @description A shielded multisig preset composing `Signer`,
  * `ProposalManager`, and `ShieldedTreasury`. Signers approve proposals that
  * transfer shielded tokens out of the treasury once the configured threshold
@@ -24,7 +24,7 @@ pragma language_version >= 0.26.0;
  * migration. Existing deployments would then gain working contract-signer
  * authentication.
  */
-module ShieldedMultiSig {
+module NativeShieldedTreasury {
   import CompactStandardLibrary;
 
   import "../ProposalManager" prefix Proposal_;
@@ -79,7 +79,7 @@ module ShieldedMultiSig {
     assert(
       to.kind == Proposal_RecipientKind.ShieldedUser
         || to.kind == Proposal_RecipientKind.Contract,
-      "ShieldedMultiSig: recipient must be a shielded user or contract"
+      "NativeShieldedTreasury: recipient must be a shielded user or contract"
     );
 
     return Proposal__createProposal(to, color, amount);
@@ -94,7 +94,7 @@ module ShieldedMultiSig {
     Signer_assertSigner(callerPK);
 
     // Check if already approved
-    assert(!isProposalApprovedBySigner(id, callerPK), "Multisig: already approved");
+    assert(!isProposalApprovedBySigner(id, callerPK), "NativeShieldedTreasury: already approved");
 
     // Approve
     _approveProposal(id, callerPK);
@@ -109,7 +109,7 @@ module ShieldedMultiSig {
     Signer_assertSigner(callerPK);
 
     // Check has approved
-    assert(isProposalApprovedBySigner(id, callerPK), "Multisig: not approved");
+    assert(isProposalApprovedBySigner(id, callerPK), "NativeShieldedTreasury: not approved");
 
     // Revoke
     _revokeApproval(id, callerPK);
