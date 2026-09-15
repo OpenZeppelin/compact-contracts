@@ -145,7 +145,7 @@ module NativeShieldedStatelessTreasury<#t> {
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
    */
   export circuit deposit(coin: ShieldedCoinInfo): [] {
-    receiveShielded(disclose(coin));
+    Treasury__deposit(coin);
   }
 
   /**
