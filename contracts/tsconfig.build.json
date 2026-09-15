@@ -1,5 +1,12 @@
 {
+  // `compact-builder` runs `tsc --project tsconfig.build.json` and then deletes
+  // the emitted witness directories, so the emitted set is pinned here rather
+  // than inherited: widening `tsconfig.json` for `yarn types` must not put
+  // specs, simulators or test-utils into `dist`.
   "extends": "./tsconfig.json",
+  "include": ["src/**/test/witnesses/**/*.ts"],
   "exclude": ["src/archive/", "src/**/*.test.ts"],
-  "compilerOptions": {}
+  "compilerOptions": {
+    "rootDir": "src"
+  }
 }

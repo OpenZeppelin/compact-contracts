@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `yarn types` now type-checks the specs, simulators and shared `test-utils` fixtures, not just the witnesses under `src/**/test/witnesses/`. `tsconfig.build.json` pins its own `include`, so the set `compact-builder` emits, and the published `dist`, are unchanged. (#895)
+
 ## 0.4.0-alpha.1 (2026-09-02)
 
 ### Added
