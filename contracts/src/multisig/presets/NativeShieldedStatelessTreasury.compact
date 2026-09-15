@@ -286,6 +286,28 @@ module NativeShieldedStatelessTreasury<#t> {
   }
 
   /**
+   * @description Computes a signer commitment from a secp256k1 public key,
+   * as `persistentHash(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`.
+   *
+   * Pure, so the deployer can derive constructor commitments off-chain.
+   *
+   * Requirements:
+   *
+   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
+   *
+   * @param {Secp256k1Point} pk - The secp256k1 public key.
+   * @param {Bytes<32>} salt - The instance salt.
+   *
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  export pure circuit _calculateSignerId(
+    pk: Secp256k1Point,
+    salt: Bytes<32>
+  ): Bytes<32> {
+    return Secp256k1EcdsaMultisig_calculateSignerId(pk, salt);
+  }
+
+  /**
    * @description Receives a shielded coin into the multisig treasury.
    *
    * No access control which allows anyone to deposit. The coin is claimed at the
@@ -376,28 +398,6 @@ module NativeShieldedStatelessTreasury<#t> {
       ZswapCoinPublicKey { bytes: to.address }
     );
     return Treasury__send(coin, recipient, amount);
-  }
-
-  /**
-   * @description Computes a signer commitment from a secp256k1 public key,
-   * as `persistentHash(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`.
-   *
-   * Pure, so the deployer can derive constructor commitments off-chain.
-   *
-   * Requirements:
-   *
-   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
-   *
-   * @param {Secp256k1Point} pk - The secp256k1 public key.
-   * @param {Bytes<32>} salt - The instance salt.
-   *
-   * @returns {Bytes<32>} The signer commitment.
-   */
-  export pure circuit _calculateSignerId(
-    pk: Secp256k1Point,
-    salt: Bytes<32>
-  ): Bytes<32> {
-    return Secp256k1EcdsaMultisig_calculateSignerId(pk, salt);
   }
 
   /**

@@ -21,6 +21,13 @@ constructor(instanceSalt: Bytes<32>, signerCommitments: Vector<3, Bytes<32>>) {
   NativeShieldedStatelessTreasury_initialize<3>(instanceSalt, signerCommitments);
 }
 
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return NativeShieldedStatelessTreasury__calculateSignerId(pk, salt);
+}
+
 export circuit deposit(coin: ShieldedCoinInfo): [] {
   return NativeShieldedStatelessTreasury_deposit(coin);
 }
@@ -33,13 +40,6 @@ export circuit execute(
   signatures: Vector<1, Secp256k1EcdsaSignature>
 ): ShieldedSendResult {
   return NativeShieldedStatelessTreasury_execute(to, amount, coin, pubkeys, signatures);
-}
-
-export pure circuit _calculateSignerId(
-  pk: Secp256k1Point,
-  salt: Bytes<32>
-): Bytes<32> {
-  return NativeShieldedStatelessTreasury__calculateSignerId(pk, salt);
 }
 
 export circuit getNonce(): Uint<64> {
