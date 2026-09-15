@@ -8,7 +8,7 @@ import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
 } from '#test-utils/harness/NativeShieldedTokenTracker.js';
-import { ForwarderPrivateSimulator } from '../simulators/examples/ForwarderPrivateSimulator.js';
+import { ForwarderPrivateSimulator } from './simulators/ForwarderPrivateSimulator.js';
 
 // The drain parent is a `ZswapCoinPublicKey` (`{ bytes }`); the commitment is
 // over its raw 32 bytes (`calculateParentCommitment(parent.bytes, opSecret)`).

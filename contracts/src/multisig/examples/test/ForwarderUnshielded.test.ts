@@ -1,7 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
-import { ForwarderUnshieldedSimulator } from '../simulators/examples/ForwarderUnshieldedSimulator.js';
+import { ForwarderUnshieldedSimulator } from './simulators/ForwarderUnshieldedSimulator.js';
 
 // The constructor takes a `UserAddress` (the supported arm). The `_parent`
 // ledger field stays a generic `Either`; `initialize` stores the address in the

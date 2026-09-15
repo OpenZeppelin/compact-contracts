@@ -11,7 +11,8 @@ The `src/` directory is organized by module category. Each module follows the sa
 ├── <Contract>.compact          # Contract source
 ├── presets/                    # Curated modules composing the module's contracts
 │   └── test/                   # Preset specs, with their own mocks/ and simulators/
-├── examples/                   # <Preset>Example.compact — deployable, compile-only
+├── examples/                   # <Preset>Example.compact — deployable
+│   └── test/                   # Example specs, with their own simulators/
 └── test/
     ├── <Contract>.test.ts      # Test suite
     ├── mocks/                  # Mock contracts (test-only — see warning below)
@@ -20,10 +21,13 @@ The `src/` directory is organized by module category. Each module follows the sa
 ```
 
 A preset is library code, so it is imported, not deployed. Each one ships a
-deployable contract under `examples/`. Preset tests live under `presets/test/`:
-the spec next to `presets/test/mocks/Mock<Preset>.compact` and
-`presets/test/simulators/<Preset>Simulator.ts`. The `examples/` contracts are
-compiled but not tested.
+deployable contract under `examples/`.
+
+Tests sit next to what they cover. `presets/test/` holds the preset spec
+alongside `presets/test/mocks/Mock<Preset>.compact` and
+`presets/test/simulators/<Preset>Simulator.ts`. `examples/test/` holds the spec
+and simulator of each example that carries its own coverage; the rest of the
+`examples/` contracts are compiled but not tested.
 
 ## > ⚠️ Mock Contracts Are For Testing Only
 

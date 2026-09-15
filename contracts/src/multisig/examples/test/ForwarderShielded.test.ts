@@ -5,7 +5,7 @@ import {
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
-import { ForwarderShieldedSimulator } from '../simulators/examples/ForwarderShieldedSimulator.js';
+import { ForwarderShieldedSimulator } from './simulators/ForwarderShieldedSimulator.js';
 
 // The constructor takes a `ZswapCoinPublicKey` (the supported arm). The
 // `_parent` ledger field stays a generic `Either`; `initialize` stores the key

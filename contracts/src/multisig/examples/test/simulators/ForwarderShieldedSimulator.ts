@@ -10,7 +10,10 @@ import {
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
 } from '../../../../../artifacts/ForwarderShieldedExample/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type ForwarderShieldedArgs = readonly [parent: ZswapCoinPublicKey];
 
