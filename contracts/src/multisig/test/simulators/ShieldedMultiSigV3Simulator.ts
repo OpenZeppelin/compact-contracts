@@ -8,10 +8,10 @@ import {
   type ContractAddress,
   type Either,
   ledger,
+  Contract as MockShieldedMultiSigV3,
   pureCircuits,
-  Contract as ShieldedMultiSigV3Contract,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/ShieldedMultiSigV3/contract/index.js';
+} from '../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type ShieldedMultiSigV3Args = readonly [
@@ -19,27 +19,29 @@ type ShieldedMultiSigV3Args = readonly [
   initCoinNonce: Uint8Array,
   tokenDomain: Uint8Array,
   signerCommitments: Uint8Array[],
+  isInit: boolean,
 ];
 
 const ShieldedMultiSigV3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  ShieldedMultiSigV3Contract<EmptyPrivateState>,
+  MockShieldedMultiSigV3<EmptyPrivateState>,
   ShieldedMultiSigV3Args
 >({
   contractFactory: (witnesses) =>
-    new ShieldedMultiSigV3Contract<EmptyPrivateState>(witnesses),
+    new MockShieldedMultiSigV3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
     initCoinNonce,
     tokenDomain,
     signerCommitments,
-  ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
+    isInit,
+  ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments, isInit],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedMultiSigV3',
+  artifactName: 'MockShieldedMultiSigV3',
 });
 
 export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase {
@@ -48,6 +50,7 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     initCoinNonce: Uint8Array,
     tokenDomain: Uint8Array,
     signerCommitments: Uint8Array[],
+    isInit: boolean,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
@@ -55,7 +58,7 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
   ): Promise<ShieldedMultiSigV3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
+      [instanceSalt, initCoinNonce, tokenDomain, signerCommitments, isInit],
       options,
     ) as Promise<ShieldedMultiSigV3Simulator>;
   }
