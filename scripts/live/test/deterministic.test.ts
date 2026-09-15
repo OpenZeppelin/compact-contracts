@@ -33,6 +33,28 @@ describe('deterministicCause', () => {
     ).toBeUndefined();
   });
 
+  it('ignores a matcher failure that quotes a fingerprint', () => {
+    expect(
+      deterministicCause([
+        [
+          "AssertionError: expected 'Error: Custom error: 103' to contain 'Custom error: 186'\n" +
+            '    at /contracts/src/token/test/Token.live.test.ts:42:21',
+        ],
+      ]),
+    ).toBeUndefined();
+  });
+
+  it('counts a thrown fingerprint beside a matcher failure', () => {
+    expect(
+      deterministicCause([
+        [
+          "AssertionError: expected 'Error: Custom error: 186' to be undefined",
+          'Error: Custom error: 186\n    at _mint…',
+        ],
+      ]),
+    ).toBe('unclaimed shielded output (err 186)');
+  });
+
   it('reports nothing for a message-less failure', () => {
     expect(deterministicCause([[]])).toBeUndefined();
   });

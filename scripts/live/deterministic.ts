@@ -10,8 +10,10 @@
  * a second stack reset and re-run for nothing).
  *
  * A file skips round 2 only when EVERY failed test in it matches one of these
- * patterns; a single unmatched (or message-less) failure keeps the file on
- * today's round-2 path, so an unknown failure can never lose its flake check.
+ * patterns through a thrown error (a matcher failure quotes its expected value,
+ * so it never counts); a single unmatched (or message-less) failure keeps the
+ * file on today's round-2 path, so an unknown failure can never lose its flake
+ * check.
  */
 
 /** One deterministic-rejection fingerprint, matched against a failed test's
@@ -40,15 +42,21 @@ export const DETERMINISTIC_FAILURES: readonly DeterministicPattern[] = [
   },
 ];
 
+/** A thrown error's rendered `Name: message`, as opposed to a matcher failure
+ * (`AssertionError: expected … to contain 'Custom error: 186'`), whose text
+ * quotes the expected value and so can match a fingerprint the test never hit. */
+const isThrownError = (message: string): boolean =>
+  !/^\s*AssertionError\b/.test(message);
+
 /**
  * The deterministic cause for a failed file, or `undefined` when round 2 is
  * still worth running.
  *
  * @param failedTests - one entry per failed test: its failure messages
  * @returns the distinct cause names (source order, ' + '-joined) when every
- *   failed test matches some pattern; `undefined` when any does not, or when
- *   nothing failed at assertion level (a hook crash reports no failed tests,
- *   and an unknown cause must keep its flake check)
+ *   failed test matches some pattern through a thrown error; `undefined` when
+ *   any does not, or when nothing failed (an unknown cause must keep its
+ *   flake check)
  */
 export function deterministicCause(
   failedTests: readonly (readonly string[])[],
@@ -56,8 +64,9 @@ export function deterministicCause(
   if (failedTests.length === 0) return undefined;
   const causes = new Set<string>();
   for (const messages of failedTests) {
+    const thrown = messages.filter(isThrownError);
     const matched = DETERMINISTIC_FAILURES.filter((d) =>
-      messages.some((m) => d.pattern.test(m)),
+      thrown.some((m) => d.pattern.test(m)),
     );
     if (matched.length === 0) return undefined;
     for (const d of matched) causes.add(d.cause);
