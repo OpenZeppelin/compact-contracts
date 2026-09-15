@@ -168,8 +168,6 @@ module NativeShieldedTreasury {
   // unwritten copy of its state.
   export { Proposal_Recipient, Proposal_Proposal, Proposal_ProposalStatus };
 
-  // ─── State ───────────────────────────────────────────────────────────────
-
   /**
    * @description Which signer approves which proposal, keyed by proposal id
    * then by signer. `approveProposal` and `revokeApproval` write it;
@@ -185,8 +183,6 @@ module NativeShieldedTreasury {
    * approvals on one proposal conflict in a block.
    */
   export ledger _approvalCount: Map<Uint<64>, Uint<8>>;
-
-  // ─── Initialization ──────────────────────────────────────────────────────
 
   /**
    * @description Registers the initial signer set and threshold.
@@ -205,8 +201,6 @@ module NativeShieldedTreasury {
     Signer_initialize<3>(signers, thresh);
   }
 
-  // ─── Deposit ─────────────────────────────────────────────────────────────
-
   /**
    * @description Receives a shielded coin, merged into the stored coin
    * of the same color. No access control: anyone may deposit.
@@ -216,8 +210,6 @@ module NativeShieldedTreasury {
   export circuit deposit(coin: ShieldedCoinInfo): [] {
     Treasury__deposit(coin);
   }
-
-  // ─── Proposals ───────────────────────────────────────────────────────────
 
   /**
    * @description Creates a shielded-transfer proposal. Signers only,
@@ -243,6 +235,23 @@ module NativeShieldedTreasury {
   }
 
   /**
+   * @description Returns the caller identity used for signer authentication.
+   *
+   * @warning Currently resolves callers via `ownPublicKey()` only, so any signer
+   * registered as a `right(ContractAddress)` variant cannot authenticate through
+   * this circuit today. Ledger fields keep the `Either<ZswapCoinPublicKey, ContractAddress>`
+   * shape so that, once contract-to-contract calls are supported, `getCaller()`
+   * can be replaced via a CMA (Contract Maintenance Authorities) circuit upgrade
+   * to detect the contract-call context and return the appropriate variant —
+   * without a state migration.
+   *
+   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The caller wrapped as a left-variant.
+   */
+  circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
+    return left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
+  }
+
+  /**
    * @description Records the caller's approval of an active proposal.
    * Signers only, once each.
    *
@@ -263,6 +272,17 @@ module NativeShieldedTreasury {
     _approveProposal(id, callerPK);
   }
 
+  circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    if (!_proposalApprovals.member(disclose(id))) {
+      _proposalApprovals.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
+    }
+
+    _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
+
+    const newCount = getApprovalCount(id) + 1 as Uint<8>;
+    _approvalCount.insert(disclose(id), disclose(newCount));
+  }
+
   /**
    * @description Withdraws the caller's approval of an active proposal.
    *
@@ -281,6 +301,13 @@ module NativeShieldedTreasury {
 
     // Revoke
     _revokeApproval(id, callerPK);
+  }
+
+  circuit _revokeApproval(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
+    _proposalApprovals.lookup(disclose(id)).remove(disclose(signer));
+
+    const newCount = getApprovalCount(id) - 1 as Uint<8>;
+    _approvalCount.insert(disclose(id), disclose(newCount));
   }
 
   /**
@@ -312,45 +339,6 @@ module NativeShieldedTreasury {
     Proposal__markExecuted(id);
     return result;
   }
-
-  // ─── Internal ───────────────────────────────────────────────────────────
-
-  circuit _approveProposal(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    if (!_proposalApprovals.member(disclose(id))) {
-      _proposalApprovals.insert(disclose(id), default<Map<Either<ZswapCoinPublicKey, ContractAddress>, Boolean>>);
-    }
-
-    _proposalApprovals.lookup(disclose(id)).insert(disclose(signer), disclose(true));
-
-    const newCount = getApprovalCount(id) + 1 as Uint<8>;
-    _approvalCount.insert(disclose(id), disclose(newCount));
-  }
-
-  circuit _revokeApproval(id: Uint<64>, signer: Either<ZswapCoinPublicKey, ContractAddress>): [] {
-    _proposalApprovals.lookup(disclose(id)).remove(disclose(signer));
-
-    const newCount = getApprovalCount(id) - 1 as Uint<8>;
-    _approvalCount.insert(disclose(id), disclose(newCount));
-  }
-
-  /**
-   * @description Returns the caller identity used for signer authentication.
-   *
-   * @warning Currently resolves callers via `ownPublicKey()` only, so any signer
-   * registered as a `right(ContractAddress)` variant cannot authenticate through
-   * this circuit today. Ledger fields keep the `Either<ZswapCoinPublicKey, ContractAddress>`
-   * shape so that, once contract-to-contract calls are supported, `getCaller()`
-   * can be replaced via a CMA (Contract Maintenance Authorities) circuit upgrade
-   * to detect the contract-call context and return the appropriate variant —
-   * without a state migration.
-   *
-   * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The caller wrapped as a left-variant.
-   */
-  circuit getCaller(): Either<ZswapCoinPublicKey, ContractAddress> {
-    return left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
-  }
-
-  // ─── View ───────────────────────────────────────────────────────────────
 
   /**
    * @description Returns whether `signer` currently approves the proposal.
