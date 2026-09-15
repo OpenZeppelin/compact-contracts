@@ -9,12 +9,12 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../ShieldedMultiSigV3" prefix ShieldedMultiSigV3_;
+import "../../NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-import { _counter } from "../../ShieldedMultiSigV3";
+import { _counter } from "../../NativeShieldedTokenIssuer";
 export { _counter };
 
 /**
@@ -37,7 +37,7 @@ constructor(
   isInit: Boolean
 ) {
   if (disclose(isInit)) {
-    ShieldedMultiSigV3_initialize(
+    NativeShieldedTokenIssuer_initialize(
       instanceSalt,
       tokenDomain,
       name_,
@@ -54,7 +54,7 @@ export circuit mint(
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): ShieldedCoinInfo {
-  return ShieldedMultiSigV3_mint(amount, recipient, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
 }
 
 export circuit burn(
@@ -63,44 +63,44 @@ export circuit burn(
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): Maybe<ShieldedCoinInfo> {
-  return ShieldedMultiSigV3_burn(coin, amount, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_burn(coin, amount, pubkeys, signatures);
 }
 
 export pure circuit _calculateSignerId(
   pk: Secp256k1Point,
   salt: Bytes<32>
 ): Bytes<32> {
-  return ShieldedMultiSigV3__calculateSignerId(pk, salt);
+  return NativeShieldedTokenIssuer__calculateSignerId(pk, salt);
 }
 
 export circuit getNonce(): Uint<64> {
-  return ShieldedMultiSigV3_getNonce();
+  return NativeShieldedTokenIssuer_getNonce();
 }
 
 export circuit name(): Opaque<"string"> {
-  return ShieldedMultiSigV3_name();
+  return NativeShieldedTokenIssuer_name();
 }
 
 export circuit symbol(): Opaque<"string"> {
-  return ShieldedMultiSigV3_symbol();
+  return NativeShieldedTokenIssuer_symbol();
 }
 
 export circuit decimals(): Uint<8> {
-  return ShieldedMultiSigV3_decimals();
+  return NativeShieldedTokenIssuer_decimals();
 }
 
 export circuit tokenColor(): Bytes<32> {
-  return ShieldedMultiSigV3_tokenColor();
+  return NativeShieldedTokenIssuer_tokenColor();
 }
 
 export circuit getSignerCount(): Uint<8> {
-  return ShieldedMultiSigV3_getSignerCount();
+  return NativeShieldedTokenIssuer_getSignerCount();
 }
 
 export circuit getThreshold(): Uint<8> {
-  return ShieldedMultiSigV3_getThreshold();
+  return NativeShieldedTokenIssuer_getThreshold();
 }
 
 export circuit isSigner(commitment: Bytes<32>): Boolean {
-  return ShieldedMultiSigV3_isSigner(commitment);
+  return NativeShieldedTokenIssuer_isSigner(commitment);
 }

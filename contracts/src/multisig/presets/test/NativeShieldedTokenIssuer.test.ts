@@ -12,7 +12,7 @@ import type {
   Maybe,
   QualifiedShieldedCoinInfo,
   ShieldedCoinInfo,
-} from '../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
+} from '../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
 import {
   burnMsgHash,
   type EitherRecipient,
@@ -20,8 +20,8 @@ import {
 } from '../../test/EcdsaTestUtils.js';
 import {
   calculateSignerId,
-  ShieldedMultiSigV3Simulator,
-} from './simulators/ShieldedMultiSigV3Simulator.js';
+  NativeShieldedTokenIssuerSimulator,
+} from './simulators/NativeShieldedTokenIssuerSimulator.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────
 
@@ -60,12 +60,12 @@ let USER_RECIPIENT: ReturnType<typeof shieldedTestKey>;
 
 // ─── Signing helpers ──────────────────────────────────────────────
 
-const addrBytes = (m: ShieldedMultiSigV3Simulator): Uint8Array =>
+const addrBytes = (m: NativeShieldedTokenIssuerSimulator): Uint8Array =>
   Uint8Array.from(Buffer.from(m.contractAddress, 'hex'));
 
 /** The mint digest the contract computes for these params at its current nonce. */
 async function mintDigest(
-  m: ShieldedMultiSigV3Simulator,
+  m: NativeShieldedTokenIssuerSimulator,
   recipient: EitherRecipient,
   amount: bigint,
 ): Promise<Uint8Array> {
@@ -79,7 +79,7 @@ async function mintDigest(
 
 /** The burn digest the contract computes for these params at its current nonce. */
 async function burnDigest(
-  m: ShieldedMultiSigV3Simulator,
+  m: NativeShieldedTokenIssuerSimulator,
   amount: bigint,
 ): Promise<Uint8Array> {
   return burnMsgHash({
@@ -91,7 +91,7 @@ async function burnDigest(
 
 /** Mints, signing the correct digest with each of `signers`. */
 async function mint(
-  m: ShieldedMultiSigV3Simulator,
+  m: NativeShieldedTokenIssuerSimulator,
   amount: bigint,
   recipient: EitherRecipient,
   signers: Signer[],
@@ -107,7 +107,7 @@ async function mint(
 
 /** Asserts `coin` is a well-formed coin of `m`'s token carrying `amount`. */
 async function expectMintedCoin(
-  m: ShieldedMultiSigV3Simulator,
+  m: NativeShieldedTokenIssuerSimulator,
   coin: ShieldedCoinInfo,
   amount: bigint,
 ): Promise<void> {
@@ -131,13 +131,13 @@ function makeQualifiedCoin(
   };
 }
 
-let multisig: ShieldedMultiSigV3Simulator;
+let multisig: NativeShieldedTokenIssuerSimulator;
 
 // A fresh multisig-token instance. Mutating groups build one per test
 // (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
 // live deploy tx.
 const freshMultisig = () =>
-  ShieldedMultiSigV3Simulator.create(
+  NativeShieldedTokenIssuerSimulator.create(
     INSTANCE_SALT,
     TOKEN_DOMAIN,
     TOKEN_NAME,
@@ -147,7 +147,7 @@ const freshMultisig = () =>
     true,
   );
 
-describe('ShieldedMultiSigV3', () => {
+describe('NativeShieldedTokenIssuer', () => {
   describe('constructor', () => {
     it('should initialize', async () => {
       multisig = await freshMultisig();
@@ -173,7 +173,7 @@ describe('ShieldedMultiSigV3', () => {
 
     it('should fail with duplicate signer commitments', async () => {
       await expect(
-        ShieldedMultiSigV3Simulator.create(
+        NativeShieldedTokenIssuerSimulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -571,7 +571,7 @@ describe('ShieldedMultiSigV3', () => {
         const altDomain = new Uint8Array(32);
         Buffer.from('alt:token:').copy(altDomain);
 
-        const alt = await ShieldedMultiSigV3Simulator.create(
+        const alt = await NativeShieldedTokenIssuerSimulator.create(
           INSTANCE_SALT,
           altDomain,
           TOKEN_NAME,
@@ -611,7 +611,7 @@ describe('ShieldedMultiSigV3', () => {
 
       it('should reject a signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await ShieldedMultiSigV3Simulator.create(
+        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,

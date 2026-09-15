@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/ShieldedMultiSigV3.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/NativeShieldedTokenIssuer.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @module ShieldedMultiSigV3
+ * @module NativeShieldedTokenIssuer
  * @description Privacy-preserving multisig token contract for tokenised
  * deposits. Both minting and burning require threshold ECDSA
  * authorization. No single party can unilaterally create or destroy tokens.
@@ -47,7 +47,7 @@ pragma language_version >= 0.26.0;
  * TODO: switch every digest to `keccak256` to match the custodian's HSM
  * signing format (#827).
  */
-module ShieldedMultiSigV3 {
+module NativeShieldedTokenIssuer {
   import CompactStandardLibrary;
 
   import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
