@@ -9,12 +9,12 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../presets/ShieldedMultiSigV3" prefix ShieldedMultiSigV3_;
+import "../../ShieldedMultiSigV3" prefix ShieldedMultiSigV3_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-import { _counter, _coinNonce, _tokenDomain } from "../../presets/ShieldedMultiSigV3";
+import { _counter, _coinNonce, _tokenDomain } from "../../ShieldedMultiSigV3";
 export { _counter, _coinNonce, _tokenDomain };
 
 /**
