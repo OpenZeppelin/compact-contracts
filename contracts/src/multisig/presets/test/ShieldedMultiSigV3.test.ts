@@ -8,6 +8,11 @@ import {
   signerFromLabel,
 } from '#test-utils/fixtures/ecdsa.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
+import type {
+  Maybe,
+  QualifiedShieldedCoinInfo,
+  ShieldedCoinInfo,
+} from '../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
 import {
   burnMsgHash,
   type EitherRecipient,
@@ -21,9 +26,11 @@ import {
 // ─── Fixtures ─────────────────────────────────────────────────────
 
 const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
-const INIT_COIN_NONCE = new Uint8Array(32).fill(0xbb);
 const TOKEN_DOMAIN = new Uint8Array(32);
 Buffer.from('smt:token:').copy(TOKEN_DOMAIN);
+const TOKEN_NAME = 'MultiSig Token';
+const TOKEN_SYMBOL = 'MST';
+const TOKEN_DECIMALS = 6n;
 
 // Real secp256k1 signers, deterministic from labels. A signer's on-chain
 // identity is the commitment `calculateSignerId(pk, salt)`; authorization also
@@ -88,9 +95,9 @@ async function mint(
   amount: bigint,
   recipient: EitherRecipient,
   signers: Signer[],
-): Promise<void> {
+): Promise<ShieldedCoinInfo> {
   const digest = await mintDigest(m, recipient, amount);
-  await m.mint(
+  return m.mint(
     amount,
     recipient,
     signers.map((s) => s.publicKey),
@@ -98,17 +105,24 @@ async function mint(
   );
 }
 
+/** Asserts `coin` is a well-formed coin of `m`'s token carrying `amount`. */
+async function expectMintedCoin(
+  m: ShieldedMultiSigV3Simulator,
+  coin: ShieldedCoinInfo,
+  amount: bigint,
+): Promise<void> {
+  expect(coin.color).toStrictEqual(await m.tokenColor());
+  expect(coin.value).toStrictEqual(amount);
+  expect(coin.nonce).toBeInstanceOf(Uint8Array);
+  expect(coin.nonce.length).toStrictEqual(32);
+}
+
 function makeQualifiedCoin(
   color: Uint8Array,
   value: bigint,
   mtIndex = 0n,
   nonce?: Uint8Array,
-): {
-  nonce: Uint8Array;
-  color: Uint8Array;
-  value: bigint;
-  mt_index: bigint;
-} {
+): QualifiedShieldedCoinInfo {
   return {
     nonce: nonce ?? new Uint8Array(32).fill(0),
     color,
@@ -125,8 +139,10 @@ let multisig: ShieldedMultiSigV3Simulator;
 const freshMultisig = () =>
   ShieldedMultiSigV3Simulator.create(
     INSTANCE_SALT,
-    INIT_COIN_NONCE,
     TOKEN_DOMAIN,
+    TOKEN_NAME,
+    TOKEN_SYMBOL,
+    TOKEN_DECIMALS,
     SIGNER_COMMITMENTS,
     true,
   );
@@ -134,38 +150,20 @@ const freshMultisig = () =>
 describe('ShieldedMultiSigV3', () => {
   describe('constructor', () => {
     it('should initialize', async () => {
-      multisig = await ShieldedMultiSigV3Simulator.create(
-        INSTANCE_SALT,
-        INIT_COIN_NONCE,
-        TOKEN_DOMAIN,
-        SIGNER_COMMITMENTS,
-        true,
-      );
+      multisig = await freshMultisig();
       expect(await multisig.getSignerCount()).toEqual(3n);
       expect(await multisig.getThreshold()).toEqual(2n);
     });
 
     it('should register all signer commitments', async () => {
-      multisig = await ShieldedMultiSigV3Simulator.create(
-        INSTANCE_SALT,
-        INIT_COIN_NONCE,
-        TOKEN_DOMAIN,
-        SIGNER_COMMITMENTS,
-        true,
-      );
+      multisig = await freshMultisig();
       for (const commitment of SIGNER_COMMITMENTS) {
         expect(await multisig.isSigner(commitment)).toEqual(true);
       }
     });
 
     it('should reject a non-signer commitment', async () => {
-      multisig = await ShieldedMultiSigV3Simulator.create(
-        INSTANCE_SALT,
-        INIT_COIN_NONCE,
-        TOKEN_DOMAIN,
-        SIGNER_COMMITMENTS,
-        true,
-      );
+      multisig = await freshMultisig();
       const unknown = await multisig._calculateSignerId(
         OUTSIDER.publicKey,
         INSTANCE_SALT,
@@ -177,23 +175,21 @@ describe('ShieldedMultiSigV3', () => {
       await expect(
         ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
-          INIT_COIN_NONCE,
           TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
           [COMMITMENT1, COMMITMENT1, COMMITMENT2],
           true,
         ),
       ).rejects.toThrow('Signer: signer already active');
     });
 
-    it('should store token domain', async () => {
-      multisig = await ShieldedMultiSigV3Simulator.create(
-        INSTANCE_SALT,
-        INIT_COIN_NONCE,
-        TOKEN_DOMAIN,
-        SIGNER_COMMITMENTS,
-        true,
-      );
-      expect(await multisig.getTokenDomain()).toEqual(TOKEN_DOMAIN);
+    it('stores the token metadata', async () => {
+      multisig = await freshMultisig();
+      expect(await multisig.name()).toStrictEqual(TOKEN_NAME);
+      expect(await multisig.symbol()).toStrictEqual(TOKEN_SYMBOL);
+      expect(await multisig.decimals()).toStrictEqual(TOKEN_DECIMALS);
     });
   });
 
@@ -220,13 +216,13 @@ describe('ShieldedMultiSigV3', () => {
         expect(await multisig.getThreshold()).toEqual(2n);
       });
 
-      it('getTokenType should return non-zero', async () => {
-        expect(await multisig.getTokenType()).not.toEqual(new Uint8Array(32));
+      it('tokenColor is non-zero', async () => {
+        expect(await multisig.tokenColor()).not.toEqual(new Uint8Array(32));
       });
 
-      it('getTokenType should be deterministic', async () => {
-        expect(await multisig.getTokenType()).toEqual(
-          await multisig.getTokenType(),
+      it('tokenColor is deterministic', async () => {
+        expect(await multisig.tokenColor()).toEqual(
+          await multisig.tokenColor(),
         );
       });
     });
@@ -285,15 +281,18 @@ describe('ShieldedMultiSigV3', () => {
       });
 
       it('should mint to a user recipient with signers 0 and 1', async () => {
-        await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
+        const coin = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
+        await expectMintedCoin(multisig, coin, 100n);
       });
 
       it('should mint to a user recipient with signers 0 and 2', async () => {
-        await mint(multisig, 100n, USER_RECIPIENT, [S1, S3]);
+        const coin = await mint(multisig, 100n, USER_RECIPIENT, [S1, S3]);
+        await expectMintedCoin(multisig, coin, 100n);
       });
 
       it('should mint to a user recipient with signers 1 and 2', async () => {
-        await mint(multisig, 100n, USER_RECIPIENT, [S2, S3]);
+        const coin = await mint(multisig, 100n, USER_RECIPIENT, [S2, S3]);
+        await expectMintedCoin(multisig, coin, 100n);
       });
 
       // Live: a mint to a non-participating contract leaves an unclaimed output
@@ -301,9 +300,22 @@ describe('ShieldedMultiSigV3', () => {
       it.skipIf(isLiveBackend())(
         'should mint to a contract recipient',
         async () => {
-          await mint(multisig, 100n, CONTRACT_RECIPIENT, [S1, S2]);
+          const coin = await mint(multisig, 100n, CONTRACT_RECIPIENT, [S1, S2]);
+          await expectMintedCoin(multisig, coin, 100n);
         },
       );
+
+      it('derives a different nonce on each mint', async () => {
+        const first = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
+        const second = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
+        expect(first.nonce).not.toEqual(second.nonce);
+      });
+
+      it('rejects a zero recipient', async () => {
+        await expect(
+          mint(multisig, 100n, utils.ZERO_KEY, [S1, S2]),
+        ).rejects.toThrow('NativeShieldedToken: invalid recipient');
+      });
 
       it('should reject duplicate signer', async () => {
         await expect(
@@ -371,7 +383,8 @@ describe('ShieldedMultiSigV3', () => {
       });
 
       it('should accept zero amount', async () => {
-        await mint(multisig, 0n, USER_RECIPIENT, [S1, S2]);
+        const coin = await mint(multisig, 0n, USER_RECIPIENT, [S1, S2]);
+        await expectMintedCoin(multisig, coin, 0n);
       });
 
       it('should reject signatures replayed after the nonce moves', async () => {
@@ -405,13 +418,13 @@ describe('ShieldedMultiSigV3', () => {
           amount: bigint,
           coinValue: bigint,
           signers: Signer[],
-        ): Promise<void> {
+        ): Promise<Maybe<ShieldedCoinInfo>> {
           const coin = makeQualifiedCoin(
-            await multisig.getTokenType(),
+            await multisig.tokenColor(),
             coinValue,
           );
           const digest = await burnDigest(multisig, amount);
-          await multisig.burn(
+          return multisig.burn(
             coin,
             amount,
             signers.map((s) => s.publicKey),
@@ -420,23 +433,32 @@ describe('ShieldedMultiSigV3', () => {
         }
 
         it('should burn with valid coin and signers 0 and 1', async () => {
-          await burn(100n, 100n, [S1, S2]);
+          const change = await burn(100n, 100n, [S1, S2]);
+          expect(change.is_some).toStrictEqual(false);
         });
 
         it('should burn with signers 0 and 2', async () => {
-          await burn(100n, 100n, [S1, S3]);
+          const change = await burn(100n, 100n, [S1, S3]);
+          expect(change.is_some).toStrictEqual(false);
         });
 
         it('should burn with signers 1 and 2', async () => {
-          await burn(100n, 100n, [S2, S3]);
+          const change = await burn(100n, 100n, [S2, S3]);
+          expect(change.is_some).toStrictEqual(false);
         });
 
-        it('should burn partial amount', async () => {
-          await burn(50n, 100n, [S1, S2]);
+        it('returns the change coin on a partial burn', async () => {
+          const change = await burn(50n, 100n, [S1, S2]);
+          expect(change.is_some).toStrictEqual(true);
+          expect(change.value.value).toStrictEqual(50n);
+          expect(change.value.color).toStrictEqual(await multisig.tokenColor());
         });
 
-        it('should handle zero burn amount', async () => {
-          await burn(0n, 100n, [S1, S2]);
+        it('returns the whole coin as change on a zero burn', async () => {
+          const change = await burn(0n, 100n, [S1, S2]);
+          expect(change.is_some).toStrictEqual(true);
+          expect(change.value.value).toStrictEqual(100n);
+          expect(change.value.color).toStrictEqual(await multisig.tokenColor());
         });
 
         it('should share nonce across mint and burn', async () => {
@@ -449,7 +471,7 @@ describe('ShieldedMultiSigV3', () => {
       });
 
       it('should reject duplicate signer', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
         const digest = await burnDigest(multisig, 100n);
         await expect(
           multisig.burn(
@@ -462,7 +484,7 @@ describe('ShieldedMultiSigV3', () => {
       });
 
       it('should reject a non-signer pubkey', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
         const digest = await burnDigest(multisig, 100n);
         await expect(
           multisig.burn(
@@ -475,7 +497,7 @@ describe('ShieldedMultiSigV3', () => {
       });
 
       it('should reject a signature from the wrong key', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 100n);
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
         const digest = await burnDigest(multisig, 100n);
         await expect(
           multisig.burn(
@@ -498,11 +520,11 @@ describe('ShieldedMultiSigV3', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: coin not from this contract');
+        ).rejects.toThrow('NativeShieldedToken: wrong token');
       });
 
       it('should reject insufficient coin value', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 10n);
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 10n);
         const digest = await burnDigest(multisig, 100n);
         await expect(
           multisig.burn(
@@ -511,11 +533,11 @@ describe('ShieldedMultiSigV3', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: insufficient coin value');
+        ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
       });
 
       it('should reject when amount exceeds value by 1', async () => {
-        const coin = makeQualifiedCoin(await multisig.getTokenType(), 99n);
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 99n);
         const digest = await burnDigest(multisig, 100n);
         await expect(
           multisig.burn(
@@ -524,7 +546,7 @@ describe('ShieldedMultiSigV3', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: insufficient coin value');
+        ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
       });
     });
 
@@ -545,21 +567,21 @@ describe('ShieldedMultiSigV3', () => {
         expect(c1).not.toEqual(c2);
       });
 
-      it('should derive different token types with different domains', async () => {
+      it('derives different token colors from different domains', async () => {
         const altDomain = new Uint8Array(32);
         Buffer.from('alt:token:').copy(altDomain);
 
         const alt = await ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
-          INIT_COIN_NONCE,
           altDomain,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
           SIGNER_COMMITMENTS,
           true,
         );
 
-        expect(await multisig.getTokenType()).not.toEqual(
-          await alt.getTokenType(),
-        );
+        expect(await multisig.tokenColor()).not.toEqual(await alt.tokenColor());
       });
     });
 
@@ -591,8 +613,10 @@ describe('ShieldedMultiSigV3', () => {
         const instance1 = await freshMultisig();
         const instance2 = await ShieldedMultiSigV3Simulator.create(
           INSTANCE_SALT,
-          INIT_COIN_NONCE,
           TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
           SIGNER_COMMITMENTS,
           true,
           isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },

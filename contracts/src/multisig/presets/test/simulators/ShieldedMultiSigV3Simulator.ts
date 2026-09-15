@@ -8,8 +8,11 @@ import {
   type ContractAddress,
   type Either,
   ledger,
+  type Maybe,
   Contract as MockShieldedMultiSigV3,
   pureCircuits,
+  type QualifiedShieldedCoinInfo,
+  type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
 } from '../../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
 import {
@@ -19,8 +22,10 @@ import {
 
 type ShieldedMultiSigV3Args = readonly [
   instanceSalt: Uint8Array,
-  initCoinNonce: Uint8Array,
   tokenDomain: Uint8Array,
+  name: string,
+  symbol: string,
+  decimals: bigint,
   signerCommitments: Uint8Array[],
   isInit: boolean,
 ];
@@ -37,11 +42,21 @@ const ShieldedMultiSigV3SimulatorBase = createSimulator<
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
-    initCoinNonce,
     tokenDomain,
+    name,
+    symbol,
+    decimals,
     signerCommitments,
     isInit,
-  ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments, isInit],
+  ) => [
+    instanceSalt,
+    tokenDomain,
+    name,
+    symbol,
+    decimals,
+    signerCommitments,
+    isInit,
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
   artifactName: 'MockShieldedMultiSigV3',
@@ -50,8 +65,10 @@ const ShieldedMultiSigV3SimulatorBase = createSimulator<
 export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
-    initCoinNonce: Uint8Array,
     tokenDomain: Uint8Array,
+    name: string,
+    symbol: string,
+    decimals: bigint,
     signerCommitments: Uint8Array[],
     isInit: boolean,
     options: SimulatorOptions<
@@ -61,7 +78,15 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
   ): Promise<ShieldedMultiSigV3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, initCoinNonce, tokenDomain, signerCommitments, isInit],
+      [
+        instanceSalt,
+        tokenDomain,
+        name,
+        symbol,
+        decimals,
+        signerCommitments,
+        isInit,
+      ],
       options,
     ) as Promise<ShieldedMultiSigV3Simulator>;
   }
@@ -78,21 +103,16 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
-  ): Promise<[]> {
+  ): Promise<ShieldedCoinInfo> {
     return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
   }
 
   public burn(
-    coin: {
-      nonce: Uint8Array;
-      color: Uint8Array;
-      value: bigint;
-      mt_index: bigint;
-    },
+    coin: QualifiedShieldedCoinInfo,
     amount: bigint,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
-  ): Promise<[]> {
+  ): Promise<Maybe<ShieldedCoinInfo>> {
     return this.circuits.impure.burn(coin, amount, pubkeys, signatures);
   }
 
@@ -100,12 +120,20 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     return this.circuits.impure.getNonce();
   }
 
-  public getTokenDomain(): Promise<Uint8Array> {
-    return this.circuits.impure.getTokenDomain();
+  public name(): Promise<string> {
+    return this.circuits.impure.name();
   }
 
-  public getTokenType(): Promise<Uint8Array> {
-    return this.circuits.impure.getTokenType();
+  public symbol(): Promise<string> {
+    return this.circuits.impure.symbol();
+  }
+
+  public decimals(): Promise<bigint> {
+    return this.circuits.impure.decimals();
+  }
+
+  public tokenColor(): Promise<Uint8Array> {
+    return this.circuits.impure.tokenColor();
   }
 
   public getSignerCount(): Promise<bigint> {
