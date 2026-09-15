@@ -9,7 +9,7 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../presets/ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
+import "../../ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };

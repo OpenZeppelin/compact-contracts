@@ -6,8 +6,11 @@ import {
   type Ledger,
   ledger,
   Contract as MockShieldedMultiSig,
-} from '../../../../artifacts/MockShieldedMultiSig/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
+} from '../../../../../artifacts/MockShieldedMultiSig/contract/index.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type EitherPKAddress = {
   is_left: boolean;

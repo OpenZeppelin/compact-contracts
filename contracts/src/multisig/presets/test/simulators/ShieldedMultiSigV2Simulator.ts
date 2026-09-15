@@ -9,8 +9,11 @@ import {
   ledger,
   Contract as MockShieldedMultiSigV2,
   pureCircuits,
-} from '../../../../artifacts/MockShieldedMultiSigV2/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
+} from '../../../../../artifacts/MockShieldedMultiSigV2/contract/index.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };

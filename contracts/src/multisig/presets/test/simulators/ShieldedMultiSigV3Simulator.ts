@@ -11,8 +11,11 @@ import {
   Contract as MockShieldedMultiSigV3,
   pureCircuits,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
+} from '../../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type ShieldedMultiSigV3Args = readonly [
   instanceSalt: Uint8Array,

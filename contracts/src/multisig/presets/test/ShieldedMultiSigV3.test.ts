@@ -12,7 +12,7 @@ import {
   burnMsgHash,
   type EitherRecipient,
   mintMsgHash,
-} from './EcdsaTestUtils.js';
+} from '../../test/EcdsaTestUtils.js';
 import {
   calculateSignerId,
   ShieldedMultiSigV3Simulator,
