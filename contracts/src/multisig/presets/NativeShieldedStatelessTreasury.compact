@@ -33,6 +33,7 @@ module NativeShieldedStatelessTreasury {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  // TODO: move to a shared utils/Nonces module once one exists.
   ledger _nonce: Counter;
 
   // ─── Initialization ─────────────────────────────────────────────
@@ -96,7 +97,7 @@ module NativeShieldedStatelessTreasury {
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
    */
   export circuit deposit(coin: ShieldedCoinInfo): [] {
-    receiveShielded(disclose(coin));
+    Treasury__deposit(coin);
   }
 
   // ─── Execute ────────────────────────────────────────────────────
