@@ -125,7 +125,7 @@ module EcdsaSignerManager {
    * @dev Both entries are asserted, so the count handed to the threshold check
    * is always 2 and a threshold below 2 admits nothing extra.
    *
-   * @circuitInfo k=17, rows=64916
+   * @circuitInfo k=17, rows=64916 (zkir-v3)
    *
    * Requirements:
    *
@@ -196,7 +196,7 @@ module EcdsaSignerManager {
   /**
    * @description Returns the number of registered signers.
    *
-   * @circuitInfo k=6, rows=34
+   * @circuitInfo k=6, rows=34 (zkir-v3)
    *
    * @returns {Uint<8>} The signer count.
    */
@@ -207,7 +207,7 @@ module EcdsaSignerManager {
   /**
    * @description Returns the approval threshold.
    *
-   * @circuitInfo k=6, rows=34
+   * @circuitInfo k=6, rows=34 (zkir-v3)
    *
    * @returns {Uint<8>} The threshold.
    */
@@ -218,7 +218,7 @@ module EcdsaSignerManager {
   /**
    * @description Returns whether the given commitment is a registered signer.
    *
-   * @circuitInfo k=8, rows=129
+   * @circuitInfo k=8, rows=129 (zkir-v3)
    *
    * @param {Bytes<32>} commitment - The signer commitment to check.
    * @returns {Boolean} True if registered.

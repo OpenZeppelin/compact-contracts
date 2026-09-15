@@ -80,7 +80,7 @@ module NativeShieldedTokenPublicSupply {
    * @description Adds `amount` to the exact minted total. Call once per
    * successful `NativeShieldedToken._mint`.
    *
-   * @circuitInfo k=9, rows=375
+   * @circuitInfo k=9, rows=373
    *
    * @param {Uint<64>} amount - The minted amount.
    * @return {[]} - Empty tuple.
@@ -94,7 +94,7 @@ module NativeShieldedTokenPublicSupply {
    * per successful `NativeShieldedToken._burn` / `_burnFromSelf`.
    * @dev Enforces `burned <= minted`; an unpaired or duplicate burn reverts.
    *
-   * @circuitInfo k=9, rows=477
+   * @circuitInfo k=9, rows=475
    *
    * @param {Uint<128>} amount - The burned amount.
    * @return {[]} - Empty tuple.
@@ -106,7 +106,7 @@ module NativeShieldedTokenPublicSupply {
   /**
    * @description Returns the exact amount ever minted.
    *
-   * @circuitInfo k=7, rows=65
+   * @circuitInfo k=7, rows=63
    *
    * @return {Uint<128>} - The total amount minted.
    */
@@ -119,7 +119,7 @@ module NativeShieldedTokenPublicSupply {
    * @notice This is a lower bound: coins sent directly to the burn address
    * without going through the contract are not counted.
    *
-   * @circuitInfo k=7, rows=62
+   * @circuitInfo k=7, rows=60
    *
    * @return {Uint<128>} - The total amount burned through the contract.
    */
@@ -132,7 +132,7 @@ module NativeShieldedTokenPublicSupply {
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
    *
-   * @circuitInfo k=9, rows=160
+   * @circuitInfo k=9, rows=158
    *
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */

@@ -97,7 +97,7 @@ module NativeShieldedTokenFamily {
   /**
    * @description Returns whether the contract has been initialized.
    *
-   * @circuitInfo k=6, rows=26
+   * @circuitInfo k=6, rows=24
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -110,7 +110,7 @@ module NativeShieldedTokenFamily {
    * contract. Per-type identity belongs in the consumer's own state; see the
    * module notes.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -126,7 +126,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the family symbol shared by all token types of this
    * contract.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -142,7 +142,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the family-wide number of decimals used to get the
    * user representation.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -158,7 +158,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the coin color (token type) for `domain` under this
    * contract's address, so integrators do not have to re-derive it by hand.
    *
-   * @circuitInfo k=13, rows=4248
+   * @circuitInfo k=13, rows=4239
    *
    * Requirements:
    *
@@ -186,7 +186,7 @@ module NativeShieldedTokenFamily {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11119
+   * @circuitInfo k=14, rows=11096
    *
    * Requirements:
    *
@@ -227,7 +227,7 @@ module NativeShieldedTokenFamily {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47932
+   * @circuitInfo k=16, rows=47753
    *
    * Requirements:
    *
@@ -263,7 +263,7 @@ module NativeShieldedTokenFamily {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @circuitInfo k=15, rows=23583
+   * @circuitInfo k=15, rows=23484
    *
    * Requirements:
    *

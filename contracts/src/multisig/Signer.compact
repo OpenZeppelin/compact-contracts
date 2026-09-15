@@ -140,7 +140,7 @@ module Signer<T> {
    * the remaining signers satisfy, and bounding the count would reject those.
    * See the stale-signer-set guidance in the module header.
    *
-   * @circuitInfo k=9, rows=54
+   * @circuitInfo k=9, rows=52
    *
    * Requirements:
    *
@@ -162,7 +162,7 @@ module Signer<T> {
    * @description Returns the current signer count. Returns zero when no
    * signers have been registered.
    *
-   * @circuitInfo k=6, rows=26
+   * @circuitInfo k=6, rows=24
    *
    * @returns {Uint<8>} The number of active signers.
    */
@@ -174,7 +174,7 @@ module Signer<T> {
    * @description Returns the approval threshold. Returns zero when the
    * threshold has not been set.
    *
-   * @circuitInfo k=6, rows=26
+   * @circuitInfo k=6, rows=24
    *
    * @returns {Uint<8>} The threshold.
    */
@@ -250,7 +250,7 @@ module Signer<T> {
    * The consuming contract must gate this behind its own
    * authorization policy.
    *
-   * @circuitInfo k=9, rows=53
+   * @circuitInfo k=9, rows=51
    *
    * Requirements:
    *
@@ -285,7 +285,7 @@ module Signer<T> {
    * authorization policy. Use `_changeThreshold` for
    * operational threshold changes with signer count validation.
    *
-   * @circuitInfo k=6, rows=40
+   * @circuitInfo k=6, rows=38
    *
    * Requirements:
    *

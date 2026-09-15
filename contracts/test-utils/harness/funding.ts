@@ -68,7 +68,7 @@ async function transferNight(
   );
   // Spending unshielded UTXOs needs the owner's signature before finalizing.
   const signed = await from.wallet.signRecipe(recipe, (payload) =>
-    from.unshieldedKeystore.signData(payload),
+    from.unshieldedKeystore.signDataAsync(payload),
   );
   const finalized = await from.wallet.finalizeRecipe(signed);
   return from.wallet.submitTransaction(finalized);

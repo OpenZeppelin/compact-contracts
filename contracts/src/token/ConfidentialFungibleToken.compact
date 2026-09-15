@@ -390,7 +390,7 @@ module ConfidentialFungibleToken {
    * ciphertext if the account is unregistered. The amount is encrypted; only the
    * account (or an authorized viewer) can decrypt it.
    *
-   * @circuitInfo k=10, rows=989
+   * @circuitInfo k=10, rows=984
    *
    * Requirements:
    *
@@ -416,7 +416,7 @@ module ConfidentialFungibleToken {
    * balance is `balanceOf`; a wallet's total is the sum of the two. See the
    * dual-balance note on the ledger declarations.
    *
-   * @circuitInfo k=10, rows=986
+   * @circuitInfo k=10, rows=981
    *
    * Requirements:
    *
@@ -447,7 +447,7 @@ module ConfidentialFungibleToken {
    * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
    * `_escrow` membership independently, so a non-existent allowance is unspendable.
    *
-   * @circuitInfo k=10, rows=938
+   * @circuitInfo k=10, rows=936
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
@@ -473,7 +473,7 @@ module ConfidentialFungibleToken {
   /**
    * @description Returns whether `account` has registered an encryption key.
    *
-   * @circuitInfo k=9, rows=305
+   * @circuitInfo k=9, rows=303
    *
    * @param {Bytes<32>} account - The account to query.
    * @return {Boolean} - True if `account` is registered.
@@ -491,7 +491,7 @@ module ConfidentialFungibleToken {
    * `wit_ConfidentialTokenEK` and initializes their balance to an encryption of
    * zero. Registration is a prerequisite for sending or receiving.
    *
-   * @circuitInfo k=13, rows=6203
+   * @circuitInfo k=13, rows=6157
    *
    * @notice Returns the caller's `accountId`. A composing contract can gate on
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
@@ -693,7 +693,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @circuitInfo k=15, rows=27142
+   * @circuitInfo k=15, rows=26925
    *
    * Requirements:
    *
@@ -716,7 +716,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @circuitInfo k=14, rows=14673
+   * @circuitInfo k=14, rows=12860
    *
    * Requirements:
    *
@@ -740,7 +740,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @circuitInfo k=16, rows=41617
+   * @circuitInfo k=16, rows=39561
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -778,7 +778,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @circuitInfo k=16, rows=41606
+   * @circuitInfo k=16, rows=39550
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -819,7 +819,7 @@ module ConfidentialFungibleToken {
    * change, which is what would otherwise invalidate the victim's in-flight spend
    * proofs (a liveness grief).
    *
-   * @circuitInfo k=13, rows=2879
+   * @circuitInfo k=13, rows=2860
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -852,7 +852,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @circuitInfo k=16, rows=43067
+   * @circuitInfo k=16, rows=40913
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -936,7 +936,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @circuitInfo k=16, rows=63207
+   * @circuitInfo k=16, rows=59844
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -976,7 +976,7 @@ module ConfidentialFungibleToken {
    * @description Clears the caller's memo list, letting a wallet that has folded
    * its memos into its local balance cache prune on-chain memo storage.
    *
-   * @circuitInfo k=13, rows=2316
+   * @circuitInfo k=13, rows=2308
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -1119,7 +1119,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @circuitInfo k=16, rows=36274
+   * @circuitInfo k=16, rows=33128
    *
    * Requirements:
    *

@@ -168,7 +168,7 @@ module AccessControl {
   /**
    * @description Returns `true` if `account` has been granted `roleId`.
    *
-   * @circuitInfo k=10, rows=1019
+   * @circuitInfo k=10, rows=1017
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
@@ -206,7 +206,7 @@ module AccessControl {
    * In the case of an external (non-contract) caller, the caller’s identity is
    * derived from the `wit_AccessControlSK` witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=2669
+   * @circuitInfo k=13, rows=2660
    *
    * Requirements:
    *
@@ -225,7 +225,7 @@ module AccessControl {
   /**
    * @description Reverts if `account` is missing `roleId`.
    *
-   * @circuitInfo k=10, rows=987
+   * @circuitInfo k=10, rows=997
    *
    * Requirements:
    *
@@ -248,7 +248,7 @@ module AccessControl {
    *
    * To change a role's admin use {_setRoleAdmin}.
    *
-   * @circuitInfo k=9, rows=373
+   * @circuitInfo k=9, rows=371
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
@@ -263,7 +263,7 @@ module AccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @circuitInfo k=13, rows=3536
+   * @circuitInfo k=13, rows=3527
    *
    * Requirements:
    *
@@ -285,7 +285,7 @@ module AccessControl {
   /**
    * @description Revokes `roleId` from `account`.
    *
-   * @circuitInfo k=13, rows=3466
+   * @circuitInfo k=13, rows=3457
    *
    * Requirements:
    *
@@ -314,7 +314,7 @@ module AccessControl {
    * `persistentHash(secretKey)`. The `callerConfirmation` parameter must match
    * the caller's computed account identifier to prevent accidental renunciation.
    *
-   * @circuitInfo k=13, rows=3322
+   * @circuitInfo k=13, rows=3313
    *
    * Requirements:
    *
@@ -339,7 +339,7 @@ module AccessControl {
   /**
    * @description Sets `adminRole` as `roleId`'s admin role.
    *
-   * @circuitInfo k=10, rows=581
+   * @circuitInfo k=10, rows=579
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
@@ -353,7 +353,7 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo k=11, rows=1143
+   * @circuitInfo k=11, rows=1141
    *
    * Requirements:
    *
@@ -376,7 +376,7 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1142
+   * @circuitInfo k=11, rows=1140
    *
    * @notice External smart contracts cannot call the access control contract at this time, so granting a role to a ContractAddress may
    * render a circuit permanently inaccessible.
@@ -409,7 +409,7 @@ module AccessControl {
    * @description Attempts to revoke `roleId` from `account` and returns a boolean indicating if `roleId` was revoked.
    * Internal circuit without access restriction.
    *
-   * @circuitInfo k=11, rows=1073
+   * @circuitInfo k=11, rows=1071
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.

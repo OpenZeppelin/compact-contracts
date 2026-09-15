@@ -106,7 +106,7 @@ module NativeShieldedToken {
   /**
    * @description Returns whether the contract has been initialized.
    *
-   * @circuitInfo k=6, rows=26
+   * @circuitInfo k=6, rows=24
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -117,7 +117,7 @@ module NativeShieldedToken {
   /**
    * @description Returns the token name.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -132,7 +132,7 @@ module NativeShieldedToken {
   /**
    * @description Returns the symbol of the token.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -147,7 +147,7 @@ module NativeShieldedToken {
   /**
    * @description Returns the number of decimals used to get its user representation.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -163,7 +163,7 @@ module NativeShieldedToken {
    * @description Returns this token's coin color:
    * `tokenType(_domain, kernel.self())`, computed at call time.
    *
-   * @circuitInfo k=13, rows=3971
+   * @circuitInfo k=13, rows=3962
    *
    * Requirements:
    *
@@ -190,7 +190,7 @@ module NativeShieldedToken {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=10843
+   * @circuitInfo k=14, rows=10820
    *
    * Requirements:
    *
@@ -229,7 +229,7 @@ module NativeShieldedToken {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47656
+   * @circuitInfo k=16, rows=47477
    *
    * Requirements:
    *
@@ -263,7 +263,7 @@ module NativeShieldedToken {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @circuitInfo k=15, rows=23307
+   * @circuitInfo k=15, rows=23208
    *
    * Requirements:
    *

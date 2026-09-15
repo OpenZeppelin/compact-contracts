@@ -130,7 +130,7 @@ module NativeShieldedTokenCore {
    * @dev Does not gate on init (it reports it), so it is safe to call before
    * `initialize`.
    *
-   * @circuitInfo k=6, rows=26
+   * @circuitInfo k=6, rows=24
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -141,7 +141,7 @@ module NativeShieldedTokenCore {
   /**
    * @description Returns the token name.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -157,7 +157,7 @@ module NativeShieldedTokenCore {
   /**
    * @description Returns the symbol of the token.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -175,7 +175,7 @@ module NativeShieldedTokenCore {
    * @dev This is a display convention only. The protocol stores and operates
    * on integer values without reference to decimals.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -192,7 +192,7 @@ module NativeShieldedTokenCore {
    * @description Returns the coin color for `domain` under this contract's
    * address: `tokenType(domain, kernel.self())`, computed at call time.
    *
-   * @circuitInfo k=13, rows=4248
+   * @circuitInfo k=13, rows=4239
    *
    * Requirements:
    *
@@ -218,7 +218,7 @@ module NativeShieldedTokenCore {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11119
+   * @circuitInfo k=14, rows=11096
    *
    * Requirements:
    *
@@ -261,7 +261,7 @@ module NativeShieldedTokenCore {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47932
+   * @circuitInfo k=16, rows=47753
    *
    * Requirements:
    *
@@ -313,7 +313,7 @@ module NativeShieldedTokenCore {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @circuitInfo k=15, rows=23583
+   * @circuitInfo k=15, rows=23484
    *
    * Requirements:
    *

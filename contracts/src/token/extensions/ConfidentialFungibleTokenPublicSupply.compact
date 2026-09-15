@@ -41,7 +41,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * @description Increases `totalSupply` by `value`. Call alongside the token
    * module's `_mint`. The added amount is disclosed via the supply delta.
    *
-   * @circuitInfo k=9, rows=401
+   * @circuitInfo k=9, rows=399
    *
    * Requirements:
    *
@@ -62,7 +62,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * module's `_burn` or `_burnFrom`. The removed amount is disclosed via the
    * supply delta.
    *
-   * @circuitInfo k=9, rows=256
+   * @circuitInfo k=9, rows=254
    *
    * Requirements:
    *
@@ -80,7 +80,7 @@ module ConfidentialFungibleTokenPublicSupply {
   /**
    * @description Returns the public total token supply.
    *
-   * @circuitInfo k=6, rows=26
+   * @circuitInfo k=6, rows=24
    *
    * @return {Uint<128>} - The total supply.
    */

@@ -150,7 +150,7 @@ module ZOwnablePK {
    * @description Returns the current commitment representing the contract owner.
    * The full commitment is: `SHA256(SHA256(pk, nonce), instanceSalt, counter, domain)`.
    *
-   * @circuitInfo k=10, rows=57
+   * @circuitInfo k=6, rows=48
    *
    * Requirements:
    *
@@ -167,7 +167,7 @@ module ZOwnablePK {
    * @description Transfers ownership to `newOwnerId`.
    * `newOwnerId` must be precalculated and given to the current owner off chain.
    *
-   * @circuitInfo k=16, rows=39240
+   * @circuitInfo k=15, rows=17023
    *
    * Requirements:
    *
@@ -191,7 +191,7 @@ module ZOwnablePK {
    * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
-   * @circuitInfo k=15, rows=24442
+   * @circuitInfo k=14, rows=10579
    *
    * Requirements:
    *
@@ -212,7 +212,7 @@ module ZOwnablePK {
    * the stored owner commitment.
    * Use this to only allow the owner to call specific circuits.
    *
-   * @circuitInfo k=15, rows=24437
+   * @circuitInfo k=14, rows=10577
    *
    * Requirements:
    *
@@ -257,7 +257,7 @@ module ZOwnablePK {
    * - `domain`: Domain separator `"ZOwnablePK:shield:"` (padded to 32 bytes) to prevent
    * hash collisions when extending the module or using similar commitment schemes.
    *
-   * @circuitInfo k=14, rows=14853
+   * @circuitInfo k=13, rows=6544
    *
    * Requirements:
    *
@@ -320,7 +320,7 @@ module ZOwnablePK {
    * @description Transfers ownership to owner id `newOwnerId` without
    * enforcing permission checks on the caller.
    *
-   * @circuitInfo k=14, rows=14823
+   * @circuitInfo k=13, rows=6460
    *
    * Requirements:
    *

@@ -114,7 +114,7 @@ constructor(
  * after the counter has been incremented, binding each mint's nonce to a
  * distinct counter value.
  *
- * @circuitInfo k=17, rows=84506
+ * @circuitInfo k=17, rows=84506 (zkir-v3)
  *
  * Requirements:
  *
@@ -178,7 +178,7 @@ export circuit mint(
  * The "multisig:burn:" domain prefix ensures burn signatures cannot be replayed
  * as mint operations for the same parameters.
  *
- * @circuitInfo k=17, rows=92170
+ * @circuitInfo k=17, rows=92170 (zkir-v3)
  *
  * Requirements:
  *
@@ -246,7 +246,7 @@ export pure circuit _calculateSignerId(
 /**
  * @description Returns the counter the next mint or burn digest will bind to.
  *
- * @circuitInfo k=6, rows=34
+ * @circuitInfo k=6, rows=34 (zkir-v3)
  *
  * @returns {Uint<64>} The current counter.
  */
@@ -257,7 +257,7 @@ export circuit getNonce(): Uint<64> {
 /**
  * @description Returns the domain separator this contract's token type derives from.
  *
- * @circuitInfo k=6, rows=57
+ * @circuitInfo k=6, rows=57 (zkir-v3)
  *
  * @returns {Bytes<32>} The token domain.
  */
@@ -268,7 +268,7 @@ export circuit getTokenDomain(): Bytes<32> {
 /**
  * @description Returns this contract's token type.
  *
- * @circuitInfo k=13, rows=3836
+ * @circuitInfo k=13, rows=3836 (zkir-v3)
  *
  * @returns {Bytes<32>} The token type.
  */
@@ -279,7 +279,7 @@ export circuit getTokenType(): Bytes<32> {
 /**
  * @description Returns the number of registered signers.
  *
- * @circuitInfo k=6, rows=34
+ * @circuitInfo k=6, rows=34 (zkir-v3)
  *
  * @returns {Uint<8>} The signer count.
  */
@@ -290,7 +290,7 @@ export circuit getSignerCount(): Uint<8> {
 /**
  * @description Returns the approval threshold.
  *
- * @circuitInfo k=6, rows=34
+ * @circuitInfo k=6, rows=34 (zkir-v3)
  *
  * @returns {Uint<8>} The threshold.
  */
@@ -301,7 +301,7 @@ export circuit getThreshold(): Uint<8> {
 /**
  * @description Returns whether the given commitment is a registered signer.
  *
- * @circuitInfo k=8, rows=129
+ * @circuitInfo k=8, rows=129 (zkir-v3)
  *
  * @param {Bytes<32>} commitment - The signer commitment to check.
  * @returns {Boolean} True if registered.

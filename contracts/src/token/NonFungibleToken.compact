@@ -206,7 +206,7 @@ module NonFungibleToken {
   /**
    * @description Returns the number of tokens in `owner`'s account.
    *
-   * @circuitInfo k=10, rows=673
+   * @circuitInfo k=10, rows=671
    *
    * Requirements:
    *
@@ -229,7 +229,7 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId` token.
    *
-   * @circuitInfo k=9, rows=333
+   * @circuitInfo k=9, rows=331
    *
    * Requirements:
    *
@@ -247,7 +247,7 @@ module NonFungibleToken {
   /**
    * @description Returns the token name.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -263,7 +263,7 @@ module NonFungibleToken {
   /**
    * @description Returns the symbol of the token.
    *
-   * @circuitInfo k=6, rows=28
+   * @circuitInfo k=6, rows=26
    *
    * Requirements:
    *
@@ -280,7 +280,7 @@ module NonFungibleToken {
    * @description Returns the token URI for the given `tokenId`. Returns the empty
    * string if a tokenURI does not exist.
    *
-   * @circuitInfo k=9, rows=326
+   * @circuitInfo k=9, rows=324
    *
    * Requirements:
    *
@@ -309,7 +309,7 @@ module NonFungibleToken {
   /**
    * @description Sets the URI as `tokenURI` for the given `tokenId`.
    *
-   * @circuitInfo k=9, rows=289
+   * @circuitInfo k=9, rows=287
    *
    * Requirements:
    *
@@ -338,7 +338,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=3468
+   * @circuitInfo k=13, rows=3491
    *
    * Requirements:
    *
@@ -359,7 +359,7 @@ module NonFungibleToken {
   /**
    * @description Returns the account approved for `tokenId` token.
    *
-   * @circuitInfo k=9, rows=422
+   * @circuitInfo k=9, rows=420
    *
    * Requirements:
    *
@@ -383,7 +383,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=2936
+   * @circuitInfo k=13, rows=2938
    *
    * Requirements:
    *
@@ -406,7 +406,7 @@ module NonFungibleToken {
   /**
    * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
    *
-   * @circuitInfo k=11, rows=1343
+   * @circuitInfo k=11, rows=1341
    *
    * Requirements:
    *
@@ -439,7 +439,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=4800
+   * @circuitInfo k=13, rows=4701
    *
    * Requirements:
    *
@@ -477,7 +477,7 @@ module NonFungibleToken {
    * are not currently supported. Tokens sent to a contract address may become irretrievable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=13, rows=4797
+   * @circuitInfo k=13, rows=4698
    *
    * Requirements:
    *
@@ -511,7 +511,7 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist.
    *
-   * @circuitInfo k=9, rows=308
+   * @circuitInfo k=9, rows=306
    *
    * Requirements:
    *
@@ -532,7 +532,7 @@ module NonFungibleToken {
   /**
    * @description Returns the approved address for `tokenId`. Returns the zero value if `tokenId` is not minted.
    *
-   * @circuitInfo k=9, rows=308
+   * @circuitInfo k=9, rows=306
    *
    * Requirements:
    *
@@ -553,7 +553,7 @@ module NonFungibleToken {
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
    *
-   * @circuitInfo k=11, rows=1798
+   * @circuitInfo k=11, rows=1796
    *
    * Requirements:
    *
@@ -585,7 +585,7 @@ module NonFungibleToken {
   /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
    *
-   * @circuitInfo k=11, rows=1804
+   * @circuitInfo k=11, rows=1802
    *
    * Requirements:
    *
@@ -666,7 +666,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
-   * @circuitInfo k=11, rows=1473
+   * @circuitInfo k=11, rows=1388
    *
    * Requirements:
    *
@@ -690,7 +690,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=11, rows=1470
+   * @circuitInfo k=11, rows=1385
    *
    * Requirements:
    *
@@ -723,7 +723,7 @@ module NonFungibleToken {
    * The approval is cleared when the token is burned.
    * This circuit does not check if the sender is authorized to operate on the token.
    *
-   * @circuitInfo k=10, rows=509
+   * @circuitInfo k=10, rows=507
    *
    * Requirements:
    *
@@ -748,7 +748,7 @@ module NonFungibleToken {
    * interactions are supported in Compact. This restriction prevents assets from being inadvertently
    * locked in contracts that cannot currently handle token receipt.
    *
-   * @circuitInfo k=12, rows=2067
+   * @circuitInfo k=11, rows=1982
    *
    * Requirements:
    *
@@ -779,7 +779,7 @@ module NonFungibleToken {
    * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on the caller's identity.
    * It does NOT check if the recipient is a ContractAddress.
    *
-   * @circuitInfo k=12, rows=2064
+   * @circuitInfo k=11, rows=1979
    *
    * Requirements:
    *
@@ -815,7 +815,7 @@ module NonFungibleToken {
   /**
    * @description Approve `to` to operate on `tokenId`.
    *
-   * @circuitInfo k=11, rows=1810
+   * @circuitInfo k=11, rows=1840
    *
    * Requirements:
    *
@@ -856,7 +856,7 @@ module NonFungibleToken {
   /**
    * @description Approve `operator` to operate on all of `owner` tokens.
    *
-   * @circuitInfo k=11, rows=1261
+   * @circuitInfo k=11, rows=1280
    *
    * Requirements:
    *
@@ -895,7 +895,7 @@ module NonFungibleToken {
    * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
    * Returns the owner.
    *
-   * @circuitInfo k=9, rows=331
+   * @circuitInfo k=9, rows=329
    *
    * Requirements:
    *

@@ -158,7 +158,7 @@ module Ownable {
   /**
    * @description Returns the current contract owner.
    *
-   * @circuitInfo k=7, rows=76
+   * @circuitInfo k=7, rows=74
    *
    * Requirements:
    *
@@ -178,7 +178,7 @@ module Ownable {
    * interactions are supported in Compact.
    * This restriction prevents permanently disabling access to a circuit.
    *
-   * @circuitInfo k=13, rows=2959
+   * @circuitInfo k=13, rows=2947
    *
    * Requirements:
    *
@@ -205,7 +205,7 @@ module Ownable {
    * Ownership privileges sent to a contract address may become uncallable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=13, rows=2956
+   * @circuitInfo k=13, rows=2944
    *
    * Requirements:
    *
@@ -228,7 +228,7 @@ module Ownable {
    * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
-   * @circuitInfo k=13, rows=2364
+   * @circuitInfo k=13, rows=2353
    *
    * Requirements:
    *
@@ -256,7 +256,7 @@ module Ownable {
    * In the case of an external (non-contract) caller, the caller’s identity is
    * derived from the `wit_OwnableSK` witness as `persistentHash(secretKey)`.
    *
-   * @circuitInfo k=13, rows=2360
+   * @circuitInfo k=13, rows=2349
    *
    * Requirements:
    *
@@ -282,7 +282,7 @@ module Ownable {
    * interactions are supported in Compact.
    * This restriction prevents circuits from being inadvertently locked in contracts.
    *
-   * @circuitInfo k=10, rows=600
+   * @circuitInfo k=10, rows=598
    *
    * Requirements:
    *
@@ -307,7 +307,7 @@ module Ownable {
    * Ownership privileges sent to a contract address may become uncallable.
    * Once contract-to-contract calls are supported, this circuit may be deprecated.
    *
-   * @circuitInfo k=10, rows=597
+   * @circuitInfo k=10, rows=595
    *
    * Requirements:
    *
