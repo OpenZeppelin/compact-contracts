@@ -194,8 +194,11 @@ module NativeShieldedTokenIssuer {
   // ─── State ──────────────────────────────────────────────────────
 
   /**
-   * @description Monotonic operation counter. Each mint and burn reads it as that
-   * operation's nonce and then increments, so no two operations share one.
+   * @description Signature replay counter. `mint` and `burn` read it into
+   * their digest and increment it; `getNonce` returns the value the next
+   * digest binds to. The read is pinned, so at most one mint-or-burn lands
+   * per block. Exported, so it is the only key the implementing contract's
+   * `ledger()` reader surfaces.
    */
   // TODO: move to a shared utils/Nonces module once one exists; stays separate from DerivedNonce's counter.
   export ledger _counter: Counter;
