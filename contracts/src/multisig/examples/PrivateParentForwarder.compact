@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/presets/forwarder/ForwarderPrivate.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/PrivateParentForwarder.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @title ForwarderPrivate
+ * @title PrivateParentForwarder
  * @description Private-parent forwarder. The parent address is hidden
  * behind a `persistentHash` commitment on the ledger. Coins dwell at
  * the contract address after deposit; the operator drains them later
@@ -22,7 +22,7 @@ pragma language_version >= 0.26.0;
  */
 
 import CompactStandardLibrary;
-import "../../ForwarderPrivate" prefix ForwarderPrivate_;
+import "../ForwarderPrivate" prefix ForwarderPrivate_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
 
