@@ -24,10 +24,18 @@ describe('specFiles', () => {
   });
 
   it('keeps the integration specs, which have no such exclude', () => {
-    expect(specFiles('integration')).toStrictEqual([
-      'test/integration/specs/confidentialFungibleToken.spec.ts',
+    // Reads the real `test/integration/specs/` tree, so it asserts shape rather
+    // than a file list that would go stale with every spec added on main.
+    const files = specFiles('integration');
+
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      expect(file).toMatch(/^test\/integration\/specs\/.+\.spec\.ts$/);
+    }
+    expect(files).toContain(
       'test/integration/specs/initStateIsolation.spec.ts',
-    ]);
+    );
+    expect(files.some((f) => f.split('/').length > 4)).toBe(true);
   });
 });
 
