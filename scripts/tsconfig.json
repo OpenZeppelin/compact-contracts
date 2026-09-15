@@ -1,0 +1,30 @@
+{
+  // Type-checks the repo-root scripts (`yarn types:scripts`, part of `yarn
+  // types`). Nothing here is ever emitted: node strips the types at run time and
+  // vitest transpiles them for the `scripts` project, so without this config a
+  // type error in `scripts/` reaches CI unreported.
+  //
+  // Self-contained rather than extending `@tsconfig/node24`, which is a
+  // devDependency of the `contracts` workspace: reaching it from the repo root
+  // would rely on hoisting.
+  "include": ["**/*.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "target": "esnext",
+    "lib": ["esnext"],
+    // `preserve`, not `nodenext`: node runs these files as ESM, but the root
+    // package.json declares no `"type"`, so nodenext would resolve them as
+    // CommonJS and reject the `import.meta` in `live/paths.ts`.
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    // Imports carry explicit `.ts` extensions, as node's type stripping needs.
+    "allowImportingTsExtensions": true,
+    // Only syntax node can erase: no parameter properties, no enums, no
+    // namespaces. Anything else fails to run at all.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "types": ["node"],
+    "skipLibCheck": true
+  }
+}

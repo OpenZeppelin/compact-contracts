@@ -39,6 +39,7 @@
     "test:integration": "vitest run --project integration",
     "test:harness": "vitest run --project harness",
     "test:harness:live": "MIDNIGHT_BACKEND=live vitest run --project harness-live",
+    "test:scripts": "vitest run --project scripts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },

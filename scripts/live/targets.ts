@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { SRC } from './paths.ts';
+import { INTEGRATION_MOCKS, SRC } from './paths.ts';
 
 /**
  * What a live invocation resolves to.
@@ -123,4 +123,126 @@ export function resolvePlan(
       integration,
     },
   };
+}
+
+/** What the runner does about artifacts on this invocation. */
+export type ArtifactMode =
+  /** Compile what the plan needs, then run the suite. The local default. */
+  | 'build'
+  /** Compile what the plan needs and stop: no stack, no specs. A CI compile job
+   * runs this, and the suite jobs that fan out after it consume what it built. */
+  | 'build-only'
+  /** The tree was built elsewhere and arrives ready: verify it, never build it.
+   * A CI suite job runs this against the compile job's uploaded artifacts. */
+  | 'prebuilt';
+
+/** A CLI invocation, split into how it runs and what it runs on. */
+export interface Invocation {
+  readonly mode: ArtifactMode;
+  /** The positional args, for {@link resolvePlan}. */
+  readonly args: readonly string[];
+}
+
+export type InvocationResolution =
+  | { readonly ok: true; readonly invocation: Invocation }
+  | { readonly ok: false; readonly message: string };
+
+/** Flag spelling per non-default mode. `--` is dropped: yarn passes it through
+ * when a script takes positional args. */
+const MODE_FLAGS: ReadonlyMap<string, ArtifactMode> = new Map([
+  ['--compile-only', 'build-only'],
+  ['--prebuilt', 'prebuilt'],
+]);
+
+/**
+ * Split mode flags from positional args. Pure, like {@link resolvePlan}.
+ *
+ * An unknown `--flag` is rejected by name: left in, it would reach
+ * {@link resolvePlan} as a positional and be reported as "not a live target",
+ * which misdirects the fix. The two flags are mutually exclusive — one builds the
+ * artifacts, the other forbids building them — so they resolve to one mode rather
+ * than to two booleans a caller could combine into a state that has no meaning.
+ */
+export function parseInvocation(argv: readonly string[]): InvocationResolution {
+  const flags = argv.filter((a) => a.startsWith('--') && a !== '--');
+  const unknown = flags.find((f) => !MODE_FLAGS.has(f));
+  if (unknown !== undefined) {
+    return {
+      ok: false,
+      message: `unknown flag '${unknown}'. Flags: ${[...MODE_FLAGS.keys()].join(', ')}.`,
+    };
+  }
+  const modes = new Set(flags.map((f) => MODE_FLAGS.get(f) as ArtifactMode));
+  if (modes.size > 1) {
+    return {
+      ok: false,
+      message:
+        '--compile-only builds the artifacts and --prebuilt forbids building ' +
+        'them; pass one or the other.',
+    };
+  }
+  return {
+    ok: true,
+    invocation: {
+      mode: [...modes][0] ?? 'build',
+      args: argv.filter((a) => !a.startsWith('--')),
+    },
+  };
+}
+
+/** What a plan compiles, and which artifacts it must be able to deploy. */
+export interface CompileScope {
+  /** Root `package.json` compile scripts to run, in order. */
+  readonly scripts: readonly string[];
+  /** Source roots whose artifacts the plan's specs deploy, scoping the
+   * key-integrity checks. */
+  readonly verifyRoots: readonly string[];
+}
+
+/**
+ * Categories whose specs deploy another category's artifacts, so the
+ * key-integrity scan must cover that category's tree too.
+ *
+ * Deploy-driven, not import-driven: an import alone yields a build byproduct
+ * nothing deploys (composition is compile-time), and the build side is covered
+ * by turbo's `dependsOn` regardless. Today only the token fixtures deploy
+ * `src/crypto` mocks (`MockElGamal`, `MockEcdhMask`).
+ */
+const DEPLOYS_FROM = new Map<string, readonly string[]>([
+  ['token', ['crypto']],
+]);
+
+/**
+ * Resolve a plan into its compile scope.
+ *
+ * A scoped run compiles its own slice, not the repo: turbo's `dependsOn` pulls
+ * in the categories a slice imports (`compile:token` builds `utils` and
+ * `crypto` too), and composition is compile-time, so the artifacts a target's
+ * specs deploy are self-contained — dependency artifacts are build byproducts
+ * nothing deploys. That is also why `verifyRoots` names only the deployed
+ * tree: `src/<category>` for a category, the composed mocks for integration
+ * (whose `compile:integration` task now depends on the full `compile`).
+ *
+ * A category without a root `compile:<category>` script fails the run loudly at
+ * the yarn level — a new `src/` category joins the live matrix automatically
+ * (see {@link liveCategories}), and this is where it learns it also needs the
+ * script and turbo task.
+ */
+export function compileScope(plan: LivePlan): CompileScope {
+  if (plan.integration) {
+    return {
+      scripts: ['compile:integration'],
+      verifyRoots: [INTEGRATION_MOCKS],
+    };
+  }
+  if (plan.targets.length === 1) {
+    const category = plan.targets[0].name;
+    return {
+      scripts: [`compile:${category}`],
+      verifyRoots: [category, ...(DEPLOYS_FROM.get(category) ?? [])].map((c) =>
+        path.join(SRC, c),
+      ),
+    };
+  }
+  return { scripts: ['compile'], verifyRoots: [SRC] };
 }

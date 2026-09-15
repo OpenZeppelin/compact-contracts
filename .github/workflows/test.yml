@@ -52,3 +52,8 @@ jobs:
 
       - name: Run harness tests
         run: yarn test:harness
+
+      # Dry unit tests for the live orchestrator (`scripts/live`) and the live CI
+      # helpers (`scripts/ci`). No stack, no compiled artifacts.
+      - name: Run script tests
+        run: yarn test:scripts

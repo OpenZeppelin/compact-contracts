@@ -25,6 +25,7 @@
     "test:integration:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-live.ts integration",
     "test:harness": "turbo run test:harness --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
     "test:harness:live": "turbo run test:harness:live --filter=@openzeppelin/compact-contracts --env-mode=loose --log-prefix=none",
+    "test:scripts": "turbo run test:scripts --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "lint:ci": "biome ci . --no-errors-on-unmatched",
@@ -33,7 +34,8 @@
     "env:status": "make env-status",
     "env:logs": "make env-logs",
     "env:logs:clean": "make env-logs-clean",
-    "types": "turbo run types",
+    "types": "turbo run types && yarn run types:scripts",
+    "types:scripts": "tsc -p scripts/tsconfig.json",
     "clean": "turbo run clean"
   },
   "resolutions": {
