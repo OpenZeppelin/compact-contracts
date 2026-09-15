@@ -9,7 +9,10 @@ import {
   ledger,
   type UserAddress,
 } from '../../../../../artifacts/ForwarderUnshieldedExample/contract/index.js';
-import { EmptyPrivateState, emptyWitnesses } from '../../EmptyWitnesses.js';
+import {
+  EmptyPrivateState,
+  emptyWitnesses,
+} from '../../../test/EmptyWitnesses.js';
 
 type ForwarderUnshieldedArgs = readonly [parent: UserAddress];
 
