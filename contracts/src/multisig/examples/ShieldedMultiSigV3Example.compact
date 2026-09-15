@@ -17,38 +17,45 @@ import CompactStandardLibrary;
 
 import "../presets/ShieldedMultiSigV3" prefix ShieldedMultiSigV3_;
 
-export { ZswapCoinPublicKey, ContractAddress, Either };
-export { QualifiedShieldedCoinInfo };
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-// Surface the preset's state unprefixed so `ledger()` readers keep the key
-// names the preset published as a contract.
-import { _counter, _coinNonce, _tokenDomain } from "../presets/ShieldedMultiSigV3";
-export { _counter, _coinNonce, _tokenDomain };
+// Surface the preset's replay counter unprefixed so `ledger()` readers keep the
+// key name the preset published as a contract. The token modules' state stays
+// behind their prefixed imports and is read through the view circuits.
+import { _counter } from "../presets/ShieldedMultiSigV3";
+export { _counter };
 
 /**
- * @description Deploys the issuer with 3 signer commitments and a threshold
- * of 2.
+ * @description Deploys the issuer with 3 signer commitments, a threshold
+ * of 2, and the token's domain and metadata.
  *
  * Requirements:
  *
  * - `signerCommitments` must not contain duplicates.
- * - `instanceSalt` and `initCoinNonce` should be cryptographically random.
+ * - `instanceSalt` should be cryptographically random.
  *
  * @param {Bytes<32>} instanceSalt - Random salt for signer commitment derivation.
- * @param {Bytes<32>} initCoinNonce - Initial coin nonce seed.
- * @param {Bytes<32>} tokenDomain - Domain string used to derive this contract's token color.
+ * @param {Bytes<32>} tokenDomain - Domain separator for this contract's token color.
+ * @param {Opaque<"string">} name_ - The token name.
+ * @param {Opaque<"string">} symbol_ - The token symbol.
+ * @param {Uint<8>} decimals_ - The token decimals.
  * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
  */
 constructor(
   instanceSalt: Bytes<32>,
-  initCoinNonce: Bytes<32>,
   tokenDomain: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
   signerCommitments: Vector<3, Bytes<32>>,
 ) {
   ShieldedMultiSigV3_initialize(
     instanceSalt,
-    initCoinNonce,
     tokenDomain,
+    name_,
+    symbol_,
+    decimals_,
     signerCommitments,
   );
 }
@@ -58,7 +65,7 @@ export circuit mint(
   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
-): [] {
+): ShieldedCoinInfo {
   return ShieldedMultiSigV3_mint(amount, recipient, pubkeys, signatures);
 }
 
@@ -67,7 +74,7 @@ export circuit burn(
   amount: Uint<64>,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
-): [] {
+): Maybe<ShieldedCoinInfo> {
   return ShieldedMultiSigV3_burn(coin, amount, pubkeys, signatures);
 }
 
@@ -82,12 +89,20 @@ export circuit getNonce(): Uint<64> {
   return ShieldedMultiSigV3_getNonce();
 }
 
-export circuit getTokenDomain(): Bytes<32> {
-  return ShieldedMultiSigV3_getTokenDomain();
+export circuit name(): Opaque<"string"> {
+  return ShieldedMultiSigV3_name();
 }
 
-export circuit getTokenType(): Bytes<32> {
-  return ShieldedMultiSigV3_getTokenType();
+export circuit symbol(): Opaque<"string"> {
+  return ShieldedMultiSigV3_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return ShieldedMultiSigV3_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return ShieldedMultiSigV3_tokenColor();
 }
 
 export circuit getSignerCount(): Uint<8> {
