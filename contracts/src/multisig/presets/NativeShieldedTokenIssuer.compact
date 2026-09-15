@@ -5,40 +5,44 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module NativeShieldedTokenIssuer
- * @description Privacy-preserving multisig token contract for tokenised
- * deposits. Both minting and burning require threshold ECDSA
- * authorization. No single party can unilaterally create or destroy tokens.
+ * @description
+ * A 2-of-3 ECDSA multisig that mints and burns one native shielded token,
+ * for tokenised deposits. Value enters only through `mint` and leaves the
+ * contract only through `burn`; each is a single tx carrying two registered
+ * signers' approvals, so no single party creates or destroys tokens.
  *
- * Designed with the following features:
- * - Supply only enters through authorized mint (no open deposit)
- * - Supply only exits through authorized burn (no arbitrary transfers)
- * - Non-transferability enforced by absence of transfer/execute circuits
- * - Change coins from partial burns handled by the transaction layer
- * - Operator discovers coins via ZswapOutput events from the indexer
+ * Composes `EcdsaSignerManager` (signer commitments, approval checks),
+ * `NativeShieldedToken` as `NST_` (one token; domain, `name`, `symbol` and
+ * `decimals` fixed at construction) and `NativeShieldedTokenDerivedNonce` as
+ * `NSTDerivedNonce_` (coin nonces derived from a counter).
  *
- * Mint and burn are delegated to `NativeShieldedToken`, and coin nonces to
- * `NativeShieldedTokenDerivedNonce`:
+ * @dev Notation:
+ * - `H<T>(...)`: `persistentHash<T>` (SHA-256) over the Compact encoding of
+ *   `T`, a `Bytes<32>` digest.
+ * - `self`: `kernel.self().bytes`, this contract's address.
+ * - `opNonce`: the `_counter` value read at the start of `mint` / `burn`. It
+ *   is the signature replay counter and is separate from the
+ *   `NativeShieldedTokenDerivedNonce` counter that feeds coin nonces.
+ * - `cm`: a signer commitment, the registry key.
+ * - `color`: `tokenType(_domain, self)`, this token's coin color.
  *
- * - `mint` creates a new UTXO of this contract's token through `NST__mint`,
- *   addressed to the provided recipient. No external coin input; supply is
- *   produced on-chain.
- * - `burn` destroys value from a coin the contract already holds through
- *   `NST__burnFromSelf`. Only coins of this contract's color can be burned,
- *   and the change is auto-received by the contract and returned.
- *
- * Signer identities are stored as commitments: hashes of ECDSA public keys
- * combined with an instance salt and domain separator. A counter provides
- * replay protection for the signed digests; coin nonces come from the
- * derived-nonce extension's own counter.
- *
- * Operation domain prefixes ("multisig:mint:" / "multisig:burn:") in the message
- * hash prevent signatures for one operation type from being replayed as
- * the other.
- *
- * @notice Threshold authorization is enforced with secp256k1 ECDSA
- * (`secp256k1EcdsaVerifyLowS`) over `persistentHash` digests, via
- * `EcdsaSignerManager`, so a high-s signature is rejected. The approval
- * vectors are fixed at `Vector<2, ...>`, so this contract is 2-of-3 only.
+ * @dev Derivations:
+ * - Mint digest: `H<Vector<5, Bytes<32>>>([pad(32, "multisig:mint:"), self,
+ *   H<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient),
+ *   opNonce as Bytes<32>, amount as Bytes<32>])`, with
+ *   `canonRecipient = Utils_canonicalize(recipient)` (unused `Either` arm
+ *   zeroed).
+ * - Burn digest: `H<Vector<4, Bytes<32>>>([pad(32, "multisig:burn:"), self,
+ *   opNonce as Bytes<32>, amount as Bytes<32>])`.
+ * - Signer commitment: `cm = H<SignerCommitmentInput>({ pkX, pkY, salt,
+ *   domain: pad(32, "multisig:signer:") })`, `pkX` / `pkY` the affine
+ *   coordinates as `Bytes<32>`. `_calculateSignerId` is the exported pure
+ *   circuit.
+ * - Coin nonce: `evolveNonce(counter, pad(32, "NativeShieldedToken:nonce"))`
+ *   over the derived-nonce counter after its increment.
+ * - Encoding: `H` hashes the Compact encoding, not a byte concatenation.
+ *   `contracts/src/multisig/test/EcdsaTestUtils.ts` pins the TS mirror
+ *   (`mintMsgHash`, `burnMsgHash`, `recipientHash`).
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
@@ -46,6 +50,138 @@ pragma language_version >= 0.26.0;
  *
  * TODO: switch every digest to `keccak256` to match the custodian's HSM
  * signing format (#827).
+ *
+ * @dev Parameterization:
+ * None: the signer set is `Vector<3, Bytes<32>>`, the threshold is the
+ * literal `2` in `initialize`, and the approval vectors are `Vector<2>`.
+ * `instanceSalt`, `tokenDomain`, `name_`, `symbol_` and `decimals_` are
+ * per-deployment `initialize` values, fixed for the contract's life.
+ *
+ * @dev Compatibility:
+ * The wire format the custodian's signer implements is the two digest
+ * layouts, the domain tags (`multisig:mint:`, `multisig:burn:`,
+ * `multisig:signer:`), the `cm` preimage struct, and the `Vector<2>` /
+ * `Vector<3>` shapes. Changing any of them breaks every existing signer
+ * setup. The test suite pins them through `EcdsaTestUtils.ts`.
+ *
+ * @notice Privacy:
+ * - Public, per tx:
+ *   - Entry point: mint vs burn.
+ *   - Approvers: the two signer commitments (`disclose(commitment)` in
+ *     `Signer_assertSigner`), so WHICH two of the three signers approved.
+ *   - Mint: `canonRecipient`, `amount` and the derived nonce, all disclosed
+ *     to `mintShieldedToken`. The nonce is a function of public state, so
+ *     anyone can recompute the coin commitment: the mint is recipient-public
+ *     by design (see `NativeShieldedTokenDerivedNonce`).
+ *   - Burn: the spent coin (`disclose(coin)` to `sendShielded`, `mt_index`
+ *     included), `amount`, the nullifier, and the change coin
+ *     (`disclose(sendRes.change)`).
+ * - Public, as state:
+ *   - Cells: `_counter`, the derived-nonce counter, the signer commitment
+ *     set, signer count, threshold, `_instanceSalt`, `_domain`, `name` /
+ *     `symbol` / `decimals`. Only `_counter` reaches the implementing
+ *     contract's `ledger()` reader; the rest sit behind prefixed imports
+ *     and are read through the view circuits.
+ *   - Absent: no supply, no balances, no coin registry.
+ * - Private:
+ *   - Signer material: public keys and signatures are verified in-circuit,
+ *     never disclosed.
+ *   - Operation data: nothing; recipient, amount and coin nonce are
+ *     disclosed.
+ * - Signer identity: keys sit behind `cm` with a public salt, so an observer
+ *   holding a candidate key can test membership; one without cannot
+ *   correlate a signer across deployments.
+ * - Counterparty: a mint recipient learns nothing beyond the coin handed over
+ *   out of band; every observer learns the recipient, amount and nonce of
+ *   every mint.
+ * - Auditability: mint and burn amounts are public, so supply is
+ *   reconstructable from the transcripts. No on-chain total is kept.
+ *
+ * @notice Security:
+ * - Digest binding: each digest binds the operation tag, `self`, `opNonce`
+ *   and `amount` (`mint` also the canonical recipient), so a signature
+ *   authorizes one operation on one instance at one nonce, and is neither
+ *   replayable as the other operation nor redirectable.
+ * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
+ *   high-s encoding is an invalid signature.
+ * - Distinct signers: `assertApprovals` asserts both entries and rejects a
+ *   repeated commitment, so two distinct registered signers are always
+ *   required. The threshold `2` is the ceiling `EcdsaSignerManager` accepts.
+ * - Canonical recipient: `Utils_canonicalize` zeroes the unused `Either` arm
+ *   before hashing and minting, so a recipient with both arms populated
+ *   cannot yield two digests for one destination.
+ * - Immutable signer set: no signer reconfiguration circuit is exported, so
+ *   the three commitments and the threshold are fixed. Losing two of the
+ *   three keys freezes the contract.
+ * - Griefing: the derived-nonce mint is the only mint path and it is
+ *   threshold-gated, so `NativeShieldedTokenDerivedNonce`'s
+ *   collision-griefing precondition (a caller-nonce mint at another trust
+ *   level) is absent.
+ * - Atomicity: a failed assert rejects the whole tx before any state moves;
+ *   neither counter advances and the sender pays no fee.
+ *
+ * @notice Concurrency:
+ * - Replay counter: `mint` and `burn` both read `_counter` into the digest.
+ *   The read is pinned, so any two of them in one block conflict: at most one
+ *   mint-or-burn lands per block, and the losing signer pair re-signs at the
+ *   next nonce.
+ * - Derived-nonce counter: `mint` also pins it (`evolveNonce` consumes it);
+ *   the `_counter` conflict already covers that pair.
+ * - `getNonce`: submitted as a tx it pins `_counter` and conflicts with a
+ *   same-block mint or burn.
+ * - Views: metadata, `tokenColor` and the signer views read only state
+ *   written by `initialize`, so they commute with everything.
+ *
+ * @notice Scope:
+ * Mint and burn only. No send, transfer or execute circuit exists, so
+ * contract-held coins leave only through `burn`. No deposit or receive
+ * circuit exists either: `burn` spends a coin the contract already holds,
+ * supplied by the operator as `QualifiedShieldedCoinInfo`. Coins minted to
+ * users are ordinary Zswap coins the contract neither tracks nor restricts.
+ * No supply accounting.
+ *
+ * @notice Client-side duties:
+ * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
+ *   `_calculateSignerId(pk, salt)`, pass the three as `signerCommitments`.
+ * - Per operation: read `getNonce()`, rebuild the digest as
+ *   `EcdsaTestUtils.ts` does, collect two low-s signatures off-chain, submit
+ *   keys and signatures in matching `Vector<2>` positions.
+ * - Coin delivery: hand the `ShieldedCoinInfo` returned by `mint` to the
+ *   recipient out of band; contract-initiated mints create no ciphertext, so
+ *   a wallet cannot find the coin by scanning.
+ * - Coin tracking: keep contract-held coins off-chain, recovering each
+ *   coin's `mt_index` from the indexer's `ZswapOutput` / ledger events to
+ *   build the `QualifiedShieldedCoinInfo` that `burn` takes.
+ * - Change coin: persist the one `burn` returns. It replaces the spent coin
+ *   as the contract's holding and is not otherwise recoverable.
+ *
+ * @notice Scalability:
+ * - Throughput: one mint-or-burn per block (see Concurrency).
+ * - State: constant-size, two counters and a three-entry signer set. Nothing
+ *   grows per operation.
+ * - Amounts: `mint` caps at `Uint<64>` by `mintShieldedToken`; `burn` takes
+ *   `Uint<64>` by its signature although `NST__burnFromSelf` accepts
+ *   `Uint<128>`.
+ *
+ * @dev Performance:
+ * - Largest circuits: `burn` (k=17, rows=92252), then `mint` (k=17,
+ *   rows=84546). Both are dominated by the two secp256k1 ECDSA verifications
+ *   in `assertApprovals` (k=17, rows=64916 on its own); `NST__burnFromSelf`
+ *   (k=15, rows=23307) and `NST__mint` (k=14, rows=10843) add most of the
+ *   rest.
+ * - Views: k=6 to k=13 (`tokenColor`). Per-circuit `k` and rows are on each
+ *   `@constraints` line, measured with `--feature-zkir-v3` on compiler
+ *   0.34.0.
+ *
+ * @dev Composition:
+ * - Recipient privacy: pass a caller-supplied secret random nonce to
+ *   `NST__mint` instead of `NSTDerivedNonce__deriveNonce()`.
+ * - Other thresholds: widen `Vector<2>` in `mint`, `burn` and
+ *   `EcdsaSignerManager_assertApprovals` (its duplicate check is exhaustive
+ *   only at width 2) and the signer-set width passed to
+ *   `EcdsaSignerManager_initialize`.
+ * - Deposits: a deposit path needs a `receiveShielded` circuit; none is
+ *   included.
  */
 module NativeShieldedTokenIssuer {
   import CompactStandardLibrary;
@@ -61,6 +197,7 @@ module NativeShieldedTokenIssuer {
    * @description Monotonic operation counter. Each mint and burn reads it as that
    * operation's nonce and then increments, so no two operations share one.
    */
+  // TODO: move to a shared utils/Nonces module once one exists; stays separate from DerivedNonce's counter.
   export ledger _counter: Counter;
 
   // ─── Initialization ─────────────────────────────────────────────
