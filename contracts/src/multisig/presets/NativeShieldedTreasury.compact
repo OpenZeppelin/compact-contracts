@@ -5,24 +5,156 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module NativeShieldedTreasury
- * @description A shielded multisig preset composing `Signer`,
- * `ProposalManager`, and `ShieldedTreasury`. Signers approve proposals that
- * transfer shielded tokens out of the treasury once the configured threshold
- * is met.
+ * @description A threshold-of-three multisig treasury for shielded coins that
+ * keeps its coins on the ledger. Anyone may deposit; value leaves only through
+ * a proposal that enough registered signers have approved on-chain, so no
+ * single party can spend.
  *
- * @notice Signer identity uses `Either<ZswapCoinPublicKey, ContractAddress>`
- * in state for forward compatibility. In the current protocol, only
- * `left(ZswapCoinPublicKey)` callers can authenticate — `getCaller()` resolves
- * via `ownPublicKey()` and has no way to produce a right-variant today.
- * Registering contract-address signers is permitted but those signers cannot
- * exercise governance (create/approve/revoke) until contract-to-contract calls
- * are supported. Choose your signer set accordingly.
+ * Composes `Signer<Either<ZswapCoinPublicKey, ContractAddress>>` as `Signer_`
+ * (signer registry, threshold check), `ProposalManager` as `Proposal_` (the
+ * proposal lifecycle) and `ShieldedTreasury` as `Treasury_` (deposit and send,
+ * one merged UTXO per color on the ledger). The approvals themselves are this
+ * module's own state.
  *
- * @notice The state shape is deliberately kept broad so that, once
- * contract-to-contract calls are supported, `getCaller()` can be swapped via
- * a CMA (Contract Maintenance Authorities) circuit upgrade without a state
- * migration. Existing deployments would then gain working contract-signer
- * authentication.
+ * @dev Parameterization:
+ * The signer set is `Vector<3, Either<ZswapCoinPublicKey, ContractAddress>>`
+ * and `thresh` is a per-deployment `initialize` value, fixed for the
+ * contract's life. `Signer_initialize` rejects a zero threshold and one above
+ * the signer count. Signer count and threshold are `Uint<8>`.
+ *
+ * @notice Privacy:
+ * - Public, per tx:
+ *   - Entry point: deposit, create, approve, revoke or execute.
+ *   - Caller: the acting signer's coin public key (`disclose(account)` in
+ *     `Signer_isSigner`), so WHICH signer proposed, approved or revoked.
+ *   - Deposit: the received coin (`disclose(coin)` in `Treasury__deposit`), so
+ *     its nonce, color and value.
+ *   - Execute: the recipient, the amount, the nullifier of the spent coin and
+ *     the change coin. `executeShieldedProposal` returns the
+ *     `ShieldedSendResult` from its entry point, which publishes the sent and
+ *     change coins in plaintext (see `ShieldedTreasury._send`).
+ * - Public, as state:
+ *   - Holdings: `_coins` is exported ledger state, so every coin the treasury
+ *     holds is readable in plaintext (nonce, color, value and Merkle index),
+ *     as are the cumulative `_received` and `_sent` totals. "Shielded" is the
+ *     rail, not the balance (see `ShieldedTreasury`'s `@warning`).
+ *   - Proposals: `_proposals` publishes every proposal's recipient, color,
+ *     amount and status, and `_nextProposalId` how many were created (see
+ *     `ProposalManager`'s `@warning`). The transfer is private, the plan is
+ *     not.
+ *   - Approvals: `_proposalApprovals` and `_approvalCount` are this module's
+ *     exported ledger, so who approved which proposal, and the running count,
+ *     are public.
+ *   - Signer set: `Signer`'s `_signers` holds the coin public keys themselves
+ *     rather than commitments, so the set is readable and one signer is
+ *     recognisable across deployments.
+ *   - `ledger()` reader: only `_proposalApprovals` and `_approvalCount` reach
+ *     the implementing contract's reader, and only because the example
+ *     re-imports them unprefixed. The composed modules' state sits behind
+ *     prefixed imports and is read through the view circuits.
+ * - Private: nothing. Every operand of every circuit is disclosed.
+ *
+ * @notice Security:
+ * - Caller authentication: `getCaller()` returns
+ *   `left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey())`. A signer
+ *   registered as `right(ContractAddress)` is stored and answers `isSigner`,
+ *   but can never be the caller, so it can never propose, approve or revoke.
+ *   Register coin public keys.
+ * - Threshold: `executeShieldedProposal` passes the proposal's approval count
+ *   to `Signer_assertThresholdMet`. That count is maintained here, one entry
+ *   per distinct signer: `approveProposal` gates on `Signer_assertSigner` and
+ *   rejects a second approval from the same caller.
+ * - Open execution: `executeShieldedProposal` has no signer check. Any account
+ *   may submit it once the threshold is met.
+ * - Open deposits: `deposit` has no access control, by design.
+ * - Recipient kinds: `createShieldedProposal` rejects `UnshieldedUser` at
+ *   creation, so a proposal that `toShieldedRecipient` would reject at
+ *   execution cannot be created. The address itself is unvalidated: a zero or
+ *   otherwise unspendable one is accepted and the funds sent to it are
+ *   unrecoverable (see `ProposalManager._createProposal`).
+ * - Immutable configuration: no signer or threshold circuit is re-exported, so
+ *   the set fixed at `initialize` is final. Losing threshold-many keys freezes
+ *   spending, and the stale-signer-set hazard `Signer`'s header describes
+ *   cannot arise.
+ * - Reinitialization: a second `initialize` reverts with "Signer: contract
+ *   already initialized".
+ * - Retained change: `Treasury__send` writes the change coin back into
+ *   `_coins`. It belongs to the treasury, and re-spending the returned
+ *   `result.change` double-spends the recorded coin.
+ * - Atomicity: a failed assert rejects the whole tx before any state moves.
+ *
+ * @notice Concurrency:
+ * - Per color: `deposit` and `executeShieldedProposal` both read and rewrite
+ *   `_coins`, `_received` and `_sent` at the coin's color, so any two
+ *   value-moving txs on one color conflict and at most one lands per block.
+ * - Proposal ids: `_nextProposalId` is incremented and read back for the map
+ *   key, a pinned read-modify-write, so two `createShieldedProposal` in one
+ *   block conflict whatever they propose.
+ * - Approvals: `approveProposal` and `revokeApproval` read the proposal's
+ *   approval count and write it back, so two of them on the same proposal
+ *   conflict; on different proposals they touch different map keys.
+ * - Views: the signer views read only state written by `initialize`, so they
+ *   commute with everything.
+ *
+ * @notice Scope:
+ * - Rail: shielded only. `createShieldedProposal` accepts the `ShieldedUser`
+ *   and `Contract` recipient kinds and rejects `UnshieldedUser`. No mint, no
+ *   burn, no unshielded path.
+ * - Lifecycle: create, approve, revoke, execute. Cancellation is not exposed,
+ *   `Proposal__cancelProposal` is not re-exported, so a proposal that cannot
+ *   execute stays `Active` and its state is never reclaimed.
+ * - Coins: one merged UTXO per color, so the treasury holds no pool and the
+ *   caller never selects a coin.
+ * - Configuration: no signer rotation, no threshold change.
+ *
+ * @notice Client-side duties:
+ * - Before deploy: choose three signers as `left(ZswapCoinPublicKey)` and a
+ *   threshold in 1..3.
+ * - Per approval: submit from the signer's own wallet. `ownPublicKey()` is
+ *   what authenticates, so the submitting key must be the registered one.
+ * - Reading approvals: key `_proposalApprovals` by proposal id and then by the
+ *   signer's `Either`, or call `isProposalApprovedBySigner`.
+ * - Coin tracking: none. The treasury stores the qualified coin itself, so no
+ *   `mt_index` has to be recovered off-chain before a spend.
+ * - Change coin: leave it alone, the treasury already owns it.
+ *
+ * @notice Scalability:
+ * - State: one entry per proposal in `_proposals`, `_proposalApprovals` and
+ *   `_approvalCount`, never reclaimed. The signer set and the per-color coin
+ *   entry are constant-size.
+ * - Throughput: one value-moving tx per color per block, and one proposal
+ *   creation per block (see Concurrency).
+ * - Amounts: `Uint<128>`. Signer count and threshold are `Uint<8>`.
+ *
+ * @dev Performance:
+ * - Largest circuit: `deposit` (k=16, rows=34619), ahead of
+ *   `executeShieldedProposal` (k=15, rows=29314), because it merges the
+ *   incoming coin into the stored UTXO instead of only receiving it.
+ * - Everything else runs k=6 to k=9. Per-circuit `k` and rows are on each
+ *   `@circuitInfo` line, measured with `--feature-zkir-v3` on compiler 0.34.0.
+ * - Deploy weight: the per-field proposal getters and `getReceivedMinusSent`
+ *   were dropped to bring the deploy under the block limit (see the note above
+ *   `getProposalStatus`).
+ *
+ * @dev Composition:
+ * - Private holdings: swap `ShieldedTreasury` for `ShieldedTreasuryStateless`
+ *   to stop publishing the treasury's coins and totals, at the cost of the
+ *   operator supplying the coin and its `mt_index` at spend time.
+ * - Off-chain approvals: swap `Signer` for `EcdsaSignerManager` to collect
+ *   signatures off-chain and drop the public proposal record.
+ *   `NativeShieldedStatelessTreasury` is both swaps together.
+ * - Unshielded rail: pair `Proposal_toUnshieldedRecipient` with
+ *   `UnshieldedTreasury`; this preset wires only the shielded one.
+ * - Recorded intent: re-export `Proposal__cancelProposal` to retire dead
+ *   proposals, and `Signer`'s `_addSigner` / `_removeSigner` /
+ *   `_changeThreshold` behind this module's own authorization for rotation.
+ *   Every added circuit costs deploy weight (see Performance).
+ * - Contract signers: the ledger keeps the `Either` shape so that, once
+ *   contract-to-contract calls are supported, `getCaller()` can be replaced
+ *   through a CMA (Contract Maintenance Authorities) circuit upgrade without a
+ *   state migration, and existing deployments gain working contract-signer
+ *   authentication.
+ * - Other thresholds: widen `Vector<3>` in `initialize`.
  */
 module NativeShieldedTreasury {
   import CompactStandardLibrary;
@@ -62,12 +194,24 @@ module NativeShieldedTreasury {
 
   // ─── Deposit ─────────────────────────────────────────────────────────────
 
+  /**
+   * @description Receives a shielded coin, merged into the stored coin
+   * of the same color. No access control: anyone may deposit.
+   *
+   * @circuitInfo k=16, rows=34619 (zkir-v3)
+   */
   export circuit deposit(coin: ShieldedCoinInfo): [] {
     Treasury__deposit(coin);
   }
 
   // ─── Proposals ───────────────────────────────────────────────────────────
 
+  /**
+   * @description Creates a shielded-transfer proposal. Signers only,
+   * and the recipient kind must be `ShieldedUser` or `Contract`.
+   *
+   * @circuitInfo k=9, rows=420 (zkir-v3)
+   */
   export circuit createShieldedProposal(
     to: Proposal_Recipient,
     color: Bytes<32>,
@@ -85,6 +229,12 @@ module NativeShieldedTreasury {
     return Proposal__createProposal(to, color, amount);
   }
 
+  /**
+   * @description Records the caller's approval of an active proposal.
+   * Signers only, once each.
+   *
+   * @circuitInfo k=9, rows=363 (zkir-v3)
+   */
   export circuit approveProposal(id: Uint<64>): [] {
     // Check if active
     Proposal_assertProposalActive(id);
@@ -100,6 +250,11 @@ module NativeShieldedTreasury {
     _approveProposal(id, callerPK);
   }
 
+  /**
+   * @description Withdraws the caller's approval of an active proposal.
+   *
+   * @circuitInfo k=9, rows=331 (zkir-v3)
+   */
   export circuit revokeApproval(id: Uint<64>): [] {
     // Check if active
     Proposal_assertProposalActive(id);
@@ -115,6 +270,13 @@ module NativeShieldedTreasury {
     _revokeApproval(id, callerPK);
   }
 
+  /**
+   * @description Sends an approved proposal's tokens and marks it
+   * executed. No signer check: any account may submit it once the
+   * threshold is met.
+   *
+   * @circuitInfo k=15, rows=29314 (zkir-v3)
+   */
   export circuit executeShieldedProposal(
     id: Uint<64>,
   ): ShieldedSendResult {
@@ -177,6 +339,11 @@ module NativeShieldedTreasury {
 
   // ─── View ───────────────────────────────────────────────────────────────
 
+  /**
+   * @description Returns whether `signer` currently approves the proposal.
+   *
+   * @circuitInfo k=9, rows=313 (zkir-v3)
+   */
   export circuit isProposalApprovedBySigner(
     id: Uint<64>,
     signer: Either<ZswapCoinPublicKey, ContractAddress>
@@ -188,6 +355,12 @@ module NativeShieldedTreasury {
     return _proposalApprovals.lookup(disclose(id)).lookup(disclose(signer));
   }
 
+  /**
+   * @description Returns the proposal's approval count, zero for an
+   * unknown id.
+   *
+   * @circuitInfo k=7, rows=94 (zkir-v3)
+   */
   export circuit getApprovalCount(id: Uint<64>): Uint<8> {
     if (!_approvalCount.member(disclose(id))) {
       return 0;
@@ -198,6 +371,11 @@ module NativeShieldedTreasury {
 
   // IProposalManager
 
+  /**
+   * @description Returns the full proposal.
+   *
+   * @circuitInfo k=8, rows=175 (zkir-v3)
+   */
   export circuit getProposal(id: Uint<64>): Proposal_Proposal {
     return Proposal_getProposal(id);
   }
@@ -209,34 +387,69 @@ module NativeShieldedTreasury {
   // redundant: read the proposal fields via `getProposal(id).to / .amount / .color`,
   // and the net balance via `getReceivedTotal(color) - getSentTotal(color)`.
 
+  /**
+   * @description Returns the proposal's lifecycle status.
+   *
+   * @circuitInfo k=7, rows=109 (zkir-v3)
+   */
   export circuit getProposalStatus(id: Uint<64>): Proposal_ProposalStatus {
     return Proposal_getProposalStatus(id);
   }
 
   // IShieldedTreasury
 
+  /**
+   * @description Returns the value of the stored coin of `color`.
+   *
+   * @circuitInfo k=8, rows=159 (zkir-v3)
+   */
   export circuit getTokenBalance(color: Bytes<32>): Uint<128> {
     return Treasury_getTokenBalance(color);
   }
 
+  /**
+   * @description Returns the cumulative amount deposited in `color`.
+   *
+   * @circuitInfo k=8, rows=146 (zkir-v3)
+   */
   export circuit getReceivedTotal(color: Bytes<32>): Uint<128> {
     return Treasury_getReceivedTotal(color);
   }
 
+  /**
+   * @description Returns the cumulative amount sent in `color`.
+   *
+   * @circuitInfo k=8, rows=146 (zkir-v3)
+   */
   export circuit getSentTotal(color: Bytes<32>): Uint<128> {
     return Treasury_getSentTotal(color);
   }
 
   // ISigner
 
+  /**
+   * @description Returns the number of registered signers.
+   *
+   * @circuitInfo k=6, rows=34 (zkir-v3)
+   */
   export circuit getSignerCount(): Uint<8> {
     return Signer_getSignerCount();
   }
 
+  /**
+   * @description Returns the approval threshold.
+   *
+   * @circuitInfo k=6, rows=34 (zkir-v3)
+   */
   export circuit getThreshold(): Uint<8> {
     return Signer_getThreshold();
   }
 
+  /**
+   * @description Returns whether `account` is a registered signer.
+   *
+   * @circuitInfo k=8, rows=245 (zkir-v3)
+   */
   export circuit isSigner(account: Either<ZswapCoinPublicKey, ContractAddress>): Boolean {
     return Signer_isSigner(account);
   }
