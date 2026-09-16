@@ -110,8 +110,9 @@ export class ArtifactCompiler {
    * Two ways a provided tree can be wrong, and both end the same way for the
    * specs — a deploy that fails in `beforeAll`, which vitest turns into a silent
    * whole-suite skip:
-   *   - a contract is absent, because the upload or the download only partly
-   *     landed (or the compile job built a different scope than this run needs);
+   *   - a contract is absent or incomplete, because the upload or the download
+   *     only partly landed (or the compile job built a different scope than
+   *     this run needs);
    *   - a key is truncated, the #675 failure mode, here carried in rather than
    *     produced locally.
    * Both abort. Recompiling would paper over a broken hand-off, and every job
@@ -121,8 +122,8 @@ export class ArtifactCompiler {
     const missing = missingKeyArtifacts(ARTIFACTS, ...this.#scope.verifyRoots);
     if (missing.length > 0) {
       console.log(
-        `\nno artifacts under ${rel(ARTIFACTS)} for ${missing.length} ` +
-          'contract(s) this run deploys:',
+        `\n${rel(ARTIFACTS)} is missing ${missing.length} artifact(s) this ` +
+          'run deploys:',
       );
       for (const name of missing) console.log(`  ✗ ${name}`);
       console.log(

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,27 +73,71 @@ export function emptyKeyArtifacts(
   return empty;
 }
 
+/** What every artifact directory carries, whatever the contract: the module the
+ * specs import and the compiler's description of it. */
+const REQUIRED_FILES = ['contract/index.js', 'compiler/contract-info.json'];
+
+/** Key files the contract's circuits need, off its `contract-info.json`: one
+ * prover/verifier pair per impure circuit. A module with no circuits (most of
+ * `src/`) needs none, so an absent `keys/` is right for it. Unreadable info is
+ * not reported here; `REQUIRED_FILES` already names the file. */
+function requiredKeyFiles(contractDir: string): string[] {
+  let circuits: readonly { name: string; pure: boolean }[];
+  try {
+    const info = readFileSync(
+      path.join(contractDir, 'compiler/contract-info.json'),
+      'utf8',
+    );
+    circuits =
+      (JSON.parse(info) as { circuits?: typeof circuits }).circuits ?? [];
+  } catch {
+    return [];
+  }
+  return circuits
+    .filter((c) => !c.pure)
+    .flatMap((c) => [`keys/${c.name}.prover`, `keys/${c.name}.verifier`]);
+}
+
+function isDirectory(p: string): boolean {
+  return statSync(p, { throwIfNoEntry: false })?.isDirectory() ?? false;
+}
+
+function isFile(p: string): boolean {
+  return statSync(p, { throwIfNoEntry: false })?.isFile() ?? false;
+}
+
 /**
- * Contracts under `sourceRoots` with no `artifacts/<name>/` directory at all.
+ * Artifacts under `sourceRoots` that are absent or incomplete.
  *
  * {@link emptyKeyArtifacts} scans what is on disk, so a directory that never
- * arrived passes it silently — and a missing artifact fails the deploy exactly
- * like a truncated key does. After a compile the case cannot arise (a successful
- * compile wrote every directory), but a tree built elsewhere can be incomplete:
- * a CI suite job downloads one, and a download that unpacked partially would
- * otherwise reach the specs. Its consumers check this alongside the key scan.
+ * arrived, or arrived without its module or keys, passes it silently, and every
+ * one of those fails the deploy exactly like a truncated key does. After a
+ * compile the case cannot arise (a successful compile wrote every file), but a
+ * tree built elsewhere can be incomplete: a CI suite job downloads one, and a
+ * download that unpacked partially would otherwise reach the specs. Its
+ * consumers check this alongside the key scan.
  *
  * @param artifactsRoot - artifact tree to check (e.g. `contracts/artifacts`)
  * @param sourceRoots - source trees whose contracts must all be present
- * @returns contract names with no artifact directory, sorted
+ * @returns paths relative to `artifactsRoot`, sorted: the contract name when
+ *   its directory is missing, else each required file it lacks
  */
 export function missingKeyArtifacts(
   artifactsRoot: string,
   ...sourceRoots: string[]
 ): string[] {
-  return [...compactContractNames(...sourceRoots)]
-    .filter((name) => !existsSync(path.join(artifactsRoot, name)))
-    .sort();
+  const missing: string[] = [];
+  for (const name of compactContractNames(...sourceRoots)) {
+    const dir = path.join(artifactsRoot, name);
+    if (!isDirectory(dir)) {
+      missing.push(name);
+      continue;
+    }
+    for (const file of [...REQUIRED_FILES, ...requiredKeyFiles(dir)]) {
+      if (!isFile(path.join(dir, file))) missing.push(`${name}/${file}`);
+    }
+  }
+  return missing.sort();
 }
 
 // Standalone CLI: `node scripts/keyIntegrity.ts` checks the repo's artifacts
