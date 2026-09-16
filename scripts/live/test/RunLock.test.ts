@@ -1,4 +1,10 @@
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -50,6 +56,27 @@ describe('RunLock', () => {
 
   it('reclaims a lock left behind by a dead process', () => {
     stamp(DEAD_PID);
+
+    new RunLock(lockPath).acquire();
+
+    expect(holder()).toBe(process.pid);
+  });
+
+  it('refuses a fresh lock whose stamp has not landed yet', () => {
+    // What a concurrent `wx` create looks like from outside between creating
+    // the path and writing the pid: an empty file.
+    writeFileSync(lockPath, '');
+
+    expect(() => new RunLock(lockPath).acquire()).toThrow(
+      'another test:live run is already in progress. Wait for it',
+    );
+    expect(readFileSync(lockPath, 'utf8')).toBe('');
+  });
+
+  it('reclaims an unreadable lock past the grace period', () => {
+    writeFileSync(lockPath, '');
+    const aMinuteAgo = (Date.now() - 60_000) / 1000;
+    utimesSync(lockPath, aMinuteAgo, aMinuteAgo);
 
     new RunLock(lockPath).acquire();
 
