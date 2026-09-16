@@ -167,6 +167,25 @@ describe('nightlyAction', () => {
     });
   });
 
+  it('fails the nightly when one target compile failed and the rest passed', () => {
+    // A pipeline per target: the failed target's suite jobs are skipped, the
+    // others run, and the suite aggregate collapses `success` + `skipped` to
+    // `success`. The compile aggregate is what still carries the failure.
+    const action = nightlyAction({
+      suite: 'success',
+      plan: 'success',
+      compile: 'failure',
+      runUrl: RUN_URL,
+      openIssue: 42,
+    });
+
+    expect(action).toStrictEqual({
+      kind: 'comment',
+      issue: 42,
+      body: expect.stringContaining(RUN_URL),
+    });
+  });
+
   it('reports nothing when a cancelled compile skipped the suite', () => {
     expect(
       nightlyAction({

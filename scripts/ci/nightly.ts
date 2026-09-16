@@ -77,15 +77,23 @@ export type NightlyAction =
 /**
  * Collapse the job results into the one verdict the report is about.
  *
- * The suite job reports `skipped` whenever it never started, which covers both
- * "something upstream failed" (a failed nightly: nothing was tested) and "the run
- * was cancelled" (nothing to report). The upstream results are what tell them
- * apart, so a skipped suite inherits the first one that is not a success — a
- * compile that failed is as much a failed nightly as a plan that did, and
- * reporting it as `skipped` would leave a broken build silent until someone
- * opened the Actions tab.
+ * A `failure` anywhere decides first. The aggregates come from a pipeline per
+ * target, so the suite reads `success` as soon as one target ran: a compile
+ * that failed for another target only skips that target's suite jobs, and the
+ * suite aggregate alone would report the night green with a contract never
+ * built or tested.
+ *
+ * Otherwise the suite job reports `skipped` whenever it never started, which
+ * covers both "something upstream failed" (a failed nightly: nothing was
+ * tested) and "the run was cancelled" (nothing to report). The upstream results
+ * are what tell them apart, so a skipped suite inherits the first one that is
+ * not a success, and reporting it as `skipped` would leave a broken build
+ * silent until someone opened the Actions tab.
  */
 function verdict(state: NightlyState): string {
+  if ([state.suite, state.plan, state.compile].includes('failure')) {
+    return 'failure';
+  }
   if (state.suite !== 'skipped') return state.suite;
   return [state.plan, state.compile].find((r) => r !== 'success') ?? 'skipped';
 }
