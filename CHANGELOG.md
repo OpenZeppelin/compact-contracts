@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** Turn the `ShieldedMultiSig`, `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules. Each one now exposes `initialize(...)` taking the former constructor's parameters, to be called from the implementing contract's constructor; circuit names, parameters, return types, assert strings and signing digests are unchanged. Deploy through the new `multisig/examples/` contracts (`ShieldedMultiSigExample`, `ShieldedMultiSigV2Example`, `ShieldedMultiSigV3Example`), or import the preset module from your own contract. The forwarder presets move to `multisig/examples/` as `ForwarderPrivateExample`, `ForwarderShieldedExample` and `ForwarderUnshieldedExample`. Compiled artifacts are keyed by these new names, and a preset's `ledger()` reader now belongs to the contract that imports it. Ledger slot indices also change, because a module allocates its own fields before its imports', so the examples are not state-compatible with contracts deployed from the old presets: redeploy rather than swapping circuits onto an existing deployment via CMA.
+- **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules with `initialize(...)`, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
+
+### Removed
+
+- **Breaking:** Remove the `ShieldedMultiSig` preset. A rebuild on `EcdsaSignerManager` is tracked in #905. (#885)
 
 ## 0.4.0-alpha.1 (2026-09-02)
 
