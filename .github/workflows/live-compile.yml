@@ -42,7 +42,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2 # Recommended by turbo team
-          persist-credentials: false
 
       # Per-target turbo cache. One key shared by every compile job is a write
       # race: they all save at the end, one wins, and the rest of the run
