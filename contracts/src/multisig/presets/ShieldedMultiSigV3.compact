@@ -56,16 +56,12 @@ module ShieldedMultiSigV3 {
   // ─── Initialization ─────────────────────────────────────────────
 
   /**
-   * @description Registers 3 signer commitments, the token domain, and the
-   * initial coin nonce, with a threshold of 2.
+   * @description Sets the token domain and the initial coin nonce.
    *
    * @notice Call from the implementing contract's constructor only. It writes
    * the `sealed` `_tokenDomain`, so implementing contracts MUST NOT expose it
-   * as a post-deploy circuit.
-   *
-   * Each commitment is `persistentHash(pkX, pkY, instanceSalt,
-   * "multisig:signer:")`. Use the exported `_calculateSignerId` circuit to
-   * derive them consistently with in-circuit verification.
+   * as a post-deploy circuit. The same constructor must register the signer set
+   * through `EcdsaSignerManager_initialize<3>` with a threshold of 2.
    *
    * `tokenDomain` is used with `kernel.self()` to derive the token color
    * via `tokenType(_tokenDomain, kernel.self())`. Only coins of this color
@@ -76,24 +72,18 @@ module ShieldedMultiSigV3 {
    *
    * Requirements:
    *
-   * - `signerCommitments` must not contain duplicates.
-   * - `instanceSalt` and `initCoinNonce` should be cryptographically random.
+   * - `initCoinNonce` should be cryptographically random.
    *
-   * @param {Bytes<32>} instanceSalt - Random salt for signer commitment derivation.
    * @param {Bytes<32>} initCoinNonce - Initial coin nonce seed.
    * @param {Bytes<32>} tokenDomain - Domain string used to derive this contract's token color.
-   * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
    * @returns {[]} Empty tuple.
    */
   export circuit initialize(
-    instanceSalt: Bytes<32>,
     initCoinNonce: Bytes<32>,
     tokenDomain: Bytes<32>,
-    signerCommitments: Vector<3, Bytes<32>>,
   ): [] {
     _coinNonce = disclose(initCoinNonce);
     _tokenDomain = disclose(tokenDomain);
-    EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
   }
 
   // ─── Mint ───────────────────────────────────────────────────────

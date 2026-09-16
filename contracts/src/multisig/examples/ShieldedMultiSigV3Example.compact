@@ -15,6 +15,7 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
+import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
 import "../presets/ShieldedMultiSigV3" prefix ShieldedMultiSigV3_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either };
@@ -45,12 +46,8 @@ constructor(
   tokenDomain: Bytes<32>,
   signerCommitments: Vector<3, Bytes<32>>,
 ) {
-  ShieldedMultiSigV3_initialize(
-    instanceSalt,
-    initCoinNonce,
-    tokenDomain,
-    signerCommitments
-  );
+  EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
+  ShieldedMultiSigV3_initialize(initCoinNonce, tokenDomain);
 }
 
 export circuit mint(

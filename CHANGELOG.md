@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules with `initialize(...)`, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
+- **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
 
 ### Removed
 

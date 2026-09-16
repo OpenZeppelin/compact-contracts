@@ -15,6 +15,7 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
+import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
 import "../presets/ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
@@ -31,7 +32,7 @@ constructor(
   signerCommitments: Vector<3, Bytes<32>>,
   thresh: Uint<8>,
 ) {
-  ShieldedMultiSigV2_initialize(instanceSalt, signerCommitments, thresh);
+  EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, thresh);
 }
 
 export circuit deposit(coin: ShieldedCoinInfo): [] {

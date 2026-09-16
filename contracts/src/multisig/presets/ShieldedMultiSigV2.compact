@@ -18,6 +18,10 @@ pragma language_version >= 0.26.0;
  * Deposits call receiveShielded only. The operator discovers coin indices
  * through ZswapOutput events from the indexer, constructs QualifiedShieldedCoinInfo
  * off-chain, and provides it as a circuit parameter for spending.
+ *
+ * @notice The preset has no state of its own to set up. Implementing contracts
+ * register the signer set from their constructor by calling
+ * `EcdsaSignerManager_initialize<3>`.
  */
 module ShieldedMultiSigV2 {
   import CompactStandardLibrary;
@@ -34,48 +38,6 @@ module ShieldedMultiSigV2 {
   // ─── State ──────────────────────────────────────────────────────
 
   ledger _nonce: Counter;
-
-  // ─── Initialization ─────────────────────────────────────────────
-
-  /**
-   * @description Registers 3 signer commitments and the approval threshold.
-   *
-   * @notice Call from the implementing contract's constructor only. A second
-   * call reverts with "Signer: contract already initialized".
-   *
-   * Each commitment is `persistentHash(pkX, pkY, instanceSalt,
-   * "multisig:signer:")`. Use the exported `_calculateSignerId` circuit to
-   * derive them consistently with in-circuit verification.
-   *
-   * The instanceSalt should be a random value to prevent the same public
-   * key from producing the same commitment across different multisig
-   * deployments, breaking cross-contract signer correlation.
-   *
-   * @dev A threshold of 1 does not weaken `execute`, which always verifies two
-   * distinct registered signers.
-   *
-   * Requirements:
-   *
-   * - `thresh` must be > 0 and <= 2 (matches the 2-signature `execute` surface).
-   * - `signerCommitments` must not contain duplicates.
-   * - `instanceSalt` should be cryptographically random.
-   *
-   * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
-   * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
-   * @param {Uint<8>} thresh - Minimum approvals required.
-   * @returns {[]} Empty tuple.
-   */
-  export circuit initialize(
-    instanceSalt: Bytes<32>,
-    signerCommitments: Vector<3, Bytes<32>>,
-    thresh: Uint<8>,
-  ): [] {
-    assert(
-      thresh <= 2,
-      "ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)"
-    );
-    EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, thresh);
-  }
 
   // ─── Deposit ────────────────────────────────────────────────────
 

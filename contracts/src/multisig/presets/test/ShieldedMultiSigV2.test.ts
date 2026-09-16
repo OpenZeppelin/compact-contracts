@@ -145,7 +145,7 @@ describe('ShieldedMultiSigV2', () => {
           true,
         ),
       ).rejects.toThrow(
-        'ShieldedMultiSigV2: threshold cannot exceed 2 (execute verifies at most 2 signatures)',
+        'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
       );
     });
 
