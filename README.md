@@ -225,9 +225,32 @@ yarn compile
 
 ### Run tests
 
+The per-module specs, in the simulator:
+
 ```bash
 yarn test
 ```
+
+The integration specs, which compose several modules into one contract:
+
+```bash
+yarn test:integration
+```
+
+Some behaviour has no simulator equivalent — the contract maintenance
+authority, and anything that turns on real proving or finality. Those blocks
+are skipped above and need the local stack:
+
+```bash
+make env-up
+yarn test:live              # the per-module specs
+yarn test:integration:live  # the integration specs
+make env-down
+```
+
+Expect the live runs to be slow: a fresh deploy plus its wallet sync dominates
+each spec file. See [`contracts/test/integration/README.md`](contracts/test/integration/README.md)
+for what the integration suite covers.
 
 ### Check/apply Biome formatter
 
