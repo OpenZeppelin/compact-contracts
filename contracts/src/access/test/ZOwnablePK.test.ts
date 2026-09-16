@@ -7,7 +7,7 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
-import type { ZswapCoinPublicKey } from '../../../artifacts/MockOwnable/contract/index.js';
+import type { ZswapCoinPublicKey } from '../../../artifacts/MockZOwnablePK/contract/index.js';
 import { ZOwnablePKSimulator } from './simulators/ZOwnablePKSimulator.js';
 import { ZOwnablePKPrivateState } from './witnesses/ZOwnablePKWitnesses.js';
 

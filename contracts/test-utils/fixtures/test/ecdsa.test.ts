@@ -57,12 +57,13 @@ describe('ecdsa fixtures', () => {
       );
     });
 
-    // @noble/curves v1 exposes the order as `CURVE.n`; v2 moves it, so this
-    // cross-check runs only where the field is present.
-    it.runIf(typeof secp256k1.CURVE?.n === 'bigint')(
+    // @noble/curves v1 exposes the order as `CURVE.n`; v2 drops it from the
+    // public type, so this cross-check runs only where the field is present.
+    const noble = secp256k1 as Partial<{ CURVE: { n: bigint } }>;
+    it.runIf(typeof noble.CURVE?.n === 'bigint')(
       "should match noble's curve order",
       () => {
-        expect(SECP256K1_N).toBe(secp256k1.CURVE.n);
+        expect(SECP256K1_N).toBe(noble.CURVE?.n);
       },
     );
   });

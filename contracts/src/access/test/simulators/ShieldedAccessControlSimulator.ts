@@ -17,6 +17,13 @@ import {
 
 type ShieldedAccessControlLedger = ReturnType<typeof ledger>;
 
+// The witness factory is generic in the ledger. Left unapplied, its
+// `ReturnType` resolves `L` to `unknown`, which erases `ctx.ledger` for specs
+// that swap a witness through `overrideWitness`.
+type ShieldedAccessControlWitnessesType = ReturnType<
+  typeof ShieldedAccessControlWitnesses<ShieldedAccessControlLedger>
+>;
+
 /**
  * Type constructor args
  */
@@ -28,7 +35,7 @@ type ShieldedAccessControlArgs = readonly [
 const ShieldedAccessControlSimulatorBase = createSimulator<
   ShieldedAccessControlPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof ShieldedAccessControlWitnesses>,
+  ShieldedAccessControlWitnessesType,
   MockShieldedAccessControl<ShieldedAccessControlPrivateState>,
   ShieldedAccessControlArgs
 >({
@@ -53,7 +60,7 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     isInit: boolean,
     options: SimulatorOptions<
       ShieldedAccessControlPrivateState,
-      ReturnType<typeof ShieldedAccessControlWitnesses>
+      ShieldedAccessControlWitnessesType
     > = {},
   ): Promise<ShieldedAccessControlSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`

@@ -55,15 +55,22 @@ export function signerFromLabel(label: string): Signer {
 }
 
 /**
+ * Raw noble signature. v1 hands back a `Signature` object, v2 compact r‖s
+ * bytes; the union has to sit on the return type, because annotating the
+ * receiving `const` would narrow it straight back to the v2 arm.
+ */
+const rawSign = (
+  signer: Signer,
+  digest: Uint8Array,
+): Uint8Array | EcdsaSignature =>
+  secp256k1.sign(digest, signer.secretKey, { prehash: false, lowS: true });
+
+/**
  * Signs a 32-byte digest, returning a low-s `{ r, s }`. The digest is the
  * pre-hashed message, exactly as `secp256k1EcdsaVerify` interprets `msgHash`.
  */
 export function sign(signer: Signer, digest: Uint8Array): EcdsaSignature {
-  const sig = secp256k1.sign(digest, signer.secretKey, {
-    prehash: false,
-    lowS: true,
-  });
-  // @noble/curves v1 returns a `Signature`; v2 returns compact r‖s bytes.
+  const sig = rawSign(signer, digest);
   if (sig instanceof Uint8Array) {
     return {
       r: bytesToBigIntBE(sig.slice(0, 32)),
