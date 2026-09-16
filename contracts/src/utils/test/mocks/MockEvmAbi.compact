@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the EvmAbi module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../EvmAbi" prefix EvmAbi_;
+
+export pure circuit uint8Word(value: Uint<8>): Bytes<32> {
+  return EvmAbi_uint8Word(value);
+}
+
+export pure circuit uint64Word(value: Uint<64>): Bytes<32> {
+  return EvmAbi_uint64Word(value);
+}
+
+export pure circuit uint128Word(value: Uint<128>): Bytes<32> {
+  return EvmAbi_uint128Word(value);
+}
+
+export pure circuit boolWord(value: Boolean): Bytes<32> {
+  return EvmAbi_boolWord(value);
+}
