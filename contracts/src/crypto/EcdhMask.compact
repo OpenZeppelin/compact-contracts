@@ -67,11 +67,11 @@ pragma language_version >= 0.26.0;
  *
  * @dev Security. This is hashed ElGamal (ECIES without a MAC) over Jubjub and
  * inherits its guarantees: IND-CPA under the Oracle Diffie-Hellman assumption in
- * the random-oracle model (the `persistentHash` KDF keyed by the secret point
+ * the random-oracle model (the `Sha256.digest` KDF keyed by the secret point
  * `S`). It is NOT IND-CCA: the additive pad is malleable (see Integrity), which
  * is acceptable here only because the on-chain ciphertext is bound in-circuit to
  * the value it commits to elsewhere. Hiding carries a large margin: `kdf` returns
- * a `degradeToTransient` output in `[0, 2^248)` while `value < 2^128`, so even
+ * a `Fq.truncatedLEOS2IP` output in `[0, 2^248)` while `value < 2^128`, so even
  * treating the KDF output as uniform the value is hidden with about `2^-120`
  * statistical slack, leaving only the assumption that the hash of the DH secret
  * is PRF-like. Confidentiality relies on the runtime constraining every
@@ -82,15 +82,13 @@ pragma language_version >= 0.26.0;
  * folding it in buys nothing.
  *
  * @dev Two KDFs, two output ranges. `kdf` derives into `[0, 2^248)`: one
- * `degradeToTransient` output, the SEC 1 KDF shape, for keys, nonces, and the
+ * `Fq.truncatedLEOS2IP` output, the SEC 1 KDF shape, for keys, nonces, and the
  * `Uint<128>` mask of `encrypt` (hidden with about `2^-120` slack). `fieldKdf`
- * derives uniformly into the field, the hash-to-field shape: two 248-bit halves
- * combined as `k1 + k2 * 2^248 mod p`, each half hashing
- * `[pointHash, domain, index]` with `index` the 32-byte encoding of `0` and `1`.
- * The sum ranges over about `2^496` values before reduction, which puts the
- * output within `2^-240` of uniform, so `ct = m + fieldKdf(S, domain)` hides any
- * `m` with no precondition on its range or entropy. Mask a `Field` with
- * `fieldKdf`, never with `kdf`; neither authenticates (see Integrity).
+ * derives uniformly into the field through `crypto/hash/Sha256.hashToField`
+ * (RFC 9380 `hash_to_field`), within `2^-257` of uniform, so
+ * `ct = m + fieldKdf(S, domain)` hides any `m` with no precondition on its range
+ * or entropy. Mask a `Field` with `fieldKdf`, never with `kdf`; neither
+ * authenticates (see Integrity).
  *
  * @dev Multi-field delivery. A consumer delivering several `Field`s to one
  * recipient calls `deriveShared` once and adds `fieldKdf(sShared, tag_i)` per
@@ -115,6 +113,8 @@ pragma language_version >= 0.26.0;
 module EcdhMask {
   import CompactStandardLibrary;
   import "./Ecdh" prefix Ecdh_;
+  import "./curves/bls12_381/Fq" prefix Fq_;
+  import "./hash/Sha256" prefix Sha256_;
 
   /**
    * @description An ECDH one-time-pad ciphertext: the ephemeral public key and
@@ -159,12 +159,13 @@ module EcdhMask {
    * @description Derives the field mask from the ECDH shared secret point,
    * domain-separated by a caller-supplied `domain` tag. Hashes the point to
    * `Bytes<32>`, then re-hashes it with the domain tag and truncates into the
-   * field via `degradeToTransient`. The consumer chooses `domain` (so this
+   * field via `Fq.truncatedLEOS2IP`. The consumer chooses `domain` (so this
    * module is not tied to any one protocol) and MUST use the same value on
    * encrypt and decrypt.
    *
-   * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
-   * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
+   * @dev Uses `crypto/hash/Sha256` deliberately: the recipient reproduces this
+   * mask to decrypt, possibly across a platform upgrade, so it must be
+   * upgrade-stable.
    *
    * @constraints k=13, rows=7917
    *
@@ -174,8 +175,8 @@ module EcdhMask {
    * @return The field mask.
    */
   export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
-    return degradeToTransient(
-      persistentHash<Vector<2, Bytes<32>>>([pointDigest(sShared), domain])
+    return Fq_truncatedLEOS2IP(
+      Sha256_digest<Vector<2, Bytes<32>>>([pointDigest(sShared), domain])
     );
   }
 
@@ -184,13 +185,13 @@ module EcdhMask {
    * that opens the preimage of both KDFs. Shared by `kdf` and `fieldKdf` so the
    * point is hashed once per `fieldKdf` call and both KDFs agree on its encoding.
    *
-   * @dev Uses `persistentHash` for the same reason as `kdf`.
+   * @dev Uses `crypto/hash/Sha256` for the same reason as `kdf`.
    *
    * @param sShared - The ECDH shared secret point.
    * @return The point digest.
    */
   pure circuit pointDigest(sShared: JubjubPoint): Bytes<32> {
-    return persistentHash<JubjubPoint>(sShared);
+    return Sha256_digest<JubjubPoint>(sShared);
   }
 
   /**
@@ -221,7 +222,7 @@ module EcdhMask {
    * @notice `e` MUST be fresh per call and secret (see `crypto/Ecdh`). Reuse
    * leaks the difference of the two plaintexts.
    *
-   * @constraints k=14, rows=13024
+   * @constraints k=14, rows=13604
    *
    * Requirements:
    *
@@ -248,21 +249,16 @@ module EcdhMask {
 
   /**
    * @description Derives a mask uniform over the whole field from the ECDH
-   * shared secret point, domain-separated by a caller-supplied `domain` tag.
-   * Combines two 248-bit halves as `k1 + k2 * 2^248 mod p`, so
+   * shared secret point, domain-separated by a caller-supplied `domain` tag, so
    * `m + fieldKdf(S, domain)` hides any `m` with no bound on its range. Use
    * this, not `kdf`, to mask a `Field`.
    *
-   * @dev The halves are two separate random-oracle queries, each hashing
-   * `[pointHash, domain, index]` with `index` the 32-byte encoding of `0` and
-   * `1`. The three-element preimage also separates both from `kdf`'s
-   * two-element one, so a consumer may use `kdf` and `fieldKdf` under the same
-   * `(S, domain)` without one revealing the other.
+   * @dev The KDF of the scheme in the SEC 1 sense: `Z = pointDigest(sShared)`,
+   * `SharedInfo = domain`. `hashToField` hashes a three-element preimage against
+   * `kdf`'s two-element one, so a consumer may use `kdf` and `fieldKdf` under the
+   * same `(S, domain)` without one revealing the other.
    *
-   * @dev Uses `persistentHash` for the same reason as `kdf`: the recipient
-   * reproduces the mask off-chain, possibly across a platform upgrade.
-   *
-   * @constraints k=14, rows=11704
+   * @constraints k=14, rows=12284
    *
    * @param sShared - The ECDH shared secret point.
    * @param domain - The consumer's domain-separation tag. Pairwise distinct per
@@ -271,35 +267,7 @@ module EcdhMask {
    * @return The field mask.
    */
   export pure circuit fieldKdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
-    // 2^248 as a decimal literal; Compact has no exponentiation operator.
-    const twoPow248 =
-      452312848583266388373324160190187140051835877600158453279131187530910662656 as Field;
-    const pointHash = pointDigest(sShared);
-    const lowHalf = kdfHalf(pointHash, domain, 0 as Field as Bytes<32>);
-    const highHalf = kdfHalf(pointHash, domain, 1 as Field as Bytes<32>);
-    return lowHalf + highHalf * twoPow248;
-  }
-
-  /**
-   * @description Derives one 248-bit half of a `fieldKdf` mask from the point
-   * digest, the domain tag, and a half index. `fieldKdf` calls it at `index` 0
-   * and 1 and combines the results as `k1 + k2 * 2^248`.
-   *
-   * @dev `index` separates the two halves from each other, and the three-element
-   * preimage separates both from `kdf`'s two-element one, so a consumer may use
-   * `kdf` and `fieldKdf` under the same `(sShared, domain)`.
-   *
-   * @dev Uses `persistentHash` for the same reason as `kdf`.
-   *
-   * @param pointHash - The `pointDigest` of the shared secret point.
-   * @param domain - The consumer's domain-separation tag.
-   * @param index - The half index, `0` or `1`, as a 32-byte encoding.
-   * @return One 248-bit half of the field mask.
-   */
-  pure circuit kdfHalf(pointHash: Bytes<32>, domain: Bytes<32>, index: Bytes<32>): Field {
-    return degradeToTransient(
-      persistentHash<Vector<3, Bytes<32>>>([pointHash, domain, index])
-    );
+    return Sha256_hashToField<Bytes<32>>(pointDigest(sShared), domain);
   }
 
   /**
@@ -310,7 +278,7 @@ module EcdhMask {
    * element rather than aborting, so the circuit is not a key-correctness oracle.
    * Nothing here authenticates the ciphertext.
    *
-   * @constraints k=14, rows=12102
+   * @constraints k=14, rows=12682
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
