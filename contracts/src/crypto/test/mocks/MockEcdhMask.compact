@@ -9,8 +9,11 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 import "../../EcdhMask" prefix EcdhMask_;
+// EcdhMask does not re-export the key agreement, so the multi-field tests reach
+// crypto/Ecdh the way a consumer does: a second import.
+import "../../Ecdh" prefix Ecdh_;
 
-export { EcdhMask_Ciphertext }
+export { EcdhMask_Ciphertext, Ecdh_SharedSecret }
 
 export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
   return EcdhMask_kdf(sShared, domain);
@@ -27,4 +30,44 @@ export pure circuit encrypt(
 
 export pure circuit decrypt(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
   return EcdhMask_decrypt(ciphertext, ekScalar, domain);
+}
+
+export pure circuit fieldKdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+  return EcdhMask_fieldKdf(sShared, domain);
+}
+
+export pure circuit encryptField(
+                      recipientPk: JubjubPoint,
+                      m: Field,
+                      e: JubjubScalar,
+                      domain: Bytes<32>
+                      ): EcdhMask_Ciphertext {
+  return EcdhMask_encryptField(recipientPk, m, e, domain);
+}
+
+export pure circuit decryptField(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+  return EcdhMask_decryptField(ciphertext, ekScalar, domain);
+}
+
+export pure circuit deriveShared(recipientPk: JubjubPoint, e: JubjubScalar): Ecdh_SharedSecret {
+  return Ecdh_deriveShared(recipientPk, e);
+}
+
+export pure circuit recoverShared(ephemeralPk: JubjubPoint, ekScalar: JubjubScalar): JubjubPoint {
+  return Ecdh_recoverShared(ephemeralPk, ekScalar);
+}
+
+// Test-only, not a module re-export: recomputes the two `fieldKdf` halves
+// straight from the stdlib hashes so the tests can pin the pad arithmetic
+// against an independent path.
+export pure circuit fieldKdfHalves(sShared: JubjubPoint, domain: Bytes<32>): Vector<2, Field> {
+  const pointHash = persistentHash<JubjubPoint>(sShared);
+  return [
+    degradeToTransient(
+      persistentHash<Vector<3, Bytes<32>>>([pointHash, domain, 0 as Field as Bytes<32>])
+    ),
+    degradeToTransient(
+      persistentHash<Vector<3, Bytes<32>>>([pointHash, domain, 1 as Field as Bytes<32>])
+    )
+  ];
 }
