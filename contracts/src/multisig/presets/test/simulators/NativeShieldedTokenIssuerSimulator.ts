@@ -8,62 +8,87 @@ import {
   type ContractAddress,
   type Either,
   ledger,
-  Contract as MockShieldedMultiSigV3,
+  type Maybe,
+  Contract as MockNativeShieldedTokenIssuer,
   pureCircuits,
+  type QualifiedShieldedCoinInfo,
+  type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/MockShieldedMultiSigV3/contract/index.js';
+} from '../../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
 } from '../../../test/EmptyWitnesses.js';
 
-type ShieldedMultiSigV3Args = readonly [
+type NativeShieldedTokenIssuerArgs = readonly [
   instanceSalt: Uint8Array,
-  initCoinNonce: Uint8Array,
   tokenDomain: Uint8Array,
+  name: string,
+  symbol: string,
+  decimals: bigint,
   signerCommitments: Uint8Array[],
   isInit: boolean,
 ];
 
-const ShieldedMultiSigV3SimulatorBase = createSimulator<
+const NativeShieldedTokenIssuerSimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockShieldedMultiSigV3<EmptyPrivateState>,
-  ShieldedMultiSigV3Args
+  MockNativeShieldedTokenIssuer<EmptyPrivateState>,
+  NativeShieldedTokenIssuerArgs
 >({
   contractFactory: (witnesses) =>
-    new MockShieldedMultiSigV3<EmptyPrivateState>(witnesses),
+    new MockNativeShieldedTokenIssuer<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
-    initCoinNonce,
     tokenDomain,
+    name,
+    symbol,
+    decimals,
     signerCommitments,
     isInit,
-  ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments, isInit],
+  ) => [
+    instanceSalt,
+    tokenDomain,
+    name,
+    symbol,
+    decimals,
+    signerCommitments,
+    isInit,
+  ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockShieldedMultiSigV3',
+  artifactName: 'MockNativeShieldedTokenIssuer',
 });
 
-export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase {
+export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssuerSimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
-    initCoinNonce: Uint8Array,
     tokenDomain: Uint8Array,
+    name: string,
+    symbol: string,
+    decimals: bigint,
     signerCommitments: Uint8Array[],
     isInit: boolean,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigV3Simulator> {
+  ): Promise<NativeShieldedTokenIssuerSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, initCoinNonce, tokenDomain, signerCommitments, isInit],
+      [
+        instanceSalt,
+        tokenDomain,
+        name,
+        symbol,
+        decimals,
+        signerCommitments,
+        isInit,
+      ],
       options,
-    ) as Promise<ShieldedMultiSigV3Simulator>;
+    ) as Promise<NativeShieldedTokenIssuerSimulator>;
   }
 
   public _calculateSignerId(
@@ -78,21 +103,16 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     recipient: Either<ZswapCoinPublicKey, ContractAddress>,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
-  ): Promise<[]> {
+  ): Promise<ShieldedCoinInfo> {
     return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
   }
 
   public burn(
-    coin: {
-      nonce: Uint8Array;
-      color: Uint8Array;
-      value: bigint;
-      mt_index: bigint;
-    },
+    coin: QualifiedShieldedCoinInfo,
     amount: bigint,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
-  ): Promise<[]> {
+  ): Promise<Maybe<ShieldedCoinInfo>> {
     return this.circuits.impure.burn(coin, amount, pubkeys, signatures);
   }
 
@@ -100,12 +120,20 @@ export class ShieldedMultiSigV3Simulator extends ShieldedMultiSigV3SimulatorBase
     return this.circuits.impure.getNonce();
   }
 
-  public getTokenDomain(): Promise<Uint8Array> {
-    return this.circuits.impure.getTokenDomain();
+  public name(): Promise<string> {
+    return this.circuits.impure.name();
   }
 
-  public getTokenType(): Promise<Uint8Array> {
-    return this.circuits.impure.getTokenType();
+  public symbol(): Promise<string> {
+    return this.circuits.impure.symbol();
+  }
+
+  public decimals(): Promise<bigint> {
+    return this.circuits.impure.decimals();
+  }
+
+  public tokenColor(): Promise<Uint8Array> {
+    return this.circuits.impure.tokenColor();
   }
 
   public getSignerCount(): Promise<bigint> {

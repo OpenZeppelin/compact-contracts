@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/examples/NativeShieldedTokenIssuerExample.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @title NativeShieldedTokenIssuerExample
+ * @description Deployable reference contract for the `NativeShieldedTokenIssuer`
+ * preset: a native shielded token whose supply enters only through an
+ * ECDSA-authorized mint and leaves only through an ECDSA-authorized burn.
+ *
+ * The token is non-transferable by construction. There is no transfer circuit,
+ * so a holder's only exit is to present the coin back for burn.
+ */
+
+import CompactStandardLibrary;
+
+import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
+import "../presets/NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
+import "../../token/NativeShieldedToken" prefix NST_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+// Surface the preset's replay counter unprefixed so `ledger()` readers keep the
+// key name the preset published as a contract. The token modules' state stays
+// behind their prefixed imports and is read through the view circuits.
+import { _counter } from "../presets/NativeShieldedTokenIssuer";
+export { _counter };
+
+/**
+ * @description Deploys the issuer with 3 signer commitments, a threshold
+ * of 2, and the token's domain and metadata.
+ *
+ * Requirements:
+ *
+ * - `signerCommitments` must not contain duplicates.
+ * - `instanceSalt` should be cryptographically random.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for signer commitment derivation.
+ * @param {Bytes<32>} tokenDomain - Domain separator for this contract's token color.
+ * @param {Opaque<"string">} name_ - The token name.
+ * @param {Opaque<"string">} symbol_ - The token symbol.
+ * @param {Uint<8>} decimals_ - The token decimals.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  signerCommitments: Vector<3, Bytes<32>>,
+) {
+  EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
+  NST_initialize(tokenDomain, name_, symbol_, decimals_);
+}
+
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return NativeShieldedTokenIssuer__calculateSignerId(pk, salt);
+}
+
+export circuit mint(
+  amount: Uint<64>,
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
+}
+
+export circuit burn(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<64>,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedTokenIssuer_burn(coin, amount, pubkeys, signatures);
+}
+
+export circuit getNonce(): Uint<64> {
+  return NativeShieldedTokenIssuer_getNonce();
+}
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedTokenIssuer_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedTokenIssuer_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedTokenIssuer_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedTokenIssuer_tokenColor();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return NativeShieldedTokenIssuer_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return NativeShieldedTokenIssuer_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return NativeShieldedTokenIssuer_isSigner(commitment);
+}
