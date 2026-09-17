@@ -1,0 +1,145 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/hash/Sha256.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Sha256
+ * @description
+ * SHA-256 behind the `crypto/hash` interface: a byte digest and a hash to the
+ * native field.
+ *
+ * @dev Notation:
+ * - `H(...)`: `digest`, the SHA-256 of its argument as a `Bytes<32>`.
+ * - `q`: the order of `Fq`, Compact's native `Field`. The RFC's `p`.
+ * - `msg`: the message to hash (RFC 9380).
+ * - `DST`: the domain separation tag (RFC 9380).
+ * - `len_in_bytes`: how many uniform bytes are requested (RFC 9380).
+ * - `uniform_bytes`: the output of `expand_message` (RFC 9380).
+ * - `tv`: the slice of `uniform_bytes` that becomes one element (RFC 9380).
+ * - `e_0`: the resulting field element (RFC 9380).
+ * - `b_i = H(msg, DST, i)`: expander block `i`.
+ * - `LEOS2IP`: the little-endian `OS2IP`, as in `crypto/curves/bls12_381/Fq`.
+ *
+ * @dev Interface:
+ * Every `crypto/hash` module exports `digest` and `hashToField` with these
+ * signatures, so a consumer changes hash by changing its import. `IHasher`
+ * holds the signatures as a contract type, and `MockSha256` implements it.
+ *
+ * @dev Derivations:
+ * `H` hashes its argument in Compact's encoding. At `T = Bytes<32>` that is
+ * the raw bytes in field order, so `digest(msg) = SHA-256(msg)` and
+ * `b_i = SHA-256(msg || DST || i)` with `i` as 32 little-endian bytes. Other
+ * types encode differently: call the exported circuits instead of
+ * reimplementing them.
+ *
+ * @dev Compatibility:
+ * Built on `persistentHash`, so outputs survive a platform upgrade. The hash,
+ * the preimage layout and the reduction are the wire format: changing any of
+ * them changes every derived value.
+ *
+ * @notice Security:
+ * - Uniformity: with `H` modelled as a random oracle, `hashToField` is within
+ *   `2^-257` of uniform over the field.
+ * - Domain separation: outputs under distinct `DST`s are independent. A
+ *   consumer picks one `DST` per purpose and never reuses it across protocols.
+ *
+ * @dev Performance:
+ * Cost is SHA-256 compressions, one per 64 bytes of padded preimage, so it
+ * grows with `T`. The `@constraints` lines are measured at `T = Bytes<32>`.
+ */
+module Sha256 {
+  import CompactStandardLibrary;
+  import "../curves/bls12_381/Fq" prefix Fq_;
+
+  /**
+   * @description Preimage of expander block `b_i`.
+   * @type {T} msg - The message being hashed.
+   * @type {Bytes<32>} DST - The domain separation tag.
+   * @type {Bytes<32>} i - The block counter.
+   */
+  struct ExpandPreimage<T> {
+    msg: T;
+    DST: Bytes<32>;
+    i: Bytes<32>;
+  }
+
+  /**
+   * @description RFC 9380 §5.2 `hash_to_field` with `count = 1`, `m = 1`: maps
+   * `msg` to one `Field` element, domain-separated by `DST`.
+   *
+   * @constraints k=14, rows=8326
+   *
+   * @dev Steps, numbered as in the RFC:
+   * - 1: `len_in_bytes = count * m * L = 64`. A length is a type here, so
+   *   `Fq.UniformBytes` carries it.
+   * - 2: `uniform_bytes = expand_message(msg, DST, len_in_bytes)`.
+   * - 3 to 6: with `count = 1` and `m = 1`, `tv` is all of `uniform_bytes`.
+   * - 7: `e_0 = LEOS2IP(tv) mod q`, in `Fq.fromUniformBytes`.
+   * - 8 to 9: return `e_0`.
+   *
+   * @dev Deviations from RFC 9380:
+   * - `L = 64` against the RFC's 48, so `k = 257` against 128.
+   * - `LEOS2IP` in place of the big-endian `OS2IP`.
+   * - `expand_message` is `expandMessage` below, in place of
+   *   `expand_message_xmd`.
+   *
+   * @param {T} msg - The message to hash.
+   * @param {Bytes<32>} DST - The domain separation tag.
+   * @return {Field} - `e_0`, the field element.
+   */
+  export pure circuit hashToField<T>(msg: T, DST: Bytes<32>): Field {
+    // Steps 1 and 2.
+    const uniform_bytes = expandMessage<T>(msg, DST);
+    // Steps 3 to 6.
+    const tv = uniform_bytes;
+    // Steps 7 to 9.
+    return Fq_fromUniformBytes(tv);
+  }
+
+  /**
+   * @description A counter expander: `uniform_bytes = b_0 || b_1`.
+   *
+   * @dev Deviations from `expand_message_xmd`:
+   * - The blocks are independent, `b_i = H(msg, DST, i)`. The RFC chains them
+   *   from a seed block.
+   * - No length prefixes. Every preimage field has a fixed width, so the
+   *   encoding is unambiguous without them.
+   *
+   * @param {T} msg - The message to hash.
+   * @param {Bytes<32>} DST - The domain separation tag.
+   * @return {Fq_UniformBytes} - `uniform_bytes`.
+   */
+  pure circuit expandMessage<T>(msg: T, DST: Bytes<32>): Fq_UniformBytes {
+    return Fq_UniformBytes {
+      low: expandBlock<T>(msg, DST, 0 as Field),
+      high: expandBlock<T>(msg, DST, 1 as Field)
+    };
+  }
+
+  /**
+   * @description `b_i = H(msg, DST, i)`: one expander block.
+   *
+   * @param {T} msg - The message to hash.
+   * @param {Bytes<32>} DST - The domain separation tag.
+   * @param {Field} i - The block counter.
+   * @return {Bytes<32>} - The block.
+   */
+  pure circuit expandBlock<T>(msg: T, DST: Bytes<32>, i: Field): Bytes<32> {
+    return digest<ExpandPreimage<T>>(
+      ExpandPreimage<T> { msg: msg, DST: DST, i: i as Bytes<32> }
+    );
+  }
+
+  /**
+   * @description `H(value)`: the SHA-256 digest of `value`.
+   *
+   * @constraints k=13, rows=2006
+   *
+   * @param {T} value - The value to hash.
+   * @return {Bytes<32>} - The digest.
+   */
+  export pure circuit digest<T>(value: T): Bytes<32> {
+    return persistentHash<T>(value);
+  }
+}
