@@ -29,6 +29,11 @@ module EcdsaSignerManager {
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
+  /**
+   * @description Deployment-supplied salt for signer commitments. Set at
+   * initialization and never changed. The registered commitments must have been
+   * derived under this same salt.
+   */
   ledger _instanceSalt: Bytes<32>;
 
   // ─── Types ──────────────────────────────────────────────────────────────────

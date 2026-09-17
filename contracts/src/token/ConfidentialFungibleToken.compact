@@ -258,22 +258,81 @@ module ConfidentialFungibleToken {
   // Ledger state
   // ---------------------------------------------------------------------------
 
-  // Dual-balance grief fix. `_balances` is the SPENDABLE (confirmed) balance that
-  // debits draw from; `_pending` is the incoming pool that credits land in. Only
-  // the owner moves pending -> spendable, via `sweep()`. So a third party spamming
-  // dust credits cannot churn a victim's spendable ciphertext and invalidate the
-  // victim's in-flight spend proofs (a liveness grief). A wallet's total balance
-  // is `balanceOf` (spendable) + `pendingOf` (pending).
+  /**
+   * @description Spendable (confirmed) balances, encrypted under each account's
+   * ElGamal key. Debits draw from here. Paired with `_pending`: only the owner
+   * moves pending into spendable, via `sweep()`, so a third party spamming dust
+   * credits cannot churn a victim's spendable ciphertext and invalidate their
+   * in-flight spend proofs. A wallet's total is `balanceOf` + `pendingOf`.
+   * @type {Bytes<32>} accountId - The account identifier.
+   * @type {ElGamal_Ciphertext} balance - The encrypted spendable balance.
+   * @type {Map<accountId, balance>}
+   * @type {Map<Bytes<32>, ElGamal_Ciphertext>} _balances
+   */
   export ledger _balances: Map<Bytes<32>, ElGamal_Ciphertext>;
+
+  /**
+   * @description Incoming (unconfirmed) balances, encrypted under each account's
+   * ElGamal key. Credits land here rather than in `_balances`; the owner moves
+   * them across with `sweep()`.
+   * @type {Bytes<32>} accountId - The account identifier.
+   * @type {ElGamal_Ciphertext} pending - The encrypted pending balance.
+   * @type {Map<accountId, pending>}
+   * @type {Map<Bytes<32>, ElGamal_Ciphertext>} _pending
+   */
   export ledger _pending: Map<Bytes<32>, ElGamal_Ciphertext>;
+
+  /**
+   * @description Registered ElGamal encryption keys, one per account.
+   * Registration is one-shot: a second registration for the same account is
+   * rejected.
+   * @type {Bytes<32>} accountId - The account identifier.
+   * @type {JubjubPoint} encryptionKey - The account's ElGamal public key.
+   * @type {Map<accountId, encryptionKey>}
+   * @type {Map<Bytes<32>, JubjubPoint>} _encryptionKeys
+   */
   export ledger _encryptionKeys: Map<Bytes<32>, JubjubPoint>;
+
+  /**
+   * @description Per-account memo inbox. A credit pushes a masked memo the
+   * recipient decrypts off-chain; `pushFront` means newest first.
+   * @type {Bytes<32>} accountId - The recipient's identifier.
+   * @type {List<EcdhMask_Ciphertext>} memos - The recipient's memos.
+   * @type {Map<accountId, memos>}
+   * @type {Map<Bytes<32>, List<EcdhMask_Ciphertext>>} _memos
+   */
   export ledger _memos: Map<Bytes<32>, List<EcdhMask_Ciphertext>>;
+
+  /**
+   * @description Escrowed allowances, keyed by owner then spender. Membership is
+   * checked independently of the entry, so an allowance that was never escrowed
+   * is unspendable.
+   * @type {Bytes<32>} owner - The account that escrowed the allowance.
+   * @type {Bytes<32>} spender - The account allowed to spend it.
+   * @type {EscrowEntry} entry - The escrowed allowance.
+   * @type {Map<owner, Map<spender, entry>>}
+   * @type {Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>} _escrow
+   */
   export ledger _escrow: Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>;
 
+  /**
+   * @description Whether `initialize` has run. Guards against re-initialization
+   * and against use before initialization.
+   */
   export ledger _isInitialized: Boolean;
 
+  /**
+   * @description The token's human-readable name, set once at construction.
+   */
   export sealed ledger _name: Opaque<"string">;
+  /**
+   * @description The token's ticker symbol, set once at construction.
+   */
   export sealed ledger _symbol: Opaque<"string">;
+  /**
+   * @description The number of decimals used to display balances, set once at
+   * construction. Purely presentational; no circuit scales by it.
+   */
   export sealed ledger _decimals: Uint<8>;
 
 
