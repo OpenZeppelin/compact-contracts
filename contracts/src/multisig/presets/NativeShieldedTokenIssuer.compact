@@ -174,7 +174,6 @@ module NativeShieldedTokenIssuer {
    * per block. Exported, so it is the only key the implementing contract's
    * `ledger()` reader surfaces.
    */
-  // TODO: move to a shared utils/Nonces module once one exists; stays separate from DerivedNonce's counter.
   export ledger _counter: Counter;
 
   /**
