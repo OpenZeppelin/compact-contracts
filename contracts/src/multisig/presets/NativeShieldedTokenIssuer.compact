@@ -49,10 +49,7 @@ pragma language_version >= 0.26.0;
  * `EcdsaSignerManager` directly.
  *
  * @dev Parameterization:
- * None: the signer set is `Vector<3, Bytes<32>>`, the threshold is the
- * literal `2` in `initialize`, and the approval vectors are `Vector<2>`.
- * `instanceSalt`, `tokenDomain`, `name_`, `symbol_` and `decimals_` are
- * per-deployment `initialize` values, fixed for the contract's life.
+ * None: the signer set is hardcoded to 3 and the threshold to 2.
  *
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the two digest
