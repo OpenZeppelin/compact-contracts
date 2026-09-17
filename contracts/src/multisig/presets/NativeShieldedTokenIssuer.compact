@@ -48,9 +48,6 @@ pragma language_version >= 0.26.0;
  * constructor by calling this module's `initialize`, and MUST NOT import
  * `EcdsaSignerManager` directly.
  *
- * TODO: switch every digest to `keccak256` to match the custodian's HSM
- * signing format (#827).
- *
  * @dev Parameterization:
  * None: the signer set is `Vector<3, Bytes<32>>`, the threshold is the
  * literal `2` in `initialize`, and the approval vectors are `Vector<2>`.
