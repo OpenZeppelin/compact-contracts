@@ -160,10 +160,6 @@ pragma language_version >= 0.26.0;
  * @dev Composition:
  * - Recipient privacy: pass a caller-supplied secret random nonce to
  *   `NST__mint` instead of `NSTDerivedNonce__deriveNonce()`.
- * - Other thresholds: widen `Vector<2>` in `mint`, `burn` and
- *   `EcdsaSignerManager_assertApprovals` (its duplicate check is exhaustive
- *   only at width 2) and the signer-set width passed to
- *   `EcdsaSignerManager_initialize`.
  * - Deposits: a deposit path needs a `receiveShielded` circuit; none is
  *   included.
  */
