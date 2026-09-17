@@ -27,13 +27,15 @@ pragma language_version >= 0.26.0;
  * - `color`: `tokenType(_domain, self)`, this token's coin color.
  *
  * @dev Derivations:
- * - Mint digest: `H<Vector<5, Bytes<32>>>([pad(32, "multisig:mint:"), self,
+ * - Mint digest: `H<Vector<5, Bytes<32>>>([pad(32,
+ *   "NativeShieldedTokenIssuer:mint:"), self,
  *   H<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient),
  *   opNonce as Bytes<32>, amount as Bytes<32>])`, with
  *   `canonRecipient = Utils_canonicalize(recipient)` (unused `Either` arm
  *   zeroed).
- * - Burn digest: `H<Vector<4, Bytes<32>>>([pad(32, "multisig:burn:"), self,
- *   opNonce as Bytes<32>, amount as Bytes<32>])`.
+ * - Burn digest: `H<Vector<4, Bytes<32>>>([pad(32,
+ *   "NativeShieldedTokenIssuer:burn:"), self, opNonce as Bytes<32>,
+ *   amount as Bytes<32>])`.
  * - Signer commitment: `cm = H<SignerCommitmentInput>({ pkX, pkY, salt,
  *   domain: pad(32, "multisig:signer:") })`, `pkX` / `pkY` the affine
  *   coordinates as `Bytes<32>`. `_calculateSignerId` is the exported pure
@@ -53,10 +55,12 @@ pragma language_version >= 0.26.0;
  *
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the two digest
- * layouts, the domain tags (`multisig:mint:`, `multisig:burn:`,
- * `multisig:signer:`), the `cm` preimage struct, and the `Vector<2>` /
- * `Vector<3>` shapes. Changing any of them breaks every existing signer
- * setup. The test suite pins them through `EcdsaTestUtils.ts`.
+ * layouts, the domain tags (`NativeShieldedTokenIssuer:mint:`,
+ * `NativeShieldedTokenIssuer:burn:` and `multisig:signer:`, which keeps the
+ * generic prefix because `EcdsaSignerManager` owns it), the `cm` preimage
+ * struct, and the `Vector<2>` / `Vector<3>` shapes. Changing any of them
+ * breaks every existing signer setup. The test suite pins them through
+ * `EcdsaTestUtils.ts`.
  *
  * @notice Privacy:
  * - Public, per tx:
@@ -277,7 +281,7 @@ module NativeShieldedTokenIssuer {
     const recipientHash = persistentHash<Either<ZswapCoinPublicKey, ContractAddress>>(canonRecipient);
 
     const msgHash = persistentHash<Vector<5, Bytes<32>>>([
-      pad(32, "multisig:mint:"),
+      pad(32, "NativeShieldedTokenIssuer:mint:"),
       kernel.self().bytes,
       recipientHash,
       opNonce as Bytes<32>,
@@ -326,7 +330,7 @@ module NativeShieldedTokenIssuer {
     _counter.increment(1);
 
     const msgHash = persistentHash<Vector<4, Bytes<32>>>([
-      pad(32, "multisig:burn:"),
+      pad(32, "NativeShieldedTokenIssuer:burn:"),
       kernel.self().bytes,
       opNonce as Bytes<32>,
       amount as Bytes<32>
