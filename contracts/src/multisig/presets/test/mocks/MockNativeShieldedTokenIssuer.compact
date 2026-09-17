@@ -11,6 +11,7 @@ import CompactStandardLibrary;
 
 import "../../../EcdsaSignerManager" prefix EcdsaSignerManager_;
 import "../../NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
+import "../../../../token/NativeShieldedToken" prefix NST_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
@@ -23,7 +24,7 @@ export { _counter };
  *
  * If `isInit` is false, the constructor will not initialize the contract,
  * leaving the signer registry empty and the token uninitialized so the
- * pre-initialization guards can be exercised. The preset `initialize` is
+ * pre-initialization guards can be exercised. The token initializer is
  * intentionally NOT exposed as a circuit: it writes the token module's
  * `sealed` domain, which the sealed-write rule confines to constructor
  * execution.
@@ -39,7 +40,7 @@ constructor(
 ) {
   if (disclose(isInit)) {
     EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
-    NativeShieldedTokenIssuer_initialize(tokenDomain, name_, symbol_, decimals_);
+    NST_initialize(tokenDomain, name_, symbol_, decimals_);
   }
 }
 

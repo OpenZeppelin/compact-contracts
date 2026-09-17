@@ -17,6 +17,7 @@ import CompactStandardLibrary;
 
 import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
 import "../presets/NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
+import "../../token/NativeShieldedToken" prefix NST_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
@@ -52,7 +53,7 @@ constructor(
   signerCommitments: Vector<3, Bytes<32>>,
 ) {
   EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
-  NativeShieldedTokenIssuer_initialize(tokenDomain, name_, symbol_, decimals_);
+  NST_initialize(tokenDomain, name_, symbol_, decimals_);
 }
 
 export pure circuit _calculateSignerId(

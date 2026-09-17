@@ -16,6 +16,10 @@ pragma language_version >= 0.26.0;
  * `decimals` fixed at construction) and `NativeShieldedTokenDerivedNonce` as
  * `NSTDerivedNonce_` (coin nonces derived from a counter).
  *
+ * @notice The preset exports no initializer. Implementing contracts set it up
+ * from their constructor, calling `EcdsaSignerManager_initialize<3>` with a
+ * threshold of 2 and then `NST_initialize` for the token domain and metadata.
+ *
  * @dev Notation:
  * - `H<T>(...)`: `persistentHash<T>` (SHA-256) over the Compact encoding of
  *   `T`, a `Bytes<32>` digest.
@@ -124,7 +128,7 @@ pragma language_version >= 0.26.0;
  * - `getNonce`: submitted as a tx it pins `_counter` and conflicts with a
  *   same-block mint or burn.
  * - Views: metadata, `tokenColor` and the signer views read only state
- *   written by `initialize`, so they commute with everything.
+ *   written at construction, so they commute with everything.
  *
  * @notice Scope:
  * Mint and burn only. No send, transfer or execute circuit exists, so
@@ -179,32 +183,6 @@ module NativeShieldedTokenIssuer {
    * `ledger()` reader surfaces.
    */
   export ledger _counter: Counter;
-
-  /**
-   * @description Initializes the token metadata and domain.
-   *
-   * @notice Call from the implementing contract's constructor only. It writes
-   * the token module's `sealed` domain, so implementing contracts MUST NOT
-   * expose it as a post-deploy circuit. The same constructor must register the
-   * signer set through `EcdsaSignerManager_initialize<3>` with a threshold of 2.
-   *
-   * The token color is `tokenType(tokenDomain, kernel.self())`. Only coins
-   * of this color can be burned through this contract.
-   *
-   * @param {Bytes<32>} tokenDomain - Domain separator for this contract's token color.
-   * @param {Opaque<"string">} name_ - The token name.
-   * @param {Opaque<"string">} symbol_ - The token symbol.
-   * @param {Uint<8>} decimals_ - The token decimals.
-   * @returns {[]} Empty tuple.
-   */
-  export circuit initialize(
-    tokenDomain: Bytes<32>,
-    name_: Opaque<"string">,
-    symbol_: Opaque<"string">,
-    decimals_: Uint<8>,
-  ): [] {
-    NST_initialize(tokenDomain, name_, symbol_, decimals_);
-  }
 
   /**
    * @description Computes a signer commitment from a secp256k1 public key,
