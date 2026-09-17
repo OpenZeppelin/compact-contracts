@@ -18,9 +18,9 @@ pragma language_version >= 0.26.0;
  * signed, then hand it to `assertApprovals` with the parallel public-key and
  * signature vectors.
  *
- * The module's ledger is not exported, so a contract importing it under a
- * prefix keeps the salt and the signer registry out of its generated
- * `ledger()` reader.
+ * A prefix-only import keeps the salt and the signer registry out of the
+ * consuming contract's generated `ledger()` reader. `_instanceSalt` is
+ * exported so a contract that wants the salt readable can re-export it.
  */
 module EcdsaSignerManager {
   import CompactStandardLibrary;
@@ -29,7 +29,7 @@ module EcdsaSignerManager {
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
-  ledger _instanceSalt: Bytes<32>;
+  export ledger _instanceSalt: Bytes<32>;
 
   // ─── Types ──────────────────────────────────────────────────────────────────
 
