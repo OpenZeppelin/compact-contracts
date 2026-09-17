@@ -83,7 +83,7 @@ export function mintMsgHash(params: {
   amount: bigint;
 }): Uint8Array {
   return persistentVec([
-    domainBytes('multisig:mint:'),
+    domainBytes('NativeShieldedTokenIssuer:mint:'),
     params.contractAddress,
     recipientHash(params.recipient),
     u256(params.opNonce),
@@ -98,7 +98,7 @@ export function burnMsgHash(params: {
   amount: bigint;
 }): Uint8Array {
   return persistentVec([
-    domainBytes('multisig:burn:'),
+    domainBytes('NativeShieldedTokenIssuer:burn:'),
     params.contractAddress,
     u256(params.opNonce),
     u256(params.amount),
