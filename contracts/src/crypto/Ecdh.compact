@@ -93,7 +93,7 @@ module Ecdh {
    * @notice `e` MUST be fresh per call and secret (see the module freshness
    * precondition).
    *
-   * @circuitInfo k=11, rows=1385
+   * @constraints k=11, rows=1385
    *
    * Requirements:
    *
@@ -123,7 +123,7 @@ module Ecdh {
    * scanning exchanges not addressed to it learns nothing from this circuit and
    * the module exposes no key-correctness oracle.
    *
-   * @circuitInfo k=9, rows=440
+   * @constraints k=9, rows=440
    *
    * @param ephemeralPk - The sender's published `g^e`.
    * @param ekScalar - The recipient's secret scalar.

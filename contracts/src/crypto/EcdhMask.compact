@@ -104,7 +104,7 @@ module EcdhMask {
    *
    * @notice `e` MUST be fresh per call (see the module freshness precondition).
    *
-   * @circuitInfo k=14, rows=9269
+   * @constraints k=14, rows=9269
    *
    * Requirements:
    *
@@ -140,7 +140,7 @@ module EcdhMask {
    * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
    * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
    *
-   * @circuitInfo k=13, rows=7917
+   * @constraints k=13, rows=7917
    *
    * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
    *                  `E^ek` for the recipient; equal by construction).
@@ -158,7 +158,7 @@ module EcdhMask {
    * @description Recovers the value from a ciphertext using the recipient's
    * secret scalar. Pure and off-chain (no proof needed to read a received value).
    *
-   * @circuitInfo k=14, rows=8315
+   * @constraints k=14, rows=8315
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
