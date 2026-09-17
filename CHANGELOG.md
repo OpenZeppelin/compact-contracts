@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `crypto/Ecdh` module, the Jubjub key agreement that `crypto/EcdhMask` used to carry inline: `deriveShared` (sender side, owns the identity-key and zero-ephemeral guards), `recoverShared` (recipient side, never asserts), and the `SharedSecret` struct. `EcdhMask.encrypt` and `decrypt` delegate to it and produce the same ciphertexts as before; the guard messages now read `Ecdh: identity pk` / `Ecdh: zero ephemeral`. (#866)
+- Add `fieldKdf`, `encryptField` and `decryptField` to `crypto/EcdhMask`, a mask uniform over the whole `Field` built from two 248-bit halves combined as `k1 + k2 * 2^248 mod p`. `encryptField` therefore hides a plaintext with no range or entropy precondition, where `encrypt`'s 248-bit `kdf` mask needs `value < 2^128`. `kdf`'s output is unchanged. (#913)
 
 ### Changed
 
