@@ -7,7 +7,7 @@ pragma language_version >= 0.26.0;
  * @module NativeShieldedTokenIssuer
  * @description
  * A 2-of-3 ECDSA multisig that mints and burns one native shielded token,
- * for tokenised deposits. Value enters only through `mint` and leaves the
+ * for tokenized deposits. Value enters only through `mint` and leaves the
  * contract only through `burn`; each is a single tx carrying two registered
  * signers' approvals, so no single party creates or destroys tokens.
  *
