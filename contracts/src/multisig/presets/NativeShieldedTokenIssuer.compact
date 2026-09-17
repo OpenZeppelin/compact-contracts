@@ -157,16 +157,6 @@ pragma language_version >= 0.26.0;
  *   `Uint<64>` by its signature although `NST__burnFromSelf` accepts
  *   `Uint<128>`.
  *
- * @dev Performance:
- * - Largest circuits: `burn` (k=17, rows=92252), then `mint` (k=17,
- *   rows=84546). Both are dominated by the two secp256k1 ECDSA verifications
- *   in `assertApprovals` (k=17, rows=64916 on its own); `NST__burnFromSelf`
- *   (k=15, rows=23307) and `NST__mint` (k=14, rows=10843) add most of the
- *   rest.
- * - Views: k=6 to k=13 (`tokenColor`). Per-circuit `k` and rows are on each
- *   `@constraints` line, measured with `--feature-zkir-v3` on compiler
- *   0.34.0.
- *
  * @dev Composition:
  * - Recipient privacy: pass a caller-supplied secret random nonce to
  *   `NST__mint` instead of `NSTDerivedNonce__deriveNonce()`.
