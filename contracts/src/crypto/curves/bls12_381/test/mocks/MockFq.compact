@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the Fq module's circuits so they can be driven from off-chain tests.
+// DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+import "../../Fq" prefix Fq_;
+
+export { Fq_UniformBytes }
+
+// Keeps every circuit impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys.
+ledger _invocations: Counter;
+
+export circuit fromUniformBytes(tv: Fq_UniformBytes): Field {
+  _invocations.increment(1);
+  return Fq_fromUniformBytes(tv);
+}
+
+export circuit truncatedLEOS2IP(S: Bytes<32>): Field {
+  _invocations.increment(1);
+  return Fq_truncatedLEOS2IP(S);
+}
+
+export circuit truncatedI2LEOSP(x: Field): Bytes<32> {
+  _invocations.increment(1);
+  return Fq_truncatedI2LEOSP(x);
+}

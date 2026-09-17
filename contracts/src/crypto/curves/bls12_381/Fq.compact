@@ -1,0 +1,173 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/curves/bls12_381/Fq.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Fq
+ * @description
+ * Utilities for `Fq`, the scalar field of BLS12-381 and Compact's native
+ * `Field`.
+ *
+ * @dev The field:
+ * - Order: `q`, a 255-bit prime.
+ * - `q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001`.
+ * - In Compact: the native `Field`.
+ * - On Jubjub: the base field. Jubjub's scalar field is `JubjubScalar`.
+ * - Name: as in Midnight's curves library. Other libraries call it `Fr`.
+ *
+ * @dev Notation:
+ * - Octet string: a byte string.
+ * - `OS2IP`: Octet-String-to-Integer primitive, big-endian (RFC 8017 §4).
+ * - `I2OSP`: Integer-to-Octet-String primitive, big-endian (RFC 8017 §4).
+ * - `LEOS2IP_l(S)`: little-endian `OS2IP` on `l` bits (Zcash spec §5.1).
+ * - `I2LEOSP_l(x)`: little-endian `I2OSP` on `l` bits (Zcash spec §5.1).
+ * - `substr(S, 0, n)`: the first `n` bytes of `S` (RFC 9380).
+ * - `tv`: the uniform bytes that become one field element (RFC 9380).
+ * - `e_0`: the resulting field element (RFC 9380).
+ *
+ * @dev Conversions:
+ * `truncatedLEOS2IP` and `truncatedI2LEOSP` are the octet-string-to-field-element
+ * and field-element-to-octet-string conversions of SEC 1 §2.3, little-endian
+ * and truncated to 248 bits. The standard library names them
+ * `degradeToTransient` and `upgradeFromTransient`.
+ *
+ * @dev Why 248 bits:
+ * `2^248 < q < 2^256`, so 31 bytes always name a field element and 32 bytes do
+ * not. Both conversions work on the 31 bytes that fit.
+ *
+ * @notice Security:
+ * - Truncation is silent: neither circuit asserts that its input fits.
+ * - `truncatedLEOS2IP` ignores byte 31, so two strings that differ only there
+ *   convert to the same element.
+ * - `truncatedI2LEOSP` drops bits 248 and up, so two elements equal mod
+ *   `2^248` convert to the same string.
+ * - A converted SHA-256 digest keeps 248 of its 256 bits: `2^124` collision
+ *   resistance against `2^128`.
+ *
+ * @dev Round trips:
+ * - `truncatedLEOS2IP(truncatedI2LEOSP(x)) = x mod 2^248`.
+ * - `truncatedI2LEOSP(truncatedLEOS2IP(S))` is `S` with byte 31 zeroed.
+ * - Both are the identity exactly on 248-bit values.
+ *
+ * @dev Hashing to the field:
+ * `fromUniformBytes` is the field half of RFC 9380 §5.2 `hash_to_field`. The
+ * hash half, `expand_message`, lives in each `crypto/hash` module.
+ */
+module Fq {
+  import CompactStandardLibrary;
+
+  /**
+   * @description 64 uniform bytes, as two 32-byte halves. Read little-endian,
+   * `low` comes first.
+   * @type {Bytes<32>} low - Bytes 0 to 31.
+   * @type {Bytes<32>} high - Bytes 32 to 63.
+   */
+  export struct UniformBytes {
+    low: Bytes<32>;
+    high: Bytes<32>;
+  }
+
+  /**
+   * @description Converts 64 uniform bytes to a uniform field element. Reads
+   * `tv` as one little-endian integer and reduces it mod `q`. The last step of
+   * hashing to the field.
+   *
+   * @constraints k=10, rows=797
+   *
+   * @dev Formula:
+   * `LEOS2IP_512(tv) mod q`. Step 7 of RFC 9380 §5.2 `hash_to_field`, with
+   * `LEOS2IP` in place of the big-endian `OS2IP`.
+   *
+   * @notice Uniformity:
+   * 512 bits against a 255-bit `q` is the RFC's `k = 257`: for a uniform `tv`
+   * the result is within `2^-257` of uniform over the field.
+   *
+   * @dev Same construction elsewhere:
+   * `Fq::from_uniform_bytes` in Midnight's curves library, and the shape of
+   * `ToScalar` in the Zcash protocol specification.
+   *
+   * @param {UniformBytes} tv - The 64 uniform bytes.
+   * @return {Field} - `e_0`, the field element.
+   */
+  export pure circuit fromUniformBytes(tv: UniformBytes): Field {
+    return reducedLEOS2IP(tv.low) + reducedLEOS2IP(tv.high) * R();
+  }
+
+  /**
+   * @description `LEOS2IP_256(S) mod q`: all 32 bytes of `S`, read
+   * little-endian and reduced into the field.
+   *
+   * @dev Not uniform:
+   * 256 bits is one bit more than `q`, so a uniform `S` gives a biased
+   * element. `fromUniformBytes` joins two of these to remove the bias.
+   *
+   * @param {Bytes<32>} S - The byte string.
+   * @return {Field} - The integer mod `q`.
+   */
+  pure circuit reducedLEOS2IP(S: Bytes<32>): Field {
+    // Byte 31 is the part `truncatedLEOS2IP` drops.
+    return truncatedLEOS2IP(S) + (slice<1>(S, 31) as Field) * TWO_POW_248();
+  }
+
+  /**
+   * @description Converts a byte string to a field element. Reads the first
+   * 31 bytes of `S` as a little-endian integer and ignores byte 31. The usual
+   * way to bring a hash digest into field arithmetic.
+   *
+   * @constraints k=7, rows=119
+   *
+   * @dev Formula:
+   * `LEOS2IP_248(substr(S, 0, 31))`.
+   *
+   * @param {Bytes<32>} S - The byte string. Byte 31 is ignored.
+   * @return {Field} - A value below `2^248`.
+   */
+  export pure circuit truncatedLEOS2IP(S: Bytes<32>): Field {
+    return degradeToTransient(S);
+  }
+
+  /**
+   * @description The constant `2^248 = 2^(8 * 31)`: one past the largest
+   * 31-byte integer. 31 is the most whole bytes that always fit in `Fq`.
+   *
+   * @return {Field} - `2^248`.
+   */
+  pure circuit TWO_POW_248(): Field {
+    return
+      0x100000000000000000000000000000000000000000000000000000000000000 as Field;
+  }
+
+  /**
+   * @description The constant `R = 2^256 mod q`: the weight of the high half
+   * of a 64-byte little-endian integer.
+   *
+   * @dev Name:
+   * `R` is the Montgomery radix of the Handbook of Applied Cryptography
+   * §14.3.2, `R = b^n`. Midnight's curves library holds an `Fq` element as
+   * four 64-bit limbs, so `b = 2^64`, `n = 4` and `R = 2^256`.
+   *
+   * @return {Field} - `2^256 mod q`.
+   */
+  pure circuit R(): Field {
+    return
+      0x1824b159acc5056f998c4fefecbc4ff55884b7fa0003480200000001fffffffe as Field;
+  }
+
+  /**
+   * @description Converts a field element to a byte string. Writes the low
+   * 248 bits of `x` as 31 little-endian bytes, followed by a zero byte. The
+   * usual way to pass a field element where a `Bytes<32>` is expected.
+   *
+   * @constraints k=9, rows=200
+   *
+   * @dev Formula:
+   * `I2LEOSP_256(x mod 2^248)`.
+   *
+   * @param {Field} x - The field element. Bits 248 and up are dropped.
+   * @return {Bytes<32>} - The byte string. Byte 31 is zero.
+   */
+  export pure circuit truncatedI2LEOSP(x: Field): Bytes<32> {
+    return upgradeFromTransient(x);
+  }
+}
