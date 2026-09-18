@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto';
 import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { pureCircuits as ecdh } from '../../../artifacts/MockEcdh/contract/index.js';
 import { pureCircuits } from '../../../artifacts/MockEcdhMask/contract/index.js';
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
+import { pureCircuits as sha } from '../../../artifacts/MockSha256/contract/index.js';
 
 // The EcdhMask circuits are pure, so tests drive them directly via the compiled
 // artifact's `pureCircuits` (no proof, no simulator needed).
@@ -249,54 +251,70 @@ describe('EcdhMask', () => {
   describe('fieldKdf', () => {
     const points = [2n, 5n, 222n, 999999n].map((s) => ecMulGenerator(s));
 
-    it('is deterministic for the same shared point and domain', () => {
+    // persistentHash<JubjubPoint>: SHA-256 of x || y, each as 32 little-endian bytes.
+    const pointDigest = (point: { x: bigint; y: bigint }): Uint8Array => {
+      const le = (v: bigint): Uint8Array =>
+        Uint8Array.from({ length: 32 }, (_, i) =>
+          Number((v >> BigInt(8 * i)) & 0xffn),
+        );
+      return new Uint8Array(
+        createHash('sha256').update(le(point.x)).update(le(point.y)).digest(),
+      );
+    };
+
+    it('should be deterministic for the same shared point and domain', () => {
       expect(pureCircuits.fieldKdf(PK, DOMAIN)).toBe(
         pureCircuits.fieldKdf(PK, DOMAIN),
       );
     });
 
-    it('differs for distinct shared points', () => {
+    it('should differ for distinct shared points', () => {
       expect(pureCircuits.fieldKdf(PK, DOMAIN)).not.toBe(
         pureCircuits.fieldKdf(ecMulGenerator(222n), DOMAIN),
       );
     });
 
-    it('differs for distinct domains (domain separation)', () => {
+    it('should differ for distinct domains', () => {
       expect(pureCircuits.fieldKdf(PK, domain('a'))).not.toBe(
         pureCircuits.fieldKdf(PK, domain('b')),
       );
     });
 
-    it('equals k1 + k2 * 2^248 over the two hashed halves', () => {
-      // The mock recomputes both halves straight from the stdlib hashes, so the
-      // pad's arithmetic is pinned against an independent path.
+    it('should equal Sha256.hashToField(pointDigest(S), domain)', () => {
       for (const point of points) {
-        const [low, high] = pureCircuits.fieldKdfHalves(point, DOMAIN);
         expect(pureCircuits.fieldKdf(point, DOMAIN)).toBe(
-          (low + high * TWO_248) % P,
+          sha.hashToField(pointDigest(point), DOMAIN),
         );
       }
     });
 
-    it('draws each half from the 248-bit degradeToTransient range', () => {
-      for (const point of points) {
-        const [low, high] = pureCircuits.fieldKdfHalves(point, DOMAIN);
-        expect(low).toBeLessThan(TWO_248);
-        expect(high).toBeLessThan(TWO_248);
-      }
+    it('should match the reference for S = 5 * pk(3) under "OZ:test:dst"', () => {
+      const S = {
+        x: 34133914351292434048413503276202728289265490189576620060413629725504410538523n,
+        y: 14331798736465991320125906355460685144102305233516748184833801044822620467723n,
+      };
+      expect(pureCircuits.fieldKdf(S, domain('OZ:test:dst'))).toBe(
+        26610806138279577918068632042914450713404457242874797469315820532741471409604n,
+      );
+      expect(pureCircuits.kdf(S, domain('OZ:test:dst'))).toBe(
+        69564922259646089911822298958338864030232716070909835277172563539860613021n,
+      );
     });
 
-    it('draws the two halves as independent hash queries', () => {
-      // Index 0 and index 1 are separate random-oracle queries.
-      for (const point of points) {
-        const [low, high] = pureCircuits.fieldKdfHalves(point, DOMAIN);
-        expect(low).not.toBe(high);
-      }
+    it('should match the reference for S = 1307 * pk(42) under "other"', () => {
+      const S = {
+        x: 21846731140111779498597767336707429224314113023599758281380925851664428732333n,
+        y: 16756994231029989709753422113746052839188842806931617304566960550784499484096n,
+      };
+      expect(pureCircuits.fieldKdf(S, domain('other'))).toBe(
+        14942334384528480047623944073446731732154425113458333513933056364075658344760n,
+      );
+      expect(pureCircuits.kdf(S, domain('other'))).toBe(
+        332242018693607749271965174322648896667187613080348592700581236270042761364n,
+      );
     });
 
-    it('differs from kdf under the same point and domain', () => {
-      // The three-element preimage separates the pad from the kdf, so a
-      // consumer may use both under one (S, domain).
+    it('should not equal kdf under the same point and domain', () => {
       for (const point of points) {
         expect(pureCircuits.fieldKdf(point, DOMAIN)).not.toBe(
           pureCircuits.kdf(point, DOMAIN),
@@ -304,13 +322,53 @@ describe('EcdhMask', () => {
       }
     });
 
-    it('exceeds the 248-bit kdf range for most shared points', () => {
-      // The regression that catches a dropped high half: a 248-bit pad can
-      // never land above 2^248, a field-wide one almost always does.
+    it('should exceed the 248-bit kdf range for most shared points', () => {
       const wide = Array.from({ length: 64 }, (_, i) =>
         pureCircuits.fieldKdf(ecMulGenerator(BigInt(i) + 1n), DOMAIN),
       ).filter((mask) => mask >= TWO_248);
-      expect(wide.length).toBeGreaterThan(0);
+      expect(wide.length).toBeGreaterThan(56);
+    });
+  });
+
+  describe('encryptField reference vectors', () => {
+    it('should match the reference for sk = 3, e = 5, m = 299973 under "OZ:test:dst"', () => {
+      const pk = ecMulGenerator(3n);
+      const ciphertext = pureCircuits.encryptField(
+        pk,
+        299973n,
+        5n,
+        domain('OZ:test:dst'),
+      );
+      expect(ciphertext).toStrictEqual({
+        ephemeralPk: {
+          x: 46037580203438066765405229507649644425780970512522822336637661968249826130047n,
+          y: 26189429486186784039799689203850934078756791903368248146476421754146336352630n,
+        },
+        ct: 26610806138279577918068632042914450713404457242874797469315820532741471709577n,
+      });
+      expect(
+        pureCircuits.decryptField(ciphertext, 3n, domain('OZ:test:dst')),
+      ).toBe(299973n);
+    });
+
+    it('should match the reference for sk = 42, e = 1307, m = 4199622 under "other"', () => {
+      const pk = ecMulGenerator(42n);
+      const ciphertext = pureCircuits.encryptField(
+        pk,
+        4199622n,
+        1307n,
+        domain('other'),
+      );
+      expect(ciphertext).toStrictEqual({
+        ephemeralPk: {
+          x: 19484914689417196181240116237393434494914401980232007599737218164003740761381n,
+          y: 6764962076417023830458027630302197924902637758905016901701807876639802414181n,
+        },
+        ct: 14942334384528480047623944073446731732154425113458333513933056364075662544382n,
+      });
+      expect(pureCircuits.decryptField(ciphertext, 42n, domain('other'))).toBe(
+        4199622n,
+      );
     });
   });
 
@@ -398,6 +456,144 @@ describe('EcdhMask', () => {
         expect(cts.some((ct) => ct >= HALF_P)).toBe(true);
       });
     }
+  });
+
+  describe('pad width attack', () => {
+    // Attack vector, one fact per line.
+    // - A ciphertext is ct = (value + pad) mod P.
+    // - The kdf pad is LEOS2IP_248 of a digest, so 0 <= pad < 2^248.
+    // - If value + 2^248 <= P, then value + pad < P and the sum does not wrap.
+    // - Then ct - pad = value, so value lies in (ct - 2^248, ct].
+    // - That window is 2^248 wide in a field of size P > 2^254, so the
+    //   observer learns the top 7 bits of value.
+    // - A Uint<128> value is below 2^128, so the window covers the whole type
+    //   and the observer learns nothing.
+    // - The fieldKdf pad is LEOS2IP_512 of two digests reduced mod P, uniform
+    //   on [0, P) to within 2^-257.
+    // - Then ct is uniform on [0, P) for every value, and no window exists.
+    //
+    // Every pad below comes from one of 256 fixed shared points,
+    // s_i = (7919 i + 1) G, so every count is deterministic.
+
+    const SHARED_POINTS = Array.from({ length: 256 }, (_, i) =>
+      ecMulGenerator(BigInt(i) * 7919n + 1n),
+    );
+
+    /** Pads of `kdf` over the fixed shared points, under `DOMAIN`. */
+    const padsOf = (kdf: typeof pureCircuits.kdf): bigint[] =>
+      SHARED_POINTS.map((s) => kdf(s, DOMAIN));
+
+    // The largest value of each plaintext width. The Field one leaves room for
+    // a 2^248 pad below P, so the kdf sum cannot wrap.
+    const VALUE_128 = (1n << 128n) - 1n;
+    const VALUE_248 = TWO_248 - 1n;
+    const VALUE_FIELD = 1n << 254n;
+
+    /**
+     * IND-CPA game under `kdf`. Half the pads encrypt 0 and half encrypt
+     * `value`. The observer guesses `value` whenever ct >= value. Returns the
+     * win rate: 1 means the ciphertext gives the plaintext away, 0.5 means it
+     * hides it.
+     */
+    const distinguisherWinRate = (
+      kdf: typeof pureCircuits.kdf,
+      value: bigint,
+    ): number => {
+      const pads = padsOf(kdf);
+      const wins = pads.filter((pad, i) => {
+        const encryptsValue = i % 2 === 1;
+        const ct = ((encryptsValue ? value : 0n) + pad) % P;
+        return ct >= value === encryptsValue;
+      }).length;
+      return wins / pads.length;
+    };
+
+    /**
+     * Bit recovery under `kdf`. Encrypts a fixed spread of Field values and
+     * reports how often the value lies in the window (ct - 2^248, ct].
+     * 1 means the observer learns every value to within 2^248.
+     */
+    const windowHitRate = (kdf: typeof pureCircuits.kdf): number => {
+      const pads = padsOf(kdf);
+      const hits = pads.filter((pad, i) => {
+        // Spread over [0, P - 2^248) so the kdf sum never wraps.
+        const value =
+          (BigInt(i + 1) * 0x9e3779b97f4a7c15n * (1n << 192n)) % (P - TWO_248);
+        const ct = (value + pad) % P;
+        return sub(ct, value) < TWO_248;
+      }).length;
+      return hits / pads.length;
+    };
+
+    /** A rate a fair coin could produce over 256 trials. */
+    const expectCoinFlip = (rate: number): void => {
+      expect(rate).toBeGreaterThan(0.35);
+      expect(rate).toBeLessThan(0.65);
+    };
+
+    it('should keep every kdf pad below 2^248', () => {
+      expect(padsOf(pureCircuits.kdf).every((pad) => pad < TWO_248)).toBe(true);
+    });
+
+    it('should put most fieldKdf pads at or above 2^248', () => {
+      const pads = padsOf(pureCircuits.fieldKdf);
+      const above = pads.filter((pad) => pad >= TWO_248).length;
+      expect(above).toBeGreaterThan(pads.length * 0.9);
+    });
+
+    it('should keep every fieldKdf pad below P', () => {
+      expect(padsOf(pureCircuits.fieldKdf).every((pad) => pad < P)).toBe(true);
+    });
+
+    it('should spread fieldKdf pads over every eighth of the field', () => {
+      // A pad that stopped at 2^254, or an unreduced 2^256 one, would leave
+      // the top eighths empty.
+      const eighths = new Set(
+        padsOf(pureCircuits.fieldKdf).map((pad) => (pad * 8n) / P),
+      );
+      expect([...eighths].sort()).toStrictEqual([
+        0n,
+        1n,
+        2n,
+        3n,
+        4n,
+        5n,
+        6n,
+        7n,
+      ]);
+    });
+
+    it('should let the observer read a 248-bit value off its kdf ciphertext', () => {
+      expect(distinguisherWinRate(pureCircuits.kdf, VALUE_248)).toBe(1);
+    });
+
+    it('should let the observer read a Field value off its kdf ciphertext', () => {
+      expect(distinguisherWinRate(pureCircuits.kdf, VALUE_FIELD)).toBe(1);
+    });
+
+    it('should not let the observer read a Uint<128> value off its kdf ciphertext', () => {
+      expectCoinFlip(distinguisherWinRate(pureCircuits.kdf, VALUE_128));
+    });
+
+    it('should not let the observer read a 248-bit value off its fieldKdf ciphertext', () => {
+      expectCoinFlip(distinguisherWinRate(pureCircuits.fieldKdf, VALUE_248));
+    });
+
+    it('should not let the observer read a Field value off its fieldKdf ciphertext', () => {
+      expectCoinFlip(distinguisherWinRate(pureCircuits.fieldKdf, VALUE_FIELD));
+    });
+
+    it('should not let the observer read a Uint<128> value off its fieldKdf ciphertext', () => {
+      expectCoinFlip(distinguisherWinRate(pureCircuits.fieldKdf, VALUE_128));
+    });
+
+    it('should leave every Field value within 2^248 of its kdf ciphertext', () => {
+      expect(windowHitRate(pureCircuits.kdf)).toBe(1);
+    });
+
+    it('should not leave a Field value within 2^248 of its fieldKdf ciphertext', () => {
+      expect(windowHitRate(pureCircuits.fieldKdf)).toBeLessThan(0.05);
+    });
   });
 
   describe('multi-field pad discipline', () => {
