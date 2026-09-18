@@ -6,13 +6,13 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { pureCircuits as ecdhMask } from '../../../artifacts/MockEcdhMask/contract/index.js';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // The ElGamal pure circuits double as an off-circuit "mirror." They let a test
 // predict a ciphertext the contract will produce internally (e.g. the
 // post-refund balance in `approve`) so its plaintext can be cached ahead of the
 // witness query. They are pure (no proof), so this is cheap.
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
+import { EcdhMaskSimulator } from '../../crypto/test/simulators/EcdhMaskSimulator.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
 
@@ -78,6 +78,14 @@ const SYMBOL = 'CT';
 const DECIMALS = 6n;
 
 let cft: ConfidentialFungibleTokenSimulator;
+
+// The memo channel's plaintext is only reachable through EcdhMask.decrypt, so
+// the specs drive that mock through its simulator.
+let ecdhMask: EcdhMaskSimulator;
+
+beforeAll(async () => {
+  ecdhMask = await EcdhMaskSimulator.create();
+});
 
 describe.skipIf(isLiveBackend())(
   'ConfidentialFungibleToken: registration',
@@ -679,7 +687,7 @@ describe.skipIf(isLiveBackend())(
       );
       const escrow = await cft.allowance(ALICE.accountId, BOB.accountId);
       const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
-      const remaining = ecdhMask.decrypt(
+      const remaining = await ecdhMask.decrypt(
         escrow.ownerMemo,
         aliceEk,
         OWNER_MEMO_DOMAIN,
@@ -1007,7 +1015,7 @@ describe.skipIf(isLiveBackend())(
 
       const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
       expect(
-        ecdhMask.decrypt(memos[0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
+        await ecdhMask.decrypt(memos[0], bobEk, padTag('OZ_CFT_ecdh_memo_v1')),
       ).toBe(250n);
     });
 
@@ -1034,7 +1042,7 @@ describe.skipIf(isLiveBackend())(
       );
       const bobEk = elgamal.secretToScalar(BOB.encryptionKey);
       expect(
-        ecdhMask.decrypt(
+        await ecdhMask.decrypt(
           [...memoList][0],
           bobEk,
           padTag('OZ_CFT_ecdh_memo_v1'),
@@ -1135,7 +1143,7 @@ describe('ConfidentialFungibleToken: receive-path smoke', () => {
       );
       const aliceEk = elgamal.secretToScalar(ALICE.encryptionKey);
       expect(
-        ecdhMask.decrypt(
+        await ecdhMask.decrypt(
           [...memoList][0],
           aliceEk,
           padTag('OZ_CFT_ecdh_memo_v1'),
