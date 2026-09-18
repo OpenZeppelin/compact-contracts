@@ -113,7 +113,7 @@ pragma language_version >= 0.26.0;
 module EcdhMask {
   import CompactStandardLibrary;
   import "./Ecdh" prefix Ecdh_;
-  import "./curves/bls12_381/Fq" prefix Fq_;
+  import "./curves/bls12-381/Fq" prefix Fq_;
   import "./hash/Sha256" prefix Sha256_;
 
   /**

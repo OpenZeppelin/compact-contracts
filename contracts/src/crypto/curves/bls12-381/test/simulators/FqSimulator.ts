@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/curves/bls12_381/test/simulators/FqSimulator.ts)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/curves/bls12-381/test/simulators/FqSimulator.ts)
 
 import {
   createSimulator,

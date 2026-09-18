@@ -31,7 +31,7 @@ pragma language_version >= 0.26.0;
  * - `e_0`: the resulting field element.
  *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
  * - `b_i = H(msg, DST, i)`: expander block `i`, this module's `expandBlock`.
- * - `LEOS2IP`: the little-endian `OS2IP`, as in `crypto/curves/bls12_381/Fq`.
+ * - `LEOS2IP`: the little-endian `OS2IP`, as in `crypto/curves/bls12-381/Fq`.
  *   https://zips.z.cash/protocol/protocol.pdf#endian
  *
  * @dev Interface:
@@ -63,7 +63,7 @@ pragma language_version >= 0.26.0;
  */
 module Sha256 {
   import CompactStandardLibrary;
-  import "../curves/bls12_381/Fq" prefix Fq_;
+  import "../curves/bls12-381/Fq" prefix Fq_;
 
   /**
    * @description Holds the preimage of expander block `b_i`.
