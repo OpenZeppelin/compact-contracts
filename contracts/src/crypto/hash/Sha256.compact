@@ -7,19 +7,32 @@ pragma language_version >= 0.26.0;
  * @module Sha256
  * @description
  * SHA-256 behind the `crypto/hash` interface: a byte digest and a hash to the
- * native field.
+ * native field. The hash to the field follows RFC 9380 `hash_to_field`.
+ *
+ * @see https://doi.org/10.6028/NIST.FIPS.180-4 FIPS 180-4, SHA-256
+ * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 RFC 9380 §5.2, `hash_to_field`
+ * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.3.1 RFC 9380 §5.3.1, `expand_message_xmd`
  *
  * @dev Notation:
  * - `H(...)`: `digest`, the SHA-256 of its argument as a `Bytes<32>`.
+ *   https://doi.org/10.6028/NIST.FIPS.180-4
  * - `q`: the order of `Fq`, Compact's native `Field`. The RFC's `p`.
- * - `msg`: the message to hash (RFC 9380).
- * - `DST`: the domain separation tag (RFC 9380).
- * - `len_in_bytes`: how many uniform bytes are requested (RFC 9380).
- * - `uniform_bytes`: the output of `expand_message` (RFC 9380).
- * - `tv`: the slice of `uniform_bytes` that becomes one element (RFC 9380).
- * - `e_0`: the resulting field element (RFC 9380).
- * - `b_i = H(msg, DST, i)`: expander block `i`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `msg`: the message to hash.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `DST`: the domain separation tag.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-2.2.5
+ * - `len_in_bytes`: how many uniform bytes are requested.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.3
+ * - `uniform_bytes`: the output of `expand_message`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.3
+ * - `tv`: the slice of `uniform_bytes` that becomes one element.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `e_0`: the resulting field element.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `b_i = H(msg, DST, i)`: expander block `i`, this module's `expandBlock`.
  * - `LEOS2IP`: the little-endian `OS2IP`, as in `crypto/curves/bls12_381/Fq`.
+ *   https://zips.z.cash/protocol/protocol.pdf#endian
  *
  * @dev Interface:
  * Every `crypto/hash` module exports `digest` and `hashToField` with these
@@ -39,8 +52,8 @@ pragma language_version >= 0.26.0;
  * them changes every derived value.
  *
  * @notice Security:
- * - Uniformity: with `H` modelled as a random oracle, `hashToField` is within
- *   `2^-257` of uniform over the field.
+ * - Uniformity: with `H` modelled as a random oracle, `hashToField` is
+ *   within `2^-257` of uniform over the field.
  * - Domain separation: outputs under distinct `DST`s are independent. A
  *   consumer picks one `DST` per purpose and never reuses it across protocols.
  *
@@ -53,7 +66,7 @@ module Sha256 {
   import "../curves/bls12_381/Fq" prefix Fq_;
 
   /**
-   * @description Preimage of expander block `b_i`.
+   * @description Holds the preimage of expander block `b_i`.
    * @type {T} msg - The message being hashed.
    * @type {Bytes<32>} DST - The domain separation tag.
    * @type {Bytes<32>} i - The block counter.
@@ -65,8 +78,8 @@ module Sha256 {
   }
 
   /**
-   * @description RFC 9380 §5.2 `hash_to_field` with `count = 1`, `m = 1`: maps
-   * `msg` to one `Field` element, domain-separated by `DST`.
+   * @description Hashes a message to one field element (`hash_to_field`, `count = 1`, `m = 1`).
+   * RFC 9380 §5.2, with `msg` domain-separated by `DST`.
    *
    * @constraints k=14, rows=8326
    *
@@ -84,6 +97,8 @@ module Sha256 {
    * - `expand_message` is `expandMessage` below, in place of
    *   `expand_message_xmd`.
    *
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 `hash_to_field`
+   *
    * @param {T} msg - The message to hash.
    * @param {Bytes<32>} DST - The domain separation tag.
    * @return {Field} - `e_0`, the field element.
@@ -98,13 +113,16 @@ module Sha256 {
   }
 
   /**
-   * @description A counter expander: `uniform_bytes = b_0 || b_1`.
+   * @description Expands a message to 64 uniform bytes (`uniform_bytes = b_0 || b_1`).
+   * A counter expander in place of `expand_message_xmd`.
    *
    * @dev Deviations from `expand_message_xmd`:
    * - The blocks are independent, `b_i = H(msg, DST, i)`. The RFC chains them
    *   from a seed block.
    * - No length prefixes. Every preimage field has a fixed width, so the
    *   encoding is unambiguous without them.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.3.1 `expand_message_xmd`
    *
    * @param {T} msg - The message to hash.
    * @param {Bytes<32>} DST - The domain separation tag.
@@ -118,7 +136,7 @@ module Sha256 {
   }
 
   /**
-   * @description `b_i = H(msg, DST, i)`: one expander block.
+   * @description Computes one expander block (`b_i = H(msg, DST, i)`).
    *
    * @param {T} msg - The message to hash.
    * @param {Bytes<32>} DST - The domain separation tag.
@@ -132,9 +150,12 @@ module Sha256 {
   }
 
   /**
-   * @description `H(value)`: the SHA-256 digest of `value`.
+   * @description Hashes a value with SHA-256 (`H(value)`).
+   * The hash runs over Compact's encoding of `value`.
    *
    * @constraints k=13, rows=2006
+   *
+   * @see https://doi.org/10.6028/NIST.FIPS.180-4 FIPS 180-4, SHA-256
    *
    * @param {T} value - The value to hash.
    * @return {Bytes<32>} - The digest.
