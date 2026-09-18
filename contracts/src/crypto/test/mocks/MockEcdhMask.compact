@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// Exposes the EcdhMask module's pure circuits so they can be driven from
+// Exposes the EcdhMask module's circuits so they can be driven from
 // off-chain tests. DO NOT deploy or use this contract in any production
 // application.
 
@@ -9,22 +9,62 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 import "../../EcdhMask" prefix EcdhMask_;
+// EcdhMask does not re-export the key agreement, so the multi-field tests reach
+// crypto/Ecdh the way a consumer does: a second import.
+import "../../Ecdh" prefix Ecdh_;
 
-export { EcdhMask_Ciphertext }
+export { EcdhMask_Ciphertext, Ecdh_SharedSecret }
 
-export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+// Keeps every circuit impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys.
+ledger _invocations: Counter;
+
+export circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+  _invocations.increment(1);
   return EcdhMask_kdf(sShared, domain);
 }
 
-export pure circuit encrypt(
+export circuit encrypt(
                       recipientPk: JubjubPoint,
                       value: Uint<128>,
                       e: JubjubScalar,
                       domain: Bytes<32>
                       ): EcdhMask_Ciphertext {
+  _invocations.increment(1);
   return EcdhMask_encrypt(recipientPk, value, e, domain);
 }
 
-export pure circuit decrypt(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+export circuit decrypt(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+  _invocations.increment(1);
   return EcdhMask_decrypt(ciphertext, ekScalar, domain);
+}
+
+export circuit fieldKdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+  _invocations.increment(1);
+  return EcdhMask_fieldKdf(sShared, domain);
+}
+
+export circuit encryptField(
+                      recipientPk: JubjubPoint,
+                      m: Field,
+                      e: JubjubScalar,
+                      domain: Bytes<32>
+                      ): EcdhMask_Ciphertext {
+  _invocations.increment(1);
+  return EcdhMask_encryptField(recipientPk, m, e, domain);
+}
+
+export circuit decryptField(ciphertext: EcdhMask_Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+  _invocations.increment(1);
+  return EcdhMask_decryptField(ciphertext, ekScalar, domain);
+}
+
+export circuit deriveShared(recipientPk: JubjubPoint, e: JubjubScalar): Ecdh_SharedSecret {
+  _invocations.increment(1);
+  return Ecdh_deriveShared(recipientPk, e);
+}
+
+export circuit recoverShared(ephemeralPk: JubjubPoint, ekScalar: JubjubScalar): JubjubPoint {
+  _invocations.increment(1);
+  return Ecdh_recoverShared(ephemeralPk, ekScalar);
 }

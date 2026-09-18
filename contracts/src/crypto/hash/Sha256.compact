@@ -1,0 +1,224 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/hash/Sha256.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Sha256
+ * @description
+ * SHA-256 behind the `crypto/hash` interface: a byte digest and a hash to the
+ * native field. `hashToField` is RFC 9380 `hash_to_field` with MGF1 in place
+ * of `expand_message_xmd`.
+ *
+ * @see https://doi.org/10.6028/NIST.FIPS.180-4 FIPS 180-4, SHA-256
+ * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 RFC 9380 §5.2, `hash_to_field`
+ * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.3.1 RFC 9380 §5.3.1, `expand_message_xmd`
+ * @see https://www.rfc-editor.org/rfc/rfc8017#appendix-B.2.1 RFC 8017 §B.2.1, MGF1
+ * @see https://github.com/midnightntwrk/midnight-ledger/blob/main/base-crypto/src/hash.rs `persistent_hash`
+ *
+ * @dev Notation:
+ * - `H(x)`: `digest(x)`, the SHA-256 of `x` in Compact's encoding.
+ *   https://doi.org/10.6028/NIST.FIPS.180-4
+ * - `a || b`: concatenation of octet strings.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-4
+ * - `substr(str, sbegin, slen)`: the `slen` bytes of `str` from `sbegin`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-4
+ * - `q`: the order of `Fq`, Compact's native `Field`. The RFC's `p`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `msg`: the message to hash.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `DST`: the domain separation tag.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-2.2.5
+ * - `count`: how many field elements to output. `1` here.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `m`: the extension degree of the field. `1` for `Fq`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `k`: the security parameter, in bits.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `L`: bytes per element, `ceil((ceil(log2(q)) + k) / 8)`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `len_in_bytes`: how many uniform bytes are requested, `count * m * L`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.3
+ * - `uniform_bytes`: the output of `expand_message`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.3
+ * - `tv`: the slice of `uniform_bytes` that becomes one element.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `e_0`: the resulting field element.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `I2LEOSP_l(x)`: little-endian `I2OSP` on `l` bits.
+ *   https://zips.z.cash/protocol/protocol.pdf#endian
+ * - `LEOS2IP`: the little-endian `OS2IP`, as in `crypto/curves/bls12-381/Fq`.
+ *   https://zips.z.cash/protocol/protocol.pdf#endian
+ * - `b_i`: expander block `i`, this module's `expandBlock` at
+ *   `counter = i`. Not the RFC's `b_i`, which chains from a seed block.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.3.1
+ * - `mgfSeed`, `maskLen`, `hLen`: MGF1's seed, output length and hash
+ *   length. `msg || DST`, `64` and `32` here.
+ *   https://www.rfc-editor.org/rfc/rfc8017#appendix-B.2.1
+ * - `counter`, `C`: MGF1's block index and its octet-string encoding.
+ *   https://www.rfc-editor.org/rfc/rfc8017#appendix-B.2.1
+ *
+ * @dev Interface:
+ * Every `crypto/hash` module exports `digest` and `hashToField` with these
+ * signatures, so a consumer changes hash by changing its import. `IHasher`
+ * holds the signatures as a contract type.
+ *
+ * @dev Encoding:
+ * `H` hashes Compact's encoding of its argument: `Bytes<n>` raw, `Field` as
+ * `I2LEOSP_256`, a struct as its fields in order. At `T = Bytes<32>` that
+ * gives `digest(msg) = SHA-256(msg)` and
+ * `b_i = SHA-256(msg || DST || I2LEOSP_256(counter))`. Other `T` encode
+ * differently: call the exported circuits instead of reimplementing them.
+ *
+ * @dev Compatibility:
+ * Built on `persistentHash`, so outputs survive a platform upgrade. The hash,
+ * the preimage layout and the reduction are the wire format: changing any of
+ * them changes every derived value.
+ *
+ * @notice Security:
+ * - Uniformity: with `H` modelled as a random oracle, `hashToField` is
+ *   within `2^-257` of uniform over the field.
+ * - Domain separation: outputs under distinct `DST`s are independent. A
+ *   consumer picks one `DST` per purpose and never reuses it across protocols.
+ *
+ * @dev Performance:
+ * Cost is SHA-256 compressions, one per 64 bytes of padded preimage, so it
+ * grows with `T`. The `@constraints` lines are measured at `T = Bytes<32>`.
+ */
+module Sha256 {
+  import CompactStandardLibrary;
+  import "../curves/bls12-381/Fq" prefix Fq_;
+
+  /**
+   * @description Holds the preimage of expander block `b_i` (MGF1's `mgfSeed || C`).
+   * `mgfSeed = msg || DST` and `C = I2LEOSP_256(counter)`. `persistentHash`
+   * takes one value, so the parts are a struct, whose encoding is its fields
+   * in order.
+   *
+   * @dev Deviation from MGF1:
+   * `C` is `I2LEOSP_256(counter)` in place of `I2OSP(counter, 4)`, since
+   * `counter` arrives as a `Field` and `as Bytes<32>` is its encoding.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc8017#appendix-B.2.1 RFC 8017 §B.2.1, MGF1, step 3
+   *
+   * @type {T} msg - The message being hashed.
+   * @type {Bytes<32>} DST - The domain separation tag.
+   * @type {Bytes<32>} C - `I2LEOSP_256(counter)`, the encoded block counter.
+   */
+  export struct ExpandPreimage<T> {
+    msg: T;
+    DST: Bytes<32>;
+    C: Bytes<32>;
+  }
+
+  /**
+   * @description Hashes a message to one field element (`hash_to_field`, `count = 1`, `m = 1`).
+   * RFC 9380 §5.2, with `msg` domain-separated by `DST`.
+   *
+   * @constraints k=14, rows=9806
+   *
+   * @dev Steps, numbered as in the RFC:
+   * - 1: `len_in_bytes = count * m * L = 64`. A length is a type here, so
+   *   `Fq.UniformBytes` carries it.
+   * - 2: `uniform_bytes = expand_message(msg, DST, len_in_bytes)`.
+   * - 3, 4: one pass each of the loops over `count` and `m`.
+   * - 5: `elm_offset = L * (j + i * m) = 0`.
+   * - 6: `tv = substr(uniform_bytes, 0, 64)`, all of it.
+   * - 7: `e_0 = LEOS2IP(tv) mod q`, in `Fq.fromUniformBytes`.
+   * - 8, 9: return `e_0`.
+   *
+   * @dev Deviations from RFC 9380:
+   * - `L = 64` against the RFC's `ceil((255 + 128) / 8) = 48`, so `k = 257`
+   *   against `128`.
+   * - `LEOS2IP` in place of the big-endian `OS2IP`.
+   * - `expand_message` is MGF1, `expandMessage` below, in place of
+   *   `expand_message_xmd`.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 `hash_to_field`
+   *
+   * @param {T} msg - The message to hash.
+   * @param {Bytes<32>} DST - The domain separation tag.
+   * @return {Field} - `e_0`, the field element.
+   */
+  export pure circuit hashToField<T>(msg: T, DST: Bytes<32>): Field {
+    // Steps 1 and 2.
+    const uniformBytes = expandMessage<T>(msg, DST);
+    // Steps 3 to 6.
+    const tv = uniformBytes;
+    // Steps 7 to 9.
+    return Fq_fromUniformBytes(tv);
+  }
+
+  /**
+   * @description Expands a message to 64 uniform bytes (`uniform_bytes = b_0 || b_1`).
+   * MGF1 in place of `expand_message_xmd`.
+   *
+   * @dev Reference:
+   * RFC 8017 §B.2.1 MGF1 with `mgfSeed = msg || DST`, `maskLen = 64` and
+   * `hLen = 32`, so two blocks:
+   * `T = Hash(mgfSeed || I2OSP(0, 4))`
+   * `    || Hash(mgfSeed || I2OSP(1, 4))`.
+   * Here `Hash` is `H` and `C = I2LEOSP_256(counter)`; see
+   * `ExpandPreimage`.
+   *
+   * @dev Why not `expand_message_xmd`:
+   * Its step 9 needs `strxor(b_0, b_(i-1))`, and Compact has no XOR, only
+   * `+`, `-` and `*`. MGF1 needs concatenation only. The differences that
+   * follow: blocks are independent instead of chained, and there are no
+   * length prefixes, since every preimage field has a fixed width.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc8017#appendix-B.2.1 RFC 8017 §B.2.1, MGF1
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.3.1 `expand_message_xmd`
+   *
+   * @param {T} msg - The message to hash.
+   * @param {Bytes<32>} DST - The domain separation tag.
+   * @return {Fq_UniformBytes} - `uniform_bytes`.
+   */
+  pure circuit expandMessage<T>(msg: T, DST: Bytes<32>): Fq_UniformBytes {
+    return Fq_UniformBytes {
+      low: expandBlock<T>(msg, DST, 0 as Field),
+      high: expandBlock<T>(msg, DST, 1 as Field)
+    };
+  }
+
+  /**
+   * @description Computes one expander block (`b_i = H(msg || DST || I2LEOSP_256(counter))`).
+   * `H` runs over the `ExpandPreimage` struct, whose encoding is that
+   * concatenation. The cast `counter as Bytes<32>` is `I2LEOSP_256(counter)`.
+   *
+   * @param {T} msg - The message to hash.
+   * @param {Bytes<32>} DST - The domain separation tag.
+   * @param {Field} counter - The block counter, MGF1's `counter`.
+   * @return {Bytes<32>} - The block.
+   */
+  pure circuit expandBlock<T>(
+    msg: T,
+    DST: Bytes<32>,
+    counter: Field
+  ): Bytes<32> {
+    return digest<ExpandPreimage<T>>(
+      ExpandPreimage<T> { msg: msg, DST: DST, C: counter as Bytes<32> }
+    );
+  }
+
+  /**
+   * @description Hashes a value with SHA-256 (`H(value)`).
+   * The hash runs over Compact's encoding of `value`.
+   *
+   * @constraints k=13, rows=2305
+   *
+   * @dev Backends:
+   * - Rust ledger: `persistent_hash`, `Sha256::digest` over the encoding.
+   * - ZKIR: the `persistent_hash` instruction, `sha2_256` over the same bytes.
+   *
+   * @see https://doi.org/10.6028/NIST.FIPS.180-4 FIPS 180-4, SHA-256
+   * @see https://github.com/midnightntwrk/midnight-ledger/blob/main/base-crypto/src/hash.rs `persistent_hash`
+   * @see https://github.com/midnightntwrk/midnight-ledger/blob/main/zkir/src/ir_vm.rs `PersistentHash`, the ZKIR instruction
+   *
+   * @param {T} value - The value to hash.
+   * @return {Bytes<32>} - The digest.
+   */
+  export pure circuit digest<T>(value: T): Bytes<32> {
+    return persistentHash<T>(value);
+  }
+}

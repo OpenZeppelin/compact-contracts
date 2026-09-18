@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/hash/IHasher.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module IHasher
+ * @description
+ * The signatures every `crypto/hash` module exports, as a contract type.
+ *
+ * @dev Fixed types:
+ * The hash modules are generic over the message type `T`. A contract type
+ * circuit cannot be, so `IHasher` fixes `T = Bytes<32>`.
+ *
+ * @dev Where it is implemented:
+ * `contract implements` is checked against the exports of the top-level
+ * contract, including one that reaches the declaring module through another
+ * import. Each hash module's mock declares it, so a drifting signature fails
+ * compilation. Declared inside a hash module, it would force every consumer
+ * to export `digest` and `hashToField`.
+ */
+module IHasher {
+  import CompactStandardLibrary;
+
+  /**
+   * @description The `crypto/hash` interface at `T = Bytes<32>`. `digest`
+   * returns the hash's byte digest, and `hashToField` maps `msg` to one `Field`
+   * element, domain-separated by `DST`.
+   *
+   * @dev Purity:
+   * Declared without `pure`, which a pure export also satisfies. A pure
+   * declaration would reject the ledger-backed mocks that exist to ship ZKIR.
+   * The hash modules themselves export pure circuits.
+   */
+  export contract IHasher {
+    circuit digest(value: Bytes<32>): Bytes<32>;
+    circuit hashToField(msg: Bytes<32>, DST: Bytes<32>): Field;
+  }
+}
