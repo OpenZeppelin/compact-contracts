@@ -137,7 +137,7 @@ describe('Sha256', () => {
       );
     });
 
-    it('should equal LEOS2IP_512(b_0 || b_1) mod q with b_i = SHA-256(msg || DST || i)', async () => {
+    it('should equal LEOS2IP_512(b_0 || b_1) mod q with b_i = SHA-256(msg || DST || I2LEOSP_256(i))', async () => {
       const msg = Uint8Array.from({ length: 32 }, (_, i) => i * 7);
       const DST = Uint8Array.from({ length: 32 }, (_, i) => 100 + i);
       const counter = (i: number): Uint8Array => {
