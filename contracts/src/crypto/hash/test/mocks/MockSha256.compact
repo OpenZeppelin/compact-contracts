@@ -8,8 +8,8 @@
 pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
-import "../../hash/IHasher";
-import "../../hash/Sha256" prefix Sha256_;
+import "../../IHasher";
+import "../../Sha256" prefix Sha256_;
 
 // Fails compilation if Sha256's signatures drift from the shared interface.
 contract implements Hasher;
