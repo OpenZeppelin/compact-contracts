@@ -27,7 +27,7 @@ import CompactStandardLibrary;
 
 import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
 import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
-import "../../../src/crypto/ElGamal" prefix ElGamal_;
+import "../../../src/crypto/encryption/ElGamal" prefix ElGamal_;
 
 export { Token_EscrowEntry, ElGamal_Ciphertext };
 

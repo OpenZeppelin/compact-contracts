@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/EcdhMask.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/encryption/EcdhMask.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -9,7 +9,7 @@ pragma language_version >= 0.26.0;
  * Jubjub public key. Delivers a value to whoever holds the secret behind a
  * Jubjub public key WITHOUT encoding it in the exponent, so recovery needs no
  * discrete-log search and the value is unbounded within `Uint<128>`. This is the
- * direct-decrypt counterpart to the homomorphic `crypto/ElGamal`: use ElGamal to
+ * direct-decrypt counterpart to the homomorphic `crypto/encryption/ElGamal`: use ElGamal to
  * accumulate ciphertexts, use this to hand a recipient the plaintext.
  *
  * Construction (recipient key `pk = g^ek`, ephemeral scalar `e` fresh per call):
@@ -31,7 +31,7 @@ pragma language_version >= 0.26.0;
  * `S = recipientPk^e`, hence the mask, and opens the ciphertext. A unique but
  * PREDICTABLE `e` (a plain counter, a public nonce) therefore breaks
  * confidentiality completely. `e` must be high-entropy and secret, exactly like
- * an ElGamal encryption randomness (see `crypto/ElGamal`), not merely distinct.
+ * an ElGamal encryption randomness (see `crypto/encryption/ElGamal`), not merely distinct.
  *
  * The caller supplies `e` and owns both properties, e.g. by expanding a secret
  * per-invocation seed bound to a per-recipient-unique nonce (a monotonic index).
@@ -70,13 +70,13 @@ pragma language_version >= 0.26.0;
  * treating the KDF output as uniform the value is hidden with about `2^-120`
  * statistical slack, leaving only the assumption that the hash of the DH secret
  * is PRF-like. Confidentiality relies on the runtime constraining every
- * `JubjubPoint` into the prime-order subgroup (see `crypto/ElGamal`), so `S`
+ * `JubjubPoint` into the prime-order subgroup (see `crypto/encryption/ElGamal`), so `S`
  * cannot be a low-order point that leaks `ek`. Binding the ephemeral `E` into the
  * KDF is deliberately omitted: for a fixed `recipientPk`, `E = g^e` and
  * `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E` and
  * folding it in buys nothing.
  *
- * @dev Shared key with `crypto/ElGamal` (in scope). A consumer MAY use the same
+ * @dev Shared key with `crypto/encryption/ElGamal` (in scope). A consumer MAY use the same
  * recipient Jubjub key for both these memos (hashed ElGamal) and exponential-
  * ElGamal balance ciphertexts, as the confidential token does. This joint use is
  * safe: the two schemes share only the public key, this KDF is domain-separated
@@ -163,7 +163,7 @@ module EcdhMask {
    * secret scalar. Pure and off-chain (no proof needed to read a received value).
    *
    * @param ciphertext - The ciphertext to decrypt.
-   * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
+   * @param ekScalar - The recipient's secret scalar (`crypto/encryption/ElGamal`'s
    *                   `secretToScalar(EK)`).
    * @param domain - The consumer's domain-separation tag (must match encrypt).
    * @return The recovered value as a `Field` (equal to the original `value`,

@@ -96,7 +96,7 @@ pragma language_version >= 0.26.0;
  *
  * @dev Value delivery via memo channel. Every credit made through `_credit`
  * (mint / transfer / transferFrom) pushes an ECDH one-time-pad memo (see
- * `crypto/EcdhMask`) to the recipient's per-account memo list. The recipient's
+ * `crypto/encryption/EcdhMask`) to the recipient's per-account memo list. The recipient's
  * wallet scans only its own list and decrypts each new entry DIRECTLY with its
  * encryption secret (no discrete-log search, no bounded-value table), updating
  * its local plaintext balance cache.
@@ -121,7 +121,7 @@ pragma language_version >= 0.26.0;
  * direct use of `transientHash`). `accountId` is a raw `persistentHash` map key.
  * Deriving Jubjub scalars (pk derivation, the decryption check, and per-credit
  * randomness) applies `degradeToTransient` to a `persistentHash` output so the
- * result lands in the Jubjub scalar field. The memo mask KDF (`crypto/EcdhMask`) is
+ * result lands in the Jubjub scalar field. The memo mask KDF (`crypto/encryption/EcdhMask`) is
  * also `persistentHash`, and MUST stay persistent: the recipient reproduces it to
  * decrypt, possibly across a platform upgrade. These `persistentHash` (SHA256)
  * calls dominate the credit-path row counts; there is currently no cheaper,
@@ -221,14 +221,14 @@ pragma language_version >= 0.26.0;
  */
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
-  import "../crypto/ElGamal" prefix ElGamal_;
-  import "../crypto/EcdhMask" prefix EcdhMask_;
+  import "../crypto/encryption/ElGamal" prefix ElGamal_;
+  import "../crypto/encryption/EcdhMask" prefix EcdhMask_;
 
   // ---------------------------------------------------------------------------
   // Types
   //
   // The single-receiver ElGamal ciphertext (`ElGamal_Ciphertext`) and all the
-  // crypto operating on it live in the `crypto/ElGamal` module. This module
+  // crypto operating on it live in the `crypto/encryption/ElGamal` module. This module
   // owns only the token-domain composition: ledger layout, witnesses, and the
   // balance/escrow/supply business logic.
   // ---------------------------------------------------------------------------
@@ -242,7 +242,7 @@ module ConfidentialFungibleToken {
     spenderCt: ElGamal_Ciphertext;
     ownerCt:   ElGamal_Ciphertext;
     // Owner-readable copy of the CURRENT remaining allowance, delivered as an
-    // ECDH one-time-pad memo (see `crypto/EcdhMask`). `spenderCt`/`ownerCt` are
+    // ECDH one-time-pad memo (see `crypto/encryption/EcdhMask`). `spenderCt`/`ownerCt` are
     // exponential ElGamal (g^value), so neither party can cheaply recover the
     // amount by discrete log; this memo lets the OWNER read the live remaining
     // directly with their EK. Without it, a partial `transferFrom`/`burnFrom`
@@ -286,7 +286,7 @@ module ConfidentialFungibleToken {
    * @description Maximum allowed value per single transfer / mint / burn /
    * approve: the `Uint<128>` maximum. The prior `2^48` cap existed only to keep
    * wallet-side discrete-log recovery tractable; with the ECDH memo delivering
-   * values directly (see `crypto/EcdhMask`), that constraint is gone. Values stay
+   * values directly (see `crypto/encryption/EcdhMask`), that constraint is gone. Values stay
    * well under the Jubjub scalar-field order, so homomorphic sums do not wrap.
    *
    * @notice This equals the argument type's own maximum, so the per-op check is
@@ -620,7 +620,7 @@ module ConfidentialFungibleToken {
    * `2^48` bound). All per-credit randomness is derived internally from the
    * witness seed and a per-recipient monotonic nonce (the memo-list length),
    * which keeps randomness distinct WITHIN a memo epoch (defense in depth for
-   * the memo's one-time pad; see `crypto/EcdhMask`). That nonce RESETS on
+   * the memo's one-time pad; see `crypto/encryption/EcdhMask`). That nonce RESETS on
    * `clearMemos`, so it is an in-epoch backstop only, never a substitute for
    * seed freshness (see the module header and the section note above `_debit`).
    *
@@ -857,7 +857,7 @@ module ConfidentialFungibleToken {
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
    * @dev Also stores an owner-readable `ownerMemo` (ECDH one-time pad; see
-   * `crypto/EcdhMask`) in the escrow entry, carrying the current remaining
+   * `crypto/encryption/EcdhMask`) in the escrow entry, carrying the current remaining
    * allowance (= `value` here, refreshed to the reduced remaining on every
    * spend). This is what lets the owner prove the post-refund balance on a later
    * re-approve or revoke after a partial spend; without it a partial spend would
@@ -1003,7 +1003,7 @@ module ConfidentialFungibleToken {
   // ---------------------------------------------------------------------------
   // Internal helpers
   //
-  // Token-domain helpers only; the ElGamal crypto lives in `crypto/ElGamal`.
+  // Token-domain helpers only; the ElGamal crypto lives in `crypto/encryption/ElGamal`.
   // The escrow-spend / refund helpers are placed last alongside the
   // higher-level circuits they compose.
   // ---------------------------------------------------------------------------

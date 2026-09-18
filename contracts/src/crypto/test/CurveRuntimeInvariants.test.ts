@@ -28,8 +28,8 @@ const Q =
   52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
 // Jubjub prime-order subgroup order ell. Valid ecMul scalars are [0, ell-1]; the
-// runtime faults on scalars >= ell. crypto/ElGamal (negation by ell-1) and
-// EcdhMask's ephemeral-point guard both lean on this range fault.
+// runtime faults on scalars >= ell. crypto/encryption/ElGamal (negation by
+// ell-1) and EcdhMask's ephemeral-point guard both lean on this range fault.
 const L =
   6554484396890773809930967563523245729705921265872317281365359162392183254199n;
 

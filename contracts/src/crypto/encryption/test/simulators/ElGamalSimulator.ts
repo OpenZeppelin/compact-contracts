@@ -7,7 +7,7 @@ import {
   type ElGamal_Ciphertext as Ciphertext,
   ledger,
   Contract as MockElGamal,
-} from '../../../../artifacts/MockElGamal/contract/index.js';
+} from '../../../../../artifacts/MockElGamal/contract/index.js';
 import {
   ElGamalPrivateState,
   ElGamalWitnesses,
