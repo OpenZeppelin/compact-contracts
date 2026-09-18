@@ -7,7 +7,13 @@ pragma language_version >= 0.26.0;
  * @module Fq
  * @description
  * Utilities for `Fq`, the scalar field of BLS12-381 and Compact's native
- * `Field`.
+ * `Field`. The conversions are the RFC 8017 §4 primitives in the Zcash
+ * little-endian form. `fromUniformBytes` is the field half of RFC 9380
+ * `hash_to_field`.
+ *
+ * @see https://www.rfc-editor.org/rfc/rfc8017#section-4 RFC 8017 §4, data conversion primitives
+ * @see https://zips.z.cash/protocol/protocol.pdf#endian Zcash protocol spec §5.1, endianness
+ * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 RFC 9380 §5.2, `hash_to_field`
  *
  * @dev The field:
  * - Order: `q`, a 255-bit prime.
@@ -15,53 +21,81 @@ pragma language_version >= 0.26.0;
  * - In Compact: the native `Field`.
  * - On Jubjub: the base field. Jubjub's scalar field is `JubjubScalar`.
  * - Name: as in Midnight's curves library. Other libraries call it `Fr`.
+ * - Check:
+ *   ```
+ *   sage> q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+ *   sage> is_prime(q), q.nbits(), 2^248 < q < 2^256
+ *   (True, 255, True)
+ *   ```
  *
  * @dev Notation:
- * - Octet string: a byte string.
- * - `OS2IP`: Octet-String-to-Integer primitive, big-endian (RFC 8017 §4).
- * - `I2OSP`: Integer-to-Octet-String primitive, big-endian (RFC 8017 §4).
- * - `LEOS2IP_l(S)`: little-endian `OS2IP` on `l` bits (Zcash spec §5.1).
- * - `I2LEOSP_l(x)`: little-endian `I2OSP` on `l` bits (Zcash spec §5.1).
- * - `substr(S, 0, n)`: the first `n` bytes of `S` (RFC 9380).
- * - `tv`: the uniform bytes that become one field element (RFC 9380).
- * - `e_0`: the resulting field element (RFC 9380).
+ * - `OS`: Octet string which is a byte string.
+ *   https://www.rfc-editor.org/rfc/rfc8017#section-4
+ * - `I`: Integer, nonnegative.
+ *   https://www.rfc-editor.org/rfc/rfc8017#section-4
+ * - `P`: Primitive, a conversion routine. `2` reads as "to".
+ *   https://www.rfc-editor.org/rfc/rfc8017#section-4
+ * - `LE`: Little-endian, the Zcash prefix on a primitive.
+ *   https://zips.z.cash/protocol/protocol.pdf#endian
+ * - `OS2IP`: Octet-String-to-Integer primitive, big-endian.
+ *   https://www.rfc-editor.org/rfc/rfc8017#section-4.2
+ * - `I2OSP`: Integer-to-Octet-String primitive, big-endian.
+ *   https://www.rfc-editor.org/rfc/rfc8017#section-4.1
+ * - `LEOS2IP_l(S)`: little-endian `OS2IP` on `l` bits.
+ *   https://zips.z.cash/protocol/protocol.pdf#endian
+ * - `I2LEOSP_l(x)`: little-endian `I2OSP` on `l` bits.
+ *   https://zips.z.cash/protocol/protocol.pdf#endian
+ * - `substr(S, 0, n)`: the first `n` bytes of `S`.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-4
+ * - `tv`: the uniform bytes that become one field element.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
+ * - `e_0`: the resulting field element.
+ *   https://www.rfc-editor.org/rfc/rfc9380#section-5.2
  *
- * @dev Conversions:
- * `truncatedLEOS2IP` and `truncatedI2LEOSP` are the octet-string-to-field-element
- * and field-element-to-octet-string conversions of SEC 1 §2.3, little-endian
- * and truncated to 248 bits. The standard library names them
- * `degradeToTransient` and `upgradeFromTransient`.
- *
- * @dev Why 248 bits:
- * `2^248 < q < 2^256`, so 31 bytes always name a field element and 32 bytes do
- * not. Both conversions work on the 31 bytes that fit.
+ * @dev Circuits:
+ * Two ways to fit an octet string into `Fq`, since `2^248 < q < 2^256`:
+ * - Truncate: keep the 31 bytes that always fit and drop byte 31. The integer
+ *   is below `2^248 < q`, so no reduction happens, and the dropped byte is
+ *   lost. `truncatedLEOS2IP` and `truncatedI2LEOSP` (`LEOS2IP_248`,
+ *   `I2LEOSP_248`), the standard library's `degradeToTransient` and
+ *   `upgradeFromTransient`.
+ * - Reduce: read every byte and take the integer mod `q`. Nothing of the input
+ *   is dropped, but the value wraps, and it is uniform only when the input
+ *   has many more bits than `q`. `fromUniformBytes` (`LEOS2IP_512(tv) mod q`),
+ *   the field half of RFC 9380 §5.2 `hash_to_field`. The hash half,
+ *   `expand_message`, lives in each `crypto/hash` module. Compact has no
+ *   integer wider than `q` and no `%`, so the reduction is `Field` `+` and
+ *   `*` on digits that each fit.
+ * - Round trips of the truncated pair: `truncatedLEOS2IP(truncatedI2LEOSP(x))`
+ *   is `x mod 2^248`, and `truncatedI2LEOSP(truncatedLEOS2IP(S))` is `S` with
+ *   byte 31 zeroed. Both are the identity exactly on 248-bit values.
  *
  * @notice Security:
  * - Truncation is silent: neither circuit asserts that its input fits.
- * - `truncatedLEOS2IP` ignores byte 31, so two strings that differ only there
- *   convert to the same element.
- * - `truncatedI2LEOSP` drops bits 248 and up, so two elements equal mod
- *   `2^248` convert to the same string.
- * - A converted SHA-256 digest keeps 248 of its 256 bits: `2^124` collision
- *   resistance against `2^128`.
- *
- * @dev Round trips:
- * - `truncatedLEOS2IP(truncatedI2LEOSP(x)) = x mod 2^248`.
- * - `truncatedI2LEOSP(truncatedLEOS2IP(S))` is `S` with byte 31 zeroed.
- * - Both are the identity exactly on 248-bit values.
- *
- * @dev Hashing to the field:
- * `fromUniformBytes` is the field half of RFC 9380 §5.2 `hash_to_field`. The
- * hash half, `expand_message`, lives in each `crypto/hash` module.
+ * - Byte 31 is ignored: two strings that differ only there convert to the
+ *   same element under `truncatedLEOS2IP`.
+ * - Bits 248 and up are dropped: two elements equal mod `2^248` convert to
+ *   the same string under `truncatedI2LEOSP`.
+ * - Collision resistance falls to `2^124`: a converted SHA-256 digest keeps
+ *   248 of its 256 bits, against `2^128` for the digest itself.
  */
 module Fq {
   import CompactStandardLibrary;
 
   /**
-   * @description 64 uniform bytes, as two 32-byte halves. Read little-endian,
-   * `low` comes first.
-   * @type {Bytes<32>} low - Bytes 0 to 31.
-   * @type {Bytes<32>} high - Bytes 32 to 63.
+   * @description Holds 64 uniform bytes as two 32-byte halves (`tv = low || high`).
+   * `tv` is the RFC 9380 `hash_to_field` input to step 7, `L = 64`. The split
+   * is `Fq::from_uniform_bytes`'s `split_at(32)` on its `[u8; 64]`.
+   *
+   * @dev Formula:
+   * `low = substr(tv, 0, 32)`, `high = substr(tv, 32, 32)`. Read
+   * little-endian, `low` holds the low 256 bits of `LEOS2IP_512(tv)`.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 `hash_to_field`, steps 5 and 6
+   * @see https://github.com/midnightntwrk/midnight-zk/blob/main/curves/src/bls12_381/fq.rs `Fq::from_uniform_bytes`
+   *
+   * @type {Bytes<32>} low - Bytes 0 to 31 of `tv`.
+   * @type {Bytes<32>} high - Bytes 32 to 63 of `tv`.
    */
   export struct UniformBytes {
     low: Bytes<32>;
@@ -69,11 +103,12 @@ module Fq {
   }
 
   /**
-   * @description Converts 64 uniform bytes to a uniform field element. Reads
-   * `tv` as one little-endian integer and reduces it mod `q`. The last step of
-   * hashing to the field.
+   * @description Converts 64 uniform bytes to a field element (`LEOS2IP_512(tv) mod q`).
+   * Reads `tv` as one little-endian integer and reduces it mod `q`, so a
+   * uniform `tv` gives a uniform element. The last step of hashing to the
+   * field.
    *
-   * @constraints k=10, rows=797
+   * @constraints k=11, rows=2006
    *
    * @dev Formula:
    * `LEOS2IP_512(tv) mod q`. Step 7 of RFC 9380 §5.2 `hash_to_field`, with
@@ -83,20 +118,54 @@ module Fq {
    * 512 bits against a 255-bit `q` is the RFC's `k = 257`: for a uniform `tv`
    * the result is within `2^-257` of uniform over the field.
    *
-   * @dev Same construction elsewhere:
-   * `Fq::from_uniform_bytes` in Midnight's curves library, and the shape of
-   * `ToScalar` in the Zcash protocol specification.
+   * @dev Reference:
+   * `midnight_curves::Fq`'s `ff::FromUniformBytes<64>` impl. The trait asks
+   * for the element congruent to the little-endian integer, with
+   * `N * 8 >= NUM_BITS + 128`. The impl splits the 64 bytes at 32 into digits
+   * `a0`, `a1` and returns `a0 + a1 * 2^256` in the field. Same digits here,
+   * with `R = 2^256 mod q` as the weight of `a1`.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 `hash_to_field`, step 7
+   * @see https://zips.z.cash/protocol/protocol.pdf#endian `LEOS2IP`
+   * @see https://docs.rs/ff/latest/ff/trait.FromUniformBytes.html `ff::FromUniformBytes`
+   * @see https://github.com/midnightntwrk/midnight-zk/blob/main/curves/src/bls12_381/fq.rs `Fq::from_uniform_bytes`
    *
    * @param {UniformBytes} tv - The 64 uniform bytes.
    * @return {Field} - `e_0`, the field element.
    */
   export pure circuit fromUniformBytes(tv: UniformBytes): Field {
-    return reducedLEOS2IP(tv.low) + reducedLEOS2IP(tv.high) * R();
+    // Radix 2^256, passed as R = 2^256 mod q.
+    return fromRadixDigits(leos2ipModQ(tv.low), leos2ipModQ(tv.high), R());
   }
 
   /**
-   * @description `LEOS2IP_256(S) mod q`: all 32 bytes of `S`, read
-   * little-endian and reduced into the field.
+   * @description Evaluates a two-digit radix `b` representation in the field (`a_0 + a_1 * b mod q`).
+   * `b` may be given as its residue mod `q`, since mod distributes over `+`
+   * and `*`.
+   *
+   * @dev Formula:
+   * HAC Fact 14.1 with `n = 1`, then reduced mod `q`. `Field` `+` and `*`
+   * wrap, so the reduction is the arithmetic itself.
+   *
+   * @see https://cacr.uwaterloo.ca/hac/about/chap14.pdf#page=3 HAC §14.2.1, Fact 14.1, radix b representation, p. 592
+   *
+   * @param {Field} a0 - Digit 0.
+   * @param {Field} a1 - Digit 1.
+   * @param {Field} b - The radix, or `b mod q` when `b >= q`.
+   * @return {Field} - `a_0 + a_1 * b mod q`.
+   */
+  pure circuit fromRadixDigits(a0: Field, a1: Field, b: Field): Field {
+    return a0 + a1 * b;
+  }
+
+  /**
+   * @description Converts 32 bytes to a field element (`LEOS2IP_256(S) mod q`).
+   * `Bytes<32>` does not fit `Field`, so `S` is read as two digits in base
+   * `2^248`: the low 31 bytes and byte 31.
+   *
+   * @dev Formula:
+   * `LEOS2IP_248(substr(S, 0, 31)) + LEOS2IP_8(substr(S, 31, 1)) * 2^248 mod q`,
+   * the same digit split as `fromUniformBytes` one level down.
    *
    * @dev Not uniform:
    * 256 bits is one bit more than `q`, so a uniform `S` gives a biased
@@ -105,20 +174,32 @@ module Fq {
    * @param {Bytes<32>} S - The byte string.
    * @return {Field} - The integer mod `q`.
    */
-  pure circuit reducedLEOS2IP(S: Bytes<32>): Field {
-    // Byte 31 is the part `truncatedLEOS2IP` drops.
-    return truncatedLEOS2IP(S) + (slice<1>(S, 31) as Field) * TWO_POW_248();
+  pure circuit leos2ipModQ(S: Bytes<32>): Field {
+    // Radix 2^248. Digit 0 is bytes 0 to 30, digit 1 is byte 31.
+    return fromRadixDigits(
+      truncatedLEOS2IP(S),
+      slice<1>(S, 31) as Field,
+      TWO_POW_248()
+    );
   }
 
   /**
-   * @description Converts a byte string to a field element. Reads the first
-   * 31 bytes of `S` as a little-endian integer and ignores byte 31. The usual
-   * way to bring a hash digest into field arithmetic.
+   * @description Converts an octet string to an integer, truncated (`LEOS2IP_248(substr(S, 0, 31))`).
+   * Reads the first 31 bytes of `S` little-endian and ignores byte 31. The
+   * result is below `2^248 < q`, so it is a field element. The usual way to
+   * bring a hash digest into field arithmetic.
    *
-   * @constraints k=7, rows=119
+   * @constraints k=9, rows=302
    *
    * @dev Formula:
    * `LEOS2IP_248(substr(S, 0, 31))`.
+   *
+   * @dev Backends:
+   * - Rust ledger: selects the field element holding bytes 0 to 30.
+   * - ZKIR: one `copy` of the 31-byte limb of the `Bytes<32>`. No arithmetic.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc8017#section-4.2 `OS2IP`
+   * @see https://zips.z.cash/protocol/protocol.pdf#endian `LEOS2IP`
    *
    * @param {Bytes<32>} S - The byte string. Byte 31 is ignored.
    * @return {Field} - A value below `2^248`.
@@ -128,8 +209,14 @@ module Fq {
   }
 
   /**
-   * @description The constant `2^248 = 2^(8 * 31)`: one past the largest
-   * 31-byte integer. 31 is the most whole bytes that always fit in `Fq`.
+   * @description Returns `2^248`, one past the largest 31-byte integer (`2^(8 * 31)`).
+   * 31 is the most whole bytes that always fit in `Fq`.
+   *
+   * @dev Value:
+   * ```
+   * sage> hex(2^248)
+   * 0x100000000000000000000000000000000000000000000000000000000000000
+   * ```
    *
    * @return {Field} - `2^248`.
    */
@@ -139,13 +226,29 @@ module Fq {
   }
 
   /**
-   * @description The constant `R = 2^256 mod q`: the weight of the high half
-   * of a 64-byte little-endian integer.
+   * @description Returns the Montgomery radix (`R = 2^256 mod q`).
+   * The weight of the high half of a 64-byte little-endian integer.
    *
    * @dev Name:
    * `R` is the Montgomery radix of the Handbook of Applied Cryptography
    * §14.3.2, `R = b^n`. Midnight's curves library holds an `Fq` element as
    * four 64-bit limbs, so `b = 2^64`, `n = 4` and `R = 2^256`.
+   *
+   * @dev Value:
+   * The library's own check, same literal:
+   * ```
+   * sage> mod(2^256,
+   * 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001)
+   * sage> 0x1824b159acc5056f998c4fefecbc4ff55884b7fa0003480200000001fffffffe
+   * ```
+   *
+   * @dev Encoding:
+   * The library stores every element pre-multiplied by `R`, so its `R`
+   * constant denotes the element `1`. Compact stores plain values, so the
+   * same digits here denote `2^256 mod q`.
+   *
+   * @see https://cacr.uwaterloo.ca/hac/about/chap14.pdf#page=11 HAC §14.3.2, Montgomery reduction, p. 600
+   * @see https://github.com/midnightntwrk/midnight-zk/blob/695351f1cdb3909affd1c89fef0a5eb3e9fa3ab7/curves/src/bls12_381/fq.rs#L90 `R`, the literal
    *
    * @return {Field} - `2^256 mod q`.
    */
@@ -155,14 +258,22 @@ module Fq {
   }
 
   /**
-   * @description Converts a field element to a byte string. Writes the low
-   * 248 bits of `x` as 31 little-endian bytes, followed by a zero byte. The
-   * usual way to pass a field element where a `Bytes<32>` is expected.
+   * @description Converts an integer to an octet string, truncated (`I2LEOSP_256(x mod 2^248)`).
+   * Writes the low 248 bits of `x` as 31 little-endian bytes, then a zero
+   * byte. The usual way to pass a field element where a `Bytes<32>` is
+   * expected.
    *
-   * @constraints k=9, rows=200
+   * @constraints k=9, rows=406
    *
    * @dev Formula:
    * `I2LEOSP_256(x mod 2^248)`.
+   *
+   * @dev Backends:
+   * - Rust ledger: copies the low 31 bytes of `x`'s encoding, then a zero byte.
+   * - ZKIR: `div_mod_power_of_two` by `2^248`, then the top byte set to 0.
+   *
+   * @see https://www.rfc-editor.org/rfc/rfc8017#section-4.1 `I2OSP`
+   * @see https://zips.z.cash/protocol/protocol.pdf#endian `I2LEOSP`
    *
    * @param {Field} x - The field element. Bits 248 and up are dropped.
    * @return {Bytes<32>} - The byte string. Byte 31 is zero.
