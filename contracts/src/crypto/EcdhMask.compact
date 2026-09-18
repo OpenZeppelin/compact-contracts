@@ -82,13 +82,14 @@ pragma language_version >= 0.26.0;
  * folding it in buys nothing.
  *
  * @dev Two KDFs, two output ranges. `kdf` derives into `[0, 2^248)`: one
- * `Fq.truncatedLEOS2IP` output, the SEC 1 KDF shape, for keys, nonces, and the
- * `Uint<128>` mask of `encrypt` (hidden with about `2^-120` slack). `fieldKdf`
- * derives uniformly into the field through `crypto/hash/Sha256.hashToField`
- * (RFC 9380 `hash_to_field`), within `2^-257` of uniform, so
- * `ct = m + fieldKdf(S, domain)` hides any `m` with no precondition on its range
- * or entropy. Mask a `Field` with `fieldKdf`, never with `kdf`; neither
- * authenticates (see Integrity).
+ * SHA-256 of `H(S) || domain` truncated by `Fq.truncatedLEOS2IP`, for keys,
+ * nonces, and the `Uint<128>` mask of `encrypt` (hidden with about `2^-120`
+ * slack). `fieldKdf` derives uniformly into the field through
+ * `crypto/hash/Sha256.hashToField` (RFC 9380 `hash_to_field`), within `2^-257`
+ * of uniform, so `ct = m + fieldKdf(S, domain)` hides any `m` with no
+ * precondition on its range or entropy. Mask a `Field` with `fieldKdf`, never
+ * with `kdf`: a `kdf` pad never wraps, so `ct` sits within `2^248` above `m`
+ * and the top bits of `m` show through. Neither authenticates (see Integrity).
  *
  * @dev Multi-field delivery. A consumer delivering several `Field`s to one
  * recipient calls `deriveShared` once and adds `fieldKdf(sShared, tag_i)` per
@@ -130,7 +131,7 @@ module EcdhMask {
    *
    * @notice `e` MUST be fresh per call (see the module freshness precondition).
    *
-   * @constraints k=14, rows=9269
+   * @constraints k=14, rows=10521
    *
    * Requirements:
    *
@@ -156,23 +157,28 @@ module EcdhMask {
   }
 
   /**
-   * @description Derives the field mask from the ECDH shared secret point,
-   * domain-separated by a caller-supplied `domain` tag. Hashes the point to
-   * `Bytes<32>`, then re-hashes it with the domain tag and truncates into the
-   * field via `Fq.truncatedLEOS2IP`. The consumer chooses `domain` (so this
-   * module is not tied to any one protocol) and MUST use the same value on
-   * encrypt and decrypt.
+   * @description Derives the 248-bit mask from the shared secret point (`truncatedLEOS2IP(SHA-256(H(S) || domain))`).
+   * Domain-separated by a caller-supplied `domain` tag. The consumer chooses
+   * `domain` (so this module is not tied to any one protocol) and MUST use the
+   * same value on encrypt and decrypt.
+   *
+   * @dev Formula:
+   * `H(S)` is `pointDigest`. One 64-byte preimage, one SHA-256, then the low
+   * 31 bytes as an integer. Not the SEC 1 §3.6.1 KDF, which adds a counter
+   * between `Z` and `SharedInfo`; one block needs none.
    *
    * @dev Uses `crypto/hash/Sha256` deliberately: the recipient reproduces this
    * mask to decrypt, possibly across a platform upgrade, so it must be
    * upgrade-stable.
    *
-   * @constraints k=13, rows=7917
+   * @constraints k=14, rows=8700
+   *
+   * @see https://www.secg.org/sec1-v2.pdf#page=38 SEC 1 §3.6.1, the KDF this is not, p. 31
    *
    * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
    *                  `E^ek` for the recipient; equal by construction).
    * @param domain - The consumer's domain-separation tag.
-   * @return The field mask.
+   * @return The field mask, below `2^248`.
    */
   export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
     return Fq_truncatedLEOS2IP(
@@ -181,9 +187,14 @@ module EcdhMask {
   }
 
   /**
-   * @description Hashes the shared secret point into the fixed-width `Bytes<32>`
-   * that opens the preimage of both KDFs. Shared by `kdf` and `fieldKdf` so the
-   * point is hashed once per `fieldKdf` call and both KDFs agree on its encoding.
+   * @description Hashes the shared secret point to 32 bytes (`H(S) = SHA-256(I2LEOSP_256(S.x) || I2LEOSP_256(S.y))`).
+   * The fixed-width value that opens the preimage of both KDFs. Shared by `kdf`
+   * and `fieldKdf` so the point is hashed once per `fieldKdf` call and both
+   * KDFs agree on its encoding.
+   *
+   * @dev Encoding:
+   * `Sha256.digest<JubjubPoint>` hashes the ledger encoding of the point, its
+   * two coordinates as 32 little-endian bytes each, `x` first.
    *
    * @dev Uses `crypto/hash/Sha256` for the same reason as `kdf`.
    *
@@ -198,7 +209,7 @@ module EcdhMask {
    * @description Recovers the value from a ciphertext using the recipient's
    * secret scalar. Pure and off-chain (no proof needed to read a received value).
    *
-   * @constraints k=14, rows=8315
+   * @constraints k=14, rows=9270
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
@@ -222,7 +233,7 @@ module EcdhMask {
    * @notice `e` MUST be fresh per call and secret (see `crypto/Ecdh`). Reuse
    * leaks the difference of the two plaintexts.
    *
-   * @constraints k=14, rows=13604
+   * @constraints k=14, rows=15748
    *
    * Requirements:
    *
@@ -248,23 +259,33 @@ module EcdhMask {
   }
 
   /**
-   * @description Derives a mask uniform over the whole field from the ECDH
-   * shared secret point, domain-separated by a caller-supplied `domain` tag, so
+   * @description Derives a mask uniform over the field from the shared secret point (`hash_to_field(H(S), domain)`).
+   * Domain-separated by a caller-supplied `domain` tag, so
    * `m + fieldKdf(S, domain)` hides any `m` with no bound on its range. Use
    * this, not `kdf`, to mask a `Field`.
    *
-   * @dev The KDF of the scheme in the SEC 1 sense: `Z = pointDigest(sShared)`,
-   * `SharedInfo = domain`. `hashToField` hashes a three-element preimage against
-   * `kdf`'s two-element one, so a consumer may use `kdf` and `fieldKdf` under the
-   * same `(S, domain)` without one revealing the other.
+   * @dev Role:
+   * The key derivation step of ECIES, SEC 1 §5.1.3 step 5, with
+   * `Z = H(S)` and `SharedInfo = domain`. The function itself is RFC 9380
+   * `hash_to_field` as `crypto/hash/Sha256` implements it, not SEC 1's own
+   * KDF.
    *
-   * @constraints k=14, rows=12284
+   * @dev Against `kdf`:
+   * `kdf`'s 64-byte preimage `H(S) || domain` is a prefix of each MGF1 block
+   * preimage `H(S) || domain || C`. The 32-byte counter makes them distinct
+   * inputs, so a consumer may use both under one `(S, domain)` without one
+   * revealing the other.
+   *
+   * @constraints k=14, rows=14055
+   *
+   * @see https://www.secg.org/sec1-v2.pdf#page=58 SEC 1 §5.1.3, ECIES encryption operation, p. 52
+   * @see https://www.rfc-editor.org/rfc/rfc9380#section-5.2 RFC 9380 §5.2, `hash_to_field`
    *
    * @param sShared - The ECDH shared secret point.
    * @param domain - The consumer's domain-separation tag. Pairwise distinct per
    *                 field masked under one `sShared`, and the same value on
    *                 encrypt and decrypt.
-   * @return The field mask.
+   * @return `e_0`, the field mask, within `2^-257` of uniform.
    */
   export pure circuit fieldKdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
     return Sha256_hashToField<Bytes<32>>(pointDigest(sShared), domain);
@@ -278,7 +299,7 @@ module EcdhMask {
    * element rather than aborting, so the circuit is not a key-correctness oracle.
    * Nothing here authenticates the ciphertext.
    *
-   * @constraints k=14, rows=12682
+   * @constraints k=14, rows=14625
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
