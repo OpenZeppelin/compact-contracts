@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `crypto/Ecdh` module, the Jubjub key agreement that `crypto/EcdhMask` used to carry inline: `deriveShared` (sender side, owns the identity-key and zero-ephemeral guards), `recoverShared` (recipient side, never asserts), and the `SharedSecret` struct. `EcdhMask.encrypt` and `decrypt` delegate to it and produce the same ciphertexts as before; the guard messages now read `Ecdh: identity pk` / `Ecdh: zero ephemeral`. (#866)
-- Add `fieldKdf`, `encryptField` and `decryptField` to `crypto/EcdhMask`, a mask uniform over the whole `Field` built from two 248-bit halves combined as `k1 + k2 * 2^248 mod p`. `encryptField` therefore hides a plaintext with no range or entropy precondition, where `encrypt`'s 248-bit `kdf` mask needs `value < 2^128`. `kdf`'s output is unchanged. (#913)
+- Add `crypto/hash/IHasher`, the contract type every hash module satisfies (`digest` and `hashToField` at `T = Bytes<32>`), and `crypto/hash/Sha256` behind it, built on `persistentHash` so outputs survive a platform upgrade. (#921, #913)
+- Add `crypto/curves/bls12-381/Fq`, the BLS12-381 scalar field that Compact's `Field` is: `truncatedLEOS2IP` and `truncatedI2LEOSP`, the standard library's `degradeToTransient` and `upgradeFromTransient` under their RFC 8017 names, and `fromUniformBytes`, `LEOS2IP_512(tv) mod q`. (#922, #913)
+- Add `Sha256.hashToField`, RFC 9380 `hash_to_field` with `count = 1`, `m = 1`, `L = 64`. The expander is RFC 8017 MGF1, since `expand_message_xmd` needs an XOR Compact lacks. Verified against an independent Python implementation. (#923, #913)
+- Add `fieldKdf`, `encryptField` and `decryptField` to `crypto/EcdhMask`: a mask uniform over the whole `Field` through `Sha256.hashToField`, within `2^-257` of uniform, so `encryptField` hides a plaintext with no range or entropy precondition. A `Field` masked with the 248-bit `kdf` leaks its top bits, which the spec now demonstrates. `kdf`'s output is unchanged. (#735, #913)
 
 ### Changed
 
