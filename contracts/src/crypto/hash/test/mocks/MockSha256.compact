@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// Exposes the Sha256 module's pure circuits so they can be driven from
-// off-chain tests. DO NOT deploy or use this contract in any production
+// Exposes the Sha256 module's circuits so they can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production
 // application.
 
 pragma language_version >= 0.26.0;
@@ -12,12 +12,18 @@ import "../../IHasher";
 import "../../Sha256" prefix Sha256_;
 
 // Fails compilation if Sha256's signatures drift from the shared interface.
-contract implements Hasher;
+contract implements IHasher;
 
-export pure circuit hashToField(msg: Bytes<32>, DST: Bytes<32>): Field {
+// Keeps every circuit impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys.
+ledger _invocations: Counter;
+
+export circuit hashToField(msg: Bytes<32>, DST: Bytes<32>): Field {
+  _invocations.increment(1);
   return Sha256_hashToField<Bytes<32>>(msg, DST);
 }
 
-export pure circuit digest(value: Bytes<32>): Bytes<32> {
+export circuit digest(value: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
   return Sha256_digest<Bytes<32>>(value);
 }

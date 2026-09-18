@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { pureCircuits as ecdh } from '../../../artifacts/MockEcdh/contract/index.js';
 import { pureCircuits } from '../../../artifacts/MockEcdhMask/contract/index.js';
 import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
-import { pureCircuits as sha } from '../../../artifacts/MockSha256/contract/index.js';
+import { Sha256Simulator } from '../hash/test/simulators/Sha256Simulator.js';
 
 // The EcdhMask circuits are pure, so tests drive them directly via the compiled
 // artifact's `pureCircuits` (no proof, no simulator needed).
@@ -250,6 +250,11 @@ describe('EcdhMask', () => {
 
   describe('fieldKdf', () => {
     const points = [2n, 5n, 222n, 999999n].map((s) => ecMulGenerator(s));
+    let sha: Sha256Simulator;
+
+    beforeAll(async () => {
+      sha = await Sha256Simulator.create();
+    });
 
     // persistentHash<JubjubPoint>: SHA-256 of x || y, each as 32 little-endian bytes.
     const pointDigest = (point: { x: bigint; y: bigint }): Uint8Array => {
@@ -280,10 +285,10 @@ describe('EcdhMask', () => {
       );
     });
 
-    it('should equal Sha256.hashToField(pointDigest(S), domain)', () => {
+    it('should equal Sha256.hashToField(pointDigest(S), domain)', async () => {
       for (const point of points) {
         expect(pureCircuits.fieldKdf(point, DOMAIN)).toBe(
-          sha.hashToField(pointDigest(point), DOMAIN),
+          await sha.hashToField(pointDigest(point), DOMAIN),
         );
       }
     });

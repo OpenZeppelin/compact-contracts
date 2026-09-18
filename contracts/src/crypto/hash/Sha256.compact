@@ -81,7 +81,7 @@ module Sha256 {
    * @description Hashes a message to one field element (`hash_to_field`, `count = 1`, `m = 1`).
    * RFC 9380 §5.2, with `msg` domain-separated by `DST`.
    *
-   * @constraints k=14, rows=8326
+   * @constraints k=14, rows=9806
    *
    * @dev Steps, numbered as in the RFC:
    * - 1: `len_in_bytes = count * m * L = 64`. A length is a type here, so
@@ -153,7 +153,7 @@ module Sha256 {
    * @description Hashes a value with SHA-256 (`H(value)`).
    * The hash runs over Compact's encoding of `value`.
    *
-   * @constraints k=13, rows=2006
+   * @constraints k=13, rows=2305
    *
    * @see https://doi.org/10.6028/NIST.FIPS.180-4 FIPS 180-4, SHA-256
    *
