@@ -13,7 +13,7 @@
 pragma language_version >= 0.26.0;
 import CompactStandardLibrary;
 import "../../ConfidentialFungibleToken" prefix CFT_;
-import "../../../crypto/ElGamal" prefix ElGamal_;
+import "../../../crypto/encryption/ElGamal" prefix ElGamal_;
 
 export { CFT_EscrowEntry, ElGamal_Ciphertext };
 

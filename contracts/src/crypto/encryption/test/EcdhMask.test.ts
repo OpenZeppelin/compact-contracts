@@ -1,14 +1,14 @@
 import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { pureCircuits } from '../../../artifacts/MockEcdhMask/contract/index.js';
-import { pureCircuits as elgamal } from '../../../artifacts/MockElGamal/contract/index.js';
+import { pureCircuits } from '../../../../artifacts/MockEcdhMask/contract/index.js';
+import { pureCircuits as elgamal } from '../../../../artifacts/MockElGamal/contract/index.js';
 
 // The EcdhMask circuits are pure, so tests drive them directly via the compiled
 // artifact's `pureCircuits` (no proof, no simulator needed).
 
 // Jubjub prime-order subgroup order. Valid scalars are [1, L-1]; the runtime
-// faults ecMul on scalars >= L (see crypto/ElGamal), so L-1 is the largest
+// faults ecMul on scalars >= L (see crypto/encryption/ElGamal), so L-1 is the largest
 // valid scalar.
 const L =
   6554484396890773809930967563523245729705921265872317281365359162392183254199n;
@@ -66,9 +66,9 @@ describe('EcdhMask', () => {
       expect(pureCircuits.decrypt(ciphertext, ek, DOMAIN)).toBe(max);
     });
 
-    it('round-trips through the real crypto/ElGamal key derivation', () => {
+    it('round-trips through the real crypto/encryption/ElGamal key derivation', () => {
       // The CFT memo path derives the recipient pair from a Bytes<32> EK via
-      // crypto/ElGamal: pk = derivePk(EK), ekScalar = secretToScalar(EK). Pin
+      // crypto/encryption/ElGamal: pk = derivePk(EK), ekScalar = secretToScalar(EK). Pin
       // that shared-key infrastructure end to end rather than using raw scalars.
       const ekBytes = new Uint8Array(32).fill(0x11);
       const pk = elgamal.derivePk(ekBytes);

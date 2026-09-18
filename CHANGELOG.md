@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Group the `crypto/` modules by scheme, as SEC 1 does: `EcdhMask` and `ElGamal` move to `crypto/encryption/`, `Ecdsa` to `crypto/signature/`. Import paths change; circuits and artifacts do not. (#918)
 - **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
 
 ### Removed
