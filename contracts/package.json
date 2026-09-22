@@ -33,7 +33,7 @@
     "compile:token": "compact-compiler --dir token",
     "compile:utils": "compact-compiler --dir utils",
     "compile:integration": "compact-compiler --src test/integration/_mocks",
-    "build": "bash scripts/build.sh",
+    "build": "compact-builder --hierarchical --out dist --clean-dist --feature-zkir-v3 --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "vitest run --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
