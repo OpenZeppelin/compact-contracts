@@ -48,12 +48,13 @@ pragma language_version >= 0.23.0;
  * address. Any other contract address is rejected.
  *
  * @dev Recipient arm
- * A contract-addressed commitment counts only if the recipient contract's own
- * call claims it as a shielded receive in the same transaction, and no
- * primitive claims a receive on another contract's behalf. So the address arm
- * is accepted only for `kernel.self()`, where `_mint` / `_burn` claim the coin
- * themselves in the same call. The flavors do not expose the arm at all: they
- * take a `ZswapCoinPublicKey` and offer `_mintToSelf` for contract-held coins.
+ * The ledger accepts a contract-addressed commitment only if the recipient
+ * contract's own call claims it as a shielded receive in the same transaction,
+ * and no primitive claims a receive on another contract's behalf. So the
+ * address arm is accepted only for `kernel.self()`, where `_mint` / `_burn`
+ * claim the coin themselves in the same call. The flavors do not expose the
+ * arm at all: they take a `ZswapCoinPublicKey` and offer `_mintToSelf` for
+ * contract-held coins.
  *
  * @dev Burn variants
  * `_burn` destroys value from a coin provided within the current transaction
