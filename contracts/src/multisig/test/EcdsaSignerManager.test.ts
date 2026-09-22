@@ -87,14 +87,26 @@ describe('EcdsaSignerManager', () => {
     });
 
     // `assertApprovals` always counts exactly 2, so any higher threshold is a
-    // permanent lockout. This fires before `Signer_initialize`, which makes the
-    // module's own signer-count guard unreachable here (covered in Signer.test.ts).
+    // permanent lockout. This fires before the signers are registered, which
+    // makes `Signer`'s own signer-count guard unreachable here (covered in
+    // Signer.test.ts).
     it('should fail with a threshold above the approval width', async () => {
       for (const threshold of [3n, 4n]) {
         await expect(freshManager(threshold)).rejects.toThrow(
           'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
         );
       }
+    });
+
+    it('should fail when initialized twice', async () => {
+      await expect(
+        EcdsaSignerManagerSimulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          2n,
+          true,
+        ),
+      ).rejects.toThrow('EcdsaSignerManager: signers already registered');
     });
   });
 

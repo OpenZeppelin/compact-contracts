@@ -11,12 +11,21 @@ import CompactStandardLibrary;
 
 import "../../EcdsaSignerManager" prefix EcdsaSignerManager_;
 
+/**
+ * @description `reinitialize` is a param for testing. When true, the
+ * constructor calls `initialize` a second time so the once-only guard can be
+ * exercised.
+ */
 constructor(
   instanceSalt: Bytes<32>,
   signerCommitments: Vector<3, Bytes<32>>,
-  threshold: Uint<8>
+  threshold: Uint<8>,
+  reinitialize: Boolean
 ) {
   EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, threshold);
+  if (disclose(reinitialize)) {
+    EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, threshold);
+  }
 }
 
 export circuit assertApprovals(

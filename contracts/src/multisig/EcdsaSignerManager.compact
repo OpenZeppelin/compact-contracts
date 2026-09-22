@@ -68,6 +68,7 @@ module EcdsaSignerManager {
    *
    * Requirements:
    *
+   * - Can only be called once.
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
    * - `threshold` must be non-zero and must not exceed `n`.
@@ -84,6 +85,7 @@ module EcdsaSignerManager {
     signerCommitments: Vector<n, Bytes<32>>,
     threshold: Uint<8>
   ): [] {
+    assert(Signer_getSignerCount() == 0, "EcdsaSignerManager: signers already registered");
     _instanceSalt = disclose(instanceSalt);
     assert(threshold <= 2, "EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)");
 

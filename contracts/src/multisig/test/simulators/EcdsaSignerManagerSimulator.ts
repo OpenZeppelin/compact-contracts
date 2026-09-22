@@ -15,6 +15,7 @@ type EcdsaSignerManagerArgs = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   threshold: bigint,
+  reinitialize: boolean,
 ];
 
 const EcdsaSignerManagerSimulatorBase = createSimulator<
@@ -27,10 +28,11 @@ const EcdsaSignerManagerSimulatorBase = createSimulator<
   contractFactory: (witnesses) =>
     new MockEcdsaSignerManager<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, threshold) => [
+  contractArgs: (instanceSalt, signerCommitments, threshold, reinitialize) => [
     instanceSalt,
     signerCommitments,
     threshold,
+    reinitialize,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
@@ -42,6 +44,7 @@ export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
     threshold: bigint,
+    reinitialize = false,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
@@ -49,7 +52,7 @@ export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase
   ): Promise<EcdsaSignerManagerSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitments, threshold],
+      [instanceSalt, signerCommitments, threshold, reinitialize],
       options,
     ) as Promise<EcdsaSignerManagerSimulator>;
   }
