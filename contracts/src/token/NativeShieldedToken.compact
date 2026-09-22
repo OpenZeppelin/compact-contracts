@@ -20,6 +20,10 @@ pragma language_version >= 0.26.0;
  * share one set of core state (a single init flag and one name/symbol/decimals).
  * Pick one flavor per contract.
  *
+ * @notice Recipients must be coin public keys: contract-addressed recipients
+ * are not supported at this layer. For a coin the contract holds itself, use
+ * `_mintToSelf`, which mints to `kernel.self()` and claims it in the same call.
+ *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
  * contracts compose that via the module/contract pattern (Ownable,
@@ -190,25 +194,65 @@ module NativeShieldedToken {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @constraints k=14, rows=10820
+   * @constraints k=14, rows=10450
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `recipient` is not zero.
    *
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {ZswapCoinPublicKey} recipient - The coin recipient.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
    * contract's color.
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
   export circuit _mint(
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   recipient: ZswapCoinPublicKey,
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
-    return Core__mint(_domain, recipient, amount, nonce);
+    return Core__mint(
+      _domain,
+      left<ZswapCoinPublicKey, ContractAddress>(recipient),
+      amount,
+      nonce
+    );
+  }
+
+  /**
+   * @description Mints `amount` to this contract itself, claiming the coin in
+   * the same call. Forwards to `NativeShieldedTokenCore._mint` with
+   * `right(kernel.self())`.
+   *
+   * @dev Nonce uniqueness is the caller's responsibility, as in `_mint`. Spend
+   * the coin later with `_burnFromSelf`, once it carries an `mt_index`.
+   *
+   * @notice The consumer SHOULD persist the returned coin info in its own
+   * ledger state: it is the contract's holding and is not otherwise
+   * recoverable.
+   *
+   * @constraints k=14, rows=16033
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
+   * contract's color.
+   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   */
+  export circuit _mintToSelf(
+                   amount: Uint<64>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    return Core__mint(
+      _domain,
+      right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+      amount,
+      nonce
+    );
   }
 
   /**
@@ -229,7 +273,7 @@ module NativeShieldedToken {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @constraints k=16, rows=47477
+   * @constraints k=16, rows=41327
    *
    * Requirements:
    *
@@ -241,17 +285,22 @@ module NativeShieldedToken {
    *
    * @param {ShieldedCoinInfo} coin - The coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
-   * route the unspent portion (`coin.value - amount`).
+   * @param {ZswapCoinPublicKey} refundTo - Where to route the unspent
+   * portion (`coin.value - amount`).
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
   export circuit _burn(
                    coin: ShieldedCoinInfo,
                    amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   refundTo: ZswapCoinPublicKey
                    ): Maybe<ShieldedCoinInfo> {
-    return Core__burn(_domain, coin, amount, refundTo);
+    return Core__burn(
+      _domain,
+      coin,
+      amount,
+      left<ZswapCoinPublicKey, ContractAddress>(refundTo)
+    );
   }
 
   /**

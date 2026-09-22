@@ -1,8 +1,9 @@
-import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
-import { encodeShieldedCoinInfo } from '#test-utils/fixtures/nativeShieldedToken.js';
-import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
+import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
 import {
   NativeShieldedTokenFamilySimulator,
   type NativeShieldedTokenFamilySimulator as Sim,
@@ -14,13 +15,9 @@ const b32 = (label: string): Uint8Array => {
   return u;
 };
 
-const RECIPIENT = utils.eitherUserFromCoinPublicKey(
-  utils.toHexPadded('RECIPIENT'),
-);
-const REFUND_TO = utils.eitherUserFromCoinPublicKey(
-  utils.toHexPadded('REFUND_TO'),
-);
-const { ZERO_KEY, ZERO_ADDRESS } = utils;
+const RECIPIENT = utils.encodeToPK('RECIPIENT');
+const REFUND_TO = utils.encodeToPK('REFUND_TO');
+const ZERO_KEY = { bytes: utils.zeroUint8Array() };
 
 const NAME = 'Family Token';
 const SYMBOL = 'FAM';
@@ -30,36 +27,21 @@ const DOMAIN_B = b32('domain-B');
 const INIT = true;
 const BAD_INIT = false;
 const AMOUNT = 1_000n;
+const PARTIAL = 600n;
+const MAX_U64 = (1n << 64n) - 1n;
+
+// The simulator's default contract address is zero, which `_mintToSelf` rejects
+// as a zero recipient, so the deploy pins a non-zero address.
+const SELF_ADDRESS = utils.toHexPadded('SELF');
 
 const deploy = (init = INIT): Promise<NativeShieldedTokenFamilySimulator> =>
-  NativeShieldedTokenFamilySimulator.create(NAME, SYMBOL, DECIMALS, init);
+  NativeShieldedTokenFamilySimulator.create(NAME, SYMBOL, DECIMALS, init, {
+    contractAddress: SELF_ADDRESS,
+  });
 
 let token: NativeShieldedTokenFamilySimulator;
 
-// Resolved once in `beforeAll` after the first `create()`: on live the harness
-// then publishes MIDNIGHT_DEPLOYER_COIN_PK, so this is the deployer wallet's own
-// coin public key (an encryption key the node can resolve as a mint recipient /
-// refund target); on dry it is the synthetic
-// `eitherUserFromCoinPublicKey(toHexPadded('RECIPIENT'))`, identical to the
-// un-gated tests' `RECIPIENT`.
-let Z_RECIPIENT: ReturnType<typeof shieldedTestKey>;
-
-// A backend-aware mint nonce, delegated to the shared coin builder: on live every
-// coin gets a fresh random nonce (the local node persists nullifiers/commitments
-// across runs, so a fixed nonce would replay a spent coin — Custom error 103); on
-// dry it is the passed seed (else zero) so `coin.nonce` assertions stay reproducible.
-const mintNonce = (seed?: Uint8Array): Uint8Array =>
-  encodeShieldedCoinInfo(new Uint8Array(32), 0n, seed).nonce;
-
 describe('NativeShieldedTokenFamily (Family profile)', () => {
-  // Resolve the shared recipient once: on live it needs a prior `create()` (which
-  // triggers the wallet sync that publishes the deployer key); on dry it is
-  // synthetic. Mutating groups still deploy a fresh token per test in `beforeEach`.
-  beforeAll(async () => {
-    token = await deploy(INIT);
-    Z_RECIPIENT = shieldedTestKey();
-  });
-
   describe('initialization', () => {
     beforeEach(async () => {
       token = await deploy(INIT);
@@ -89,6 +71,7 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       ['decimals', []],
       ['tokenColor', [DOMAIN_A]],
       ['_mint', [DOMAIN_A, RECIPIENT, AMOUNT, b32('n')]],
+      ['_mintToSelf', [DOMAIN_A, AMOUNT, b32('n')]],
       [
         '_burn',
         [
@@ -123,26 +106,88 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       token = await deploy(INIT);
     });
 
-    // `_mint` creates a NEW coin (`mintShieldedToken`, no input coin to receive),
-    // so it runs on both backends: recipient → the node-resolvable `Z_RECIPIENT`,
-    // nonce → a backend-aware value captured locally (a fixed nonce would replay a
-    // prior run's commitment on live). The mint echoes the nonce back, so assert
-    // against the one we passed, never a hardcoded value.
     it('should return a coin with color = tokenColor(domain), value, nonce', async () => {
-      const nonce = mintNonce(b32('m-a'));
-      const coin = await token._mint(DOMAIN_A, Z_RECIPIENT, AMOUNT, nonce);
+      const nonce = b32('m-a');
+      const coin = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, nonce);
       expect(coin.value).toBe(AMOUNT);
-      expect(coin.nonce).toEqual(nonce);
-      expect(coin.color).toEqual(await token.tokenColor(DOMAIN_A));
+      expect(coin.nonce).toStrictEqual(nonce);
+      expect(coin.color).toStrictEqual(await token.tokenColor(DOMAIN_A));
+    });
+
+    it('should mint distinct coins of one color for distinct nonces', async () => {
+      const first = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, b32('m-1'));
+      const second = await token._mint(DOMAIN_A, RECIPIENT, AMOUNT, b32('m-2'));
+      expect(second.nonce).not.toStrictEqual(first.nonce);
+      expect(second.color).toStrictEqual(first.color);
+      expect(second.value).toBe(first.value);
+    });
+
+    it('should mint the maximum Uint<64> amount and reject one above it', async () => {
+      const coin = await token._mint(DOMAIN_A, RECIPIENT, MAX_U64, b32('max'));
+      expect(coin.value).toBe(MAX_U64);
+      // Above the bound the argument marshaller rejects before any circuit runs.
+      await expect(
+        token._mint(DOMAIN_A, RECIPIENT, MAX_U64 + 1n, b32('over')),
+      ).rejects.toThrow();
     });
 
     it('should revert on a zero recipient', async () => {
       await expect(
         token._mint(DOMAIN_A, ZERO_KEY, AMOUNT, b32('z')),
       ).rejects.toThrow('NativeShieldedToken: invalid recipient');
+    });
+  });
+
+  describe('_mintToSelf (per domain)', () => {
+    beforeEach(async () => {
+      token = await deploy(INIT);
+    });
+
+    it('should return a coin with color = tokenColor(domain), value, nonce', async () => {
+      const nonce = b32('self-m-a');
+      const coin = await token._mintToSelf(DOMAIN_A, AMOUNT, nonce);
+      expect(coin.value).toBe(AMOUNT);
+      expect(coin.nonce).toStrictEqual(nonce);
+      expect(coin.color).toStrictEqual(await token.tokenColor(DOMAIN_A));
+    });
+
+    it('should keep distinct domains on distinct colors', async () => {
+      const a = await token._mintToSelf(DOMAIN_A, AMOUNT, b32('self-a'));
+      const b = await token._mintToSelf(DOMAIN_B, AMOUNT, b32('self-b'));
+      expect(a.color).not.toStrictEqual(b.color);
+    });
+  });
+
+  // `@ts-expect-error` is the guarantee; the runtime throw is the argument
+  // marshaller's backstop.
+  describe('retired Either recipient shape', () => {
+    beforeEach(async () => {
+      token = await deploy(INIT);
+    });
+
+    it('should reject an Either recipient on _mint', async () => {
       await expect(
-        token._mint(DOMAIN_A, ZERO_ADDRESS, AMOUNT, b32('z')),
-      ).rejects.toThrow('NativeShieldedToken: invalid recipient');
+        token._mint(
+          DOMAIN_A,
+          // @ts-expect-error retired Either recipient shape
+          utils.eitherUserFromCoinPublicKey(utils.toHexPadded('RECIPIENT')),
+          AMOUNT,
+          b32('e'),
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('should reject an Either refundTo on _burn', async () => {
+      const colorA = await token.tokenColor(DOMAIN_A);
+      await expect(
+        token._burn(
+          DOMAIN_A,
+          { nonce: b32('coin'), color: colorA, value: AMOUNT },
+          PARTIAL,
+          // @ts-expect-error retired Either recipient shape
+          utils.eitherUserFromCoinPublicKey(utils.toHexPadded('REFUND_TO')),
+        ),
+      ).rejects.toThrow();
     });
   });
 
@@ -152,7 +197,7 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
     });
 
     it('should give distinct colors to distinct domains', async () => {
-      expect(await token.tokenColor(DOMAIN_A)).not.toEqual(
+      expect(await token.tokenColor(DOMAIN_A)).not.toStrictEqual(
         await token.tokenColor(DOMAIN_B),
       );
     });
@@ -183,8 +228,6 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       value,
     });
 
-    // Reverts assert-and-throw on the guards BEFORE the coin is received/spent, so
-    // the fabricated coin never reaches Zswap — valid on both backends, un-gated.
     it('should revert when amount > coin.value', async () => {
       await expect(
         token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT + 1n, REFUND_TO),
@@ -197,61 +240,28 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       ).rejects.toThrow('NativeShieldedToken: invalid refund target');
     });
 
-    // The happy path actually receives and spends the coin. A fabricated coin has
-    // no on-chain existence on live (`receiveShielded`/`sendImmediateShielded`
-    // reverts), so split like ShieldedTreasury: keep the fabricated-coin assertions
-    // as dry coverage, and mint→burn a real coin on live.
-    describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
-      it('should return none on a full burn and some(refund) on a partial burn', async () => {
-        expect(
-          (await token._burn(DOMAIN_A, coinOf(AMOUNT), AMOUNT, REFUND_TO))
-            .is_some,
-        ).toBe(false);
-        const partial = await token._burn(
-          DOMAIN_A,
-          coinOf(AMOUNT),
-          600n,
-          REFUND_TO,
-        );
-        expect(partial.is_some).toBe(true);
-        expect(partial.value.value).toBe(AMOUNT - 600n);
-      });
+    it('should return none on a full burn', async () => {
+      const coin = await token._mint(
+        DOMAIN_A,
+        RECIPIENT,
+        AMOUNT,
+        b32('burn-full'),
+      );
+      const res = await token._burn(DOMAIN_A, coin, AMOUNT, REFUND_TO);
+      expect(res.is_some).toBe(false);
     });
 
-    describe.runIf(isLiveBackend())('happy path on live', () => {
-      it('should return none on a full burn and some(refund) on a partial burn', async () => {
-        // LIVE: `_burn` receives a same-tx coin and spends it via
-        // `sendImmediateShielded`. The coin's color is this contract's
-        // `tokenColor(DOMAIN_A)` (contract-derived, NOT a genesis color), so it
-        // must come from a prior `_mint` this run — a fabricated coin can't be
-        // received. `refundTo` receives the partial-burn change, so it must be
-        // node-resolvable (`Z_RECIPIENT`). Confirm against a node that the minted
-        // coin is spendable in the burn tx (the wallet paying it into the contract).
-        const fullCoin = await token._mint(
-          DOMAIN_A,
-          Z_RECIPIENT,
-          AMOUNT,
-          mintNonce(),
-        );
-        expect(
-          (await token._burn(DOMAIN_A, fullCoin, AMOUNT, Z_RECIPIENT)).is_some,
-        ).toBe(false);
-
-        const partialCoin = await token._mint(
-          DOMAIN_A,
-          Z_RECIPIENT,
-          AMOUNT,
-          mintNonce(),
-        );
-        const partial = await token._burn(
-          DOMAIN_A,
-          partialCoin,
-          600n,
-          Z_RECIPIENT,
-        );
-        expect(partial.is_some).toBe(true);
-        expect(partial.value.value).toBe(AMOUNT - 600n);
-      });
+    it('should return some(refund) with refund.value == coin.value - amount on a partial burn', async () => {
+      const coin = await token._mint(
+        DOMAIN_A,
+        RECIPIENT,
+        AMOUNT,
+        b32('burn-part'),
+      );
+      const res = await token._burn(DOMAIN_A, coin, PARTIAL, REFUND_TO);
+      expect(res.is_some).toBe(true);
+      expect(res.value.value).toBe(AMOUNT - PARTIAL);
+      expect(res.value.color).toStrictEqual(colorA);
     });
   });
 
@@ -269,71 +279,48 @@ describe('NativeShieldedTokenFamily (Family profile)', () => {
       mt_index: 0n,
     });
 
-    // Wrong-color revert asserts BEFORE the `sendShielded` spend, so the fabricated
-    // coin never reaches Zswap — valid on both backends, un-gated.
+    const heldCoin = async (value: bigint, label: string) =>
+      getQualifiedShieldedCoinInfo(
+        contractOwner(token),
+        await token._mintToSelf(DOMAIN_A, value, b32(label)),
+      );
+
     it('should reject a wrong-color coin', async () => {
       await expect(
         token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT, b32('wrong')), AMOUNT),
       ).rejects.toThrow('NativeShieldedToken: wrong token');
     });
 
-    // The happy path spends a coin the contract already holds. On live that means
-    // a real Merkle-tree entry with a valid `mt_index`; a fabricated one reverts.
-    // Split like ShieldedTreasury: keep the fabricated-coin assertions as dry
-    // coverage, and mint→capture→burn on live.
-    describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
-      it('should return change on a partial burn and none on a full burn', async () => {
-        expect(
-          (await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), 600n)).is_some,
-        ).toBe(true);
-        expect(
-          (await token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT))
-            .is_some,
-        ).toBe(false);
-      });
+    it('should revert when amount > coin.value', async () => {
+      await expect(
+        token._burnFromSelf(DOMAIN_A, qCoinOf(AMOUNT), AMOUNT + 1n),
+      ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
     });
 
-    // Skipped, not `runIf(isLiveBackend())`: `_burnFromSelf` spends a coin the
-    // CONTRACT already holds (a Merkle-tree entry with a valid `mt_index`). Such
-    // a coin must be minted to this contract and its `mt_index` recovered from
-    // the global zswap ledger-events stream (ShieldedCoinTracker) once the mint
-    // finalizes — it cannot be known from the spec alone. The mint-to-deployer +
-    // `mt_index: 0n` below is a placeholder that reverts on a real node; unskip
-    // once the tracker capture is wired in.
-    describe.skip('happy path on live (pending real mt_index capture)', () => {
-      it('should return change on a partial burn and none on a full burn', async () => {
-        const partialCoin = await token._mint(
-          DOMAIN_A,
-          Z_RECIPIENT,
-          AMOUNT,
-          mintNonce(),
-        );
-        expect(
-          (
-            await token._burnFromSelf(
-              DOMAIN_A,
-              { ...partialCoin, mt_index: 0n },
-              600n,
-            )
-          ).is_some,
-        ).toBe(true);
+    it('should return none on a full burn', async () => {
+      const coin = await heldCoin(AMOUNT, 'self-full');
+      const res = await token._burnFromSelf(DOMAIN_A, coin, AMOUNT);
+      expect(res.is_some).toBe(false);
+    });
 
-        const fullCoin = await token._mint(
-          DOMAIN_A,
-          Z_RECIPIENT,
-          AMOUNT,
-          mintNonce(),
-        );
-        expect(
-          (
-            await token._burnFromSelf(
-              DOMAIN_A,
-              { ...fullCoin, mt_index: 0n },
-              AMOUNT,
-            )
-          ).is_some,
-        ).toBe(false);
-      });
+    it('should return change on a partial burn and keep it spendable', async () => {
+      const coin = await heldCoin(AMOUNT, 'self-part');
+      const res = await token._burnFromSelf(DOMAIN_A, coin, PARTIAL);
+      expect(res.is_some).toBe(true);
+      expect(res.value.value).toBe(AMOUNT - PARTIAL);
+      expect(res.value.color).toStrictEqual(colorA);
+
+      // Spending the change proves the contract received it, not just returned it.
+      const change = await getQualifiedShieldedCoinInfo(
+        contractOwner(token),
+        res.value,
+      );
+      const second = await token._burnFromSelf(
+        DOMAIN_A,
+        change,
+        AMOUNT - PARTIAL,
+      );
+      expect(second.is_some).toBe(false);
     });
   });
 });

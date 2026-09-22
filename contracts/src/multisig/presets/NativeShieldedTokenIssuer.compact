@@ -348,7 +348,7 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the only copy available to the
    * recipient; deliver it out of band.
    *
-   * @constraints k=17, rows=89952 (zkir-v3)
+   * @constraints k=17, rows=105173 (zkir-v3)
    *
    * Requirements:
    *
@@ -357,6 +357,7 @@ module NativeShieldedTokenIssuer {
    * - Signers must not be duplicates.
    * - Threshold must be met.
    * - `recipient` is not zero.
+   * - A contract `recipient` is this contract's own address.
    *
    * @param {Uint<64>} amount - The token amount to mint.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The address to receive the minted tokens.
@@ -396,7 +397,21 @@ module NativeShieldedTokenIssuer {
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
 
-    return NST__mint(canonRecipient, amount, NSTDerivedNonce__deriveNonce());
+    // `NST__mint` takes a coin public key only; the contract arm is limited to
+    // this contract, since a mint to any other contract leaves an unclaimed
+    // output.
+    // The recipient is public (it is already in the signed digest), so the
+    // arm may gate which mint runs.
+    const target = disclose(canonRecipient);
+    const self = kernel.self();
+    assert(target.is_left || target.right == self,
+           "NativeShieldedToken: recipient contract must be self");
+    const nonce = NSTDerivedNonce__deriveNonce();
+    if (target.is_left) {
+      return NST__mint(target.left, amount, nonce);
+    } else {
+      return NST__mintToSelf(amount, nonce);
+    }
   }
 
   /**

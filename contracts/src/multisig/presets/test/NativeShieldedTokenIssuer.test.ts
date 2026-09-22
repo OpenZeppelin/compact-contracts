@@ -350,15 +350,15 @@ describe('NativeShieldedTokenIssuer', () => {
         await expectMintedCoin(multisig, coin, 100n);
       });
 
-      // Live: a mint to a non-participating contract leaves an unclaimed output
-      // the node rejects (no atomic cross-contract receive today).
-      it.skipIf(isLiveBackend())(
-        'should mint to a contract recipient',
-        async () => {
-          const coin = await mint(multisig, 100n, CONTRACT_RECIPIENT, [S1, S2]);
-          await expectMintedCoin(multisig, coin, 100n);
-        },
-      );
+      // A contract recipient other than this contract would leave an unclaimed
+      // output, so the core refuses it before anything is minted.
+      it('should reject a mint to a foreign contract recipient', async () => {
+        await expect(
+          mint(multisig, 100n, CONTRACT_RECIPIENT, [S1, S2]),
+        ).rejects.toThrow(
+          'NativeShieldedToken: recipient contract must be self',
+        );
+      });
 
       it('derives a different nonce on each mint', async () => {
         const first = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
