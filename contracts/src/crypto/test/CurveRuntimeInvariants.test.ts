@@ -51,14 +51,9 @@ const MIXED = constructJubjubPoint(Q - IN_SUBGROUP.x, Q - IN_SUBGROUP.y);
 
 let contract: CurveOpsSimulator;
 
-// The rejections below pin their fault message: a bare `toThrow()` would also
-// accept a deploy or provider failure on the live backend. Dry surfaces the
-// runtime fault verbatim, live wraps it as `Error executing circuit '<id>'`
-// unless it is a CompactError, so the point patterns accept either form.
-//
-// An off-subgroup or malformed point is rejected either by the embedded-curve
-// gadget, as a WASM trap, or by the built-in point decoder. `^unreachable$` is
-// anchored so a "network is unreachable" provider error cannot match.
+// Live wraps a runtime fault as `Error executing circuit '<id>'` unless it is
+// a CompactError, so the point patterns accept either form. `^unreachable$` is
+// anchored so a provider's "network is unreachable" cannot match.
 const CURVE_GADGET_TRAP = /^unreachable$|Error executing circuit/m;
 const POINT_DECODE_FAULT =
   /failed to decode for built-in type EmbeddedGroupAffine|Error executing circuit/;
