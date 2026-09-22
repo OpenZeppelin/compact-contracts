@@ -94,6 +94,12 @@ module Ownable {
    */
   export ledger _isInitialized: Boolean;
 
+  /**
+   * @description The current owner, canonicalized on write. A `left` holds an
+   * account identifier, stored as supplied and never checked against the secret
+   * key it should derive from; a `right` holds a contract address. The zero
+   * value means ownership has been renounced.
+   */
   export ledger _owner: Either<Bytes<32>, ContractAddress>;
 
   /**

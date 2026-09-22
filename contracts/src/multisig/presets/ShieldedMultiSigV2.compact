@@ -37,6 +37,10 @@ module ShieldedMultiSigV2 {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description Monotonic operation counter. `execute` reads it as that
+   * operation's nonce and then increments, so no two executions share one.
+   */
   ledger _nonce: Counter;
 
   // ─── Deposit ────────────────────────────────────────────────────

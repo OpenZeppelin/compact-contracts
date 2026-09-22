@@ -49,8 +49,25 @@ module ShieldedMultiSigV3 {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description Monotonic operation counter. Each mint and burn reads it as that
+   * operation's nonce and then increments, so no two operations share one.
+   */
   export ledger _counter: Counter;
+
+  /**
+   * @description Seed for coin-nonce derivation. Set at construction, then
+   * replaced by `evolveNonce(_counter, _coinNonce)` at the start of each mint, so
+   * it holds the initial seed before the first mint and the most recent mint's
+   * nonce after.
+   */
   export ledger _coinNonce: Bytes<32>;
+
+  /**
+   * @description The domain separator for the token this multisig mints. The coin
+   * color is `tokenType(_tokenDomain, kernel.self())`, so it is bound to this
+   * contract instance. Set once at construction.
+   */
   export sealed ledger _tokenDomain: Bytes<32>;
 
   // ─── Initialization ─────────────────────────────────────────────

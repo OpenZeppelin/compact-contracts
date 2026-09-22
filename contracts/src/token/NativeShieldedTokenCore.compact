@@ -70,8 +70,18 @@ module NativeShieldedTokenCore {
    */
   export ledger _isInitialized: Boolean;
 
+  /**
+   * @description The token's human-readable name, set once at construction.
+   */
   export sealed ledger _name: Opaque<"string">;
+  /**
+   * @description The token's ticker symbol, set once at construction.
+   */
   export sealed ledger _symbol: Opaque<"string">;
+  /**
+   * @description The number of decimals used to display balances, set once at
+   * construction. Purely presentational; no circuit scales by it.
+   */
   export sealed ledger _decimals: Uint<8>;
 
   /**

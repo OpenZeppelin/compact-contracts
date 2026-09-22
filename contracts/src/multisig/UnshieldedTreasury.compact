@@ -37,6 +37,14 @@ module UnshieldedTreasury {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description The treasury's tracked balance per token color. Deposits add
+   * to it and sends subtract.
+   * @type {Bytes<32>} color - The token color.
+   * @type {Uint<128>} balance - The amount currently held of it.
+   * @type {Map<color, balance>}
+   * @type {Map<Bytes<32>, Uint<128>>} _balances
+   */
   export ledger _balances: Map<Bytes<32>, Uint<128>>;
 
   // ─── Deposit ────────────────────────────────────────────────────

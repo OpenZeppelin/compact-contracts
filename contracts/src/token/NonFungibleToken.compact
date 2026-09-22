@@ -85,8 +85,13 @@ module NonFungibleToken {
   import CompactStandardLibrary;
   import "../utils/Utils" prefix Utils_;
 
-  /// Public state
+  /**
+   * @description The token's human-readable name, set once at construction.
+   */
   export sealed ledger _name: Opaque<"string">;
+  /**
+   * @description The token's ticker symbol, set once at construction.
+   */
   export sealed ledger _symbol: Opaque<"string">;
 
   /**

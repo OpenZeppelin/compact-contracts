@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Refactor `ProposalManager` (#780)
+  - `Proposal.status` → `state: Uint<64>`, overlaying lifecycle and expiry
+  - `_createProposal` / `createShieldedProposal` require `expiry`
+  - `getProposalStatus` returns `Inactive` for unknown ids instead of failing
 - **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
 
 ### Removed

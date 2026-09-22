@@ -26,6 +26,10 @@ pragma language_version >= 0.26.0;
 module Initializable {
   import CompactStandardLibrary;
 
+  /**
+   * @description Whether `initialize` has run. Guards against re-initialization
+   * and against use before initialization.
+   */
   export ledger _isInitialized: Boolean;
 
   /**

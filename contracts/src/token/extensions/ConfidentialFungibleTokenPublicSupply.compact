@@ -33,8 +33,13 @@ pragma language_version >= 0.26.0;
 module ConfidentialFungibleTokenPublicSupply {
   import CompactStandardLibrary;
 
-  // The public circulating supply. Mint and burn disclose their amounts
-  // through the delta on this value.
+  /**
+   * @description Total tokens in circulation, tracked in the clear even though
+   * balances are encrypted. Raised by `_addSupply` and lowered by `_subSupply`,
+   * each rejecting over/underflow.
+   *
+   * @warning Mint and burn disclose their amounts through the delta on this value
+   */
   export ledger _totalSupply: Uint<128>;
 
   /**
