@@ -5,8 +5,8 @@ import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   Contract as Ex,
   ledger,
-} from '../../../../artifacts/ShieldedMultiSigV3Example/contract/index.js';
-import { calculateSignerId } from '../../presets/test/simulators/ShieldedMultiSigV3Simulator.js';
+} from '../../../../artifacts/NativeShieldedTokenIssuerExample/contract/index.js';
+import { calculateSignerId } from '../../presets/test/simulators/NativeShieldedTokenIssuerSimulator.js';
 import { mintMsgHash } from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
@@ -14,9 +14,11 @@ import {
 } from '../../test/EmptyWitnesses.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(7);
-const INIT_NONCE = new Uint8Array(32).fill(8);
 const TOKEN_DOMAIN = new Uint8Array(32);
 Buffer.from('smt:token:').copy(TOKEN_DOMAIN);
+const TOKEN_NAME = 'MultiSig Token';
+const TOKEN_SYMBOL = 'MST';
+const TOKEN_DECIMALS = 6n;
 
 const S1 = signerFromLabel('ex-signer-1');
 const S2 = signerFromLabel('ex-signer-2');
@@ -27,7 +29,14 @@ const COMMITMENTS = [
   calculateSignerId(S3.publicKey, INSTANCE_SALT),
 ];
 
-type ExampleArgs = readonly [Uint8Array, Uint8Array, Uint8Array, Uint8Array[]];
+type ExampleArgs = readonly [
+  Uint8Array,
+  Uint8Array,
+  string,
+  string,
+  bigint,
+  Uint8Array[],
+];
 
 const ExampleSimulator = createSimulator<
   EmptyPrivateState,
@@ -40,21 +49,30 @@ const ExampleSimulator = createSimulator<
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
-    initCoinNonce,
     tokenDomain,
+    name,
+    symbol,
+    decimals,
     signerCommitments,
-  ) => [instanceSalt, initCoinNonce, tokenDomain, signerCommitments],
+  ) => [instanceSalt, tokenDomain, name, symbol, decimals, signerCommitments],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedMultiSigV3Example',
+  artifactName: 'NativeShieldedTokenIssuerExample',
 });
 
-describe('ShieldedMultiSigV3Example', () => {
+describe('NativeShieldedTokenIssuerExample', () => {
   let ex: InstanceType<typeof ExampleSimulator>;
 
   beforeEach(async () => {
     ex = await ExampleSimulator.create(
-      [INSTANCE_SALT, INIT_NONCE, TOKEN_DOMAIN, COMMITMENTS],
+      [
+        INSTANCE_SALT,
+        TOKEN_DOMAIN,
+        TOKEN_NAME,
+        TOKEN_SYMBOL,
+        TOKEN_DECIMALS,
+        COMMITMENTS,
+      ],
       {},
     );
   });
