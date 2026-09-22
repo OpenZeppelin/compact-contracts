@@ -68,9 +68,8 @@ module Signer<T> {
    */
   export ledger _signerCount: Uint<8>;
   /**
-   * @description How many approvals an action requires. Never zero once
-   * initialized, and removals that would drop `_signerCount` below it are
-   * rejected.
+   * @description How many approvals an action requires. Never zero once set,
+   * and removals that would drop `_signerCount` below it are rejected.
    */
   export ledger _threshold: Uint<8>;
 
