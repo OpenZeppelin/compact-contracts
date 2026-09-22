@@ -52,10 +52,6 @@ export class SignerSimulator extends SignerSimulatorBase {
     ) as Promise<SignerSimulator>;
   }
 
-  public initialize(signers: Uint8Array[], thresh: bigint): Promise<[]> {
-    return this.circuits.impure.initialize(signers, thresh);
-  }
-
   public assertSigner(caller: Uint8Array): Promise<[]> {
     return this.circuits.impure.assertSigner(caller);
   }

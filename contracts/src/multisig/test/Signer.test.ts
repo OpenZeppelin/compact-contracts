@@ -14,7 +14,7 @@ const OTHER2 = new Uint8Array(32).fill(5);
 
 let contract: SignerSimulator;
 
-// A fresh initialized 2-of-3 Signer. Mutating groups build one per test
+// A fresh configured 2-of-3 Signer. Mutating groups build one per test
 // (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
 // live deploy tx.
 const freshInit = () => SignerSimulator.create(SIGNERS, THRESHOLD, IS_INIT);
@@ -52,7 +52,7 @@ describe('Signer', () => {
     });
   });
 
-  describe('initialization', () => {
+  describe('constructor', () => {
     it('should fail with a threshold of zero', async () => {
       await expect(
         SignerSimulator.create(SIGNERS, 0n, IS_INIT),
@@ -72,7 +72,7 @@ describe('Signer', () => {
       ).rejects.toThrow('Signer: signer already active');
     });
 
-    it('should initialize with threshold equal to signer count', async () => {
+    it('should accept a threshold equal to signer count', async () => {
       const contract = await SignerSimulator.create(
         SIGNERS,
         BigInt(SIGNERS.length),
@@ -81,7 +81,7 @@ describe('Signer', () => {
       expect(await contract.getThreshold()).toEqual(BigInt(SIGNERS.length));
     });
 
-    it('should initialize', async () => {
+    it('should register signers and threshold', async () => {
       contract = await SignerSimulator.create(SIGNERS, THRESHOLD, IS_INIT);
 
       expect(await contract.getThreshold()).toEqual(THRESHOLD);
@@ -89,13 +89,6 @@ describe('Signer', () => {
       for (let i = 0; i < SIGNERS.length; i++) {
         await contract.assertSigner(SIGNERS[i]);
       }
-    });
-
-    it('should fail when initialized twice', async () => {
-      contract = await SignerSimulator.create(SIGNERS, THRESHOLD, IS_INIT);
-      await expect(contract.initialize(SIGNERS, THRESHOLD)).rejects.toThrow(
-        'Signer: contract already initialized',
-      );
     });
   });
 
@@ -381,7 +374,7 @@ describe('Signer', () => {
     });
   });
 
-  describe('custom setup flow when not initialized', () => {
+  describe('custom setup flow when not configured', () => {
     beforeEach(async () => {
       const isNotInit = false;
       contract = await SignerSimulator.create(SIGNERS, 0n, isNotInit);
@@ -422,7 +415,7 @@ describe('Signer', () => {
       );
     });
 
-    it('should expose working guards and views without initialize', async () => {
+    it('should expose working guards and views after custom setup', async () => {
       await contract._addSigner(SIGNER);
       await contract._addSigner(SIGNER2);
       await contract._changeThreshold(2n);

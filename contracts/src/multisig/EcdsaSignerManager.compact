@@ -13,14 +13,14 @@ pragma language_version >= 0.26.0;
  * The salt is per-deployment, so the same public key yields a different
  * commitment in every instance and cannot be correlated across contracts.
  *
- * Wraps `Signer<Bytes<32>>` for the registry and threshold. Consuming
- * contracts own the digest: they compute the message hash their signers
- * signed, then hand it to `assertApprovals` with the parallel public-key and
- * signature vectors.
+ * Wraps `Signer<Bytes<32>>` for the registry and threshold and configures it
+ * from `initialize`. Consuming contracts own the digest: they compute the
+ * message hash their signers signed, then hand it to `assertApprovals` with
+ * the parallel public-key and signature vectors.
  *
- * The module's ledger is not exported, so a contract importing it under a
- * prefix keeps the salt and the signer registry out of its generated
- * `ledger()` reader.
+ * @notice Consuming contracts must not import `Signer` alongside this module.
+ * A second import instantiates a separate registry that `assertApprovals`
+ * never reads.
  */
 module EcdsaSignerManager {
   import CompactStandardLibrary;
@@ -34,7 +34,7 @@ module EcdsaSignerManager {
    * initialization and never changed. The registered commitments must have been
    * derived under this same salt.
    */
-  ledger _instanceSalt: Bytes<32>;
+  export sealed ledger _instanceSalt: Bytes<32>;
 
   // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -63,11 +63,11 @@ module EcdsaSignerManager {
 
   /**
    * @description Stores the instance salt and registers the initial signer set.
-   * Call from the consuming contract's constructor only.
+   * Call from the consuming contract's constructor only. Writes the `sealed`
+   * salt, so it cannot be reached from an exported circuit.
    *
    * Requirements:
    *
-   * - Can only be called once.
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
    * - `threshold` must be non-zero and must not exceed `n`.
@@ -86,7 +86,11 @@ module EcdsaSignerManager {
   ): [] {
     _instanceSalt = disclose(instanceSalt);
     assert(threshold <= 2, "EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)");
-    Signer_initialize<n>(signerCommitments, threshold);
+
+    for (const commitment of signerCommitments) {
+      Signer__addSigner(commitment);
+    }
+    Signer__changeThreshold(threshold);
   }
 
   // ─── Commitments ────────────────────────────────────────────────────────────

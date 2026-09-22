@@ -174,18 +174,6 @@ describe('ShieldedMultiSigV2', () => {
       );
       expect(await multisig.isSigner(unknown)).toEqual(false);
     });
-
-    it('fails when initialized twice', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
-        INSTANCE_SALT,
-        SIGNER_COMMITMENTS,
-        2n,
-        true,
-      );
-      await expect(
-        multisig.initialize(INSTANCE_SALT, SIGNER_COMMITMENTS, 2n),
-      ).rejects.toThrow('Signer: contract already initialized');
-    });
   });
 
   describe('when initialized', () => {

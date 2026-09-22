@@ -37,30 +37,21 @@ pragma language_version >= 0.26.0;
  * _changeThreshold) have no access control enforcement. The consuming
  * contract must gate these behind its own authorization policy.
  *
- * Contracts may handle their own initialization and this module
- * supports custom flows. Thus, contracts may choose to not
- * call `initialize` in the contract's constructor. Contracts MUST NOT
- * call `initialize` outside of the constructor context because
- * this could corrupt the signer set and threshold configuration.
+ * The module has no `initialize`. The consuming contract, or a manager module
+ * wrapping this one, registers signers with `_addSigner` and sets the
+ * threshold with `_changeThreshold` / `_setThreshold`, either from the
+ * constructor or behind its own authorization policy. Leaving them ungated
+ * lets the first caller register their own signer set and take control of
+ * the contract.
  *
- * `_isInitialized` records only whether `initialize` has run; it gates
- * re-entry into `initialize` and nothing else. No other circuit consults it,
- * so a contract that configures signers through its own flow
- * (`_addSigner` / `_setThreshold`) is fully functional without ever calling
- * `initialize`. Provided it gates those circuits behind its own
- * authorization policy. Leaving them ungated lets the first caller register
- * their own signer set and take control of the contract.
- *
- * @notice Not asserting initialization on the guard and view circuits is a
- * deliberate divergence from the other modules in this library, which do.
- * Those modules gate a zero-valued identity (an owner, a role holder); this
- * one gates an empty collection, which rejects by absence. Safety here comes
- * from the state rather than from a flag: an empty registry makes `isSigner`
+ * @notice The guard and view circuits carry no "configured" flag, a
+ * deliberate divergence from the other modules in this library. Those gate a
+ * zero-valued identity (an owner, a role holder); this one gates an empty
+ * collection, which rejects by absence. An empty registry makes `isSigner`
  * false for every input, so `assertSigner` rejects every caller, and a zero
  * `_threshold` makes `assertThresholdMet` reject before it compares any
- * approval count regardless of how the threshold came to be zero. Contracts
- * needing a "configured" signal beyond that should track one at the contract
- * layer.
+ * approval count. Contracts needing a "configured" signal beyond that should
+ * track one at the contract layer.
  */
 module Signer<T> {
   import CompactStandardLibrary;
@@ -82,45 +73,6 @@ module Signer<T> {
    * rejected.
    */
   export ledger _threshold: Uint<8>;
-
-  /**
-   * @description Initialization flag, tracked per-module to avoid the compiler's
-   * shared transitive-dependency state bug (LFDT-Minokawa/compact#270). See the
-   * Initializable module for rationale.
-   */
-  export ledger _isInitialized: Boolean;
-
-  // ─── Initialization ─────────────────────────────────────────────────────────
-
-  /**
-   * @description Initializes the signer module with the given threshold
-   * and an initial set of signers.
-   * If used, it should only be called in the contract's constructor.
-   *
-   * Requirements:
-   *
-   * - If used, can only be called once (in the constructor).
-   * - `thresh` must not be zero.
-   * - `thresh` must not exceed the number of `signers`.
-   * - `signers` must not contain duplicates.
-   *
-   * @param {Vector<n, T>} signers - The initial signer set.
-   * @param {Uint<8>} thresh - The minimum number of approvals required.
-   * @returns {[]} Empty tuple.
-   */
-  export circuit initialize<#n>(
-    signers: Vector<n, T>,
-    thresh: Uint<8>
-  ): [] {
-    assertNotInitialized();
-    _isInitialized = true;
-
-    for (const signer of signers) {
-      _addSigner(signer);
-    }
-
-    _changeThreshold(thresh);
-  }
 
   // ─── Guards ─────────────────────────────────────────────────────────────
 
@@ -309,20 +261,5 @@ module Signer<T> {
   export circuit _setThreshold(newThreshold: Uint<8>): [] {
     assert(newThreshold != 0, "Signer: threshold must not be zero");
     _threshold = disclose(newThreshold);
-  }
-
-  // ─── Init guards ─────────────────────────────────────────────────────────
-
-  /**
-   * @description Asserts that the contract has not been initialized, throwing an error if it has.
-   *
-   * Requirements:
-   *
-   * - Contract must not be initialized.
-   *
-   * @return {[]} - Empty tuple.
-   */
-  circuit assertNotInitialized(): [] {
-    assert(!_isInitialized, "Signer: contract already initialized");
   }
 }

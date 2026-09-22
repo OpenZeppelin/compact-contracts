@@ -74,18 +74,6 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     ) as Promise<ShieldedMultiSigV2Simulator>;
   }
 
-  public initialize(
-    instanceSalt: Uint8Array,
-    signerCommitments: Uint8Array[],
-    thresh: bigint,
-  ): Promise<[]> {
-    return this.circuits.impure.initialize(
-      instanceSalt,
-      signerCommitments,
-      thresh,
-    );
-  }
-
   public static calculateSignerId(
     pk: Secp256k1Point,
     salt: Uint8Array,

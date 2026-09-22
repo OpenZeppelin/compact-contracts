@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Proposal.status` → `state: Uint<64>`, overlaying lifecycle and expiry
   - `_createProposal` / `createShieldedProposal` require `expiry`
   - `getProposalStatus` returns `Inactive` for unknown ids instead of failing
+- **Breaking:** Remove `Signer.initialize` and `_isInitialized`; the registry is configured through `_addSigner` / `_changeThreshold` / `_setThreshold` only. `EcdsaSignerManager_initialize` does that configuration itself instead of calling another module's `initialize`, and `_instanceSalt` is `export sealed`. Ledger slot indices change, so fresh deploys only. (#TBD)
 - **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
 
 ### Removed
