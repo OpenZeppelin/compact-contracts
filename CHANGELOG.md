@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known issues
 
 - Compiler 0.34.0 emits ZKIR v2 by default, and this release targets v2. Only `crypto/Ecdsa`, `multisig/EcdsaSignerManager` and the `ShieldedMultiSigV2` / `ShieldedMultiSigV3` presets need `--feature-zkir-v3`, because the `Secp256k1` types live in the v3 library; `compile:crypto` and `compile:multisig` pass it.
-- Under `--feature-zkir-v3`, any impure circuit that reaches `ElGamal.encryptPoint` (notably `ConfidentialFungibleToken`) fails at key generation with `Unsupported test_eq: JubjubScalar == JubjubScalar`, because the ZKIR v3 backend has no `JubjubScalar` equality ([LFDT-Minokawa/compact#757](https://github.com/LFDT-Minokawa/compact/issues/757)). A source-level fix, comparing the derived point instead of the scalar, lands in the next release.
+- Under `--feature-zkir-v3`, any impure circuit that reaches `ElGamal.encryptPoint` (notably `ConfidentialFungibleToken`) fails at key generation with `Unsupported test_eq: JubjubScalar == JubjubScalar`, because the ZKIR v3 backend has no `JubjubScalar` equality ([LFDT-Minokawa/compact#757](https://github.com/LFDT-Minokawa/compact/issues/757)). A source-level fix, comparing the derived point instead of the scalar, is planned for the next release.
 - Under `--feature-zkir-v3`, exporting `ElGamal.derivePk` as an impure circuit panics with `ZkStdLibArch must enable jubjub` ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)). There is no source workaround.
 - `@openzeppelin/compact-cli` `0.0.3` pins `@openzeppelin/compact-builder` to `0.0.4`, which reports a failed compile as success on Linux and writes no artifact. Bumped in Unreleased (#899).
 
