@@ -60,7 +60,7 @@
     "@midnight-ntwrk/midnight-js-protocol": "5.0.0-beta.8",
     "@midnight-ntwrk/midnight-js-types": "5.0.0-beta.8",
     "@midnight-ntwrk/testkit-js": "5.0.0-beta.8",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-beta.2",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
@@ -69,10 +69,10 @@
     "@types/node": "26.5.1",
     "@vitest/coverage-v8": "^5.0.0",
     "ethers": "^6.17.0",
-    "fast-check": "^4.9.0",
+    "fast-check": "^4.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.3.0",
     "vitest": "^5.0.0"
   }
 }
