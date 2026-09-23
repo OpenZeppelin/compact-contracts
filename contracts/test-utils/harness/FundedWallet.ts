@@ -7,6 +7,7 @@ import {
   syncWallet,
   waitForFunds,
 } from '@midnight-ntwrk/testkit-js';
+import { DustSecretKey, ZswapSecretKeys } from '@midnightntwrk/ledger-v9';
 import { MIN_WALLET_NIGHT, UNDEPLOYED_FEE_OVERHEAD } from './dust.js';
 import type { PooledWallet } from './WalletPool.js';
 
@@ -79,7 +80,8 @@ export class FundedWallet implements PooledWallet {
       logger,
       env,
       wallet,
-      seeds,
+      ZswapSecretKeys.fromSeed(seeds.shielded),
+      DustSecretKey.fromSeed(seeds.dust),
       keystore,
     );
 
