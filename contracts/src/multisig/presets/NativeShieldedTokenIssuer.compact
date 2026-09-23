@@ -80,13 +80,16 @@ pragma language_version >= 0.26.0;
  *   - Entry point: mint vs burn.
  *   - Approvers: the two signer commitments (`disclose(commitment)` in
  *     `Signer_assertSigner`), so WHICH two of the three signers approved.
- *   - Mint: `canonRecipient`, `amount` and the derived nonce, all disclosed
- *     to `mintShieldedToken`. The nonce is a function of public state, so
- *     anyone can recompute the coin commitment: the mint is recipient-public
- *     by design (see `NativeShieldedTokenDerivedNonce`).
- *   - Burn: the spent coin (`disclose(coin)` to `sendShielded`, `mt_index`
- *     included), `amount`, the nullifier, and the change coin
- *     (`disclose(sendRes.change)`).
+ *   - Mint: `amount` (the `shieldedMints` effect, keyed by the token domain)
+ *     and the coin commitment. The nonce derives from the public counter, so
+ *     a guessed coin-public-key recipient can be tested against the
+ *     commitment. A contract recipient is visible in
+ *     `ZswapOutput.contractAddress`; a mint to this contract also carries a
+ *     receive claim.
+ *   - Burn: the spent coin's nullifier and the burn and change commitments.
+ *     `amount` is not published. The contract holds only self-minted coins
+ *     and their burn change, so a burn is linkable to its mint; the amount
+ *     is hidden only by the commitments.
  * - Public, as state:
  *   - Cells: `_counter`, `_domainSeparator`, `_derivedNonceCounter`,
  *     `_signers`, `_signerCount`, `_threshold`, `_instanceSalt`, `_domain`,
@@ -96,16 +99,16 @@ pragma language_version >= 0.26.0;
  * - Private:
  *   - Signer material: public keys and signatures are verified in-circuit,
  *     never disclosed.
- *   - Operation data: nothing; recipient, amount and coin nonce are
- *     disclosed.
+ *   - Operation data: burn amounts and mint recipients, up to the
+ *     commitment-testing above. Mint amounts are public.
  * - Signer identity: keys sit behind `cm` with a public salt, so an observer
  *   holding a candidate key can test membership; one without cannot
  *   correlate a signer across deployments.
  * - Counterparty: a mint recipient learns nothing beyond the coin handed over
- *   out of band; every observer learns the recipient, amount and nonce of
- *   every mint.
- * - Auditability: mint and burn amounts are public, so supply is
- *   reconstructable from the transcripts. No on-chain total is kept.
+ *   out of band; every observer learns the amount of every mint and can
+ *   test a guessed recipient against the commitment.
+ * - Auditability: mint amounts are public, burn amounts are not. No
+ *   on-chain total is kept; compose `NativeShieldedTokenPublicSupply` for one.
  *
  * @notice Security:
  * - Digest binding: each struct binds its type hash, `self`, `opNonce` and
@@ -335,8 +338,8 @@ module NativeShieldedTokenIssuer {
    * @description Mints a new shielded coin of this contract's token to
    * `recipient`, authorized by threshold signatures.
    *
-   * The coin nonce comes from `NativeShieldedTokenDerivedNonce`, so the mint
-   * is recipient-public.
+   * The coin nonce comes from `NativeShieldedTokenDerivedNonce`, so anyone
+   * can test a guessed recipient against the coin commitment.
    *
    * @notice The returned coin info is the only copy available to the
    * recipient; deliver it out of band.
