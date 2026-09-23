@@ -16,6 +16,7 @@ export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
 import {
   _counter,
+  _domainSeparator,
   _derivedNonceCounter,
   _instanceSalt,
   _signers,
@@ -29,6 +30,7 @@ import {
 } from "../../NativeShieldedTokenIssuer";
 export {
   _counter,
+  _domainSeparator,
   _derivedNonceCounter,
   _instanceSalt,
   _signers,

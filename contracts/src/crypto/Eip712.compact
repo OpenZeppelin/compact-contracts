@@ -1,0 +1,168 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/Eip712.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Eip712
+ * @description The EIP-712 typed-data envelope, for verifying signatures
+ * produced by Ethereum signing infrastructure.
+ *
+ * A typed-data signature covers `keccak256(0x1901 || domainSeparator ||
+ * structHash)`. The domain separator binds the signature to one application,
+ * so a signature obtained for any other domain cannot be replayed here — the
+ * property `personal_sign` does not provide, since it signs an opaque hash
+ * with no application binding.
+ *
+ * Build `structHash` from EVM ABI words (see `utils/EvmAbi`), with the
+ * operation's type hash as the first word.
+ *
+ * @notice The domain is `(name, version, salt)`. `chainId` and
+ * `verifyingContract` are omitted, which EIP-712 permits — every domain field
+ * is optional. They are omitted because neither is expressible: a Midnight
+ * contract address is 32 bytes and does not fit `verifyingContract`'s
+ * `address` type, and no network identifier is available in-circuit.
+ *
+ * On an EVM chain `verifyingContract` is what makes a domain identify one
+ * deployment rather than one application. Without it, a consumer has to get
+ * that binding elsewhere. There are two places to put it, and they are not
+ * equivalent:
+ *
+ * - As a field of the operation struct, holding the contract's own address.
+ *   This is the stronger option and the one to reach for by default: a
+ *   Midnight address is randomised at deployment and cannot be predicted, so
+ *   no two instances share one, and a signature for one deployment cannot
+ *   authorise another.
+ * - As `salt`, a per-deployment value in the domain. This is weaker, because
+ *   it separates domains rather than messages. It is worth adding when the
+ *   signer gates on domains but cannot read struct fields, since that is the
+ *   only level at which it is visible.
+ *
+ * A consumer doing neither has one domain shared by every deployment of the
+ * contract, and nothing distinguishing them.
+ *
+ * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
+ */
+module Eip712 {
+  import CompactStandardLibrary;
+
+  /**
+   * @description The 66-byte typed-data preimage: the two-byte prefix, the
+   * domain separator, then the struct hash. `Bytes<n>` is emitted at exactly
+   * `n` bytes, so this hashes as the concatenation an EVM signer produces.
+   */
+  struct TypedDataPreimage {
+    prefixBytes: Bytes<2>,
+    domainSeparator: Bytes<32>,
+    structHash: Bytes<32>
+  }
+
+  /**
+   * @description The four words of the domain separator's preimage.
+   */
+  struct DomainFields {
+    typeHash: Bytes<32>,
+    hashedName: Bytes<32>,
+    hashedVersion: Bytes<32>,
+    salt: Bytes<32>
+  }
+
+  /**
+   * @description `0x1901`, the EIP-191 version byte `0x01` behind the `0x19`
+   * marker, which is how EIP-712 identifies itself.
+   *
+   * @dev Written as byte values because the bytes are not printable. The
+   * version byte is what keeps a typed-data digest from colliding with a
+   * `personal_sign` one (version `0x45`) or an intended-validator one (`0x00`).
+   *
+   * @returns {Bytes<2>} The typed-data prefix.
+   */
+  pure circuit TYPED_DATA_PREFIX(): Bytes<2> {
+    const raw: Vector<2, Uint<8>> = [25, 1];
+
+    return raw as Bytes<2>;
+  }
+
+  /**
+   * @description `keccak256("EIP712Domain(string name,string version,bytes32 salt)")`.
+   *
+   * @dev Written as a literal word. `compactc` emits a full keccak
+   * permutation even for a constant argument, so hashing the type string
+   * in-circuit would roughly double `domainSeparator`. The spec checks this
+   * word against the type string above.
+   *
+   * The string must match the domain's field set exactly: a difference of one
+   * character yields a different separator and every signature fails.
+   *
+   * @returns {Bytes<32>} The domain type hash.
+   */
+  pure circuit DOMAIN_TYPEHASH(): Bytes<32> {
+    // keccak256("EIP712Domain(string name,string version,bytes32 salt)")
+    // = 0x599a80fcaa47b95e2323ab4d34d34e0cc9feda4b843edafcc30c7bdf60ea15bf
+    const typeHash: Vector<32, Uint<8>> = [
+      0x59, 0x9a, 0x80, 0xfc, 0xaa, 0x47, 0xb9, 0x5e,
+      0x23, 0x23, 0xab, 0x4d, 0x34, 0xd3, 0x4e, 0x0c,
+      0xc9, 0xfe, 0xda, 0x4b, 0x84, 0x3e, 0xda, 0xfc,
+      0xc3, 0x0c, 0x7b, 0xdf, 0x60, 0xea, 0x15, 0xbf
+    ];
+
+    return typeHash as Bytes<32>;
+  }
+
+  /**
+   * @description Computes the domain separator for `(name, version, salt)`.
+   *
+   * EIP-712 encodes a `string` field as the keccak hash of its UTF-8 bytes,
+   * so the name and version arrive already hashed. Compact has no dynamic
+   * types, so a consumer hashes its own fixed-length literals.
+   *
+   * @constraints k=14, rows=4561 (zkir-v3)
+   *
+   * @param {Bytes<32>} hashedName - `keccak256(bytes(name))`.
+   * @param {Bytes<32>} hashedVersion - `keccak256(bytes(version))`.
+   * @param {Bytes<32>} salt - Per-deployment, per-network random value.
+   * @returns {Bytes<32>} The domain separator.
+   */
+  export pure circuit domainSeparator(
+    hashedName: Bytes<32>,
+    hashedVersion: Bytes<32>,
+    salt: Bytes<32>
+  ): Bytes<32> {
+    return keccak256<DomainFields>(DomainFields {
+      typeHash: DOMAIN_TYPEHASH(),
+      hashedName: hashedName,
+      hashedVersion: hashedVersion,
+      salt: salt
+    });
+  }
+
+  /**
+   * @description Wraps a struct hash in the typed-data envelope, yielding the
+   * digest an EVM signer actually signs.
+   *
+   * @constraints k=14, rows=4463 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `separator` must be non-zero, which an initialized domain always is.
+   *
+   * @param {Bytes<32>} separator - The domain separator, fixed at deployment.
+   * @param {Bytes<32>} structHash - `keccak256(typeHash || the operation's ABI words)`.
+   * @returns {Bytes<32>} The digest to verify signatures against.
+   */
+  export pure circuit hashTypedData(
+    separator: Bytes<32>,
+    structHash: Bytes<32>
+  ): Bytes<32> {
+    // A zero separator is what an uninitialized ledger cell reads as, and a
+    // digest built from one still verifies signatures. Fail closed rather than
+    // authorize an operation under an unset domain.
+    assert(separator != pad(32, ""), "Eip712: domain separator not set");
+
+    return keccak256<TypedDataPreimage>(TypedDataPreimage {
+      prefixBytes: TYPED_DATA_PREFIX(),
+      domainSeparator: separator,
+      structHash: structHash
+    });
+  }
+}

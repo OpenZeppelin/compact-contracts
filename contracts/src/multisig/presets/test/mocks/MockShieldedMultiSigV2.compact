@@ -14,6 +14,9 @@ import "../../ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
+import { _domainSeparator } from "../../ShieldedMultiSigV2";
+export { _domainSeparator };
+
 /**
  * @description `isInit` is a param for testing.
  *

@@ -24,6 +24,7 @@ export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 // modules declare.
 import {
   _counter,
+  _domainSeparator,
   _derivedNonceCounter,
   _instanceSalt,
   _signers,
@@ -37,6 +38,7 @@ import {
 } from "../presets/NativeShieldedTokenIssuer";
 export {
   _counter,
+  _domainSeparator,
   _derivedNonceCounter,
   _instanceSalt,
   _signers,

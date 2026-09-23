@@ -189,14 +189,15 @@ Compiling 14 circuits:
 Overall progress [====================] 14/14
 ```
 
-ZKIR v3: the library targets ZKIR v2, the compiler 0.34.0 default. Pass
-`--feature-zkir-v3` only when the contract imports the secp256k1-based modules
-(`crypto/Ecdsa`, `multisig/EcdsaSignerManager`,
-`multisig/presets/ShieldedMultiSigV2`,
-`multisig/presets/NativeShieldedTokenIssuer`), or when it imports a module
-that does, such as the `multisig/examples/` contracts. Compiling the other
-modules under v3 currently hits upstream blockers, listed under
-[Known issues](CHANGELOG.md#known-issues).
+ZKIR v3: the library targets ZKIR v2, the compiler 0.34.0 default.
+Pass `--feature-zkir-v3` only when the contract reaches a module that needs it:
+the secp256k1-based `crypto/Ecdsa` and `multisig/EcdsaSignerManager`,
+or the `keccak256`-based `crypto/Eip712`.
+`multisig/presets/ShieldedMultiSigV2`, `multisig/presets/NativeShieldedTokenIssuer`
+and the `multisig/examples/` contracts reach both.
+`utils/EvmAbi` needs no `keccak256` of its own and compiles on either backend.
+Compiling the other modules under v3 currently hits upstream blockers,
+listed under [Known issues](CHANGELOG.md#known-issues).
 
 ## Development
 

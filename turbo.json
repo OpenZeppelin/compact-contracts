@@ -44,7 +44,7 @@
       "outputs": ["artifacts/**/"]
     },
     "compile:multisig": {
-      "dependsOn": ["^build", "compile:utils"],
+      "dependsOn": ["^build", "compile:utils", "compile:crypto"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/multisig/**/*.compact"],
       "outputLogs": "new-only",

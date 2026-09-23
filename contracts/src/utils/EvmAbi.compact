@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (utils/EvmAbi.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module EvmAbi
+ * @description Ethereum ABI word encoding, for messages that must hash
+ * identically in Compact and on the EVM.
+ *
+ * A contract verifying signatures produced by EVM signing infrastructure has
+ * to hash the exact bytes the signer hashed. `keccak256<T>(value)` hashes
+ * Compact's binary representation of `T`, which coincides with
+ * `abi.encode` for some types and diverges for others:
+ *
+ * - `Bytes<n>` is emitted as exactly `n` bytes. So `Bytes<32>` already *is* an
+ *   EVM ABI word, and `keccak256<Vector<n, Bytes<32>>>(words)` is byte-identical
+ *   to Solidity's `keccak256(abi.encode(word0, ..., wordN))`. Narrower types
+ *   are emitted at their own width rather than padded to 32, which is what
+ *   makes `abi.encodePacked`-style layouts expressible too.
+ * - Integers cast with `as Bytes<n>` are emitted **little-endian**, and a
+ *   `Uint<64>` occupies 8 bytes rather than a full word. `abi.encode(uint256)`
+ *   is a big-endian 32-byte word, so an integer cast directly into a message
+ *   will not match what an EVM signer produced.
+ * - `Boolean` is emitted as a single byte, where `abi.encode(bool)` is a full
+ *   word holding 0 or 1 in its least significant byte.
+ *
+ * This module supplies the conversions that diverge, so a message can be
+ * assembled as a `Vector<n, Bytes<32>>` of EVM ABI words and hashed with
+ * `keccak256` to reproduce an EVM digest exactly.
+ *
+ * @notice These are encoding primitives only. The choice of signing envelope
+ * (a raw digest, EIP-191, or EIP-712 typed data) belongs to the contract that
+ * owns the message.
+ *
+ * @notice The module itself needs no `keccak256`, so it compiles on either
+ * ZKIR backend and `compile:utils` can keep emitting v2. Every `@constraints`
+ * below is a v3 figure, and tagged as such.
+ */
+module EvmAbi {
+  import CompactStandardLibrary;
+
+  /**
+   * @description Encodes a `Uint<8>` as an `abi.encode(uint8)` word: the
+   * value in the least significant byte, zero elsewhere.
+   *
+   * @dev No reversal or decomposition is needed -- a `Uint<8>` is already a
+   * single byte so this is the cheapest of the integer encoders. It is
+   * also how a Compact `enum` should reach a digest, matching Solidity,
+   * where an enum ABI-encodes as its `uint8` ordinal: `uint8Word(kind as Uint<8>)`.
+   *
+   * @constraints k=6, rows=55 (zkir-v3)
+   *
+   * @param {Uint<8>} value - The value to encode.
+   * @returns {Bytes<32>} The value as an EVM ABI word.
+   */
+  export pure circuit uint8Word(value: Uint<8>): Bytes<32> {
+    const word: Vector<32, Uint<8>> = [
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, value
+    ];
+
+    return word as Bytes<32>;
+  }
+
+  /**
+   * @description Encodes a `Uint<64>` as an `abi.encode(uint256)` word: the
+   * value big-endian in the low 8 bytes, zero-padded on the left.
+   *
+   * @dev The `Uint<64> as Bytes<8>` cast yields the value little-endian, so
+   * the bytes are reversed into place. Only 8 bytes are decomposed rather
+   * than 32; the wider cast costs roughly four times as many constraints for
+   * an identical result.
+   *
+   * @constraints k=11, rows=1348 (zkir-v3)
+   *
+   * @param {Uint<64>} value - The value to encode.
+   * @returns {Bytes<32>} The value as a big-endian EVM ABI word.
+   */
+  export pure circuit uint64Word(value: Uint<64>): Bytes<32> {
+    const le = (value as Bytes<8>) as Vector<8, Uint<8>>;
+
+    const word: Vector<32, Uint<8>> = [
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      le[7], le[6], le[5], le[4], le[3], le[2], le[1], le[0]
+    ];
+
+    return word as Bytes<32>;
+  }
+
+  /**
+   * @description Encodes a `Uint<128>` as an `abi.encode(uint256)` word: the
+   * value big-endian in the low 16 bytes, zero-padded on the left.
+   *
+   * @dev Decomposes 16 bytes rather than 32, for the reason given on
+   * `uint64Word`. Costs roughly twice `uint64Word`, so prefer the narrower
+   * encoder when the value genuinely fits in 64 bits. The width here is
+   * the value's, not the word's.
+   *
+   * @constraints k=12, rows=2503 (zkir-v3)
+   *
+   * @param {Uint<128>} value - The value to encode.
+   * @returns {Bytes<32>} The value as a big-endian EVM ABI word.
+   */
+  export pure circuit uint128Word(value: Uint<128>): Bytes<32> {
+    const le = (value as Bytes<16>) as Vector<16, Uint<8>>;
+
+    const word: Vector<32, Uint<8>> = [
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      le[15], le[14], le[13], le[12], le[11], le[10], le[9], le[8],
+      le[7], le[6], le[5], le[4], le[3], le[2], le[1], le[0]
+    ];
+
+    return word as Bytes<32>;
+  }
+
+  /**
+   * @description Encodes a `Boolean` as an `abi.encode(bool)` word: zero
+   * everywhere except the least significant byte, which is 1 for true.
+   *
+   * @constraints k=6, rows=54 (zkir-v3)
+   *
+   * @param {Boolean} value - The value to encode.
+   * @returns {Bytes<32>} The value as an EVM ABI word.
+   */
+  export pure circuit boolWord(value: Boolean): Bytes<32> {
+    return uint8Word(value ? 1 as Uint<8> : 0 as Uint<8>);
+  }
+}

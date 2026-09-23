@@ -19,6 +19,11 @@ import "../presets/ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
+// Surface the preset's domain separator unprefixed so `ledger()` readers see
+// the key name the preset published.
+import { _domainSeparator } from "../presets/ShieldedMultiSigV2";
+export { _domainSeparator };
+
 /**
  * @description Deploys the wallet with 3 signer commitments and a threshold.
  *

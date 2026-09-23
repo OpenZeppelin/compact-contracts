@@ -106,6 +106,7 @@ describe('ShieldedMultiSigV2Example', () => {
         contractAddress: Uint8Array.from(
           Buffer.from(example.contractAddress, 'hex'),
         ),
+        instanceSalt: INSTANCE_SALT,
         nonce: await c.getNonce(),
         to,
         coinColor: coin.color,

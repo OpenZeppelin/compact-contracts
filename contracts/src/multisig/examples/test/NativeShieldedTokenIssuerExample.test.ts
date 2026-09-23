@@ -1,4 +1,5 @@
 import { createSimulator } from '@openzeppelin/compact-simulator';
+import { TypedDataEncoder } from 'ethers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { sign, signerFromLabel } from '#test-utils/fixtures/ecdsa.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
@@ -7,7 +8,7 @@ import {
   ledger,
 } from '../../../../artifacts/NativeShieldedTokenIssuerExample/contract/index.js';
 import { calculateSignerId } from '../../presets/test/simulators/NativeShieldedTokenIssuerSimulator.js';
-import { mintMsgHash } from '../../test/EcdsaTestUtils.js';
+import { bytesOf, hexOf, mintMsgHash } from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -86,6 +87,15 @@ describe('NativeShieldedTokenIssuerExample', () => {
   it('surfaces the preset state in ledger()', async () => {
     const state = await ex.getPublicState();
     expect(state._counter).toStrictEqual(0n);
+    expect(state._domainSeparator).toStrictEqual(
+      bytesOf(
+        TypedDataEncoder.hashDomain({
+          name: 'NativeShieldedTokenIssuer',
+          version: '1',
+          salt: hexOf(INSTANCE_SALT),
+        }),
+      ),
+    );
     expect(state._derivedNonceCounter).toStrictEqual(0n);
     expect(state._instanceSalt).toStrictEqual(INSTANCE_SALT);
     expect(state._signerCount).toStrictEqual(3n);
@@ -106,6 +116,7 @@ describe('NativeShieldedTokenIssuerExample', () => {
     const addr = Uint8Array.from(Buffer.from(ex.contractAddress, 'hex'));
     const digest = mintMsgHash({
       contractAddress: addr,
+      instanceSalt: INSTANCE_SALT,
       recipient,
       opNonce: await c.getNonce(),
       amount: 100n,

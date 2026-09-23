@@ -1,4 +1,7 @@
+import { convertBigintToBytes } from '@midnight-ntwrk/compact-runtime';
+import { keccak_256 } from '@noble/hashes/sha3.js';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
+import { id, TypedDataEncoder } from 'ethers';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import {
@@ -15,7 +18,10 @@ import type {
 } from '../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
 import {
   burnMsgHash,
+  bytesOf,
   type EitherRecipient,
+  executeMsgHash,
+  hexOf,
   mintMsgHash,
 } from '../../test/EcdsaTestUtils.js';
 import {
@@ -71,6 +77,7 @@ async function mintDigest(
 ): Promise<Uint8Array> {
   return mintMsgHash({
     contractAddress: addrBytes(m),
+    instanceSalt: INSTANCE_SALT,
     recipient,
     opNonce: await m.getNonce(),
     amount,
@@ -84,6 +91,7 @@ async function burnDigest(
 ): Promise<Uint8Array> {
   return burnMsgHash({
     contractAddress: addrBytes(m),
+    instanceSalt: INSTANCE_SALT,
     opNonce: await m.getNonce(),
     amount,
   });
@@ -149,6 +157,26 @@ const freshMultisig = () =>
 
 describe('NativeShieldedTokenIssuer', () => {
   describe('constructor', () => {
+    // The constructor derives the domain separator from hand-counted string
+    // literals (`pad(25, "…")`). A miscount there fails every signature with
+    // "invalid signature", which points at the signature rather than at the
+    // length. Asserting the deployed separator against ethers localises it.
+    it('should derive a domain separator matching ethers', async () => {
+      multisig = await freshMultisig();
+
+      expect(
+        Buffer.from(
+          (await multisig.getPublicState())._domainSeparator,
+        ).toString('hex'),
+      ).toEqual(
+        TypedDataEncoder.hashDomain({
+          name: 'NativeShieldedTokenIssuer',
+          version: '1',
+          salt: `0x${Buffer.from(INSTANCE_SALT).toString('hex')}`,
+        }).slice(2),
+      );
+    });
+
     it('should initialize', async () => {
       multisig = await freshMultisig();
       expect(await multisig.getSignerCount()).toEqual(3n);
@@ -196,6 +224,15 @@ describe('NativeShieldedTokenIssuer', () => {
       multisig = await freshMultisig();
       const state = await multisig.getPublicState();
       expect(state._counter).toStrictEqual(0n);
+      expect(state._domainSeparator).toStrictEqual(
+        bytesOf(
+          TypedDataEncoder.hashDomain({
+            name: 'NativeShieldedTokenIssuer',
+            version: '1',
+            salt: hexOf(INSTANCE_SALT),
+          }),
+        ),
+      );
       expect(state._derivedNonceCounter).toStrictEqual(0n);
       expect(state._instanceSalt).toStrictEqual(INSTANCE_SALT);
       expect(state._signerCount).toStrictEqual(3n);
@@ -373,6 +410,263 @@ describe('NativeShieldedTokenIssuer', () => {
         ).rejects.toThrow('Multisig: invalid signature');
       });
 
+      describe('parameter binding', () => {
+        it('should reject a signature bound to a different amount', async () => {
+          const digest = await mintDigest(multisig, USER_RECIPIENT, 999n);
+
+          await expect(
+            multisig.mint(
+              100n,
+              USER_RECIPIENT,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a signature bound to a different recipient', async () => {
+          // `shieldedTestKey()` is deterministic, so a second call would return
+          // the same key and the digests would match
+          const other = utils.eitherUserFromCoinPublicKey(
+            utils.toHexPadded('OTHER_RECIPIENT'),
+          );
+          const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+
+          await expect(
+            multisig.mint(
+              100n,
+              other,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a signature over a different recipient kind', async () => {
+          const address = new Uint8Array(32).fill(7);
+          const zero = new Uint8Array(32);
+          const asUser: EitherRecipient = {
+            is_left: true,
+            left: { bytes: address },
+            right: { bytes: zero },
+          };
+          const asContract: EitherRecipient = {
+            is_left: false,
+            left: { bytes: zero },
+            right: { bytes: address },
+          };
+          // Signed for a shielded user; submitted for a contract at the same
+          // address bytes.
+          const digest = await mintDigest(multisig, asUser, 100n);
+
+          await expect(
+            multisig.mint(
+              100n,
+              asContract,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a burn signature replayed as a mint', async () => {
+          const digest = await burnDigest(multisig, 100n);
+
+          await expect(
+            multisig.mint(
+              100n,
+              USER_RECIPIENT,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a mint signature replayed as a burn', async () => {
+          const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+          const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
+
+          await expect(
+            multisig.burn(
+              coin,
+              100n,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+      });
+
+      // Each of these signs a digest that differs from the contract's only in
+      // the encoding decision named, so a passing mint would mean that
+      // decision had silently changed. The wrong digests are built with
+      // ethers, not with this repo's encoders.
+      describe('encoding scheme', () => {
+        const MINT_TYPES = {
+          Mint: [
+            { name: 'contractAddress', type: 'bytes32' },
+            { name: 'recipient', type: 'bytes32' },
+            { name: 'isContract', type: 'bool' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'amount', type: 'uint256' },
+          ],
+        };
+
+        const mintValue = (
+          m: NativeShieldedTokenIssuerSimulator,
+          nonce: bigint,
+        ) => ({
+          contractAddress: hexOf(addrBytes(m)),
+          recipient: hexOf(USER_RECIPIENT.left.bytes),
+          isContract: false,
+          nonce,
+          amount: 100n,
+        });
+
+        const ourDomain = {
+          name: 'NativeShieldedTokenIssuer',
+          version: '1',
+          salt: hexOf(INSTANCE_SALT),
+        };
+
+        const mintWith = async (digest: Uint8Array) =>
+          multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          );
+
+        it('should use the type hashes ethers derives', () => {
+          const BURN_TYPES = {
+            Burn: [
+              { name: 'contractAddress', type: 'bytes32' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'amount', type: 'uint256' },
+            ],
+          };
+
+          // `id` is keccak256 over the UTF-8 bytes, which is how EIP-712
+          // defines a type hash.
+          expect(
+            id(TypedDataEncoder.from(MINT_TYPES).encodeType('Mint')),
+          ).toEqual(
+            '0x28d4c840bc95fe084ea5e3209443ba6721b7170971ee05efaf0a9851ee5fd1f5',
+          );
+          expect(
+            id(TypedDataEncoder.from(BURN_TYPES).encodeType('Burn')),
+          ).toEqual(
+            '0xdf62d67d390806a6b63fbd9fb5b8904ef86a4d67f3824a3d855f6eefb8e79809',
+          );
+        });
+
+        // Without the 0x1901 envelope the struct hash is not a typed-data
+        // digest, so signing it must not authorize anything.
+        it('should reject a signature over the bare struct hash', async () => {
+          const structHash = bytesOf(
+            TypedDataEncoder.hashStruct(
+              'Mint',
+              MINT_TYPES,
+              mintValue(multisig, await multisig.getNonce()),
+            ),
+          );
+
+          await expect(mintWith(structHash)).rejects.toThrow(
+            'Multisig: invalid signature',
+          );
+        });
+
+        // The property EIP-712 is here for: a signature obtained under any
+        // other application's domain cannot be replayed against this one.
+        it('should reject a digest built under a different domain', async () => {
+          const digest = bytesOf(
+            TypedDataEncoder.hash(
+              { ...ourDomain, name: 'SomeOtherApp' },
+              MINT_TYPES,
+              mintValue(multisig, await multisig.getNonce()),
+            ),
+          );
+
+          await expect(mintWith(digest)).rejects.toThrow(
+            'Multisig: invalid signature',
+          );
+        });
+
+        // The salt is the only per-deployment and per-network separator the
+        // domain carries, so a digest under a different salt must not verify.
+        it('should reject a digest built under a different salt', async () => {
+          const digest = bytesOf(
+            TypedDataEncoder.hash(
+              { ...ourDomain, salt: hexOf(new Uint8Array(32).fill(0xee)) },
+              MINT_TYPES,
+              mintValue(multisig, await multisig.getNonce()),
+            ),
+          );
+
+          await expect(mintWith(digest)).rejects.toThrow(
+            'Multisig: invalid signature',
+          );
+        });
+
+        // The type hash is the struct's first word, so renaming a field --
+        // which leaves every value identical -- must change the digest.
+        it('should reject a digest whose type hash differs', async () => {
+          const renamed = {
+            Mint: MINT_TYPES.Mint.map((f) =>
+              f.name === 'amount' ? { ...f, name: 'value' } : f,
+            ),
+          };
+          const v = mintValue(multisig, await multisig.getNonce());
+          const { amount, ...rest } = v;
+          const digest = bytesOf(
+            TypedDataEncoder.hash(ourDomain, renamed, {
+              ...rest,
+              value: amount,
+            }),
+          );
+
+          await expect(mintWith(digest)).rejects.toThrow(
+            'Multisig: invalid signature',
+          );
+        });
+
+        // The defect `utils/EvmAbi` exists to prevent: Compact's native
+        // integer cast is little-endian, which no EVM signer produces. Built
+        // by hand because no correct implementation will produce it.
+        it('should reject a signature over little-endian encoded integers', async () => {
+          const nonce = await multisig.getNonce();
+          const le = (v: bigint) => convertBigintToBytes(32, v, 'V3.test');
+          const typeHash = bytesOf(
+            id(TypedDataEncoder.from(MINT_TYPES).encodeType('Mint')),
+          );
+          const boolWord = new Uint8Array(32);
+
+          const structHash = keccak_256(
+            Buffer.concat(
+              [
+                typeHash,
+                addrBytes(multisig),
+                USER_RECIPIENT.left.bytes,
+                boolWord,
+                le(nonce),
+                le(100n),
+              ].map(Buffer.from),
+            ),
+          );
+          const digest = keccak_256(
+            Buffer.concat([
+              Buffer.from([0x19, 0x01]),
+              Buffer.from(bytesOf(TypedDataEncoder.hashDomain(ourDomain))),
+              Buffer.from(structHash),
+            ]),
+          );
+
+          await expect(mintWith(digest)).rejects.toThrow(
+            'Multisig: invalid signature',
+          );
+        });
+      });
+
       it('should reject a high-s signature', async () => {
         const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
         // The twin verifies under plain ECDSA, so only the low-s gate can
@@ -527,6 +821,19 @@ describe('NativeShieldedTokenIssuer', () => {
         ).rejects.toThrow('Multisig: invalid signature');
       });
 
+      it('should reject a signature bound to a different amount', async () => {
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, 50n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
       it('should reject wrong token color', async () => {
         const wrongColor = new Uint8Array(32).fill(0xde);
         const coin = makeQualifiedCoin(wrongColor, 100n);
@@ -620,11 +927,65 @@ describe('NativeShieldedTokenIssuer', () => {
       });
     });
 
+    describe('uninitialized', () => {
+      it('cannot mint, and holds a zero domain separator', async () => {
+        const uninit = await NativeShieldedTokenIssuerSimulator.create(
+          INSTANCE_SALT,
+          TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
+          SIGNER_COMMITMENTS,
+          false,
+        );
+
+        expect(
+          Buffer.from((await uninit.getPublicState())._domainSeparator).every(
+            (b) => b === 0,
+          ),
+        ).toEqual(true);
+
+        const digest = await mintDigest(uninit, USER_RECIPIENT, 100n);
+        await expect(
+          uninit.mint(
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Eip712: domain separator not set');
+      });
+    });
+
+    describe('cross-preset replay', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
+      it('should reject a ShieldedMultiSigV2 execute signature', async () => {
+        const digest = executeMsgHash({
+          contractAddress: addrBytes(multisig),
+          instanceSalt: INSTANCE_SALT,
+          nonce: await multisig.getNonce(),
+          to: { kind: 0, address: USER_RECIPIENT.left.bytes },
+          coinColor: await multisig.tokenColor(),
+          amount: 100n,
+        });
+
+        await expect(
+          multisig.mint(
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+    });
+
     describe('cross-instance replay', () => {
-      // The second instance needs a distinct deployed address so its message
-      // hash, which commits to `kernel.self()`, differs from the first's. Dry
-      // only: live deploys already differ, and live `create()` refuses an
-      // address other than the one actually deployed.
+      // A distinct deployed address for the second instance,
+      // so its digest differs
       const OTHER_ADDRESS = '11'.repeat(32);
 
       it('should reject a signature bound to another instance', async () => {
@@ -649,6 +1010,34 @@ describe('NativeShieldedTokenIssuer', () => {
 
         await expect(
           instance2.mint(100n, USER_RECIPIENT, pubkeys, sigs),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a burn signature bound to another instance', async () => {
+        const instance1 = await freshMultisig();
+        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+          INSTANCE_SALT,
+          TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
+          SIGNER_COMMITMENTS,
+          true,
+          isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
+        );
+
+        // Same salt, same nonce, same amount: the two digests differ only in
+        // the `contractAddress` word.
+        const digest = await burnDigest(instance1, 100n);
+        const coin = makeQualifiedCoin(await instance2.tokenColor(), 100n);
+
+        await expect(
+          instance2.burn(
+            coin,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
         ).rejects.toThrow('Multisig: invalid signature');
       });
     });

@@ -1,42 +1,42 @@
 /**
  * Reconstructs, byte-for-byte, the message digest each multisig circuit hashes
- * and verifies. This mirrors what a real operator must do off-chain: it reuses
- * the runtime's own `persistentHash` / `convertBigintToBytes` primitives with
- * `CompactType`s built identically to the generated artifact, so the digest
- * matches the in-circuit computation.
+ * and verifies. This mirrors what a real operator must do off-chain.
+ *
+ * The reconstruction goes through ethers' `TypedDataEncoder` rather than a
+ * hand-rolled implementation, so these specs check the circuits against an
+ * EIP-712 implementation written by neither this repository nor this file. A
+ * disagreement means the contract does not match what an EVM signer produces,
+ * rather than merely that two of our own encoders drifted apart.
  *
  * Key and signature fixtures live in `#test-utils/fixtures/ecdsa.js`.
  */
-import {
-  type CompactType,
-  CompactTypeBoolean,
-  CompactTypeBytes,
-  CompactTypeEnum,
-  CompactTypeVector,
-  convertBigintToBytes,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
+import { TypedDataEncoder } from 'ethers';
 
-// ─── Digest reconstruction ──────────────────────────────────────
+// ─── Domain ─────────────────────────────────────────────────────
 
-const B32 = new CompactTypeBytes(32);
+/** `Uint8Array` -> `0x`-prefixed hex, the form ethers' encoders take. */
+export const hexOf = (bytes: Uint8Array): string =>
+  `0x${Buffer.from(bytes).toString('hex')}`;
 
-const vecType = (n: number): CompactType<Uint8Array[]> =>
-  new CompactTypeVector(n, B32);
+/** The inverse: `0x`-prefixed hex -> `Uint8Array`. */
+export const bytesOf = (hex: string): Uint8Array =>
+  Uint8Array.from(Buffer.from(hex.slice(2), 'hex'));
 
-/** `pad(32, s)`: ASCII bytes of `s`, right-padded with zeros to 32 bytes. */
-export function domainBytes(s: string): Uint8Array {
-  const out = new Uint8Array(32);
-  out.set(new TextEncoder().encode(s));
-  return out;
-}
+/**
+ * The domain each preset fixes at deployment. `chainId` and
+ * `verifyingContract` are absent: no network id is available in-circuit, and a
+ * 32-byte Midnight address does not fit `verifyingContract`'s `address` type.
+ * The contract's own address is bound inside every operation struct instead,
+ * which is what separates deployments -- addresses carry per-deployment
+ * randomness and cannot be predicted.
+ */
+const domain = (name: string, instanceSalt: Uint8Array) => ({
+  name,
+  version: '1',
+  salt: hexOf(instanceSalt),
+});
 
-const u256 = (value: bigint): Uint8Array =>
-  convertBigintToBytes(32, value, 'EcdsaTestUtils');
-
-/** `persistentHash<Vector<n, Bytes<32>>>(items)`. */
-const persistentVec = (items: Uint8Array[]): Uint8Array =>
-  persistentHash(vecType(items.length), items);
+// ─── Recipients ─────────────────────────────────────────────────
 
 /** An `Either<ZswapCoinPublicKey, ContractAddress>` as the artifact encodes it. */
 export interface EitherRecipient {
@@ -45,98 +45,109 @@ export interface EitherRecipient {
   right: { bytes: Uint8Array };
 }
 
-// Mirrors the generated `_Either_0` descriptor: bool ‖ left.bytes ‖ right.bytes.
-const EitherType: CompactType<EitherRecipient> = {
-  alignment: () =>
-    CompactTypeBoolean.alignment()
-      .concat(B32.alignment())
-      .concat(B32.alignment()),
-  fromValue: (value) => ({
-    is_left: CompactTypeBoolean.fromValue(value),
-    left: { bytes: B32.fromValue(value) },
-    right: { bytes: B32.fromValue(value) },
-  }),
-  toValue: (value) =>
-    CompactTypeBoolean.toValue(value.is_left)
-      .concat(B32.toValue(value.left.bytes))
-      .concat(B32.toValue(value.right.bytes)),
-};
-
-// Matches `Utils_canonicalize`: zero out the unused arm.
-const canonicalize = (r: EitherRecipient): EitherRecipient =>
-  r.is_left
-    ? { is_left: true, left: r.left, right: { bytes: new Uint8Array(32) } }
-    : { is_left: false, left: { bytes: new Uint8Array(32) }, right: r.right };
-
-/** The mint's `recipientHash`. */
-export function recipientHash(recipient: EitherRecipient): Uint8Array {
-  return persistentHash(EitherType, canonicalize(recipient));
-}
-
-// ─── Per-preset message hashes ──────────────────────────────────
-
-/** NativeShieldedTokenIssuer `mint` digest. `contractAddress` is `kernel.self().bytes`. */
-export function mintMsgHash(params: {
-  contractAddress: Uint8Array;
-  recipient: EitherRecipient;
-  opNonce: bigint;
-  amount: bigint;
-}): Uint8Array {
-  return persistentVec([
-    domainBytes('NativeShieldedTokenIssuer:mint:'),
-    params.contractAddress,
-    recipientHash(params.recipient),
-    u256(params.opNonce),
-    u256(params.amount),
-  ]);
-}
-
-/** NativeShieldedTokenIssuer `burn` digest. */
-export function burnMsgHash(params: {
-  contractAddress: Uint8Array;
-  opNonce: bigint;
-  amount: bigint;
-}): Uint8Array {
-  return persistentVec([
-    domainBytes('NativeShieldedTokenIssuer:burn:'),
-    params.contractAddress,
-    u256(params.opNonce),
-    u256(params.amount),
-  ]);
-}
-
 /** A `Proposal_Recipient` as the artifact encodes it: kind enum + address. */
 export interface KindRecipient {
   kind: number;
   address: Uint8Array;
 }
 
-// Mirrors the generated `_Recipient_0` descriptor: CompactTypeEnum(2, 1) ‖ Bytes<32>.
-const RecipientKindEnum = new CompactTypeEnum(2, 1);
-const RecipientType: CompactType<KindRecipient> = {
-  alignment: () => RecipientKindEnum.alignment().concat(B32.alignment()),
-  fromValue: (value) => ({
-    kind: RecipientKindEnum.fromValue(value),
-    address: B32.fromValue(value),
-  }),
-  toValue: (value) =>
-    RecipientKindEnum.toValue(value.kind).concat(B32.toValue(value.address)),
+// ─── Per-preset message hashes ──────────────────────────────────
+
+const MINT_TYPES = {
+  Mint: [
+    { name: 'contractAddress', type: 'bytes32' },
+    { name: 'recipient', type: 'bytes32' },
+    { name: 'isContract', type: 'bool' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'amount', type: 'uint256' },
+  ],
 };
+
+const BURN_TYPES = {
+  Burn: [
+    { name: 'contractAddress', type: 'bytes32' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'amount', type: 'uint256' },
+  ],
+};
+
+const EXECUTE_TYPES = {
+  Execute: [
+    { name: 'contractAddress', type: 'bytes32' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'recipientKind', type: 'uint8' },
+    { name: 'recipient', type: 'bytes32' },
+    { name: 'coinColor', type: 'bytes32' },
+    { name: 'amount', type: 'uint256' },
+  ],
+};
+
+/** NativeShieldedTokenIssuer `mint` digest. `contractAddress` is `kernel.self().bytes`. */
+export function mintMsgHash(params: {
+  contractAddress: Uint8Array;
+  instanceSalt: Uint8Array;
+  recipient: EitherRecipient;
+  opNonce: bigint;
+  amount: bigint;
+}): Uint8Array {
+  const r = params.recipient;
+  return bytesOf(
+    TypedDataEncoder.hash(
+      domain('NativeShieldedTokenIssuer', params.instanceSalt),
+      MINT_TYPES,
+      {
+        contractAddress: hexOf(params.contractAddress),
+        // Only the active arm reaches the digest, matching the circuit.
+        recipient: hexOf(r.is_left ? r.left.bytes : r.right.bytes),
+        isContract: !r.is_left,
+        nonce: params.opNonce,
+        amount: params.amount,
+      },
+    ),
+  );
+}
+
+/** NativeShieldedTokenIssuer `burn` digest. */
+export function burnMsgHash(params: {
+  contractAddress: Uint8Array;
+  instanceSalt: Uint8Array;
+  opNonce: bigint;
+  amount: bigint;
+}): Uint8Array {
+  return bytesOf(
+    TypedDataEncoder.hash(
+      domain('NativeShieldedTokenIssuer', params.instanceSalt),
+      BURN_TYPES,
+      {
+        contractAddress: hexOf(params.contractAddress),
+        nonce: params.opNonce,
+        amount: params.amount,
+      },
+    ),
+  );
+}
 
 /** ShieldedMultiSigV2 `execute` digest. `contractAddress` is `kernel.self().bytes`. */
 export function executeMsgHash(params: {
   contractAddress: Uint8Array;
+  instanceSalt: Uint8Array;
   nonce: bigint;
   to: KindRecipient;
   coinColor: Uint8Array;
   amount: bigint;
 }): Uint8Array {
-  return persistentVec([
-    domainBytes('multisig:execute:'),
-    params.contractAddress,
-    u256(params.nonce),
-    persistentHash(RecipientType, params.to),
-    params.coinColor,
-    u256(params.amount),
-  ]);
+  return bytesOf(
+    TypedDataEncoder.hash(
+      domain('ShieldedMultiSigV2', params.instanceSalt),
+      EXECUTE_TYPES,
+      {
+        contractAddress: hexOf(params.contractAddress),
+        nonce: params.nonce,
+        recipientKind: params.to.kind,
+        recipient: hexOf(params.to.address),
+        coinColor: hexOf(params.coinColor),
+        amount: params.amount,
+      },
+    ),
+  );
 }
