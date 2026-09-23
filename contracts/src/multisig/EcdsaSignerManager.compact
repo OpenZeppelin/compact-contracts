@@ -27,6 +27,12 @@ module EcdsaSignerManager {
   import "../crypto/Ecdsa" prefix Ecdsa_;
   import "./Signer"<Bytes<32>> prefix Signer_;
 
+  // Named import/re-export of the registry state only, so a consuming
+  // contract's ledger keys read as `_signers` rather than `Signer__signers`.
+  // The circuits stay behind the `Signer_` prefix.
+  import { _signers, _signerCount, _threshold } from "./Signer"<Bytes<32>>;
+  export { _signers, _signerCount, _threshold };
+
   // ─── State ──────────────────────────────────────────────────────────────────
 
   /**
