@@ -83,6 +83,23 @@ describe('NativeShieldedTokenIssuerExample', () => {
     expect(await c.getThreshold()).toEqual(2n);
   });
 
+  it('surfaces the preset state in ledger()', async () => {
+    const state = await ex.getPublicState();
+    expect(state._counter).toStrictEqual(0n);
+    expect(state._derivedNonceCounter).toStrictEqual(0n);
+    expect(state._instanceSalt).toStrictEqual(INSTANCE_SALT);
+    expect(state._signerCount).toStrictEqual(3n);
+    expect(state._threshold).toStrictEqual(2n);
+    for (const commitment of COMMITMENTS) {
+      expect(state._signers.member(commitment)).toStrictEqual(true);
+    }
+    expect(state._domain).toStrictEqual(TOKEN_DOMAIN);
+    expect(state._name).toStrictEqual(TOKEN_NAME);
+    expect(state._symbol).toStrictEqual(TOKEN_SYMBOL);
+    expect(state._decimals).toStrictEqual(TOKEN_DECIMALS);
+    expect(state._isInitialized).toStrictEqual(true);
+  });
+
   it('mints with two valid signatures', async () => {
     const c = ex.circuits.impure;
     const recipient = shieldedTestKey();

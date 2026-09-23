@@ -75,11 +75,10 @@ pragma language_version >= 0.26.0;
  *     included), `amount`, the nullifier, and the change coin
  *     (`disclose(sendRes.change)`).
  * - Public, as state:
- *   - Cells: `_counter`, the derived-nonce counter, the signer commitment
- *     set, signer count, threshold, `_instanceSalt`, `_domain`, `name` /
- *     `symbol` / `decimals`. Only `_counter` reaches the implementing
- *     contract's `ledger()` reader; the rest sit behind prefixed imports
- *     and are read through the view circuits.
+ *   - Cells: `_counter`, `_derivedNonceCounter`, `_signers`, `_signerCount`,
+ *     `_threshold`, `_instanceSalt`, `_domain`, `_name` / `_symbol` /
+ *     `_decimals`, `_isInitialized`. All are exported, so an implementing
+ *     contract can surface them in its `ledger()` reader.
  *   - Absent: no supply, no balances, no coin registry.
  * - Private:
  *   - Signer material: public keys and signatures are verified in-circuit,
@@ -175,12 +174,22 @@ module NativeShieldedTokenIssuer {
   import "../../token/NativeShieldedToken" prefix NST_;
   import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix NSTDerivedNonce_;
 
+  // Named import/re-export of the composed modules' state only, so an
+  // implementing contract can surface every ledger field under its own key.
+  // The circuits stay behind the prefixes above. The derived-nonce counter is
+  // aliased because this module's replay counter already owns `_counter`.
+  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaSignerManager";
+  import { _domain, _name, _symbol, _decimals, _isInitialized } from "../../token/NativeShieldedToken";
+  import { _counter as _derivedNonceCounter } from "../../token/extensions/NativeShieldedTokenDerivedNonce";
+  export { _instanceSalt, _signers, _signerCount, _threshold };
+  export { _domain, _name, _symbol, _decimals, _isInitialized };
+  export { _derivedNonceCounter };
+
   /**
    * @description Signature replay counter. `mint` and `burn` read it into
    * their digest and increment it; `getNonce` returns the value the next
    * digest binds to. The read is pinned, so at most one mint-or-burn lands
-   * per block. Exported, so it is the only key the implementing contract's
-   * `ledger()` reader surfaces.
+   * per block.
    */
   export ledger _counter: Counter;
 

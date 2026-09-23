@@ -191,6 +191,24 @@ describe('NativeShieldedTokenIssuer', () => {
       expect(await multisig.symbol()).toStrictEqual(TOKEN_SYMBOL);
       expect(await multisig.decimals()).toStrictEqual(TOKEN_DECIMALS);
     });
+
+    it('surfaces the composed state in ledger()', async () => {
+      multisig = await freshMultisig();
+      const state = await multisig.getPublicState();
+      expect(state._counter).toStrictEqual(0n);
+      expect(state._derivedNonceCounter).toStrictEqual(0n);
+      expect(state._instanceSalt).toStrictEqual(INSTANCE_SALT);
+      expect(state._signerCount).toStrictEqual(3n);
+      expect(state._threshold).toStrictEqual(2n);
+      for (const commitment of SIGNER_COMMITMENTS) {
+        expect(state._signers.member(commitment)).toStrictEqual(true);
+      }
+      expect(state._domain).toStrictEqual(TOKEN_DOMAIN);
+      expect(state._name).toStrictEqual(TOKEN_NAME);
+      expect(state._symbol).toStrictEqual(TOKEN_SYMBOL);
+      expect(state._decimals).toStrictEqual(TOKEN_DECIMALS);
+      expect(state._isInitialized).toStrictEqual(true);
+    });
   });
 
   describe('when initialized', () => {

@@ -14,8 +14,32 @@ import "../../NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-import { _counter } from "../../NativeShieldedTokenIssuer";
-export { _counter };
+import {
+  _counter,
+  _derivedNonceCounter,
+  _instanceSalt,
+  _signers,
+  _signerCount,
+  _threshold,
+  _domain,
+  _name,
+  _symbol,
+  _decimals,
+  _isInitialized,
+} from "../../NativeShieldedTokenIssuer";
+export {
+  _counter,
+  _derivedNonceCounter,
+  _instanceSalt,
+  _signers,
+  _signerCount,
+  _threshold,
+  _domain,
+  _name,
+  _symbol,
+  _decimals,
+  _isInitialized,
+};
 
 /**
  * @description `isInit` is a param for testing.
