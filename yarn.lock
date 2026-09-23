@@ -1599,7 +1599,7 @@ __metadata:
     "@types/node": "npm:26.5.1"
     "@vitest/coverage-v8": "npm:^5.0.0"
     ethers: "npm:^6.17.0"
-    fast-check: "npm:^4.9.0"
+    fast-check: "npm:^4.10.2"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
     vite: "npm:^8.0.16"
@@ -3730,12 +3730,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-check@npm:^4.9.0":
-  version: 4.9.0
-  resolution: "fast-check@npm:4.9.0"
+"fast-check@npm:^4.10.2":
+  version: 4.10.2
+  resolution: "fast-check@npm:4.10.2"
   dependencies:
     pure-rand: "npm:^8.0.0"
-  checksum: 10/b549435b29f7b60bc93cb2b19c194c35804bff15aaeb723bc94c65fef5b06fb2c3652bcd98379e3257d461cb61c40d2f4b0001fcb6b515f1085ebbcc6163d1e5
+  checksum: 10/bfc74fc464d3d0447b47711f33d036b92438df7b3203f07a35db0c52e1a2b63df3df77dbfc07e881e5f39c0cd0c8cb2dd171c4060ea7d37acf5d3e3d67658910
   languageName: node
   linkType: hard
 
