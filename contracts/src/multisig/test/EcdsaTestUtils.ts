@@ -82,7 +82,7 @@ const EXECUTE_TYPES = {
   ],
 };
 
-/** ShieldedMultiSigV3 `mint` digest. `contractAddress` is `kernel.self().bytes`. */
+/** NativeShieldedTokenIssuer `mint` digest. `contractAddress` is `kernel.self().bytes`. */
 export function mintMsgHash(params: {
   contractAddress: Uint8Array;
   instanceSalt: Uint8Array;
@@ -93,7 +93,7 @@ export function mintMsgHash(params: {
   const r = params.recipient;
   return bytesOf(
     TypedDataEncoder.hash(
-      domain('ShieldedMultiSigV3', params.instanceSalt),
+      domain('NativeShieldedTokenIssuer', params.instanceSalt),
       MINT_TYPES,
       {
         contractAddress: hexOf(params.contractAddress),
@@ -107,7 +107,7 @@ export function mintMsgHash(params: {
   );
 }
 
-/** ShieldedMultiSigV3 `burn` digest. */
+/** NativeShieldedTokenIssuer `burn` digest. */
 export function burnMsgHash(params: {
   contractAddress: Uint8Array;
   instanceSalt: Uint8Array;
@@ -116,7 +116,7 @@ export function burnMsgHash(params: {
 }): Uint8Array {
   return bytesOf(
     TypedDataEncoder.hash(
-      domain('ShieldedMultiSigV3', params.instanceSalt),
+      domain('NativeShieldedTokenIssuer', params.instanceSalt),
       BURN_TYPES,
       {
         contractAddress: hexOf(params.contractAddress),
