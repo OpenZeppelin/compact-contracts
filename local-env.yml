@@ -57,10 +57,19 @@ services:
     ports:
       - '9944:9944'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
+      # Healthy once a block past genesis is finalized: the indexer's SPO
+      # sub-process fetches block 1 on boot and exits the whole indexer if
+      # only genesis exists.
+      test: >-
+        H=$$(curl -sf -H 'content-type: application/json'
+        -d '{"id":1,"jsonrpc":"2.0","method":"chain_getFinalizedHead","params":[]}'
+        http://localhost:9944 | grep -o '0x[0-9a-f]*')
+        && curl -sf -H 'content-type: application/json'
+        -d "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"chain_getHeader\",\"params\":[\"$$H\"]}"
+        http://localhost:9944 | grep -q '"number":"0x[1-9a-f]'
       interval: 2s
       timeout: 5s
-      retries: 20
+      retries: 30
       start_period: 5s
     environment:
       CFG_PRESET: 'dev'
