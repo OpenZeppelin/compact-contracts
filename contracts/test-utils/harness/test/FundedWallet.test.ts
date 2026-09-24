@@ -69,7 +69,7 @@ vi.mock('@midnightntwrk/ledger-v9', () => ({
   DustSecretKey: { fromSeed: vi.fn(() => ({ kind: 'dust' })) },
 }));
 
-import { FundedWallet } from '../FundedWallet.js';
+import { FundedWallet, WALLET_SYNC_TIMEOUT_MS } from '../FundedWallet.js';
 
 const ENV = {} as never; // LocalTestConfiguration is type-only in FundedWallet
 const LOGGER = { info: vi.fn() } as never;
@@ -142,6 +142,11 @@ describe('FundedWallet.build', () => {
     // ...but a fresh sync runs first, so the tx balances against post-prior-tx
     // state (the guard against consecutive same-signer UTXO reuse).
     expect(m.syncWallet).toHaveBeenCalledTimes(1);
+    expect(m.syncWallet).toHaveBeenCalledWith(
+      { id: 'facade' },
+      undefined,
+      WALLET_SYNC_TIMEOUT_MS,
+    );
     expect(m.syncWallet.mock.invocationCallOrder[0]).toBeLessThan(
       m.balanceTx.mock.invocationCallOrder[0],
     );

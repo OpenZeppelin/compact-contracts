@@ -15,6 +15,17 @@ import type { PooledWallet } from './WalletPool.js';
 type LiveLogger = Parameters<typeof MidnightWalletProvider.withWallet>[0];
 
 /**
+ * How long a wallet sync may take. The unshielded wallet can take longer than
+ * testkit's 90 s default to report synced after an unshielded transaction.
+ */
+export const WALLET_SYNC_TIMEOUT_MS = 180_000;
+
+/** testkit's `syncWallet`, allowed {@link WALLET_SYNC_TIMEOUT_MS}. */
+export function syncLiveWallet(wallet: Parameters<typeof syncWallet>[0]) {
+  return syncWallet(wallet, undefined, WALLET_SYNC_TIMEOUT_MS);
+}
+
+/**
  * One dust-funded wallet built from a raw seed — the concrete
  * {@link PooledWallet} the live harness injects into the pool.
  *
@@ -54,7 +65,7 @@ export class FundedWallet implements PooledWallet {
 
   /** Re-sync and refresh {@link nightBalance} / {@link dustBalance} (e.g. after a top-up). */
   async refresh(): Promise<void> {
-    const state = await syncWallet(this.provider.wallet);
+    const state = await syncLiveWallet(this.provider.wallet);
     this.nightBalance = nightOf(state);
     this.dustBalance = state.dust.balance(new Date());
   }
@@ -94,7 +105,9 @@ export class FundedWallet implements PooledWallet {
     try {
       await provider.start(false);
       const nightBalance = await waitForFunds(wallet, env, true, keystore);
-      const dustBalance = (await syncWallet(wallet)).dust.balance(new Date());
+      const dustBalance = (await syncLiveWallet(wallet)).dust.balance(
+        new Date(),
+      );
       logger.info(
         `live wallet '${alias}' built — NIGHT ${nightBalance}, dust ${dustBalance}`,
       );
@@ -111,7 +124,7 @@ export class FundedWallet implements PooledWallet {
       if (typeof provider.balanceTx === 'function') {
         const balanceTx = provider.balanceTx.bind(provider);
         provider.balanceTx = (async (...args: Parameters<typeof balanceTx>) => {
-          await syncWallet(wallet);
+          await syncLiveWallet(wallet);
           return balanceTx(...args);
         }) as typeof provider.balanceTx;
       }
