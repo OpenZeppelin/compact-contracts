@@ -11,6 +11,10 @@ import {
 } from '#test-utils/fixtures/nativeShieldedToken.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
+import {
   Contract as Example,
   ledger,
 } from '../../../../artifacts/ShieldedMultiSigV2Example/contract/index.js';
@@ -43,12 +47,6 @@ const makeRecipient = (address: Uint8Array) => ({
   kind: RecipientKind.ShieldedUser,
   address,
 });
-
-const makeQualifiedCoin = (
-  color: Uint8Array,
-  value: bigint,
-  mtIndex: bigint,
-) => ({ nonce: new Uint8Array(32).fill(0), color, value, mt_index: mtIndex });
 
 type ExampleArgs = readonly [Uint8Array, Uint8Array[], bigint];
 
@@ -97,11 +95,15 @@ describe('ShieldedMultiSigV2Example', () => {
   describe('execute', () => {
     it('spends a deposited coin with two registered signers', async () => {
       const c = example.circuits.impure;
-      await c.deposit(makeCoin(COLOR, AMOUNT));
+      const deposited = makeCoin(COLOR, AMOUNT);
+      await c.deposit(deposited);
 
       // `.left` is the bare coin public key; `Recipient` wants its 32 bytes.
       const to = makeRecipient(shieldedTestKey().left.bytes);
-      const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+      const coin = await getQualifiedShieldedCoinInfo(
+        contractOwner(example),
+        deposited,
+      );
       const digest = executeMsgHash({
         contractAddress: Uint8Array.from(
           Buffer.from(example.contractAddress, 'hex'),
