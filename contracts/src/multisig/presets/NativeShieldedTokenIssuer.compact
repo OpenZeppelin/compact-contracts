@@ -7,9 +7,10 @@ pragma language_version >= 0.26.0;
  * @module NativeShieldedTokenIssuer
  * @description
  * A 2-of-3 ECDSA multisig that mints and burns one native shielded token,
- * for tokenized deposits. Value enters only through `mint` and leaves only
- * through `burn` (a holder's coin, paid into the tx) or `burnFromSelf` (a
- * coin this contract holds); each is a single tx carrying two registered
+ * for tokenized deposits. Value enters only through `mint` (to a holder's
+ * coin public key) or `mintToSelf` (a coin this contract holds) and leaves
+ * only through `burn` (a holder's coin, paid into the tx) or `burnFromSelf`
+ * (a coin this contract holds); each is a single tx carrying two registered
  * signers' approvals, so no single party creates or destroys tokens.
  *
  * Composes `EcdsaSignerManager` (signer commitments, approval checks),
@@ -24,9 +25,9 @@ pragma language_version >= 0.26.0;
  * - `DS`: `_domainSeparator`, the EIP-712 domain separator fixed at
  *   construction.
  * - `self`: `kernel.self().bytes`, this contract's address.
- * - `opNonce`: the `_counter` value read at the start of `mint` / `burn` /
- *   `burnFromSelf`. It
- *   is the signature replay counter and is separate from the
+ * - `opNonce`: the `_counter` value read at the start of every operation
+ *   (`mint`, `mintToSelf`, `burn`, `burnFromSelf`). It is the signature
+ *   replay counter and is separate from the
  *   `NativeShieldedTokenDerivedNonce` counter that feeds coin nonces.
  * - `cm`: a signer commitment, the registry key.
  * - `color`: `tokenType(_domain, self)`, this token's coin color.
@@ -39,17 +40,17 @@ pragma language_version >= 0.26.0;
  *   and a 32-byte address does not fit `address`. `self` inside each struct
  *   separates deployments instead.
  * - Mint digest: `keccak(0x1901 ‖ DS ‖ keccak([MINT_TYPEHASH, self,
- *   recipientWord, boolWord(isContract), uint64Word(opNonce),
- *   uint64Word(amount)]))`, with `canonRecipient =
- *   Utils_canonicalize(recipient)` (unused `Either` arm zeroed),
- *   `recipientWord` its active arm and `isContract = !canonRecipient.is_left`.
+ *   recipient.bytes, uint64Word(opNonce), uint64Word(amount)]))`.
+ * - MintToSelf digest: `keccak(0x1901 ‖ DS ‖ keccak([MINT_TO_SELF_TYPEHASH,
+ *   self, uint64Word(opNonce), uint64Word(amount)]))`.
  * - Burn digest: `keccak(0x1901 ‖ DS ‖ keccak([BURN_TYPEHASH, self,
  *   refundTo.bytes, uint64Word(opNonce), uint64Word(amount)]))`.
  * - BurnFromSelf digest: `keccak(0x1901 ‖ DS ‖ keccak([
  *   BURN_FROM_SELF_TYPEHASH, self, uint64Word(opNonce), uint64Word(amount)]))`.
  * - Type hashes: `MINT_TYPEHASH = keccak("Mint(bytes32 contractAddress,
- *   bytes32 recipient,bool isContract,uint256 nonce,uint256 amount)")`,
- *   `BURN_TYPEHASH = keccak("Burn(bytes32 contractAddress,bytes32 refundTo,
+ *   bytes32 recipient,uint256 nonce,uint256 amount)")`,
+ *   `MINT_TO_SELF_TYPEHASH = keccak("MintToSelf(bytes32 contractAddress,
+ *   uint256 nonce,uint256 amount)")`, `BURN_TYPEHASH = keccak("Burn(bytes32 contractAddress,bytes32 refundTo,
  *   uint256 nonce,uint256 amount)")` and `BURN_FROM_SELF_TYPEHASH =
  *   keccak("BurnFromSelf(bytes32 contractAddress,uint256 nonce,
  *   uint256 amount)")`, written as literal words.
@@ -63,7 +64,8 @@ pragma language_version >= 0.26.0;
  *   Digest integers are big-endian ABI words (`utils/EvmAbi`), so an EVM
  *   signer's typed-data encoder reproduces them.
  *   `contracts/src/multisig/test/EcdsaTestUtils.ts` pins the digests
- *   through ethers (`mintMsgHash`, `burnMsgHash`, `burnFromSelfMsgHash`).
+ *   through ethers (`mintMsgHash`, `mintToSelfMsgHash`, `burnMsgHash`,
+ *   `burnFromSelfMsgHash`).
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
@@ -74,8 +76,8 @@ pragma language_version >= 0.26.0;
  *
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the EIP-712 domain
- * (`NativeShieldedTokenIssuer`, version `1`, salt), the `Mint` / `Burn` /
- * `BurnFromSelf` type strings, the `multisig:signer:` commitment domain (generic prefix,
+ * (`NativeShieldedTokenIssuer`, version `1`, salt), the `Mint` /
+ * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the `multisig:signer:` commitment domain (generic prefix,
  * owned by `EcdsaSignerManager`), the `cm` preimage struct, and the
  * `Vector<2>` / `Vector<3>` shapes. Changing any of them breaks every
  * existing signer setup. The test suite pins them through
@@ -83,16 +85,16 @@ pragma language_version >= 0.26.0;
  *
  * @notice Privacy:
  * - Public, per tx:
- *   - Entry point: mint vs burn vs burnFromSelf.
+ *   - Entry point: which of the four operations ran.
  *   - Approvers: the two signer commitments (`disclose(commitment)` in
  *     `Signer_assertSigner`), so WHICH two of the three signers approved.
  *   - Mint: `amount`, as the `shieldedMints` effect under the token domain,
  *     and the coin commitment as a spend claim. Recipient and nonce are not
  *     published. The nonce is `evolveNonce` of the public
  *     `_derivedNonceCounter`, so a candidate recipient can be tested
- *     against the commitment. A mint to this contract adds the same
- *     commitment as a receive claim and names the contract in the Zswap
- *     output.
+ *     against the commitment.
+ *   - MintToSelf: as `mint`, plus the same commitment as a receive claim and
+ *     the contract named in the Zswap output.
  *   - Burn: the holder's coin commitment as a receive claim, the burn-output
  *     commitment and, on a partial burn, the refund commitment. `amount`,
  *     the coin's value and `refundTo` are not published.
@@ -125,8 +127,8 @@ pragma language_version >= 0.26.0;
  *
  * @notice Security:
  * - Digest binding: each struct binds its type hash, `self`, `opNonce` and
- *   `amount` (`mint` also the recipient word and its kind, `burn` also
- *   `refundTo`) under `DS`, so a
+ *   `amount` (`mint` also `recipient`, `burn` also `refundTo`) under `DS`,
+ *   so a
  *   signature authorizes one operation on one instance at one nonce, and is
  *   neither replayable as another operation, nor under another domain,
  *   nor redirectable. Removing the `self` word removes cross-instance
@@ -138,13 +140,10 @@ pragma language_version >= 0.26.0;
  * - Distinct signers: `assertApprovals` asserts both entries and rejects a
  *   repeated commitment, so two distinct registered signers are always
  *   required. The threshold `2` is the ceiling `EcdsaSignerManager` accepts.
- * - Canonical recipient: `Utils_canonicalize` zeroes the unused `Either` arm
- *   before hashing and minting, so a recipient with both arms populated
- *   cannot yield two digests for one destination.
  * - Immutable signer set: no signer reconfiguration circuit is exported, so
  *   the three commitments and the threshold are fixed. Losing two of the
  *   three keys freezes the contract.
- * - Griefing: the derived-nonce mint is the only mint path and it is
+ * - Griefing: the derived-nonce mints are the only mint paths and both are
  *   threshold-gated, so `NativeShieldedTokenDerivedNonce`'s
  *   collision-griefing precondition (a caller-nonce mint at another trust
  *   level) is absent.
@@ -152,12 +151,12 @@ pragma language_version >= 0.26.0;
  *   neither counter advances and the sender pays no fee.
  *
  * @notice Concurrency:
- * - Replay counter: `mint`, `burn` and `burnFromSelf` read `_counter` into
- *   the digest. The read is pinned, so any two of them in one block
+ * - Replay counter: `mint`, `mintToSelf`, `burn` and `burnFromSelf` read
+ *   `_counter` into the digest. The read is pinned, so any two of them in one block
  *   conflict: at most one operation lands per block, and the losing signer
  *   pair re-signs at the next nonce.
- * - Derived-nonce counter: `mint` also pins it (`evolveNonce` consumes it);
- *   the `_counter` conflict already covers that pair.
+ * - Derived-nonce counter: both mints also pin it (`evolveNonce` consumes
+ *   it); the `_counter` conflict already covers those pairs.
  * - `getNonce`: submitted as a tx it pins `_counter` and conflicts with any
  *   same-block operation.
  * - Views: metadata, `tokenColor` and the signer views read only state
@@ -165,8 +164,9 @@ pragma language_version >= 0.26.0;
  *
  * @notice Scope:
  * Mint and burn only. No send, transfer or execute circuit exists, so
- * contract-held coins leave only through `burnFromSelf`, supplied by the
- * operator as `QualifiedShieldedCoinInfo`. Coins minted to users are ordinary
+ * contract-held coins (from `mintToSelf` or `burnFromSelf` change) leave only
+ * through `burnFromSelf`, supplied by the operator as
+ * `QualifiedShieldedCoinInfo`. Coins minted to users are ordinary
  * Zswap coins the contract neither tracks nor restricts; a holder redeems by
  * paying the coin into a `burn` tx. No supply accounting.
  *
@@ -176,9 +176,11 @@ pragma language_version >= 0.26.0;
  * - Per operation: read `getNonce()`, rebuild the digest as
  *   `EcdsaTestUtils.ts` does, collect two low-s signatures off-chain, submit
  *   keys and signatures in matching `Vector<2>` positions.
- * - Coin delivery: hand the `ShieldedCoinInfo` returned by `mint` to the
- *   recipient out of band; contract-initiated mints create no ciphertext, so
- *   a wallet cannot find the coin by scanning.
+ * - `mint`: hand the returned `ShieldedCoinInfo` to the recipient out of
+ *   band; contract-initiated mints create no ciphertext, so a wallet cannot
+ *   find the coin by scanning.
+ * - `mintToSelf`: persist the returned coin as a contract holding, as for
+ *   `burnFromSelf` change.
  * - `burn`: the holder's wallet funds `coin` into the tx; hand the returned
  *   refund coin to `refundTo` out of band.
  * - `burnFromSelf` coin tracking: keep contract-held coins off-chain,
@@ -191,13 +193,13 @@ pragma language_version >= 0.26.0;
  * - Throughput: one operation per block (see Concurrency).
  * - State: constant-size, two counters and a three-entry signer set. Nothing
  *   grows per operation.
- * - Amounts: `mint` caps at `Uint<64>` by `mintShieldedToken`; `burn` and
- *   `burnFromSelf` take `Uint<64>` by their signatures and widen into the
- *   module's `Uint<128>`.
+ * - Amounts: both mints cap at `Uint<64>` by `mintShieldedToken`; both burns
+ *   take `Uint<64>` by their signatures and widen into the module's
+ *   `Uint<128>`.
  *
  * @dev Composition:
  * - Recipient privacy: pass a caller-supplied secret random nonce to
- *   `NST__mint` instead of `NSTDerivedNonce__deriveNonce()`.
+ *   `NST__mint` / `NST__mintToSelf` instead of `NSTDerivedNonce__deriveNonce()`.
  * - Deposits: no deposit-and-hold path; `burn` receives and spends the
  *   holder's coin in one call.
  *
@@ -208,7 +210,6 @@ module NativeShieldedTokenIssuer {
 
   import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
   import "../../crypto/Eip712" prefix Eip712_;
-  import "../../utils/Utils" prefix Utils_;
   import "../../utils/EvmAbi" prefix EvmAbi_;
   import "../../token/NativeShieldedToken" prefix NST_;
   import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix NSTDerivedNonce_;
@@ -225,8 +226,9 @@ module NativeShieldedTokenIssuer {
   export { _derivedNonceCounter };
 
   /**
-   * @description Signature replay counter. `mint`, `burn` and `burnFromSelf`
-   * read it into their digest and increment it; `getNonce` returns the value
+   * @description Signature replay counter. Every operation (`mint`,
+   * `mintToSelf`, `burn`, `burnFromSelf`) reads it into its digest and
+   * increments it; `getNonce` returns the value
    * the next digest binds to. The read is pinned, so at most one operation
    * lands per block.
    */
@@ -290,7 +292,7 @@ module NativeShieldedTokenIssuer {
 
   /**
    * @description `keccak256` of the `Mint` type string:
-   * `Mint(bytes32 contractAddress,bytes32 recipient,bool isContract,uint256 nonce,uint256 amount)`
+   * `Mint(bytes32 contractAddress,bytes32 recipient,uint256 nonce,uint256 amount)`
    *
    * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec checks this
    * word against the type string above.
@@ -299,10 +301,30 @@ module NativeShieldedTokenIssuer {
    */
   pure circuit MINT_TYPEHASH(): Bytes<32> {
     const typeHash: Vector<32, Uint<8>> = [
-      0x28, 0xd4, 0xc8, 0x40, 0xbc, 0x95, 0xfe, 0x08,
-      0x4e, 0xa5, 0xe3, 0x20, 0x94, 0x43, 0xba, 0x67,
-      0x21, 0xb7, 0x17, 0x09, 0x71, 0xee, 0x05, 0xef,
-      0xaf, 0x0a, 0x98, 0x51, 0xee, 0x5f, 0xd1, 0xf5
+      0x65, 0x2d, 0x4d, 0xad, 0x8f, 0xb2, 0x6c, 0x5c,
+      0x50, 0xc9, 0x87, 0xd4, 0x19, 0xdc, 0x93, 0x53,
+      0x14, 0xa0, 0x1e, 0xd4, 0x5d, 0xb1, 0x59, 0xf2,
+      0x30, 0xad, 0xc1, 0xa7, 0xe9, 0x02, 0x91, 0x1c
+    ];
+
+    return typeHash as Bytes<32>;
+  }
+
+  /**
+   * @description `keccak256` of the `MintToSelf` type string:
+   * `MintToSelf(bytes32 contractAddress,uint256 nonce,uint256 amount)`
+   *
+   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec
+   * checks this word against the type string above.
+   *
+   * @returns {Bytes<32>} The `MintToSelf` type hash.
+   */
+  pure circuit MINT_TO_SELF_TYPEHASH(): Bytes<32> {
+    const typeHash: Vector<32, Uint<8>> = [
+      0xf8, 0xb3, 0x1e, 0x4e, 0x0f, 0x2d, 0x10, 0x33,
+      0x82, 0xb4, 0xb3, 0x72, 0xac, 0x65, 0xa7, 0xad,
+      0xcd, 0x03, 0x89, 0x39, 0x8d, 0x24, 0x6c, 0x5e,
+      0xc2, 0xc9, 0x09, 0x38, 0x53, 0xdb, 0x49, 0x91
     ];
 
     return typeHash as Bytes<32>;
@@ -381,7 +403,7 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the only copy available to the
    * recipient; deliver it out of band.
    *
-   * @constraints k=17, rows=105173 (zkir-v3)
+   * @constraints k=17, rows=89815 (zkir-v3)
    *
    * Requirements:
    *
@@ -390,61 +412,81 @@ module NativeShieldedTokenIssuer {
    * - Signers must not be duplicates.
    * - Threshold must be met.
    * - `recipient` is not zero.
-   * - A contract `recipient` is this contract's own address.
    *
    * @param {Uint<64>} amount - The token amount to mint.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The address to receive the minted tokens.
+   * @param {ZswapCoinPublicKey} recipient - The coin public key to receive the minted tokens.
    * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
    * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mint(
     amount: Uint<64>,
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    recipient: ZswapCoinPublicKey,
     pubkeys: Vector<2, Secp256k1Point>,
     signatures: Vector<2, Secp256k1EcdsaSignature>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
 
-    // Canonicalize recipient to ensure garbage values don't sully the hash
-    const canonRecipient = Utils_canonicalize<ZswapCoinPublicKey, ContractAddress>(recipient);
-
-    // Only the active arm reaches the digest, so a crafted value carrying data
-    // in its unused arm cannot alter what was signed.
-    const recipientWord = canonRecipient.is_left
-      ? canonRecipient.left.bytes
-      : canonRecipient.right.bytes;
-
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<6, Bytes<32>>>([
+    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<5, Bytes<32>>>([
       MINT_TYPEHASH(),
       // Binds the digest to this deployment. The domain cannot carry the
       // address, so removing this word removes cross-instance replay
       // protection.
       kernel.self().bytes,
-      recipientWord,
-      EvmAbi_boolWord(!canonRecipient.is_left),
+      recipient.bytes,
       EvmAbi_uint64Word(opNonce),
       EvmAbi_uint64Word(amount)
     ]));
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
 
-    // `NST__mint` takes a coin public key only; the contract arm is limited to
-    // this contract, since a mint to any other contract leaves an unclaimed
-    // output.
-    // The recipient is public (it is already in the signed digest), so the
-    // arm may gate which mint runs.
-    const target = disclose(canonRecipient);
-    const self = kernel.self();
-    assert(target.is_left || target.right == self,
-           "NativeShieldedToken: recipient contract must be self");
-    const nonce = NSTDerivedNonce__deriveNonce();
-    if (target.is_left) {
-      return NST__mint(target.left, amount, nonce);
-    } else {
-      return NST__mintToSelf(amount, nonce);
-    }
+    return NST__mint(recipient, amount, NSTDerivedNonce__deriveNonce());
+  }
+
+  /**
+   * @description Mints a new shielded coin of this contract's token to the
+   * contract itself, claimed in the same call, authorized by threshold
+   * signatures.
+   *
+   * @notice The returned coin info is the contract's only record of the
+   * holding; persist it for `burnFromSelf`.
+   *
+   * @constraints k=17, rows=91259 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - Both public keys must hash to registered signer commitments.
+   * - Both signatures must be valid over the mint-to-self message hash.
+   * - Signers must not be duplicates.
+   * - Threshold must be met.
+   *
+   * @param {Uint<64>} amount - The token amount to mint.
+   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint-to-self hash.
+   * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
+   */
+  export circuit mintToSelf(
+    amount: Uint<64>,
+    pubkeys: Vector<2, Secp256k1Point>,
+    signatures: Vector<2, Secp256k1EcdsaSignature>
+  ): ShieldedCoinInfo {
+    const opNonce = _counter;
+    _counter.increment(1);
+
+    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<4, Bytes<32>>>([
+      MINT_TO_SELF_TYPEHASH(),
+      // Binds the digest to this deployment. The domain cannot carry the
+      // address, so removing this word removes cross-instance replay
+      // protection.
+      kernel.self().bytes,
+      EvmAbi_uint64Word(opNonce),
+      EvmAbi_uint64Word(amount)
+    ]));
+
+    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+
+    return NST__mintToSelf(amount, NSTDerivedNonce__deriveNonce());
   }
 
   /**
@@ -553,7 +595,7 @@ module NativeShieldedTokenIssuer {
   }
 
   /**
-   * @description Returns the counter the next mint, burn or burn-from-self digest will bind to.
+   * @description Returns the counter the next operation's digest will bind to.
    *
    * @constraints k=6, rows=34 (zkir-v3)
    *

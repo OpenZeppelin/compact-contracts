@@ -7,8 +7,9 @@ pragma language_version >= 0.26.0;
  * @title NativeShieldedTokenIssuerExample
  * @description Deployable reference contract for the `NativeShieldedTokenIssuer`
  * preset: a native shielded token whose supply enters only through an
- * ECDSA-authorized mint and leaves only through an ECDSA-authorized burn,
- * of a holder's coin (`burn`) or of one the contract holds (`burnFromSelf`).
+ * ECDSA-authorized mint, to a holder (`mint`) or to the contract itself
+ * (`mintToSelf`), and leaves only through an ECDSA-authorized burn, of a
+ * holder's coin (`burn`) or of one the contract holds (`burnFromSelf`).
  *
  * The token is non-transferable by construction. There is no transfer circuit,
  * so a holder's only exit is to pay the coin into a `burn` tx.
@@ -95,11 +96,19 @@ export pure circuit _calculateSignerId(
 
 export circuit mint(
   amount: Uint<64>,
-  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  recipient: ZswapCoinPublicKey,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): ShieldedCoinInfo {
   return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
+}
+
+export circuit mintToSelf(
+  amount: Uint<64>,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenIssuer_mintToSelf(amount, pubkeys, signatures);
 }
 
 export circuit burn(

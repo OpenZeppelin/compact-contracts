@@ -5,8 +5,6 @@ import {
 } from '@openzeppelin/compact-simulator';
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
-  type ContractAddress,
-  type Either,
   ledger,
   type Maybe,
   Contract as MockNativeShieldedTokenIssuer,
@@ -100,11 +98,19 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
 
   public mint(
     amount: bigint,
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    recipient: ZswapCoinPublicKey,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<ShieldedCoinInfo> {
     return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
+  }
+
+  public mintToSelf(
+    amount: bigint,
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
+  ): Promise<ShieldedCoinInfo> {
+    return this.circuits.impure.mintToSelf(amount, pubkeys, signatures);
   }
 
   public burn(

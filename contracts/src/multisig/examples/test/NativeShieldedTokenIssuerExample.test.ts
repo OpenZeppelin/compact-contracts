@@ -17,6 +17,7 @@ import {
   bytesOf,
   hexOf,
   mintMsgHash,
+  mintToSelfMsgHash,
 } from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
@@ -83,7 +84,8 @@ describe('NativeShieldedTokenIssuerExample', () => {
         TOKEN_DECIMALS,
         COMMITMENTS,
       ],
-      {},
+      // The dry default address is zero, which `mintToSelf` rejects.
+      isLiveBackend() ? {} : { contractAddress: '5e'.repeat(32) },
     );
   });
 
@@ -123,12 +125,12 @@ describe('NativeShieldedTokenIssuerExample', () => {
     Uint8Array.from(Buffer.from(ex.contractAddress, 'hex'));
 
   /** Mints `amount` to `recipient` with signers 1 and 2. */
-  async function mint(amount: bigint, recipient = shieldedTestKey()) {
+  async function mint(amount: bigint, recipient = shieldedTestKey().left) {
     const c = ex.circuits.impure;
     const digest = mintMsgHash({
       contractAddress: addrBytes(),
       instanceSalt: INSTANCE_SALT,
-      recipient,
+      recipient: recipient.bytes,
       opNonce: await c.getNonce(),
       amount,
     });
@@ -144,21 +146,38 @@ describe('NativeShieldedTokenIssuerExample', () => {
     await mint(100n);
   });
 
+  it('mints to itself through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const digest = mintToSelfMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      opNonce: await c.getNonce(),
+      amount: 100n,
+    });
+    const coin = await c.mintToSelf(
+      100n,
+      [S1.publicKey, S2.publicKey],
+      [sign(S1, digest), sign(S2, digest)],
+    );
+    expect(coin.value).toStrictEqual(100n);
+    expect(coin.color).toStrictEqual(await c.tokenColor());
+  });
+
   it('burns a holder coin through the wrapper', async () => {
     const c = ex.circuits.impure;
-    const holder = shieldedTestKey();
+    const holder = shieldedTestKey().left;
     const coin = await mint(100n, holder);
     const digest = burnMsgHash({
       contractAddress: addrBytes(),
       instanceSalt: INSTANCE_SALT,
-      refundTo: holder.left.bytes,
+      refundTo: holder.bytes,
       opNonce: await c.getNonce(),
       amount: 100n,
     });
     const refund = await c.burn(
       coin,
       100n,
-      holder.left,
+      holder,
       [S1.publicKey, S2.publicKey],
       [sign(S1, digest), sign(S2, digest)],
     );

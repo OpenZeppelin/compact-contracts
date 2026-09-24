@@ -83,11 +83,19 @@ export pure circuit _calculateSignerId(
 
 export circuit mint(
   amount: Uint<64>,
-  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  recipient: ZswapCoinPublicKey,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): ShieldedCoinInfo {
   return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
+}
+
+export circuit mintToSelf(
+  amount: Uint<64>,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenIssuer_mintToSelf(amount, pubkeys, signatures);
 }
 
 export circuit burn(
