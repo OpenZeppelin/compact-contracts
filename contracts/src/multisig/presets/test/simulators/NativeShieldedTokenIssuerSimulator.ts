@@ -108,12 +108,28 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
   }
 
   public burn(
+    coin: ShieldedCoinInfo,
+    amount: bigint,
+    refundTo: ZswapCoinPublicKey,
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
+  ): Promise<Maybe<ShieldedCoinInfo>> {
+    return this.circuits.impure.burn(
+      coin,
+      amount,
+      refundTo,
+      pubkeys,
+      signatures,
+    );
+  }
+
+  public burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
     amount: bigint,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<Maybe<ShieldedCoinInfo>> {
-    return this.circuits.impure.burn(coin, amount, pubkeys, signatures);
+    return this.circuits.impure.burnFromSelf(coin, amount, pubkeys, signatures);
   }
 
   public getNonce(): Promise<bigint> {

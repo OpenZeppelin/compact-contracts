@@ -91,12 +91,22 @@ export circuit mint(
 }
 
 export circuit burn(
+  coin: ShieldedCoinInfo,
+  amount: Uint<64>,
+  refundTo: ZswapCoinPublicKey,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): Maybe<ShieldedCoinInfo> {
+  return NativeShieldedTokenIssuer_burn(coin, amount, refundTo, pubkeys, signatures);
+}
+
+export circuit burnFromSelf(
   coin: QualifiedShieldedCoinInfo,
   amount: Uint<64>,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): Maybe<ShieldedCoinInfo> {
-  return NativeShieldedTokenIssuer_burn(coin, amount, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_burnFromSelf(coin, amount, pubkeys, signatures);
 }
 
 export circuit getNonce(): Uint<64> {
