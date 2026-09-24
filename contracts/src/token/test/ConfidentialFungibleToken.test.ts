@@ -1583,11 +1583,8 @@ describe.skipIf(isLiveBackend())(
 //   - DRY: exercise the receive path end-to-end (deploy, register, credit,
 //     memo-decrypt, sweep). A spend is omitted on purpose — a debit needs a
 //     cached plaintext, i.e. a mutation, so spends stay in the dry suites.
-//   - LIVE: the deploy itself cannot land — the base bundles four k=16 circuits'
-//     IR into one deploy tx, which overruns this ledger's per-tx block byte
-//     budget (node `1010 ... would exhaust the block limits`). Rather than skip
-//     and hide that, we ASSERT the rejection: a live-verified canary that flips
-//     red the day a staged deploy or a looser ledger lets the full base through.
+//   - LIVE: deploy and read one getter back. The memo decrypt needs the
+//     ElGamal and EcdhMask simulators, which this file builds on dry only.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1771,28 +1768,10 @@ describe('ConfidentialFungibleToken: receive-path smoke', () => {
   );
 
   it.runIf(isLiveBackend())(
-    'deploy is rejected for exceeding the ledger block byte budget',
+    'deploys and reads back an unregistered account',
     async () => {
-      // Fresh funded node, well-formed tx: the only reason the deploy can be
-      // rejected here is the block byte budget (the k=16 IR bundle). Assert it.
-      let error: unknown;
-      try {
-        await deploy();
-      } catch (e) {
-        error = e;
-      }
-      expect(
-        error,
-        'expected the node to reject the oversized deploy',
-      ).toBeDefined();
-      const detail = [
-        (error as Error)?.message,
-        (error as { cause?: unknown })?.cause,
-        String(error),
-      ]
-        .map((x) => String(x ?? ''))
-        .join(' | ');
-      expect(detail).toMatch(/block limits|exhaust the block/i);
+      cft = await deploy();
+      expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
     },
   );
 });
