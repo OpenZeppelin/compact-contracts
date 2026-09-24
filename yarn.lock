@@ -1519,12 +1519,14 @@ __metadata:
     "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.4.0"
     "@openzeppelin/compact-cli": "npm:^0.1.1"
+    "@openzeppelin/compact-deployer": "npm:^0.3.0"
     "@openzeppelin/compact-simulator": "npm:^0.4.0"
     "@tsconfig/node24": "npm:^24.0.5"
     "@types/node": "npm:26.6.2"
     "@vitest/coverage-v8": "npm:^5.0.0"
     ethers: "npm:^6.17.0"
     fast-check: "npm:^4.10.1"
+    pino: "npm:^9.7.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
     vite: "npm:^8.3.0"
@@ -1560,6 +1562,37 @@ __metadata:
     smol-toml: "npm:^1.3.4"
     zod: "npm:^3.23.8"
   checksum: 10/225867952c9bc0a4f70d2401dc5ef82701eedc3136f95b52134bb7c0b1b03c377bdd49877799ac658088c607477fd60c425ac8c84d6e9ae066e2c0794decb3fd
+  languageName: node
+  linkType: hard
+
+"@openzeppelin/compact-deployer@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@openzeppelin/compact-deployer@npm:0.3.0"
+  dependencies:
+    "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.8"
+    "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
+    "@midnight-ntwrk/midnight-js-contracts": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-network-id": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-types": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-utils": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/testkit-js": "npm:5.0.0-beta.7"
+    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
+    "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-beta.2"
+    "@midnightntwrk/wallet-sdk-capabilities": "npm:4.0.0-beta.2"
+    "@midnightntwrk/wallet-sdk-dust-wallet": "npm:5.0.0-beta.2"
+    "@midnightntwrk/wallet-sdk-facade": "npm:5.0.0-beta.2"
+    "@midnightntwrk/wallet-sdk-shielded": "npm:4.0.0-beta.2"
+    "@midnightntwrk/wallet-sdk-unshielded-wallet": "npm:4.0.0-beta.2"
+    "@scure/bip39": "npm:^1.2.1"
+    pino: "npm:^9.7.0"
+    rxjs: "npm:^7.8.1"
+    smol-toml: "npm:^1.3.4"
+    zod: "npm:^3.23.8"
+  checksum: 10/a5b936ef67033a0cea242f2f3b08a0282e2700a7ab0c4a26f4a5ad96c6e8e5948ae03de4381307db9adcdd6f64cae58328cdcae51c9fc61fd75dc0bb37322b22
   languageName: node
   linkType: hard
 
