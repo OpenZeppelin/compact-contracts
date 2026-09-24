@@ -91,7 +91,8 @@ module UnshieldedTreasury {
 
   /**
    * @description Sends unshielded tokens from the treasury. Zero-amount sends
-   * are permitted and are value-preserving no-ops.
+   * are permitted and are value-preserving no-ops. They emit no output, since
+   * the ledger rejects zero-value UTXO outputs.
    *
    * @warning Recipients are not validated. An unspendable recipient (such as a
    * zero address) is accepted and permanently removes the funds from the
@@ -128,7 +129,9 @@ module UnshieldedTreasury {
     assert(bal >= amount, "UnshieldedTreasury: insufficient balance");
 
     _balances.insert(disclose(color), disclose(bal - amount as Uint<128>));
-    sendUnshielded(disclose(color), disclose(amount), disclose(recipient));
+    if (disclose(amount != 0)) {
+      sendUnshielded(disclose(color), disclose(amount), disclose(recipient));
+    }
   }
 
   // ─── View ───────────────────────────────────────────────────────

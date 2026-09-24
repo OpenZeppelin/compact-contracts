@@ -228,6 +228,14 @@ describe('UnshieldedTreasury module', () => {
       expect(s.kind).toEqual('ok');
     });
 
+    it('the ledger rejects a zero-value send', async () => {
+      const o = verdict(
+        await outcomeOf(() => treasury.sendRaw(OTHER_COLOR, 0n, RECIPIENT)),
+        'raw zero send',
+      );
+      expect(o.kind).toEqual('rejected');
+    });
+
     // No unshielded equivalent of `shieldedBurnAddress` exists, and a zero
     // `NightAddress` owner is a UTXO nobody holds a key for so this destroys
     // the tokens with no `UnshieldedBurn` event.

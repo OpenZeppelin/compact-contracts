@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bump `@openzeppelin/compact-cli` `^0.0.3` → `^0.1.1`, whose `compact-builder` `0.0.5` fails the build when `compact compile` fails; `0.0.4` reported every failure as `✔ Compiled`. `engines.node` follows the cli to `>=24`. Fixes #894.
 - Exclude `crypto/` and `multisig/` from the aggregate `compile` script. They need `--feature-zkir-v3` and are built by `compile:crypto` / `compile:multisig`; recompiling them on v2 emptied their artifact directories. The aggregate cannot move to v3 while `ConfidentialFungibleToken` fails key generation there. `build` passes `--feature-zkir-v3` instead: it excludes mocks, and only the `ConfidentialFungibleToken` mocks hit the v3 key-generation failure. (#899)
+- `UnshieldedTreasury._send` emits no output for a zero amount, which the ledger rejected as a zero-value UTXO (#955)
 
 ## 0.4.0-alpha.1 (2026-09-02)
 
