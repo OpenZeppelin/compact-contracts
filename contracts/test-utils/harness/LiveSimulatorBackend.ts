@@ -4,7 +4,6 @@ import {
   CompiledContract,
   type Contract as ContractNs,
 } from '@midnight-ntwrk/compact-js';
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
@@ -16,12 +15,20 @@ import {
   inMemoryPrivateStateProvider,
   type LocalTestConfiguration,
 } from '@midnight-ntwrk/testkit-js';
+import { CompactConfig } from '@openzeppelin/compact-deployer/config/compact-config';
+import type { NetworkConfig } from '@openzeppelin/compact-deployer/config/schema';
+import {
+  Deployer,
+  type DeployerOptions,
+  type DeployResult,
+} from '@openzeppelin/compact-deployer/deployer';
 import {
   createLiveContext,
   type LiveBackendRequest,
   type LiveContext,
   registerLiveBackend,
 } from '@openzeppelin/compact-simulator';
+import { ensureSigningKey } from './signingKey.js';
 import type { WalletPool } from './WalletPool.js';
 
 /**
@@ -43,11 +50,16 @@ function moduleRootPath(name: string): string {
   return path.resolve(currentDir, '..', '..', 'artifacts', name);
 }
 
+/** The repo-root `compact.toml` every live deploy reads its settings from. */
+const COMPACT_TOML = path.resolve(currentDir, '..', '..', '..', 'compact.toml');
+
+/** The `compact.toml` network that describes the local stack. */
+const NETWORK = 'local';
+
 /**
  * The contract deployed here is chosen at runtime (by `artifactName`), so its
  * concrete type is unknowable at compile time. We model it as the library's own
- * "any contract" type and pin every piece (compiled contract, providers, deploy
- * options) to it, so `deployContract` infers `C = Contract.Any` consistently —
+ * "any contract" type and pin every piece (compiled contract, providers) to it:
  * `CompiledContract` is invariant in `C`, so provider and compiled types must
  * agree exactly.
  */
@@ -76,8 +88,20 @@ type SharedProviders = Omit<Providers, 'walletProvider' | 'midnightProvider'>;
 /** Resolves the provider bundle for a caller alias (unknown → deployer). */
 type ProvidersFor = (alias?: string | null) => Providers;
 
-/** The compiled + witness-bound contract handle deploy/createLiveContext consume. */
-type CompiledArtifact = ReturnType<typeof compileArtifact>;
+/** Where the deployer writes its per-deploy progress. */
+export type DeployLogger = DeployerOptions['logger'];
+
+/** The `Deployer.prepare` options that vary per deploy. */
+type DeployRequest = Pick<
+  DeployerOptions,
+  | 'contract'
+  | 'args'
+  | 'initialPrivateState'
+  | 'witnesses'
+  | 'walletProvider'
+  | 'privateStateProvider'
+  | 'logger'
+>;
 
 /** The artifact name to deploy, or throw if the spec set none. */
 function requireArtifactName(req: LiveBackendRequest): string {
@@ -167,6 +191,35 @@ function makeProvidersFor(
   };
 }
 
+/**
+ * Throws unless `compact.toml` describes the stack the harness talks to. The
+ * deployer reads its endpoints from the file, the harness from `network.ts`.
+ */
+function assertSameStack(
+  network: NetworkConfig,
+  env: LocalTestConfiguration,
+): void {
+  const fields: [string, string | undefined, string][] = [
+    ['network_id', network.network_id, env.networkId],
+    ['indexer', network.indexer, env.indexer],
+    ['indexer_ws', network.indexer_ws, env.indexerWS],
+    ['node', network.node, env.node],
+    ['node_ws', network.node_ws, env.nodeWS],
+    ['proof_server', network.proof_server, env.proofServer],
+  ];
+  const diffs = fields
+    .filter(([, file, harness]) => file !== harness)
+    .map(
+      ([key, file, harness]) => `${key} is ${file}, harness uses ${harness}`,
+    );
+  if (diffs.length > 0) {
+    throw new Error(
+      `live backend: compact.toml [networks.${NETWORK}] does not match the ` +
+        `live stack: ${diffs.join('; ')}`,
+    );
+  }
+}
+
 const DETERMINISTIC_REJECTION = /1010: Invalid Transaction/;
 
 /**
@@ -200,7 +253,10 @@ function isDeterministicRejection(err: unknown): boolean {
 }
 
 /**
- * Deploy the compiled contract with `providers` and return its address.
+ * Deploy through `@openzeppelin/compact-deployer`, which reads the contract's
+ * `compact.toml` entry and splits a deploy too large for one block across
+ * several transactions. It keeps no deployments ledger, so every call deploys a
+ * new contract.
  *
  * Retried once on failure with a jittered backoff. With parallel workers, several
  * deploys can contend for one block and the node may bounce a submission
@@ -211,38 +267,38 @@ function isDeterministicRejection(err: unknown): boolean {
  * A deterministic node rejection (RPC 1010 "Invalid Transaction") is NOT retried
  * — it would fail identically. See {@link isDeterministicRejection}.
  */
-async function deployArtifact(
-  providers: Providers,
-  compiled: CompiledArtifact,
-  privateStateId: string,
-  req: LiveBackendRequest,
-): Promise<string> {
-  const initialPrivateState =
-    req.options.privateState ?? req.config.defaultPrivateState();
-  const args = req.config.contractArgs(...req.contractArgs);
-  const deploy = () =>
-    deployContract(providers, {
-      compiledContract: compiled,
-      privateStateId,
-      initialPrivateState,
-      args,
+async function deployArtifact(request: DeployRequest): Promise<DeployResult> {
+  const deploy = async () => {
+    const deployer = await Deployer.prepare({
+      ...request,
+      network: NETWORK,
+      configPath: COMPACT_TOML,
+      record: false,
     });
-  const deployed = await deploy().catch(async (err: unknown) => {
+    // TODO: use `await using` once vitest's oxc transform targets node24.
+    try {
+      return await deployer.deploy();
+    } finally {
+      await deployer[Symbol.asyncDispose]();
+    }
+  };
+  return deploy().catch(async (err: unknown) => {
     if (isDeterministicRejection(err)) throw err;
     await new Promise((resolve) => {
       setTimeout(resolve, 500 + Math.floor(Math.random() * 1000));
     });
     return deploy();
   });
-  return deployed.deployTxData.public.contractAddress;
 }
 
 export class LiveSimulatorBackend {
   private registered = false;
+  private config: Promise<CompactConfig> | undefined;
 
   constructor(
     private readonly pool: WalletPool,
     private readonly env: LocalTestConfiguration,
+    private readonly logger: DeployLogger,
     // Seam for tests: how a contract module is loaded from its artifact name.
     private readonly loadContract: LoadContract = importArtifact,
   ) {}
@@ -252,6 +308,15 @@ export class LiveSimulatorBackend {
     if (this.registered) return;
     this.registered = true;
     registerLiveBackend((req) => this.buildContext(req));
+  }
+
+  /** `compact.toml`, loaded once and checked against this harness's stack. */
+  private loadConfig(): Promise<CompactConfig> {
+    this.config ??= CompactConfig.load(COMPACT_TOML).then((config) => {
+      assertSameStack(config.network(NETWORK), this.env);
+      return config;
+    });
+    return this.config;
   }
 
   /** Build the caller-independent providers once for one deployment. */
@@ -270,30 +335,51 @@ export class LiveSimulatorBackend {
     req: LiveBackendRequest,
   ): Promise<LiveContext<unknown>> {
     const name = requireArtifactName(req);
+    const config = await this.loadConfig();
+    const entry = config.contract(name);
+    const privateStateId = entry.private_state_id;
+    if (privateStateId === undefined) {
+      throw new Error(
+        `live backend: compact.toml gives "${name}" no private_state_id`,
+      );
+    }
     // The loaded constructor is the one genuinely-untyped value; the loader
     // pins it to a precise constructor type so `Contract.Any` flows from here.
     const { Contract: ctor } = await this.loadContract(name);
-    const compiled = compileArtifact(name, ctor, req.config.witnessesFactory());
+    const witnesses = req.config.witnessesFactory();
+    const compiled = compileArtifact(name, ctor, witnesses);
 
     await this.pool.ensureReady();
-    const privateStateId = `${name}-ps`;
+    ensureSigningKey(path.resolve(config.rootDir, entry.signing_key_file));
     const shared = this.sharedProviders(name);
     const providersFor = makeProvidersFor(this.pool, shared);
 
     // The deploy is always signed by the deployer.
-    const providers = providersFor('deployer');
-    const contractAddress = await deployArtifact(
-      providers,
-      compiled,
-      privateStateId,
-      req,
+    const deployed = await deployArtifact({
+      contract: name,
+      args: req.config.contractArgs(...req.contractArgs),
+      initialPrivateState:
+        req.options.privateState ?? req.config.defaultPrivateState(),
+      witnesses: (witnesses ?? {}) as object,
+      walletProvider: this.pool.walletFor('deployer'),
+      privateStateProvider: shared.privateStateProvider,
+      logger: this.logger,
+    });
+    this.logger.info(
+      {
+        contract: name,
+        address: deployed.address,
+        fragments: deployed.fragments,
+        circuits: deployed.circuits,
+      },
+      'Live deploy',
     );
 
     // The simulator assembles the LiveContext: per-alias `findDeployedContract`
     // handle cache, indexer-lag-absorbing public read, private-state read. Each
     // alias routes to its own wallet's providers so caller identity varies.
     return createLiveContext({
-      contractAddress,
+      contractAddress: deployed.address,
       providersFor,
       compiledContract: compiled,
       privateStateId,

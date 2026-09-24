@@ -1,5 +1,6 @@
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '@midnight-ntwrk/testkit-js';
+import pino from 'pino';
 import { beforeAll, beforeEach, expect } from 'vitest';
 import { assertFunded } from './dust.js';
 import { FundedWallet } from './FundedWallet.js';
@@ -76,6 +77,15 @@ beforeEach((ctx) => {
 
 const seeds = walletSeedsFor(worker);
 const logger = createLogger(`logs/live-harness-w${worker}.log`);
+// File only: the deployer logs every deploy step, too much for the test output.
+const deployLogger = pino(
+  { level: 'info' },
+  pino.destination({
+    dest: `logs/deployer-w${worker}.log`,
+    mkdir: true,
+    sync: true,
+  }),
+);
 const env = localEnv();
 
 // The deployer pays for every deploy and funds the signers, so it must be
@@ -102,7 +112,7 @@ const buildWallet: WalletBuilder = async (alias, walletSeed) => {
 };
 
 const pool = new WalletPool(seeds, buildWallet);
-const backend = new LiveSimulatorBackend(pool, env);
+const backend = new LiveSimulatorBackend(pool, env, deployLogger);
 
 backend.register();
 await pool.ensureReady();
