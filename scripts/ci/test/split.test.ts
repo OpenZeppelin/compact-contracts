@@ -209,6 +209,44 @@ describe('splitSpec', () => {
     ]);
   });
 
+  it('does not split repeated sibling names', () => {
+    // Both siblings get the pattern `^P > grant > `, so each leg would run the
+    // other's tests too.
+    const legs = splitSpec(
+      block('P', block('grant', its(2)) + block('grant', its(2))),
+      2,
+    );
+
+    expect(legs).toBeNull();
+  });
+
+  it('does not split when a test title holds the joint', () => {
+    // `lit > direct` reads as the path `P > lit > direct`: P's remainder
+    // lookahead excludes it, and neither of lit's legs selects it.
+    const source = block(
+      'P',
+      `it('lit > direct', () => {});\n${block('lit', block('a', its(1)) + block('b', its(1)))}`,
+    );
+
+    expect(splitSpec(source, 1)).toBeNull();
+  });
+
+  it('counts the joint in template and .each titles', () => {
+    const titles = [
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the fixture is a template title
+      'it(`x > ${y}`, () => {});\n',
+      "it.each(rows)('%s > case', () => {});\n",
+      `describe.each(rows)('%s > group', () => {\n${its(1)}});\n`,
+    ];
+    const source = (title: string): string =>
+      block('A', title) + block('B', its(2));
+
+    for (const title of titles) {
+      expect(splitSpec(source(title.replace(' > ', ' ')), 2)).not.toBeNull();
+      expect(splitSpec(source(title), 2)).toBeNull();
+    }
+  });
+
   it('counts aliased test registrations', () => {
     // `const itDryOnly = it.skipIf(isLiveBackend())` registers tests under
     // another name (ShieldedAccessControl does this); missing them would both

@@ -53,6 +53,9 @@
  *     (one whose overrun is proven by measurements instead becomes its own
  *     oversized leg: the filter is exact, the leg just long — refusing would
  *     collapse the whole file into one even longer leg);
+ *   - a describe name or test title holds the `" > "` joint in its literal
+ *     text (template and `.each` titles included): the test reads as a
+ *     deeper path, so a remainder lookahead can exclude it from every leg;
  *   - two sibling names collide as prefixes (`grant` next to `grant > extra`,
  *     or a repeated name), which would run one group's tests in two legs;
  *   - the units' counts do not add back up to the file's total.
@@ -102,6 +105,14 @@ interface SuiteNode {
   readonly name: string | null;
   directTests: number;
   readonly children: SuiteNode[];
+}
+
+/** A parsed spec file. */
+interface SuiteTree {
+  /** The virtual root: name '', the file's top level. */
+  readonly root: SuiteNode;
+  /** Whether any describe name or test title holds the `" > "` joint. */
+  readonly jointInTitle: boolean;
 }
 
 /** An indivisible slice of the tree the packer arranges into legs. */
@@ -164,8 +175,9 @@ export function splitSpec(
   limit: number = MAX_TESTS_PER_LEG,
   durations?: TestDurations,
 ): SplitLeg[] | null {
-  const root = parseSuiteTree(source);
-  if (root === undefined) return null;
+  const tree = parseSuiteTree(source);
+  if (tree === undefined || tree.jointInTitle) return null;
+  const { root } = tree;
   const total = totalTests(root);
   const weigh = makeWeigher(durations);
   const budgetMs = limit * DEFAULT_TEST_MS;
@@ -208,9 +220,9 @@ export function estimateSpecMs(
   source: string,
   durations?: TestDurations,
 ): number | undefined {
-  const root = parseSuiteTree(source);
-  if (root === undefined) return undefined;
-  return Math.round(makeWeigher(durations)('', totalTests(root)).weightMs);
+  const tree = parseSuiteTree(source);
+  if (tree === undefined) return undefined;
+  return Math.round(makeWeigher(durations)('', totalTests(tree.root)).weightMs);
 }
 
 /** Sum of a subtree's statically counted tests. */
@@ -572,6 +584,17 @@ function literalName(src: string, i: number): string | undefined {
   return undefined;
 }
 
+/** The text between the quotes of the string or template literal at `i`,
+ * `${}` source included, or `undefined` when `i` holds neither. Over-reading
+ * an interpolation can only refuse a split, never lose a test. */
+function literalSource(src: string, i: number): string | undefined {
+  const c = src[i];
+  let end = -1;
+  if (c === "'" || c === '"') end = skipString(src, i);
+  else if (c === '`') end = skipTemplate(src, i);
+  return end === -1 ? undefined : src.slice(i + 1, end - 1);
+}
+
 /** What `tryCall` found at a head identifier. */
 interface CallHead {
   /** Index of the registration call's `(`. */
@@ -626,13 +649,14 @@ function tryCall(src: string, i: number): CallHead | undefined {
  * local helpers therefore land on the lexically enclosing describe, which is
  * where their names sit at runtime too.
  *
- * @returns the virtual root (name '', the file's top level), or `undefined`
- *   when the scan ends unbalanced — the one honest signal that some construct
- *   was misread and no filter derived from it can be trusted.
+ * @returns the tree, or `undefined` when the scan ends unbalanced — the one
+ *   honest signal that some construct was misread and no filter derived from
+ *   it can be trusted.
  */
-export function parseSuiteTree(source: string): SuiteNode | undefined {
+export function parseSuiteTree(source: string): SuiteTree | undefined {
   const aliases = testAliases(source);
   const root: SuiteNode = { name: '', directTests: 0, children: [] };
+  let jointInTitle = false;
   const stack: { node: SuiteNode; closeDepth: number }[] = [];
   const current = (): SuiteNode =>
     stack.length > 0
@@ -688,10 +712,13 @@ export function parseSuiteTree(source: string): SuiteNode | undefined {
       if (!isDescribe && !isTest) continue;
       const call = tryCall(source, i);
       if (call === undefined) continue;
+      const nameAt = skipTrivia(source, call.openParen + 1);
+      if (nameAt !== -1 && literalSource(source, nameAt)?.includes(' > ')) {
+        jointInTitle = true;
+      }
       if (isTest) {
         current().directTests++;
       } else {
-        const nameAt = skipTrivia(source, call.openParen + 1);
         const name =
           call.each || nameAt === -1 ? undefined : literalName(source, nameAt);
         const node: SuiteNode = {
@@ -725,5 +752,5 @@ export function parseSuiteTree(source: string): SuiteNode | undefined {
     last = c;
     i++;
   }
-  return depth === 0 && stack.length === 0 ? root : undefined;
+  return depth === 0 && stack.length === 0 ? { root, jointInTitle } : undefined;
 }
