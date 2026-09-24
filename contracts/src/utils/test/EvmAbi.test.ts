@@ -5,6 +5,7 @@ import {
   keccak256,
 } from '@midnight-ntwrk/compact-runtime';
 import { keccak_256 } from '@noble/hashes/sha3.js';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { EvmAbiSimulator } from './simulators/EvmAbiSimulator.js';
@@ -36,6 +37,10 @@ const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
 const U64_MAX = (1n << 64n) - 1n;
 const U128_MAX = (1n << 128n) - 1n;
+
+// Every run is a transaction on the live backend, so the property shrinks to a
+// handful of cases there and keeps its full sample space dry.
+const PROPERTY_RUNS = isLiveBackend() ? 3 : 64;
 
 let contract: EvmAbiSimulator;
 
@@ -118,7 +123,7 @@ describe('EvmAbi', () => {
             expect(hex(word)).toEqual(hex(abiEncodeUint256(value)));
           },
         ),
-        { numRuns: 64 },
+        { numRuns: PROPERTY_RUNS },
       );
     });
   });
@@ -157,7 +162,7 @@ describe('EvmAbi', () => {
             );
           },
         ),
-        { numRuns: 64 },
+        { numRuns: PROPERTY_RUNS },
       );
     });
 
