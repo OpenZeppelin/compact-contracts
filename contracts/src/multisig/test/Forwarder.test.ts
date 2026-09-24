@@ -5,6 +5,7 @@ import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
+import { OUTSIDE_TIME_TO_DISMISS } from '#test-utils/fixtures/nodeRejections.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import { MockForwarderShieldedSimulator } from './simulators/MockForwarderShieldedSimulator.js';
 import { MockForwarderUnshieldedSimulator } from './simulators/MockForwarderUnshieldedSimulator.js';
@@ -126,12 +127,31 @@ describe('ForwarderUnshielded module', () => {
   });
 
   describe('deposit', () => {
-    it('should accept an unshielded deposit and forward it', async () => {
-      const mock = await MockForwarderUnshieldedSimulator.create(
-        UNSHIELDED_PARENT,
-        true,
-      );
-      await mock.deposit(UNSHIELDED_COLOR, AMOUNT);
-    });
+    it.skipIf(isLiveBackend())(
+      'should accept an unshielded deposit and forward it',
+      async () => {
+        const mock = await MockForwarderUnshieldedSimulator.create(
+          UNSHIELDED_PARENT,
+          true,
+        );
+        await mock.deposit(UNSHIELDED_COLOR, AMOUNT);
+      },
+    );
+
+    // Receiving and forwarding in one call takes longer to dismiss than the
+    // ledger allows for the transaction's size.
+    // TODO: delete once live accepts this, and run the test above live too.
+    it.runIf(isLiveBackend())(
+      'deposit is rejected for exceeding the ledger time-to-dismiss budget',
+      async () => {
+        const mock = await MockForwarderUnshieldedSimulator.create(
+          UNSHIELDED_PARENT,
+          true,
+        );
+        await expect(mock.deposit(UNSHIELDED_COLOR, AMOUNT)).rejects.toThrow(
+          OUTSIDE_TIME_TO_DISMISS,
+        );
+      },
+    );
   });
 });

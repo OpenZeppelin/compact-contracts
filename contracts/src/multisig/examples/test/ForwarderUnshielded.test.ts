@@ -1,6 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { OUTSIDE_TIME_TO_DISMISS } from '#test-utils/fixtures/nodeRejections.js';
 import { ForwarderUnshieldedSimulator } from './simulators/ForwarderUnshieldedSimulator.js';
 
 // The constructor takes a `UserAddress` (the supported arm). The `_parent`
@@ -23,10 +24,26 @@ describe('ForwarderUnshieldedExample', () => {
     expect(parent.right).toEqual(PARENT);
   });
 
-  it('should expose deposit and forward to _deposit', async () => {
-    const fwd = await ForwarderUnshieldedSimulator.create(PARENT);
-    await fwd.deposit(COLOR, AMOUNT);
-  });
+  it.skipIf(isLiveBackend())(
+    'should expose deposit and forward to _deposit',
+    async () => {
+      const fwd = await ForwarderUnshieldedSimulator.create(PARENT);
+      await fwd.deposit(COLOR, AMOUNT);
+    },
+  );
+
+  // Receiving and forwarding in one call takes longer to dismiss than the
+  // ledger allows for the transaction's size.
+  // TODO: delete once live accepts this, and run the test above live too.
+  it.runIf(isLiveBackend())(
+    'deposit is rejected for exceeding the ledger time-to-dismiss budget',
+    async () => {
+      const fwd = await ForwarderUnshieldedSimulator.create(PARENT);
+      await expect(fwd.deposit(COLOR, AMOUNT)).rejects.toThrow(
+        OUTSIDE_TIME_TO_DISMISS,
+      );
+    },
+  );
 
   it('should propagate the zero-parent guard from the module', async () => {
     await expect(
