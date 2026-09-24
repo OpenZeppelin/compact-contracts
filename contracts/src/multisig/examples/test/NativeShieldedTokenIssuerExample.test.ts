@@ -166,6 +166,7 @@ describe('NativeShieldedTokenIssuerExample', () => {
   it('burns a holder coin through the wrapper', async () => {
     const c = ex.circuits.impure;
     const holder = shieldedTestKey().left;
+    // Burns the minted coin as-is: the linkable flow, on both backends.
     const coin = await mint(100n, holder);
     const digest = burnMsgHash({
       contractAddress: addrBytes(),

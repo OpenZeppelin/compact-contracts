@@ -914,6 +914,8 @@ describe('NativeShieldedTokenIssuer', () => {
         signers: Signer[],
         refundTo: ZswapCoinPublicKey = USER_RECIPIENT,
       ): Promise<Maybe<ShieldedCoinInfo>> {
+        // Live burns the minted coin as-is (the linkable flow); dry's
+        // fresh-nonce coin models the private one.
         const coin = isLiveBackend()
           ? await mint(multisig, coinValue, USER_RECIPIENT, [S1, S2])
           : makeCoin(await multisig.tokenColor(), coinValue);

@@ -97,13 +97,18 @@ pragma language_version >= 0.26.0;
  *     the contract named in the Zswap output.
  *   - Burn: the holder's coin commitment as a receive claim, the burn-output
  *     commitment and, on a partial burn, the refund commitment. `amount`,
- *     the coin's value and `refundTo` are not published.
+ *     `coin.value` and `refundTo` stay hidden only while `coin` carries a
+ *     nonce the observer does not know. A coin passed straight from `mint`
+ *     has a derived nonce, so the receive claim links the burn to its mint
+ *     and exposes all three by trial: `coin.value` from the mint, `amount`
+ *     over `[0, value]` against the burn output, `refundTo` against the
+ *     refund commitment.
  *   - BurnFromSelf: the spent coin's nullifier, the burn-output commitment
  *     and, on a partial burn, the change commitment as both spend and
  *     receive claim. `amount`, the coin's value and `mt_index` are not
- *     published. Every coin this contract holds was minted to it, so its
- *     nullifier is computable and a burn links to its mint; the amount is
- *     protected by the commitment hash alone.
+ *     published, but every held coin has a derived nonce, so its nullifier
+ *     links the burn to its mint and `amount` is recoverable by trial over
+ *     `[0, value]`.
  * - Public, as state:
  *   - Cells: `_counter`, `_domainSeparator`, `_derivedNonceCounter`,
  *     `_signers`, `_signerCount`, `_threshold`, `_instanceSalt`, `_domain`,
@@ -113,15 +118,16 @@ pragma language_version >= 0.26.0;
  * - Private:
  *   - Signer material: public keys and signatures are verified in-circuit,
  *     never disclosed.
- *   - Operation data: burn amounts. Mint recipients, up to the commitment
- *     test above.
+ *   - Operation data: `burn` amounts and `refundTo`, for a coin whose nonce
+ *     is secret. Mint recipients, up to the commitment test above.
  * - Signer identity: keys sit behind `cm` with a public salt, so an observer
  *   holding a candidate key can test membership; one without cannot
  *   correlate a signer across deployments.
  * - Counterparty: a mint recipient learns nothing beyond the coin handed over
  *   out of band; every observer learns the amount of every mint and can
  *   test a candidate recipient against the commitment.
- * - Auditability: mint amounts are public, burn amounts are not. No
+ * - Auditability: mint amounts are public; `burnFromSelf` amounts are
+ *   recoverable by trial, `burn` amounts only for a linkable coin. No
  *   on-chain total is kept. `NativeShieldedTokenPublicSupply` adds one and
  *   makes burn amounts public.
  *
@@ -182,7 +188,10 @@ pragma language_version >= 0.26.0;
  * - `mintToSelf`: persist the returned coin as a contract holding, as for
  *   `burnFromSelf` change.
  * - `burn`: the holder's wallet funds `coin` into the tx; hand the returned
- *   refund coin to `refundTo` out of band.
+ *   refund coin to `refundTo` out of band. For an unlinkable burn the holder
+ *   re-nonces the coin first (a wallet self-transfer yields a fresh secret
+ *   nonce); the minted coin as-is is valid but linkable. The contract cannot
+ *   enforce this.
  * - `burnFromSelf` coin tracking: keep contract-held coins off-chain,
  *   recovering each coin's `mt_index` from the indexer's `ZswapOutput` /
  *   ledger events to build the `QualifiedShieldedCoinInfo` it takes.
