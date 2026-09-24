@@ -1,4 +1,5 @@
 import { secp256k1 } from '@noble/curves/secp256k1.js';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { keccak256, TypedDataEncoder, toUtf8Bytes } from 'ethers';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -26,6 +27,10 @@ const b32 = (fill: number): Uint8Array => new Uint8Array(32).fill(fill);
 
 const HASHED_NAME = bytes(keccak256(toUtf8Bytes(NAME)));
 const HASHED_VERSION = bytes(keccak256(toUtf8Bytes(VERSION)));
+
+// Every run is a transaction on the live backend, so the property shrinks to a
+// handful of cases there and keeps its full sample space dry.
+const PROPERTY_RUNS = isLiveBackend() ? 3 : 32;
 
 let contract: Eip712Simulator;
 
@@ -111,7 +116,7 @@ describe('Eip712', () => {
             ).toEqual(strip(expected));
           },
         ),
-        { numRuns: 32 },
+        { numRuns: PROPERTY_RUNS },
       );
     });
   });
@@ -228,7 +233,7 @@ describe('Eip712', () => {
             ).toEqual(strip(expected));
           },
         ),
-        { numRuns: 32 },
+        { numRuns: PROPERTY_RUNS },
       );
     });
 
