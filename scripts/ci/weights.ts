@@ -1,6 +1,6 @@
 import { type Dirent, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseJsonReport } from '../live/VitestRunner.ts';
+import { parseJsonReport, testFullName } from '../live/VitestRunner.ts';
 
 /**
  * Measured per-test durations from a previous run's report artifacts, for the
@@ -20,7 +20,7 @@ import { parseJsonReport } from '../live/VitestRunner.ts';
  * packing, never break the plan.
  */
 
-/** A file's history: test full name (space-joined, the same form the split
+/** A file's history: test full name (`" > "`-joined, the same form the split
  * patterns match) → wall-clock milliseconds. */
 export type TestDurations = ReadonlyMap<string, number>;
 
@@ -61,10 +61,8 @@ export function collectDurations(
           !Number.isFinite(test.duration)
         )
           continue;
-        durations.set(
-          test.fullName,
-          Math.max(durations.get(test.fullName) ?? 0, test.duration),
-        );
+        const name = testFullName(test);
+        durations.set(name, Math.max(durations.get(name) ?? 0, test.duration));
       }
     }
   }

@@ -138,8 +138,8 @@ describe('LiveOrchestrator', () => {
     // would pass a leg that ran zero tests.
     const code = await roundOver({
       fileStatuses: () => new Map([['a.test.ts', 'passed']]),
-      testPattern: '^Renamed suite ',
-      reportedTestNames: () => ['Suite one', 'Suite two'],
+      testPattern: '^Renamed suite > ',
+      reportedTestNames: () => ['Suite one > t0', 'Suite two > t0'],
     }).run();
 
     expect(code).toBe(INFRA_ABORT);
@@ -152,8 +152,8 @@ describe('LiveOrchestrator', () => {
     // pattern. Aborting here would turn a valid dry-only slice red.
     const code = await roundOver({
       fileStatuses: () => new Map([['a.test.ts', 'passed']]),
-      testPattern: '^Suite one',
-      reportedTestNames: () => ['Suite one dry-only check'],
+      testPattern: '^Suite one > ',
+      reportedTestNames: () => ['Suite one > dry-only check'],
     }).run();
 
     expect(code).toBe(0);
@@ -164,8 +164,8 @@ describe('LiveOrchestrator', () => {
     // reclassify it as an infrastructure abort.
     const code = await roundOver({
       fileStatuses: () => new Map([['a.test.ts', 'failed']]),
-      testPattern: '^Nothing matches this ',
-      reportedTestNames: () => ['Suite one'],
+      testPattern: '^Nothing matches this > ',
+      reportedTestNames: () => ['Suite one > t0'],
     }).run();
 
     expect(code).not.toBe(INFRA_ABORT);

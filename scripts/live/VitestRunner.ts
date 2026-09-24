@@ -7,9 +7,10 @@ import type { LiveTarget } from './targets.ts';
  * the plan-side weighting (`scripts/ci/weights.ts`) reads the same shape this
  * runner does instead of keeping a second definition of the format. */
 export interface JsonAssertionResult {
-  /** The describe names and the test name, space-joined — the same form a
-   * `-t` pattern is matched against. */
-  readonly fullName: string;
+  /** The enclosing describe names, outermost first. */
+  readonly ancestorTitles?: readonly string[];
+  /** The test's own name. */
+  readonly title: string;
   readonly status: string;
   /** Wall-clock milliseconds. Absent on a test that never ran (skipped by a
    * pattern or `.skipIf`). */
@@ -29,6 +30,15 @@ export interface JsonTestResult {
 }
 export interface JsonReport {
   readonly testResults?: readonly JsonTestResult[];
+}
+
+/**
+ * A test's name in the form a `-t` pattern is matched against: the describe
+ * names and the test name joined by `" > "`. The report's own `fullName` joins
+ * them with single spaces, which no pattern matches.
+ */
+export function testFullName(result: JsonAssertionResult): string {
+  return [...(result.ancestorTitles ?? []), result.title].join(' > ');
 }
 
 /** Parse a report body, or `undefined` for one a killed vitest left truncated.
@@ -114,10 +124,11 @@ export class VitestRunner {
 
   /**
    * Every full test name the report carries, executed or not — vitest lists
-   * the tests a `-t` pattern skipped too, in the same space-joined form the
-   * pattern is matched against. That is what lets the orchestrator tell a
-   * pattern that matched nothing (its names are absent) from a slice whose
-   * tests were all runtime-skipped (`.skipIf`; the names are present).
+   * the tests a `-t` pattern skipped too, rebuilt by {@link testFullName} into
+   * the form the pattern is matched against. That is what lets the
+   * orchestrator tell a pattern that matched nothing (its names are absent)
+   * from a slice whose tests were all runtime-skipped (`.skipIf`; the names
+   * are present).
    *
    * @returns `undefined` under the same conditions as {@link fileStatuses}
    */
@@ -125,7 +136,7 @@ export class VitestRunner {
     const report = this.#report(reportPath);
     if (report === undefined) return undefined;
     return (report.testResults ?? []).flatMap((r) =>
-      (r.assertionResults ?? []).map((a) => a.fullName),
+      (r.assertionResults ?? []).map(testFullName),
     );
   }
 

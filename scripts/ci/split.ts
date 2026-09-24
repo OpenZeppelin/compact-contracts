@@ -23,21 +23,24 @@
  * parser handles whatever the spec files contain (verified against the forms
  * that occur under `contracts/src/`).
  *
- * ## The filter format, pinned against vitest 4.x
+ * ## The filter format, pinned against vitest 5.x
  *
  * `-t` becomes `new RegExp(pattern)` and is matched (unanchored) against a
- * test's full name — the describe names and the test name joined by SINGLE
- * SPACES, without the file name (`getTaskFullName` in `@vitest/runner`, used
- * by `interpretTaskModes`). NOT the `" > "` the reporters print. Each group's
- * filter is an alternation of `^`-anchored, regex-escaped describe paths, each
- * with a trailing space so `grantRole ` can match neither `_grantRole` (the
- * anchor pins the start) nor `grantRoleExtra` (the space pins the end):
+ * test's `fullTestName`: the describe names and the test name joined by
+ * `" > "`, without the file name (`interpretTaskModes` in vitest). The JSON
+ * report's `fullName` joins the same names with single spaces, so no pattern
+ * is checked against it (`testFullName` in `scripts/live/VitestRunner.ts`
+ * rebuilds the `-t` form). Each group's filter is an alternation of
+ * `^`-anchored, regex-escaped describe paths, each ending in the `" > "`
+ * joint, so `grantRole > ` can match neither `_grantRole` (the anchor pins
+ * the start) nor `grantRoleExtra` (the joint pins the end):
  *
- *   ^ShieldedAccessControl after initialization grantRole |^ShieldedAcc…
+ *   ^ShieldedAccessControl > after initialization > grantRole > |^Shielded…
  *
  * Tests sitting directly under a describe that also has child describes get a
  * remainder alternative: the parent's path with a lookahead excluding every
- * child (`^Parent (?!childA |childB )`), so they land in exactly one group.
+ * child (`^Parent > (?!childA > |childB > )`), so they land in exactly one
+ * group.
  *
  * ## Safety fallbacks — a wrong filter is worse than a long leg
  *
@@ -50,8 +53,8 @@
  *     (one whose overrun is proven by measurements instead becomes its own
  *     oversized leg: the filter is exact, the leg just long — refusing would
  *     collapse the whole file into one even longer leg);
- *   - two sibling names collide as prefixes (`grant` next to `grant extra`),
- *     which would run one group's tests in two legs;
+ *   - two sibling names collide as prefixes (`grant` next to `grant > extra`,
+ *     or a repeated name), which would run one group's tests in two legs;
  *   - the units' counts do not add back up to the file's total.
  * The runtime backstop for what a static parse cannot see (a describe
  * registered through a helper function, say) is in `LiveOrchestrator`: a
@@ -78,7 +81,7 @@ export const MAX_TESTS_PER_LEG = 30;
  * Derived, not hand-picked — see {@link MAX_TESTS_PER_LEG}. */
 export const MAX_LEG_MS = MAX_TESTS_PER_LEG * DEFAULT_TEST_MS;
 
-/** A file's history from a previous run: test full name (space-joined, the
+/** A file's history from a previous run: test full name (`" > "`-joined, the
  * same form the leg patterns match) → measured milliseconds. */
 export type TestDurations = ReadonlyMap<string, number>;
 
@@ -221,10 +224,10 @@ function totalTests(node: SuiteNode): number {
 const escapeRegex = (s: string): string =>
   s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** The space-joined full-name prefix for a describe path, regex-escaped. Ends
- * in a space (the joint before the next name) unless the path is the root. */
+/** The `" > "`-joined full-name prefix for a describe path, regex-escaped.
+ * Ends in the joint before the next name, unless the path is the root. */
 function pathPrefix(names: readonly string[]): string {
-  return names.map((name) => `${escapeRegex(name)} `).join('');
+  return names.map((name) => `${escapeRegex(name)} > `).join('');
 }
 
 /**
@@ -250,12 +253,13 @@ function collectUnits(
     (SuiteNode & { name: string })[];
   const dynamic = node.children.filter((child) => child.name === null);
 
-  // Two sibling names where one extends the other word-by-word ('grant' next
-  // to 'grant extra') make the shorter one's pattern match both subtrees, so
-  // a test would run in two legs. Rare enough to refuse rather than solve.
+  // Two sibling names where one extends the other past a joint ('grant' next
+  // to 'grant > extra'), or a repeated name, make one pattern match both
+  // subtrees, so a test would run in two legs. Rare enough to refuse rather
+  // than solve.
   for (const a of literal) {
     for (const b of literal) {
-      if (a !== b && `${b.name} `.startsWith(`${a.name} `)) return false;
+      if (a !== b && `${b.name} > `.startsWith(`${a.name} > `)) return false;
     }
   }
 
@@ -265,7 +269,7 @@ function collectUnits(
   if (remainder > 0) {
     const lookahead =
       literal.length > 0
-        ? `(?!${literal.map((child) => `${escapeRegex(child.name)} `).join('|')})`
+        ? `(?!${literal.map((child) => `${escapeRegex(child.name)} > `).join('|')})`
         : '';
     const pattern = `^${pathPrefix(path)}${lookahead}`;
     const { weightMs, measured } = weigh(pattern, remainder);

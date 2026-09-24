@@ -23,7 +23,7 @@ describe('splitSpec', () => {
     `describe('${name}', () => {\n${body}});\n`;
 
   /** How vitest applies a leg's filter: `new RegExp(pattern)` against the
-   * space-joined full name (see split.ts on the format). */
+   * `" > "`-joined full name (see split.ts on the format). */
   const matches = (filter: string, fullName: string): boolean =>
     new RegExp(filter).test(fullName);
 
@@ -35,8 +35,8 @@ describe('splitSpec', () => {
     const legs = splitSpec(block('A', its(2)) + block('B', its(2)), 2);
 
     expect(legs).toStrictEqual([
-      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
-      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^B > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -47,15 +47,15 @@ describe('splitSpec', () => {
     );
 
     expect(legs).toStrictEqual([
-      { testFilter: '^P x ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
-      { testFilter: '^P y ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^P > x > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^P > y > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
   it('keeps tests beside child describes in exactly one leg', () => {
     // P holds one direct test next to two child describes, so the direct test
     // gets a remainder alternative: P's path minus its children. Without the
-    // lookahead it would run in every leg whose pattern starts with `^P `.
+    // lookahead it would run in every leg whose pattern starts with `^P > `.
     const legs = splitSpec(
       block(
         'P',
@@ -66,24 +66,24 @@ describe('splitSpec', () => {
 
     expect(legs).toStrictEqual([
       {
-        testFilter: '^P (?!x |y )|^P x ',
+        testFilter: '^P > (?!x > |y > )|^P > x > ',
         tests: 3,
         estimatedMs: 3 * DEFAULT_TEST_MS,
       },
-      { testFilter: '^P y ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^P > y > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
     if (legs === null) return;
     const first = legs[0] as SplitLeg;
     const second = legs[1] as SplitLeg;
-    expect(matches(first.testFilter, 'P direct0')).toBe(true);
-    expect(matches(second.testFilter, 'P direct0')).toBe(false);
-    expect(matches(first.testFilter, 'P y t0')).toBe(false);
-    expect(matches(second.testFilter, 'P y t0')).toBe(true);
+    expect(matches(first.testFilter, 'P > direct0')).toBe(true);
+    expect(matches(second.testFilter, 'P > direct0')).toBe(false);
+    expect(matches(first.testFilter, 'P > y > t0')).toBe(false);
+    expect(matches(second.testFilter, 'P > y > t0')).toBe(true);
   });
 
-  it('anchors and space-bounds names against sibling near-misses', () => {
+  it('bounds names by anchor and joint against sibling near-misses', () => {
     // The classic hazard: an unanchored 'grantRole' matches '_grantRole', and
-    // one without the trailing space matches 'grantRoleExtra'.
+    // one without the trailing joint matches 'grantRoleExtra'.
     const legs = splitSpec(
       block(
         'C',
@@ -98,7 +98,7 @@ describe('splitSpec', () => {
     expect(legs).not.toBeNull();
     if (legs === null) return;
     const forName = (name: string) =>
-      legs.filter((leg) => matches(leg.testFilter, `C ${name} t0`));
+      legs.filter((leg) => matches(leg.testFilter, `C > ${name} > t0`));
     for (const name of ['grantRole', '_grantRole', 'grantRoleExtra']) {
       // Each test lands in exactly one leg.
       expect(forName(name)).toHaveLength(1);
@@ -119,10 +119,10 @@ describe('splitSpec', () => {
       expect(() => new RegExp(leg.testFilter)).not.toThrow();
     const a = legs[0] as SplitLeg;
     const b = legs[1] as SplitLeg;
-    expect(matches(a.testFilter, 'A (v1.0) [x] t0')).toBe(true);
+    expect(matches(a.testFilter, 'A (v1.0) [x] > t0')).toBe(true);
     // The dot must not have become a wildcard.
-    expect(matches(a.testFilter, 'A (v1X0) [x] t0')).toBe(false);
-    expect(matches(b.testFilter, 'B $end t0')).toBe(true);
+    expect(matches(a.testFilter, 'A (v1X0) [x] > t0')).toBe(false);
+    expect(matches(b.testFilter, 'B $end > t0')).toBe(true);
   });
 
   it('rides a dynamic-named child on the remainder leg', () => {
@@ -137,8 +137,12 @@ describe('splitSpec', () => {
     );
 
     expect(legs).toStrictEqual([
-      { testFilter: '^P (?!lit )', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
-      { testFilter: '^P lit ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      {
+        testFilter: '^P > (?!lit > )',
+        tests: 2,
+        estimatedMs: 2 * DEFAULT_TEST_MS,
+      },
+      { testFilter: '^P > lit > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -174,14 +178,35 @@ describe('splitSpec', () => {
   });
 
   it('does not split colliding sibling prefixes', () => {
-    // 'grant ' is a prefix of 'grant extra ', so the shorter pattern would run
-    // the longer one's tests in two legs.
+    // 'grant > ' is a prefix of 'grant > extra > ', so the shorter pattern
+    // would run the longer one's tests in two legs.
+    const legs = splitSpec(
+      block('P', block('grant', its(2)) + block('grant > extra', its(2))),
+      2,
+    );
+
+    expect(legs).toBeNull();
+  });
+
+  it('splits sibling names that extend each other by a word', () => {
+    // The joint ends every name, so 'grant > ' cannot match 'grant extra > '.
     const legs = splitSpec(
       block('P', block('grant', its(2)) + block('grant extra', its(2))),
       2,
     );
 
-    expect(legs).toBeNull();
+    expect(legs).toStrictEqual([
+      {
+        testFilter: '^P > grant > ',
+        tests: 2,
+        estimatedMs: 2 * DEFAULT_TEST_MS,
+      },
+      {
+        testFilter: '^P > grant extra > ',
+        tests: 2,
+        estimatedMs: 2 * DEFAULT_TEST_MS,
+      },
+    ]);
   });
 
   it('counts aliased test registrations', () => {
@@ -194,8 +219,8 @@ describe('splitSpec', () => {
       block('B', its(2));
 
     expect(splitSpec(source, 2)).toStrictEqual([
-      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
-      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^B > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -207,8 +232,8 @@ describe('splitSpec', () => {
     const legs = splitSpec(block('A', body) + block('B', its(3)), 3);
 
     expect(legs).toStrictEqual([
-      { testFilter: '^A ', tests: 3, estimatedMs: 3 * DEFAULT_TEST_MS },
-      { testFilter: '^B ', tests: 3, estimatedMs: 3 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 3, estimatedMs: 3 * DEFAULT_TEST_MS },
+      { testFilter: '^B > ', tests: 3, estimatedMs: 3 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -221,8 +246,8 @@ describe('splitSpec', () => {
       block('B', its(2));
 
     expect(splitSpec(source, 2)).toStrictEqual([
-      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
-      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^B > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -230,8 +255,8 @@ describe('splitSpec', () => {
     const legs = splitSpec(its(2, 'top') + block('A', its(2)), 2);
 
     expect(legs).toStrictEqual([
-      { testFilter: '^(?!A )', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
-      { testFilter: '^A ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^(?!A > )', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -274,8 +299,8 @@ describe('splitSpec weighting', () => {
   const block = (name: string, body: string): string =>
     `describe('${name}', () => {\n${body}});\n`;
 
-  /** History for every test the fixtures register: `<describe> <prefix><i>`,
-   * the space-joined form the leg patterns match. */
+  /** History for every test the fixtures register: `<describe> > <prefix><i>`,
+   * the `" > "`-joined form the leg patterns match. */
   const history = (
     perTest: Readonly<Record<string, number>>,
     tests: number,
@@ -283,7 +308,7 @@ describe('splitSpec weighting', () => {
   ): Map<string, number> => {
     const map = new Map<string, number>();
     for (const [name, ms] of Object.entries(perTest)) {
-      for (let i = 0; i < tests; i++) map.set(`${name} ${prefix}${i}`, ms);
+      for (let i = 0; i < tests; i++) map.set(`${name} > ${prefix}${i}`, ms);
     }
     return map;
   };
@@ -338,14 +363,14 @@ describe('splitSpec weighting', () => {
 
   it('matches history names the way the leg patterns are built', () => {
     // The lookup keys are full names in the split's own convention —
-    // space-joined describe path plus test name. A measured describe carries
+    // `" > "`-joined describe path plus test name. A measured describe carries
     // its duration; an unmeasured sibling weighs the default per test.
     const source = block('A', its(2)) + block('B', its(2));
     const legs = splitSpec(source, 2, history({ A: 50_000 }, 2));
 
     expect(legs).toStrictEqual([
-      { testFilter: '^A ', tests: 2, estimatedMs: 100_000 },
-      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 2, estimatedMs: 100_000 },
+      { testFilter: '^B > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -358,8 +383,8 @@ describe('splitSpec weighting', () => {
     const legs = splitSpec(source, 2, history({ A: 400_000 }, 2));
 
     expect(legs).toStrictEqual([
-      { testFilter: '^A ', tests: 2, estimatedMs: 800_000 },
-      { testFilter: '^B ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
+      { testFilter: '^A > ', tests: 2, estimatedMs: 800_000 },
+      { testFilter: '^B > ', tests: 2, estimatedMs: 2 * DEFAULT_TEST_MS },
     ]);
   });
 
@@ -379,12 +404,12 @@ describe('splitSpec weighting', () => {
     const legs = splitSpec(
       source,
       2,
-      history({ 'P x': 40_000, 'P y': 40_000 }, 2),
+      history({ 'P > x': 40_000, 'P > y': 40_000 }, 2),
     );
 
     expect(legs).toStrictEqual([
-      { testFilter: '^P x ', tests: 2, estimatedMs: 80_000 },
-      { testFilter: '^P y ', tests: 2, estimatedMs: 80_000 },
+      { testFilter: '^P > x > ', tests: 2, estimatedMs: 80_000 },
+      { testFilter: '^P > y > ', tests: 2, estimatedMs: 80_000 },
     ]);
   });
 });
@@ -400,7 +425,7 @@ describe('estimateSpecMs', () => {
     expect(
       estimateSpecMs(
         "describe('A', () => { it('t0', () => {}); it('t1', () => {}); });",
-        new Map([['A t0', 120_000]]),
+        new Map([['A > t0', 120_000]]),
       ),
     ).toBe(120_000 + DEFAULT_TEST_MS);
   });

@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { VitestRunner } from '../VitestRunner.ts';
+import { testFullName, VitestRunner } from '../VitestRunner.ts';
 
 /**
  * Dry unit tests for `VitestRunner.ts`: reading back a vitest JSON report, and
@@ -118,10 +118,11 @@ describe('VitestRunner.reportedTestNames', () => {
     dir = mkdtempSync(path.join(os.tmpdir(), 'live-names-'));
   });
 
-  it('lists every test name in the report, skipped ones included', () => {
+  it('lists every test name in the -t form, skipped ones included', () => {
     // vitest lists the tests a `-t` pattern skipped too; that is what lets the
     // orchestrator tell "the pattern matches nothing" apart from "everything
-    // it matches is runtime-skipped".
+    // it matches is runtime-skipped". The space-joined `fullName` beside each
+    // entry is the form no pattern matches.
     const p = report(
       'ok.json',
       JSON.stringify({
@@ -130,8 +131,24 @@ describe('VitestRunner.reportedTestNames', () => {
             name: 'a.test.ts',
             status: 'passed',
             assertionResults: [
-              { fullName: 'Top ran', status: 'passed' },
-              { fullName: 'Top skipped by pattern', status: 'skipped' },
+              {
+                ancestorTitles: ['Top', 'nested'],
+                title: 'ran',
+                fullName: 'Top nested ran',
+                status: 'passed',
+              },
+              {
+                ancestorTitles: ['Top'],
+                title: 'skipped by pattern',
+                fullName: 'Top skipped by pattern',
+                status: 'skipped',
+              },
+              {
+                ancestorTitles: [],
+                title: 'top-level',
+                fullName: 'top-level',
+                status: 'passed',
+              },
             ],
           },
         ],
@@ -139,8 +156,9 @@ describe('VitestRunner.reportedTestNames', () => {
     );
 
     expect(new VitestRunner().reportedTestNames(p)).toStrictEqual([
-      'Top ran',
-      'Top skipped by pattern',
+      'Top > nested > ran',
+      'Top > skipped by pattern',
+      'top-level',
     ]);
   });
 
@@ -148,6 +166,12 @@ describe('VitestRunner.reportedTestNames', () => {
     expect(
       new VitestRunner().reportedTestNames(path.join(dir, 'absent.json')),
     ).toBeUndefined();
+  });
+});
+
+describe('testFullName', () => {
+  it('names an entry without ancestorTitles by its title alone', () => {
+    expect(testFullName({ title: 'orphan', status: 'passed' })).toBe('orphan');
   });
 });
 

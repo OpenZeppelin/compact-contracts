@@ -272,12 +272,13 @@ export class LiveOrchestrator {
 
       // Vitest is silently green when `-t` matches nothing: the file reports
       // "passed" with every test skipped, indistinguishable in exit code from
-      // a real pass. The report still lists every test's full name, though —
-      // matched or not — so a pattern that matches none of them is provably
-      // wrong (stale against the file, or a splitter bug), not merely
-      // runtime-skipped: a slice whose tests are all `.skipIf`-ed still has
-      // its names in the report and passes here. Only a clean run is checked;
-      // a failing file already tells its own story.
+      // a real pass. The report still lists every test, matched or not, and
+      // `reportedTestNames` rebuilds each name in the form `-t` matches, so a
+      // pattern that matches none of them is provably wrong (stale against the
+      // file, or a splitter bug), not merely runtime-skipped: a slice whose
+      // tests are all `.skipIf`-ed still has its names in the report and
+      // passes here. Only a clean run is checked; a failing file already tells
+      // its own story.
       if (
         this.#testPattern !== '' &&
         status === 0 &&

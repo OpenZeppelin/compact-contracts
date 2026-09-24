@@ -417,14 +417,14 @@ describe('resolveMatrix splitting', () => {
         target: 'multisig',
         file: 'src/multisig/test/Forwarder.test.ts',
         name: 'Forwarder-1',
-        testFilter: '^Big one ',
+        testFilter: '^Big > one > ',
         estimatedMs: MAX_TESTS_PER_LEG * DEFAULT_TEST_MS,
       },
       {
         target: 'multisig',
         file: 'src/multisig/test/Forwarder.test.ts',
         name: 'Forwarder-2',
-        testFilter: '^Big two ',
+        testFilter: '^Big > two > ',
         estimatedMs: 10 * DEFAULT_TEST_MS,
       },
       {
@@ -485,7 +485,10 @@ describe('resolveMatrix weighting', () => {
     file === 'src/token/test/FungibleToken.test.ts' ? heavySource : undefined;
   const heavyDurations = new Map(
     ['a', 'b'].flatMap((d) =>
-      Array.from({ length: 5 }, (_, i) => [`M ${d} t${i}`, 300_000] as const),
+      Array.from(
+        { length: 5 },
+        (_, i) => [`M > ${d} > t${i}`, 300_000] as const,
+      ),
     ),
   );
 
@@ -510,14 +513,14 @@ describe('resolveMatrix weighting', () => {
         target: 'token',
         file: 'src/token/test/FungibleToken.test.ts',
         name: 'FungibleToken-1',
-        testFilter: '^M a ',
+        testFilter: '^M > a > ',
         estimatedMs: 1_500_000,
       },
       {
         target: 'token',
         file: 'src/token/test/FungibleToken.test.ts',
         name: 'FungibleToken-2',
-        testFilter: '^M b ',
+        testFilter: '^M > b > ',
         estimatedMs: 1_500_000,
       },
     ]);
