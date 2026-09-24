@@ -10,19 +10,26 @@ import {
   sign,
   signerFromLabel,
 } from '#test-utils/fixtures/ecdsa.js';
+import { encodeShieldedCoinInfo } from '#test-utils/fixtures/nativeShieldedToken.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
+import {
+  contractOwner,
+  getQualifiedShieldedCoinInfo,
+} from '#test-utils/harness/NativeShieldedTokenTracker.js';
 import type {
   Maybe,
   QualifiedShieldedCoinInfo,
   ShieldedCoinInfo,
+  ZswapCoinPublicKey,
 } from '../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
 import {
+  burnFromSelfMsgHash,
   burnMsgHash,
   bytesOf,
-  type EitherRecipient,
   executeMsgHash,
   hexOf,
   mintMsgHash,
+  mintToSelfMsgHash,
 } from '../../test/EcdsaTestUtils.js';
 import {
   calculateSignerId,
@@ -53,16 +60,11 @@ const COMMITMENT2 = calculateSignerId(S2.publicKey, INSTANCE_SALT);
 const COMMITMENT3 = calculateSignerId(S3.publicKey, INSTANCE_SALT);
 const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
 
-// A contract recipient for `mint`. Dry-only: minting to a non-participating
-// contract publishes an output no one claims, which a live node rejects (the
-// same unclaimed-output limit that blocks atomic contract-recipient sends).
-const CONTRACT_RECIPIENT = utils.createEitherTestContractAddress('TARGET');
-
-// The user recipient for `mint`. Assigned in `beforeEach` after `create()`: on
+// The user recipient for `mint`. Assigned in `beforeAll` after `create()`: on
 // live it resolves to the deployer's own coin public key (whose encryption key
 // the node can resolve), so the minted coin is deliverable; dry → a synthetic
 // user.
-let USER_RECIPIENT: ReturnType<typeof shieldedTestKey>;
+let USER_RECIPIENT: ZswapCoinPublicKey;
 
 // ─── Signing helpers ──────────────────────────────────────────────
 
@@ -72,13 +74,26 @@ const addrBytes = (m: NativeShieldedTokenIssuerSimulator): Uint8Array =>
 /** The mint digest the contract computes for these params at its current nonce. */
 async function mintDigest(
   m: NativeShieldedTokenIssuerSimulator,
-  recipient: EitherRecipient,
+  recipient: ZswapCoinPublicKey,
   amount: bigint,
 ): Promise<Uint8Array> {
   return mintMsgHash({
     contractAddress: addrBytes(m),
     instanceSalt: INSTANCE_SALT,
-    recipient,
+    recipient: recipient.bytes,
+    opNonce: await m.getNonce(),
+    amount,
+  });
+}
+
+/** The mint-to-self digest the contract computes for `amount` at its current nonce. */
+async function mintToSelfDigest(
+  m: NativeShieldedTokenIssuerSimulator,
+  amount: bigint,
+): Promise<Uint8Array> {
+  return mintToSelfMsgHash({
+    contractAddress: addrBytes(m),
+    instanceSalt: INSTANCE_SALT,
     opNonce: await m.getNonce(),
     amount,
   });
@@ -87,9 +102,24 @@ async function mintDigest(
 /** The burn digest the contract computes for these params at its current nonce. */
 async function burnDigest(
   m: NativeShieldedTokenIssuerSimulator,
+  refundTo: ZswapCoinPublicKey,
   amount: bigint,
 ): Promise<Uint8Array> {
   return burnMsgHash({
+    contractAddress: addrBytes(m),
+    instanceSalt: INSTANCE_SALT,
+    refundTo: refundTo.bytes,
+    opNonce: await m.getNonce(),
+    amount,
+  });
+}
+
+/** The burn-from-self digest the contract computes for these params at its current nonce. */
+async function burnFromSelfDigest(
+  m: NativeShieldedTokenIssuerSimulator,
+  amount: bigint,
+): Promise<Uint8Array> {
+  return burnFromSelfMsgHash({
     contractAddress: addrBytes(m),
     instanceSalt: INSTANCE_SALT,
     opNonce: await m.getNonce(),
@@ -101,13 +131,27 @@ async function burnDigest(
 async function mint(
   m: NativeShieldedTokenIssuerSimulator,
   amount: bigint,
-  recipient: EitherRecipient,
+  recipient: ZswapCoinPublicKey,
   signers: Signer[],
 ): Promise<ShieldedCoinInfo> {
   const digest = await mintDigest(m, recipient, amount);
   return m.mint(
     amount,
     recipient,
+    signers.map((s) => s.publicKey),
+    signers.map((s) => sign(s, digest)),
+  );
+}
+
+/** Mints to the contract itself, signing the correct digest with each of `signers`. */
+async function mintToSelf(
+  m: NativeShieldedTokenIssuerSimulator,
+  amount: bigint,
+  signers: Signer[],
+): Promise<ShieldedCoinInfo> {
+  const digest = await mintToSelfDigest(m, amount);
+  return m.mintToSelf(
+    amount,
     signers.map((s) => s.publicKey),
     signers.map((s) => sign(s, digest)),
   );
@@ -139,11 +183,21 @@ function makeQualifiedCoin(
   };
 }
 
+// A holder's coin as it reaches `burn`: no `mt_index`, since the holder's tx
+// pays it in. The nonce is backend-aware so a live run never replays a spent
+// commitment.
+function makeCoin(color: Uint8Array, value: bigint): ShieldedCoinInfo {
+  return encodeShieldedCoinInfo(color, value);
+}
+
 let multisig: NativeShieldedTokenIssuerSimulator;
 
 // A fresh multisig-token instance. Mutating groups build one per test
 // (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
 // live deploy tx.
+// The dry simulator's default address is zero, which `mintToSelf` rejects as
+// a zero recipient, so dry pins a non-zero one; live uses the deployed address.
+const SELF_ADDRESS = utils.toHexPadded('SELF');
 const freshMultisig = () =>
   NativeShieldedTokenIssuerSimulator.create(
     INSTANCE_SALT,
@@ -153,6 +207,7 @@ const freshMultisig = () =>
     TOKEN_DECIMALS,
     SIGNER_COMMITMENTS,
     true,
+    isLiveBackend() ? {} : { contractAddress: SELF_ADDRESS },
   );
 
 describe('NativeShieldedTokenIssuer', () => {
@@ -255,7 +310,7 @@ describe('NativeShieldedTokenIssuer', () => {
     // mutating groups below build their own fresh instance per test.
     beforeAll(async () => {
       multisig = await freshMultisig();
-      USER_RECIPIENT = shieldedTestKey();
+      USER_RECIPIENT = shieldedTestKey().left;
     });
 
     describe('view', () => {
@@ -350,16 +405,6 @@ describe('NativeShieldedTokenIssuer', () => {
         await expectMintedCoin(multisig, coin, 100n);
       });
 
-      // A contract recipient other than this contract would leave an unclaimed
-      // output, so the core refuses it before anything is minted.
-      it('should reject a mint to a foreign contract recipient', async () => {
-        await expect(
-          mint(multisig, 100n, CONTRACT_RECIPIENT, [S1, S2]),
-        ).rejects.toThrow(
-          'NativeShieldedToken: recipient contract must be self',
-        );
-      });
-
       it('derives a different nonce on each mint', async () => {
         const first = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
         const second = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
@@ -368,7 +413,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('rejects a zero recipient', async () => {
         await expect(
-          mint(multisig, 100n, utils.ZERO_KEY, [S1, S2]),
+          mint(multisig, 100n, utils.ZERO_KEY.left, [S1, S2]),
         ).rejects.toThrow('NativeShieldedToken: invalid recipient');
       });
 
@@ -427,9 +472,7 @@ describe('NativeShieldedTokenIssuer', () => {
         it('should reject a signature bound to a different recipient', async () => {
           // `shieldedTestKey()` is deterministic, so a second call would return
           // the same key and the digests would match
-          const other = utils.eitherUserFromCoinPublicKey(
-            utils.toHexPadded('OTHER_RECIPIENT'),
-          );
+          const other = utils.encodeToPK('OTHER_RECIPIENT');
           const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
 
           await expect(
@@ -442,27 +485,25 @@ describe('NativeShieldedTokenIssuer', () => {
           ).rejects.toThrow('Multisig: invalid signature');
         });
 
-        it('should reject a signature over a different recipient kind', async () => {
-          const address = new Uint8Array(32).fill(7);
-          const zero = new Uint8Array(32);
-          const asUser: EitherRecipient = {
-            is_left: true,
-            left: { bytes: address },
-            right: { bytes: zero },
-          };
-          const asContract: EitherRecipient = {
-            is_left: false,
-            left: { bytes: zero },
-            right: { bytes: address },
-          };
-          // Signed for a shielded user; submitted for a contract at the same
-          // address bytes.
-          const digest = await mintDigest(multisig, asUser, 100n);
+        it('should reject a mint signature replayed as a mint-to-self', async () => {
+          const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+
+          await expect(
+            multisig.mintToSelf(
+              100n,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a mint-to-self signature replayed as a mint', async () => {
+          const digest = await mintToSelfDigest(multisig, 100n);
 
           await expect(
             multisig.mint(
               100n,
-              asContract,
+              USER_RECIPIENT,
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
@@ -470,7 +511,7 @@ describe('NativeShieldedTokenIssuer', () => {
         });
 
         it('should reject a burn signature replayed as a mint', async () => {
-          const digest = await burnDigest(multisig, 100n);
+          const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
 
           await expect(
             multisig.mint(
@@ -484,12 +525,56 @@ describe('NativeShieldedTokenIssuer', () => {
 
         it('should reject a mint signature replayed as a burn', async () => {
           const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
-          const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
+          const coin = makeCoin(await multisig.tokenColor(), 100n);
 
           await expect(
             multisig.burn(
               coin,
               100n,
+              USER_RECIPIENT,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a mint signature replayed as a burn-from-self', async () => {
+          const digest = await mintDigest(multisig, USER_RECIPIENT, 100n);
+          const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
+
+          await expect(
+            multisig.burnFromSelf(
+              coin,
+              100n,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a burn signature replayed as a burn-from-self', async () => {
+          const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
+          const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
+
+          await expect(
+            multisig.burnFromSelf(
+              coin,
+              100n,
+              [S1.publicKey, S2.publicKey],
+              [sign(S1, digest), sign(S2, digest)],
+            ),
+          ).rejects.toThrow('Multisig: invalid signature');
+        });
+
+        it('should reject a burn-from-self signature replayed as a burn', async () => {
+          const digest = await burnFromSelfDigest(multisig, 100n);
+          const coin = makeCoin(await multisig.tokenColor(), 100n);
+
+          await expect(
+            multisig.burn(
+              coin,
+              100n,
+              USER_RECIPIENT,
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
@@ -506,7 +591,13 @@ describe('NativeShieldedTokenIssuer', () => {
           Mint: [
             { name: 'contractAddress', type: 'bytes32' },
             { name: 'recipient', type: 'bytes32' },
-            { name: 'isContract', type: 'bool' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'amount', type: 'uint256' },
+          ],
+        };
+        const MINT_TO_SELF_TYPES = {
+          MintToSelf: [
+            { name: 'contractAddress', type: 'bytes32' },
             { name: 'nonce', type: 'uint256' },
             { name: 'amount', type: 'uint256' },
           ],
@@ -517,8 +608,7 @@ describe('NativeShieldedTokenIssuer', () => {
           nonce: bigint,
         ) => ({
           contractAddress: hexOf(addrBytes(m)),
-          recipient: hexOf(USER_RECIPIENT.left.bytes),
-          isContract: false,
+          recipient: hexOf(USER_RECIPIENT.bytes),
           nonce,
           amount: 100n,
         });
@@ -541,6 +631,14 @@ describe('NativeShieldedTokenIssuer', () => {
           const BURN_TYPES = {
             Burn: [
               { name: 'contractAddress', type: 'bytes32' },
+              { name: 'refundTo', type: 'bytes32' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'amount', type: 'uint256' },
+            ],
+          };
+          const BURN_FROM_SELF_TYPES = {
+            BurnFromSelf: [
+              { name: 'contractAddress', type: 'bytes32' },
               { name: 'nonce', type: 'uint256' },
               { name: 'amount', type: 'uint256' },
             ],
@@ -551,12 +649,30 @@ describe('NativeShieldedTokenIssuer', () => {
           expect(
             id(TypedDataEncoder.from(MINT_TYPES).encodeType('Mint')),
           ).toEqual(
-            '0x28d4c840bc95fe084ea5e3209443ba6721b7170971ee05efaf0a9851ee5fd1f5',
+            '0x652d4dad8fb26c5c50c987d419dc935314a01ed45db159f230adc1a7e902911c',
+          );
+          expect(
+            id(
+              TypedDataEncoder.from(MINT_TO_SELF_TYPES).encodeType(
+                'MintToSelf',
+              ),
+            ),
+          ).toEqual(
+            '0xf8b31e4e0f2d103382b4b372ac65a7adcd0389398d246c5ec2c9093853db4991',
           );
           expect(
             id(TypedDataEncoder.from(BURN_TYPES).encodeType('Burn')),
           ).toEqual(
-            '0xdf62d67d390806a6b63fbd9fb5b8904ef86a4d67f3824a3d855f6eefb8e79809',
+            '0x968e03a5ba91c8dd2756795ac657521306e0d97ce81ebf9b682445a286fcebef',
+          );
+          expect(
+            id(
+              TypedDataEncoder.from(BURN_FROM_SELF_TYPES).encodeType(
+                'BurnFromSelf',
+              ),
+            ),
+          ).toEqual(
+            '0x08ba21807e7f7547a2701d8c5306397d97adfd3ea6f6a28c100cbd649c7f5d94',
           );
         });
 
@@ -639,15 +755,13 @@ describe('NativeShieldedTokenIssuer', () => {
           const typeHash = bytesOf(
             id(TypedDataEncoder.from(MINT_TYPES).encodeType('Mint')),
           );
-          const boolWord = new Uint8Array(32);
 
           const structHash = keccak_256(
             Buffer.concat(
               [
                 typeHash,
                 addrBytes(multisig),
-                USER_RECIPIENT.left.bytes,
-                boolWord,
+                USER_RECIPIENT.bytes,
                 le(nonce),
                 le(100n),
               ].map(Buffer.from),
@@ -712,13 +826,274 @@ describe('NativeShieldedTokenIssuer', () => {
       });
     });
 
-    // A successful burn spends a real coin of the contract's own token. Its
-    // nonce is derived inside the mint circuit, so the spec cannot reconstruct
+    // `mintToSelf` claims the coin for the contract in the same call, so the
+    // spend proof is a `burnFromSelf` of that coin on both backends: the
+    // tracker recovers its `mt_index` on live, dry accepts `0n`.
+    describe('mintToSelf', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
+      /** Mints `amount` to the contract and returns the spendable held coin. */
+      async function heldCoin(
+        amount: bigint,
+        signers: Signer[],
+      ): Promise<QualifiedShieldedCoinInfo> {
+        const coin = await mintToSelf(multisig, amount, signers);
+        await expectMintedCoin(multisig, coin, amount);
+        return getQualifiedShieldedCoinInfo(contractOwner(multisig), coin);
+      }
+
+      it('mints a held coin with signers 0 and 1', async () => {
+        await heldCoin(100n, [S1, S2]);
+      });
+
+      it('mints a held coin with signers 0 and 2', async () => {
+        await heldCoin(100n, [S1, S3]);
+      });
+
+      it('mints a held coin with signers 1 and 2', async () => {
+        await heldCoin(100n, [S2, S3]);
+      });
+
+      it('mints a coin the contract can burn from self', async () => {
+        const coin = await heldCoin(100n, [S1, S2]);
+        const digest = await burnFromSelfDigest(multisig, 100n);
+        const change = await multisig.burnFromSelf(
+          coin,
+          100n,
+          [S1.publicKey, S2.publicKey],
+          [sign(S1, digest), sign(S2, digest)],
+        );
+        expect(change.is_some).toStrictEqual(false);
+      });
+
+      it('derives a different nonce on each mint', async () => {
+        const first = await mintToSelf(multisig, 100n, [S1, S2]);
+        const second = await mintToSelf(multisig, 100n, [S1, S2]);
+        expect(first.nonce).not.toEqual(second.nonce);
+      });
+
+      it('rejects a duplicate signer', async () => {
+        await expect(mintToSelf(multisig, 100n, [S1, S1])).rejects.toThrow(
+          'Multisig: duplicate signer',
+        );
+      });
+
+      it('rejects a non-signer pubkey', async () => {
+        await expect(
+          mintToSelf(multisig, 100n, [S1, OUTSIDER]),
+        ).rejects.toThrow('Signer: not a signer');
+      });
+
+      it('rejects a signature bound to a different amount', async () => {
+        const digest = await mintToSelfDigest(multisig, 999n);
+        await expect(
+          multisig.mintToSelf(
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+    });
+
+    // `burn` receives the holder's coin from the tx and spends it in the same
+    // call, so a fabricated coin is fine on dry. On live the coin must exist:
+    // mint to the deployer key, then burn that coin with the same key as
+    // `refundTo`, so the change stays resolvable.
+    describe('burn', () => {
+      beforeEach(async () => {
+        multisig = await freshMultisig();
+      });
+
+      /** Burns `amount` of a fresh `coinValue` coin, signing with `signers`. */
+      async function burn(
+        amount: bigint,
+        coinValue: bigint,
+        signers: Signer[],
+        refundTo: ZswapCoinPublicKey = USER_RECIPIENT,
+      ): Promise<Maybe<ShieldedCoinInfo>> {
+        // Live burns the minted coin as-is (the linkable flow); dry's
+        // fresh-nonce coin models the private one.
+        const coin = isLiveBackend()
+          ? await mint(multisig, coinValue, USER_RECIPIENT, [S1, S2])
+          : makeCoin(await multisig.tokenColor(), coinValue);
+        const digest = await burnDigest(multisig, refundTo, amount);
+        return multisig.burn(
+          coin,
+          amount,
+          refundTo,
+          signers.map((s) => s.publicKey),
+          signers.map((s) => sign(s, digest)),
+        );
+      }
+
+      it('burns a holder coin in full with signers 0 and 1', async () => {
+        const refund = await burn(100n, 100n, [S1, S2]);
+        expect(refund.is_some).toStrictEqual(false);
+      });
+
+      it('burns a holder coin with signers 0 and 2', async () => {
+        const refund = await burn(100n, 100n, [S1, S3]);
+        expect(refund.is_some).toStrictEqual(false);
+      });
+
+      it('burns a holder coin with signers 1 and 2', async () => {
+        const refund = await burn(100n, 100n, [S2, S3]);
+        expect(refund.is_some).toStrictEqual(false);
+      });
+
+      it('refunds the remainder to refundTo on a partial burn', async () => {
+        const refund = await burn(50n, 100n, [S1, S2]);
+        expect(refund.is_some).toStrictEqual(true);
+        expect(refund.value.value).toStrictEqual(50n);
+        expect(refund.value.color).toStrictEqual(await multisig.tokenColor());
+      });
+
+      it('refunds the whole coin on a zero burn', async () => {
+        const refund = await burn(0n, 100n, [S1, S2]);
+        expect(refund.is_some).toStrictEqual(true);
+        expect(refund.value.value).toStrictEqual(100n);
+      });
+
+      it('shares the nonce with every operation', async () => {
+        const coin = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
+        expect(await multisig.getNonce()).toEqual(1n);
+
+        const held = await getQualifiedShieldedCoinInfo(
+          contractOwner(multisig),
+          await mintToSelf(multisig, 100n, [S1, S3]),
+        );
+        expect(await multisig.getNonce()).toEqual(2n);
+
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
+        await multisig.burn(
+          coin,
+          100n,
+          USER_RECIPIENT,
+          [S1.publicKey, S3.publicKey],
+          [sign(S1, digest), sign(S3, digest)],
+        );
+        expect(await multisig.getNonce()).toEqual(3n);
+
+        const selfDigest = await burnFromSelfDigest(multisig, 100n);
+        await multisig.burnFromSelf(
+          held,
+          100n,
+          [S2.publicKey, S3.publicKey],
+          [sign(S2, selfDigest), sign(S3, selfDigest)],
+        );
+        expect(await multisig.getNonce()).toEqual(4n);
+      });
+
+      it('rejects a signature bound to a different refundTo', async () => {
+        const other = utils.encodeToPK('OTHER_REFUND');
+        const coin = makeCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, other, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('rejects a signature bound to a different amount', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 50n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('rejects a duplicate signer', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S1.publicKey],
+            [sign(S1, digest), sign(S1, digest)],
+          ),
+        ).rejects.toThrow('Multisig: duplicate signer');
+      });
+
+      it('rejects a non-signer pubkey', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, OUTSIDER.publicKey],
+            [sign(S1, digest), sign(OUTSIDER, digest)],
+          ),
+        ).rejects.toThrow('Signer: not a signer');
+      });
+
+      it('rejects a wrong token color', async () => {
+        const coin = makeCoin(new Uint8Array(32).fill(0xde), 100n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('NativeShieldedToken: wrong token');
+      });
+
+      it('rejects an amount above the coin value', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 99n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+      });
+
+      it('rejects a zero refundTo', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, utils.ZERO_KEY.left, 100n);
+        await expect(
+          multisig.burn(
+            coin,
+            100n,
+            utils.ZERO_KEY.left,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('NativeShieldedToken: invalid refund target');
+      });
+    });
+
+    // A successful burn-from-self spends a real coin of the contract's own
+    // token. Its nonce is derived inside the mint circuit, so the spec cannot reconstruct
     // it to recover the coin's `mt_index` on live (that is the wallet SDK's
     // ciphertext-discovery job, out of scope for the coin tracker). The
     // rejection paths below throw before the receive/spend, so they run on both
     // backends; the success paths are dry-only.
-    describe('burn', () => {
+    describe('burnFromSelf', () => {
       beforeEach(async () => {
         multisig = await freshMultisig();
       });
@@ -726,7 +1101,7 @@ describe('NativeShieldedTokenIssuer', () => {
       // Happy-path burns execute a real spend, so they are dry-only until the
       // live harness can fund and track the burned coin.
       describe.skipIf(isLiveBackend())('happy path (dry only)', () => {
-        async function burn(
+        async function burnFromSelf(
           amount: bigint,
           coinValue: bigint,
           signers: Signer[],
@@ -735,8 +1110,8 @@ describe('NativeShieldedTokenIssuer', () => {
             await multisig.tokenColor(),
             coinValue,
           );
-          const digest = await burnDigest(multisig, amount);
-          return multisig.burn(
+          const digest = await burnFromSelfDigest(multisig, amount);
+          return multisig.burnFromSelf(
             coin,
             amount,
             signers.map((s) => s.publicKey),
@@ -744,49 +1119,49 @@ describe('NativeShieldedTokenIssuer', () => {
           );
         }
 
-        it('should burn with valid coin and signers 0 and 1', async () => {
-          const change = await burn(100n, 100n, [S1, S2]);
+        it('should burn a held coin with signers 0 and 1', async () => {
+          const change = await burnFromSelf(100n, 100n, [S1, S2]);
           expect(change.is_some).toStrictEqual(false);
         });
 
-        it('should burn with signers 0 and 2', async () => {
-          const change = await burn(100n, 100n, [S1, S3]);
+        it('should burn a held coin with signers 0 and 2', async () => {
+          const change = await burnFromSelf(100n, 100n, [S1, S3]);
           expect(change.is_some).toStrictEqual(false);
         });
 
-        it('should burn with signers 1 and 2', async () => {
-          const change = await burn(100n, 100n, [S2, S3]);
+        it('should burn a held coin with signers 1 and 2', async () => {
+          const change = await burnFromSelf(100n, 100n, [S2, S3]);
           expect(change.is_some).toStrictEqual(false);
         });
 
         it('returns the change coin on a partial burn', async () => {
-          const change = await burn(50n, 100n, [S1, S2]);
+          const change = await burnFromSelf(50n, 100n, [S1, S2]);
           expect(change.is_some).toStrictEqual(true);
           expect(change.value.value).toStrictEqual(50n);
           expect(change.value.color).toStrictEqual(await multisig.tokenColor());
         });
 
         it('returns the whole coin as change on a zero burn', async () => {
-          const change = await burn(0n, 100n, [S1, S2]);
+          const change = await burnFromSelf(0n, 100n, [S1, S2]);
           expect(change.is_some).toStrictEqual(true);
           expect(change.value.value).toStrictEqual(100n);
           expect(change.value.color).toStrictEqual(await multisig.tokenColor());
         });
 
-        it('should share nonce across mint and burn', async () => {
+        it('should share nonce across mint and burn-from-self', async () => {
           await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
           expect(await multisig.getNonce()).toEqual(1n);
 
-          await burn(50n, 100n, [S1, S3]);
+          await burnFromSelf(50n, 100n, [S1, S3]);
           expect(await multisig.getNonce()).toEqual(2n);
         });
       });
 
       it('should reject duplicate signer', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S1.publicKey],
@@ -797,9 +1172,9 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a non-signer pubkey', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, OUTSIDER.publicKey],
@@ -810,9 +1185,9 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a signature from the wrong key', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S2.publicKey],
@@ -823,9 +1198,9 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a signature bound to a different amount', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnDigest(multisig, 50n);
+        const digest = await burnFromSelfDigest(multisig, 50n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S2.publicKey],
@@ -837,9 +1212,9 @@ describe('NativeShieldedTokenIssuer', () => {
       it('should reject wrong token color', async () => {
         const wrongColor = new Uint8Array(32).fill(0xde);
         const coin = makeQualifiedCoin(wrongColor, 100n);
-        const digest = await burnDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S2.publicKey],
@@ -850,9 +1225,9 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject insufficient coin value', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 10n);
-        const digest = await burnDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S2.publicKey],
@@ -863,9 +1238,9 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject when amount exceeds value by 1', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 99n);
-        const digest = await burnDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n);
         await expect(
-          multisig.burn(
+          multisig.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S2.publicKey],
@@ -967,7 +1342,7 @@ describe('NativeShieldedTokenIssuer', () => {
           contractAddress: addrBytes(multisig),
           instanceSalt: INSTANCE_SALT,
           nonce: await multisig.getNonce(),
-          to: { kind: 0, address: USER_RECIPIENT.left.bytes },
+          to: { kind: 0, address: USER_RECIPIENT.bytes },
           coinColor: await multisig.tokenColor(),
           amount: 100n,
         });
@@ -1013,6 +1388,30 @@ describe('NativeShieldedTokenIssuer', () => {
         ).rejects.toThrow('Multisig: invalid signature');
       });
 
+      it('should reject a mint-to-self signature bound to another instance', async () => {
+        const instance1 = await freshMultisig();
+        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+          INSTANCE_SALT,
+          TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
+          SIGNER_COMMITMENTS,
+          true,
+          isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
+        );
+
+        const digest = await mintToSelfDigest(instance1, 100n);
+
+        await expect(
+          instance2.mintToSelf(
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
       it('should reject a burn signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
         const instance2 = await NativeShieldedTokenIssuerSimulator.create(
@@ -1028,11 +1427,40 @@ describe('NativeShieldedTokenIssuer', () => {
 
         // Same salt, same nonce, same amount: the two digests differ only in
         // the `contractAddress` word.
-        const digest = await burnDigest(instance1, 100n);
-        const coin = makeQualifiedCoin(await instance2.tokenColor(), 100n);
+        const digest = await burnDigest(instance1, USER_RECIPIENT, 100n);
+        const coin = makeCoin(await instance2.tokenColor(), 100n);
 
         await expect(
           instance2.burn(
+            coin,
+            100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a burn-from-self signature bound to another instance', async () => {
+        const instance1 = await freshMultisig();
+        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+          INSTANCE_SALT,
+          TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
+          SIGNER_COMMITMENTS,
+          true,
+          isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
+        );
+
+        // Same salt, same nonce, same amount: the two digests differ only in
+        // the `contractAddress` word.
+        const digest = await burnFromSelfDigest(instance1, 100n);
+        const coin = makeQualifiedCoin(await instance2.tokenColor(), 100n);
+
+        await expect(
+          instance2.burnFromSelf(
             coin,
             100n,
             [S1.publicKey, S2.publicKey],

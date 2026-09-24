@@ -1,4 +1,7 @@
-import { createSimulator } from '@openzeppelin/compact-simulator';
+import {
+  createSimulator,
+  isLiveBackend,
+} from '@openzeppelin/compact-simulator';
 import { TypedDataEncoder } from 'ethers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { sign, signerFromLabel } from '#test-utils/fixtures/ecdsa.js';
@@ -8,7 +11,14 @@ import {
   ledger,
 } from '../../../../artifacts/NativeShieldedTokenIssuerExample/contract/index.js';
 import { calculateSignerId } from '../../presets/test/simulators/NativeShieldedTokenIssuerSimulator.js';
-import { bytesOf, hexOf, mintMsgHash } from '../../test/EcdsaTestUtils.js';
+import {
+  burnFromSelfMsgHash,
+  burnMsgHash,
+  bytesOf,
+  hexOf,
+  mintMsgHash,
+  mintToSelfMsgHash,
+} from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -74,7 +84,8 @@ describe('NativeShieldedTokenIssuerExample', () => {
         TOKEN_DECIMALS,
         COMMITMENTS,
       ],
-      {},
+      // The dry default address is zero, which `mintToSelf` rejects.
+      isLiveBackend() ? {} : { contractAddress: '5e'.repeat(32) },
     );
   });
 
@@ -110,22 +121,94 @@ describe('NativeShieldedTokenIssuerExample', () => {
     expect(state._isInitialized).toStrictEqual(true);
   });
 
-  it('mints with two valid signatures', async () => {
+  const addrBytes = () =>
+    Uint8Array.from(Buffer.from(ex.contractAddress, 'hex'));
+
+  /** Mints `amount` to `recipient` with signers 1 and 2. */
+  async function mint(amount: bigint, recipient = shieldedTestKey().left) {
     const c = ex.circuits.impure;
-    const recipient = shieldedTestKey();
-    const addr = Uint8Array.from(Buffer.from(ex.contractAddress, 'hex'));
     const digest = mintMsgHash({
-      contractAddress: addr,
+      contractAddress: addrBytes(),
       instanceSalt: INSTANCE_SALT,
-      recipient,
+      recipient: recipient.bytes,
       opNonce: await c.getNonce(),
-      amount: 100n,
+      amount,
     });
-    await c.mint(
-      100n,
+    return c.mint(
+      amount,
       recipient,
       [S1.publicKey, S2.publicKey],
       [sign(S1, digest), sign(S2, digest)],
     );
+  }
+
+  it('mints with two valid signatures', async () => {
+    await mint(100n);
   });
+
+  it('mints to itself through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const digest = mintToSelfMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      opNonce: await c.getNonce(),
+      amount: 100n,
+    });
+    const coin = await c.mintToSelf(
+      100n,
+      [S1.publicKey, S2.publicKey],
+      [sign(S1, digest), sign(S2, digest)],
+    );
+    expect(coin.value).toStrictEqual(100n);
+    expect(coin.color).toStrictEqual(await c.tokenColor());
+  });
+
+  it('burns a holder coin through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const holder = shieldedTestKey().left;
+    // Burns the minted coin as-is: the linkable flow, on both backends.
+    const coin = await mint(100n, holder);
+    const digest = burnMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      refundTo: holder.bytes,
+      opNonce: await c.getNonce(),
+      amount: 100n,
+    });
+    const refund = await c.burn(
+      coin,
+      100n,
+      holder,
+      [S1.publicKey, S2.publicKey],
+      [sign(S1, digest), sign(S2, digest)],
+    );
+    expect(refund.is_some).toStrictEqual(false);
+  });
+
+  // A held coin needs a real `mt_index` on live; dry accepts a fabricated one.
+  it.skipIf(isLiveBackend())(
+    'burns a held coin through the wrapper (dry only)',
+    async () => {
+      const c = ex.circuits.impure;
+      const coin = {
+        nonce: new Uint8Array(32),
+        color: await c.tokenColor(),
+        value: 100n,
+        mt_index: 0n,
+      };
+      const digest = burnFromSelfMsgHash({
+        contractAddress: addrBytes(),
+        instanceSalt: INSTANCE_SALT,
+        opNonce: await c.getNonce(),
+        amount: 100n,
+      });
+      const change = await c.burnFromSelf(
+        coin,
+        100n,
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      );
+      expect(change.is_some).toStrictEqual(false);
+    },
+  );
 });

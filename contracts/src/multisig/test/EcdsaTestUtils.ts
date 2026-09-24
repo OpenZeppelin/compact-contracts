@@ -57,7 +57,14 @@ const MINT_TYPES = {
   Mint: [
     { name: 'contractAddress', type: 'bytes32' },
     { name: 'recipient', type: 'bytes32' },
-    { name: 'isContract', type: 'bool' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'amount', type: 'uint256' },
+  ],
+};
+
+const MINT_TO_SELF_TYPES = {
+  MintToSelf: [
+    { name: 'contractAddress', type: 'bytes32' },
     { name: 'nonce', type: 'uint256' },
     { name: 'amount', type: 'uint256' },
   ],
@@ -65,6 +72,15 @@ const MINT_TYPES = {
 
 const BURN_TYPES = {
   Burn: [
+    { name: 'contractAddress', type: 'bytes32' },
+    { name: 'refundTo', type: 'bytes32' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'amount', type: 'uint256' },
+  ],
+};
+
+const BURN_FROM_SELF_TYPES = {
+  BurnFromSelf: [
     { name: 'contractAddress', type: 'bytes32' },
     { name: 'nonce', type: 'uint256' },
     { name: 'amount', type: 'uint256' },
@@ -82,24 +98,21 @@ const EXECUTE_TYPES = {
   ],
 };
 
-/** NativeShieldedTokenIssuer `mint` digest. `contractAddress` is `kernel.self().bytes`. */
+/** NativeShieldedTokenIssuer `mint` digest. `recipient` is the coin public key's bytes. */
 export function mintMsgHash(params: {
   contractAddress: Uint8Array;
   instanceSalt: Uint8Array;
-  recipient: EitherRecipient;
+  recipient: Uint8Array;
   opNonce: bigint;
   amount: bigint;
 }): Uint8Array {
-  const r = params.recipient;
   return bytesOf(
     TypedDataEncoder.hash(
       domain('NativeShieldedTokenIssuer', params.instanceSalt),
       MINT_TYPES,
       {
         contractAddress: hexOf(params.contractAddress),
-        // Only the active arm reaches the digest, matching the circuit.
-        recipient: hexOf(r.is_left ? r.left.bytes : r.right.bytes),
-        isContract: !r.is_left,
+        recipient: hexOf(params.recipient),
         nonce: params.opNonce,
         amount: params.amount,
       },
@@ -107,8 +120,8 @@ export function mintMsgHash(params: {
   );
 }
 
-/** NativeShieldedTokenIssuer `burn` digest. */
-export function burnMsgHash(params: {
+/** NativeShieldedTokenIssuer `mintToSelf` digest. */
+export function mintToSelfMsgHash(params: {
   contractAddress: Uint8Array;
   instanceSalt: Uint8Array;
   opNonce: bigint;
@@ -117,7 +130,49 @@ export function burnMsgHash(params: {
   return bytesOf(
     TypedDataEncoder.hash(
       domain('NativeShieldedTokenIssuer', params.instanceSalt),
+      MINT_TO_SELF_TYPES,
+      {
+        contractAddress: hexOf(params.contractAddress),
+        nonce: params.opNonce,
+        amount: params.amount,
+      },
+    ),
+  );
+}
+
+/** NativeShieldedTokenIssuer `burn` digest. `refundTo` is the coin public key's bytes. */
+export function burnMsgHash(params: {
+  contractAddress: Uint8Array;
+  instanceSalt: Uint8Array;
+  refundTo: Uint8Array;
+  opNonce: bigint;
+  amount: bigint;
+}): Uint8Array {
+  return bytesOf(
+    TypedDataEncoder.hash(
+      domain('NativeShieldedTokenIssuer', params.instanceSalt),
       BURN_TYPES,
+      {
+        contractAddress: hexOf(params.contractAddress),
+        refundTo: hexOf(params.refundTo),
+        nonce: params.opNonce,
+        amount: params.amount,
+      },
+    ),
+  );
+}
+
+/** NativeShieldedTokenIssuer `burnFromSelf` digest. */
+export function burnFromSelfMsgHash(params: {
+  contractAddress: Uint8Array;
+  instanceSalt: Uint8Array;
+  opNonce: bigint;
+  amount: bigint;
+}): Uint8Array {
+  return bytesOf(
+    TypedDataEncoder.hash(
+      domain('NativeShieldedTokenIssuer', params.instanceSalt),
+      BURN_FROM_SELF_TYPES,
       {
         contractAddress: hexOf(params.contractAddress),
         nonce: params.opNonce,

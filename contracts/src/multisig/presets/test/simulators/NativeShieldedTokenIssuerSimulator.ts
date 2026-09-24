@@ -5,8 +5,6 @@ import {
 } from '@openzeppelin/compact-simulator';
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
-  type ContractAddress,
-  type Either,
   ledger,
   type Maybe,
   Contract as MockNativeShieldedTokenIssuer,
@@ -100,20 +98,44 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
 
   public mint(
     amount: bigint,
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+    recipient: ZswapCoinPublicKey,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<ShieldedCoinInfo> {
     return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
   }
 
+  public mintToSelf(
+    amount: bigint,
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
+  ): Promise<ShieldedCoinInfo> {
+    return this.circuits.impure.mintToSelf(amount, pubkeys, signatures);
+  }
+
   public burn(
+    coin: ShieldedCoinInfo,
+    amount: bigint,
+    refundTo: ZswapCoinPublicKey,
+    pubkeys: Secp256k1Point[],
+    signatures: EcdsaSignature[],
+  ): Promise<Maybe<ShieldedCoinInfo>> {
+    return this.circuits.impure.burn(
+      coin,
+      amount,
+      refundTo,
+      pubkeys,
+      signatures,
+    );
+  }
+
+  public burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
     amount: bigint,
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<Maybe<ShieldedCoinInfo>> {
-    return this.circuits.impure.burn(coin, amount, pubkeys, signatures);
+    return this.circuits.impure.burnFromSelf(coin, amount, pubkeys, signatures);
   }
 
   public getNonce(): Promise<bigint> {

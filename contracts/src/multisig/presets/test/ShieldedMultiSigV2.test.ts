@@ -13,7 +13,6 @@ import {
 } from '#test-utils/fixtures/nativeShieldedToken.js';
 import {
   bytesOf,
-  type EitherRecipient,
   executeMsgHash,
   hexOf,
   mintMsgHash,
@@ -663,17 +662,12 @@ describe('ShieldedMultiSigV2', () => {
         const address = new Uint8Array(32).fill(7);
         const to = makeRecipient(address);
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
-        const recipient: EitherRecipient = {
-          is_left: true,
-          left: { bytes: address },
-          right: { bytes: new Uint8Array(32) },
-        };
         const digest = mintMsgHash({
           contractAddress: Uint8Array.from(
             Buffer.from(multisig.contractAddress, 'hex'),
           ),
           instanceSalt: INSTANCE_SALT,
-          recipient,
+          recipient: address,
           opNonce: await multisig.getNonce(),
           amount: 100n,
         });
