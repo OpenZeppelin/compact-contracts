@@ -201,6 +201,8 @@ describe('NativeShieldedTokenIssuerExample', () => {
         instanceSalt: INSTANCE_SALT,
         opNonce: await c.getNonce(),
         amount: 100n,
+        coinNonce: coin.nonce,
+        coinValue: coin.value,
       });
       const change = await c.burnFromSelf(
         coin,

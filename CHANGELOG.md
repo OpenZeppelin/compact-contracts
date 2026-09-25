@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Changed
+
+- **Breaking:** Fix `NativeShieldedTokenIssuer` (#993)
+  - Bind the spent coin in `burnFromSelf`
+  - `BurnFromSelf` gains `coinNonce` and `coinValue`
+
 ## 0.4.0-alpha.4 (2026-09-25)
 
 ### Changed

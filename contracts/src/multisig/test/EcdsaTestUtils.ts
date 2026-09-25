@@ -84,6 +84,8 @@ const BURN_FROM_SELF_TYPES = {
     { name: 'contractAddress', type: 'bytes32' },
     { name: 'nonce', type: 'uint256' },
     { name: 'amount', type: 'uint256' },
+    { name: 'coinNonce', type: 'bytes32' },
+    { name: 'coinValue', type: 'uint256' },
   ],
 };
 
@@ -168,6 +170,8 @@ export function burnFromSelfMsgHash(params: {
   instanceSalt: Uint8Array;
   opNonce: bigint;
   amount: bigint;
+  coinNonce: Uint8Array;
+  coinValue: bigint;
 }): Uint8Array {
   return bytesOf(
     TypedDataEncoder.hash(
@@ -177,6 +181,8 @@ export function burnFromSelfMsgHash(params: {
         contractAddress: hexOf(params.contractAddress),
         nonce: params.opNonce,
         amount: params.amount,
+        coinNonce: hexOf(params.coinNonce),
+        coinValue: params.coinValue,
       },
     ),
   );

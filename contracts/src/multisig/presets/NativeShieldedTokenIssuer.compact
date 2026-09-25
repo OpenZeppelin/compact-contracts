@@ -46,14 +46,17 @@ pragma language_version >= 0.26.0;
  * - Burn digest: `keccak(0x1901 ‖ DS ‖ keccak([BURN_TYPEHASH, self,
  *   refundTo.bytes, uint64Word(opNonce), uint64Word(amount)]))`.
  * - BurnFromSelf digest: `keccak(0x1901 ‖ DS ‖ keccak([
- *   BURN_FROM_SELF_TYPEHASH, self, uint64Word(opNonce), uint64Word(amount)]))`.
+ *   BURN_FROM_SELF_TYPEHASH, self, uint64Word(opNonce), uint64Word(amount),
+ *   coin.nonce, uint128Word(coin.value)]))`. The last two words name the
+ *   holding, so approvals authorize one coin rather than an amount.
  * - Type hashes: `MINT_TYPEHASH = keccak("Mint(bytes32 contractAddress,
  *   bytes32 recipient,uint256 nonce,uint256 amount)")`,
  *   `MINT_TO_SELF_TYPEHASH = keccak("MintToSelf(bytes32 contractAddress,
  *   uint256 nonce,uint256 amount)")`, `BURN_TYPEHASH = keccak("Burn(bytes32 contractAddress,bytes32 refundTo,
  *   uint256 nonce,uint256 amount)")` and `BURN_FROM_SELF_TYPEHASH =
  *   keccak("BurnFromSelf(bytes32 contractAddress,uint256 nonce,
- *   uint256 amount)")`, written as literal words.
+ *   uint256 amount,bytes32 coinNonce,uint256 coinValue)")`, written as
+ *   literal words.
  * - Signer commitment: `cm = H<SignerCommitmentInput>({ pkX, pkY, salt,
  *   domain: pad(32, "multisig:signer:") })`, `pkX` / `pkY` the affine
  *   coordinates as `Bytes<32>`. `_calculateSignerId` is the exported pure
@@ -361,7 +364,7 @@ module NativeShieldedTokenIssuer {
 
   /**
    * @description `keccak256` of the `BurnFromSelf` type string:
-   * `BurnFromSelf(bytes32 contractAddress,uint256 nonce,uint256 amount)`
+   * `BurnFromSelf(bytes32 contractAddress,uint256 nonce,uint256 amount,bytes32 coinNonce,uint256 coinValue)`
    *
    * @dev Written as a literal word. `compactc` emits a full keccak
    * permutation even for a constant argument, so hashing the type string
@@ -372,10 +375,10 @@ module NativeShieldedTokenIssuer {
    */
   pure circuit BURN_FROM_SELF_TYPEHASH(): Bytes<32> {
     const typeHash: Vector<32, Uint<8>> = [
-      0x08, 0xba, 0x21, 0x80, 0x7e, 0x7f, 0x75, 0x47,
-      0xa2, 0x70, 0x1d, 0x8c, 0x53, 0x06, 0x39, 0x7d,
-      0x97, 0xad, 0xfd, 0x3e, 0xa6, 0xf6, 0xa2, 0x8c,
-      0x10, 0x0c, 0xbd, 0x64, 0x9c, 0x7f, 0x5d, 0x94
+      0x50, 0xa1, 0xf2, 0x88, 0xba, 0xb8, 0x77, 0x4b,
+      0x1f, 0x55, 0x86, 0x31, 0xc7, 0x75, 0xda, 0x49,
+      0xec, 0x20, 0x4e, 0x07, 0xcf, 0x88, 0x53, 0x9b,
+      0xca, 0x8e, 0xb9, 0x8c, 0xac, 0xf4, 0x5b, 0xe9
     ];
 
     return typeHash as Bytes<32>;
@@ -561,7 +564,10 @@ module NativeShieldedTokenIssuer {
    * and returned; it replaces `coin` as the contract's holding, so the
    * operator must persist it.
    *
-   * @constraints k=17, rows=97232 (zkir-v3)
+   * The digest binds `coin.nonce` and `coin.value`, so approvals authorize one
+   * specific holding rather than an amount.
+   *
+   * @constraints k=17, rows=103797 (zkir-v3)
    *
    * Requirements:
    *
@@ -571,6 +577,7 @@ module NativeShieldedTokenIssuer {
    * - Threshold must be met.
    * - `coin.color` is this contract's token color.
    * - `amount` is less than or equal to `coin.value`.
+   * - `coin.nonce` and `coin.value` match the approved coin.
    *
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<64>} amount - The token amount to burn.
@@ -588,14 +595,16 @@ module NativeShieldedTokenIssuer {
     const opNonce = _counter;
     _counter.increment(1);
 
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<4, Bytes<32>>>([
+    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<6, Bytes<32>>>([
       BURN_FROM_SELF_TYPEHASH(),
       // Binds the digest to this deployment. The domain cannot carry the
       // address, so removing this word removes cross-instance replay
       // protection.
       kernel.self().bytes,
       EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint64Word(amount)
+      EvmAbi_uint64Word(amount),
+      disclose(coin.nonce),
+      EvmAbi_uint128Word(disclose(coin.value))
     ]));
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);

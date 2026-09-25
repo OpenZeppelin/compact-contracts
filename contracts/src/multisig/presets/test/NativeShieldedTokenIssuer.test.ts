@@ -118,12 +118,15 @@ async function burnDigest(
 async function burnFromSelfDigest(
   m: NativeShieldedTokenIssuerSimulator,
   amount: bigint,
+  coin: { nonce: Uint8Array; value: bigint },
 ): Promise<Uint8Array> {
   return burnFromSelfMsgHash({
     contractAddress: addrBytes(m),
     instanceSalt: INSTANCE_SALT,
     opNonce: await m.getNonce(),
     amount,
+    coinNonce: coin.nonce,
+    coinValue: coin.value,
   });
 }
 
@@ -167,6 +170,13 @@ async function expectMintedCoin(
   expect(coin.value).toStrictEqual(amount);
   expect(coin.nonce).toBeInstanceOf(Uint8Array);
   expect(coin.nonce.length).toStrictEqual(32);
+}
+
+/** A distinct 32-byte coin nonce, so two test coins are genuinely two UTXOs. */
+function nonceOf(label: string): Uint8Array {
+  const n = new Uint8Array(32);
+  Buffer.from(label).copy(n);
+  return n;
 }
 
 function makeQualifiedCoin(
@@ -567,8 +577,11 @@ describe('NativeShieldedTokenIssuer', () => {
         });
 
         it('should reject a burn-from-self signature replayed as a burn', async () => {
-          const digest = await burnFromSelfDigest(multisig, 100n);
           const coin = makeCoin(await multisig.tokenColor(), 100n);
+          const digest = await burnFromSelfDigest(multisig, 100n, {
+            nonce: coin.nonce,
+            value: coin.value,
+          });
 
           await expect(
             multisig.burn(
@@ -641,6 +654,8 @@ describe('NativeShieldedTokenIssuer', () => {
               { name: 'contractAddress', type: 'bytes32' },
               { name: 'nonce', type: 'uint256' },
               { name: 'amount', type: 'uint256' },
+              { name: 'coinNonce', type: 'bytes32' },
+              { name: 'coinValue', type: 'uint256' },
             ],
           };
 
@@ -672,7 +687,7 @@ describe('NativeShieldedTokenIssuer', () => {
               ),
             ),
           ).toEqual(
-            '0x08ba21807e7f7547a2701d8c5306397d97adfd3ea6f6a28c100cbd649c7f5d94',
+            '0x50a1f288bab8774b1f558631c775da49ec204e07cf88539bca8eb98cacf45be9',
           );
         });
 
@@ -858,7 +873,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('mints a coin the contract can burn from self', async () => {
         const coin = await heldCoin(100n, [S1, S2]);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         const change = await multisig.burnFromSelf(
           coin,
           100n,
@@ -977,7 +992,7 @@ describe('NativeShieldedTokenIssuer', () => {
         );
         expect(await multisig.getNonce()).toEqual(3n);
 
-        const selfDigest = await burnFromSelfDigest(multisig, 100n);
+        const selfDigest = await burnFromSelfDigest(multisig, 100n, held);
         await multisig.burnFromSelf(
           held,
           100n,
@@ -1110,7 +1125,7 @@ describe('NativeShieldedTokenIssuer', () => {
             await multisig.tokenColor(),
             coinValue,
           );
-          const digest = await burnFromSelfDigest(multisig, amount);
+          const digest = await burnFromSelfDigest(multisig, amount, coin);
           return multisig.burnFromSelf(
             coin,
             amount,
@@ -1157,9 +1172,48 @@ describe('NativeShieldedTokenIssuer', () => {
         });
       });
 
+      it('should reject a different coin than the one approved', async () => {
+        const color = await multisig.tokenColor();
+        // Distinct nonces: these are two different UTXOs, not one coin
+        // re-described.
+        const approved = makeQualifiedCoin(
+          color,
+          100n,
+          0n,
+          nonceOf('approved'),
+        );
+        const larger = makeQualifiedCoin(color, 1000n, 1n, nonceOf('larger'));
+        const digest = await burnFromSelfDigest(multisig, 100n, approved);
+
+        await expect(
+          multisig.burnFromSelf(
+            larger,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('should reject a coin whose value differs from the approved one', async () => {
+        const color = await multisig.tokenColor();
+        const approved = makeQualifiedCoin(color, 100n);
+        const sameNonceBiggerValue = { ...approved, value: 1000n };
+        const digest = await burnFromSelfDigest(multisig, 100n, approved);
+
+        await expect(
+          multisig.burnFromSelf(
+            sameNonceBiggerValue,
+            100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
       it('should reject duplicate signer', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1172,7 +1226,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a non-signer pubkey', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1185,7 +1239,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a signature from the wrong key', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1198,7 +1252,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a signature bound to a different amount', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
-        const digest = await burnFromSelfDigest(multisig, 50n);
+        const digest = await burnFromSelfDigest(multisig, 50n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1212,7 +1266,7 @@ describe('NativeShieldedTokenIssuer', () => {
       it('should reject wrong token color', async () => {
         const wrongColor = new Uint8Array(32).fill(0xde);
         const coin = makeQualifiedCoin(wrongColor, 100n);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1225,7 +1279,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject insufficient coin value', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 10n);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1238,7 +1292,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject when amount exceeds value by 1', async () => {
         const coin = makeQualifiedCoin(await multisig.tokenColor(), 99n);
-        const digest = await burnFromSelfDigest(multisig, 100n);
+        const digest = await burnFromSelfDigest(multisig, 100n, coin);
         await expect(
           multisig.burnFromSelf(
             coin,
@@ -1456,8 +1510,8 @@ describe('NativeShieldedTokenIssuer', () => {
 
         // Same salt, same nonce, same amount: the two digests differ only in
         // the `contractAddress` word.
-        const digest = await burnFromSelfDigest(instance1, 100n);
         const coin = makeQualifiedCoin(await instance2.tokenColor(), 100n);
+        const digest = await burnFromSelfDigest(instance1, 100n, coin);
 
         await expect(
           instance2.burnFromSelf(
