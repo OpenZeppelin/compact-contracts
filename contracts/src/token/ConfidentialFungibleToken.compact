@@ -242,6 +242,22 @@ pragma language_version >= 0.26.0;
  * Raising the limit itself is a node-side change, tracked upstream:
  * https://github.com/midnightntwrk/midnight-node/issues/1202.
  *
+ * Upgrades. Add operations, never change how existing state is derived or laid
+ * out. A CMA upgrade swaps verifier keys on an instance whose ledger already
+ * holds data so whatever that data was written under has to stay fixed e.g. slot
+ * indices, nonce and key derivation, stored encodings. Slot changes at least
+ * show up in a diff. Key derivation is the quiet one. `_encryptionKeys` holds
+ * the key `derivePk` returned at `register` time, `register` refuses a second
+ * key for an account id, and the id does not move (untagged by design, see
+ * `Utils.computeAccountId`), so a circuit deriving a different key leaves
+ * `assertDecryptsTo` and `_assertOwnsEncryptionKey` rejecting the stored one
+ * with no way to re-register. This means balances, pending balances, escrow and
+ * memos are all permanently unreachable. An instance's derivation is fixed when
+ * it is deployed, so off-chain code mirroring `derivePk` must use that one for
+ * the life of the instance. Adopting a newer derivation cannot recover an
+ * instance whose keys were stored under the old one. A changed derivation
+ * applies to fresh deployments only.
+ *
  * Residual griefing. The dual-balance split (see `sweep`) stops dust
  * credits from churning a victim's spendable ciphertext, but every `_credit`
  * still appends a memo, and only the recipient can `clearMemos`. An attacker
