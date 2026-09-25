@@ -71,7 +71,7 @@
     "@vitest/coverage-v8": "^5.0.0",
     "ethers": "^6.17.0",
     "fast-check": "^4.10.1",
-    "pino": "^9.7.0",
+    "pino": "^10.3.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",
