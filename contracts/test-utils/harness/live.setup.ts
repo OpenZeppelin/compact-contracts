@@ -6,6 +6,7 @@ import { assertFunded } from './dust.js';
 import { FundedWallet } from './FundedWallet.js';
 import { fundFromDeployer } from './funding.js';
 import { LiveSimulatorBackend } from './LiveSimulatorBackend.js';
+import { getShieldedCoinTracker } from './NativeShieldedTokenTracker.js';
 import { localEnv } from './network.js';
 import {
   MAX_LIVE_WORKERS,
@@ -61,10 +62,13 @@ const totalWorkers = Number(
 // Per-file worker pointer: tag each spec file with the worker running it, so
 // interleaved output from parallel workers stays attributable. A setup-file
 // `beforeAll` fires once before each spec file's suite.
-beforeAll(() => {
+beforeAll(async () => {
   const testPath = (expect.getState?.().testPath ?? '') as string;
   const file = testPath ? (testPath.split('/').pop() ?? testPath) : '(spec)';
   console.log(`[w${worker}] ❯ ${file}`);
+  // The tracker only sees coins from its anchor block on, so anchor it before
+  // the spec sends any transaction.
+  await getShieldedCoinTracker();
 });
 
 // Stamp this worker's id onto each test's metadata so the live progress
