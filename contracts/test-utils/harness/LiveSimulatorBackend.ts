@@ -377,7 +377,8 @@ export class LiveSimulatorBackend {
 
     // The simulator assembles the LiveContext: per-alias `findDeployedContract`
     // handle cache, indexer-lag-absorbing public read, private-state read. Each
-    // alias routes to its own wallet's providers so caller identity varies.
+    // alias routes to its own wallet's providers so caller identity varies, and
+    // any caller can send a shielded coin to any pooled wallet.
     return createLiveContext({
       contractAddress: deployed.address,
       providersFor,
@@ -385,6 +386,9 @@ export class LiveSimulatorBackend {
       privateStateId,
       publicDataProvider: shared.publicDataProvider,
       privateStateProvider: shared.privateStateProvider,
+      scopedTransactionOptions: {
+        additionalCoinEncPublicKeyMappings: this.pool.encryptionKeysByCoinKey(),
+      },
     });
   }
 }

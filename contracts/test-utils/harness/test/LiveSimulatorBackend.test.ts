@@ -89,10 +89,12 @@ const guardBackend = () =>
   );
 
 // A fake pool + injected loader so the deploy path touches no node/artifact.
+const ENCRYPTION_KEYS = new Map([['pk-deployer', 'epk-deployer']]);
 const fakePool = {
   ensureReady: vi.fn(async () => {}),
   isKnownAlias: (a?: string | null) => a === 'SIGNER1' || a === 'deployer',
   walletFor: (a?: string | null) => ({ wallet: a }),
+  encryptionKeysByCoinKey: () => ENCRYPTION_KEYS,
 };
 const fakeLogger = { info: vi.fn() };
 const loadContract = vi.fn(async () => ({ Contract: class {} }));
@@ -178,6 +180,19 @@ describe('LiveSimulatorBackend', () => {
         }),
       );
       expect(ctx).toStrictEqual({ liveContext: true });
+    });
+
+    it("passes every pooled wallet's encryption key to the live context", async () => {
+      const buildContext = capturedBuildContext(deployBackend());
+      await buildContext(REQUEST);
+
+      expect(createContextSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scopedTransactionOptions: {
+            additionalCoinEncPublicKeyMappings: ENCRYPTION_KEYS,
+          },
+        }),
+      );
     });
 
     it('creates the compact.toml signing key before the deploy', async () => {

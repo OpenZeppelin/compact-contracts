@@ -54,6 +54,11 @@ export class FundedWallet implements PooledWallet {
     return String(this.provider.getCoinPublicKey());
   }
 
+  /** The wallet's encryption public key, which senders encrypt its shielded coins to. */
+  get encryptionPublicKey(): string {
+    return String(this.provider.getEncryptionPublicKey());
+  }
+
   /** Whether the wallet can pay tx fees: spendable NIGHT or generated dust. */
   get isFunded(): boolean {
     return this.nightBalance >= MIN_WALLET_NIGHT || this.dustBalance > 0n;
