@@ -19,6 +19,7 @@ const m = vi.hoisted(() => {
     stop,
     balanceTx,
     getCoinPublicKey: () => 'coin-pk-xyz',
+    getEncryptionPublicKey: () => 'enc-pk-xyz',
     wallet: { id: 'facade' },
   });
   const builder = {
@@ -100,6 +101,11 @@ describe('FundedWallet.build', () => {
   it('should expose the provider coin public key', async () => {
     const wallet = await build();
     expect(wallet.coinPublicKey).toBe('coin-pk-xyz');
+  });
+
+  it('exposes the provider encryption public key', async () => {
+    const wallet = await build();
+    expect(wallet.encryptionPublicKey).toBe('enc-pk-xyz');
   });
 
   it('should delegate stop to the provider', async () => {

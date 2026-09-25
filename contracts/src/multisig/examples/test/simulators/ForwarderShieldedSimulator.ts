@@ -8,6 +8,7 @@ import {
   Contract as ForwarderShieldedExample,
   ledger,
   type ShieldedCoinInfo,
+  type ShieldedSendResult,
   type ZswapCoinPublicKey,
 } from '../../../../../artifacts/ForwarderShieldedExample/contract/index.js';
 import {
@@ -48,7 +49,7 @@ export class ForwarderShieldedSimulator extends ForwarderShieldedSimulatorBase {
     ) as Promise<ForwarderShieldedSimulator>;
   }
 
-  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
+  public deposit(coin: ShieldedCoinInfo): Promise<ShieldedSendResult> {
     return this.circuits.impure.deposit(coin);
   }
 

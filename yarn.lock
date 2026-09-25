@@ -1520,7 +1520,7 @@ __metadata:
     "@noble/hashes": "npm:^2.4.0"
     "@openzeppelin/compact-cli": "npm:^0.1.1"
     "@openzeppelin/compact-deployer": "npm:^0.3.1"
-    "@openzeppelin/compact-simulator": "npm:^0.4.0"
+    "@openzeppelin/compact-simulator": "npm:^0.4.1"
     "@tsconfig/node24": "npm:^24.0.5"
     "@types/node": "npm:26.6.2"
     "@vitest/coverage-v8": "npm:^5.0.0"
@@ -1596,9 +1596,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/compact-simulator@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "@openzeppelin/compact-simulator@npm:0.4.0"
+"@openzeppelin/compact-simulator@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "@openzeppelin/compact-simulator@npm:0.4.1"
   dependencies:
     "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
   peerDependencies:
@@ -1609,7 +1609,7 @@ __metadata:
       optional: true
     "@midnight-ntwrk/midnight-js-types":
       optional: true
-  checksum: 10/e4317936c7203d33d4cac80cfbc35fbaa77b747844662d9e0388239049673761943245d19c8d0201ae4ece56c4a7e629e9597369ce4e2f125e7a97f65b2ccd2e
+  checksum: 10/2445f16cf2ffb1c1f5a4dcc6f6a8886b338037aa5744a6d70fbbe062f6d671f5a8b5301516566f56b21485f1b6ed4ed1b02bb3a097e316eb34d720a7740c22d2
   languageName: node
   linkType: hard
 
