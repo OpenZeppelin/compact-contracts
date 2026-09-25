@@ -103,7 +103,7 @@ module ForwarderShielded {
    * `sendImmediateShielded` to the stored parent recipient (always the
    * `left` / coin-public-key arm today).
    *
-   * @constraints k=15, rows=24373
+   * @constraints k=15, rows=23197
    *
    * Requirements:
    *
@@ -111,12 +111,13 @@ module ForwarderShielded {
    *
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
    *
-   * @returns {[]} Empty tuple.
+   * @returns {ShieldedSendResult} The coin sent to the parent, with no change:
+   * the whole value is forwarded.
    */
-  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+  export circuit _deposit(coin: ShieldedCoinInfo): ShieldedSendResult {
     assertInitialized();
     receiveShielded(disclose(coin));
-    sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
+    return sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
   }
 
   // ─── Init guards ────────────────────────────────────────────────

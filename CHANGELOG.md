@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
   - Fix the `EcdsaSignerManager` double import in the examples (#928)
 - **Breaking:** Rename `ShieldedMultiSigV3` to `NativeShieldedTokenIssuer`, built on `NativeShieldedToken`. New `initialize` signature and EIP-712 domain; `mint` / `burn` return the coin; `getTokenDomain` / `getTokenType` replaced by `tokenColor`, `name`, `symbol`, `decimals`. (#887)
+- **Breaking:** `ForwarderShielded._deposit` returns the forward's `ShieldedSendResult` instead of `[]`, and `ForwarderShieldedExample.deposit` returns it too
 
 ### Removed
 

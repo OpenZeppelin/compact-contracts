@@ -8,6 +8,7 @@ import {
   ledger,
   Contract as MockForwarderShielded,
   type ShieldedCoinInfo,
+  type ShieldedSendResult,
   type ZswapCoinPublicKey,
 } from '../../../../artifacts/MockForwarderShielded/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
@@ -49,7 +50,11 @@ export class MockForwarderShieldedSimulator extends MockForwarderShieldedSimulat
     ) as Promise<MockForwarderShieldedSimulator>;
   }
 
-  public deposit(coin: ShieldedCoinInfo): Promise<[]> {
+  public initialize(parent: ZswapCoinPublicKey): Promise<[]> {
+    return this.circuits.impure.initialize(parent);
+  }
+
+  public deposit(coin: ShieldedCoinInfo): Promise<ShieldedSendResult> {
     return this.circuits.impure.deposit(coin);
   }
 
