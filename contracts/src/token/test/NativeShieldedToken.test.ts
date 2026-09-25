@@ -1,5 +1,7 @@
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
@@ -18,6 +20,12 @@ const b32 = (label: string): Uint8Array => {
 
 const RECIPIENT = utils.encodeToPK('RECIPIENT');
 const REFUND_TO = utils.encodeToPK('REFUND_TO');
+
+// On live only the deployer's own coin key has an encryption key the node can
+// resolve, so coin-sending tests mint and refund to it there.
+const recipient = () => (isLiveBackend() ? shieldedTestKey().left : RECIPIENT);
+const refundTo = () => (isLiveBackend() ? shieldedTestKey().left : REFUND_TO);
+
 const ZERO_KEY = { bytes: utils.zeroUint8Array() };
 
 // Metadata
@@ -33,14 +41,20 @@ const AMOUNT = 1_000n;
 const PARTIAL = 600n;
 const MAX_U64 = (1n << 64n) - 1n;
 
-// The simulator's default contract address is zero, which `_mintToSelf` rejects
-// as a zero recipient, so the deploy pins a non-zero address.
+// Dry deploy address. Non-zero, since `_mintToSelf` rejects the zero
+// `dummyContractAddress()` default as a recipient.
 const SELF_ADDRESS = utils.toHexPadded('SELF');
+const AT_SELF = isLiveBackend() ? {} : { contractAddress: SELF_ADDRESS };
 
 const deploy = (init = INIT): Promise<NativeShieldedTokenSimulator> =>
-  NativeShieldedTokenSimulator.create(DOMAIN, NAME, SYMBOL, DECIMALS, init, {
-    contractAddress: SELF_ADDRESS,
-  });
+  NativeShieldedTokenSimulator.create(
+    DOMAIN,
+    NAME,
+    SYMBOL,
+    DECIMALS,
+    init,
+    AT_SELF,
+  );
 
 let token: NativeShieldedTokenSimulator;
 
@@ -120,26 +134,26 @@ describe('NativeShieldedToken (Fungible profile)', () => {
 
     it('should return a coin with color = tokenColor, value = amount, nonce = arg', async () => {
       const nonce = b32('mint-nonce-1');
-      const coin = await token._mint(RECIPIENT, AMOUNT, nonce);
+      const coin = await token._mint(recipient(), AMOUNT, nonce);
       expect(coin.value).toBe(AMOUNT);
       expect(coin.nonce).toStrictEqual(nonce);
       expect(coin.color).toStrictEqual(await token.tokenColor());
     });
 
     it('should mint distinct coins of one color for distinct nonces', async () => {
-      const first = await token._mint(RECIPIENT, AMOUNT, b32('mint-1'));
-      const second = await token._mint(RECIPIENT, AMOUNT, b32('mint-2'));
+      const first = await token._mint(recipient(), AMOUNT, b32('mint-1'));
+      const second = await token._mint(recipient(), AMOUNT, b32('mint-2'));
       expect(second.nonce).not.toStrictEqual(first.nonce);
       expect(second.color).toStrictEqual(first.color);
       expect(second.value).toBe(first.value);
     });
 
     it('should mint the maximum Uint<64> amount and reject one above it', async () => {
-      const coin = await token._mint(RECIPIENT, MAX_U64, b32('max'));
+      const coin = await token._mint(recipient(), MAX_U64, b32('max'));
       expect(coin.value).toBe(MAX_U64);
       // Above the bound the argument marshaller rejects before any circuit runs.
       await expect(
-        token._mint(RECIPIENT, MAX_U64 + 1n, b32('over')),
+        token._mint(recipient(), MAX_U64 + 1n, b32('over')),
       ).rejects.toThrow();
     });
 
@@ -164,7 +178,7 @@ describe('NativeShieldedToken (Fungible profile)', () => {
     });
 
     it('should mint the same color as _mint', async () => {
-      const minted = await token._mint(RECIPIENT, AMOUNT, b32('to-user'));
+      const minted = await token._mint(recipient(), AMOUNT, b32('to-user'));
       const held = await token._mintToSelf(AMOUNT, b32('to-self'));
       expect(held.color).toStrictEqual(minted.color);
     });
@@ -216,13 +230,13 @@ describe('NativeShieldedToken (Fungible profile)', () => {
 
     it('should revert on a wrong-color coin', async () => {
       await expect(
-        token._burn(coinOf(AMOUNT, b32('wrong')), AMOUNT, REFUND_TO),
+        token._burn(coinOf(AMOUNT, b32('wrong')), AMOUNT, refundTo()),
       ).rejects.toThrow('NativeShieldedToken: wrong token');
     });
 
     it('should revert when amount > coin.value', async () => {
       await expect(
-        token._burn(coinOf(AMOUNT), AMOUNT + 1n, REFUND_TO),
+        token._burn(coinOf(AMOUNT), AMOUNT + 1n, refundTo()),
       ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
     });
 
@@ -233,14 +247,14 @@ describe('NativeShieldedToken (Fungible profile)', () => {
     });
 
     it('should return none on a full burn (amount == coin.value)', async () => {
-      const coin = await token._mint(RECIPIENT, AMOUNT, b32('burn-full'));
-      const res = await token._burn(coin, AMOUNT, REFUND_TO);
+      const coin = await token._mint(recipient(), AMOUNT, b32('burn-full'));
+      const res = await token._burn(coin, AMOUNT, refundTo());
       expect(res.is_some).toBe(false);
     });
 
     it('should return some(refund) with refund.value == coin.value - amount on a partial burn', async () => {
-      const coin = await token._mint(RECIPIENT, AMOUNT, b32('burn-part'));
-      const res = await token._burn(coin, PARTIAL, REFUND_TO);
+      const coin = await token._mint(recipient(), AMOUNT, b32('burn-part'));
+      const res = await token._burn(coin, PARTIAL, refundTo());
       expect(res.is_some).toBe(true);
       expect(res.value.value).toBe(AMOUNT - PARTIAL);
       expect(res.value.color).toStrictEqual(color);
