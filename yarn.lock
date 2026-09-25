@@ -1519,7 +1519,7 @@ __metadata:
     "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.4.0"
     "@openzeppelin/compact-cli": "npm:^0.1.1"
-    "@openzeppelin/compact-deployer": "npm:^0.3.0"
+    "@openzeppelin/compact-deployer": "npm:^0.3.1"
     "@openzeppelin/compact-simulator": "npm:^0.4.0"
     "@tsconfig/node24": "npm:^24.0.5"
     "@types/node": "npm:26.6.2"
@@ -1565,9 +1565,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/compact-deployer@npm:^0.3.0":
-  version: 0.3.0
-  resolution: "@openzeppelin/compact-deployer@npm:0.3.0"
+"@openzeppelin/compact-deployer@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "@openzeppelin/compact-deployer@npm:0.3.1"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.8"
     "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
@@ -1592,7 +1592,7 @@ __metadata:
     rxjs: "npm:^7.8.1"
     smol-toml: "npm:^1.3.4"
     zod: "npm:^3.23.8"
-  checksum: 10/a5b936ef67033a0cea242f2f3b08a0282e2700a7ab0c4a26f4a5ad96c6e8e5948ae03de4381307db9adcdd6f64cae58328cdcae51c9fc61fd75dc0bb37322b22
+  checksum: 10/fb5707082e09a8380cfc7bd358690ce4d4b9f57344d4eb473b3fbdfa064e0ad3fd5939dccc7d2797cdddc4cee0daa526d875a934bb541bf318654da60c37470f
   languageName: node
   linkType: hard
 
