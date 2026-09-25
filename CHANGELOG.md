@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.4.0-alpha.4 (2026-09-25)
+
+### Changed
+
+- **Breaking:** Rename `NativeShieldedTokenIssuer.burn` to `burnFromSelf` (contract-held coin, EIP-712 struct `BurnFromSelf`). New `burn` burns a holder's coin paid into the transaction and refunds the change to `refundTo`, bound in the new `Burn` struct. `mint` takes a `ZswapCoinPublicKey` recipient and signs the new `Mint` struct (no `isContract` word); new `mintToSelf` mints to the contract itself under `MintToSelf`. The example contract exports all four. (#974)
+
+## 0.4.0-alpha.3 (2026-09-24)
+
+### Changed
+
+- **Breaking:** Change `NativeShieldedToken` / `NativeShieldedTokenFamily` `_mint` recipient and `_burn` refund recipient to `ZswapCoinPublicKey`, add `_mintToSelf`, and restrict `NativeShieldedTokenCore` contract-addressed recipients to the contract itself; `NativeShieldedTokenIssuer.mint` keeps its `Either` recipient and rejects any other contract (#965)
+- **Breaking:** Widen the CFT balance claim and ElGamal `assertDecryptsTo` to `Uint<248>`, so a balance accumulated past the per-transfer bound stays spendable. `wit_PlaintextBalance` returns `Uint<248>`. (#961)
+- **Breaking:** Domain-separate `ElGamal.secretToScalar` from the account-id hash. Every derived public key changes, so existing CFT registrations and ciphertexts are incompatible. (#964)
+- **Breaking:** `ConfidentialFungibleToken.clearMemos` takes `expectedEpoch` and reverts if a credit landed after the memos were read, so unread credits are never cleared. (#962)
+- **Breaking:** Derive the `ConfidentialFungibleToken` credit nonce from the new `_creditEpochs` counter instead of the memo count, so `clearMemos` cannot reset it. Ledger layout changes, so fresh deploys only. (#958)
+- **Breaking:** Bind the `ConfidentialFungibleToken` escrow-spend randomness to the owner, the spender, and a per-pair epoch in the new `_escrowSpendEpochs` ledger. Ledger layout changes, so fresh deploys only. (#963)
+- **Breaking:** `ConfidentialFungibleToken.sweep` and `clearMemos` require the encryption-key witness; the account secret alone no longer authorizes them. (#960)
+
+### Fixed
+
+- `NonFungibleToken._approve` reverts for a nonexistent token even with a zero `auth`. The new `_unsafeApprove` takes an `isExistenceRequired` flag. (#959)
+
 ## 0.4.0-alpha.2 (2026-09-23)
 
 ### Added
@@ -18,9 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** Rename `NativeShieldedTokenIssuer.burn` to `burnFromSelf` (contract-held coin, EIP-712 struct `BurnFromSelf`). New `burn` burns a holder's coin paid into the transaction and refunds the change to `refundTo`, bound in the new `Burn` struct. `mint` takes a `ZswapCoinPublicKey` recipient and signs the new `Mint` struct (no `isContract` word); new `mintToSelf` mints to the contract itself under `MintToSelf`. The example contract exports all four. (#974)
-- **Breaking:** Change `NativeShieldedToken` / `NativeShieldedTokenFamily` `_mint` recipient and `_burn` refund recipient to `ZswapCoinPublicKey`, add `_mintToSelf`, and restrict `NativeShieldedTokenCore` contract-addressed recipients to the contract itself; `NativeShieldedTokenIssuer.mint` keeps its `Either` recipient and rejects any other contract (#833)
-- Widen the CFT balance claim and ElGamal `assertDecryptsTo` to `Uint<248>`, so a balance accumulated past the per-transfer bound stays spendable (#831)
 - **Breaking:** (#906)
   - `ShieldedMultiSigV2`
     - Sign `execute` as EIP-712 typed data instead of
