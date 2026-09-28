@@ -5,8 +5,8 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module EcdsaSignerManager
- * @description Threshold authorization over secp256k1 ECDSA approvals for
- * multisig contracts.
+ * @description k-of-n threshold authorization over secp256k1 ECDSA approvals
+ * for multisig contracts.
  *
  * Signer identities are stored as commitments: `persistentHash` over the
  * signer's public-key coordinates, an instance salt, and a domain separator.
@@ -16,7 +16,12 @@ pragma language_version >= 0.26.0;
  * Wraps `Signer<Bytes<32>>` for the registry and threshold and configures it
  * from `initialize`. Consuming contracts own the digest: they compute the
  * message hash their signers signed, then hand it to `assertApprovals` with
- * the parallel public-key and signature vectors.
+ * one `Maybe<Approval>` slot per signer. A `some` slot is verified and counts
+ * one approval; a `none` slot counts nothing.
+ *
+ * @notice Consuming contracts call `assertApprovals` with `m` equal to their
+ * signer-set size, so every threshold up to that size is reachable. Proof cost
+ * scales with `m`, not with the threshold.
  *
  * @notice Consuming contracts must not import `Signer` alongside this module.
  * A second import instantiates a separate registry that `assertApprovals`
@@ -33,8 +38,6 @@ module EcdsaSignerManager {
   import { _signers, _signerCount, _threshold } from "./Signer"<Bytes<32>>;
   export { _signers, _signerCount, _threshold };
 
-  // ─── State ──────────────────────────────────────────────────────────────────
-
   /**
    * @description Deployment-supplied salt for signer commitments. Set at
    * initialization and never changed. The registered commitments must have been
@@ -42,7 +45,14 @@ module EcdsaSignerManager {
    */
   export sealed ledger _instanceSalt: Bytes<32>;
 
-  // ─── Types ──────────────────────────────────────────────────────────────────
+  /**
+   * @description One signer's approval: the public key and its signature over
+   * the operation digest.
+   */
+  export struct Approval {
+    pubkey: Secp256k1Point,
+    signature: Secp256k1EcdsaSignature
+  }
 
   /**
    * @description Input to `persistentHash` for computing signer commitments.
@@ -55,19 +65,6 @@ module EcdsaSignerManager {
   }
 
   /**
-   * @description Accumulator threaded through the approval fold: the running
-   * valid count, the previous commitment (for duplicate detection), and the
-   * digest every signature is checked against.
-   */
-  struct VerificationState {
-    validCount: Uint<8>,
-    prevCommitment: Bytes<32>,
-    msgHash: Bytes<32>
-  }
-
-  // ─── Initialization ─────────────────────────────────────────────────────────
-
-  /**
    * @description Stores the instance salt and registers the initial signer set.
    * Call from the consuming contract's constructor only. Writes the `sealed`
    * salt, so it cannot be reached from an exported circuit.
@@ -77,15 +74,11 @@ module EcdsaSignerManager {
    * - Can only be called once.
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
-   * - `n` must be at least 2, the number of distinct signers `assertApprovals`
-   *   verifies. A smaller set can never satisfy it.
-   * - `threshold` must be non-zero and must not exceed 2, the number of
-   *   approvals `assertApprovals` verifies.
+   * - `threshold` must be non-zero and must not exceed `n`.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
-   * @param {Uint<8>} threshold - Minimum approvals required. `assertApprovals`
-   * always verifies 2, so 1 and 2 behave alike.
+   * @param {Uint<8>} threshold - Minimum approvals required.
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
@@ -95,16 +88,12 @@ module EcdsaSignerManager {
   ): [] {
     assert(Signer_getSignerCount() == 0, "EcdsaSignerManager: signers already registered");
     _instanceSalt = disclose(instanceSalt);
-    assert(threshold <= 2, "EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)");
 
     for (const commitment of signerCommitments) {
       Signer__addSigner(commitment);
     }
-    assert(Signer_getSignerCount() >= 2, "EcdsaSignerManager: fewer than 2 signers (assertApprovals verifies 2 signatures)");
     Signer__changeThreshold(threshold);
   }
-
-  // ─── Commitments ────────────────────────────────────────────────────────────
 
   /**
    * @description Computes a signer commitment from a secp256k1 public key,
@@ -133,85 +122,96 @@ module EcdsaSignerManager {
     });
   }
 
-  // ─── Approvals ──────────────────────────────────────────────────────────────
-
   /**
-   * @description Verifies two approvals over `msgHash` and asserts the
-   * threshold is met.
+   * @description Verifies the `some` slots of `approvals` over `msgHash` and
+   * asserts their count meets the threshold.
    *
-   * `pubkeys` and `signatures` are parallel: entry `i` of each belongs to the
-   * same signer.
-   *
-   * @dev Both entries are asserted, so the count handed to the threshold check
-   * is always 2 and a threshold below 2 admits nothing extra.
-   *
-   * @constraints k=17, rows=64916 (zkir-v3)
-   *
-   * Requirements:
-   *
-   * - Every public key must hash to a registered signer commitment.
-   * - Every signature must be valid over `msgHash` and use the low-s encoding.
-   * - Signers must not be duplicates.
-   *
-   * @param {Bytes<32>} msgHash - The digest the signers approved.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - Signatures over `msgHash`.
-   * @returns {[]} Empty tuple.
-   */
-  export circuit assertApprovals(
-    msgHash: Bytes<32>,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
-  ): [] {
-    const initialState = VerificationState {
-      validCount: 0 as Uint<8>,
-      prevCommitment: pad(32, ""),
-      msgHash: msgHash
-    };
-
-    const finalState = fold(verifySignature, initialState, pubkeys, signatures);
-    Signer_assertThresholdMet(finalState.validCount);
-  }
-
-  /**
-   * @description Fold callback. Verifies one signer's approval.
+   * Approvals above the threshold are accepted. `none` slots are skipped, so a
+   * consumer sized for its whole signer set accepts any `k` of them.
    *
    * @notice Verification goes through `Ecdsa`'s low-s wrapper, so the high-s
    * encoding of an approval is rejected as an invalid signature.
    *
-   * @dev Duplicates are caught by comparing against the previous commitment
-   * alone, which is exhaustive only at width 2. Widening the approval vectors
-   * requires an all-pairs check.
+   * @notice A `none` slot's public key is still hashed, so it must not be the
+   * identity point. Fill it with the secp256k1 generator. Its signature is
+   * replaced before verification and its registry query reads a zero key, so
+   * the slot's contents are neither checked nor published.
    *
-   * @param {VerificationState} state - Accumulator threaded through fold.
-   * @param {Secp256k1Point} pubkey - The signer's secp256k1 public key.
-   * @param {Secp256k1EcdsaSignature} signature - The signer's signature over `msgHash`.
-   * @returns {VerificationState} Updated accumulator.
+   * @constraints k=17, rows=95323 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - Every `some` public key must hash to a registered signer commitment.
+   * - Every `some` signature must be valid over `msgHash` and use the low-s
+   *   encoding.
+   * - `some` slots must not repeat a signer.
+   * - The number of `some` slots must meet the threshold.
+   *
+   * @param {Bytes<32>} msgHash - The digest the signers approved.
+   * @param {Vector<m, Maybe<Approval>>} approvals - One slot per potential approver.
+   * @returns {[]} Empty tuple.
    */
-  circuit verifySignature(
-    state: VerificationState,
-    pubkey: Secp256k1Point,
-    signature: Secp256k1EcdsaSignature
-  ): VerificationState {
-    const commitment = calculateSignerId(pubkey, _instanceSalt);
-
-    assert(commitment != state.prevCommitment, "Multisig: duplicate signer");
-
-    Signer_assertSigner(commitment);
-
-    assert(
-      Ecdsa_secp256k1EcdsaVerifyLowS(state.msgHash, signature, pubkey),
-      "Multisig: invalid signature"
+  export circuit assertApprovals<#m>(
+    msgHash: Bytes<32>,
+    approvals: Vector<m, Maybe<Approval>>
+  ): [] {
+    const salt = _instanceSalt;
+    const commitments = map(
+      (slot: Maybe<Approval>): Bytes<32> => verifyApproval(msgHash, salt, slot),
+      approvals
     );
 
-    return VerificationState {
-      validCount: state.validCount + 1 as Uint<8>,
-      prevCommitment: commitment,
-      msgHash: state.msgHash
-    };
+    for (const i of 0..m) {
+      for (const j of 0..m) {
+        assert(
+          !(i < j) || !approvals[i].is_some || !approvals[j].is_some ||
+            commitments[i] != commitments[j],
+          "Multisig: duplicate signer"
+        );
+      }
+    }
+
+    Signer_assertThresholdMet(fold(
+      (count: Uint<8>, slot: Maybe<Approval>): Uint<8> =>
+        (slot.is_some ? count + 1 : count) as Uint<8>,
+      0 as Uint<8>,
+      approvals
+    ));
   }
 
-  // ─── View ───────────────────────────────────────────────────────────────────
+  /**
+   * @description Verifies one approval slot and returns its signer commitment.
+   * A `none` slot passes unchecked.
+   *
+   * @dev Both sides of every conditional are evaluated in-circuit, so a `none`
+   * slot's signature is swapped for a digest-derived `(h, h)` that a verifier
+   * can process, and the assertions are gated on `is_some`.
+   *
+   * @param {Bytes<32>} msgHash - The digest the signers approved.
+   * @param {Bytes<32>} salt - The instance salt.
+   * @param {Maybe<Approval>} slot - The approval to verify.
+   * @returns {Bytes<32>} The slot's signer commitment.
+   */
+  circuit verifyApproval(
+    msgHash: Bytes<32>,
+    salt: Bytes<32>,
+    slot: Maybe<Approval>
+  ): Bytes<32> {
+    const pubkey = slot.value.pubkey;
+    const filler = msgHash as Secp256k1Scalar;
+    const signature = slot.is_some
+      ? slot.value.signature
+      : Secp256k1EcdsaSignature { r: filler, s: filler };
+    const commitment = calculateSignerId(pubkey, salt);
+
+    const registered = Signer_isSigner(slot.is_some ? commitment : pad(32, ""));
+    assert(!slot.is_some || registered, "Signer: not a signer");
+
+    const verified = Ecdsa_secp256k1EcdsaVerifyLowS(msgHash, signature, pubkey);
+    assert(!slot.is_some || verified, "Multisig: invalid signature");
+
+    return commitment;
+  }
 
   /**
    * @description Returns the number of registered signers.

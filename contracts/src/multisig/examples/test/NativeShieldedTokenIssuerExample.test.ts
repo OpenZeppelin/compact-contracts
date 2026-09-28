@@ -12,6 +12,7 @@ import {
 } from '../../../../artifacts/NativeShieldedTokenIssuerExample/contract/index.js';
 import { calculateSignerId } from '../../presets/test/simulators/NativeShieldedTokenIssuerSimulator.js';
 import {
+  approvalsOf,
   burnFromSelfMsgHash,
   burnMsgHash,
   bytesOf,
@@ -137,8 +138,10 @@ describe('NativeShieldedTokenIssuerExample', () => {
     return c.mint(
       amount,
       recipient,
-      [S1.publicKey, S2.publicKey],
-      [sign(S1, digest), sign(S2, digest)],
+      approvalsOf(
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      ),
     );
   }
 
@@ -156,8 +159,10 @@ describe('NativeShieldedTokenIssuerExample', () => {
     });
     const coin = await c.mintToSelf(
       100n,
-      [S1.publicKey, S2.publicKey],
-      [sign(S1, digest), sign(S2, digest)],
+      approvalsOf(
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      ),
     );
     expect(coin.value).toStrictEqual(100n);
     expect(coin.color).toStrictEqual(await c.tokenColor());
@@ -179,8 +184,10 @@ describe('NativeShieldedTokenIssuerExample', () => {
       coin,
       100n,
       holder,
-      [S1.publicKey, S2.publicKey],
-      [sign(S1, digest), sign(S2, digest)],
+      approvalsOf(
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      ),
     );
     expect(refund.is_some).toStrictEqual(false);
   });
@@ -205,8 +212,10 @@ describe('NativeShieldedTokenIssuerExample', () => {
       const change = await c.burnFromSelf(
         coin,
         100n,
-        [S1.publicKey, S2.publicKey],
-        [sign(S1, digest), sign(S2, digest)],
+        approvalsOf(
+          [S1.publicKey, S2.publicKey],
+          [sign(S1, digest), sign(S2, digest)],
+        ),
       );
       expect(change.is_some).toStrictEqual(false);
     },

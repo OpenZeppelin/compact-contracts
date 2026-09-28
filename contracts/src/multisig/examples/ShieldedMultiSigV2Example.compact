@@ -6,7 +6,7 @@ pragma language_version >= 0.26.0;
 /**
  * @title ShieldedMultiSigV2Example
  * @description Deployable reference contract for the `ShieldedMultiSigV2`
- * preset: a 2-of-3 wallet whose spends are authorized by ECDSA signatures
+ * preset: a k-of-3 wallet whose spends are authorized by ECDSA signatures
  * collected off-chain and verified in a single transaction.
  *
  * Coin data never reaches the public ledger. The operator tracks the wallet's
@@ -17,12 +17,12 @@ import CompactStandardLibrary;
 
 import "../presets/ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
 
-export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+export { Maybe, ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
-// Surface the preset's domain separator unprefixed so `ledger()` readers see
-// the key name the preset published.
-import { _domainSeparator } from "../presets/ShieldedMultiSigV2";
-export { _domainSeparator };
+// Surface the preset's domain separator and `Approval` unprefixed, so
+// `ledger()` readers and the typings use the names the preset published.
+import { Approval, _domainSeparator } from "../presets/ShieldedMultiSigV2";
+export { Approval, _domainSeparator };
 
 /**
  * @description Deploys the wallet with 3 signer commitments and a threshold.
@@ -47,10 +47,9 @@ export circuit execute(
   to: ShieldedMultiSigV2_Proposal_Recipient,
   amount: Uint<128>,
   coin: QualifiedShieldedCoinInfo,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<Approval>>
 ): ShieldedSendResult {
-  return ShieldedMultiSigV2_execute(to, amount, coin, pubkeys, signatures);
+  return ShieldedMultiSigV2_execute(to, amount, coin, approvals);
 }
 
 export pure circuit _calculateSignerId(

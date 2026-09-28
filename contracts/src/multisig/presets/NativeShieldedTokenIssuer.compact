@@ -6,12 +6,13 @@ pragma language_version >= 0.26.0;
 /**
  * @module NativeShieldedTokenIssuer
  * @description
- * A 2-of-3 ECDSA multisig that mints and burns one native shielded token,
- * for tokenized deposits. Value enters only through `mint` (to a holder's
+ * A k-of-3 ECDSA multisig that mints and burns one native shielded token,
+ * for tokenized deposits. The threshold is 2, fixed at construction. Value enters only through `mint` (to a holder's
  * coin public key) or `mintToSelf` (a coin this contract holds) and leaves
  * only through `burn` (a holder's coin, paid into the tx) or `burnFromSelf`
- * (a coin this contract holds); each is a single tx carrying two registered
- * signers' approvals, so no single party creates or destroys tokens.
+ * (a coin this contract holds); each is a single tx carrying threshold
+ * approvals from registered signers, so no single party creates or destroys
+ * tokens.
  *
  * Composes `EcdsaSignerManager` (signer commitments, approval checks),
  * `NativeShieldedToken` as `NST_` (one token; domain, `name`, `symbol` and
@@ -77,17 +78,19 @@ pragma language_version >= 0.26.0;
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the EIP-712 domain
  * (`NativeShieldedTokenIssuer`, version `1`, salt), the `Mint` /
- * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the `multisig:signer:` commitment domain (generic prefix,
- * owned by `EcdsaSignerManager`), the `cm` preimage struct, and the
- * `Vector<2>` / `Vector<3>` shapes. Changing any of them breaks every
- * existing signer setup. The test suite pins them through
+ * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the
+ * `multisig:signer:` commitment domain (generic prefix, owned by
+ * `EcdsaSignerManager`), the `cm` preimage struct, and the
+ * `Vector<3, Maybe<Approval>>` / `Vector<3>` shapes. Changing any of them
+ * breaks every existing signer setup. The test suite pins them through
  * `EcdsaTestUtils.ts`.
  *
  * @notice Privacy:
  * - Public, per tx:
  *   - Entry point: which of the four operations ran.
- *   - Approvers: the two signer commitments (`disclose(commitment)` in
- *     `Signer_assertSigner`), so WHICH two of the three signers approved.
+ *   - Approvers: the commitment of every `some` approval slot
+ *     (`disclose(commitment)` in `Signer_isSigner`), so WHICH signers
+ *     approved. `none` slots query a zero key, so only their count shows.
  *   - Mint: `amount`, as the `shieldedMints` effect under the token domain,
  *     and the coin commitment as a spend claim. Recipient and nonce are not
  *     published. The nonce is `evolveNonce` of the public
@@ -143,9 +146,9 @@ pragma language_version >= 0.26.0;
  *   burns only the payer's own value and refunds the bound `refundTo`.
  * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
  *   high-s encoding is an invalid signature.
- * - Distinct signers: `assertApprovals` asserts both entries and rejects a
- *   repeated commitment, so two distinct registered signers are always
- *   required. The threshold `2` is the ceiling `EcdsaSignerManager` accepts.
+ * - Distinct signers: `assertApprovals` verifies every `some` slot and
+ *   rejects a repeated commitment, so only distinct registered signers count
+ *   toward the threshold of 2.
  * - Immutable signer set: no signer reconfiguration circuit is exported, so
  *   the three commitments and the threshold are fixed. Losing two of the
  *   three keys freezes the contract.
@@ -159,8 +162,8 @@ pragma language_version >= 0.26.0;
  * @notice Concurrency:
  * - Replay counter: `mint`, `mintToSelf`, `burn` and `burnFromSelf` read
  *   `_counter` into the digest. The read is pinned, so any two of them in one block
- *   conflict: at most one operation lands per block, and the losing signer
- *   pair re-signs at the next nonce.
+ *   conflict: at most one operation lands per block, and the losing signers
+ *   re-sign at the next nonce.
  * - Derived-nonce counter: both mints also pin it (`evolveNonce` consumes
  *   it); the `_counter` conflict already covers those pairs.
  * - `getNonce`: submitted as a tx it pins `_counter` and conflicts with any
@@ -180,8 +183,9 @@ pragma language_version >= 0.26.0;
  * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
  *   `_calculateSignerId(pk, salt)`, pass the three as `signerCommitments`.
  * - Per operation: read `getNonce()`, rebuild the digest as
- *   `EcdsaTestUtils.ts` does, collect two low-s signatures off-chain, submit
- *   keys and signatures in matching `Vector<2>` positions.
+ *   `EcdsaTestUtils.ts` does, collect at least threshold low-s signatures
+ *   off-chain, submit one `some` slot per approver and fill the rest with
+ *   `none` slots holding the secp256k1 generator.
  * - `mint`: hand the returned `ShieldedCoinInfo` to the recipient out of
  *   band; contract-initiated mints create no ciphertext, so a wallet cannot
  *   find the coin by scanning.
@@ -223,14 +227,14 @@ module NativeShieldedTokenIssuer {
   import "../../token/NativeShieldedToken" prefix NST_;
   import "../../token/extensions/NativeShieldedTokenDerivedNonce" prefix NSTDerivedNonce_;
 
-  // Named import/re-export of the composed modules' state only, so an
-  // implementing contract can surface every ledger field under its own key.
-  // The circuits stay behind the prefixes above. The derived-nonce counter is
+  // Named import/re-export of the composed modules' state and the `Approval`
+  // struct, so an implementing contract can surface every ledger field under
+  // its own key. The circuits stay behind the prefixes above. The derived-nonce counter is
   // aliased because this module's replay counter already owns `_counter`.
-  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaSignerManager";
+  import { Approval, _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaSignerManager";
   import { _domain, _name, _symbol, _decimals, _isInitialized } from "../../token/NativeShieldedToken";
   import { _counter as _derivedNonceCounter } from "../../token/extensions/NativeShieldedTokenDerivedNonce";
-  export { _instanceSalt, _signers, _signerCount, _threshold };
+  export { Approval, _instanceSalt, _signers, _signerCount, _threshold };
   export { _domain, _name, _symbol, _decimals, _isInitialized };
   export { _derivedNonceCounter };
 
@@ -300,88 +304,6 @@ module NativeShieldedTokenIssuer {
   }
 
   /**
-   * @description `keccak256` of the `Mint` type string:
-   * `Mint(bytes32 contractAddress,bytes32 recipient,uint256 nonce,uint256 amount)`
-   *
-   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec checks this
-   * word against the type string above.
-   *
-   * @returns {Bytes<32>} The `Mint` type hash.
-   */
-  pure circuit MINT_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x65, 0x2d, 0x4d, 0xad, 0x8f, 0xb2, 0x6c, 0x5c,
-      0x50, 0xc9, 0x87, 0xd4, 0x19, 0xdc, 0x93, 0x53,
-      0x14, 0xa0, 0x1e, 0xd4, 0x5d, 0xb1, 0x59, 0xf2,
-      0x30, 0xad, 0xc1, 0xa7, 0xe9, 0x02, 0x91, 0x1c
-    ];
-
-    return typeHash as Bytes<32>;
-  }
-
-  /**
-   * @description `keccak256` of the `MintToSelf` type string:
-   * `MintToSelf(bytes32 contractAddress,uint256 nonce,uint256 amount)`
-   *
-   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec
-   * checks this word against the type string above.
-   *
-   * @returns {Bytes<32>} The `MintToSelf` type hash.
-   */
-  pure circuit MINT_TO_SELF_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0xf8, 0xb3, 0x1e, 0x4e, 0x0f, 0x2d, 0x10, 0x33,
-      0x82, 0xb4, 0xb3, 0x72, 0xac, 0x65, 0xa7, 0xad,
-      0xcd, 0x03, 0x89, 0x39, 0x8d, 0x24, 0x6c, 0x5e,
-      0xc2, 0xc9, 0x09, 0x38, 0x53, 0xdb, 0x49, 0x91
-    ];
-
-    return typeHash as Bytes<32>;
-  }
-
-  /**
-   * @description `keccak256` of the `Burn` type string:
-   * `Burn(bytes32 contractAddress,bytes32 refundTo,uint256 nonce,uint256 amount)`
-   *
-   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec
-   * checks this word against the type string above.
-   *
-   * @returns {Bytes<32>} The `Burn` type hash.
-   */
-  pure circuit BURN_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x96, 0x8e, 0x03, 0xa5, 0xba, 0x91, 0xc8, 0xdd,
-      0x27, 0x56, 0x79, 0x5a, 0xc6, 0x57, 0x52, 0x13,
-      0x06, 0xe0, 0xd9, 0x7c, 0xe8, 0x1e, 0xbf, 0x9b,
-      0x68, 0x24, 0x45, 0xa2, 0x86, 0xfc, 0xeb, 0xef
-    ];
-
-    return typeHash as Bytes<32>;
-  }
-
-  /**
-   * @description `keccak256` of the `BurnFromSelf` type string:
-   * `BurnFromSelf(bytes32 contractAddress,uint256 nonce,uint256 amount)`
-   *
-   * @dev Written as a literal word. `compactc` emits a full keccak
-   * permutation even for a constant argument, so hashing the type string
-   * in-circuit would add ~4.2k rows to every operation. The spec checks this
-   * word against the type string above.
-   *
-   * @returns {Bytes<32>} The `BurnFromSelf` type hash.
-   */
-  pure circuit BURN_FROM_SELF_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x08, 0xba, 0x21, 0x80, 0x7e, 0x7f, 0x75, 0x47,
-      0xa2, 0x70, 0x1d, 0x8c, 0x53, 0x06, 0x39, 0x7d,
-      0x97, 0xad, 0xfd, 0x3e, 0xa6, 0xf6, 0xa2, 0x8c,
-      0x10, 0x0c, 0xbd, 0x64, 0x9c, 0x7f, 0x5d, 0x94
-    ];
-
-    return typeHash as Bytes<32>;
-  }
-
-  /**
    * @description Computes a signer commitment from a secp256k1 public key,
    * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
    *
@@ -412,27 +334,25 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the only copy available to the
    * recipient; deliver it out of band.
    *
-   * @constraints k=17, rows=89815 (zkir-v3)
+   * @constraints k=17, rows=120222 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the mint message hash.
+   * - Every `some` public key must hash to a registered signer commitment.
+   * - Every `some` signature must be valid over the mint message hash.
    * - Signers must not be duplicates.
    * - Threshold must be met.
    * - `recipient` is not zero.
    *
    * @param {Uint<64>} amount - The token amount to mint.
    * @param {ZswapCoinPublicKey} recipient - The coin public key to receive the minted tokens.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
+   * @param {Vector<3, Maybe<Approval>>} approvals - One slot per signer, `some` for each approval over the mint hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mint(
     amount: Uint<64>,
     recipient: ZswapCoinPublicKey,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    approvals: Vector<3, Maybe<Approval>>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
@@ -448,9 +368,29 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaSignerManager_assertApprovals<3>(msgHash, approvals);
 
     return NST__mint(recipient, amount, NSTDerivedNonce__deriveNonce());
+  }
+
+  /**
+   * @description `keccak256` of the `Mint` type string:
+   * `Mint(bytes32 contractAddress,bytes32 recipient,uint256 nonce,uint256 amount)`
+   *
+   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec checks this
+   * word against the type string above.
+   *
+   * @returns {Bytes<32>} The `Mint` type hash.
+   */
+  pure circuit MINT_TYPEHASH(): Bytes<32> {
+    const typeHash: Vector<32, Uint<8>> = [
+      0x65, 0x2d, 0x4d, 0xad, 0x8f, 0xb2, 0x6c, 0x5c,
+      0x50, 0xc9, 0x87, 0xd4, 0x19, 0xdc, 0x93, 0x53,
+      0x14, 0xa0, 0x1e, 0xd4, 0x5d, 0xb1, 0x59, 0xf2,
+      0x30, 0xad, 0xc1, 0xa7, 0xe9, 0x02, 0x91, 0x1c
+    ];
+
+    return typeHash as Bytes<32>;
   }
 
   /**
@@ -461,24 +401,22 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the contract's only record of the
    * holding; persist it for `burnFromSelf`.
    *
-   * @constraints k=17, rows=91259 (zkir-v3)
+   * @constraints k=17, rows=121666 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the mint-to-self message hash.
+   * - Every `some` public key must hash to a registered signer commitment.
+   * - Every `some` signature must be valid over the mint-to-self message hash.
    * - Signers must not be duplicates.
    * - Threshold must be met.
    *
    * @param {Uint<64>} amount - The token amount to mint.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint-to-self hash.
+   * @param {Vector<3, Maybe<Approval>>} approvals - One slot per signer, `some` for each approval over the mint-to-self hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mintToSelf(
     amount: Uint<64>,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    approvals: Vector<3, Maybe<Approval>>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
@@ -493,9 +431,29 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaSignerManager_assertApprovals<3>(msgHash, approvals);
 
     return NST__mintToSelf(amount, NSTDerivedNonce__deriveNonce());
+  }
+
+  /**
+   * @description `keccak256` of the `MintToSelf` type string:
+   * `MintToSelf(bytes32 contractAddress,uint256 nonce,uint256 amount)`
+   *
+   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec
+   * checks this word against the type string above.
+   *
+   * @returns {Bytes<32>} The `MintToSelf` type hash.
+   */
+  pure circuit MINT_TO_SELF_TYPEHASH(): Bytes<32> {
+    const typeHash: Vector<32, Uint<8>> = [
+      0xf8, 0xb3, 0x1e, 0x4e, 0x0f, 0x2d, 0x10, 0x33,
+      0x82, 0xb4, 0xb3, 0x72, 0xac, 0x65, 0xa7, 0xad,
+      0xcd, 0x03, 0x89, 0x39, 0x8d, 0x24, 0x6c, 0x5e,
+      0xc2, 0xc9, 0x09, 0x38, 0x53, 0xdb, 0x49, 0x91
+    ];
+
+    return typeHash as Bytes<32>;
   }
 
   /**
@@ -506,12 +464,12 @@ module NativeShieldedTokenIssuer {
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; deliver it out of band.
    *
-   * @constraints k=17, rows=118642 (zkir-v3)
+   * @constraints k=18, rows=145402 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the burn message hash.
+   * - Every `some` public key must hash to a registered signer commitment.
+   * - Every `some` signature must be valid over the burn message hash.
    * - Signers must not be duplicates.
    * - Threshold must be met.
    * - `coin.color` is this contract's token color.
@@ -521,8 +479,7 @@ module NativeShieldedTokenIssuer {
    * @param {ShieldedCoinInfo} coin - The holder's coin to burn from.
    * @param {Uint<64>} amount - The token amount to burn.
    * @param {ZswapCoinPublicKey} refundTo - Receives `coin.value - amount`.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
+   * @param {Vector<3, Maybe<Approval>>} approvals - One slot per signer, `some` for each approval over the burn hash.
    * @returns {Maybe<ShieldedCoinInfo>} The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -530,8 +487,7 @@ module NativeShieldedTokenIssuer {
     coin: ShieldedCoinInfo,
     amount: Uint<64>,
     refundTo: ZswapCoinPublicKey,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    approvals: Vector<3, Maybe<Approval>>
   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
@@ -547,9 +503,29 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaSignerManager_assertApprovals<3>(msgHash, approvals);
 
     return NST__burn(coin, amount, refundTo);
+  }
+
+  /**
+   * @description `keccak256` of the `Burn` type string:
+   * `Burn(bytes32 contractAddress,bytes32 refundTo,uint256 nonce,uint256 amount)`
+   *
+   * @dev Written as a literal word; see `BURN_FROM_SELF_TYPEHASH`. The spec
+   * checks this word against the type string above.
+   *
+   * @returns {Bytes<32>} The `Burn` type hash.
+   */
+  pure circuit BURN_TYPEHASH(): Bytes<32> {
+    const typeHash: Vector<32, Uint<8>> = [
+      0x96, 0x8e, 0x03, 0xa5, 0xba, 0x91, 0xc8, 0xdd,
+      0x27, 0x56, 0x79, 0x5a, 0xc6, 0x57, 0x52, 0x13,
+      0x06, 0xe0, 0xd9, 0x7c, 0xe8, 0x1e, 0xbf, 0x9b,
+      0x68, 0x24, 0x45, 0xa2, 0x86, 0xfc, 0xeb, 0xef
+    ];
+
+    return typeHash as Bytes<32>;
   }
 
   /**
@@ -561,12 +537,12 @@ module NativeShieldedTokenIssuer {
    * and returned; it replaces `coin` as the contract's holding, so the
    * operator must persist it.
    *
-   * @constraints k=17, rows=97232 (zkir-v3)
+   * @constraints k=17, rows=127639 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the burn-from-self message hash.
+   * - Every `some` public key must hash to a registered signer commitment.
+   * - Every `some` signature must be valid over the burn-from-self message hash.
    * - Signers must not be duplicates.
    * - Threshold must be met.
    * - `coin.color` is this contract's token color.
@@ -574,16 +550,14 @@ module NativeShieldedTokenIssuer {
    *
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<64>} amount - The token amount to burn.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn-from-self hash.
+   * @param {Vector<3, Maybe<Approval>>} approvals - One slot per signer, `some` for each approval over the burn-from-self hash.
    * @returns {Maybe<ShieldedCoinInfo>} The change coin retained by the
    * contract, or `none` if the coin was burned in full.
    */
   export circuit burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
     amount: Uint<64>,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    approvals: Vector<3, Maybe<Approval>>
   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
@@ -598,9 +572,31 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaSignerManager_assertApprovals<3>(msgHash, approvals);
 
     return NST__burnFromSelf(coin, amount);
+  }
+
+  /**
+   * @description `keccak256` of the `BurnFromSelf` type string:
+   * `BurnFromSelf(bytes32 contractAddress,uint256 nonce,uint256 amount)`
+   *
+   * @dev Written as a literal word. `compactc` emits a full keccak
+   * permutation even for a constant argument, so hashing the type string
+   * in-circuit would add ~4.2k rows to every operation. The spec checks this
+   * word against the type string above.
+   *
+   * @returns {Bytes<32>} The `BurnFromSelf` type hash.
+   */
+  pure circuit BURN_FROM_SELF_TYPEHASH(): Bytes<32> {
+    const typeHash: Vector<32, Uint<8>> = [
+      0x08, 0xba, 0x21, 0x80, 0x7e, 0x7f, 0x75, 0x47,
+      0xa2, 0x70, 0x1d, 0x8c, 0x53, 0x06, 0x39, 0x7d,
+      0x97, 0xad, 0xfd, 0x3e, 0xa6, 0xf6, 0xa2, 0x8c,
+      0x10, 0x0c, 0xbd, 0x64, 0x9c, 0x7f, 0x5d, 0x94
+    ];
+
+    return typeHash as Bytes<32>;
   }
 
   /**

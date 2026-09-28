@@ -22,9 +22,10 @@ import "../presets/NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
 
-// Surface the preset's state unprefixed so `ledger()` readers use the keys the
-// modules declare.
+// Surface the preset's state and `Approval` unprefixed, so `ledger()` readers
+// and the typings use the names the modules declare.
 import {
+  Approval,
   _counter,
   _domainSeparator,
   _derivedNonceCounter,
@@ -39,6 +40,7 @@ import {
   _isInitialized,
 } from "../presets/NativeShieldedTokenIssuer";
 export {
+  Approval,
   _counter,
   _domainSeparator,
   _derivedNonceCounter,
@@ -97,37 +99,33 @@ export pure circuit _calculateSignerId(
 export circuit mint(
   amount: Uint<64>,
   recipient: ZswapCoinPublicKey,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<Approval>>
 ): ShieldedCoinInfo {
-  return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_mint(amount, recipient, approvals);
 }
 
 export circuit mintToSelf(
   amount: Uint<64>,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<Approval>>
 ): ShieldedCoinInfo {
-  return NativeShieldedTokenIssuer_mintToSelf(amount, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_mintToSelf(amount, approvals);
 }
 
 export circuit burn(
   coin: ShieldedCoinInfo,
   amount: Uint<64>,
   refundTo: ZswapCoinPublicKey,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<Approval>>
 ): Maybe<ShieldedCoinInfo> {
-  return NativeShieldedTokenIssuer_burn(coin, amount, refundTo, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_burn(coin, amount, refundTo, approvals);
 }
 
 export circuit burnFromSelf(
   coin: QualifiedShieldedCoinInfo,
   amount: Uint<64>,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<Approval>>
 ): Maybe<ShieldedCoinInfo> {
-  return NativeShieldedTokenIssuer_burnFromSelf(coin, amount, pubkeys, signatures);
+  return NativeShieldedTokenIssuer_burnFromSelf(coin, amount, approvals);
 }
 
 export circuit getNonce(): Uint<64> {

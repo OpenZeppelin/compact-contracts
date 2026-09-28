@@ -19,7 +19,7 @@ import {
   ledger,
 } from '../../../../artifacts/ShieldedMultiSigV2Example/contract/index.js';
 import { ShieldedMultiSigV2Simulator } from '../../presets/test/simulators/ShieldedMultiSigV2Simulator.js';
-import { executeMsgHash } from '../../test/EcdsaTestUtils.js';
+import { approvalsOf, executeMsgHash } from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -119,8 +119,10 @@ describe('ShieldedMultiSigV2Example', () => {
         to,
         100n,
         coin,
-        [S1.publicKey, S2.publicKey],
-        [sign(S1, digest), sign(S2, digest)],
+        approvalsOf(
+          [S1.publicKey, S2.publicKey],
+          [sign(S1, digest), sign(S2, digest)],
+        ),
       );
 
       expect(await c.getNonce()).toEqual(1n);

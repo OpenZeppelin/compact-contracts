@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **Breaking:** `EcdsaSignerManager.assertApprovals<#m>` takes one `Maybe<Approval>` slot per signer and counts distinct verified `some` slots against the threshold, so every k-of-n set works; `NativeShieldedTokenIssuer` and `ShieldedMultiSigV2` circuits take `Vector<3, Maybe<Approval>>` in place of the parallel `Vector<2>` key and signature vectors. (#1018)
+
 ### Fixed
 
-- `EcdsaSignerManager.initialize` rejects signer sets smaller than 2, which could never satisfy the two-signature `assertApprovals`. (#1011)
+- `EcdsaSignerManager.initialize` rejects signer sets smaller than 2, which could never satisfy the two-signature `assertApprovals`; the threshold-sized `assertApprovals` lifts this guard. (#1011)
 
 ## 0.4.0-alpha.4 (2026-09-25)
 

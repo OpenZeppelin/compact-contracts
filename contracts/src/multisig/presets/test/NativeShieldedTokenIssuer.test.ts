@@ -405,6 +405,17 @@ describe('NativeShieldedTokenIssuer', () => {
         await expectMintedCoin(multisig, coin, 100n);
       });
 
+      it('mints with all three signers', async () => {
+        const coin = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2, S3]);
+        await expectMintedCoin(multisig, coin, 100n);
+      });
+
+      it('rejects a single signer', async () => {
+        await expect(
+          mint(multisig, 100n, USER_RECIPIENT, [S2]),
+        ).rejects.toThrow('Signer: threshold not met');
+      });
+
       it('derives a different nonce on each mint', async () => {
         const first = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
         const second = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);

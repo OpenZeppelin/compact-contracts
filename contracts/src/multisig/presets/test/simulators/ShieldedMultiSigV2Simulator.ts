@@ -10,6 +10,7 @@ import {
   Contract as MockShieldedMultiSigV2,
   pureCircuits,
 } from '../../../../../artifacts/MockShieldedMultiSigV2/contract/index.js';
+import { approvalsOf } from '../../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -56,6 +57,7 @@ const ShieldedMultiSigV2SimulatorBase = createSimulator<
   artifactName: 'MockShieldedMultiSigV2',
 });
 
+/** Approval methods take parallel key and signature arrays, padded to width 3 with `none` slots. */
 export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
@@ -92,7 +94,12 @@ export class ShieldedMultiSigV2Simulator extends ShieldedMultiSigV2SimulatorBase
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<ShieldedSendResult> {
-    return this.circuits.impure.execute(to, amount, coin, pubkeys, signatures);
+    return this.circuits.impure.execute(
+      to,
+      amount,
+      coin,
+      approvalsOf(pubkeys, signatures),
+    );
   }
 
   public getNonce(): Promise<bigint> {
