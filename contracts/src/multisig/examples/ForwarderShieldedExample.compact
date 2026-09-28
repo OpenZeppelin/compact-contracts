@@ -42,6 +42,9 @@ constructor(parent: ZswapCoinPublicKey) {
  * the configured parent. The coin is claimed via `receiveShielded` and
  * immediately re-sent via `sendImmediateShielded`.
  *
+ * The depositor must encrypt the forwarded output to the parent's
+ * encryption public key (see the `ForwarderShielded` header).
+ *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  *
  * @returns {ShieldedSendResult} The coin sent to the parent, with no change.

@@ -41,6 +41,11 @@ pragma language_version >= 0.26.0;
  * coins. Forwarding to a key no one controls strands every deposit
  * permanently. The zero-key guard rejects only the all-zero key, not an
  * otherwise-unspendable one.
+ *
+ * @notice The depositor must encrypt the forwarded output to the parent's
+ * encryption public key, obtained off-chain. The ledger cannot check that
+ * key against `_parent`, so a wrong or missing key leaves the coin
+ * spendable by the parent but invisible to its wallet.
  */
 module ForwarderShielded {
   import CompactStandardLibrary;
@@ -108,6 +113,9 @@ module ForwarderShielded {
    * Requirements:
    *
    * - Contract must be initialized.
+   * - The forwarded output must be encrypted to the parent's encryption
+   *   public key (see the module header). If unsure, hand the returned
+   *   `ShieldedSendResult` to the parent so it can recover the coin.
    *
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
    *
