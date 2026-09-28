@@ -77,13 +77,15 @@ module EcdsaSignerManager {
    * - Can only be called once.
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
-   * - `threshold` must be non-zero and must not exceed `n`.
-   * - `threshold` must not exceed 2, the number of approvals `assertApprovals`
-   *   verifies.
+   * - `n` must be at least 2, the number of distinct signers `assertApprovals`
+   *   verifies. A smaller set can never satisfy it.
+   * - `threshold` must be non-zero and must not exceed 2, the number of
+   *   approvals `assertApprovals` verifies.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
-   * @param {Uint<8>} threshold - Minimum approvals required.
+   * @param {Uint<8>} threshold - Minimum approvals required. `assertApprovals`
+   * always verifies 2, so 1 and 2 behave alike.
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
@@ -98,6 +100,7 @@ module EcdsaSignerManager {
     for (const commitment of signerCommitments) {
       Signer__addSigner(commitment);
     }
+    assert(Signer_getSignerCount() >= 2, "EcdsaSignerManager: fewer than 2 signers (assertApprovals verifies 2 signatures)");
     Signer__changeThreshold(threshold);
   }
 
