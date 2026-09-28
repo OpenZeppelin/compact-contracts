@@ -124,10 +124,8 @@ function requestedTarget(
     // the label itself back instead: it is not a target name, so the caller
     // rejects it with the valid ones.
     if (scope === '') return label;
-    // `live-tests:all` is the label form of the dispatch's `all`, and the only
-    // way to ask a PR for the full fan-out: a run per target would otherwise
-    // mean a label per target, which the concurrency group (keyed by PR, not by
-    // label) would cancel down to whichever was applied last.
+    // `live-tests:all` is the label form of the dispatch's `all`: the full
+    // fan-out in one label rather than one per target.
     return scope === ALL_TARGETS ? '' : scope;
   }
   const target = request.target.trim();

@@ -253,10 +253,7 @@ describe('resolveMatrix', () => {
   });
 
   it('runs every target from a `live-tests:all` label', () => {
-    // The label form of the dispatch's `all`, and the only way to ask a PR for
-    // the full fan-out: one run per target would need one label per target, and
-    // the concurrency group is keyed by PR rather than by label, so those runs
-    // would cancel each other down to the last one applied.
+    // The label form of the dispatch's `all`: the full fan-out in one label.
     expect(
       resolveMatrix(
         request({ label: `${LIVE_LABEL}:${ALL_TARGETS}` }),

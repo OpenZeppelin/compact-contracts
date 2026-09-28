@@ -11,9 +11,8 @@ name: Live Test Suite
 #   - on a PR, opt-in, by applying a `live-tests:<target>` label, or
 #     `live-tests:all` for every target (re-apply to re-run). The bare
 #     `live-tests` label is rejected by the plan job: per-file legs would make it
-#     60+ checks on the PR, so the full fan-out has to be spelled out. One label
-#     rather than one per target because the concurrency group is keyed by PR,
-#     so seven labels would cancel down to whichever was applied last.
+#     60+ checks on the PR, so the full fan-out has to be spelled out. Each label
+#     runs on its own, so several targets can run on one PR at once.
 #
 # One plan job, then a PIPELINE PER TARGET:
 #
@@ -92,8 +91,9 @@ permissions:
 
 concurrency:
   # Keyed by trigger as well as ref, so a manual dispatch on main does not cancel
-  # the nightly it was meant to complement.
-  group: live-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # the nightly it was meant to complement. On a PR it is also keyed by the
+  # label, so one label's run survives another label being applied.
+  group: live-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.label.name }}
   cancel-in-progress: true
 
 jobs:
