@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `EcdsaSignerManager.initialize` rejects signer sets smaller than 2, which could never satisfy the two-signature `assertApprovals`. (#1011)
+
 ## 0.4.0-alpha.4 (2026-09-25)
 
 ### Changed

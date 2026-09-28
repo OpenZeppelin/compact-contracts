@@ -6,6 +6,7 @@ import {
   signerFromLabel,
 } from '#test-utils/fixtures/ecdsa.js';
 import { EcdsaSignerManagerSimulator } from './simulators/EcdsaSignerManagerSimulator.js';
+import { EcdsaSignerManagerSmallSetSimulator } from './simulators/EcdsaSignerManagerSmallSetSimulator.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
 const OTHER_SALT = new Uint8Array(32).fill(0xbb);
@@ -96,6 +97,48 @@ describe('EcdsaSignerManager', () => {
           'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
         );
       }
+    });
+
+    // A one-signer set can never supply the two distinct signers
+    // `assertApprovals` demands, so every gated operation would revert.
+    it('should fail with a single signer at any threshold', async () => {
+      for (const threshold of [1n, 2n]) {
+        await expect(
+          EcdsaSignerManagerSmallSetSimulator.create(
+            INSTANCE_SALT,
+            [COMMITMENT1, COMMITMENT2],
+            threshold,
+            true,
+          ),
+        ).rejects.toThrow(
+          'EcdsaSignerManager: fewer than 2 signers (assertApprovals verifies 2 signatures)',
+        );
+      }
+    });
+
+    it('should initialize a two-signer set at threshold 1 and 2', async () => {
+      for (const threshold of [1n, 2n]) {
+        const twoSigners = await EcdsaSignerManagerSmallSetSimulator.create(
+          INSTANCE_SALT,
+          [COMMITMENT1, COMMITMENT2],
+          threshold,
+        );
+        expect(await twoSigners.getSignerCount()).toEqual(2n);
+        expect(await twoSigners.getThreshold()).toEqual(threshold);
+      }
+    });
+
+    it('should accept both signers of a two-signer set', async () => {
+      const twoSigners = await EcdsaSignerManagerSmallSetSimulator.create(
+        INSTANCE_SALT,
+        [COMMITMENT1, COMMITMENT2],
+        2n,
+      );
+      await twoSigners.assertApprovals(
+        DIGEST,
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, DIGEST), sign(S2, DIGEST)],
+      );
     });
 
     it('should fail when initialized twice', async () => {
