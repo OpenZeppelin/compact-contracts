@@ -192,6 +192,10 @@ function makeCoin(color: Uint8Array, value: bigint): ShieldedCoinInfo {
 
 let multisig: NativeShieldedTokenIssuerSimulator;
 
+// A live mint or burn takes up to ~150 s, so specs chaining four or five of them
+// outrun the 600 s live test timeout.
+const MULTI_TX_TIMEOUT = 1_200_000;
+
 // A fresh multisig-token instance. Mutating groups build one per test
 // (`beforeEach`); read-only groups build one per group (`beforeAll`) to save a
 // live deploy tx.
@@ -957,7 +961,9 @@ describe('NativeShieldedTokenIssuer', () => {
         expect(refund.value.value).toStrictEqual(100n);
       });
 
-      it('shares the nonce with every operation', async () => {
+      it('shares the nonce with every operation', {
+        timeout: MULTI_TX_TIMEOUT,
+      }, async () => {
         const coin = await mint(multisig, 100n, USER_RECIPIENT, [S1, S2]);
         expect(await multisig.getNonce()).toEqual(1n);
 
@@ -1294,7 +1300,9 @@ describe('NativeShieldedTokenIssuer', () => {
         expect(await multisig.getNonce()).toEqual(0n);
       });
 
-      it('should increment monotonically', async () => {
+      it('should increment monotonically', {
+        timeout: MULTI_TX_TIMEOUT,
+      }, async () => {
         for (let i = 0; i < 5; i++) {
           await mint(multisig, 1n, USER_RECIPIENT, [S1, S2]);
           expect(await multisig.getNonce()).toEqual(BigInt(i + 1));
