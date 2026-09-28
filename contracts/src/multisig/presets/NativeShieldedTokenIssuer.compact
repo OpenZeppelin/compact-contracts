@@ -461,7 +461,7 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the contract's only record of the
    * holding; persist it for `burnFromSelf`.
    *
-   * @constraints k=17, rows=91259 (zkir-v3)
+   * @constraints k=17, rows=85594 (zkir-v3)
    *
    * Requirements:
    *

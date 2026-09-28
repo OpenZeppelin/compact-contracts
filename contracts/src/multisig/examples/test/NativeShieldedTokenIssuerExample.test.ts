@@ -7,6 +7,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { sign, signerFromLabel } from '#test-utils/fixtures/ecdsa.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
+  bytesToHex,
+  zswapDelta,
+  zswapSnapshot,
+} from '#test-utils/fixtures/zswap.js';
+import {
   Contract as Ex,
   ledger,
 } from '../../../../artifacts/NativeShieldedTokenIssuerExample/contract/index.js';
@@ -162,6 +167,32 @@ describe('NativeShieldedTokenIssuerExample', () => {
     expect(coin.value).toStrictEqual(100n);
     expect(coin.color).toStrictEqual(await c.tokenColor());
   });
+
+  it.skipIf(isLiveBackend())(
+    'emits one Zswap output when minting to itself',
+    async () => {
+      const c = ex.circuits.impure;
+      const digest = mintToSelfMsgHash({
+        contractAddress: addrBytes(),
+        instanceSalt: INSTANCE_SALT,
+        opNonce: await c.getNonce(),
+        amount: 100n,
+      });
+      const before = zswapSnapshot(ex);
+      const coin = await c.mintToSelf(
+        100n,
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      );
+      const minted = zswapDelta(ex, before).outputs.filter(
+        (o) =>
+          o.coinInfo.value === coin.value &&
+          bytesToHex(o.coinInfo.nonce) === bytesToHex(coin.nonce) &&
+          bytesToHex(o.coinInfo.color) === bytesToHex(coin.color),
+      );
+      expect(minted).toHaveLength(1);
+    },
+  );
 
   it('burns a holder coin through the wrapper', async () => {
     const c = ex.circuits.impure;

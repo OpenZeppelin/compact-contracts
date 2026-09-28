@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
+  bytesToHex,
+  zswapDelta,
+  zswapSnapshot,
+} from '#test-utils/fixtures/zswap.js';
+import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
 } from '#test-utils/harness/NativeShieldedTokenTracker.js';
@@ -57,6 +62,18 @@ const deploy = (init = INIT): Promise<NativeShieldedTokenSimulator> =>
   );
 
 let token: NativeShieldedTokenSimulator;
+
+// Dry only: the live backend keeps no Zswap local state to read.
+const outputsOf = (
+  snapshot: ReturnType<typeof zswapSnapshot>,
+  coin: { nonce: Uint8Array; color: Uint8Array; value: bigint },
+) =>
+  zswapDelta(token, snapshot).outputs.filter(
+    (o) =>
+      o.coinInfo.value === coin.value &&
+      bytesToHex(o.coinInfo.nonce) === bytesToHex(coin.nonce) &&
+      bytesToHex(o.coinInfo.color) === bytesToHex(coin.color),
+  );
 
 describe('NativeShieldedToken (Fungible profile)', () => {
   describe('initialization', () => {
@@ -176,6 +193,15 @@ describe('NativeShieldedToken (Fungible profile)', () => {
       expect(coin.nonce).toStrictEqual(nonce);
       expect(coin.color).toStrictEqual(await token.tokenColor());
     });
+
+    it.skipIf(isLiveBackend())(
+      'emits one Zswap output for a self-addressed mint',
+      async () => {
+        const before = zswapSnapshot(token);
+        const coin = await token._mintToSelf(AMOUNT, b32('self-once'));
+        expect(outputsOf(before, coin)).toHaveLength(1);
+      },
+    );
 
     it('should mint the same color as _mint', async () => {
       const minted = await token._mint(recipient(), AMOUNT, b32('to-user'));

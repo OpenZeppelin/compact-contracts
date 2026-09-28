@@ -51,9 +51,10 @@ pragma language_version >= 0.26.0;
  * The ledger accepts a contract-addressed commitment only if the recipient
  * contract's own call claims it as a shielded receive in the same transaction,
  * and no primitive claims a receive on another contract's behalf. So the
- * address arm is accepted only for `kernel.self()`, where `_mint` / `_burn`
- * claim the coin themselves in the same call. The flavors do not expose the
- * arm at all: they take a `ZswapCoinPublicKey` and offer `_mintToSelf` for
+ * address arm is accepted only for `kernel.self()`, which `mintShieldedToken`
+ * and `sendShielded` claim as a receive themselves. A `receiveShielded` on top
+ * emits a duplicate output for the same commitment. The flavors do not expose
+ * the arm at all: they take a `ZswapCoinPublicKey` and offer `_mintToSelf` for
  * contract-held coins.
  *
  * @dev Burn variants
@@ -235,7 +236,7 @@ module NativeShieldedTokenCore {
    * @dev The caller is fully responsible for nonce uniqueness. Reusing a
    * nonce for the same (domain, value, recipient) produces a duplicate
    * commitment, which the protocol rejects. A `right(kernel.self())` recipient
-   * is claimed via `receiveShielded` in this same call, so the consumer SHOULD
+   * is claimed by `mintShieldedToken` in this same call, so the consumer SHOULD
    * persist the returned coin info: it is the contract's holding and is not
    * otherwise recoverable.
    *
@@ -243,7 +244,7 @@ module NativeShieldedTokenCore {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @constraints k=15, rows=16980
+   * @constraints k=14, rows=11109
    *
    * Requirements:
    *
@@ -269,12 +270,7 @@ module NativeShieldedTokenCore {
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
     assert(recipient.is_left || recipient.right == self, "NativeShieldedToken: recipient contract must be self");
 
-    const coin = mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
-    if (disclose(!recipient.is_left)) {
-      receiveShielded(coin);
-    }
-
-    return coin;
+    return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
   }
 
   /**
@@ -289,14 +285,14 @@ module NativeShieldedTokenCore {
    * @dev The coin is received by the contract and spent in the same
    * transaction, so the spend goes through `sendImmediateShielded` (the
    * transient path). For coins the contract already holds, use
-   * `_burnFromSelf` instead. A `right(kernel.self())` refund is claimed via
-   * `receiveShielded` in this same call.
+   * `_burnFromSelf` instead. A `right(kernel.self())` refund is claimed by
+   * `sendImmediateShielded` in this same call.
    *
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @constraints k=16, rows=53639
+   * @constraints k=16, rows=47764
    *
    * Requirements:
    *
@@ -338,9 +334,6 @@ module NativeShieldedTokenCore {
         disclose(refundTo),
         disclose(sendRes.change.value.value)
       );
-      if (disclose(!refundTo.is_left)) {
-        receiveShielded(refundRes.sent);
-      }
       return some<ShieldedCoinInfo>(refundRes.sent);
     }
     return none<ShieldedCoinInfo>();

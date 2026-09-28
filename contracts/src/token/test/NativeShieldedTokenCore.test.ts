@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
+  bytesToHex,
+  zswapDelta,
+  zswapSnapshot,
+} from '#test-utils/fixtures/zswap.js';
+import {
   contractOwner,
   getQualifiedShieldedCoinInfo,
 } from '#test-utils/harness/NativeShieldedTokenTracker.js';
@@ -61,6 +66,18 @@ const deploy = (init = INIT): Promise<NativeShieldedTokenCoreSimulator> =>
   );
 
 let token: NativeShieldedTokenCoreSimulator;
+
+// Dry only: the live backend keeps no Zswap local state to read.
+const outputsOf = (
+  snapshot: ReturnType<typeof zswapSnapshot>,
+  coin: { nonce: Uint8Array; color: Uint8Array; value: bigint },
+) =>
+  zswapDelta(token, snapshot).outputs.filter(
+    (o) =>
+      o.coinInfo.value === coin.value &&
+      bytesToHex(o.coinInfo.nonce) === bytesToHex(coin.nonce) &&
+      bytesToHex(o.coinInfo.color) === bytesToHex(coin.color),
+  );
 
 describe('NativeShieldedTokenCore (bare base)', () => {
   describe('initialization', () => {
@@ -324,6 +341,20 @@ describe('NativeShieldedTokenCore (bare base)', () => {
       ).rejects.toThrow('NativeShieldedToken: recipient contract must be self');
     });
 
+    it.skipIf(isLiveBackend())(
+      'emits one Zswap output for a self-addressed mint',
+      async () => {
+        const before = zswapSnapshot(token);
+        const coin = await token._mint(
+          DOMAIN_A,
+          selfArm(),
+          AMOUNT,
+          b32('self-mint-once'),
+        );
+        expect(outputsOf(before, coin)).toHaveLength(1);
+      },
+    );
+
     it('should refund the change to its own address', async () => {
       const coin = await token._mint(
         DOMAIN_A,
@@ -348,6 +379,22 @@ describe('NativeShieldedTokenCore (bare base)', () => {
       );
       expect(second.is_some).toBe(false);
     });
+
+    it.skipIf(isLiveBackend())(
+      'emits one Zswap output for a self-addressed refund',
+      async () => {
+        const coin = await token._mint(
+          DOMAIN_A,
+          recipient(),
+          AMOUNT,
+          b32('self-refund-once'),
+        );
+        const before = zswapSnapshot(token);
+        const res = await token._burn(DOMAIN_A, coin, PARTIAL, selfArm());
+        expect(res.is_some).toBe(true);
+        expect(outputsOf(before, res.value)).toHaveLength(1);
+      },
+    );
 
     it('should return none on a full burn with a self refundTo', async () => {
       const coin = await token._mint(

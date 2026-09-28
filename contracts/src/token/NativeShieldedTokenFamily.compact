@@ -230,7 +230,7 @@ module NativeShieldedTokenFamily {
    * ledger state: it is the contract's holding and is not otherwise
    * recoverable.
    *
-   * @constraints k=14, rows=16309
+   * @constraints k=14, rows=10497
    *
    * Requirements:
    *
