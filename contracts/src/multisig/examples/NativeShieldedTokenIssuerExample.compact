@@ -11,8 +11,10 @@ pragma language_version >= 0.26.0;
  * (`mintToSelf`), and leaves only through an ECDSA-authorized burn, of a
  * holder's coin (`burn`) or of one the contract holds (`burnFromSelf`).
  *
- * The token is non-transferable by construction. There is no transfer circuit,
- * so a holder's only exit is to pay the coin into a `burn` tx.
+ * Coins minted to holders are ordinary Zswap coins: holders transfer them
+ * through Zswap without the issuer's involvement and redeem by paying one
+ * into a `burn` tx. Only contract-held coins are locked. No send circuit
+ * exists, so they leave through `burnFromSelf` alone.
  */
 
 import CompactStandardLibrary;
