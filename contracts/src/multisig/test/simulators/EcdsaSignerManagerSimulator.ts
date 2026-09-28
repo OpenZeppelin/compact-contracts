@@ -3,12 +3,12 @@ import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
-import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
   Contract as MockEcdsaSignerManager,
   pureCircuits,
 } from '../../../../artifacts/MockEcdsaSignerManager/contract/index.js';
+import type { ApprovalSlot } from '../EcdsaTestUtils.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EcdsaSignerManagerArgs = readonly [
@@ -67,10 +67,9 @@ export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase
 
   public assertApprovals(
     msgHash: Uint8Array,
-    pubkeys: Secp256k1Point[],
-    signatures: EcdsaSignature[],
+    approvals: ApprovalSlot[],
   ): Promise<[]> {
-    return this.circuits.impure.assertApprovals(msgHash, pubkeys, signatures);
+    return this.circuits.impure.assertApprovals(msgHash, approvals);
   }
 
   public getSignerCount(): Promise<bigint> {

@@ -5,7 +5,8 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module ShieldedMultiSigV2
- * @description Privacy-preserving 2-of-3 multisig contract.
+ * @description Privacy-preserving k-of-3 multisig contract. The threshold is
+ * fixed at construction.
  *
  * Signer identities are stored as commitments: hashes of ECDSA public
  * keys combined with an instance salt and domain separator. Signature
@@ -34,18 +35,17 @@ module ShieldedMultiSigV2 {
   import "../ProposalManager" prefix Proposal_;
   import "../ShieldedTreasuryStateless" prefix Treasury_;
 
-  // Implementing contracts need this for the re-exported `execute` signature.
+  // Implementing contracts need these for the re-exported `execute` signature.
   // Importing `ProposalManager` again instead would give them a second,
   // unwritten copy of its state.
-  export { Proposal_Recipient };
-
-  // ─── State ──────────────────────────────────────────────────────
+  import { Approval } from "../EcdsaSignerManager";
+  export { Approval, Proposal_Recipient };
 
   /**
    * @description Monotonic operation counter. `execute` reads it as that
    * operation's nonce and then increments, so no two executions share one.
    */
-  ledger _nonce: Counter;
+  export ledger _nonce: Counter;
 
   /**
    * @description The EIP-712 domain separator every `execute` digest is built
@@ -53,8 +53,6 @@ module ShieldedMultiSigV2 {
    * construction.
    */
   export sealed ledger _domainSeparator: Bytes<32>;
-
-  // ─── Initialization ─────────────────────────────────────────────
 
   /**
    * @description Registers the signer set and threshold, and fixes the
@@ -82,7 +80,7 @@ module ShieldedMultiSigV2 {
    *
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
-   * - `thresh` must be non-zero and must not exceed 2.
+   * - `thresh` must be non-zero and must not exceed 3.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
@@ -106,118 +104,6 @@ module ShieldedMultiSigV2 {
   }
 
   /**
-   * @description `keccak256` of the `Execute` type string:
-   * `Execute(bytes32 contractAddress,uint256 nonce,uint8 recipientKind,bytes32 recipient,bytes32 coinColor,uint256 amount)`
-   *
-   * @dev Written as a literal word. `compactc` emits a full keccak
-   * permutation even for a constant argument, so hashing the type string
-   * in-circuit would add ~4.2k rows to every `execute`. The spec checks this
-   * word against the type string above.
-   *
-   * @returns {Bytes<32>} The `Execute` type hash.
-   */
-  pure circuit EXECUTE_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x8e, 0x36, 0xc9, 0x78, 0xf2, 0x00, 0x15, 0xe8,
-      0x1d, 0x7a, 0x53, 0xef, 0xc3, 0x2e, 0x2b, 0x08,
-      0xf1, 0x24, 0x97, 0xa5, 0x05, 0x7c, 0x70, 0x20,
-      0x7f, 0x8b, 0xc4, 0xb7, 0xc6, 0xcf, 0x5e, 0x15
-    ];
-
-    return typeHash as Bytes<32>;
-  }
-
-  // ─── Deposit ────────────────────────────────────────────────────
-
-  /**
-   * @description Receives a shielded coin into the multisig treasury.
-   *
-   * No access control which allows anyone to deposit. The coin is claimed at the
-   * protocol level through receiveShielded. No coin data is stored on the
-   * public ledger, preserving full balance privacy.
-   *
-   * The operator discovers the coin's Merkle tree index by subscribing
-   * to ZswapOutput events via the indexer, filtering by contract address,
-   * and extracting mt_index. Combined with the known ShieldedCoinInfo,
-   * this produces the QualifiedShieldedCoinInfo needed for spending.
-   *
-   * @constraints k=13, rows=5898 (zkir-v3)
-   *
-   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
-   */
-  export circuit deposit(coin: ShieldedCoinInfo): [] {
-    receiveShielded(disclose(coin));
-  }
-
-  // ─── Execute ────────────────────────────────────────────────────
-
-  /**
-   * @description Executes a shielded send authorized by threshold signatures.
-   *
-   * The circuit reads the current nonce from the ledger, increments it,
-   * then reconstructs the EIP-712 digest that signers must have signed
-   * off-chain: the `Execute` struct (contract address, nonce, recipient kind,
-   * recipient, coin color, amount) hashed under this deployment's domain
-   * separator. The digest is bound to the contract instance and the full recipient (kind and
-   * address), so a signature authorizes exactly one operation on one instance.
-   *
-   * Approvals are checked by `EcdsaSignerManager`, which derives each signer's
-   * commitment from their public key and the instance salt, rejects duplicates,
-   * and enforces the threshold.
-   *
-   * @constraints k=17, rows=104644 (zkir-v3)
-   *
-   * Requirements:
-   *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the message hash and use the low-s
-   *   encoding.
-   * - Signers must not be duplicates.
-   * - Coin value must be >= amount.
-   *
-   * @param {Proposal_Recipient} to - The recipient.
-   * @param {Uint<128>} amount - The amount to send.
-   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the operation.
-   *
-   * @returns {ShieldedSendResult} The send result including any change.
-   */
-  export circuit execute(
-    to: Proposal_Recipient,
-    amount: Uint<128>,
-    coin: QualifiedShieldedCoinInfo,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
-  ): ShieldedSendResult {
-    // Increment nonce
-    const currentNonce = _nonce;
-    _nonce.increment(1);
-
-    // Construct message hash
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<7, Bytes<32>>>([
-      EXECUTE_TYPEHASH(),
-      // Binds the digest to this deployment. The domain cannot carry the
-      // address, so removing this word removes cross-instance replay
-      // protection.
-      kernel.self().bytes,
-      EvmAbi_uint64Word(currentNonce),
-      EvmAbi_uint8Word(to.kind as Uint<8>),
-      to.address,
-      coin.color,
-      EvmAbi_uint128Word(amount)
-    ]));
-
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
-
-    // Execute transfer
-    const normalizedRecipient = Proposal_toShieldedRecipient(to);
-    return Treasury__send(coin, normalizedRecipient, amount);
-  }
-
-  // ─── Commitments ────────────────────────────────────────────────
-
-  /**
    * @description Computes a signer commitment from a secp256k1 public key,
    * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
    *
@@ -239,7 +125,110 @@ module ShieldedMultiSigV2 {
     return EcdsaSignerManager_calculateSignerId(pk, salt);
   }
 
-  // ─── View ───────────────────────────────────────────────────────
+  /**
+   * @description Receives a shielded coin into the multisig treasury.
+   *
+   * No access control which allows anyone to deposit. The coin is claimed at the
+   * protocol level through receiveShielded. No coin data is stored on the
+   * public ledger, preserving full balance privacy.
+   *
+   * The operator discovers the coin's Merkle tree index by subscribing
+   * to ZswapOutput events via the indexer, filtering by contract address,
+   * and extracting mt_index. Combined with the known ShieldedCoinInfo,
+   * this produces the QualifiedShieldedCoinInfo needed for spending.
+   *
+   * @constraints k=13, rows=5898 (zkir-v3)
+   *
+   * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+   */
+  export circuit deposit(coin: ShieldedCoinInfo): [] {
+    receiveShielded(disclose(coin));
+  }
+
+  /**
+   * @description Executes a shielded send authorized by threshold signatures.
+   *
+   * The circuit reads the current nonce from the ledger, increments it,
+   * then reconstructs the EIP-712 digest that signers must have signed
+   * off-chain: the `Execute` struct (contract address, nonce, recipient kind,
+   * recipient, coin color, amount) hashed under this deployment's domain
+   * separator. The digest is bound to the contract instance and the full recipient (kind and
+   * address), so a signature authorizes exactly one operation on one instance.
+   *
+   * Approvals are checked by `EcdsaSignerManager`, which derives each signer's
+   * commitment from their public key and the instance salt, rejects duplicates,
+   * and enforces the threshold.
+   *
+   * @constraints k=18, rows=131404 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - Every `some` public key must hash to a registered signer commitment.
+   * - Every `some` signature must be valid over the message hash and use the
+   *   low-s encoding.
+   * - Signers must not be duplicates.
+   * - Threshold must be met.
+   * - Coin value must be >= amount.
+   *
+   * @param {Proposal_Recipient} to - The recipient.
+   * @param {Uint<128>} amount - The amount to send.
+   * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
+   * @param {Vector<3, Maybe<Approval>>} approvals - One slot per signer, `some` for each approval over the operation.
+   *
+   * @returns {ShieldedSendResult} The send result including any change.
+   */
+  export circuit execute(
+    to: Proposal_Recipient,
+    amount: Uint<128>,
+    coin: QualifiedShieldedCoinInfo,
+    approvals: Vector<3, Maybe<Approval>>
+  ): ShieldedSendResult {
+    // Increment nonce
+    const currentNonce = _nonce;
+    _nonce.increment(1);
+
+    // Construct message hash
+    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<7, Bytes<32>>>([
+      EXECUTE_TYPEHASH(),
+      // Binds the digest to this deployment. The domain cannot carry the
+      // address, so removing this word removes cross-instance replay
+      // protection.
+      kernel.self().bytes,
+      EvmAbi_uint64Word(currentNonce),
+      EvmAbi_uint8Word(to.kind as Uint<8>),
+      to.address,
+      coin.color,
+      EvmAbi_uint128Word(amount)
+    ]));
+
+    EcdsaSignerManager_assertApprovals<3>(msgHash, approvals);
+
+    // Execute transfer
+    const normalizedRecipient = Proposal_toShieldedRecipient(to);
+    return Treasury__send(coin, normalizedRecipient, amount);
+  }
+
+  /**
+   * @description `keccak256` of the `Execute` type string:
+   * `Execute(bytes32 contractAddress,uint256 nonce,uint8 recipientKind,bytes32 recipient,bytes32 coinColor,uint256 amount)`
+   *
+   * @dev Written as a literal word. `compactc` emits a full keccak
+   * permutation even for a constant argument, so hashing the type string
+   * in-circuit would add ~4.2k rows to every `execute`. The spec checks this
+   * word against the type string above.
+   *
+   * @returns {Bytes<32>} The `Execute` type hash.
+   */
+  pure circuit EXECUTE_TYPEHASH(): Bytes<32> {
+    const typeHash: Vector<32, Uint<8>> = [
+      0x8e, 0x36, 0xc9, 0x78, 0xf2, 0x00, 0x15, 0xe8,
+      0x1d, 0x7a, 0x53, 0xef, 0xc3, 0x2e, 0x2b, 0x08,
+      0xf1, 0x24, 0x97, 0xa5, 0x05, 0x7c, 0x70, 0x20,
+      0x7f, 0x8b, 0xc4, 0xb7, 0xc6, 0xcf, 0x5e, 0x15
+    ];
+
+    return typeHash as Bytes<32>;
+  }
 
   /**
    * @description Returns the nonce the next `execute` digest will bind to.

@@ -14,8 +14,8 @@ import "../../ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
-import { _domainSeparator } from "../../ShieldedMultiSigV2";
-export { _domainSeparator };
+import { Approval, _domainSeparator } from "../../ShieldedMultiSigV2";
+export { Approval, _domainSeparator };
 
 /**
  * @description `isInit` is a param for testing.
@@ -43,10 +43,9 @@ export circuit execute(
   to: ShieldedMultiSigV2_Proposal_Recipient,
   amount: Uint<128>,
   coin: QualifiedShieldedCoinInfo,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<Approval>>
 ): ShieldedSendResult {
-  return ShieldedMultiSigV2_execute(to, amount, coin, pubkeys, signatures);
+  return ShieldedMultiSigV2_execute(to, amount, coin, approvals);
 }
 
 export pure circuit _calculateSignerId(

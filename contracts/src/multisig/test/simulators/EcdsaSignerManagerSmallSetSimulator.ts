@@ -1,13 +1,12 @@
-import type { Secp256k1Point } from '@midnight-ntwrk/compact-runtime';
 import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
-import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
   Contract as MockEcdsaSignerManagerSmallSet,
 } from '../../../../artifacts/MockEcdsaSignerManagerSmallSet/contract/index.js';
+import type { ApprovalSlot } from '../EcdsaTestUtils.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type EcdsaSignerManagerSmallSetArgs = readonly [
@@ -38,7 +37,7 @@ const EcdsaSignerManagerSmallSetSimulatorBase = createSimulator<
   artifactName: 'MockEcdsaSignerManagerSmallSet',
 });
 
-/** One- or two-signer deploys; the main mock's `Vector<3>` cannot reach them. */
+/** One- or two-signer deploys at approval widths 1 and 2. */
 export class EcdsaSignerManagerSmallSetSimulator extends EcdsaSignerManagerSmallSetSimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
@@ -59,10 +58,16 @@ export class EcdsaSignerManagerSmallSetSimulator extends EcdsaSignerManagerSmall
 
   public assertApprovals(
     msgHash: Uint8Array,
-    pubkeys: Secp256k1Point[],
-    signatures: EcdsaSignature[],
+    approvals: ApprovalSlot[],
   ): Promise<[]> {
-    return this.circuits.impure.assertApprovals(msgHash, pubkeys, signatures);
+    return this.circuits.impure.assertApprovals(msgHash, approvals);
+  }
+
+  public assertSoloApproval(
+    msgHash: Uint8Array,
+    approvals: ApprovalSlot[],
+  ): Promise<[]> {
+    return this.circuits.impure.assertSoloApproval(msgHash, approvals);
   }
 
   public getSignerCount(): Promise<bigint> {

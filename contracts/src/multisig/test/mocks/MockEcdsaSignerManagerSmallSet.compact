@@ -13,8 +13,9 @@ import "../../EcdsaSignerManager" prefix EcdsaSignerManager_;
 
 /**
  * @description Registers the two commitments, or only the first when
- * `soloSigner` is true, so `initialize` can be exercised at the widths the
- * production mock's fixed `Vector<3>` cannot reach.
+ * `soloSigner` is true, for the 1-of-1, 1-of-2 and 2-of-2 sets the main
+ * mock's fixed `Vector<3>` cannot reach. `assertSoloApproval` is the width a
+ * one-signer consumer uses.
  */
 constructor(
   instanceSalt: Bytes<32>,
@@ -31,10 +32,16 @@ constructor(
 
 export circuit assertApprovals(
   msgHash: Bytes<32>,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<2, Maybe<EcdsaSignerManager_Approval>>
 ): [] {
-  return EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+  return EcdsaSignerManager_assertApprovals<2>(msgHash, approvals);
+}
+
+export circuit assertSoloApproval(
+  msgHash: Bytes<32>,
+  approvals: Vector<1, Maybe<EcdsaSignerManager_Approval>>
+): [] {
+  return EcdsaSignerManager_assertApprovals<1>(msgHash, approvals);
 }
 
 export circuit getSignerCount(): Uint<8> {

@@ -30,10 +30,9 @@ constructor(
 
 export circuit assertApprovals(
   msgHash: Bytes<32>,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
+  approvals: Vector<3, Maybe<EcdsaSignerManager_Approval>>
 ): [] {
-  return EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+  return EcdsaSignerManager_assertApprovals<3>(msgHash, approvals);
 }
 
 export pure circuit calculateSignerId(

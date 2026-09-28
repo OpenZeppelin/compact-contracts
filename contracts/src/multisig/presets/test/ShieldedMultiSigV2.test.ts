@@ -98,13 +98,13 @@ async function executeDigest(
   });
 }
 
-// A fresh 2-of-3 stateless multisig. Mutating groups build one per test
+// A fresh stateless multisig, 2-of-3 by default. Mutating groups build one per test
 // (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
-const freshMultisig = () =>
+const freshMultisig = (threshold = 2n) =>
   ShieldedMultiSigV2Simulator.create(
     INSTANCE_SALT,
     SIGNER_COMMITMENTS,
-    2n,
+    threshold,
     true,
   );
 
@@ -158,16 +158,14 @@ describe('ShieldedMultiSigV2', () => {
       ).rejects.toThrow('Signer: threshold must not be zero');
     });
 
-    it('should fail with threshold greater than 2', async () => {
-      await expect(
-        ShieldedMultiSigV2Simulator.create(
-          INSTANCE_SALT,
-          SIGNER_COMMITMENTS,
-          3n,
-          true,
-        ),
-      ).rejects.toThrow(
-        'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
+    it('initializes with a 3-of-3 threshold', async () => {
+      multisig = await freshMultisig(3n);
+      expect(await multisig.getThreshold()).toEqual(3n);
+    });
+
+    it('rejects a threshold above the signer count', async () => {
+      await expect(freshMultisig(4n)).rejects.toThrow(
+        'Signer: threshold exceeds signer count',
       );
     });
 
@@ -300,6 +298,26 @@ describe('ShieldedMultiSigV2', () => {
           expect(await multisig.getNonce()).toEqual(1n);
         });
 
+        it('executes a send with a single signer at 1-of-3', async () => {
+          multisig = await freshMultisig(1n);
+          await multisig.deposit(makeCoin(COLOR, AMOUNT));
+          const to = makeRecipient(new Uint8Array(32).fill(7));
+          const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+          expect(await execute(to, 100n, coin, [S3])).toStrictEqual(
+            EXPECTED_SEND_RESULT,
+          );
+        });
+
+        it('executes a send with all three signers at 3-of-3', async () => {
+          multisig = await freshMultisig(3n);
+          await multisig.deposit(makeCoin(COLOR, AMOUNT));
+          const to = makeRecipient(new Uint8Array(32).fill(7));
+          const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+          expect(await execute(to, 100n, coin, [S1, S2, S3])).toStrictEqual(
+            EXPECTED_SEND_RESULT,
+          );
+        });
+
         it('should reject signatures replayed after the nonce moves', async () => {
           await multisig.deposit(makeCoin(COLOR, AMOUNT));
           const to = makeRecipient(new Uint8Array(32).fill(7));
@@ -314,6 +332,15 @@ describe('ShieldedMultiSigV2', () => {
             multisig.execute(to, 100n, coin, pubkeys, sigs),
           ).rejects.toThrow('Multisig: invalid signature');
         });
+      });
+
+      it('rejects a single signer at 2-of-3', async () => {
+        const to = makeRecipient(new Uint8Array(32).fill(7));
+        const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+        const digest = await executeDigest(multisig, to, coin, 100n);
+        await expect(
+          multisig.execute(to, 100n, coin, [S1.publicKey], [sign(S1, digest)]),
+        ).rejects.toThrow('Signer: threshold not met');
       });
 
       it('should reject duplicate signer', async () => {

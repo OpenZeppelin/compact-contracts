@@ -13,6 +13,7 @@ import {
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
 } from '../../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
+import { approvalsOf } from '../../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -60,6 +61,7 @@ const NativeShieldedTokenIssuerSimulatorBase = createSimulator<
   artifactName: 'MockNativeShieldedTokenIssuer',
 });
 
+/** Approval methods take parallel key and signature arrays, padded to width 3 with `none` slots. */
 export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssuerSimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
@@ -102,7 +104,11 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<ShieldedCoinInfo> {
-    return this.circuits.impure.mint(amount, recipient, pubkeys, signatures);
+    return this.circuits.impure.mint(
+      amount,
+      recipient,
+      approvalsOf(pubkeys, signatures),
+    );
   }
 
   public mintToSelf(
@@ -110,7 +116,10 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<ShieldedCoinInfo> {
-    return this.circuits.impure.mintToSelf(amount, pubkeys, signatures);
+    return this.circuits.impure.mintToSelf(
+      amount,
+      approvalsOf(pubkeys, signatures),
+    );
   }
 
   public burn(
@@ -124,8 +133,7 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
       coin,
       amount,
       refundTo,
-      pubkeys,
-      signatures,
+      approvalsOf(pubkeys, signatures),
     );
   }
 
@@ -135,7 +143,11 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
     pubkeys: Secp256k1Point[],
     signatures: EcdsaSignature[],
   ): Promise<Maybe<ShieldedCoinInfo>> {
-    return this.circuits.impure.burnFromSelf(coin, amount, pubkeys, signatures);
+    return this.circuits.impure.burnFromSelf(
+      coin,
+      amount,
+      approvalsOf(pubkeys, signatures),
+    );
   }
 
   public getNonce(): Promise<bigint> {
