@@ -106,19 +106,25 @@ async function gql<T>(
   deadline?: number,
 ): Promise<T> {
   const budget = requestBudget(deadline);
+  // Without this a hung socket outlives any caller deadline: `fetch` has no
+  // total-response timeout, and undici's body timeout is far longer than the
+  // poll budget callers ask for.
+  const signal = AbortSignal.timeout(budget);
+  const timedOut = (cause: unknown): boolean =>
+    signal.aborted ||
+    (cause instanceof Error &&
+      (cause.name === 'TimeoutError' || cause.name === 'AbortError'));
+
   let res: Response;
   try {
     res = await fetch(url(), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ query, variables }),
-      // Without this a hung socket outlives any caller deadline: `fetch` has no
-      // total-response timeout, and undici's body timeout is far longer than the
-      // poll budget callers ask for.
-      signal: AbortSignal.timeout(budget),
+      signal,
     });
   } catch (cause) {
-    if (cause instanceof Error && cause.name === 'TimeoutError') {
+    if (timedOut(cause)) {
       throw new IndexerTimeout(`indexer ${url()}: no response in ${budget}ms`, {
         cause,
       });
@@ -128,7 +134,19 @@ async function gql<T>(
   if (!res.ok) {
     throw new Error(`indexer ${url()}: HTTP ${res.status}`);
   }
-  const body = (await res.json()) as { data?: T; errors?: unknown };
+  // The signal also cuts a body read short, so that abort is a timeout too.
+  let body: { data?: T; errors?: unknown };
+  try {
+    body = (await res.json()) as { data?: T; errors?: unknown };
+  } catch (cause) {
+    if (timedOut(cause)) {
+      throw new IndexerTimeout(
+        `indexer ${url()}: body not received in ${budget}ms`,
+        { cause },
+      );
+    }
+    throw cause;
+  }
   if (body.errors) {
     throw new Error(`indexer gql errors: ${JSON.stringify(body.errors)}`);
   }

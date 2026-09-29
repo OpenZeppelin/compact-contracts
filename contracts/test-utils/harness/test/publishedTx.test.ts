@@ -94,6 +94,24 @@ const hang = (init?: { signal?: AbortSignal }): Promise<Response> =>
     });
   });
 
+/**
+ * Headers arrived, the body never does: `json()` settles only when the request
+ * signal aborts, with the abort itself as the rejection.
+ */
+const stalledBody = (init?: { signal?: AbortSignal }): Response =>
+  ({
+    ok: true,
+    status: 200,
+    json: () =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const error = new Error('This operation was aborted');
+          error.name = 'AbortError';
+          reject(error);
+        });
+      }),
+  }) as unknown as Response;
+
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -165,6 +183,47 @@ describe('awaitPublishedTxs timeout', () => {
       );
       expect((error as Error).cause).toBeUndefined();
     }
+  });
+
+  it('classifies a body read cut short by the signal as a timeout', async () => {
+    fetchMock.mockImplementation(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        Promise.resolve(stalledBody(init)),
+    );
+
+    try {
+      await awaitPublishedTxs(0, ADDR, 1, 300);
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      expect((error as Error).message).toMatch(/timed out waiting for 1/);
+      expect((error as Error).cause).toBeInstanceOf(IndexerTimeout);
+      expect(((error as Error).cause as Error).message).toMatch(
+        /body not received/,
+      );
+    }
+  });
+
+  it('keeps polling after a body read times out', async () => {
+    let call = 0;
+    fetchMock.mockImplementation((_url: string, init?: unknown) => {
+      call += 1;
+      if (call === 1) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => timedOut(),
+        } as unknown as Response);
+      }
+      const body = JSON.parse(String((init as { body?: string })?.body));
+      return Promise.resolve(
+        body.query.includes('Head') ? ok(head(1)) : ok(blockWith(1, [ourCall])),
+      );
+    });
+
+    const txs = await awaitPublishedTxs(0, ADDR, 1, 30_000);
+
+    expect(txs.map((tx) => tx.hash)).toStrictEqual(['0xtx1']);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
   });
 
   it('should pass an abort signal on every request', async () => {
