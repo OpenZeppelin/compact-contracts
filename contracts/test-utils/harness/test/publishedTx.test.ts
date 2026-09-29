@@ -7,6 +7,7 @@
  * A hung socket used to outlive the deadline entirely.
  */
 
+import { bigIntToValue } from '@midnight-ntwrk/compact-runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   awaitPublishedTxs,
@@ -14,6 +15,8 @@ import {
   DeadlinePassed,
   IndexerTimeout,
   indexerHead,
+  type PublishedTx,
+  publishedContains,
   publishedTxsSince,
 } from '../publishedTx.js';
 
@@ -566,5 +569,122 @@ describe('awaitPublishedTxs polling', () => {
     );
     // Not retried: one head read, one block read.
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scanning for a value
+// ---------------------------------------------------------------------------
+
+describe('publishedContains', () => {
+  const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
+
+  /** One transaction whose serialized form is `raw`. */
+  const txWith = (raw: string): PublishedTx[] => [
+    { hash: '0xtx', raw, calls: [] },
+  ];
+
+  /** 32 bytes, none zero. */
+  const SECRET = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
+
+  /** 32 bytes ending in `0x00`. */
+  const SECRET_ENDING_IN_ZERO = Uint8Array.from({ length: 32 }, (_, i) =>
+    i === 31 ? 0 : i + 1,
+  );
+
+  /** 20 bytes wide, low-order byte zero. */
+  const FIELD = 0x0102030405060708090a0b0c0d0e0f1011121300n;
+
+  it('finds a full-width secret', () => {
+    const raw = `0xaa${hex(SECRET)}ff`;
+
+    expect(publishedContains(txWith(raw), SECRET, { as: 'bytes' })).toBe(true);
+  });
+
+  it('finds a secret ending in a zero byte under its trimmed form', () => {
+    const trimmed = hex(SECRET_ENDING_IN_ZERO.subarray(0, 31));
+    const raw = `0xaa${trimmed}ff`;
+
+    expect(raw).not.toContain(hex(SECRET_ENDING_IN_ZERO));
+    expect(
+      publishedContains(txWith(raw), SECRET_ENDING_IN_ZERO, { as: 'bytes' }),
+    ).toBe(true);
+  });
+
+  it('ignores the case of the serialized transaction', () => {
+    const raw = `0xAA${hex(SECRET).toUpperCase()}FF`;
+
+    expect(publishedContains(txWith(raw), SECRET, { as: 'bytes' })).toBe(true);
+  });
+
+  it('reports an absent secret as absent', () => {
+    const raw = `0xaa${hex(SECRET_ENDING_IN_ZERO)}ff`;
+
+    expect(publishedContains(txWith(raw), SECRET, { as: 'bytes' })).toBe(false);
+    expect(publishedContains([], SECRET, { as: 'bytes' })).toBe(false);
+  });
+
+  it('searches every transaction given', () => {
+    const txs = [...txWith('0xaabb'), ...txWith(`0x${hex(SECRET)}`)];
+
+    expect(publishedContains(txs, SECRET, { as: 'bytes' })).toBe(true);
+  });
+
+  it('finds a field under the encoding the runtime gives it', () => {
+    const [encoded] = bigIntToValue(FIELD);
+    const raw = `0xaa${hex(encoded as Uint8Array)}ff`;
+
+    expect(hex(encoded as Uint8Array)).toBe(
+      '00131211100f0e0d0c0b0a090807060504030201',
+    );
+    expect(publishedContains(txWith(raw), FIELD, { as: 'field' })).toBe(true);
+  });
+
+  it('does not find a field under its big-endian form', () => {
+    const raw = `0xaa${FIELD.toString(16).padStart(40, '0')}ff`;
+
+    expect(publishedContains(txWith(raw), FIELD, { as: 'field' })).toBe(false);
+  });
+
+  it('refuses a zero-padded label', () => {
+    const label = new Uint8Array(32);
+    label.set(Buffer.from('label'));
+    const scan = () =>
+      publishedContains(txWith('0xaa'), label, { as: 'bytes' });
+
+    expect(scan).toThrow(RangeError);
+    expect(scan).toThrow(
+      'publishedContains: needle is 5 byte(s) once trimmed, ' +
+        'under the 16 a match needs to be evidence',
+    );
+  });
+
+  it('refuses a field narrower than 16 bytes', () => {
+    const scan = (field: bigint) => () =>
+      publishedContains(txWith('0xaa'), field, { as: 'field' });
+
+    expect(scan(2n ** 120n - 1n)).toThrow(RangeError);
+    expect(scan(2n ** 120n)()).toBe(false);
+  });
+
+  it('refuses a negative field', () => {
+    const scan = () => publishedContains(txWith('0xaa'), -1n, { as: 'field' });
+
+    expect(scan).toThrow(RangeError);
+    expect(scan).toThrow('publishedContains: a field needle is not negative');
+  });
+
+  it('refuses a needle of the wrong type for its encoding', () => {
+    const asBytes = () =>
+      publishedContains(txWith('0xaa'), FIELD, { as: 'bytes' });
+    const asField = () =>
+      publishedContains(txWith('0xaa'), SECRET, { as: 'field' });
+
+    expect(asBytes).toThrow(TypeError);
+    expect(asBytes).toThrow(
+      'publishedContains: a bytes needle is a Uint8Array',
+    );
+    expect(asField).toThrow(TypeError);
+    expect(asField).toThrow('publishedContains: a field needle is a bigint');
   });
 });

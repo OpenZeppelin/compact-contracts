@@ -321,3 +321,69 @@ export async function awaitPublishedTxs(
   }
   throw new Error(`indexer: expected ${awaited}`);
 }
+
+/** A shorter needle can match by chance inside a proof blob. */
+const MIN_NEEDLE_BYTES = 16;
+
+/** How the ledger serializes the needle: a byte string or a field element. */
+export interface NeedleEncoding {
+  readonly as: 'bytes' | 'field';
+}
+
+/** Minimal little-endian bytes of a non-negative integer. */
+function littleEndian(value: bigint): Uint8Array {
+  const bytes: number[] = [];
+  for (let rest = value; rest > 0n; rest >>= 8n) {
+    bytes.push(Number(rest & 0xffn));
+  }
+  return Uint8Array.from(bytes);
+}
+
+function withoutTrailingZeros(bytes: Uint8Array): Uint8Array {
+  let end = bytes.length;
+  while (end > 0 && bytes[end - 1] === 0) {
+    end--;
+  }
+  return bytes.subarray(0, end);
+}
+
+/**
+ * Whether a transaction carries `needle`; a zero-padded label is not a valid needle.
+ *
+ * The ledger strips trailing zero bytes and writes a field little-endian, so
+ * the search is for that form, which the full-width form also contains.
+ *
+ * @param needle - A `Uint8Array` for `bytes`, a `bigint` for `field`.
+ * @throws {TypeError} When the needle type does not match `options.as`.
+ * @throws {RangeError} When the needle is negative, or shorter than 16 bytes
+ * once trimmed.
+ */
+export function publishedContains(
+  txs: readonly PublishedTx[],
+  needle: Uint8Array | bigint,
+  options: NeedleEncoding,
+): boolean {
+  let encoded: Uint8Array;
+  if (options.as === 'bytes') {
+    if (!(needle instanceof Uint8Array)) {
+      throw new TypeError('publishedContains: a bytes needle is a Uint8Array');
+    }
+    encoded = withoutTrailingZeros(needle);
+  } else {
+    if (typeof needle !== 'bigint') {
+      throw new TypeError('publishedContains: a field needle is a bigint');
+    }
+    if (needle < 0n) {
+      throw new RangeError('publishedContains: a field needle is not negative');
+    }
+    encoded = littleEndian(needle);
+  }
+  if (encoded.length < MIN_NEEDLE_BYTES) {
+    throw new RangeError(
+      `publishedContains: needle is ${encoded.length} byte(s) once trimmed, ` +
+        `under the ${MIN_NEEDLE_BYTES} a match needs to be evidence`,
+    );
+  }
+  const wanted = Buffer.from(encoded).toString('hex');
+  return txs.some((tx) => tx.raw.toLowerCase().includes(wanted));
+}
