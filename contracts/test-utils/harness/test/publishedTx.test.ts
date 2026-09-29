@@ -10,6 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   awaitPublishedTxs,
+  DeadlinePassed,
   IndexerTimeout,
   indexerHead,
   publishedTxsSince,
@@ -252,6 +253,33 @@ describe('awaitPublishedTxs timeout', () => {
 
     // One head plus a bounded handful of block reads, nowhere near 5000.
     expect(fetchMock.mock.calls.length).toBeLessThan(20);
+  });
+
+  it('reports a short window when the deadline passes between the check and the request', async () => {
+    fetchMock.mockResolvedValue(ok(head(0)));
+    // Clock reads in order: the deadline is set, the loop check sees it not yet
+    // reached, and the request budget sees it gone. Every later read stays there.
+    const started = 1_000_000;
+    const now = vi
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(started)
+      .mockReturnValueOnce(started + 299)
+      .mockReturnValue(started + 300);
+
+    try {
+      await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
+        /expected 1 transaction\(s\) after block 0, saw 0/,
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('rejects with DeadlinePassed when the deadline is already gone', async () => {
+    await expect(publishedTxsSince(0, ADDR, Date.now() - 1)).rejects.toThrow(
+      DeadlinePassed,
+    );
   });
 });
 
