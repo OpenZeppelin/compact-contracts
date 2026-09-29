@@ -7,13 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Changed
+### Changed
 
 - **Breaking:** `ShieldedMultiSigV2.execute` rejects a `Contract` recipient as `Multisig: recipient must be a coin public key`. A contract-addressed coin is unclaimable, so the node rejected every such execution. (#1034)
-- **Breaking:** Fix `NativeShieldedTokenIssuer` (#993)
-  - Bind the spent coin in `burnFromSelf`
-  - `BurnFromSelf` gains `coinNonce` and `coinValue`
-
+- **Breaking:** `NativeShieldedTokenIssuer.burnFromSelf` binds the spent coin. The `BurnFromSelf` struct gains `coinNonce` and `coinValue`, so an approval authorizes one held coin and existing burn-from-self signatures no longer verify. (#993)
 - **Breaking:** `ForwarderShielded._deposit` returns the forward's `ShieldedSendResult` instead of `[]`, and `ForwarderShieldedExample.deposit` returns it too (#999)
 - **Breaking:** `UnshieldedTreasury._send` rejects a zero amount, which the ledger refuses as a zero-value output (#980)
 
