@@ -90,8 +90,7 @@ module UnshieldedTreasury {
   // ─── Send ───────────────────────────────────────────────────────
 
   /**
-   * @description Sends unshielded tokens from the treasury. Zero-amount sends
-   * are permitted and are value-preserving no-ops.
+   * @description Sends unshielded tokens from the treasury.
    *
    * @warning Recipients are not validated. An unspendable recipient (such as a
    * zero address) is accepted and permanently removes the funds from the
@@ -111,6 +110,7 @@ module UnshieldedTreasury {
    *
    * Requirements:
    *
+   * - The amount must be non-zero. The ledger rejects zero-value outputs.
    * - The treasury must hold sufficient balance for the given token color.
    *
    * @param {Either<ContractAddress, UserAddress>} recipient - The recipient address.
@@ -124,6 +124,8 @@ module UnshieldedTreasury {
     color: Bytes<32>,
     amount: Uint<128>
   ): [] {
+    assert(amount != 0, "UnshieldedTreasury: zero amount");
+
     const bal = getTokenBalance(color);
     assert(bal >= amount, "UnshieldedTreasury: insufficient balance");
 

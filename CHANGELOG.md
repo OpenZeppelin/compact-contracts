@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `BurnFromSelf` gains `coinNonce` and `coinValue`
 
 - **Breaking:** `ForwarderShielded._deposit` returns the forward's `ShieldedSendResult` instead of `[]`, and `ForwarderShieldedExample.deposit` returns it too (#999)
+- **Breaking:** `UnshieldedTreasury._send` rejects a zero amount, which the ledger refuses as a zero-value output (#980)
 
 ### Fixed
 
