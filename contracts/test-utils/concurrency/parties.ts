@@ -58,7 +58,8 @@ export interface PartySet<W, C> {
  * and non-blank: both records are keyed by name, so a repeat would collapse two
  * parties into one and race an identity against itself.
  * @param factory - Contract-specific wallet and contract construction.
- * @throws On a blank or repeated name.
+ * @throws On a blank or repeated name, or on `__proto__`, which a plain record
+ * cannot key.
  */
 export function createParties<W, C>(
   names: readonly string[],
@@ -71,6 +72,9 @@ export function createParties<W, C>(
   for (const [index, name] of names.entries()) {
     if (name.trim() === '') {
       throw new Error(`createParties: party name at index ${index} is blank`);
+    }
+    if (name === '__proto__') {
+      throw new Error(`createParties: party name '${name}' is reserved`);
     }
     if (claimed.has(name)) {
       throw new Error(`createParties: duplicate party name '${name}'`);
