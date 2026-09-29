@@ -1,0 +1,314 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-rc.1 (token/presets/ZOwnableNativeShieldedToken.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @module ZOwnableNativeShieldedToken
+ * @description
+ * A native shielded token with a single shielded owner. Only the owner mints
+ * (to a coin public key, with a caller-supplied nonce) and burns (a coin the
+ * owner's wallet pays into the tx). Minted amounts are counted on-chain.
+ *
+ * Composes `ZOwnablePK` as `ZOwnablePK_` (owner commitment),
+ * `NativeShieldedToken` as `NST_` (one token color) and
+ * `NativeShieldedTokenPublicSupply` as `NSTPublicSupply_` (minted total).
+ *
+ * @dev Derivations:
+ * - `H<T>(...)`: `persistentHash<T>`.
+ * - Owner id: `id = H<Vector<2, Bytes<32>>>([pk.bytes, secretNonce])`.
+ * - Owner commitment: `H<Vector<4, Bytes<32>>>([id, instanceSalt,
+ *   counter as Field as Bytes<32>, pad(32, "ZOwnablePK:shield:")])`.
+ * - Token color: `tokenType(_domain, kernel.self())`.
+ *
+ * @notice Implementing contracts call `initialize` from their constructor and
+ * MUST NOT import the composed modules directly.
+ *
+ * @notice Privacy:
+ * - Public, per tx: every mint amount (the Zswap mint effect and
+ *   `_totalMinted`), the coin commitments and nullifiers, and which circuit
+ *   ran.
+ * - Public, as state: `_ownerCommitment`, `_counter` (the number of ownership
+ *   changes), `_instanceSalt`, `_totalMinted`, `_domain`, `_name`, `_symbol`,
+ *   `_decimals`.
+ * - Private: mint `recipient` and `nonce`. Burn `amount`, `coin` and
+ *   `refundTo`, as long as the observer does not know the coin's nonce. A change
+ *   output reveals that a burn was partial.
+ * - Owner: stored as a commitment to `id`; the key and nonce never leave the
+ *   proof.
+ *
+ * @notice Security:
+ * - Owner check: proves knowledge of a `(pk, secretNonce)` whose commitment
+ *   matches. `ownPublicKey()` is prover-supplied, so the check does not bind
+ *   the submitting wallet; `secretNonce` is the only secret.
+ * - Every mutating circuit checks ownership before any token check.
+ * - `transferOwnership` is one step; a wrong `newOwnerId` loses the contract.
+ * - `renounceOwnership` stops mint and burn forever.
+ * - Upgrades: the CMA can replace any circuit's verifier key, so it sits
+ *   above the owner and should not be a single key.
+ * - A failed assert rejects the whole tx; no state moves.
+ *
+ * @notice Concurrency:
+ * - `mint` reads and writes `_totalMinted`; the read pins it, so at most one
+ *   mint lands per block.
+ * - `burn` only reads owner state: burns commute with each other and with one
+ *   mint.
+ * - `transferOwnership` / `renounceOwnership` write the owner commitment and
+ *   conflict with every owner-gated call and `owner()` in the same block.
+ * - Metadata views and `totalMinted` read no owner state; `totalMinted`
+ *   submitted as a tx conflicts with a same-block mint.
+ * - A tx that loses a same-block race fails and must be re-proven against
+ *   the new state.
+ *
+ * @notice Scope:
+ * Mint and burn only. Holders transfer through Zswap directly. No roles,
+ * freeze, seize, contract-held coins, burned total or total supply.
+ *
+ * @notice Client-side duties:
+ * - Build every owner tx with the coin public key in the current `ownerId`
+ *   and the matching `wit_secretNonce`. A wrong nonce fails the ownership
+ *   check and reveals nothing.
+ * - `ownPublicKey()` is supplied by the client like a witness; the circuit
+ *   cannot check that it belongs to the submitting wallet. The client is
+ *   responsible for supplying the coin public key that is in the current
+ *   `ownerId`; any other key fails the ownership check.
+ * - Compute `ownerId` off-chain with `_computeOwnerId`.
+ * - `nonce` must be fresh random bytes per mint.
+ * - Persist the coin infos `mint` and `burn` return. midnight-js encrypts an
+ *   output to its recipient only when it can resolve the recipient's
+ *   encryption key (its own, or one given in
+ *   `additionalCoinEncPublicKeyMappings`).
+ * - Run the proof server where the owner controls it; it sees
+ *   `wit_secretNonce`.
+ *
+ * @dev Composition:
+ * - Burn accounting: calling `NSTPublicSupply__addBurned` in `burn` would
+ *   publish every burn amount.
+ */
+module ZOwnableNativeShieldedToken {
+  import CompactStandardLibrary;
+
+  import "../../access/ZOwnablePK" prefix ZOwnablePK_;
+  import "../NativeShieldedToken" prefix NST_;
+  import "../extensions/NativeShieldedTokenPublicSupply" prefix NSTPublicSupply_;
+
+  // Named import/re-export of the composed modules' state only, so an
+  // implementing contract can surface every ledger field under its own key.
+  // The circuits stay behind the prefixes above. The ownable flag is aliased
+  // because the token module already owns `_isInitialized`.
+  // `_totalBurned` is never written, so it stays empty.
+  import { _ownerCommitment, _counter, _instanceSalt, _isInitialized as _ownableIsInitialized } from "../../access/ZOwnablePK";
+  import { _domain, _name, _symbol, _decimals, _isInitialized } from "../NativeShieldedToken";
+  import { _totalMinted, _totalBurned } from "../extensions/NativeShieldedTokenPublicSupply";
+  
+  export { _ownerCommitment, _counter, _instanceSalt, _ownableIsInitialized };
+  export { _domain, _name, _symbol, _decimals, _isInitialized };
+  export { _totalMinted, _totalBurned };
+
+  /**
+   * @description Sets the owner and the token's domain and metadata.
+   *
+   * @notice Call from the implementing contract's constructor only. It writes
+   * sealed fields, so implementing contracts MUST NOT expose it as a
+   * post-deploy circuit.
+   *
+   * @warning `ownerId` must be `_computeOwnerId(pk, secretNonce)` for the coin
+   * public key the owner's wallet will supply as `ownPublicKey()`. The circuit
+   * cannot check this at deploy; any other key leaves the contract with no
+   * usable owner and no recovery.
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   * - `ownerId` is not zero.
+   *
+   * @param {Bytes<32>} ownerId - `_computeOwnerId(pk, secretNonce)` of the owner.
+   * @param {Bytes<32>} instanceSalt - Random per-deployment salt for the owner commitment.
+   * @param {Bytes<32>} tokenDomain - Domain of this contract's token color.
+   * @param {Opaque<"string">} name_ - The token name.
+   * @param {Opaque<"string">} symbol_ - The token symbol.
+   * @param {Uint<8>} decimals_ - The token decimals.
+   */
+  export circuit initialize(
+    ownerId: Bytes<32>,
+    instanceSalt: Bytes<32>,
+    tokenDomain: Bytes<32>,
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
+  ): [] {
+    ZOwnablePK_initialize(ownerId, instanceSalt);
+    NST_initialize(tokenDomain, name_, symbol_, decimals_);
+  }
+
+  /**
+   * @description Mints `amount` to `recipient` and adds it to the minted total.
+   * Owner only.
+   *
+   * @constraints k=15, rows=21354
+   *
+   * Requirements:
+   *
+   * - Caller is the owner.
+   * - `recipient` is not zero.
+   *
+   * @param {ZswapCoinPublicKey} recipient - Coin public key that receives the coin.
+   * @param {Uint<64>} amount - Amount to mint.
+   * @param {Bytes<32>} nonce - Fresh random bytes per mint.
+   * @returns {ShieldedCoinInfo} The minted coin; persist it.
+   */
+  export circuit mint(recipient: ZswapCoinPublicKey, amount: Uint<64>, nonce: Bytes<32>): ShieldedCoinInfo {
+    ZOwnablePK_assertOnlyOwner();
+    const coin = NST__mint(recipient, amount, nonce);
+    NSTPublicSupply__addMinted(amount);
+    return coin;
+  }
+
+  /**
+   * @description Burns `amount` of `coin`, paid into the tx by the caller's
+   * wallet, and refunds the rest to `refundTo`. Owner only.
+   *
+   * @constraints k=16, rows=52024
+   *
+   * Requirements:
+   *
+   * - Caller is the owner.
+   * - `coin.color` is this token's color.
+   * - `amount` <= `coin.value`.
+   * - `refundTo` is not zero.
+   *
+   * @param {ShieldedCoinInfo} coin - Coin of this token, paid into the tx by the caller's wallet.
+   * @param {Uint<64>} amount - Amount to burn from `coin`.
+   * @param {ZswapCoinPublicKey} refundTo - Coin public key that receives the change.
+   * @returns {Maybe<ShieldedCoinInfo>} The refund coin, or `none` on a full burn.
+   */
+  export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+    ZOwnablePK_assertOnlyOwner();
+    return NST__burn(coin, amount, refundTo);
+  }
+
+  /**
+   * @description Transfers ownership to `newOwnerId`. Owner only.
+   *
+   * @warning `newOwnerId` must be `_computeOwnerId(pk, secretNonce)` for the
+   * coin public key the new owner's wallet will supply as `ownPublicKey()`.
+   * The circuit cannot check this; any other key leaves the contract with no
+   * usable owner and no recovery.
+   *
+   * @constraints k=15, rows=17096
+   *
+   * Requirements:
+   *
+   * - Caller is the owner.
+   * - `newOwnerId` is not zero.
+   *
+   * @param {Bytes<32>} newOwnerId - `_computeOwnerId(pk, secretNonce)` of the new owner.
+   */
+  export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
+    ZOwnablePK_transferOwnership(newOwnerId);
+  }
+
+  /**
+   * @description Clears the owner. Owner only.
+   *
+   * @warning Irreversible: mint and burn stop forever.
+   *
+   * @constraints k=14, rows=10622
+   *
+   * Requirements:
+   *
+   * - Caller is the owner.
+   */
+  export circuit renounceOwnership(): [] {
+    ZOwnablePK_renounceOwnership();
+  }
+
+  /**
+   * @description Returns the current owner commitment.
+   *
+   * @constraints k=6, rows=50
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   */
+  export circuit owner(): Bytes<32> {
+    return ZOwnablePK_owner();
+  }
+
+  /**
+   * @description Returns the owner id `H(pk, nonce)`.
+   *
+   * Requirements:
+   *
+   * - `pk` is a coin public key.
+   *
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} pk - The owner's coin public key.
+   * @param {Bytes<32>} nonce - The owner's secret nonce.
+   */
+  export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+    return ZOwnablePK__computeOwnerId(pk, nonce);
+  }
+
+  /**
+   * @description Returns the total amount ever minted.
+   *
+   * @constraints k=7, rows=65
+   */
+  export circuit totalMinted(): Uint<128> {
+    return NSTPublicSupply_totalMinted();
+  }
+
+  /**
+   * @description Returns the token name.
+   *
+   * @constraints k=6, rows=28
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   */
+  export circuit name(): Opaque<"string"> {
+    return NST_name();
+  }
+
+  /**
+   * @description Returns the token symbol.
+   *
+   * @constraints k=6, rows=28
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   */
+  export circuit symbol(): Opaque<"string"> {
+    return NST_symbol();
+  }
+
+  /**
+   * @description Returns the token decimals.
+   *
+   * @constraints k=6, rows=28
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   */
+  export circuit decimals(): Uint<8> {
+    return NST_decimals();
+  }
+
+  /**
+   * @description Returns this contract's token color,
+   * `tokenType(tokenDomain, kernel.self())`.
+   *
+   * @constraints k=13, rows=3971
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   */
+  export circuit tokenColor(): Bytes<32> {
+    return NST_tokenColor();
+  }
+}
