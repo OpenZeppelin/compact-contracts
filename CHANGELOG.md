@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Changed
 
+- **Breaking:** `ShieldedMultiSigV2.execute` rejects a `Contract` recipient as `Multisig: recipient must be a coin public key`. A contract-addressed coin is unclaimable, so the node rejected every such execution. (#1034)
 - **Breaking:** Fix `NativeShieldedTokenIssuer` (#993)
   - Bind the spent coin in `burnFromSelf`
   - `BurnFromSelf` gains `coinNonce` and `coinValue`

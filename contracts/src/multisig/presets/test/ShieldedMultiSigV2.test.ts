@@ -547,26 +547,24 @@ describe('ShieldedMultiSigV2', () => {
           ).rejects.toThrow('Multisig: invalid signature');
         });
 
-        it.skipIf(isLiveBackend())(
-          'should execute to a contract recipient',
-          async () => {
-            const to = {
-              kind: RecipientKind.Contract,
-              address: new Uint8Array(32).fill(7),
-            };
-            const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
-            const digest = await executeDigest(multisig, to, coin, 100n);
+        it('rejects a contract recipient', async () => {
+          const to = {
+            kind: RecipientKind.Contract,
+            address: new Uint8Array(32).fill(7),
+          };
+          const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
+          const digest = await executeDigest(multisig, to, coin, 100n);
 
-            await multisig.execute(
+          await expect(
+            multisig.execute(
               to,
               100n,
               coin,
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
-            );
-            expect(await multisig.getNonce()).toEqual(1n);
-          },
-        );
+            ),
+          ).rejects.toThrow('Multisig: recipient must be a coin public key');
+        });
 
         it('should carry an unshielded recipient kind into the digest', async () => {
           const to = {
@@ -584,7 +582,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('ProposalManager: invalid shielded recipient');
+          ).rejects.toThrow('Multisig: recipient must be a coin public key');
         });
       });
 
