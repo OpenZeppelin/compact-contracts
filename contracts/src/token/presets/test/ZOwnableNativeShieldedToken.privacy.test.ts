@@ -39,6 +39,7 @@ import { shieldedTestSigner } from '#test-utils/fixtures/shieldedKey.js';
 import {
   awaitPublishedTxs,
   indexerHead,
+  publishedContains,
 } from '#test-utils/harness/publishedTx.js';
 import {
   type Maybe,
@@ -1063,16 +1064,23 @@ describe.skipIf(isLiveBackend())(
 /**
  * Presence scanning only. Two real transactions differ in proofs, fees and
  * wallet nonces whatever the circuit does, so the differential layer stays
- * dry. Every secret is 32 random bytes: nothing to trim, nothing to collide
- * with inside a proof blob.
- *
- * Run single-worker (`MIDNIGHT_LIVE_WORKERS=1`): the scan reads every
- * transaction in the block window.
+ * dry. Every secret is 32 random bytes, and the matcher also covers the form
+ * the ledger trims it to.
  */
 describe.runIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken privacy: the published transaction',
   () => {
-    const liveSecret = (): Buffer => Buffer.from(randomBytes(32));
+    /** 32 random bytes, redrawn when a zero tail trims them under the matcher's floor. */
+    const liveSecret = (): Buffer => {
+      const secret = Buffer.from(randomBytes(32));
+      try {
+        publishedContains([], secret, { as: 'bytes' });
+        return secret;
+      } catch (error) {
+        if (error instanceof RangeError) return liveSecret();
+        throw error;
+      }
+    };
 
     const deploy = async (secretNonce: Buffer) =>
       ZOwnableNativeShieldedTokenSimulator.create(
@@ -1093,12 +1101,15 @@ describe.runIf(isLiveBackend())(
 
       const from = await indexerHead();
       await token.as(OWNER).mint(Z_OWNER, AMOUNT, nonce);
-      const published = await awaitPublishedTxs(from, token.contractAddress);
-      const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
+      const published = await awaitPublishedTxs(from, token.contractAddress, {
+        entryPoint: 'mint',
+      });
 
-      expect(published.length).toBeGreaterThan(0);
-      expect(wire).not.toContain(hex(nonce));
-      expect(wire).not.toContain(hex(secretNonce));
+      expect(published).toHaveLength(1);
+      expect(publishedContains(published, nonce, { as: 'bytes' })).toBe(false);
+      expect(publishedContains(published, secretNonce, { as: 'bytes' })).toBe(
+        false,
+      );
     });
 
     it('burn publishes neither the coin nonce nor the owner secret', async () => {
@@ -1108,27 +1119,34 @@ describe.runIf(isLiveBackend())(
 
       const from = await indexerHead();
       await token.as(OWNER).burn(coin, PARTIAL, Z_OWNER);
-      const published = await awaitPublishedTxs(from, token.contractAddress);
-      const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
+      const published = await awaitPublishedTxs(from, token.contractAddress, {
+        entryPoint: 'burn',
+      });
 
-      expect(wire).not.toContain(hex(coin.nonce));
-      expect(wire).not.toContain(hex(secretNonce));
+      expect(published).toHaveLength(1);
+      expect(publishedContains(published, coin.nonce, { as: 'bytes' })).toBe(
+        false,
+      );
+      expect(publishedContains(published, secretNonce, { as: 'bytes' })).toBe(
+        false,
+      );
     });
 
     // A known, accepted leak: the entry point names the circuit.
-    it('publishes the entry point', async () => {
+    it('publishes the entry point of the one call it carries', async () => {
       const token = await deploy(liveSecret());
 
       const from = await indexerHead();
       await token.as(OWNER).mint(Z_OWNER, AMOUNT, liveSecret());
-      const published = await awaitPublishedTxs(from, token.contractAddress);
+      const published = await awaitPublishedTxs(from, token.contractAddress, {
+        entryPoint: 'mint',
+      });
 
-      const entryPoints = published.flatMap((tx) =>
-        tx.calls
-          .filter((call) => call.address === token.contractAddress)
-          .map((call) => call.entryPoint),
+      const bare = (address: string): string => address.replace(/^0x/, '');
+      const calls = published.map((tx) =>
+        tx.calls.map((call) => [bare(call.address), call.entryPoint]),
       );
-      expect(entryPoints).toStrictEqual(['mint']);
+      expect(calls).toStrictEqual([[[bare(token.contractAddress), 'mint']]]);
     });
   },
 );
