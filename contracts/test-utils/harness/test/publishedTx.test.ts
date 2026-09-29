@@ -10,6 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   awaitPublishedTxs,
+  BlockNotIndexed,
   DeadlinePassed,
   IndexerTimeout,
   indexerHead,
@@ -60,6 +61,19 @@ const emptyBlock = (height: number) => ({
 
 /** One call to `ADDR`, the shape a spec is waiting for. */
 const ourCall = { address: ADDR, entryPoint: 'transfer', state: '0xs' };
+
+/** The call the specs below wait for. */
+const TRANSFER = { entryPoint: 'transfer' };
+
+/** A call to `ADDR` under another entry point. */
+const callTo = (entryPoint: string) => ({
+  address: ADDR,
+  entryPoint,
+  state: '0xs',
+});
+
+/** A height the indexer reports as head but has no block for yet. */
+const notIndexed = { block: null };
 
 /**
  * Routes a stubbed request by its query. `heights` answers Head; `block`
@@ -136,8 +150,8 @@ describe('awaitPublishedTxs timeout', () => {
     );
 
     const started = Date.now();
-    await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
-      /timed out waiting for 1 transaction\(s\) after block 0 \(saw 0\)/,
+    await expect(awaitPublishedTxs(0, ADDR, TRANSFER, 300)).rejects.toThrow(
+      /timed out waiting for a call to "transfer" at 0xc0ffee after block 0 \(entry points seen there: none\)/,
     );
 
     // The assertion that matters: bounded by the caller's deadline, not by
@@ -153,7 +167,7 @@ describe('awaitPublishedTxs timeout', () => {
     );
 
     try {
-      await awaitPublishedTxs(0, ADDR, 1, 300);
+      await awaitPublishedTxs(0, ADDR, TRANSFER, 300);
       expect.unreachable('expected a throw');
     } catch (error) {
       expect((error as Error).cause).toBeInstanceOf(IndexerTimeout);
@@ -176,11 +190,11 @@ describe('awaitPublishedTxs timeout', () => {
     });
 
     try {
-      await awaitPublishedTxs(0, ADDR, 1, 1_500);
+      await awaitPublishedTxs(0, ADDR, TRANSFER, 1_500);
       expect.unreachable('expected a throw');
     } catch (error) {
       expect((error as Error).message).toMatch(
-        /expected 1 transaction\(s\) after block 0, saw 0/,
+        /expected a call to "transfer" at 0xc0ffee after block 0 \(entry points seen there: none\)/,
       );
       expect((error as Error).cause).toBeUndefined();
     }
@@ -193,10 +207,12 @@ describe('awaitPublishedTxs timeout', () => {
     );
 
     try {
-      await awaitPublishedTxs(0, ADDR, 1, 300);
+      await awaitPublishedTxs(0, ADDR, TRANSFER, 300);
       expect.unreachable('expected a throw');
     } catch (error) {
-      expect((error as Error).message).toMatch(/timed out waiting for 1/);
+      expect((error as Error).message).toMatch(
+        /timed out waiting for a call to "transfer"/,
+      );
       expect((error as Error).cause).toBeInstanceOf(IndexerTimeout);
       expect(((error as Error).cause as Error).message).toMatch(
         /body not received/,
@@ -221,7 +237,7 @@ describe('awaitPublishedTxs timeout', () => {
       );
     });
 
-    const txs = await awaitPublishedTxs(0, ADDR, 1, 30_000);
+    const txs = await awaitPublishedTxs(0, ADDR, TRANSFER, 30_000);
 
     expect(txs.map((tx) => tx.hash)).toStrictEqual(['0xtx1']);
     expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
@@ -247,8 +263,8 @@ describe('awaitPublishedTxs timeout', () => {
       },
     );
 
-    await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
-      /timed out waiting for 1/,
+    await expect(awaitPublishedTxs(0, ADDR, TRANSFER, 300)).rejects.toThrow(
+      /timed out waiting for a call to "transfer"/,
     );
 
     // One head plus a bounded handful of block reads, nowhere near 5000.
@@ -267,8 +283,8 @@ describe('awaitPublishedTxs timeout', () => {
       .mockReturnValue(started + 300);
 
     try {
-      await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
-        /expected 1 transaction\(s\) after block 0, saw 0/,
+      await expect(awaitPublishedTxs(0, ADDR, TRANSFER, 300)).rejects.toThrow(
+        /expected a call to "transfer" at 0xc0ffee after block 0 \(entry points seen there: none\)/,
       );
       expect(fetchMock).not.toHaveBeenCalled();
     } finally {
@@ -294,7 +310,7 @@ describe('protocol failures', () => {
       status: 503,
     } as unknown as Response);
 
-    await expect(awaitPublishedTxs(0, ADDR, 1, 30_000)).rejects.toThrow(
+    await expect(awaitPublishedTxs(0, ADDR, TRANSFER, 30_000)).rejects.toThrow(
       /HTTP 503/,
     );
     // Not retried: one call, and the deadline was never consulted.
@@ -323,7 +339,7 @@ describe('protocol failures', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Reading a window, unchanged by the fix
+// Reading a window
 // ---------------------------------------------------------------------------
 
 describe('publishedTxsSince', () => {
@@ -373,10 +389,40 @@ describe('publishedTxsSince', () => {
     expect(await publishedTxsSince(0, '0xabc123')).toHaveLength(1);
     expect(await publishedTxsSince(0, '0xdeadbeef')).toHaveLength(0);
   });
+
+  it('rejects a window holding a block the indexer has not stored', async () => {
+    fetchMock = indexerStub(
+      () => 2,
+      (height) => (height === 1 ? blockWith(1, [ourCall]) : notIndexed),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const reading = publishedTxsSince(0);
+
+    await expect(reading).rejects.toThrow(BlockNotIndexed);
+    await expect(reading).rejects.toThrow(
+      'indexer: block 2 not indexed yet (head 2)',
+    );
+  });
+
+  it('rejects a block returned at another height as a protocol failure', async () => {
+    fetchMock = indexerStub(
+      () => 1,
+      () => blockWith(7, [ourCall]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const reading = publishedTxsSince(0);
+
+    await expect(reading).rejects.toThrow(
+      'indexer: asked for block 1, got block 7',
+    );
+    await expect(reading).rejects.not.toBeInstanceOf(IndexerTimeout);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// Polling until the window fills
+// Polling until the awaited call lands
 // ---------------------------------------------------------------------------
 
 describe('awaitPublishedTxs polling', () => {
@@ -393,7 +439,7 @@ describe('awaitPublishedTxs polling', () => {
       indexedHead = 1;
     }, 50);
 
-    const txs = await awaitPublishedTxs(0, ADDR, 1, 30_000);
+    const txs = await awaitPublishedTxs(0, ADDR, TRANSFER, 30_000);
 
     expect(txs).toHaveLength(1);
     expect(txs[0]?.hash).toBe('0xtx1');
@@ -406,7 +452,7 @@ describe('awaitPublishedTxs polling', () => {
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    const txs = await awaitPublishedTxs(0, ADDR, 3, 30_000);
+    const txs = await awaitPublishedTxs(0, ADDR, TRANSFER, 30_000);
 
     expect(txs.map((tx) => tx.hash)).toStrictEqual(['0xtx1', '0xtx2', '0xtx3']);
   });
@@ -423,8 +469,102 @@ describe('awaitPublishedTxs polling', () => {
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-    await expect(awaitPublishedTxs(0, ADDR, 1, 300)).rejects.toThrow(
-      /expected 1 transaction\(s\) after block 0, saw 0/,
+    await expect(awaitPublishedTxs(0, ADDR, TRANSFER, 300)).rejects.toThrow(
+      /expected a call to "transfer" at 0xc0ffee after block 0 \(entry points seen there: none\)/,
     );
+  });
+
+  it('waits past an earlier call to the same contract under another entry point', async () => {
+    // The head was read before the indexer had the mint, so the window opens
+    // on it.
+    let headReads = 0;
+    fetchMock = indexerStub(
+      () => {
+        headReads += 1;
+        return headReads === 1 ? 1 : 2;
+      },
+      (height) => blockWith(height, [callTo(height === 1 ? 'mint' : 'burn')]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const txs = await awaitPublishedTxs(
+      0,
+      ADDR,
+      { entryPoint: 'burn' },
+      30_000,
+    );
+
+    expect(txs.map((tx) => tx.hash)).toStrictEqual(['0xtx2']);
+    expect(headReads).toBe(2);
+  });
+
+  it('names the entry points seen when the awaited call never lands', async () => {
+    fetchMock = indexerStub(
+      () => 1,
+      (height) => blockWith(height, [callTo('mint')]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      await awaitPublishedTxs(0, ADDR, { entryPoint: 'burn' }, 300);
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      expect((error as Error).message).toBe(
+        'indexer: expected a call to "burn" at 0xc0ffee after block 0 ' +
+          '(entry points seen there: mint)',
+      );
+      expect((error as Error).cause).toBeUndefined();
+    }
+  });
+
+  it('keeps polling through a block not indexed yet, then returns it', async () => {
+    let blockReads = 0;
+    fetchMock = indexerStub(
+      () => 1,
+      (height) => {
+        blockReads += 1;
+        return blockReads === 1 ? notIndexed : blockWith(height, [ourCall]);
+      },
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const txs = await awaitPublishedTxs(0, ADDR, TRANSFER, 30_000);
+
+    expect(txs.map((tx) => tx.hash)).toStrictEqual(['0xtx1']);
+    expect(blockReads).toBe(2);
+  });
+
+  it('fails with the not-indexed cause when the block never appears', async () => {
+    fetchMock = indexerStub(
+      () => 1,
+      () => notIndexed,
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      await awaitPublishedTxs(0, ADDR, TRANSFER, 300);
+      expect.unreachable('expected a throw');
+    } catch (error) {
+      expect((error as Error).message).toBe(
+        'indexer: timed out waiting for a call to "transfer" at 0xc0ffee ' +
+          'after block 0 (entry points seen there: none); ' +
+          'last request: indexer: block 1 not indexed yet (head 1)',
+      );
+      expect((error as Error).cause).toBeInstanceOf(BlockNotIndexed);
+    }
+  });
+
+  it('fails at once on a block returned at another height', async () => {
+    fetchMock = indexerStub(
+      () => 1,
+      () => blockWith(7, [ourCall]),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(awaitPublishedTxs(0, ADDR, TRANSFER, 30_000)).rejects.toThrow(
+      'indexer: asked for block 1, got block 7',
+    );
+    // Not retried: one head read, one block read.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
