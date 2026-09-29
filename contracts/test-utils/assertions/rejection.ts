@@ -43,19 +43,34 @@ export function causeChain(error: unknown): string[] {
     }
     seen.add(current);
 
-    // `String(err)` rather than `.message`: it picks up a custom `toString`,
-    // which is the only way a FiberFailure surfaces what it wraps.
-    rendered.push(String(current));
+    rendered.push(render(current));
 
-    if (current instanceof Error) {
-      queue.push(current.cause);
-      const { errors } = current as { errors?: unknown };
+    if (typeof current === 'object') {
+      const { cause, errors } = current as {
+        cause?: unknown;
+        errors?: unknown;
+      };
+      queue.push(cause);
       if (Array.isArray(errors)) {
         queue.push(...errors);
       }
     }
   }
   return rendered;
+}
+
+/**
+ * `String(err)` rather than `.message`: it picks up a custom `toString`, which
+ * is the only way a FiberFailure surfaces what it wraps. A plain object has no
+ * useful default rendering, so its `message` stands in.
+ */
+function render(error: unknown): string {
+  const text = String(error);
+  if (text !== '[object Object]') {
+    return text;
+  }
+  const { message } = error as { message?: unknown };
+  return typeof message === 'string' ? message : text;
 }
 
 /** Whether `reason` appears anywhere in `error`'s cause chain. */

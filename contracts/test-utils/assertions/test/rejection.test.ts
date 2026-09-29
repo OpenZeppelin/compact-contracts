@@ -52,6 +52,18 @@ describe('rejection: causeChain', () => {
     ]);
   });
 
+  it('follows cause on a plain object and renders its message', () => {
+    const plain = {
+      message: 'scoped transaction failed',
+      cause: { message: WITNESS_REASON },
+    };
+
+    expect(causeChain(plain)).toStrictEqual([
+      'scoped transaction failed',
+      WITNESS_REASON,
+    ]);
+  });
+
   it('should terminate on a cycle', () => {
     const a = new Error('a');
     const b = new Error('b', { cause: a });
@@ -92,6 +104,13 @@ describe('rejection: expectRejection', () => {
 
   it('should accept the same reason when the backend wrapped it', async () => {
     await expectRejection(Promise.reject(liveWrapped()), WITNESS_REASON);
+  });
+
+  it('accepts a plain-object rejection whose cause carries the reason', async () => {
+    await expectRejection(
+      Promise.reject({ cause: new Error(WITNESS_REASON) }),
+      WITNESS_REASON,
+    );
   });
 
   it('should return the rejection it matched', async () => {
