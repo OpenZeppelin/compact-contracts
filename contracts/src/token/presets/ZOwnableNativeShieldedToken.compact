@@ -145,7 +145,7 @@ module ZOwnableNativeShieldedToken {
    * @description Mints `amount` to `recipient` and adds it to the minted total.
    * Owner only.
    *
-   * @constraints k=15, rows=21354
+   * @circuitInfo k=15, rows=21354
    *
    * Requirements:
    *
@@ -168,7 +168,7 @@ module ZOwnableNativeShieldedToken {
    * @description Burns `amount` of `coin`, paid into the tx by the caller's
    * wallet, and refunds the rest to `refundTo`. Owner only.
    *
-   * @constraints k=16, rows=52024
+   * @circuitInfo k=16, rows=52024
    *
    * Requirements:
    *
@@ -195,7 +195,7 @@ module ZOwnableNativeShieldedToken {
    * The circuit cannot check this; any other key leaves the contract with no
    * usable owner and no recovery.
    *
-   * @constraints k=15, rows=17096
+   * @circuitInfo k=15, rows=17096
    *
    * Requirements:
    *
@@ -213,7 +213,7 @@ module ZOwnableNativeShieldedToken {
    *
    * @warning Irreversible: mint and burn stop forever.
    *
-   * @constraints k=14, rows=10622
+   * @circuitInfo k=14, rows=10622
    *
    * Requirements:
    *
@@ -226,7 +226,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the current owner commitment.
    *
-   * @constraints k=6, rows=50
+   * @circuitInfo k=6, rows=50
    *
    * Requirements:
    *
@@ -253,7 +253,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the total amount ever minted.
    *
-   * @constraints k=7, rows=65
+   * @circuitInfo k=7, rows=65
    */
   export circuit totalMinted(): Uint<128> {
     return NSTPublicSupply_totalMinted();
@@ -262,7 +262,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=28
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -275,7 +275,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the token symbol.
    *
-   * @constraints k=6, rows=28
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -288,7 +288,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the token decimals.
    *
-   * @constraints k=6, rows=28
+   * @circuitInfo k=6, rows=28
    *
    * Requirements:
    *
@@ -302,7 +302,7 @@ module ZOwnableNativeShieldedToken {
    * @description Returns this contract's token color,
    * `tokenType(tokenDomain, kernel.self())`.
    *
-   * @constraints k=13, rows=3971
+   * @circuitInfo k=13, rows=3971
    *
    * Requirements:
    *
