@@ -14,7 +14,7 @@
  *   `CallTxFailedError` / `TxFailedError`  @midnight-ntwrk/midnight-js-contracts
  *   `SucceedEntirely` / `FailEntirely` / `FailFallible`, `SegmentSuccess` /
  *   `SegmentFail`, `TxStatus`             @midnight-ntwrk/midnight-js-types
- *   `TransactionResult`                   @midnight-ntwrk/ledger-v8
+ *   `TransactionResult`                   @midnightntwrk/ledger-v9
  *
  * `TransactionResult` carries `type: 'success' | 'partialSuccess' | 'failure'`
  * and `error?: string`, so the ledger's own message is readable at runtime.
