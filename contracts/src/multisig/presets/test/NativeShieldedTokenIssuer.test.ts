@@ -976,6 +976,29 @@ describe('NativeShieldedTokenIssuer', () => {
         expect(refund.value.value).toStrictEqual(100n);
       });
 
+      // TODO: unskip once compact-runtime commits coin values above Uint<64>.
+      describe.skip('above the per-mint cap', () => {
+        const COIN_VALUE = 2n ** 80n;
+
+        it('burns one above Uint<64> and refunds the remainder', async () => {
+          const refund = await burn(2n ** 64n, COIN_VALUE, [S1, S2]);
+          expect(refund.is_some).toStrictEqual(true);
+          expect(refund.value.value).toStrictEqual(COIN_VALUE - 2n ** 64n);
+          expect(refund.value.color).toStrictEqual(await multisig.tokenColor());
+        });
+
+        it('burns the whole coin with no refund', async () => {
+          const refund = await burn(COIN_VALUE, COIN_VALUE, [S1, S2]);
+          expect(refund.is_some).toStrictEqual(false);
+        });
+
+        it('refunds exactly 1 when burning one below the coin value', async () => {
+          const refund = await burn(COIN_VALUE - 1n, COIN_VALUE, [S1, S2]);
+          expect(refund.is_some).toStrictEqual(true);
+          expect(refund.value.value).toStrictEqual(1n);
+        });
+      });
+
       it('shares the nonce with every operation', {
         timeout: MULTI_TX_TIMEOUT,
       }, async () => {
@@ -1037,6 +1060,20 @@ describe('NativeShieldedTokenIssuer', () => {
         ).rejects.toThrow('Multisig: invalid signature');
       });
 
+      it('rejects an amount matching the approved one only in its low 64 bits', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 2n ** 80n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 1n);
+        await expect(
+          multisig.burn(
+            coin,
+            2n ** 64n + 1n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
       it('rejects a duplicate signer', async () => {
         const coin = makeCoin(await multisig.tokenColor(), 100n);
         const digest = await burnDigest(multisig, USER_RECIPIENT, 100n);
@@ -1086,6 +1123,20 @@ describe('NativeShieldedTokenIssuer', () => {
           multisig.burn(
             coin,
             100n,
+            USER_RECIPIENT,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+      });
+
+      it('checks an amount above Uint<64> against the coin value', async () => {
+        const coin = makeCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnDigest(multisig, USER_RECIPIENT, 2n ** 64n);
+        await expect(
+          multisig.burn(
+            coin,
+            2n ** 64n,
             USER_RECIPIENT,
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
@@ -1176,6 +1227,34 @@ describe('NativeShieldedTokenIssuer', () => {
           await burnFromSelf(50n, 100n, [S1, S3]);
           expect(await multisig.getNonce()).toEqual(2n);
         });
+
+        // TODO: unskip once compact-runtime commits coin values above Uint<64>.
+        describe.skip('above the per-mint cap', () => {
+          const COIN_VALUE = 2n ** 80n;
+
+          it('burns one above Uint<64> and returns the remainder as change', async () => {
+            const change = await burnFromSelf(2n ** 64n, COIN_VALUE, [S1, S2]);
+            expect(change.is_some).toStrictEqual(true);
+            expect(change.value.value).toStrictEqual(COIN_VALUE - 2n ** 64n);
+            expect(change.value.color).toStrictEqual(
+              await multisig.tokenColor(),
+            );
+          });
+
+          it('burns the whole coin with no change', async () => {
+            const change = await burnFromSelf(COIN_VALUE, COIN_VALUE, [S1, S2]);
+            expect(change.is_some).toStrictEqual(false);
+          });
+
+          it('returns change of exactly 1 when burning one below the coin value', async () => {
+            const change = await burnFromSelf(COIN_VALUE - 1n, COIN_VALUE, [
+              S1,
+              S2,
+            ]);
+            expect(change.is_some).toStrictEqual(true);
+            expect(change.value.value).toStrictEqual(1n);
+          });
+        });
       });
 
       it('should reject a different coin than the one approved', async () => {
@@ -1232,6 +1311,20 @@ describe('NativeShieldedTokenIssuer', () => {
           multisig.burnFromSelf(
             sameNonceBiggerValue,
             100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('Multisig: invalid signature');
+      });
+
+      it('rejects an amount matching the approved one only in its low 64 bits', async () => {
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 2n ** 80n);
+        const digest = await burnFromSelfDigest(multisig, 1n, coin);
+
+        await expect(
+          multisig.burnFromSelf(
+            coin,
+            2n ** 64n + 1n,
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
@@ -1324,6 +1417,19 @@ describe('NativeShieldedTokenIssuer', () => {
           multisig.burnFromSelf(
             coin,
             100n,
+            [S1.publicKey, S2.publicKey],
+            [sign(S1, digest), sign(S2, digest)],
+          ),
+        ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+      });
+
+      it('checks an amount above Uint<64> against the coin value', async () => {
+        const coin = makeQualifiedCoin(await multisig.tokenColor(), 100n);
+        const digest = await burnFromSelfDigest(multisig, 2n ** 64n, coin);
+        await expect(
+          multisig.burnFromSelf(
+            coin,
+            2n ** 64n,
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),

@@ -115,7 +115,7 @@ export circuit mintToSelf(
 
 export circuit burn(
   coin: ShieldedCoinInfo,
-  amount: Uint<64>,
+  amount: Uint<128>,
   refundTo: ZswapCoinPublicKey,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
@@ -125,7 +125,7 @@ export circuit burn(
 
 export circuit burnFromSelf(
   coin: QualifiedShieldedCoinInfo,
-  amount: Uint<64>,
+  amount: Uint<128>,
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): Maybe<ShieldedCoinInfo> {

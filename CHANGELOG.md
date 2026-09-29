@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `NativeShieldedTokenIssuer.burn` and `burnFromSelf` take a `Uint<128>` amount, the shielded coin value range. Digests for amounts that fit `Uint<64>` are unchanged. (#1033)
 - Drop the duplicate `receiveShielded` on self-addressed `NativeShieldedTokenCore._mint` and `_burn` coins. `mintShieldedToken` and `sendShielded` already claim them, so the extra call emitted a second Zswap output for the same commitment. Core `_mint` drops from k=15 to k=14. (#1017)
 - `EcdsaSignerManager.initialize` rejects signer sets smaller than 2 and any threshold other than 2. `assertApprovals` always verifies two signatures, so a smaller set could never pass and a stored threshold of 1 was never honored. (#1011)
 
