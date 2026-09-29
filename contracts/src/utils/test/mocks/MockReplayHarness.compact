@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract gives the replay harness in `test-utils/concurrency` a ledger
+// to run against. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+export ledger _claims: Map<Bytes<32>, Uint<64>>;
+
+export ledger _bumps: Counter;
+
+// Pins the membership of `key` alone, so claims on two keys do not conflict.
+export circuit claim(key: Bytes<32>, amount: Uint<64>): Uint<64> {
+  const claimedKey = disclose(key);
+  const claimedAmount = disclose(amount);
+  assert(!_claims.member(claimedKey), "MockReplayHarness: key already claimed");
+  _claims.insert(claimedKey, claimedAmount);
+  return claimedAmount;
+}
+
+// Pins nothing: an increment commutes with every other write.
+export circuit bump(): [] {
+  _bumps.increment(1);
+}
