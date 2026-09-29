@@ -961,11 +961,13 @@ describe.skipIf(isLiveBackend())(
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken privacy: no secret reaches the transcript',
   () => {
-    const anyBytes = () => fc.uint8Array({ minLength: 32, maxLength: 32 });
+    /** A non-zero tail keeps the trimmed encoding at full width. */
+    const anyBytes = () =>
+      fc
+        .uint8Array({ minLength: 32, maxLength: 32 })
+        .filter((bytes) => bytes[31] !== 0);
     const anyKey = () =>
-      anyBytes()
-        .filter((bytes) => bytes.some((b) => b !== 0))
-        .map((bytes): ZswapCoinPublicKey => ({ bytes }));
+      anyBytes().map((bytes): ZswapCoinPublicKey => ({ bytes }));
 
     it('mint: recipient, nonce, owner key and owner secret', async () => {
       await fc.assert(
