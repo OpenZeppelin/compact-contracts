@@ -36,6 +36,10 @@ export type Outcome = 'both-landed' | 'second-rejected';
  *
  * Carrying the reason lets a spec assert that a conflict was rejected FOR the
  * divergence it set up, rather than for any reason at all.
+ *
+ * A dry verdict covers contract state only (no Zswap nullifiers, balances, fees
+ * or block time), so two calls that both land here can still conflict on the
+ * ledger through the coins they spend.
  */
 export type RaceResult =
   | { readonly outcome: 'both-landed' }
