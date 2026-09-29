@@ -137,38 +137,19 @@ describe('ShieldedMultiSigV2', () => {
       expect(await multisig.getThreshold()).toEqual(2n);
     });
 
-    it('should initialize with 1-of-3 threshold', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
-        INSTANCE_SALT,
-        SIGNER_COMMITMENTS,
-        1n,
-        true,
-      );
-      expect(await multisig.getThreshold()).toEqual(1n);
-    });
-
-    it('should fail with zero threshold', async () => {
-      await expect(
-        ShieldedMultiSigV2Simulator.create(
-          INSTANCE_SALT,
-          SIGNER_COMMITMENTS,
-          0n,
-          true,
-        ),
-      ).rejects.toThrow('Signer: threshold must not be zero');
-    });
-
-    it('should fail with threshold greater than 2', async () => {
-      await expect(
-        ShieldedMultiSigV2Simulator.create(
-          INSTANCE_SALT,
-          SIGNER_COMMITMENTS,
-          3n,
-          true,
-        ),
-      ).rejects.toThrow(
-        'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
-      );
+    it('should reject any threshold other than 2', async () => {
+      for (const thresh of [0n, 1n, 3n]) {
+        await expect(
+          ShieldedMultiSigV2Simulator.create(
+            INSTANCE_SALT,
+            SIGNER_COMMITMENTS,
+            thresh,
+            true,
+          ),
+        ).rejects.toThrow(
+          'EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)',
+        );
+      }
     });
 
     it('should register all signer commitments', async () => {

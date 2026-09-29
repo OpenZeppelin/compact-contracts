@@ -79,13 +79,12 @@ module EcdsaSignerManager {
    * - `signerCommitments` must not contain duplicates.
    * - `n` must be at least 2, the number of distinct signers `assertApprovals`
    *   verifies. A smaller set can never satisfy it.
-   * - `threshold` must be non-zero and must not exceed 2, the number of
-   *   approvals `assertApprovals` verifies.
+   * - `threshold` must be 2, the number of approvals `assertApprovals`
+   *   verifies. Any other value would misreport what the circuit enforces.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
-   * @param {Uint<8>} threshold - Minimum approvals required. `assertApprovals`
-   * always verifies 2, so 1 and 2 behave alike.
+   * @param {Uint<8>} threshold - Approvals required. Must be 2.
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
@@ -95,7 +94,7 @@ module EcdsaSignerManager {
   ): [] {
     assert(Signer_getSignerCount() == 0, "EcdsaSignerManager: signers already registered");
     _instanceSalt = disclose(instanceSalt);
-    assert(threshold <= 2, "EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)");
+    assert(threshold == 2, "EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)");
 
     for (const commitment of signerCommitments) {
       Signer__addSigner(commitment);
@@ -143,7 +142,7 @@ module EcdsaSignerManager {
    * same signer.
    *
    * @dev Both entries are asserted, so the count handed to the threshold check
-   * is always 2 and a threshold below 2 admits nothing extra.
+   * is always 2, matching the only threshold `initialize` accepts.
    *
    * @constraints k=17, rows=64916 (zkir-v3)
    *

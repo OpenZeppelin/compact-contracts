@@ -151,7 +151,7 @@ pragma language_version >= 0.26.0;
  *   high-s encoding is an invalid signature.
  * - Distinct signers: `assertApprovals` asserts both entries and rejects a
  *   repeated commitment, so two distinct registered signers are always
- *   required. The threshold `2` is the ceiling `EcdsaSignerManager` accepts.
+ *   required. The threshold `2` is the only value `EcdsaSignerManager` accepts.
  * - Immutable signer set: no signer reconfiguration circuit is exported, so
  *   the three commitments and the threshold are fixed. Losing two of the
  *   three keys freezes the contract.

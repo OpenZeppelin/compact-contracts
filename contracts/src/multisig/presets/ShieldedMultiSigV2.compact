@@ -82,11 +82,11 @@ module ShieldedMultiSigV2 {
    *
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
-   * - `thresh` must be non-zero and must not exceed 2.
+   * - `thresh` must be 2, the number of signatures `execute` verifies.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
-   * @param {Uint<8>} thresh - Minimum approvals required.
+   * @param {Uint<8>} thresh - Approvals required. Must be 2.
    * @returns {[]} Empty tuple.
    */
   export circuit initialize(

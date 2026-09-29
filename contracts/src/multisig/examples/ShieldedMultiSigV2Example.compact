@@ -29,7 +29,7 @@ export { _domainSeparator };
  *
  * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
  * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
- * @param {Uint<8>} thresh - Minimum approvals required.
+ * @param {Uint<8>} thresh - Approvals required. Must be 2.
  */
 constructor(
   instanceSalt: Bytes<32>,
