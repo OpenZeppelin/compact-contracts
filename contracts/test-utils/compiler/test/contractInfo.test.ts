@@ -75,6 +75,18 @@ describe('circuitSurface', () => {
     ]);
   });
 
+  it('sorts by code unit, so uppercase precedes lowercase', () => {
+    const mixedCase = contractInfo([
+      circuit('mint', false, true),
+      circuit('Mint2', false, true),
+      circuit('_mint', false, true),
+    ]);
+    const names = circuitSurface(mixedCase).map(({ name }) => name);
+
+    expect(names).toStrictEqual(['Mint2', '_mint', 'mint']);
+    expect(names).toStrictEqual([...names].sort());
+  });
+
   it('should preserve each circuit own pure and proof flags', () => {
     const mixed = contractInfo([
       circuit('a_pure', true, false),
