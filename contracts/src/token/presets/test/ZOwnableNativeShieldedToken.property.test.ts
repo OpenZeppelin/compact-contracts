@@ -48,6 +48,9 @@ const RECIPIENT: ZswapCoinPublicKey = { bytes: b32('RECIPIENT') };
 const REFUND_TO: ZswapCoinPublicKey = { bytes: b32('REFUND_TO') };
 const MAX_U64 = (1n << 64n) - 1n;
 
+// Generated-input tests run many circuits, so they get their own timeout.
+const GENERATED_INPUT_TIMEOUT_MS = 120_000;
+
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
 // ---------------------------------------------------------------------------
@@ -136,6 +139,7 @@ describe('ZOwnableNativeShieldedToken property: _computeOwnerId', () => {
 
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken property: owner',
+  { timeout: GENERATED_INPUT_TIMEOUT_MS },
   () => {
     it('commits the deploy id at counter 1 for any salt and nonce', async () => {
       await fc.assert(
@@ -161,6 +165,7 @@ describe.skipIf(isLiveBackend())(
 
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken property: mint',
+  { timeout: GENERATED_INPUT_TIMEOUT_MS },
   () => {
     it('returns the coin for any amount and nonce', async () => {
       await fc.assert(
@@ -208,6 +213,7 @@ describe.skipIf(isLiveBackend())(
 
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken property: burn',
+  { timeout: GENERATED_INPUT_TIMEOUT_MS },
   () => {
     const coinOf = async (
       token: Sim,
@@ -280,6 +286,7 @@ describe.skipIf(isLiveBackend())(
 
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken property: ownership',
+  { timeout: GENERATED_INPUT_TIMEOUT_MS },
   () => {
     const ownerOps: [
       name: string,

@@ -88,6 +88,9 @@ const AMOUNT = 1_000n;
 const PARTIAL = 600n;
 const MAX_U64 = (1n << 64n) - 1n;
 
+// Generated-input tests run many circuits, so they get their own timeout.
+const GENERATED_INPUT_TIMEOUT_MS = 120_000;
+
 type Trace = {
   transcript: Op<AlignedValue>[];
   privateOutputs: AlignedValue[];
@@ -677,6 +680,7 @@ describe.skipIf(isLiveBackend())(
 
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken privacy: indistinguishability',
+  { timeout: GENERATED_INPUT_TIMEOUT_MS },
   () => {
     const mintTrace = async (
       recipient: ZswapCoinPublicKey,
@@ -961,6 +965,7 @@ describe.skipIf(isLiveBackend())(
 
 describe.skipIf(isLiveBackend())(
   'ZOwnableNativeShieldedToken privacy: no secret reaches the transcript',
+  { timeout: GENERATED_INPUT_TIMEOUT_MS },
   () => {
     /** A non-zero tail keeps the trimmed encoding at full width. */
     const anyBytes = () =>
