@@ -488,13 +488,21 @@ export function ledgerSlots(info: ContractInfo): readonly LedgerSlot[] {
 }
 
 /**
- * The circuit surface, sorted by name.
+ * The circuit surface, sorted by name in code-unit order.
  *
  * Sorted because the compiler emits declaration order while dispatch is by name,
- * so reordering a `.compact` source is not a compatibility change.
+ * so reordering a `.compact` source is not a compatibility change. Code-unit
+ * order matches `Object.keys(...).sort()`, which callers compare against.
  */
 export function circuitSurface(info: ContractInfo): CircuitSurface[] {
   return info.circuits
     .map(({ name, pure, proof }) => ({ name, pure, proof }))
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .sort((left, right) => compareCodeUnits(left.name, right.name));
+}
+
+/** The default `Array.prototype.sort` order, made explicit for a key. */
+function compareCodeUnits(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }
