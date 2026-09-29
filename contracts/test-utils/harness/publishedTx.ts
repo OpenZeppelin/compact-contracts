@@ -80,6 +80,9 @@ const POLL_INTERVAL_MS = 1_000;
  */
 export class IndexerTimeout extends Error {}
 
+/** The caller's deadline ran out before a request was sent; nothing was asked of the indexer. */
+export class DeadlinePassed extends IndexerTimeout {}
+
 /**
  * How long one request may take: its own ceiling, or whatever is left of the
  * caller's deadline, whichever is smaller.
@@ -93,7 +96,7 @@ function requestBudget(deadline: number | undefined): number {
   }
   const remaining = deadline - Date.now();
   if (remaining <= 0) {
-    throw new IndexerTimeout(
+    throw new DeadlinePassed(
       'indexer: deadline passed before the next request',
     );
   }
@@ -245,6 +248,11 @@ export async function awaitPublishedTxs(
       // from here on is a missing transaction, not a stuck indexer.
       lastTimeout = undefined;
     } catch (cause) {
+      // The clock crossed the deadline between the loop check and the request.
+      // Nothing was asked of the indexer, so it is not a timeout to report.
+      if (cause instanceof DeadlinePassed) {
+        break;
+      }
       // Slowness is what this function exists to absorb, so keep polling while
       // time remains. A protocol failure is a real defect: surface it at once.
       if (!(cause instanceof IndexerTimeout)) {
