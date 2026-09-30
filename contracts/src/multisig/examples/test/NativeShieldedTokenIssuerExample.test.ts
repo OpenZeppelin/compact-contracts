@@ -15,7 +15,7 @@ import {
   Contract as Ex,
   ledger,
 } from '../../../../artifacts/NativeShieldedTokenIssuerExample/contract/index.js';
-import { calculateSignerId } from '../../presets/test/simulators/NativeShieldedTokenIssuerSimulator.js';
+import { calculateSignerId } from '../../presets/test/simulators/NativeShieldedTokenIssuer2To3Simulator.js';
 import {
   burnFromSelfMsgHash,
   burnMsgHash,

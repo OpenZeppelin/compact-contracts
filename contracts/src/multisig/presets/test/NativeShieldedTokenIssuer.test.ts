@@ -21,7 +21,7 @@ import type {
   QualifiedShieldedCoinInfo,
   ShieldedCoinInfo,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
+} from '../../../../artifacts/MockNativeShieldedTokenIssuer2To3/contract/index.js';
 import {
   burnFromSelfMsgHash,
   burnMsgHash,
@@ -33,8 +33,8 @@ import {
 } from '../../test/EcdsaTestUtils.js';
 import {
   calculateSignerId,
-  NativeShieldedTokenIssuerSimulator,
-} from './simulators/NativeShieldedTokenIssuerSimulator.js';
+  NativeShieldedTokenIssuer2To3Simulator,
+} from './simulators/NativeShieldedTokenIssuer2To3Simulator.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────
 
@@ -68,12 +68,12 @@ let USER_RECIPIENT: ZswapCoinPublicKey;
 
 // ─── Signing helpers ──────────────────────────────────────────────
 
-const addrBytes = (m: NativeShieldedTokenIssuerSimulator): Uint8Array =>
+const addrBytes = (m: NativeShieldedTokenIssuer2To3Simulator): Uint8Array =>
   Uint8Array.from(Buffer.from(m.contractAddress, 'hex'));
 
 /** The mint digest the contract computes for these params at its current nonce. */
 async function mintDigest(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   recipient: ZswapCoinPublicKey,
   amount: bigint,
 ): Promise<Uint8Array> {
@@ -88,7 +88,7 @@ async function mintDigest(
 
 /** The mint-to-self digest the contract computes for `amount` at its current nonce. */
 async function mintToSelfDigest(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   amount: bigint,
 ): Promise<Uint8Array> {
   return mintToSelfMsgHash({
@@ -101,7 +101,7 @@ async function mintToSelfDigest(
 
 /** The burn digest the contract computes for these params at its current nonce. */
 async function burnDigest(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   refundTo: ZswapCoinPublicKey,
   amount: bigint,
 ): Promise<Uint8Array> {
@@ -116,7 +116,7 @@ async function burnDigest(
 
 /** The burn-from-self digest the contract computes for these params at its current nonce. */
 async function burnFromSelfDigest(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   amount: bigint,
   coin: { nonce: Uint8Array; value: bigint },
 ): Promise<Uint8Array> {
@@ -132,7 +132,7 @@ async function burnFromSelfDigest(
 
 /** Mints, signing the correct digest with each of `signers`. */
 async function mint(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   amount: bigint,
   recipient: ZswapCoinPublicKey,
   signers: Signer[],
@@ -148,7 +148,7 @@ async function mint(
 
 /** Mints to the contract itself, signing the correct digest with each of `signers`. */
 async function mintToSelf(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   amount: bigint,
   signers: Signer[],
 ): Promise<ShieldedCoinInfo> {
@@ -162,7 +162,7 @@ async function mintToSelf(
 
 /** Asserts `coin` is a well-formed coin of `m`'s token carrying `amount`. */
 async function expectMintedCoin(
-  m: NativeShieldedTokenIssuerSimulator,
+  m: NativeShieldedTokenIssuer2To3Simulator,
   coin: ShieldedCoinInfo,
   amount: bigint,
 ): Promise<void> {
@@ -200,7 +200,7 @@ function makeCoin(color: Uint8Array, value: bigint): ShieldedCoinInfo {
   return encodeShieldedCoinInfo(color, value);
 }
 
-let multisig: NativeShieldedTokenIssuerSimulator;
+let multisig: NativeShieldedTokenIssuer2To3Simulator;
 
 // A live mint or burn takes up to ~150 s, so specs chaining four or five of them
 // outrun the 600 s live test timeout.
@@ -213,7 +213,7 @@ const MULTI_TX_TIMEOUT = 1_200_000;
 // a zero recipient, so dry pins a non-zero one; live uses the deployed address.
 const SELF_ADDRESS = utils.toHexPadded('SELF');
 const freshMultisig = () =>
-  NativeShieldedTokenIssuerSimulator.create(
+  NativeShieldedTokenIssuer2To3Simulator.create(
     INSTANCE_SALT,
     TOKEN_DOMAIN,
     TOKEN_NAME,
@@ -270,7 +270,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
     it('should fail with duplicate signer commitments', async () => {
       await expect(
-        NativeShieldedTokenIssuerSimulator.create(
+        NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -336,7 +336,7 @@ describe('NativeShieldedTokenIssuer', () => {
         expect(await multisig.getSignerCount()).toEqual(3n);
       });
 
-      it('getThreshold should match constructor arg', async () => {
+      it('getThreshold should return 2', async () => {
         expect(await multisig.getThreshold()).toEqual(2n);
       });
 
@@ -434,7 +434,7 @@ describe('NativeShieldedTokenIssuer', () => {
       it('should reject duplicate signer', async () => {
         await expect(
           mint(multisig, 100n, USER_RECIPIENT, [S1, S1]),
-        ).rejects.toThrow('Multisig: duplicate signer');
+        ).rejects.toThrow('EcdsaMultisigCore: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
@@ -453,7 +453,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a signature over a different digest', async () => {
@@ -466,7 +466,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       describe('parameter binding', () => {
@@ -480,7 +480,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a signature bound to a different recipient', async () => {
@@ -496,7 +496,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a mint signature replayed as a mint-to-self', async () => {
@@ -508,7 +508,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a mint-to-self signature replayed as a mint', async () => {
@@ -521,7 +521,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a burn signature replayed as a mint', async () => {
@@ -534,7 +534,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a mint signature replayed as a burn', async () => {
@@ -549,7 +549,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a mint signature replayed as a burn-from-self', async () => {
@@ -563,7 +563,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a burn signature replayed as a burn-from-self', async () => {
@@ -577,7 +577,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
 
         it('should reject a burn-from-self signature replayed as a burn', async () => {
@@ -595,7 +595,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
         });
       });
 
@@ -621,7 +621,7 @@ describe('NativeShieldedTokenIssuer', () => {
         };
 
         const mintValue = (
-          m: NativeShieldedTokenIssuerSimulator,
+          m: NativeShieldedTokenIssuer2To3Simulator,
           nonce: bigint,
         ) => ({
           contractAddress: hexOf(addrBytes(m)),
@@ -707,7 +707,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(structHash)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisigCore: invalid signature',
           );
         });
 
@@ -723,7 +723,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisigCore: invalid signature',
           );
         });
 
@@ -739,7 +739,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisigCore: invalid signature',
           );
         });
 
@@ -761,7 +761,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisigCore: invalid signature',
           );
         });
 
@@ -795,7 +795,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisigCore: invalid signature',
           );
         });
       });
@@ -811,7 +811,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), highSTwin(sign(S2, digest))],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should increment nonce after mint', async () => {
@@ -841,7 +841,7 @@ describe('NativeShieldedTokenIssuer', () => {
         expect(await multisig.getNonce()).toEqual(1n);
         await expect(
           multisig.mint(100n, USER_RECIPIENT, pubkeys, sigs),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
     });
 
@@ -895,7 +895,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('rejects a duplicate signer', async () => {
         await expect(mintToSelf(multisig, 100n, [S1, S1])).rejects.toThrow(
-          'Multisig: duplicate signer',
+          'EcdsaMultisigCore: duplicate signer',
         );
       });
 
@@ -913,7 +913,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
     });
 
@@ -1043,7 +1043,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('rejects a signature bound to a different amount', async () => {
@@ -1057,7 +1057,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('rejects an amount matching the approved one only in its low 64 bits', async () => {
@@ -1071,7 +1071,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('rejects a duplicate signer', async () => {
@@ -1085,7 +1085,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S1.publicKey],
             [sign(S1, digest), sign(S1, digest)],
           ),
-        ).rejects.toThrow('Multisig: duplicate signer');
+        ).rejects.toThrow('EcdsaMultisigCore: duplicate signer');
       });
 
       it('rejects a non-signer pubkey', async () => {
@@ -1277,7 +1277,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a same-value coin with a different nonce', async () => {
@@ -1298,7 +1298,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a coin whose value differs from the approved one', async () => {
@@ -1314,7 +1314,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('rejects an amount matching the approved one only in its low 64 bits', async () => {
@@ -1328,7 +1328,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject duplicate signer', async () => {
@@ -1341,7 +1341,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S1.publicKey],
             [sign(S1, digest), sign(S1, digest)],
           ),
-        ).rejects.toThrow('Multisig: duplicate signer');
+        ).rejects.toThrow('EcdsaMultisigCore: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
@@ -1367,7 +1367,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a signature bound to a different amount', async () => {
@@ -1380,7 +1380,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject wrong token color', async () => {
@@ -1458,7 +1458,7 @@ describe('NativeShieldedTokenIssuer', () => {
         const altDomain = new Uint8Array(32);
         Buffer.from('alt:token:').copy(altDomain);
 
-        const alt = await NativeShieldedTokenIssuerSimulator.create(
+        const alt = await NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           altDomain,
           TOKEN_NAME,
@@ -1493,7 +1493,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
     describe('uninitialized', () => {
       it('cannot mint, and holds a zero domain separator', async () => {
-        const uninit = await NativeShieldedTokenIssuerSimulator.create(
+        const uninit = await NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -1543,7 +1543,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
     });
 
@@ -1554,7 +1554,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('should reject a signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+        const instance2 = await NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -1574,12 +1574,12 @@ describe('NativeShieldedTokenIssuer', () => {
 
         await expect(
           instance2.mint(100n, USER_RECIPIENT, pubkeys, sigs),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a mint-to-self signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+        const instance2 = await NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -1598,12 +1598,12 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a burn signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+        const instance2 = await NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -1627,12 +1627,12 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a burn-from-self signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await NativeShieldedTokenIssuerSimulator.create(
+        const instance2 = await NativeShieldedTokenIssuer2To3Simulator.create(
           INSTANCE_SALT,
           TOKEN_DOMAIN,
           TOKEN_NAME,
@@ -1655,7 +1655,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
     });
   });

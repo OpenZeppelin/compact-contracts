@@ -6,49 +6,48 @@ import {
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
-  Contract as MockEcdsaMultisig1To1,
-} from '../../../../artifacts/MockEcdsaMultisig1To1/contract/index.js';
+  Contract as MockEcdsaMultisig3To3,
+} from '../../../../artifacts/MockEcdsaMultisig3To3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type EcdsaMultisig1To1Args = readonly [
+type EcdsaMultisig3To3Args = readonly [
   instanceSalt: Uint8Array,
-  signerCommitment: Uint8Array,
+  signerCommitments: Uint8Array[],
 ];
 
-const EcdsaMultisig1To1SimulatorBase = createSimulator<
+const EcdsaMultisig3To3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockEcdsaMultisig1To1<EmptyPrivateState>,
-  EcdsaMultisig1To1Args
+  MockEcdsaMultisig3To3<EmptyPrivateState>,
+  EcdsaMultisig3To3Args
 >({
   contractFactory: (witnesses) =>
-    new MockEcdsaMultisig1To1<EmptyPrivateState>(witnesses),
+    new MockEcdsaMultisig3To3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitment) => [
+  contractArgs: (instanceSalt, signerCommitments) => [
     instanceSalt,
-    signerCommitment,
+    signerCommitments,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockEcdsaMultisig1To1',
+  artifactName: 'MockEcdsaMultisig3To3',
 });
 
-/** One-signer deploys; the 2-of-3 mock's `Vector<3>` cannot reach them. */
-export class EcdsaMultisig1To1Simulator extends EcdsaMultisig1To1SimulatorBase {
+export class EcdsaMultisig3To3Simulator extends EcdsaMultisig3To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
-    signerCommitment: Uint8Array,
+    signerCommitments: Uint8Array[],
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<EcdsaMultisig1To1Simulator> {
+  ): Promise<EcdsaMultisig3To3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitment],
+      [instanceSalt, signerCommitments],
       options,
-    ) as Promise<EcdsaMultisig1To1Simulator>;
+    ) as Promise<EcdsaMultisig3To3Simulator>;
   }
 
   public assertApprovals(

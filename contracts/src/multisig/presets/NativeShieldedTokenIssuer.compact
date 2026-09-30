@@ -6,14 +6,14 @@ pragma language_version >= 0.26.0;
 /**
  * @module NativeShieldedTokenIssuer
  * @description
- * A 2-of-3 ECDSA multisig that mints and burns one native shielded token,
+ * A threshold ECDSA multisig that mints and burns one native shielded token,
  * for tokenized deposits. Value enters only through `mint` (to a holder's
  * coin public key) or `mintToSelf` (a coin this contract holds) and leaves
  * only through `burn` (a holder's coin, paid into the tx) or `burnFromSelf`
- * (a coin this contract holds); each is a single tx carrying two registered
- * signers' approvals, so no single party creates or destroys tokens.
+ * (a coin this contract holds); each is a single tx carrying `k` registered
+ * signers' approvals.
  *
- * Composes `EcdsaSignerManager` (signer commitments, approval checks),
+ * Composes `EcdsaMultisig` (signer commitments, approval checks),
  * `NativeShieldedToken` as `NST_` (one token; domain, `name`, `symbol` and
  * `decimals` fixed at construction) and `NativeShieldedTokenDerivedNonce` as
  * `NSTDerivedNonce_` (coin nonces derived from a counter).
@@ -72,25 +72,30 @@ pragma language_version >= 0.26.0;
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
- * `EcdsaSignerManager` directly.
+ * `EcdsaMultisig` or `EcdsaMultisigCore` directly.
  *
  * @dev Parameterization:
- * None: the signer set is hardcoded to 3 and the threshold to 2.
+ * `k` is the approval width and the threshold, fixed at import
+ * (`"../presets/NativeShieldedTokenIssuer"<k>`). The implementing contract
+ * fixes the signer count `n` at `initialize`. Import one width per contract:
+ * two widths share one signer registry, see `EcdsaMultisig`.
+ * `NativeShieldedTokenIssuerExample` fixes 2-of-3. The `@constraints` tags on
+ * the gated circuits are measured at `k = 2`.
  *
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the EIP-712 domain
  * (`NativeShieldedTokenIssuer`, version `1`, salt), the `Mint` /
  * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the `multisig:signer:` commitment domain (generic prefix,
- * owned by `EcdsaSignerManager`), the `cm` preimage struct, and the
- * `Vector<2>` / `Vector<3>` shapes. Changing any of them breaks every
- * existing signer setup. The test suite pins them through
- * `EcdsaTestUtils.ts`.
+ * owned by `EcdsaMultisigCore`), the `cm` preimage struct, and the
+ * `Vector<k>` / `Vector<n>` shapes the implementing contract fixes. Changing
+ * any of them breaks every existing signer setup. The test suite pins them
+ * through `EcdsaTestUtils.ts`.
  *
  * @notice Privacy:
  * - Public, per tx:
  *   - Entry point: which of the four operations ran.
- *   - Approvers: the two signer commitments (`disclose(commitment)` in
- *     `Signer_assertSigner`), so WHICH two of the three signers approved.
+ *   - Approvers: the `k` signer commitments (`disclose(commitment)` in
+ *     `Signer_assertSigner`), so WHICH signers approved.
  *   - Mint: `amount`, as the `shieldedMints` effect under the token domain,
  *     and the coin commitment as a spend claim. Recipient and nonce are not
  *     published. The nonce is `evolveNonce` of the public
@@ -149,12 +154,11 @@ pragma language_version >= 0.26.0;
  *   still refunds the bound `refundTo`.
  * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
  *   high-s encoding is an invalid signature.
- * - Distinct signers: `assertApprovals` asserts both entries and rejects a
- *   repeated commitment, so two distinct registered signers are always
- *   required. The threshold `2` is the only value `EcdsaSignerManager` accepts.
+ * - Distinct signers: every gated circuit verifies `k` distinct registered
+ *   signers, so no set of fewer than `k` keys creates or destroys tokens.
  * - Immutable signer set: no signer reconfiguration circuit is exported, so
- *   the three commitments and the threshold are fixed. Losing two of the
- *   three keys freezes the contract.
+ *   the commitments and the threshold are fixed. Losing more than `n - k`
+ *   keys freezes the contract.
  * - Griefing: the derived-nonce mints are the only mint paths and both are
  *   threshold-gated, so `NativeShieldedTokenDerivedNonce`'s
  *   collision-griefing precondition (a caller-nonce mint at another trust
@@ -165,8 +169,8 @@ pragma language_version >= 0.26.0;
  * @notice Concurrency:
  * - Replay counter: `mint`, `mintToSelf`, `burn` and `burnFromSelf` read
  *   `_counter` into the digest. The read is pinned, so any two of them in one block
- *   conflict: at most one operation lands per block, and the losing signer
- *   pair re-signs at the next nonce.
+ *   conflict: at most one operation lands per block, and the losing signers
+ *   re-sign at the next nonce.
  * - Derived-nonce counter: both mints also pin it (`evolveNonce` consumes
  *   it); the `_counter` conflict already covers those pairs.
  * - `getNonce`: submitted as a tx it pins `_counter` and conflicts with any
@@ -184,10 +188,10 @@ pragma language_version >= 0.26.0;
  *
  * @notice Client-side duties:
  * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
- *   `_calculateSignerId(pk, salt)`, pass the three as `signerCommitments`.
+ *   `_calculateSignerId(pk, salt)`, pass them as `signerCommitments`.
  * - Per operation: read `getNonce()`, rebuild the digest as
- *   `EcdsaTestUtils.ts` does, collect two low-s signatures off-chain, submit
- *   keys and signatures in matching `Vector<2>` positions.
+ *   `EcdsaTestUtils.ts` does, collect `k` low-s signatures off-chain, submit
+ *   keys and signatures in matching `Vector<k>` positions.
  * - `mint`: hand the returned `ShieldedCoinInfo` to the recipient out of
  *   band; contract-initiated mints create no ciphertext, so a wallet cannot
  *   find the coin by scanning.
@@ -212,7 +216,7 @@ pragma language_version >= 0.26.0;
  *
  * @notice Scalability:
  * - Throughput: one operation per block (see Concurrency).
- * - State: constant-size, two counters and a three-entry signer set. Nothing
+ * - State: constant-size, two counters and an `n`-entry signer set. Nothing
  *   grows per operation.
  * - Amounts: mints cap at `Uint<64>` by `mintShieldedToken`. Burns take
  *   `Uint<128>`, the coin value range.
@@ -225,10 +229,10 @@ pragma language_version >= 0.26.0;
  *
  * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
-module NativeShieldedTokenIssuer {
+module NativeShieldedTokenIssuer<#k> {
   import CompactStandardLibrary;
 
-  import "../EcdsaSignerManager" prefix EcdsaSignerManager_;
+  import "../EcdsaMultisig"<k> prefix EcdsaMultisig_;
   import "../../crypto/Eip712" prefix Eip712_;
   import "../../utils/EvmAbi" prefix EvmAbi_;
   import "../../token/NativeShieldedToken" prefix NST_;
@@ -238,7 +242,7 @@ module NativeShieldedTokenIssuer {
   // implementing contract can surface every ledger field under its own key.
   // The circuits stay behind the prefixes above. The derived-nonce counter is
   // aliased because this module's replay counter already owns `_counter`.
-  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaSignerManager";
+  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaMultisig"<k>;
   import { _domain, _name, _symbol, _decimals, _isInitialized } from "../../token/NativeShieldedToken";
   import { _counter as _derivedNonceCounter } from "../../token/extensions/NativeShieldedTokenDerivedNonce";
   export { _instanceSalt, _signers, _signerCount, _threshold };
@@ -262,9 +266,8 @@ module NativeShieldedTokenIssuer {
   export sealed ledger _domainSeparator: Bytes<32>;
 
   /**
-   * @description Registers the signer set, initializes the token metadata
-   * and domain, and fixes the EIP-712 domain separator. The threshold is
-   * fixed at 2.
+   * @description Registers the signer set at threshold `k`, initializes the
+   * token metadata and domain, and fixes the EIP-712 domain separator.
    *
    * @notice Call from the implementing contract's constructor only. It writes
    * the token module's `sealed` domain and `_domainSeparator`, so
@@ -281,24 +284,25 @@ module NativeShieldedTokenIssuer {
    *
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
+   * - `n` must be at least `k`.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Bytes<32>} tokenDomain - Domain separator for this contract's token color.
    * @param {Opaque<"string">} name_ - The token name.
    * @param {Opaque<"string">} symbol_ - The token symbol.
    * @param {Uint<8>} decimals_ - The token decimals.
-   * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+   * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
    * @returns {[]} Empty tuple.
    */
-  export circuit initialize(
+  export circuit initialize<#n>(
     instanceSalt: Bytes<32>,
     tokenDomain: Bytes<32>,
     name_: Opaque<"string">,
     symbol_: Opaque<"string">,
     decimals_: Uint<8>,
-    signerCommitments: Vector<3, Bytes<32>>,
+    signerCommitments: Vector<n, Bytes<32>>
   ): [] {
-    EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, 2);
+    EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
     NST_initialize(tokenDomain, name_, symbol_, decimals_);
 
     const hashedName = keccak256<Bytes<25>>(pad(25, "NativeShieldedTokenIssuer"));
@@ -410,7 +414,7 @@ module NativeShieldedTokenIssuer {
     pk: Secp256k1Point,
     salt: Bytes<32>
   ): Bytes<32> {
-    return EcdsaSignerManager_calculateSignerId(pk, salt);
+    return EcdsaMultisig_calculateSignerId(pk, salt);
   }
 
   /**
@@ -423,27 +427,26 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the only copy available to the
    * recipient; deliver it out of band.
    *
-   * @constraints k=17, rows=89815 (zkir-v3)
+   * @constraints k=17, rows=89807 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the mint message hash.
-   * - Signers must not be duplicates.
-   * - Threshold must be met.
+   * - No two entries may be the same signer.
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over the mint message hash.
    * - `recipient` is not zero.
    *
    * @param {Uint<64>} amount - The token amount to mint.
    * @param {ZswapCoinPublicKey} recipient - The coin public key to receive the minted tokens.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
+   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mint(
     amount: Uint<64>,
     recipient: ZswapCoinPublicKey,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    pubkeys: Vector<k, Secp256k1Point>,
+    signatures: Vector<k, Secp256k1EcdsaSignature>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
@@ -459,7 +462,7 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__mint(recipient, amount, NSTDerivedNonce__deriveNonce());
   }
@@ -472,24 +475,23 @@ module NativeShieldedTokenIssuer {
    * @notice The returned coin info is the contract's only record of the
    * holding; persist it for `burnFromSelf`.
    *
-   * @constraints k=17, rows=85594 (zkir-v3)
+   * @constraints k=17, rows=85586 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the mint-to-self message hash.
-   * - Signers must not be duplicates.
-   * - Threshold must be met.
+   * - No two entries may be the same signer.
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over the mint-to-self message hash.
    *
    * @param {Uint<64>} amount - The token amount to mint.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint-to-self hash.
+   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint-to-self hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mintToSelf(
     amount: Uint<64>,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    pubkeys: Vector<k, Secp256k1Point>,
+    signatures: Vector<k, Secp256k1EcdsaSignature>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
@@ -504,7 +506,7 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__mintToSelf(amount, NSTDerivedNonce__deriveNonce());
   }
@@ -517,14 +519,13 @@ module NativeShieldedTokenIssuer {
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; deliver it out of band.
    *
-   * @constraints k=17, rows=119826 (zkir-v3)
+   * @constraints k=17, rows=119818 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the burn message hash.
-   * - Signers must not be duplicates.
-   * - Threshold must be met.
+   * - No two entries may be the same signer.
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over the burn message hash.
    * - `coin.color` is this contract's token color.
    * - `amount` is less than or equal to `coin.value`.
    * - `refundTo` is not zero.
@@ -532,8 +533,8 @@ module NativeShieldedTokenIssuer {
    * @param {ShieldedCoinInfo} coin - The holder's coin to burn from.
    * @param {Uint<128>} amount - The token amount to burn.
    * @param {ZswapCoinPublicKey} refundTo - Receives `coin.value - amount`.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
+   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
    * @returns {Maybe<ShieldedCoinInfo>} The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -541,8 +542,8 @@ module NativeShieldedTokenIssuer {
     coin: ShieldedCoinInfo,
     amount: Uint<128>,
     refundTo: ZswapCoinPublicKey,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    pubkeys: Vector<k, Secp256k1Point>,
+    signatures: Vector<k, Secp256k1EcdsaSignature>
   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
@@ -558,7 +559,7 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint128Word(amount)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__burn(coin, amount, refundTo);
   }
@@ -575,30 +576,29 @@ module NativeShieldedTokenIssuer {
    * The digest binds `coin.nonce` and `coin.value`, so approvals authorize one
    * specific holding rather than an amount.
    *
-   * @constraints k=17, rows=104981 (zkir-v3)
+   * @constraints k=17, rows=104973 (zkir-v3)
    *
    * Requirements:
    *
-   * - Both public keys must hash to registered signer commitments.
-   * - Both signatures must be valid over the burn-from-self message hash.
-   * - Signers must not be duplicates.
-   * - Threshold must be met.
+   * - No two entries may be the same signer.
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over the burn-from-self message hash.
    * - `coin.color` is this contract's token color.
    * - `amount` is less than or equal to `coin.value`.
    * - `coin.nonce` and `coin.value` match the approved coin.
    *
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<128>} amount - The token amount to burn.
-   * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn-from-self hash.
+   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn-from-self hash.
    * @returns {Maybe<ShieldedCoinInfo>} The change coin retained by the
    * contract, or `none` if the coin was burned in full.
    */
   export circuit burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
     amount: Uint<128>,
-    pubkeys: Vector<2, Secp256k1Point>,
-    signatures: Vector<2, Secp256k1EcdsaSignature>
+    pubkeys: Vector<k, Secp256k1Point>,
+    signatures: Vector<k, Secp256k1EcdsaSignature>
   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
@@ -615,7 +615,7 @@ module NativeShieldedTokenIssuer {
       EvmAbi_uint128Word(coin.value)
     ]));
 
-    EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__burnFromSelf(coin, amount);
   }
@@ -684,7 +684,7 @@ module NativeShieldedTokenIssuer {
    * @returns {Uint<8>} The signer count.
    */
   export circuit getSignerCount(): Uint<8> {
-    return EcdsaSignerManager_getSignerCount();
+    return EcdsaMultisig_getSignerCount();
   }
 
   /**
@@ -695,7 +695,7 @@ module NativeShieldedTokenIssuer {
    * @returns {Uint<8>} The threshold.
    */
   export circuit getThreshold(): Uint<8> {
-    return EcdsaSignerManager_getThreshold();
+    return EcdsaMultisig_getThreshold();
   }
 
   /**
@@ -707,6 +707,6 @@ module NativeShieldedTokenIssuer {
    * @returns {Boolean} True if registered.
    */
   export circuit isSigner(commitment: Bytes<32>): Boolean {
-    return EcdsaSignerManager_isSigner(commitment);
+    return EcdsaMultisig_isSigner(commitment);
   }
 }

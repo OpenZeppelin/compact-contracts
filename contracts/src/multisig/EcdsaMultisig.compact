@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/EcdsaMultisig.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module EcdsaMultisig<#k>
+ * @description
+ * `EcdsaMultisigCore` with `t = k`: a `k`-of-`n` multisignature whose
+ * threshold is the compile-time approval width. `initialize` stores `k` as
+ * the threshold and `assertApprovals` verifies exactly `k` approvals, so a
+ * deployment cannot require fewer approvals than a circuit verifies, or more
+ * than it can carry. Notation, derivations, compatibility, privacy,
+ * concurrency and client-side duties are the core's; see
+ * `EcdsaMultisigCore`. Only what differs is stated here.
+ *
+ * @dev Parameterization:
+ * `k` is fixed at import time (`import "./EcdsaMultisig"<2> prefix
+ * EcdsaMultisig_;`) and is both the approval width and the threshold. `n` is
+ * fixed per `initialize<#n>` call and must be at least `k`. There is no
+ * threshold argument anywhere.
+ *
+ * @notice Security:
+ * - No misconfiguration path: the core's `k >= t` check is satisfied by
+ *   construction, so the only rejections are the core's signature, registry,
+ *   duplicate and bounds checks.
+ * - Immutable set: losing more than `n - k` keys freezes every gated circuit.
+ *
+ * @notice Scope:
+ * A pass-through. The registry state and the getters are re-exported from
+ * the core unchanged; `initialize` drops the threshold argument and
+ * `assertApprovals` drops the width generic.
+ *
+ * @dev Performance:
+ * Identical to the core at the same width: `assertApprovals` is k=16,
+ * rows=40538 at `k = 1`; k=17, rows=64908 at `k = 2`; k=17, rows=94995 at
+ * `k = 3`. The wrapper adds no constraints.
+ *
+ * @dev Composition:
+ * - Import this module at exactly one width per contract. Two widths do not
+ *   get separate registries: they share one `EcdsaMultisigCore`, so the
+ *   second `initialize` trips the once-only guard and the other width
+ *   verifies against the first width's threshold.
+ * - Do not import `Signer` or `EcdsaMultisigCore` directly alongside this
+ *   module. A direct import instantiates a separate registry that
+ *   `assertApprovals` never reads.
+ */
+module EcdsaMultisig<#k> {
+  import CompactStandardLibrary;
+  import "./EcdsaMultisigCore" prefix Core_;
+
+  import {
+    _instanceSalt,
+    _signers,
+    _signerCount,
+    _threshold,
+    calculateSignerId,
+    getSignerCount,
+    getThreshold,
+    isSigner
+  } from "./EcdsaMultisigCore";
+  export {
+    _instanceSalt,
+    _signers,
+    _signerCount,
+    _threshold,
+    calculateSignerId,
+    getSignerCount,
+    getThreshold,
+    isSigner
+  };
+
+  /**
+   * @description Stores the instance salt and registers the signer set at
+   * threshold `k`. Call from the consuming contract's constructor only. The
+   * set is final: signers must be known at deploy.
+   *
+   * Requirements:
+   *
+   * - Can only be called once.
+   * - `instanceSalt` should be cryptographically random.
+   * - `signerCommitments` must not contain duplicates.
+   * - `n` must be at least `k`.
+   *
+   * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
+   * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize<#n>(
+    instanceSalt: Bytes<32>,
+    signerCommitments: Vector<n, Bytes<32>>
+  ): [] {
+    Core_initialize<n>(instanceSalt, signerCommitments, k);
+  }
+
+  /**
+   * @description Verifies `k` approvals over `msgHash`: distinct registered
+   * signers, each with a valid low-s signature.
+   *
+   * `pubkeys` and `signatures` are parallel: entry `i` of each belongs to the
+   * same signer. Constraints below are measured at `k = 2`.
+   *
+   * @constraints k=17, rows=64908 (zkir-v3)
+   *
+   * @param {Bytes<32>} msgHash - The digest the signers approved.
+   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - Signatures over `msgHash`.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertApprovals(
+    msgHash: Bytes<32>,
+    pubkeys: Vector<k, Secp256k1Point>,
+    signatures: Vector<k, Secp256k1EcdsaSignature>
+  ): [] {
+    Core_assertApprovals<k>(msgHash, pubkeys, signatures);
+  }
+}

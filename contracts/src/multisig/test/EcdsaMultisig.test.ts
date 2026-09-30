@@ -5,8 +5,12 @@ import {
   sign,
   signerFromLabel,
 } from '#test-utils/fixtures/ecdsa.js';
-import { EcdsaSignerManagerSimulator } from './simulators/EcdsaSignerManagerSimulator.js';
-import { EcdsaSignerManagerSmallSetSimulator } from './simulators/EcdsaSignerManagerSmallSetSimulator.js';
+import { EcdsaMultisig1To1Simulator } from './simulators/EcdsaMultisig1To1Simulator.js';
+import { EcdsaMultisig1To3Simulator } from './simulators/EcdsaMultisig1To3Simulator.js';
+import { EcdsaMultisig2To1Simulator } from './simulators/EcdsaMultisig2To1Simulator.js';
+import { EcdsaMultisig2To3And3To3Simulator } from './simulators/EcdsaMultisig2To3And3To3Simulator.js';
+import { EcdsaMultisig2To3Simulator } from './simulators/EcdsaMultisig2To3Simulator.js';
+import { EcdsaMultisig3To3Simulator } from './simulators/EcdsaMultisig3To3Simulator.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
 const OTHER_SALT = new Uint8Array(32).fill(0xbb);
@@ -18,13 +22,13 @@ const OTHER_DIGEST = new Uint8Array(32).fill(0x43);
 
 // Real secp256k1 signers, deterministic from labels. No caller identity is
 // involved, so this spec runs unchanged on live.
-const S1 = signerFromLabel('ecdsa-manager-1');
-const S2 = signerFromLabel('ecdsa-manager-2');
-const S3 = signerFromLabel('ecdsa-manager-3');
-const OUTSIDER = signerFromLabel('ecdsa-manager-outsider');
+const S1 = signerFromLabel('ecdsa-multisig-1');
+const S2 = signerFromLabel('ecdsa-multisig-2');
+const S3 = signerFromLabel('ecdsa-multisig-3');
+const OUTSIDER = signerFromLabel('ecdsa-multisig-outsider');
 
 const commitmentOf = (signer: Signer, salt: Uint8Array = INSTANCE_SALT) =>
-  EcdsaSignerManagerSimulator.calculateSignerId(signer.publicKey, salt);
+  EcdsaMultisig2To3Simulator.calculateSignerId(signer.publicKey, salt);
 
 const COMMITMENT1 = commitmentOf(S1);
 const COMMITMENT2 = commitmentOf(S2);
@@ -32,20 +36,16 @@ const COMMITMENT3 = commitmentOf(S3);
 const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
 const OUTSIDER_COMMITMENT = commitmentOf(OUTSIDER);
 
-let manager: EcdsaSignerManagerSimulator;
+let manager: EcdsaMultisig2To3Simulator;
 
 // Mutating groups build one manager per test (`beforeEach`); the read-only
 // `view` group shares one deploy (`beforeAll`).
-const freshManager = (threshold = 2n) =>
-  EcdsaSignerManagerSimulator.create(
-    INSTANCE_SALT,
-    SIGNER_COMMITMENTS,
-    threshold,
-  );
+const freshMultisig = () =>
+  EcdsaMultisig2To3Simulator.create(INSTANCE_SALT, SIGNER_COMMITMENTS, true);
 
 // Each signer signs the digest it is submitted against.
 const approve = (
-  m: EcdsaSignerManagerSimulator,
+  m: EcdsaMultisig2To3Simulator,
   digest: Uint8Array,
   signers: Signer[],
 ) =>
@@ -55,10 +55,10 @@ const approve = (
     signers.map((s) => sign(s, digest)),
   );
 
-describe('EcdsaSignerManager', () => {
+describe('EcdsaMultisig', () => {
   describe('constructor', () => {
     beforeEach(async () => {
-      manager = await freshManager();
+      manager = await freshMultisig();
     });
 
     it('should register all signer commitments', async () => {
@@ -76,84 +76,171 @@ describe('EcdsaSignerManager', () => {
       expect(await manager.getThreshold()).toEqual(2n);
     });
 
-    // `assertApprovals` verifies exactly 2: below that the stored threshold
-    // misreports, above it every gated call locks out. The guard fires before
-    // the signers register, so `Signer`'s zero and count guards are
-    // unreachable here (covered in Signer.test.ts).
-    it('should reject any threshold other than 2', async () => {
-      for (const threshold of [0n, 1n, 3n, 4n]) {
-        await expect(freshManager(threshold)).rejects.toThrow(
-          'EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)',
-        );
-      }
-    });
-
-    // A one-signer set can never supply the two distinct signers
-    // `assertApprovals` demands, so every gated operation would revert.
-    it('should reject a single signer', async () => {
-      await expect(
-        EcdsaSignerManagerSmallSetSimulator.create(
-          INSTANCE_SALT,
-          [COMMITMENT1, COMMITMENT2],
-          2n,
-          true,
-        ),
-      ).rejects.toThrow(
-        'EcdsaSignerManager: fewer than 2 signers (assertApprovals verifies 2 signatures)',
-      );
-    });
-
-    it('should initialize a two-signer set at threshold 2', async () => {
-      const twoSigners = await EcdsaSignerManagerSmallSetSimulator.create(
+    it('should initialize a single signer at threshold 1 and accept its approval', async () => {
+      const solo = await EcdsaMultisig1To1Simulator.create(
         INSTANCE_SALT,
-        [COMMITMENT1, COMMITMENT2],
-        2n,
+        COMMITMENT1,
       );
-      expect(await twoSigners.getSignerCount()).toEqual(2n);
-      expect(await twoSigners.getThreshold()).toEqual(2n);
-    });
-
-    it('should reject a two-signer set at threshold 1', async () => {
-      await expect(
-        EcdsaSignerManagerSmallSetSimulator.create(
-          INSTANCE_SALT,
-          [COMMITMENT1, COMMITMENT2],
-          1n,
-        ),
-      ).rejects.toThrow(
-        'EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)',
-      );
-    });
-
-    it('should accept both signers of a two-signer set', async () => {
-      const twoSigners = await EcdsaSignerManagerSmallSetSimulator.create(
-        INSTANCE_SALT,
-        [COMMITMENT1, COMMITMENT2],
-        2n,
-      );
-      await twoSigners.assertApprovals(
-        DIGEST,
-        [S1.publicKey, S2.publicKey],
-        [sign(S1, DIGEST), sign(S2, DIGEST)],
-      );
+      expect(await solo.getSignerCount()).toEqual(1n);
+      expect(await solo.getThreshold()).toEqual(1n);
+      await solo.assertApprovals(DIGEST, [S1.publicKey], [sign(S1, DIGEST)]);
     });
 
     it('should fail when initialized twice', async () => {
       await expect(
-        EcdsaSignerManagerSimulator.create(
+        EcdsaMultisig2To3Simulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
-          2n,
+          true,
           true,
         ),
-      ).rejects.toThrow('EcdsaSignerManager: signers already registered');
+      ).rejects.toThrow('EcdsaMultisigCore: signers already registered');
+    });
+
+    it('rejects a width above the signer count', async () => {
+      await expect(
+        EcdsaMultisig2To1Simulator.create(INSTANCE_SALT, COMMITMENT1),
+      ).rejects.toThrow('Signer: threshold exceeds signer count');
+    });
+  });
+
+  describe('uninitialized', () => {
+    it('should reject approvals with the threshold unset', async () => {
+      const uninitialized = await EcdsaMultisig2To3Simulator.create(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+        false,
+      );
+      expect(await uninitialized.getSignerCount()).toEqual(0n);
+      await expect(approve(uninitialized, DIGEST, [S1, S2])).rejects.toThrow(
+        'Signer: threshold not set',
+      );
+    });
+  });
+
+  describe('3-of-3', () => {
+    let all: EcdsaMultisig3To3Simulator;
+
+    beforeEach(async () => {
+      all = await EcdsaMultisig3To3Simulator.create(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+      );
+    });
+
+    const approveAll = (signers: Signer[]) =>
+      all.assertApprovals(
+        DIGEST,
+        signers.map((s) => s.publicKey),
+        signers.map((s) => sign(s, DIGEST)),
+      );
+
+    it('should initialize with 3-of-3 threshold', async () => {
+      expect(await all.getSignerCount()).toEqual(3n);
+      expect(await all.getThreshold()).toEqual(3n);
+    });
+
+    it('should accept approvals from all three signers', async () => {
+      await approveAll([S1, S2, S3]);
+    });
+
+    it('should reject a non-adjacent duplicate signer', async () => {
+      await expect(approveAll([S1, S2, S1])).rejects.toThrow(
+        'EcdsaMultisigCore: duplicate signer',
+      );
+    });
+
+    it('should reject a non-signer pubkey in the last slot', async () => {
+      await expect(approveAll([S1, S2, OUTSIDER])).rejects.toThrow(
+        'Signer: not a signer',
+      );
+    });
+  });
+
+  describe('1-of-3', () => {
+    let oneOfThree: EcdsaMultisig1To3Simulator;
+
+    beforeEach(async () => {
+      oneOfThree = await EcdsaMultisig1To3Simulator.create(
+        INSTANCE_SALT,
+        SIGNER_COMMITMENTS,
+      );
+    });
+
+    const approveOne = (signer: Signer) =>
+      oneOfThree.assertApprovals(
+        DIGEST,
+        [signer.publicKey],
+        [sign(signer, DIGEST)],
+      );
+
+    it('initializes with 1-of-3 threshold', async () => {
+      expect(await oneOfThree.getSignerCount()).toEqual(3n);
+      expect(await oneOfThree.getThreshold()).toEqual(1n);
+    });
+
+    it('accepts one approval from any signer', async () => {
+      for (const s of [S1, S2, S3]) {
+        await approveOne(s);
+      }
+    });
+
+    it('rejects a lone non-signer approval', async () => {
+      await expect(approveOne(OUTSIDER)).rejects.toThrow(
+        'Signer: not a signer',
+      );
+    });
+  });
+
+  describe('two widths in one contract', () => {
+    let shared: EcdsaMultisig2To3And3To3Simulator;
+
+    const approveAt = (width: 2 | 3, signers: Signer[]) => {
+      const pubkeys = signers.map((s) => s.publicKey);
+      const signatures = signers.map((s) => sign(s, DIGEST));
+      return width === 2
+        ? shared.assertApprovals2Approvals(DIGEST, pubkeys, signatures)
+        : shared.assertApprovals3Approvals(DIGEST, pubkeys, signatures);
+    };
+
+    it('rejects initializing the second width', async () => {
+      await expect(
+        EcdsaMultisig2To3And3To3Simulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          true,
+        ),
+      ).rejects.toThrow('EcdsaMultisigCore: signers already registered');
+    });
+
+    describe('with only width 2 initialized', () => {
+      beforeEach(async () => {
+        shared = await EcdsaMultisig2To3And3To3Simulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          false,
+        );
+      });
+
+      it('reads threshold 2 at both widths', async () => {
+        expect(await shared.getThreshold2()).toEqual(2n);
+        expect(await shared.getThreshold3()).toEqual(2n);
+      });
+
+      it('accepts width-3 approvals against the width-2 threshold', async () => {
+        await approveAt(3, [S1, S2, S3]);
+      });
+
+      it('accepts two approvals at width 2', async () => {
+        await approveAt(2, [S1, S2]);
+      });
     });
   });
 
   describe('when initialized', () => {
     describe('view', () => {
       beforeAll(async () => {
-        manager = await freshManager();
+        manager = await freshMultisig();
       });
 
       it('getSignerCount should return 3', async () => {
@@ -177,7 +264,7 @@ describe('EcdsaSignerManager', () => {
 
     describe('assertApprovals', () => {
       beforeEach(async () => {
-        manager = await freshManager();
+        manager = await freshMultisig();
       });
 
       it('should accept two valid signatures from signers 1 and 2', async () => {
@@ -190,7 +277,7 @@ describe('EcdsaSignerManager', () => {
 
       it('should reject duplicate signer', async () => {
         await expect(approve(manager, DIGEST, [S1, S1])).rejects.toThrow(
-          'Multisig: duplicate signer',
+          'EcdsaMultisigCore: duplicate signer',
         );
       });
 
@@ -208,7 +295,7 @@ describe('EcdsaSignerManager', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, DIGEST), sign(S3, DIGEST)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a signature over a different digest', async () => {
@@ -218,7 +305,7 @@ describe('EcdsaSignerManager', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, DIGEST), sign(S2, OTHER_DIGEST)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
 
       it('should reject a high-s signature', async () => {
@@ -230,7 +317,7 @@ describe('EcdsaSignerManager', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, DIGEST), highSTwin(sign(S2, DIGEST))],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
       });
     });
 
@@ -249,7 +336,7 @@ describe('EcdsaSignerManager', () => {
       });
 
       it('should match the constructor-registered commitments', async () => {
-        manager = await freshManager();
+        manager = await freshMultisig();
         expect(await manager.isSigner(commitmentOf(S1))).toEqual(true);
         expect(await manager.isSigner(commitmentOf(S1, OTHER_SALT))).toEqual(
           false,
@@ -258,7 +345,7 @@ describe('EcdsaSignerManager', () => {
 
       it('should reject the identity point', () => {
         expect(() =>
-          EcdsaSignerManagerSimulator.calculateSignerId(
+          EcdsaMultisig2To3Simulator.calculateSignerId(
             { x: 0n, y: 0n, identity: true },
             INSTANCE_SALT,
           ),

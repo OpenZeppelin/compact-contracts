@@ -5,11 +5,10 @@ import {
 } from '@openzeppelin/compact-simulator';
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
-  type Ledger,
   ledger,
-  Contract as MockShieldedMultiSigV2_2To3,
+  Contract as MockShieldedMultiSigV2_1To3,
   pureCircuits,
-} from '../../../../../artifacts/MockShieldedMultiSigV2_2To3/contract/index.js';
+} from '../../../../../artifacts/MockShieldedMultiSigV2_1To3/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -31,44 +30,41 @@ type ShieldedSendResult = {
 type ShieldedMultiSigV2Args = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
-  isInit: boolean,
 ];
 
-const ShieldedMultiSigV2_2To3SimulatorBase = createSimulator<
+const ShieldedMultiSigV2_1To3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockShieldedMultiSigV2_2To3<EmptyPrivateState>,
+  MockShieldedMultiSigV2_1To3<EmptyPrivateState>,
   ShieldedMultiSigV2Args
 >({
   contractFactory: (witnesses) =>
-    new MockShieldedMultiSigV2_2To3<EmptyPrivateState>(witnesses),
+    new MockShieldedMultiSigV2_1To3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, isInit) => [
+  contractArgs: (instanceSalt, signerCommitments) => [
     instanceSalt,
     signerCommitments,
-    isInit,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockShieldedMultiSigV2_2To3',
+  artifactName: 'MockShieldedMultiSigV2_1To3',
 });
 
-export class ShieldedMultiSigV2_2To3Simulator extends ShieldedMultiSigV2_2To3SimulatorBase {
+export class ShieldedMultiSigV2_1To3Simulator extends ShieldedMultiSigV2_1To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
-    isInit: boolean,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<ShieldedMultiSigV2_2To3Simulator> {
+  ): Promise<ShieldedMultiSigV2_1To3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitments, isInit],
+      [instanceSalt, signerCommitments],
       options,
-    ) as Promise<ShieldedMultiSigV2_2To3Simulator>;
+    ) as Promise<ShieldedMultiSigV2_1To3Simulator>;
   }
 
   public static calculateSignerId(
@@ -102,13 +98,5 @@ export class ShieldedMultiSigV2_2To3Simulator extends ShieldedMultiSigV2_2To3Sim
 
   public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
-  }
-
-  public isSigner(commitment: Uint8Array): Promise<boolean> {
-    return this.circuits.impure.isSigner(commitment);
-  }
-
-  public getLedger(): Promise<Ledger> {
-    return this.getPublicState();
   }
 }

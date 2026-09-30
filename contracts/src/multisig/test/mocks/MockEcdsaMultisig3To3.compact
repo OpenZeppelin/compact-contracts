@@ -9,20 +9,19 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../EcdsaMultisig"<1> prefix EcdsaMultisig_;
+import "../../EcdsaMultisig"<3> prefix EcdsaMultisig_;
 
 /**
- * @description One signer at threshold 1, `assertApprovals` at width 1: the
- * set the 2-of-3 mock's fixed `Vector<3>` cannot reach.
+ * @description Three signers at threshold 3, `assertApprovals` at width 3.
  */
-constructor(instanceSalt: Bytes<32>, signerCommitment: Bytes<32>) {
-  EcdsaMultisig_initialize<1>(instanceSalt, [signerCommitment]);
+constructor(instanceSalt: Bytes<32>, signerCommitments: Vector<3, Bytes<32>>) {
+  EcdsaMultisig_initialize<3>(instanceSalt, signerCommitments);
 }
 
 export circuit assertApprovals(
   msgHash: Bytes<32>,
-  pubkeys: Vector<1, Secp256k1Point>,
-  signatures: Vector<1, Secp256k1EcdsaSignature>
+  pubkeys: Vector<3, Secp256k1Point>,
+  signatures: Vector<3, Secp256k1EcdsaSignature>
 ): [] {
   return EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 }
