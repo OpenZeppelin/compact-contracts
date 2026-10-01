@@ -274,7 +274,7 @@ describe('ShieldedMultiSigV2', () => {
           expect(await multisig.getNonce()).toEqual(1n);
           await expect(
             multisig.execute(to, 100n, coin, pubkeys, sigs),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
       });
 
@@ -290,7 +290,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S1.publicKey],
             [sign(S1, digest), sign(S1, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: duplicate signer');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
@@ -321,7 +321,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a signature over a different digest', async () => {
@@ -337,7 +337,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       describe('parameter binding', () => {
@@ -354,7 +354,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a signature bound to a different recipient address', async () => {
@@ -371,7 +371,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a signature bound to a different coin color', async () => {
@@ -394,7 +394,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
       });
 
@@ -454,7 +454,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(structHash)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -470,7 +470,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -484,7 +484,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -506,7 +506,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -525,7 +525,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('rejects a contract recipient', async () => {
@@ -585,7 +585,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), highSTwin(sign(S2, digest))],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
 
@@ -643,7 +643,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
 
@@ -671,7 +671,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
   });

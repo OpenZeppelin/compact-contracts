@@ -9,17 +9,17 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../EcdsaMultisig"<2> prefix EcdsaMultisig_;
+import "../../Secp256k1EcdsaMultisig"<2> prefix Secp256k1EcdsaMultisig_;
 
 /**
  * @description The deploy must fail because width 2 exceeds the signer count
  * of 1.
  */
 constructor(instanceSalt: Bytes<32>, signerCommitment: Bytes<32>) {
-  EcdsaMultisig_initialize<1>(instanceSalt, [signerCommitment]);
+  Secp256k1EcdsaMultisig_initialize<1>(instanceSalt, [signerCommitment]);
 }
 
 // Unreachable: the deploy fails first. A contract needs one export.
 export circuit getThreshold(): Uint<8> {
-  return EcdsaMultisig_getThreshold();
+  return Secp256k1EcdsaMultisig_getThreshold();
 }
