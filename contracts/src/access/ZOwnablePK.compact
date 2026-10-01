@@ -39,6 +39,8 @@ pragma language_version >= 0.23.0;
  *   owner from proving ownership or transferring it.
  * - Ownership validation is entirely circuit-based using witness-provided values.
  * - The `_instanceSalt` is immutable and used to differentiate deployments.
+ *   Use a fresh random value per deployment; a reused salt links the same
+ *   owner across deployments.
  *
  * @notice Best used for single-admin contracts with privacy requirements.
  * It is not designed for multi-owner or role-based access control.
@@ -105,6 +107,7 @@ module ZOwnablePK {
    *
    * - Contract is not initialized.
    * - `ownerId` is not zero.
+   * - `instanceSalt` is not zero.
    *
    * @param {Bytes<32>} ownerId - The owner's unique identifier SHA256(pk, nonce).
    * @param {Bytes<32>} instanceSalt - Contract salt to prevent duplicate commitments if
@@ -116,6 +119,7 @@ module ZOwnablePK {
     _isInitialized = true;
 
     assert(ownerId != default<Bytes<32>>, "ZOwnablePK: invalid id");
+    assert(instanceSalt != default<Bytes<32>>, "ZOwnablePK: invalid salt");
     _instanceSalt = disclose(instanceSalt);
     _transferOwnership(ownerId);
   }
