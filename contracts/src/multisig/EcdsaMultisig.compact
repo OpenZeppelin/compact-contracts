@@ -28,6 +28,7 @@ pragma language_version >= 0.26.0;
  * `t` is fixed at import (`import "./EcdsaMultisig"<2> prefix
  * EcdsaMultisig_;`) and `n` per `initialize<#n>` call. `Signer` enforces
  * `n >= t` at `initialize`. No circuit takes a threshold argument.
+ * `t = 0` does not compile.
  *
  * @dev Compatibility:
  * The wire format is the `multisig:signer:` domain, the
@@ -55,7 +56,7 @@ pragma language_version >= 0.26.0;
  *   high-s encoding is an invalid signature.
  * - Distinct signers: all `t(t-1)/2` pairs are compared, so no key counts
  *   twice.
- * - Bounds: `Signer` rejects `t = 0` and `t > n` at `initialize`.
+ * - Bounds: `Signer` rejects `t > n` at `initialize`.
  * - Once-only: `initialize` rejects a second call while signers are
  *   registered, and writes the `sealed` salt, so it is constructor-only.
  * - Immutable to the deployed circuit set: no signer or threshold change is
