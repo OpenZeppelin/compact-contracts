@@ -347,6 +347,14 @@ describe('EcdsaMultisig', () => {
         expect(commitmentOf(S1, OTHER_SALT)).not.toEqual(COMMITMENT1);
       });
 
+      it('should match the pinned vector', () => {
+        // SHA-256 over little-endian pkX and pkY, the salt, and
+        // pad(32, "ecdsaMultisig:signer:").
+        expect(Buffer.from(COMMITMENT1).toString('hex')).toEqual(
+          'f258010243b8adea16f1c6ded83c78d46dbbec0a7471c8ed012475cf246a3e03',
+        );
+      });
+
       it('should match the constructor-registered commitments', async () => {
         manager = await freshMultisig();
         expect(await manager.isSigner(commitmentOf(S1))).toEqual(true);
