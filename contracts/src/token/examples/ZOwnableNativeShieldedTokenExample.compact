@@ -104,18 +104,6 @@ export circuit totalMinted(): Uint<128> {
   return ZOwnableNativeShieldedToken_totalMinted();
 }
 
-export circuit name(): Opaque<"string"> {
-  return ZOwnableNativeShieldedToken_name();
-}
-
-export circuit symbol(): Opaque<"string"> {
-  return ZOwnableNativeShieldedToken_symbol();
-}
-
-export circuit decimals(): Uint<8> {
-  return ZOwnableNativeShieldedToken_decimals();
-}
-
 export circuit tokenColor(): Bytes<32> {
   return ZOwnableNativeShieldedToken_tokenColor();
 }
