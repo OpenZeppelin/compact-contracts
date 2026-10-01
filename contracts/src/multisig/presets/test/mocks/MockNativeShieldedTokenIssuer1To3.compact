@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../NativeShieldedTokenIssuer"<1> prefix NativeShieldedTokenIssuer_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
+/**
+ * @description Three signers at threshold 1, `mint` at width 1.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  signerCommitments: Vector<3, Bytes<32>>
+) {
+  NativeShieldedTokenIssuer_initialize<3>(
+    instanceSalt,
+    tokenDomain,
+    name_,
+    symbol_,
+    decimals_,
+    signerCommitments,
+  );
+}
+
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return NativeShieldedTokenIssuer__calculateSignerId(pk, salt);
+}
+
+export circuit mint(
+  amount: Uint<64>,
+  recipient: ZswapCoinPublicKey,
+  pubkeys: Vector<1, Secp256k1Point>,
+  signatures: Vector<1, Secp256k1EcdsaSignature>
+): ShieldedCoinInfo {
+  return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
+}
+
+export circuit getNonce(): Uint<64> {
+  return NativeShieldedTokenIssuer_getNonce();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedTokenIssuer_tokenColor();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return NativeShieldedTokenIssuer_getThreshold();
+}

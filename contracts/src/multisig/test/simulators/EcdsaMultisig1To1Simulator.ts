@@ -6,55 +6,49 @@ import {
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
-  Contract as MockEcdsaSignerManagerSmallSet,
-} from '../../../../artifacts/MockEcdsaSignerManagerSmallSet/contract/index.js';
+  Contract as MockEcdsaMultisig1To1,
+} from '../../../../artifacts/MockEcdsaMultisig1To1/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type EcdsaSignerManagerSmallSetArgs = readonly [
+type EcdsaMultisig1To1Args = readonly [
   instanceSalt: Uint8Array,
-  signerCommitments: Uint8Array[],
-  threshold: bigint,
-  soloSigner: boolean,
+  signerCommitment: Uint8Array,
 ];
 
-const EcdsaSignerManagerSmallSetSimulatorBase = createSimulator<
+const EcdsaMultisig1To1SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockEcdsaSignerManagerSmallSet<EmptyPrivateState>,
-  EcdsaSignerManagerSmallSetArgs
+  MockEcdsaMultisig1To1<EmptyPrivateState>,
+  EcdsaMultisig1To1Args
 >({
   contractFactory: (witnesses) =>
-    new MockEcdsaSignerManagerSmallSet<EmptyPrivateState>(witnesses),
+    new MockEcdsaMultisig1To1<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, threshold, soloSigner) => [
+  contractArgs: (instanceSalt, signerCommitment) => [
     instanceSalt,
-    signerCommitments,
-    threshold,
-    soloSigner,
+    signerCommitment,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockEcdsaSignerManagerSmallSet',
+  artifactName: 'MockEcdsaMultisig1To1',
 });
 
-/** One- or two-signer deploys; the main mock's `Vector<3>` cannot reach them. */
-export class EcdsaSignerManagerSmallSetSimulator extends EcdsaSignerManagerSmallSetSimulatorBase {
+/** One-signer deploys; the 2-of-3 mock's `Vector<3>` cannot reach them. */
+export class EcdsaMultisig1To1Simulator extends EcdsaMultisig1To1SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
-    signerCommitments: Uint8Array[],
-    threshold: bigint,
-    soloSigner = false,
+    signerCommitment: Uint8Array,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<EcdsaSignerManagerSmallSetSimulator> {
+  ): Promise<EcdsaMultisig1To1Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitments, threshold, soloSigner],
+      [instanceSalt, signerCommitment],
       options,
-    ) as Promise<EcdsaSignerManagerSmallSetSimulator>;
+    ) as Promise<EcdsaMultisig1To1Simulator>;
   }
 
   public assertApprovals(

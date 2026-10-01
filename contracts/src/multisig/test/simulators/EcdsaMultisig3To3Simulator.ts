@@ -6,63 +6,48 @@ import {
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
-  Contract as MockEcdsaSignerManager,
-  pureCircuits,
-} from '../../../../artifacts/MockEcdsaSignerManager/contract/index.js';
+  Contract as MockEcdsaMultisig3To3,
+} from '../../../../artifacts/MockEcdsaMultisig3To3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type EcdsaSignerManagerArgs = readonly [
+type EcdsaMultisig3To3Args = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
-  threshold: bigint,
-  reinitialize: boolean,
 ];
 
-const EcdsaSignerManagerSimulatorBase = createSimulator<
+const EcdsaMultisig3To3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockEcdsaSignerManager<EmptyPrivateState>,
-  EcdsaSignerManagerArgs
+  MockEcdsaMultisig3To3<EmptyPrivateState>,
+  EcdsaMultisig3To3Args
 >({
   contractFactory: (witnesses) =>
-    new MockEcdsaSignerManager<EmptyPrivateState>(witnesses),
+    new MockEcdsaMultisig3To3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, threshold, reinitialize) => [
+  contractArgs: (instanceSalt, signerCommitments) => [
     instanceSalt,
     signerCommitments,
-    threshold,
-    reinitialize,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockEcdsaSignerManager',
+  artifactName: 'MockEcdsaMultisig3To3',
 });
 
-export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase {
+export class EcdsaMultisig3To3Simulator extends EcdsaMultisig3To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
-    threshold: bigint,
-    reinitialize = false,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<EcdsaSignerManagerSimulator> {
+  ): Promise<EcdsaMultisig3To3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitments, threshold, reinitialize],
+      [instanceSalt, signerCommitments],
       options,
-    ) as Promise<EcdsaSignerManagerSimulator>;
-  }
-
-  /** Off-chain commitment derivation, as a deployer computes constructor args. */
-  public static calculateSignerId(
-    pk: Secp256k1Point,
-    salt: Uint8Array,
-  ): Uint8Array {
-    return pureCircuits.calculateSignerId(pk, salt);
+    ) as Promise<EcdsaMultisig3To3Simulator>;
   }
 
   public assertApprovals(
@@ -79,9 +64,5 @@ export class EcdsaSignerManagerSimulator extends EcdsaSignerManagerSimulatorBase
 
   public getThreshold(): Promise<bigint> {
     return this.circuits.impure.getThreshold();
-  }
-
-  public isSigner(commitment: Uint8Array): Promise<boolean> {
-    return this.circuits.impure.isSigner(commitment);
   }
 }

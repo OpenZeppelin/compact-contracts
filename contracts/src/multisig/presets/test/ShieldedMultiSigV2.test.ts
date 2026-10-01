@@ -17,7 +17,7 @@ import {
   hexOf,
   mintMsgHash,
 } from '../../test/EcdsaTestUtils.js';
-import { ShieldedMultiSigV2Simulator } from './simulators/ShieldedMultiSigV2Simulator.js';
+import { ShieldedMultiSigV2_2To3Simulator } from './simulators/ShieldedMultiSigV2_2To3Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 
@@ -36,15 +36,15 @@ const S2 = signerFromLabel('v2-signer-2');
 const S3 = signerFromLabel('v2-signer-3');
 const OUTSIDER = signerFromLabel('v2-outsider');
 
-const COMMITMENT1 = ShieldedMultiSigV2Simulator.calculateSignerId(
+const COMMITMENT1 = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
   S1.publicKey,
   INSTANCE_SALT,
 );
-const COMMITMENT2 = ShieldedMultiSigV2Simulator.calculateSignerId(
+const COMMITMENT2 = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
   S2.publicKey,
   INSTANCE_SALT,
 );
-const COMMITMENT3 = ShieldedMultiSigV2Simulator.calculateSignerId(
+const COMMITMENT3 = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
   S3.publicKey,
   INSTANCE_SALT,
 );
@@ -79,11 +79,11 @@ function makeQualifiedCoin(
 const hexBytes = (hex: string): Uint8Array =>
   Uint8Array.from(Buffer.from(hex, 'hex'));
 
-let multisig: ShieldedMultiSigV2Simulator;
+let multisig: ShieldedMultiSigV2_2To3Simulator;
 
 /** The execute digest the contract computes for these params at its current nonce. */
 async function executeDigest(
-  m: ShieldedMultiSigV2Simulator,
+  m: ShieldedMultiSigV2_2To3Simulator,
   to: { kind: number; address: Uint8Array },
   coin: { color: Uint8Array },
   amount: bigint,
@@ -101,10 +101,9 @@ async function executeDigest(
 // A fresh 2-of-3 stateless multisig. Mutating groups build one per test
 // (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
 const freshMultisig = () =>
-  ShieldedMultiSigV2Simulator.create(
+  ShieldedMultiSigV2_2To3Simulator.create(
     INSTANCE_SALT,
     SIGNER_COMMITMENTS,
-    2n,
     true,
   );
 
@@ -127,36 +126,19 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should initialize with 2-of-3 threshold', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await ShieldedMultiSigV2_2To3Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
-        2n,
         true,
       );
       expect(await multisig.getSignerCount()).toEqual(3n);
       expect(await multisig.getThreshold()).toEqual(2n);
     });
 
-    it('should reject any threshold other than 2', async () => {
-      for (const thresh of [0n, 1n, 3n]) {
-        await expect(
-          ShieldedMultiSigV2Simulator.create(
-            INSTANCE_SALT,
-            SIGNER_COMMITMENTS,
-            thresh,
-            true,
-          ),
-        ).rejects.toThrow(
-          'EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)',
-        );
-      }
-    });
-
     it('should register all signer commitments', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await ShieldedMultiSigV2_2To3Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
-        2n,
         true,
       );
       for (const commitment of SIGNER_COMMITMENTS) {
@@ -165,13 +147,12 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should reject a non-signer commitment', async () => {
-      multisig = await ShieldedMultiSigV2Simulator.create(
+      multisig = await ShieldedMultiSigV2_2To3Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
-        2n,
         true,
       );
-      const unknown = ShieldedMultiSigV2Simulator.calculateSignerId(
+      const unknown = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
         OUTSIDER.publicKey,
         INSTANCE_SALT,
       );
@@ -193,7 +174,7 @@ describe('ShieldedMultiSigV2', () => {
         expect(await multisig.getSignerCount()).toEqual(3n);
       });
 
-      it('getThreshold should match constructor arg', async () => {
+      it('getThreshold should return 2', async () => {
         expect(await multisig.getThreshold()).toEqual(2n);
       });
     });
@@ -293,7 +274,7 @@ describe('ShieldedMultiSigV2', () => {
           expect(await multisig.getNonce()).toEqual(1n);
           await expect(
             multisig.execute(to, 100n, coin, pubkeys, sigs),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisig: invalid signature');
         });
       });
 
@@ -309,7 +290,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S1.publicKey],
             [sign(S1, digest), sign(S1, digest)],
           ),
-        ).rejects.toThrow('Multisig: duplicate signer');
+        ).rejects.toThrow('EcdsaMultisig: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
@@ -340,7 +321,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
 
       it('should reject a signature over a different digest', async () => {
@@ -356,7 +337,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
 
       describe('parameter binding', () => {
@@ -373,7 +354,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisig: invalid signature');
         });
 
         it('should reject a signature bound to a different recipient address', async () => {
@@ -390,7 +371,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisig: invalid signature');
         });
 
         it('should reject a signature bound to a different coin color', async () => {
@@ -413,7 +394,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisig: invalid signature');
         });
       });
 
@@ -473,7 +454,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(structHash)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisig: invalid signature',
           );
         });
 
@@ -489,7 +470,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisig: invalid signature',
           );
         });
 
@@ -503,7 +484,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisig: invalid signature',
           );
         });
 
@@ -525,7 +506,7 @@ describe('ShieldedMultiSigV2', () => {
           );
 
           await expect(executeWith(digest)).rejects.toThrow(
-            'Multisig: invalid signature',
+            'EcdsaMultisig: invalid signature',
           );
         });
 
@@ -544,7 +525,7 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: invalid signature');
+          ).rejects.toThrow('EcdsaMultisig: invalid signature');
         });
 
         it('rejects a contract recipient', async () => {
@@ -563,7 +544,9 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: recipient must be a coin public key');
+          ).rejects.toThrow(
+            'ShieldedMultiSigV2: recipient must be a coin public key',
+          );
         });
 
         it('should carry an unshielded recipient kind into the digest', async () => {
@@ -582,7 +565,9 @@ describe('ShieldedMultiSigV2', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('Multisig: recipient must be a coin public key');
+          ).rejects.toThrow(
+            'ShieldedMultiSigV2: recipient must be a coin public key',
+          );
         });
       });
 
@@ -600,16 +585,15 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), highSTwin(sign(S2, digest))],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
     });
 
     describe('uninitialized', () => {
       it('cannot execute, and holds a zero domain separator', async () => {
-        const uninit = await ShieldedMultiSigV2Simulator.create(
+        const uninit = await ShieldedMultiSigV2_2To3Simulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
-          2n,
           false,
         );
 
@@ -659,7 +643,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
     });
 
@@ -670,10 +654,9 @@ describe('ShieldedMultiSigV2', () => {
 
       it('should reject a signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await ShieldedMultiSigV2Simulator.create(
+        const instance2 = await ShieldedMultiSigV2_2To3Simulator.create(
           INSTANCE_SALT,
           SIGNER_COMMITMENTS,
-          2n,
           true,
           isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
         );
@@ -688,7 +671,7 @@ describe('ShieldedMultiSigV2', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('Multisig: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
     });
   });

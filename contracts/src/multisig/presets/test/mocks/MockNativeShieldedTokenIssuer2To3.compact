@@ -9,7 +9,7 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../NativeShieldedTokenIssuer" prefix NativeShieldedTokenIssuer_;
+import "../../NativeShieldedTokenIssuer"<2> prefix NativeShieldedTokenIssuer_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
@@ -27,7 +27,7 @@ import {
   _symbol,
   _decimals,
   _isInitialized,
-} from "../../NativeShieldedTokenIssuer";
+} from "../../NativeShieldedTokenIssuer"<2>;
 export {
   _counter,
   _domainSeparator,
@@ -63,7 +63,7 @@ constructor(
   isInit: Boolean
 ) {
   if (disclose(isInit)) {
-    NativeShieldedTokenIssuer_initialize(
+    NativeShieldedTokenIssuer_initialize<3>(
       instanceSalt,
       tokenDomain,
       name_,

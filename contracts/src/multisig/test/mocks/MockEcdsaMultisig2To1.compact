@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../EcdsaMultisig"<2> prefix EcdsaMultisig_;
+
+/**
+ * @description The deploy must fail because width 2 exceeds the signer count
+ * of 1.
+ */
+constructor(instanceSalt: Bytes<32>, signerCommitment: Bytes<32>) {
+  EcdsaMultisig_initialize<1>(instanceSalt, [signerCommitment]);
+}
+
+// Unreachable: the deploy fails first. A contract needs one export.
+export circuit getThreshold(): Uint<8> {
+  return EcdsaMultisig_getThreshold();
+}

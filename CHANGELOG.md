@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **Breaking:** Rename `EcdsaSignerManager` to `EcdsaMultisig<#t>`, with the threshold `t` as the import generic and errors prefixed `EcdsaMultisig:` (#1052)
+  - `initialize<#n>(instanceSalt, signerCommitments)` drops the threshold argument
+  - `assertApprovals` verifies exactly `t` distinct registered approvals
+- **Breaking:** `ShieldedMultiSigV2<#t>` and `NativeShieldedTokenIssuer<#t>` take the threshold as a module generic, and the examples fix 2-of-3 (#1052)
+  - `initialize` drops the threshold argument
+  - `execute`, `mint`, `mintToSelf`, `burn` and `burnFromSelf` take `Vector<t>` keys and signatures
+  - `execute`'s recipient error reads `ShieldedMultiSigV2: recipient must be a coin public key`
+
 ## 0.4.0-alpha.5 (2026-09-29)
 
 ### Changed

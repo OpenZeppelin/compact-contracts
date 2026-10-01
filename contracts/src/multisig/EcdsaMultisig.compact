@@ -1,0 +1,275 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/EcdsaMultisig.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module EcdsaMultisig<#t>
+ * @description
+ * A `t`-of-`n` accountable multisignature over secp256k1 ECDSA: `n` signer
+ * commitments are registered at deploy, and a call passes when `t` distinct
+ * registered signers have signed the digest. The threshold `t` is the module
+ * generic, so it is also the approval count every gated call carries.
+ *
+ * @dev Notation:
+ * - `H(...)`: `persistentHash` (SHA-256), a `Bytes<32>` digest.
+ * - `cm = H(pkX, pkY, salt, "multisig:signer:")`: a signer commitment, over
+ *   the affine coordinates of the secp256k1 public key.
+ * - `n`: signers registered at `initialize`.
+ * - `t`: the threshold and the `assertApprovals` width.
+ *
+ * @dev Derivations:
+ * `H` hashes the `SignerCommitmentInput` struct in Compact's encoding, not a
+ * byte concatenation. Do not reimplement it: `calculateSignerId` is the
+ * exported pure circuit, and the consumer test suites pin its vectors. A
+ * wrong derivation registers commitments no key can satisfy.
+ *
+ * @dev Parameterization:
+ * `t` is fixed at import (`import "./EcdsaMultisig"<2> prefix
+ * EcdsaMultisig_;`) and `n` per `initialize<#n>` call. `Signer` enforces
+ * `n >= t` at `initialize`. No circuit takes a threshold argument.
+ * `t = 0` does not compile.
+ *
+ * @dev Compatibility:
+ * The wire format is the `multisig:signer:` domain, the
+ * `SignerCommitmentInput` layout, and the salt. Changing any of them orphans
+ * every registered signer set. The digest is the consumer's and is not part
+ * of this module's format.
+ *
+ * @notice Privacy:
+ * - Public, per tx: the `t` commitments (`disclose(commitment)` in
+ *   `Signer_assertSigner`), so WHICH signers approved.
+ * - Public, as state: `_signers`, `_signerCount`, `_threshold`,
+ *   `_instanceSalt`. All exported.
+ * - Private: public keys and signatures, verified in-circuit and never
+ *   disclosed; the digest, beyond what the consumer publishes.
+ * - Signer identity: keys sit behind `cm` with a public salt, so an observer
+ *   holding a candidate key can test membership; one without cannot
+ *   correlate a signer across deployments.
+ *
+ * @notice Security:
+ * - Order: `assertApprovals` runs `Signer_assertThresholdMet(t)` first, so an
+ *   uninitialized registry fails before any signature work. Then pairwise
+ *   distinct commitments, then per entry a registered commitment and a valid
+ *   signature.
+ * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
+ *   high-s encoding is an invalid signature.
+ * - Distinct signers: all `t(t-1)/2` pairs are compared, so no key counts
+ *   twice.
+ * - Bounds: `Signer` rejects `t > n` at `initialize`.
+ * - Once-only: `initialize` rejects a second call while signers are
+ *   registered, and writes the `sealed` salt, so it is constructor-only.
+ * - Immutable to the deployed circuit set: no signer or threshold change is
+ *   exported. Losing more than `n - t` keys freezes every gated circuit.
+ * - Digest binding is the consumer's: this module verifies signatures over
+ *   whatever `msgHash` it is handed. Replay, domain and instance binding
+ *   belong in the digest.
+ * - Atomicity: a failed assert rejects the whole tx before any state moves,
+ *   and the sender pays no fee.
+ *
+ * @notice Concurrency:
+ * - Every read (`_threshold`, `_signers.member(cm)`, `_instanceSalt`) is
+ *   state written only by `initialize`, so `assertApprovals` and the views
+ *   commute with everything, including each other.
+ *
+ * @notice Scope:
+ * Registry and verification only: no digest construction, no nonce, no
+ * roles, no signer rotation. The consumer builds the digest and gates its
+ * circuits with `assertApprovals`.
+ *
+ * @notice Client-side duties:
+ * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
+ *   `calculateSignerId(pk, salt)`, pass them as `signerCommitments`.
+ * - Per call: collect exactly `t` low-s signatures from distinct signers over
+ *   the consumer's digest, submit keys and signatures in matching `Vector<t>`
+ *   positions.
+ *
+ * @dev Performance:
+ * - Cost is per entry: one ECDSA verify and one `H` for each of the `t`
+ *   approvals, plus `t(t-1)/2` `Bytes<32>` compares.
+ * - `assertApprovals` (zkir-v3): `t = 1` is k=16, rows=40538; `t = 2` is
+ *   k=17, rows=64908; `t = 3` is k=17, rows=94995.
+ *
+ * @dev Composition:
+ * - Import this module at exactly one width per contract. Two widths
+ *   instantiate two `EcdsaMultisig` modules over one shared
+ *   `Signer<Bytes<32>>` registry, so the second `initialize` trips the
+ *   once-only guard and that width's `_instanceSalt` is never written.
+ * - Do not import `Signer` alongside this module. A direct import
+ *   instantiates a separate registry that `assertApprovals` never reads.
+ */
+module EcdsaMultisig<#t> {
+  import CompactStandardLibrary;
+  import "../crypto/Ecdsa" prefix Ecdsa_;
+  import "./Signer"<Bytes<32>> prefix Signer_;
+
+  // Named import/re-export of the registry state only, so a consuming
+  // contract's ledger keys read as `_signers` rather than `Signer__signers`.
+  // The circuits stay behind the `Signer_` prefix.
+  import { _signers, _signerCount, _threshold } from "./Signer"<Bytes<32>>;
+  export { _signers, _signerCount, _threshold };
+
+  /**
+   * @description Deployment-supplied salt for signer commitments. Set at
+   * initialization and never changed. The registered commitments must have been
+   * derived under this same salt.
+   */
+  export sealed ledger _instanceSalt: Bytes<32>;
+
+  /**
+   * @description Input to `persistentHash` for computing signer commitments.
+   */
+  struct SignerCommitmentInput {
+    pkX: Bytes<32>,
+    pkY: Bytes<32>,
+    salt: Bytes<32>,
+    domain: Bytes<32>
+  }
+
+  /**
+   * @description Stores the instance salt and registers the signer set at
+   * threshold `t`. Call from the consuming contract's constructor only.
+   * Writes the `sealed` salt, so it cannot be reached from an exported
+   * circuit. The set is final: signers must be known at deploy and no circuit
+   * adds, removes or replaces one afterwards.
+   *
+   * Requirements:
+   *
+   * - Can only be called once.
+   * - `instanceSalt` should be cryptographically random.
+   * - `signerCommitments` must not contain duplicates.
+   * - `n` must be at least `t`.
+   *
+   * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
+   * @param {Vector<n, Bytes<32>>} signerCommitments - Hashed signer identities.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit initialize<#n>(
+    instanceSalt: Bytes<32>,
+    signerCommitments: Vector<n, Bytes<32>>
+  ): [] {
+    assert(Signer_getSignerCount() == 0, "EcdsaMultisig: signers already registered");
+    _instanceSalt = disclose(instanceSalt);
+
+    for (const commitment of signerCommitments) {
+      Signer__addSigner(commitment);
+    }
+    Signer__changeThreshold(t);
+  }
+
+  /**
+   * @description Verifies `t` approvals over `msgHash`: distinct registered
+   * signers, each with a valid low-s signature.
+   *
+   * `pubkeys` and `signatures` are parallel: entry `i` of each belongs to the
+   * same signer.
+   *
+   * Requirements:
+   *
+   * - The module must be initialized.
+   * - No two entries may be the same signer.
+   * - Every public key must hash to a registered signer commitment.
+   * - Every signature must be valid over `msgHash` and use the low-s encoding.
+   *
+   * @param {Bytes<32>} msgHash - The digest the signers approved.
+   * @param {Vector<t, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<t, Secp256k1EcdsaSignature>} signatures - Signatures over `msgHash`.
+   * @returns {[]} Empty tuple.
+   */
+  export circuit assertApprovals(
+    msgHash: Bytes<32>,
+    pubkeys: Vector<t, Secp256k1Point>,
+    signatures: Vector<t, Secp256k1EcdsaSignature>
+  ): [] {
+    Signer_assertThresholdMet(t);
+
+    const commitments = map(signerCommitment, pubkeys);
+
+    for (const i of 0..t) {
+      for (const j of 0..t) {
+        if (i < j) {
+          assert(commitments[i] != commitments[j], "EcdsaMultisig: duplicate signer");
+        }
+      }
+    }
+
+    for (const i of 0..t) {
+      Signer_assertSigner(commitments[i]);
+      assert(
+        Ecdsa_secp256k1EcdsaVerifyLowS(msgHash, signatures[i], pubkeys[i]),
+        "EcdsaMultisig: invalid signature"
+      );
+    }
+  }
+
+  /**
+   * @description `map` callback. Commits `pk` under the instance salt.
+   *
+   * @param {Secp256k1Point} pk - The signer's secp256k1 public key.
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  circuit signerCommitment(pk: Secp256k1Point): Bytes<32> {
+    return calculateSignerId(pk, _instanceSalt);
+  }
+
+  /**
+   * @description Computes a signer commitment from a secp256k1 public key,
+   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   *
+   * Pure, so the deployer can derive constructor commitments off-chain the
+   * same way the circuits derive them in-circuit.
+   *
+   * Requirements:
+   *
+   * - `pk` must not be the secp256k1 identity point, which has no coordinates.
+   *
+   * @param {Secp256k1Point} pk - The secp256k1 public key.
+   * @param {Bytes<32>} salt - The instance salt.
+   * @returns {Bytes<32>} The signer commitment.
+   */
+  export pure circuit calculateSignerId(
+    pk: Secp256k1Point,
+    salt: Bytes<32>
+  ): Bytes<32> {
+    return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
+      pkX: secp256k1PointX(pk) as Bytes<32>,
+      pkY: secp256k1PointY(pk) as Bytes<32>,
+      salt: salt,
+      domain: pad(32, "ecdsaMultisig:signer:")
+    });
+  }
+
+  /**
+   * @description Returns the number of registered signers.
+   *
+   * @constraints k=6, rows=34 (zkir-v3)
+   *
+   * @returns {Uint<8>} The signer count.
+   */
+  export circuit getSignerCount(): Uint<8> {
+    return Signer_getSignerCount();
+  }
+
+  /**
+   * @description Returns the approval threshold.
+   *
+   * @constraints k=6, rows=34 (zkir-v3)
+   *
+   * @returns {Uint<8>} The threshold.
+   */
+  export circuit getThreshold(): Uint<8> {
+    return Signer_getThreshold();
+  }
+
+  /**
+   * @description Returns whether the given commitment is a registered signer.
+   *
+   * @constraints k=8, rows=129 (zkir-v3)
+   *
+   * @param {Bytes<32>} commitment - The signer commitment to check.
+   * @returns {Boolean} True if registered.
+   */
+  export circuit isSigner(commitment: Bytes<32>): Boolean {
+    return Signer_isSigner(commitment);
+  }
+}

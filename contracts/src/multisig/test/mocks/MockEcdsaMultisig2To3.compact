@@ -9,22 +9,23 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../EcdsaSignerManager" prefix EcdsaSignerManager_;
+import "../../EcdsaMultisig"<2> prefix EcdsaMultisig_;
 
 /**
- * @description `reinitialize` is a param for testing. When true, the
- * constructor calls `initialize` a second time so the once-only guard can be
- * exercised.
+ * @description `isInit` false skips `initialize`. `reinitialize` true calls it
+ * a second time to exercise the once-only guard.
  */
 constructor(
   instanceSalt: Bytes<32>,
   signerCommitments: Vector<3, Bytes<32>>,
-  threshold: Uint<8>,
+  isInit: Boolean,
   reinitialize: Boolean
 ) {
-  EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, threshold);
-  if (disclose(reinitialize)) {
-    EcdsaSignerManager_initialize<3>(instanceSalt, signerCommitments, threshold);
+  if (disclose(isInit)) {
+    EcdsaMultisig_initialize<3>(instanceSalt, signerCommitments);
+    if (disclose(reinitialize)) {
+      EcdsaMultisig_initialize<3>(instanceSalt, signerCommitments);
+    }
   }
 }
 
@@ -33,24 +34,24 @@ export circuit assertApprovals(
   pubkeys: Vector<2, Secp256k1Point>,
   signatures: Vector<2, Secp256k1EcdsaSignature>
 ): [] {
-  return EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
+  return EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 }
 
 export pure circuit calculateSignerId(
   pk: Secp256k1Point,
   salt: Bytes<32>
 ): Bytes<32> {
-  return EcdsaSignerManager_calculateSignerId(pk, salt);
+  return EcdsaMultisig_calculateSignerId(pk, salt);
 }
 
 export circuit getSignerCount(): Uint<8> {
-  return EcdsaSignerManager_getSignerCount();
+  return EcdsaMultisig_getSignerCount();
 }
 
 export circuit getThreshold(): Uint<8> {
-  return EcdsaSignerManager_getThreshold();
+  return EcdsaMultisig_getThreshold();
 }
 
 export circuit isSigner(commitment: Bytes<32>): Boolean {
-  return EcdsaSignerManager_isSigner(commitment);
+  return EcdsaMultisig_isSigner(commitment);
 }
