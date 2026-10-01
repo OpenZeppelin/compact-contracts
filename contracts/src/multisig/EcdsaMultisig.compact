@@ -234,7 +234,7 @@ module EcdsaMultisig<#t> {
       pkX: secp256k1PointX(pk) as Bytes<32>,
       pkY: secp256k1PointY(pk) as Bytes<32>,
       salt: salt,
-      domain: pad(32, "multisig:signer:")
+      domain: pad(32, "ecdsaMultisig:signer:")
     });
   }
 
