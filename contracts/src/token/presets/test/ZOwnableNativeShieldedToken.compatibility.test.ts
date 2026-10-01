@@ -467,13 +467,17 @@ describe('ZOwnableNativeShieldedToken compatibility: published surface', () => {
   });
 
   /**
-   * The example is a 1:1 re-export of the preset; the mock adds only the
-   * `isInit` constructor argument, which `contract-info.json` does not carry.
+   * The example re-exports the preset minus the metadata getters, whose slots
+   * `ledger()` reads for free. The mock's extra `isInit` constructor argument
+   * is not in `contract-info.json`.
    */
-  it('gives the example the same circuits, witnesses and ledger as the mock', () => {
+  it('gives the example the mock surface minus the metadata getters', () => {
+    const METADATA_GETTERS = new Set(['name', 'symbol', 'decimals']);
     const example = readContractInfo(EXAMPLE);
     expect([...example.circuits].sort(byName)).toStrictEqual(
-      [...mock.circuits].sort(byName),
+      mock.circuits
+        .filter(({ name }) => !METADATA_GETTERS.has(name))
+        .sort(byName),
     );
     expect(example.witnesses).toStrictEqual(mock.witnesses);
     expect(ledgerSlots(example)).toStrictEqual(ledgerSlots(mock));
