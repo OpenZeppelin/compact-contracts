@@ -244,4 +244,106 @@ describe('NativeShieldedTokenIssuerExample', () => {
       expect(change.is_some).toStrictEqual(false);
     },
   );
+
+  // TODO: unskip once compact-runtime commits coin values above Uint<64>.
+  it.skip('burns a holder coin above the per-mint cap through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const holder = shieldedTestKey().left;
+    const coin = {
+      nonce: new Uint8Array(32),
+      color: await c.tokenColor(),
+      value: 2n ** 80n,
+    };
+    const digest = burnMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      refundTo: holder.bytes,
+      opNonce: await c.getNonce(),
+      amount: 2n ** 64n,
+    });
+    const refund = await c.burn(
+      coin,
+      2n ** 64n,
+      holder,
+      [S1.publicKey, S2.publicKey],
+      [sign(S1, digest), sign(S2, digest)],
+    );
+    expect(refund.is_some).toStrictEqual(true);
+    expect(refund.value.value).toStrictEqual(2n ** 80n - 2n ** 64n);
+  });
+
+  // TODO: unskip once compact-runtime commits coin values above Uint<64>.
+  it.skip('burns a held coin above the per-mint cap through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const coin = {
+      nonce: new Uint8Array(32),
+      color: await c.tokenColor(),
+      value: 2n ** 80n,
+      mt_index: 0n,
+    };
+    const digest = burnFromSelfMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      opNonce: await c.getNonce(),
+      amount: 2n ** 64n,
+      coinNonce: coin.nonce,
+      coinValue: coin.value,
+    });
+    const change = await c.burnFromSelf(
+      coin,
+      2n ** 64n,
+      [S1.publicKey, S2.publicKey],
+      [sign(S1, digest), sign(S2, digest)],
+    );
+    expect(change.is_some).toStrictEqual(true);
+    expect(change.value.value).toStrictEqual(2n ** 80n - 2n ** 64n);
+  });
+
+  it('takes a burn amount above Uint<64> through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const holder = shieldedTestKey().left;
+    const coin = await mint(100n, holder);
+    const digest = burnMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      refundTo: holder.bytes,
+      opNonce: await c.getNonce(),
+      amount: 2n ** 64n,
+    });
+    await expect(
+      c.burn(
+        coin,
+        2n ** 64n,
+        holder,
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      ),
+    ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+  });
+
+  it('takes a held-coin burn amount above Uint<64> through the wrapper', async () => {
+    const c = ex.circuits.impure;
+    const coin = {
+      nonce: new Uint8Array(32),
+      color: await c.tokenColor(),
+      value: 100n,
+      mt_index: 0n,
+    };
+    const digest = burnFromSelfMsgHash({
+      contractAddress: addrBytes(),
+      instanceSalt: INSTANCE_SALT,
+      opNonce: await c.getNonce(),
+      amount: 2n ** 64n,
+      coinNonce: coin.nonce,
+      coinValue: coin.value,
+    });
+    await expect(
+      c.burnFromSelf(
+        coin,
+        2n ** 64n,
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, digest), sign(S2, digest)],
+      ),
+    ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+  });
 });

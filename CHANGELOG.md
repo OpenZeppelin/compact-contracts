@@ -11,17 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ZOwnableNativeShieldedToken` preset and example: a native shielded token that a single `ZOwnablePK` owner mints and burns, with a public minted total and no burned total
 
-## Changed
+## 0.4.0-alpha.5 (2026-09-29)
 
-- **Breaking:** Fix `NativeShieldedTokenIssuer` (#993)
-  - Bind the spent coin in `burnFromSelf`
-  - `BurnFromSelf` gains `coinNonce` and `coinValue`
+### Changed
 
+- **Breaking:** `ShieldedMultiSigV2.execute` rejects a `Contract` recipient as `Multisig: recipient must be a coin public key`. A contract-addressed coin is unclaimable, so the node rejected every such execution. (#1034)
+- **Breaking:** `NativeShieldedTokenIssuer.burnFromSelf` binds the spent coin. The `BurnFromSelf` struct gains `coinNonce` and `coinValue`, so an approval authorizes one held coin and existing burn-from-self signatures no longer verify. (#993)
 - **Breaking:** `ForwarderShielded._deposit` returns the forward's `ShieldedSendResult` instead of `[]`, and `ForwarderShieldedExample.deposit` returns it too (#999)
 - **Breaking:** `UnshieldedTreasury._send` rejects a zero amount, which the ledger refuses as a zero-value output (#980)
 
 ### Fixed
 
+- `NativeShieldedTokenIssuer.burn` and `burnFromSelf` take a `Uint<128>` amount, the shielded coin value range. Digests for amounts that fit `Uint<64>` are unchanged. (#1033)
 - Drop the duplicate `receiveShielded` on self-addressed `NativeShieldedTokenCore._mint` and `_burn` coins. `mintShieldedToken` and `sendShielded` already claim them, so the extra call emitted a second Zswap output for the same commitment. Core `_mint` drops from k=15 to k=14. (#1017)
 - `EcdsaSignerManager.initialize` rejects signer sets smaller than 2 and any threshold other than 2. `assertApprovals` always verifies two signatures, so a smaller set could never pass and a stored threshold of 1 was never honored. (#1011)
 

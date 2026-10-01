@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.4 (multisig/presets/NativeShieldedTokenIssuer.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/presets/NativeShieldedTokenIssuer.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -44,9 +44,9 @@ pragma language_version >= 0.26.0;
  * - MintToSelf digest: `keccak(0x1901 ‖ DS ‖ keccak([MINT_TO_SELF_TYPEHASH,
  *   self, uint64Word(opNonce), uint64Word(amount)]))`.
  * - Burn digest: `keccak(0x1901 ‖ DS ‖ keccak([BURN_TYPEHASH, self,
- *   refundTo.bytes, uint64Word(opNonce), uint64Word(amount)]))`.
+ *   refundTo.bytes, uint64Word(opNonce), uint128Word(amount)]))`.
  * - BurnFromSelf digest: `keccak(0x1901 ‖ DS ‖ keccak([
- *   BURN_FROM_SELF_TYPEHASH, self, uint64Word(opNonce), uint64Word(amount),
+ *   BURN_FROM_SELF_TYPEHASH, self, uint64Word(opNonce), uint128Word(amount),
  *   coin.nonce, uint128Word(coin.value)]))`. The last two words name the
  *   holding, so approvals authorize one coin rather than an amount.
  * - Type hashes: `MINT_TYPEHASH = keccak("Mint(bytes32 contractAddress,
@@ -214,9 +214,8 @@ pragma language_version >= 0.26.0;
  * - Throughput: one operation per block (see Concurrency).
  * - State: constant-size, two counters and a three-entry signer set. Nothing
  *   grows per operation.
- * - Amounts: both mints cap at `Uint<64>` by `mintShieldedToken`; both burns
- *   take `Uint<64>` by their signatures and widen into the module's
- *   `Uint<128>`.
+ * - Amounts: mints cap at `Uint<64>` by `mintShieldedToken`. Burns take
+ *   `Uint<128>`, the coin value range.
  *
  * @dev Composition:
  * - Recipient privacy: pass a caller-supplied secret random nonce to
@@ -518,7 +517,7 @@ module NativeShieldedTokenIssuer {
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; deliver it out of band.
    *
-   * @constraints k=17, rows=118642 (zkir-v3)
+   * @constraints k=17, rows=119826 (zkir-v3)
    *
    * Requirements:
    *
@@ -531,7 +530,7 @@ module NativeShieldedTokenIssuer {
    * - `refundTo` is not zero.
    *
    * @param {ShieldedCoinInfo} coin - The holder's coin to burn from.
-   * @param {Uint<64>} amount - The token amount to burn.
+   * @param {Uint<128>} amount - The token amount to burn.
    * @param {ZswapCoinPublicKey} refundTo - Receives `coin.value - amount`.
    * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
    * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
@@ -540,7 +539,7 @@ module NativeShieldedTokenIssuer {
    */
   export circuit burn(
     coin: ShieldedCoinInfo,
-    amount: Uint<64>,
+    amount: Uint<128>,
     refundTo: ZswapCoinPublicKey,
     pubkeys: Vector<2, Secp256k1Point>,
     signatures: Vector<2, Secp256k1EcdsaSignature>
@@ -556,7 +555,7 @@ module NativeShieldedTokenIssuer {
       kernel.self().bytes,
       refundTo.bytes,
       EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint64Word(amount)
+      EvmAbi_uint128Word(amount)
     ]));
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
@@ -576,7 +575,7 @@ module NativeShieldedTokenIssuer {
    * The digest binds `coin.nonce` and `coin.value`, so approvals authorize one
    * specific holding rather than an amount.
    *
-   * @constraints k=17, rows=103797 (zkir-v3)
+   * @constraints k=17, rows=104981 (zkir-v3)
    *
    * Requirements:
    *
@@ -589,7 +588,7 @@ module NativeShieldedTokenIssuer {
    * - `coin.nonce` and `coin.value` match the approved coin.
    *
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
-   * @param {Uint<64>} amount - The token amount to burn.
+   * @param {Uint<128>} amount - The token amount to burn.
    * @param {Vector<2, Secp256k1Point>} pubkeys - Public keys of approving signers.
    * @param {Vector<2, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn-from-self hash.
    * @returns {Maybe<ShieldedCoinInfo>} The change coin retained by the
@@ -597,7 +596,7 @@ module NativeShieldedTokenIssuer {
    */
   export circuit burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
-    amount: Uint<64>,
+    amount: Uint<128>,
     pubkeys: Vector<2, Secp256k1Point>,
     signatures: Vector<2, Secp256k1EcdsaSignature>
   ): Maybe<ShieldedCoinInfo> {
@@ -611,7 +610,7 @@ module NativeShieldedTokenIssuer {
       // protection.
       kernel.self().bytes,
       EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint64Word(amount),
+      EvmAbi_uint128Word(amount),
       coin.nonce,
       EvmAbi_uint128Word(coin.value)
     ]));

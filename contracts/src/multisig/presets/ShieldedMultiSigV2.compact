@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.4 (multisig/presets/ShieldedMultiSigV2.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/presets/ShieldedMultiSigV2.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -165,7 +165,10 @@ module ShieldedMultiSigV2 {
    * commitment from their public key and the instance salt, rejects duplicates,
    * and enforces the threshold.
    *
-   * @constraints k=17, rows=104644 (zkir-v3)
+   * @notice `to` must be a `ShieldedUser`. A contract-addressed coin would be
+   * unclaimable, making the transaction malformed.
+   *
+   * @constraints k=17, rows=98977 (zkir-v3)
    *
    * Requirements:
    *
@@ -173,6 +176,7 @@ module ShieldedMultiSigV2 {
    * - Both signatures must be valid over the message hash and use the low-s
    *   encoding.
    * - Signers must not be duplicates.
+   * - `to.kind` must be `ShieldedUser`.
    * - Coin value must be >= amount.
    *
    * @param {Proposal_Recipient} to - The recipient.
@@ -210,9 +214,14 @@ module ShieldedMultiSigV2 {
 
     EcdsaSignerManager_assertApprovals(msgHash, pubkeys, signatures);
 
-    // Execute transfer
-    const normalizedRecipient = Proposal_toShieldedRecipient(to);
-    return Treasury__send(coin, normalizedRecipient, amount);
+    assert(
+      to.kind == Proposal_RecipientKind.ShieldedUser,
+      "Multisig: recipient must be a coin public key"
+    );
+    const recipient = left<ZswapCoinPublicKey, ContractAddress>(
+      ZswapCoinPublicKey { bytes: to.address }
+    );
+    return Treasury__send(coin, recipient, amount);
   }
 
   // ─── Commitments ────────────────────────────────────────────────
