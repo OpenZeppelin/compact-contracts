@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** Split `EcdsaSignerManager` into `EcdsaMultisigCore` (the renamed module) and a new thin `EcdsaMultisig<#k>` wrapper. The core stores the threshold at `initialize` (1 to the signer count) and verifies `k` approvals per `assertApprovals<#k>` call site, with all-pairs duplicate rejection and `k` handed to the threshold check, so the threshold is enforced and the #1011 pins are gone. The wrapper pins the threshold to its compile-time `k`, so a deployment can never require fewer approvals than a circuit verifies. Error strings carry the module name: `EcdsaMultisigCore: signers already registered`, `EcdsaMultisigCore: duplicate signer`, `EcdsaMultisigCore: invalid signature`. (#1012)
-- **Breaking:** `ShieldedMultiSigV2<#k>` and `NativeShieldedTokenIssuer<#k>` take the approval width and threshold as a module generic (`import "../presets/ShieldedMultiSigV2"<2>`) on top of `EcdsaMultisig<#k>`. `initialize<#n>` drops the threshold argument: `ShieldedMultiSigV2.initialize` loses `thresh` and `NativeShieldedTokenIssuer.initialize` no longer hardcodes 2. `execute`, `mint`, `mintToSelf`, `burn` and `burnFromSelf` take `Vector<k>` keys and signatures. `execute`'s recipient guard reads `ShieldedMultiSigV2: recipient must be a coin public key`. The examples fix 2-of-3. (#1012)
+- **Breaking:** Rename `EcdsaSignerManager` to `EcdsaMultisig<#t>`, with the threshold `t` as the import generic and errors prefixed `EcdsaMultisig:` (#1052)
+  - `initialize<#n>(instanceSalt, signerCommitments)` drops the threshold argument
+  - `assertApprovals` verifies exactly `t` distinct registered approvals
+- **Breaking:** `ShieldedMultiSigV2<#t>` and `NativeShieldedTokenIssuer<#t>` take the threshold as a module generic, and the examples fix 2-of-3 (#1052)
+  - `initialize` drops the threshold argument
+  - `execute`, `mint`, `mintToSelf`, `burn` and `burnFromSelf` take `Vector<t>` keys and signatures
+  - `execute`'s recipient error reads `ShieldedMultiSigV2: recipient must be a coin public key`
 
 ## 0.4.0-alpha.5 (2026-09-29)
 

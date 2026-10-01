@@ -94,7 +94,7 @@ describe('EcdsaMultisig', () => {
           true,
           true,
         ),
-      ).rejects.toThrow('EcdsaMultisigCore: signers already registered');
+      ).rejects.toThrow('EcdsaMultisig: signers already registered');
     });
 
     it('rejects a width above the signer count', async () => {
@@ -146,7 +146,7 @@ describe('EcdsaMultisig', () => {
 
     it('should reject a non-adjacent duplicate signer', async () => {
       await expect(approveAll([S1, S2, S1])).rejects.toThrow(
-        'EcdsaMultisigCore: duplicate signer',
+        'EcdsaMultisig: duplicate signer',
       );
     });
 
@@ -154,6 +154,16 @@ describe('EcdsaMultisig', () => {
       await expect(approveAll([S1, S2, OUTSIDER])).rejects.toThrow(
         'Signer: not a signer',
       );
+    });
+
+    it('rejects a third approval signed over another digest', async () => {
+      await expect(
+        all.assertApprovals(
+          DIGEST,
+          [S1.publicKey, S2.publicKey, S3.publicKey],
+          [sign(S1, DIGEST), sign(S2, DIGEST), sign(S3, OTHER_DIGEST)],
+        ),
+      ).rejects.toThrow('EcdsaMultisig: invalid signature');
     });
   });
 
@@ -210,7 +220,7 @@ describe('EcdsaMultisig', () => {
           SIGNER_COMMITMENTS,
           true,
         ),
-      ).rejects.toThrow('EcdsaMultisigCore: signers already registered');
+      ).rejects.toThrow('EcdsaMultisig: signers already registered');
     });
 
     describe('with only width 2 initialized', () => {
@@ -227,8 +237,10 @@ describe('EcdsaMultisig', () => {
         expect(await shared.getThreshold3()).toEqual(2n);
       });
 
-      it('accepts width-3 approvals against the width-2 threshold', async () => {
-        await approveAt(3, [S1, S2, S3]);
+      it('rejects width-3 approvals: the uninitialized width has no salt', async () => {
+        await expect(approveAt(3, [S1, S2, S3])).rejects.toThrow(
+          'Signer: not a signer',
+        );
       });
 
       it('accepts two approvals at width 2', async () => {
@@ -277,7 +289,7 @@ describe('EcdsaMultisig', () => {
 
       it('should reject duplicate signer', async () => {
         await expect(approve(manager, DIGEST, [S1, S1])).rejects.toThrow(
-          'EcdsaMultisigCore: duplicate signer',
+          'EcdsaMultisig: duplicate signer',
         );
       });
 
@@ -295,7 +307,7 @@ describe('EcdsaMultisig', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, DIGEST), sign(S3, DIGEST)],
           ),
-        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
 
       it('should reject a signature over a different digest', async () => {
@@ -305,7 +317,7 @@ describe('EcdsaMultisig', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, DIGEST), sign(S2, OTHER_DIGEST)],
           ),
-        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
 
       it('should reject a high-s signature', async () => {
@@ -317,7 +329,7 @@ describe('EcdsaMultisig', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, DIGEST), highSTwin(sign(S2, DIGEST))],
           ),
-        ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
+        ).rejects.toThrow('EcdsaMultisig: invalid signature');
       });
     });
 

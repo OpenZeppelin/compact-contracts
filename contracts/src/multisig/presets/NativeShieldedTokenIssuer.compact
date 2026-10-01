@@ -10,7 +10,7 @@ pragma language_version >= 0.26.0;
  * for tokenized deposits. Value enters only through `mint` (to a holder's
  * coin public key) or `mintToSelf` (a coin this contract holds) and leaves
  * only through `burn` (a holder's coin, paid into the tx) or `burnFromSelf`
- * (a coin this contract holds); each is a single tx carrying `k` registered
+ * (a coin this contract holds); each is a single tx carrying `t` registered
  * signers' approvals.
  *
  * Composes `EcdsaMultisig` (signer commitments, approval checks),
@@ -72,29 +72,29 @@ pragma language_version >= 0.26.0;
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
- * `EcdsaMultisig` or `EcdsaMultisigCore` directly.
+ * `Signer` or `EcdsaMultisig` directly.
  *
  * @dev Parameterization:
- * `k` is the approval width and the threshold, fixed at import
- * (`"../presets/NativeShieldedTokenIssuer"<k>`). The implementing contract
+ * `t` is the approval width and the threshold, fixed at import
+ * (`"../presets/NativeShieldedTokenIssuer"<t>`). The implementing contract
  * fixes the signer count `n` at `initialize`. Import one width per contract:
  * two widths share one signer registry, see `EcdsaMultisig`.
  * `NativeShieldedTokenIssuerExample` fixes 2-of-3. The `@constraints` tags on
- * the gated circuits are measured at `k = 2`.
+ * the gated circuits are measured at `t = 2`.
  *
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the EIP-712 domain
  * (`NativeShieldedTokenIssuer`, version `1`, salt), the `Mint` /
  * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the `multisig:signer:` commitment domain (generic prefix,
- * owned by `EcdsaMultisigCore`), the `cm` preimage struct, and the
- * `Vector<k>` / `Vector<n>` shapes the implementing contract fixes. Changing
+ * owned by `EcdsaMultisig`), the `cm` preimage struct, and the
+ * `Vector<t>` / `Vector<n>` shapes the implementing contract fixes. Changing
  * any of them breaks every existing signer setup. The test suite pins them
  * through `EcdsaTestUtils.ts`.
  *
  * @notice Privacy:
  * - Public, per tx:
  *   - Entry point: which of the four operations ran.
- *   - Approvers: the `k` signer commitments (`disclose(commitment)` in
+ *   - Approvers: the `t` signer commitments (`disclose(commitment)` in
  *     `Signer_assertSigner`), so WHICH signers approved.
  *   - Mint: `amount`, as the `shieldedMints` effect under the token domain,
  *     and the coin commitment as a spend claim. Recipient and nonce are not
@@ -154,10 +154,10 @@ pragma language_version >= 0.26.0;
  *   still refunds the bound `refundTo`.
  * - Low-s: verification goes through `Ecdsa_secp256k1EcdsaVerifyLowS`, so a
  *   high-s encoding is an invalid signature.
- * - Distinct signers: every gated circuit verifies `k` distinct registered
- *   signers, so no set of fewer than `k` keys creates or destroys tokens.
+ * - Distinct signers: every gated circuit verifies `t` distinct registered
+ *   signers, so no set of fewer than `t` keys creates or destroys tokens.
  * - Immutable signer set: no signer reconfiguration circuit is exported, so
- *   the commitments and the threshold are fixed. Losing more than `n - k`
+ *   the commitments and the threshold are fixed. Losing more than `n - t`
  *   keys freezes the contract.
  * - Griefing: the derived-nonce mints are the only mint paths and both are
  *   threshold-gated, so `NativeShieldedTokenDerivedNonce`'s
@@ -190,8 +190,8 @@ pragma language_version >= 0.26.0;
  * - Before deploy: pick a random `instanceSalt`, derive each `cm` with
  *   `_calculateSignerId(pk, salt)`, pass them as `signerCommitments`.
  * - Per operation: read `getNonce()`, rebuild the digest as
- *   `EcdsaTestUtils.ts` does, collect `k` low-s signatures off-chain, submit
- *   keys and signatures in matching `Vector<k>` positions.
+ *   `EcdsaTestUtils.ts` does, collect `t` low-s signatures off-chain, submit
+ *   keys and signatures in matching `Vector<t>` positions.
  * - `mint`: hand the returned `ShieldedCoinInfo` to the recipient out of
  *   band; contract-initiated mints create no ciphertext, so a wallet cannot
  *   find the coin by scanning.
@@ -229,10 +229,10 @@ pragma language_version >= 0.26.0;
  *
  * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
-module NativeShieldedTokenIssuer<#k> {
+module NativeShieldedTokenIssuer<#t> {
   import CompactStandardLibrary;
 
-  import "../EcdsaMultisig"<k> prefix EcdsaMultisig_;
+  import "../EcdsaMultisig"<t> prefix EcdsaMultisig_;
   import "../../crypto/Eip712" prefix Eip712_;
   import "../../utils/EvmAbi" prefix EvmAbi_;
   import "../../token/NativeShieldedToken" prefix NST_;
@@ -242,7 +242,7 @@ module NativeShieldedTokenIssuer<#k> {
   // implementing contract can surface every ledger field under its own key.
   // The circuits stay behind the prefixes above. The derived-nonce counter is
   // aliased because this module's replay counter already owns `_counter`.
-  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaMultisig"<k>;
+  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaMultisig"<t>;
   import { _domain, _name, _symbol, _decimals, _isInitialized } from "../../token/NativeShieldedToken";
   import { _counter as _derivedNonceCounter } from "../../token/extensions/NativeShieldedTokenDerivedNonce";
   export { _instanceSalt, _signers, _signerCount, _threshold };
@@ -266,7 +266,7 @@ module NativeShieldedTokenIssuer<#k> {
   export sealed ledger _domainSeparator: Bytes<32>;
 
   /**
-   * @description Registers the signer set at threshold `k`, initializes the
+   * @description Registers the signer set at threshold `t`, initializes the
    * token metadata and domain, and fixes the EIP-712 domain separator.
    *
    * @notice Call from the implementing contract's constructor only. It writes
@@ -284,7 +284,7 @@ module NativeShieldedTokenIssuer<#k> {
    *
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
-   * - `n` must be at least `k`.
+   * - `n` must be at least `t`.
    *
    * @param {Bytes<32>} instanceSalt - Per-deployment salt for commitment derivation.
    * @param {Bytes<32>} tokenDomain - Domain separator for this contract's token color.
@@ -438,15 +438,15 @@ module NativeShieldedTokenIssuer<#k> {
    *
    * @param {Uint<64>} amount - The token amount to mint.
    * @param {ZswapCoinPublicKey} recipient - The coin public key to receive the minted tokens.
-   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
+   * @param {Vector<t, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<t, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mint(
     amount: Uint<64>,
     recipient: ZswapCoinPublicKey,
-    pubkeys: Vector<k, Secp256k1Point>,
-    signatures: Vector<k, Secp256k1EcdsaSignature>
+    pubkeys: Vector<t, Secp256k1Point>,
+    signatures: Vector<t, Secp256k1EcdsaSignature>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
@@ -484,14 +484,14 @@ module NativeShieldedTokenIssuer<#k> {
    * - Every signature must be valid over the mint-to-self message hash.
    *
    * @param {Uint<64>} amount - The token amount to mint.
-   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint-to-self hash.
+   * @param {Vector<t, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<t, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint-to-self hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mintToSelf(
     amount: Uint<64>,
-    pubkeys: Vector<k, Secp256k1Point>,
-    signatures: Vector<k, Secp256k1EcdsaSignature>
+    pubkeys: Vector<t, Secp256k1Point>,
+    signatures: Vector<t, Secp256k1EcdsaSignature>
   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
@@ -533,8 +533,8 @@ module NativeShieldedTokenIssuer<#k> {
    * @param {ShieldedCoinInfo} coin - The holder's coin to burn from.
    * @param {Uint<128>} amount - The token amount to burn.
    * @param {ZswapCoinPublicKey} refundTo - Receives `coin.value - amount`.
-   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
+   * @param {Vector<t, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<t, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn hash.
    * @returns {Maybe<ShieldedCoinInfo>} The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -542,8 +542,8 @@ module NativeShieldedTokenIssuer<#k> {
     coin: ShieldedCoinInfo,
     amount: Uint<128>,
     refundTo: ZswapCoinPublicKey,
-    pubkeys: Vector<k, Secp256k1Point>,
-    signatures: Vector<k, Secp256k1EcdsaSignature>
+    pubkeys: Vector<t, Secp256k1Point>,
+    signatures: Vector<t, Secp256k1EcdsaSignature>
   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
@@ -589,16 +589,16 @@ module NativeShieldedTokenIssuer<#k> {
    *
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<128>} amount - The token amount to burn.
-   * @param {Vector<k, Secp256k1Point>} pubkeys - Public keys of approving signers.
-   * @param {Vector<k, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn-from-self hash.
+   * @param {Vector<t, Secp256k1Point>} pubkeys - Public keys of approving signers.
+   * @param {Vector<t, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the burn-from-self hash.
    * @returns {Maybe<ShieldedCoinInfo>} The change coin retained by the
    * contract, or `none` if the coin was burned in full.
    */
   export circuit burnFromSelf(
     coin: QualifiedShieldedCoinInfo,
     amount: Uint<128>,
-    pubkeys: Vector<k, Secp256k1Point>,
-    signatures: Vector<k, Secp256k1EcdsaSignature>
+    pubkeys: Vector<t, Secp256k1Point>,
+    signatures: Vector<t, Secp256k1EcdsaSignature>
   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);

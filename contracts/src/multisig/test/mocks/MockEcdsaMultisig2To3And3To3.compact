@@ -13,8 +13,7 @@ import "../../EcdsaMultisig"<2> prefix Two_;
 import "../../EcdsaMultisig"<3> prefix Three_;
 
 /**
- * @description Two widths of the wrapper in one contract share one Core
- * registry.
+ * @description Widths 2 and 3 in one contract share one `Signer` registry.
  */
 constructor(
   instanceSalt: Bytes<32>,

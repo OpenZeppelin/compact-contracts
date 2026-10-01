@@ -147,7 +147,7 @@ describe('ShieldedMultiSigV2 1-of-3', () => {
           [S1.publicKey],
           [sign(S1, wrongDigest)],
         ),
-      ).rejects.toThrow('EcdsaMultisigCore: invalid signature');
+      ).rejects.toThrow('EcdsaMultisig: invalid signature');
     });
   });
 });

@@ -36,7 +36,7 @@ const EcdsaMultisig2To3And3To3SimulatorBase = createSimulator<
   artifactName: 'MockEcdsaMultisig2To3And3To3',
 });
 
-/** Widths 2 and 3 of the wrapper over one shared Core registry. */
+/** Widths 2 and 3 over one shared `Signer` registry. */
 export class EcdsaMultisig2To3And3To3Simulator extends EcdsaMultisig2To3And3To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
