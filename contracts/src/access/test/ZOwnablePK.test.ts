@@ -83,6 +83,45 @@ describe('ZOwnablePK', () => {
       ).rejects.toThrow('ZOwnablePK: invalid id');
     });
 
+    it('should fail when setting instance salt as 0', async () => {
+      const id = createIdHash(
+        utils.encodeToPK('NOT_ZERO'),
+        new Uint8Array(32).fill(1),
+      );
+      const badSalt = new Uint8Array(32).fill(0);
+      await expect(
+        ZOwnablePKSimulator.create(id, badSalt, isInit),
+      ).rejects.toThrow('ZOwnablePK: invalid salt');
+    });
+
+    it('should check the owner id before the instance salt', async () => {
+      const badId = new Uint8Array(32).fill(0);
+      const badSalt = new Uint8Array(32).fill(0);
+      await expect(
+        ZOwnablePKSimulator.create(badId, badSalt, isInit),
+      ).rejects.toThrow('ZOwnablePK: invalid id');
+    });
+
+    it.each([
+      ['first', 0],
+      ['last', 31],
+    ])(
+      'should initialize with only the %s salt byte set',
+      async (_label, index) => {
+        const id = createIdHash(
+          utils.encodeToPK('NOT_ZERO'),
+          new Uint8Array(32).fill(1),
+        );
+        const salt = new Uint8Array(32);
+        salt[index] = 1;
+        ownable = await ZOwnablePKSimulator.create(id, salt, isInit);
+
+        expect(await ownable.owner()).toEqual(
+          buildCommitmentFromId(id, salt, INIT_COUNTER),
+        );
+      },
+    );
+
     it('should initialize with non-zero commitment', async () => {
       const notZeroPK = utils.encodeToPK('NOT_ZERO');
       const notZeroNonce = new Uint8Array(32).fill(1);
