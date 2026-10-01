@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.3.0-rc.1 (token/examples/ZOwnableNativeShieldedTokenExample.compact)
+
+pragma language_version >= 0.23.0;
+
+/**
+ * @title ZOwnableNativeShieldedTokenExample
+ * @description Deployable reference contract for the
+ * `ZOwnableNativeShieldedToken` preset: a native shielded token that only a
+ * single shielded owner mints and burns. Holders transfer coins through
+ * Zswap directly.
+ */
+
+import CompactStandardLibrary;
+
+import "../presets/ZOwnableNativeShieldedToken" prefix ZOwnableNativeShieldedToken_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, ShieldedCoinInfo };
+
+// Surface the preset's state unprefixed so `ledger()` readers use the keys the
+// modules declare.
+import {
+  _ownerCommitment,
+  _counter,
+  _instanceSalt,
+  _ownableIsInitialized,
+  _domain,
+  _name,
+  _symbol,
+  _decimals,
+  _isInitialized,
+  _totalMinted,
+  _totalBurned,
+} from "../presets/ZOwnableNativeShieldedToken";
+export {
+  _ownerCommitment,
+  _counter,
+  _instanceSalt,
+  _ownableIsInitialized,
+  _domain,
+  _name,
+  _symbol,
+  _decimals,
+  _isInitialized,
+  _totalMinted,
+  _totalBurned,
+};
+
+/**
+ * @description Deploys the token with its owner, domain and metadata.
+ *
+ * @warning `ownerId` must be `_computeOwnerId(pk, secretNonce)` for the coin
+ * public key the owner's wallet will supply as `ownPublicKey()`. The circuit
+ * cannot check this at deploy; any other key leaves the contract with no
+ * usable owner and no recovery.
+ *
+ * @param {Bytes<32>} ownerId - `_computeOwnerId(pk, secretNonce)` of the owner.
+ * @param {Bytes<32>} instanceSalt - Random per-deployment salt for the owner commitment.
+ * @param {Bytes<32>} tokenDomain - Domain of this contract's token color.
+ */
+constructor(
+  ownerId: Bytes<32>,
+  instanceSalt: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+) {
+  ZOwnableNativeShieldedToken_initialize(
+    ownerId,
+    instanceSalt,
+    tokenDomain,
+    name_,
+    symbol_,
+    decimals_,
+  );
+}
+
+export circuit mint(recipient: ZswapCoinPublicKey, amount: Uint<64>, nonce: Bytes<32>): ShieldedCoinInfo {
+  return ZOwnableNativeShieldedToken_mint(recipient, amount, nonce);
+}
+
+export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+  return ZOwnableNativeShieldedToken_burn(coin, amount, refundTo);
+}
+
+export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
+  ZOwnableNativeShieldedToken_transferOwnership(newOwnerId);
+}
+
+export circuit renounceOwnership(): [] {
+  ZOwnableNativeShieldedToken_renounceOwnership();
+}
+
+export circuit owner(): Bytes<32> {
+  return ZOwnableNativeShieldedToken_owner();
+}
+
+export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+  return ZOwnableNativeShieldedToken__computeOwnerId(pk, nonce);
+}
+
+export circuit totalMinted(): Uint<128> {
+  return ZOwnableNativeShieldedToken_totalMinted();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return ZOwnableNativeShieldedToken_tokenColor();
+}

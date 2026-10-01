@@ -1,0 +1,115 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.23.0;
+
+import CompactStandardLibrary;
+
+import "../../ZOwnableNativeShieldedToken" prefix ZOwnableNativeShieldedToken_;
+
+export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, ShieldedCoinInfo };
+
+// Surface the preset's state unprefixed so `ledger()` readers use the keys the
+// modules declare.
+import {
+  _ownerCommitment,
+  _counter,
+  _instanceSalt,
+  _ownableIsInitialized,
+  _domain,
+  _name,
+  _symbol,
+  _decimals,
+  _isInitialized,
+  _totalMinted,
+  _totalBurned,
+} from "../../ZOwnableNativeShieldedToken";
+export {
+  _ownerCommitment,
+  _counter,
+  _instanceSalt,
+  _ownableIsInitialized,
+  _domain,
+  _name,
+  _symbol,
+  _decimals,
+  _isInitialized,
+  _totalMinted,
+  _totalBurned,
+};
+
+/**
+ * @description `isInit` is a param for testing.
+ *
+ * If `isInit` is false, the constructor leaves the owner and the token
+ * uninitialized so the pre-initialization guards can be exercised. The preset
+ * `initialize` is not exposed as a circuit: it writes sealed fields.
+ */
+constructor(
+  ownerId: Bytes<32>,
+  instanceSalt: Bytes<32>,
+  tokenDomain: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  isInit: Boolean
+) {
+  if (disclose(isInit)) {
+    ZOwnableNativeShieldedToken_initialize(
+      ownerId,
+      instanceSalt,
+      tokenDomain,
+      name_,
+      symbol_,
+      decimals_,
+    );
+  }
+}
+
+export circuit mint(recipient: ZswapCoinPublicKey, amount: Uint<64>, nonce: Bytes<32>): ShieldedCoinInfo {
+  return ZOwnableNativeShieldedToken_mint(recipient, amount, nonce);
+}
+
+export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+  return ZOwnableNativeShieldedToken_burn(coin, amount, refundTo);
+}
+
+export circuit transferOwnership(newOwnerId: Bytes<32>): [] {
+  ZOwnableNativeShieldedToken_transferOwnership(newOwnerId);
+}
+
+export circuit renounceOwnership(): [] {
+  ZOwnableNativeShieldedToken_renounceOwnership();
+}
+
+export circuit owner(): Bytes<32> {
+  return ZOwnableNativeShieldedToken_owner();
+}
+
+export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+  return ZOwnableNativeShieldedToken__computeOwnerId(pk, nonce);
+}
+
+export circuit totalMinted(): Uint<128> {
+  return ZOwnableNativeShieldedToken_totalMinted();
+}
+
+export circuit name(): Opaque<"string"> {
+  return ZOwnableNativeShieldedToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return ZOwnableNativeShieldedToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return ZOwnableNativeShieldedToken_decimals();
+}
+
+export circuit tokenColor(): Bytes<32> {
+  return ZOwnableNativeShieldedToken_tokenColor();
+}
