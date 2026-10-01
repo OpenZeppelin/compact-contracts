@@ -9,8 +9,8 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../EcdsaMultisig"<2> prefix Two_;
-import "../../EcdsaMultisig"<3> prefix Three_;
+import "../../Secp256k1EcdsaMultisig"<2> prefix Two_;
+import "../../Secp256k1EcdsaMultisig"<3> prefix Three_;
 
 /**
  * @description Widths 2 and 3 in one contract share one `Signer` registry.

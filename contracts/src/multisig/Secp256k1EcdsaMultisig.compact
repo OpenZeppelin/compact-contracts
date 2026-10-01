@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/EcdsaMultisig.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/Secp256k1EcdsaMultisig.compact)
 
 pragma language_version >= 0.26.0;
 
 /**
- * @module EcdsaMultisig<#t>
+ * @module Secp256k1EcdsaMultisig<#t>
  * @description
  * A `t`-of-`n` accountable multisignature over secp256k1 ECDSA: `n` signer
  * commitments are registered at deploy, and a call passes when `t` distinct
@@ -13,8 +13,8 @@ pragma language_version >= 0.26.0;
  *
  * @dev Notation:
  * - `H(...)`: `persistentHash` (SHA-256), a `Bytes<32>` digest.
- * - `cm = H(pkX, pkY, salt, "multisig:signer:")`: a signer commitment, over
- *   the affine coordinates of the secp256k1 public key.
+ * - `cm = H(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`: a signer
+ *   commitment, over the affine coordinates of the secp256k1 public key.
  * - `n`: signers registered at `initialize`.
  * - `t`: the threshold and the `assertApprovals` width.
  *
@@ -25,13 +25,13 @@ pragma language_version >= 0.26.0;
  * wrong derivation registers commitments no key can satisfy.
  *
  * @dev Parameterization:
- * `t` is fixed at import (`import "./EcdsaMultisig"<2> prefix
- * EcdsaMultisig_;`) and `n` per `initialize<#n>` call. `Signer` enforces
- * `n >= t` at `initialize`. No circuit takes a threshold argument.
+ * `t` is fixed at import (`import "./Secp256k1EcdsaMultisig"<2> prefix
+ * Secp256k1EcdsaMultisig_;`) and `n` per `initialize<#n>` call. `Signer`
+ * enforces `n >= t` at `initialize`. No circuit takes a threshold argument.
  * `t = 0` does not compile.
  *
  * @dev Compatibility:
- * The wire format is the `multisig:signer:` domain, the
+ * The wire format is the `Secp256k1EcdsaMultisig:signer` domain, the
  * `SignerCommitmentInput` layout, and the salt. Changing any of them orphans
  * every registered signer set. The digest is the consumer's and is not part
  * of this module's format.
@@ -92,13 +92,13 @@ pragma language_version >= 0.26.0;
  *
  * @dev Composition:
  * - Import this module at exactly one width per contract. Two widths
- *   instantiate two `EcdsaMultisig` modules over one shared
+ *   instantiate two `Secp256k1EcdsaMultisig` modules over one shared
  *   `Signer<Bytes<32>>` registry, so the second `initialize` trips the
  *   once-only guard and that width's `_instanceSalt` is never written.
  * - Do not import `Signer` alongside this module. A direct import
  *   instantiates a separate registry that `assertApprovals` never reads.
  */
-module EcdsaMultisig<#t> {
+module Secp256k1EcdsaMultisig<#t> {
   import CompactStandardLibrary;
   import "../crypto/Ecdsa" prefix Ecdsa_;
   import "./Signer"<Bytes<32>> prefix Signer_;
@@ -148,7 +148,7 @@ module EcdsaMultisig<#t> {
     instanceSalt: Bytes<32>,
     signerCommitments: Vector<n, Bytes<32>>
   ): [] {
-    assert(Signer_getSignerCount() == 0, "EcdsaMultisig: signers already registered");
+    assert(Signer_getSignerCount() == 0, "Secp256k1EcdsaMultisig: signers already registered");
     _instanceSalt = disclose(instanceSalt);
 
     for (const commitment of signerCommitments) {
@@ -188,7 +188,7 @@ module EcdsaMultisig<#t> {
     for (const i of 0..t) {
       for (const j of 0..t) {
         if (i < j) {
-          assert(commitments[i] != commitments[j], "EcdsaMultisig: duplicate signer");
+          assert(commitments[i] != commitments[j], "Secp256k1EcdsaMultisig: duplicate signer");
         }
       }
     }
@@ -197,7 +197,7 @@ module EcdsaMultisig<#t> {
       Signer_assertSigner(commitments[i]);
       assert(
         Ecdsa_secp256k1EcdsaVerifyLowS(msgHash, signatures[i], pubkeys[i]),
-        "EcdsaMultisig: invalid signature"
+        "Secp256k1EcdsaMultisig: invalid signature"
       );
     }
   }
@@ -214,7 +214,7 @@ module EcdsaMultisig<#t> {
 
   /**
    * @description Computes a signer commitment from a secp256k1 public key,
-   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   * as `persistentHash(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`.
    *
    * Pure, so the deployer can derive constructor commitments off-chain the
    * same way the circuits derive them in-circuit.
@@ -235,7 +235,7 @@ module EcdsaMultisig<#t> {
       pkX: secp256k1PointX(pk) as Bytes<32>,
       pkY: secp256k1PointY(pk) as Bytes<32>,
       salt: salt,
-      domain: pad(32, "ecdsaMultisig:signer:")
+      domain: pad(32, "Secp256k1EcdsaMultisig:signer")
     });
   }
 

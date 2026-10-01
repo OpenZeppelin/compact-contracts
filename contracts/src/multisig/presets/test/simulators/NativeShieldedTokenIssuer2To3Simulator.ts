@@ -172,7 +172,7 @@ export class NativeShieldedTokenIssuer2To3Simulator extends NativeShieldedTokenI
 }
 
 // Computes signer commitment from `pk`, `salt`, and
-// domain ("multisig:signer:"). Pure standalone circuit so commitments can be
+// domain ("Secp256k1EcdsaMultisig:signer"). Pure standalone circuit so commitments can be
 // calculated before contract instantiation.
 export function calculateSignerId(
   pk: Secp256k1Point,

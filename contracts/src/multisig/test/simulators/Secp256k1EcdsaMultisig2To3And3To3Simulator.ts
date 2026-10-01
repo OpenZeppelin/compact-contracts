@@ -6,25 +6,25 @@ import {
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
-  Contract as MockEcdsaMultisig2To3And3To3,
-} from '../../../../artifacts/MockEcdsaMultisig2To3And3To3/contract/index.js';
+  Contract as MockSecp256k1EcdsaMultisig2To3And3To3,
+} from '../../../../artifacts/MockSecp256k1EcdsaMultisig2To3And3To3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type EcdsaMultisig2To3And3To3Args = readonly [
+type Secp256k1EcdsaMultisig2To3And3To3Args = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
   initializeThree: boolean,
 ];
 
-const EcdsaMultisig2To3And3To3SimulatorBase = createSimulator<
+const Secp256k1EcdsaMultisig2To3And3To3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockEcdsaMultisig2To3And3To3<EmptyPrivateState>,
-  EcdsaMultisig2To3And3To3Args
+  MockSecp256k1EcdsaMultisig2To3And3To3<EmptyPrivateState>,
+  Secp256k1EcdsaMultisig2To3And3To3Args
 >({
   contractFactory: (witnesses) =>
-    new MockEcdsaMultisig2To3And3To3<EmptyPrivateState>(witnesses),
+    new MockSecp256k1EcdsaMultisig2To3And3To3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (instanceSalt, signerCommitments, initializeThree) => [
     instanceSalt,
@@ -33,11 +33,11 @@ const EcdsaMultisig2To3And3To3SimulatorBase = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockEcdsaMultisig2To3And3To3',
+  artifactName: 'MockSecp256k1EcdsaMultisig2To3And3To3',
 });
 
 /** Widths 2 and 3 over one shared `Signer` registry. */
-export class EcdsaMultisig2To3And3To3Simulator extends EcdsaMultisig2To3And3To3SimulatorBase {
+export class Secp256k1EcdsaMultisig2To3And3To3Simulator extends Secp256k1EcdsaMultisig2To3And3To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
@@ -46,12 +46,12 @@ export class EcdsaMultisig2To3And3To3Simulator extends EcdsaMultisig2To3And3To3S
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<EcdsaMultisig2To3And3To3Simulator> {
+  ): Promise<Secp256k1EcdsaMultisig2To3And3To3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [instanceSalt, signerCommitments, initializeThree],
       options,
-    ) as Promise<EcdsaMultisig2To3And3To3Simulator>;
+    ) as Promise<Secp256k1EcdsaMultisig2To3And3To3Simulator>;
   }
 
   public assertApprovals2Approvals(
