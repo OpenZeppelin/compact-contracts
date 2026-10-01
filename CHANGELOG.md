@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidate the duplicate multisig signer registries onto `Signer`, removing `SignerManager` (#760)
 - Rename the contract-compilation scripts and Turbo tasks from `compact` / `compact:*` to `compile` / `compile:*`, and the Biome scripts from `fmt-and-lint` / `fmt-and-lint:*` to `lint` / `lint:*`. (#680)
 - Rename the native shielded token supply extensions to `NativeShieldedTokenPublicSupply` / `NativeShieldedTokenFamilyPublicSupply` (and the shared `NativeShieldedTokenPublicSupplyCore`), making explicit that they track supply on-chain and matching the `ConfidentialFungibleTokenPublicSupply` naming. (#710)
+- `ZOwnablePK.initialize` rejects a zero `instanceSalt` as `ZOwnablePK: invalid salt`. A zero salt gave deployments that share an owner id the same public owner commitment. (#1055)
 
 ### Fixed
 
