@@ -13,7 +13,7 @@ pragma language_version >= 0.26.0;
  * (a coin this contract holds); each is a single tx carrying `t` registered
  * signers' approvals.
  *
- * Composes `EcdsaMultisig` (signer commitments, approval checks),
+ * Composes `Secp256k1EcdsaMultisig` (signer commitments, approval checks),
  * `NativeShieldedToken` as `NST_` (one token; domain, `name`, `symbol` and
  * `decimals` fixed at construction) and `NativeShieldedTokenDerivedNonce` as
  * `NSTDerivedNonce_` (coin nonces derived from a counter).
@@ -58,9 +58,9 @@ pragma language_version >= 0.26.0;
  *   uint256 amount,bytes32 coinNonce,uint256 coinValue)")`, written as
  *   literal words.
  * - Signer commitment: `cm = H<SignerCommitmentInput>({ pkX, pkY, salt,
- *   domain: pad(32, "multisig:signer:") })`, `pkX` / `pkY` the affine
- *   coordinates as `Bytes<32>`. `_calculateSignerId` is the exported pure
- *   circuit.
+ *   domain: pad(32, "Secp256k1EcdsaMultisig:signer") })`, `pkX` / `pkY`
+ *   the affine coordinates as `Bytes<32>`. `_calculateSignerId` is the
+ *   exported pure circuit.
  * - Coin nonce: `evolveNonce(counter, pad(32, "NativeShieldedToken:nonce"))`
  *   over the derived-nonce counter after its increment.
  * - Encoding: `H` hashes the Compact encoding, not a byte concatenation.
@@ -72,21 +72,22 @@ pragma language_version >= 0.26.0;
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
- * `Signer` or `EcdsaMultisig` directly.
+ * `Signer` or `Secp256k1EcdsaMultisig` directly.
  *
  * @dev Parameterization:
  * `t` is the approval width and the threshold, fixed at import
  * (`"../presets/NativeShieldedTokenIssuer"<t>`). The implementing contract
  * fixes the signer count `n` at `initialize`. Import one width per contract:
- * two widths share one signer registry, see `EcdsaMultisig`.
+ * two widths share one signer registry, see `Secp256k1EcdsaMultisig`.
  * `NativeShieldedTokenIssuerExample` fixes 2-of-3. The `@constraints` tags on
  * the gated circuits are measured at `t = 2`.
  *
  * @dev Compatibility:
  * The wire format the custodian's signer implements is the EIP-712 domain
  * (`NativeShieldedTokenIssuer`, version `1`, salt), the `Mint` /
- * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the `multisig:signer:` commitment domain (generic prefix,
- * owned by `EcdsaMultisig`), the `cm` preimage struct, and the
+ * `MintToSelf` / `Burn` / `BurnFromSelf` type strings, the
+ * `Secp256k1EcdsaMultisig:signer` commitment domain (owned by
+ * `Secp256k1EcdsaMultisig`), the `cm` preimage struct, and the
  * `Vector<t>` / `Vector<n>` shapes the implementing contract fixes. Changing
  * any of them breaks every existing signer setup. The test suite pins them
  * through `EcdsaTestUtils.ts`.
@@ -232,7 +233,7 @@ pragma language_version >= 0.26.0;
 module NativeShieldedTokenIssuer<#t> {
   import CompactStandardLibrary;
 
-  import "../EcdsaMultisig"<t> prefix EcdsaMultisig_;
+  import "../Secp256k1EcdsaMultisig"<t> prefix Secp256k1EcdsaMultisig_;
   import "../../crypto/Eip712" prefix Eip712_;
   import "../../utils/EvmAbi" prefix EvmAbi_;
   import "../../token/NativeShieldedToken" prefix NST_;
@@ -242,7 +243,7 @@ module NativeShieldedTokenIssuer<#t> {
   // implementing contract can surface every ledger field under its own key.
   // The circuits stay behind the prefixes above. The derived-nonce counter is
   // aliased because this module's replay counter already owns `_counter`.
-  import { _instanceSalt, _signers, _signerCount, _threshold } from "../EcdsaMultisig"<t>;
+  import { _instanceSalt, _signers, _signerCount, _threshold } from "../Secp256k1EcdsaMultisig"<t>;
   import { _domain, _name, _symbol, _decimals, _isInitialized } from "../../token/NativeShieldedToken";
   import { _counter as _derivedNonceCounter } from "../../token/extensions/NativeShieldedTokenDerivedNonce";
   export { _instanceSalt, _signers, _signerCount, _threshold };
@@ -302,7 +303,7 @@ module NativeShieldedTokenIssuer<#t> {
     decimals_: Uint<8>,
     signerCommitments: Vector<n, Bytes<32>>
   ): [] {
-    EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
+    Secp256k1EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
     NST_initialize(tokenDomain, name_, symbol_, decimals_);
 
     const hashedName = keccak256<Bytes<25>>(pad(25, "NativeShieldedTokenIssuer"));
@@ -398,7 +399,7 @@ module NativeShieldedTokenIssuer<#t> {
 
   /**
    * @description Computes a signer commitment from a secp256k1 public key,
-   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   * as `persistentHash(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`.
    *
    * Pure, so the deployer can derive constructor commitments off-chain.
    *
@@ -414,7 +415,7 @@ module NativeShieldedTokenIssuer<#t> {
     pk: Secp256k1Point,
     salt: Bytes<32>
   ): Bytes<32> {
-    return EcdsaMultisig_calculateSignerId(pk, salt);
+    return Secp256k1EcdsaMultisig_calculateSignerId(pk, salt);
   }
 
   /**
@@ -462,7 +463,7 @@ module NativeShieldedTokenIssuer<#t> {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
+    Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__mint(recipient, amount, NSTDerivedNonce__deriveNonce());
   }
@@ -506,7 +507,7 @@ module NativeShieldedTokenIssuer<#t> {
       EvmAbi_uint64Word(amount)
     ]));
 
-    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
+    Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__mintToSelf(amount, NSTDerivedNonce__deriveNonce());
   }
@@ -559,7 +560,7 @@ module NativeShieldedTokenIssuer<#t> {
       EvmAbi_uint128Word(amount)
     ]));
 
-    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
+    Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__burn(coin, amount, refundTo);
   }
@@ -615,7 +616,7 @@ module NativeShieldedTokenIssuer<#t> {
       EvmAbi_uint128Word(coin.value)
     ]));
 
-    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
+    Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     return NST__burnFromSelf(coin, amount);
   }
@@ -684,7 +685,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Uint<8>} The signer count.
    */
   export circuit getSignerCount(): Uint<8> {
-    return EcdsaMultisig_getSignerCount();
+    return Secp256k1EcdsaMultisig_getSignerCount();
   }
 
   /**
@@ -695,7 +696,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Uint<8>} The threshold.
    */
   export circuit getThreshold(): Uint<8> {
-    return EcdsaMultisig_getThreshold();
+    return Secp256k1EcdsaMultisig_getThreshold();
   }
 
   /**
@@ -707,6 +708,6 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Boolean} True if registered.
    */
   export circuit isSigner(commitment: Bytes<32>): Boolean {
-    return EcdsaMultisig_isSigner(commitment);
+    return Secp256k1EcdsaMultisig_isSigner(commitment);
   }
 }

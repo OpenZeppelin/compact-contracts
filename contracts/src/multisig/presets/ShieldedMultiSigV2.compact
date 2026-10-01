@@ -18,7 +18,7 @@ pragma language_version >= 0.26.0;
  * `t` distinct signers. Import as `"../presets/ShieldedMultiSigV2"<t>`; the
  * implementing contract fixes the signer count `n` at `initialize`. Import
  * one width per contract: two widths share one signer registry, see
- * `EcdsaMultisig`.
+ * `Secp256k1EcdsaMultisig`.
  *
  * Treasury is fully stateless meaning coin data is not stored on the public ledger.
  * Deposits call receiveShielded only. The operator discovers coin indices
@@ -29,12 +29,12 @@ pragma language_version >= 0.26.0;
  *
  * @notice Implementing contracts register the signer set from their
  * constructor by calling this module's `initialize`, and MUST NOT import
- * `Signer` or `EcdsaMultisig` directly.
+ * `Signer` or `Secp256k1EcdsaMultisig` directly.
  */
 module ShieldedMultiSigV2<#t> {
   import CompactStandardLibrary;
 
-  import "../EcdsaMultisig"<t> prefix EcdsaMultisig_;
+  import "../Secp256k1EcdsaMultisig"<t> prefix Secp256k1EcdsaMultisig_;
   import "../../crypto/Eip712" prefix Eip712_;
   import "../../utils/EvmAbi" prefix EvmAbi_;
   import "../ProposalManager" prefix Proposal_;
@@ -94,7 +94,7 @@ module ShieldedMultiSigV2<#t> {
     instanceSalt: Bytes<32>,
     signerCommitments: Vector<n, Bytes<32>>
   ): [] {
-    EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
+    Secp256k1EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
 
     const hashedName = keccak256<Bytes<18>>(pad(18, "ShieldedMultiSigV2"));
     const hashedVersion = keccak256<Bytes<1>>(pad(1, "1"));
@@ -157,7 +157,7 @@ module ShieldedMultiSigV2<#t> {
    * separator. The digest is bound to the contract instance and the full recipient (kind and
    * address), so a signature authorizes exactly one operation on one instance.
    *
-   * Approvals are checked by `EcdsaMultisig`, which derives each
+   * Approvals are checked by `Secp256k1EcdsaMultisig`, which derives each
    * signer's commitment from their public key and the instance salt and
    * rejects duplicates. Constraints below are measured at `t = 2`.
    *
@@ -208,7 +208,7 @@ module ShieldedMultiSigV2<#t> {
       EvmAbi_uint128Word(amount)
     ]));
 
-    EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
+    Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     assert(
       to.kind == Proposal_RecipientKind.ShieldedUser,
@@ -222,7 +222,7 @@ module ShieldedMultiSigV2<#t> {
 
   /**
    * @description Computes a signer commitment from a secp256k1 public key,
-   * as `persistentHash(pkX, pkY, salt, "multisig:signer:")`.
+   * as `persistentHash(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`.
    *
    * Pure, so the deployer can derive constructor commitments off-chain.
    *
@@ -239,7 +239,7 @@ module ShieldedMultiSigV2<#t> {
     pk: Secp256k1Point,
     salt: Bytes<32>
   ): Bytes<32> {
-    return EcdsaMultisig_calculateSignerId(pk, salt);
+    return Secp256k1EcdsaMultisig_calculateSignerId(pk, salt);
   }
 
   /**
@@ -261,7 +261,7 @@ module ShieldedMultiSigV2<#t> {
    * @returns {Uint<8>} The signer count.
    */
   export circuit getSignerCount(): Uint<8> {
-    return EcdsaMultisig_getSignerCount();
+    return Secp256k1EcdsaMultisig_getSignerCount();
   }
 
   /**
@@ -272,7 +272,7 @@ module ShieldedMultiSigV2<#t> {
    * @returns {Uint<8>} The threshold.
    */
   export circuit getThreshold(): Uint<8> {
-    return EcdsaMultisig_getThreshold();
+    return Secp256k1EcdsaMultisig_getThreshold();
   }
 
   /**
@@ -284,6 +284,6 @@ module ShieldedMultiSigV2<#t> {
    * @returns {Boolean} True if registered.
    */
   export circuit isSigner(commitment: Bytes<32>): Boolean {
-    return EcdsaMultisig_isSigner(commitment);
+    return Secp256k1EcdsaMultisig_isSigner(commitment);
   }
 }

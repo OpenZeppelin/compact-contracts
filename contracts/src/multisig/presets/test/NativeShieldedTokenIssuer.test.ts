@@ -434,7 +434,7 @@ describe('NativeShieldedTokenIssuer', () => {
       it('should reject duplicate signer', async () => {
         await expect(
           mint(multisig, 100n, USER_RECIPIENT, [S1, S1]),
-        ).rejects.toThrow('EcdsaMultisig: duplicate signer');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
@@ -453,7 +453,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a signature over a different digest', async () => {
@@ -466,7 +466,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, wrongDigest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       describe('parameter binding', () => {
@@ -480,7 +480,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a signature bound to a different recipient', async () => {
@@ -496,7 +496,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a mint signature replayed as a mint-to-self', async () => {
@@ -508,7 +508,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a mint-to-self signature replayed as a mint', async () => {
@@ -521,7 +521,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a burn signature replayed as a mint', async () => {
@@ -534,7 +534,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a mint signature replayed as a burn', async () => {
@@ -549,7 +549,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a mint signature replayed as a burn-from-self', async () => {
@@ -563,7 +563,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a burn signature replayed as a burn-from-self', async () => {
@@ -577,7 +577,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
 
         it('should reject a burn-from-self signature replayed as a burn', async () => {
@@ -595,7 +595,7 @@ describe('NativeShieldedTokenIssuer', () => {
               [S1.publicKey, S2.publicKey],
               [sign(S1, digest), sign(S2, digest)],
             ),
-          ).rejects.toThrow('EcdsaMultisig: invalid signature');
+          ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
         });
       });
 
@@ -707,7 +707,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(structHash)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -723,7 +723,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -739,7 +739,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -761,7 +761,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
 
@@ -795,7 +795,7 @@ describe('NativeShieldedTokenIssuer', () => {
           );
 
           await expect(mintWith(digest)).rejects.toThrow(
-            'EcdsaMultisig: invalid signature',
+            'Secp256k1EcdsaMultisig: invalid signature',
           );
         });
       });
@@ -811,7 +811,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), highSTwin(sign(S2, digest))],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should increment nonce after mint', async () => {
@@ -841,7 +841,7 @@ describe('NativeShieldedTokenIssuer', () => {
         expect(await multisig.getNonce()).toEqual(1n);
         await expect(
           multisig.mint(100n, USER_RECIPIENT, pubkeys, sigs),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
 
@@ -895,7 +895,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
       it('rejects a duplicate signer', async () => {
         await expect(mintToSelf(multisig, 100n, [S1, S1])).rejects.toThrow(
-          'EcdsaMultisig: duplicate signer',
+          'Secp256k1EcdsaMultisig: duplicate signer',
         );
       });
 
@@ -913,7 +913,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
 
@@ -1043,7 +1043,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('rejects a signature bound to a different amount', async () => {
@@ -1057,7 +1057,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('rejects an amount matching the approved one only in its low 64 bits', async () => {
@@ -1071,7 +1071,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('rejects a duplicate signer', async () => {
@@ -1085,7 +1085,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S1.publicKey],
             [sign(S1, digest), sign(S1, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: duplicate signer');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: duplicate signer');
       });
 
       it('rejects a non-signer pubkey', async () => {
@@ -1277,7 +1277,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a same-value coin with a different nonce', async () => {
@@ -1298,7 +1298,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a coin whose value differs from the approved one', async () => {
@@ -1314,7 +1314,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('rejects an amount matching the approved one only in its low 64 bits', async () => {
@@ -1328,7 +1328,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject duplicate signer', async () => {
@@ -1341,7 +1341,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S1.publicKey],
             [sign(S1, digest), sign(S1, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: duplicate signer');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: duplicate signer');
       });
 
       it('should reject a non-signer pubkey', async () => {
@@ -1367,7 +1367,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S3, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a signature bound to a different amount', async () => {
@@ -1380,7 +1380,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject wrong token color', async () => {
@@ -1543,7 +1543,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
 
@@ -1574,7 +1574,7 @@ describe('NativeShieldedTokenIssuer', () => {
 
         await expect(
           instance2.mint(100n, USER_RECIPIENT, pubkeys, sigs),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a mint-to-self signature bound to another instance', async () => {
@@ -1598,7 +1598,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a burn signature bound to another instance', async () => {
@@ -1627,7 +1627,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
 
       it('should reject a burn-from-self signature bound to another instance', async () => {
@@ -1655,7 +1655,7 @@ describe('NativeShieldedTokenIssuer', () => {
             [S1.publicKey, S2.publicKey],
             [sign(S1, digest), sign(S2, digest)],
           ),
-        ).rejects.toThrow('EcdsaMultisig: invalid signature');
+        ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid signature');
       });
     });
   });
