@@ -39,13 +39,13 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Compile contracts
-        run: yarn compile
+        run: yarn compile --concurrency=1
 
       - name: Run type checks
         run: yarn types
 
       - name: Run tests
-        run: yarn test
+        run: yarn test --concurrency=1
 
       - name: Run integration tests
         run: yarn test:integration
