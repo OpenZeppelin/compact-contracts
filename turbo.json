@@ -13,6 +13,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/crypto/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:security": {
@@ -20,6 +21,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/security/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:utils": {
@@ -27,6 +29,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/utils/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:access": {
@@ -34,6 +37,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/access/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:archive": {
@@ -41,6 +45,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/archive/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:multisig": {
@@ -48,6 +53,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/multisig/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:token": {
@@ -55,6 +61,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/token/**/*.compact"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile:integration": {
@@ -66,6 +73,7 @@
         "!src/archive/**"
       ],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "compile": {
@@ -80,6 +88,7 @@
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/**/*.compact", "!src/archive/**"],
       "outputLogs": "new-only",
+      "cache": false,
       "outputs": ["artifacts/**/"]
     },
     "test": {
