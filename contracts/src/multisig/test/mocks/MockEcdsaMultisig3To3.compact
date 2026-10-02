@@ -33,3 +33,5 @@ export circuit getSignerCount(): Uint<8> {
 export circuit getThreshold(): Uint<8> {
   return EcdsaMultisig_getThreshold();
 }
+
+// ci probe: changes the multisig inputs so the next run mixes cache hits and misses
