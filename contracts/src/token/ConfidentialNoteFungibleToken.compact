@@ -235,7 +235,9 @@ module ConfidentialNoteFungibleToken<#depth> {
 
   /**
    * @description Published nullifiers: what has been spent. Unlinkable to any
-   * commitment, owner, or value, so the set reveals only a spend count.
+   * commitment, owner, or value, so to an observer who does not hold the note
+   * the set reveals only a spend count. See the header's Privacy notice for
+   * what a nonce-holder sees.
    * @type {Set<Bytes<32>>} _nullifiers - The spent-note nullifier set.
    */
   export ledger _nullifiers: Set<Bytes<32>>;
