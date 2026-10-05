@@ -1,0 +1,30 @@
+# Deploy settings for the live test backend (contracts/test-utils/harness).
+
+[profile]
+default_network = "local"
+src_dir         = "contracts"
+artifacts_dir   = "contracts/artifacts"
+
+# The local stack from local-env.yml. The harness refuses to deploy if these
+# differ from its own endpoints.
+[networks.local]
+network_id   = "undeployed"
+indexer      = "http://127.0.0.1:8088/api/v4/graphql"
+indexer_ws   = "ws://127.0.0.1:8088/api/v4/graphql/ws"
+node         = "http://127.0.0.1:9944"
+node_ws      = "ws://127.0.0.1:9944"
+proof_server = "http://127.0.0.1:6300"
+
+# Every contract a live spec deploys. The harness creates the signing key on
+# the first deploy.
+[contracts."**/test/mocks/*"]
+signing_key_file = "deploy/local.signingkey"
+private_state_id = "{name}-ps"
+
+[contracts."src/multisig/examples/*"]
+signing_key_file = "deploy/local.signingkey"
+private_state_id = "{name}-ps"
+
+[contracts."test/integration/_mocks/*"]
+signing_key_file = "deploy/local.signingkey"
+private_state_id = "{name}-ps"

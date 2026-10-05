@@ -98,6 +98,15 @@ export circuit _approve(
   return NonFungibleToken__approve(to, tokenId, auth);
 }
 
+export circuit _unsafeApprove(
+  to: Either<Bytes<32>, ContractAddress>,
+  tokenId: Uint<128>,
+  auth: Either<Bytes<32>, ContractAddress>,
+  isExistenceRequired: Boolean
+): [] {
+  return NonFungibleToken__unsafeApprove(to, tokenId, auth, isExistenceRequired);
+}
+
 export circuit _checkAuthorized(
   owner: Either<Bytes<32>, ContractAddress>,
   spender: Either<Bytes<32>, ContractAddress>,

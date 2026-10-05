@@ -816,6 +816,95 @@ describe('NonFungibleToken', () => {
       await token._approve(ZERO_ACCOUNT, TOKENID_1, OWNER.either);
       expect(await token.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
     });
+
+    it('should throw if token does not exist and auth is zero', async () => {
+      await expect(
+        token._approve(SPENDER.either, NON_EXISTENT_TOKEN, ZERO_ACCOUNT),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
+
+      expect(await token._getApproved(NON_EXISTENT_TOKEN)).toEqual(
+        ZERO_ACCOUNT,
+      );
+    });
+  });
+
+  describe('_unsafeApprove', () => {
+    it('should match _approve when existence is required', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await token._unsafeApprove(SPENDER.either, TOKENID_1, OWNER.either, true);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    });
+
+    it('should reject a nonexistent token when existence is required', async () => {
+      await expect(
+        token._unsafeApprove(
+          SPENDER.either,
+          NON_EXISTENT_TOKEN,
+          ZERO_ACCOUNT,
+          true,
+        ),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
+    });
+
+    it('should record an approval for a nonexistent token when existence is not required', async () => {
+      // The documented unsafe behaviour: no existence check, approval recorded.
+      await token._unsafeApprove(
+        SPENDER.either,
+        NON_EXISTENT_TOKEN,
+        ZERO_ACCOUNT,
+        false,
+      );
+      expect(await token._getApproved(NON_EXISTENT_TOKEN)).toEqual(
+        SPENDER.either,
+      );
+    });
+
+    it('should still check the approver when existence is not required', async () => {
+      await token._mint(OWNER.either, TOKENID_1);
+      await expect(
+        token._unsafeApprove(
+          SPENDER.either,
+          TOKENID_1,
+          UNAUTHORIZED.either,
+          false,
+        ),
+      ).rejects.toThrow('NonFungibleToken: invalid approver');
+    });
+
+    it('should leave an approval planted before the mint in place', async () => {
+      await token._unsafeApprove(
+        SPENDER.either,
+        TOKENID_1,
+        ZERO_ACCOUNT,
+        false,
+      );
+
+      // `_update` clears approvals only for a non-zero source, so a mint
+      // leaves the planted approval standing.
+      await token._mint(OWNER.either, TOKENID_1);
+      expect(await token.getApproved(TOKENID_1)).toEqual(SPENDER.either);
+    });
+
+    it('should not let a planted approval mint through transferFrom', async () => {
+      // Plant the approval a misused composer call would leave behind.
+      await token._unsafeApprove(
+        SPENDER.either,
+        NON_EXISTENT_TOKEN,
+        ZERO_ACCOUNT,
+        false,
+      );
+
+      // The stale approval satisfies `_isAuthorized`, so `_checkAuthorized`
+      // passes on the zero owner. The transfer must die at the previous-owner
+      // assert in `_unsafeTransferFrom` instead.
+      await token.privateState.injectSecretKey(SPENDER.secretKey);
+      await expect(
+        token.transferFrom(ZERO_ACCOUNT, SPENDER.either, NON_EXISTENT_TOKEN),
+      ).rejects.toThrow('NonFungibleToken: nonexistent token');
+
+      expect(await token._ownerOf(NON_EXISTENT_TOKEN)).toEqual(ZERO_ACCOUNT);
+      expect(await token.balanceOf(SPENDER.either)).toEqual(0n);
+    });
   });
 
   describe('_checkAuthorized', () => {
@@ -1441,6 +1530,7 @@ const circuitsToFail: FailingCircuits[] = [
   ['_requireOwned', [TOKENID_1]],
   ['_ownerOf', [TOKENID_1]],
   ['_approve', [OWNER.either, TOKENID_1, SPENDER.either]],
+  ['_unsafeApprove', [OWNER.either, TOKENID_1, SPENDER.either, true]],
   ['_checkAuthorized', [OWNER.either, SPENDER.either, TOKENID_1]],
   ['_isAuthorized', [OWNER.either, SPENDER.either, TOKENID_1]],
   ['_getApproved', [TOKENID_1]],

@@ -4,10 +4,11 @@
  * Deliberately no compiled artifact here: `test:harness` does not depend on the
  * `compile` task, so importing one would break a clean checkout. The replay
  * behaviour that genuinely needs real ledger state is pinned instead by
- * `src/token/test/DryReplayHarness.contract.test.ts`, in the `unit` project.
+ * `src/utils/test/DryReplayHarness.contract.test.ts`, in the `unit` project.
  */
 
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, it } from 'vitest';
 import { createConcurrencyHarness } from '../backend.js';
 import { createDryHarness, DryReplayHarness } from '../DryReplayHarness.js';
@@ -105,11 +106,23 @@ describe('DryReplayHarness', () => {
 });
 
 describe('createConcurrencyHarness', () => {
-  it('should give a replay harness on the dry backend', async () => {
-    expect(await createConcurrencyHarness(options())).toBeInstanceOf(
-      DryReplayHarness,
-    );
-  });
+  it.skipIf(isLiveBackend())(
+    'should give a replay harness on the dry backend',
+    async () => {
+      expect(await createConcurrencyHarness(options())).toBeInstanceOf(
+        DryReplayHarness,
+      );
+    },
+  );
+
+  it.runIf(isLiveBackend())(
+    'rejects on the live backend until a live harness exists',
+    async () => {
+      await expect(createConcurrencyHarness(options())).rejects.toThrow(
+        'live backend not implemented yet',
+      );
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------

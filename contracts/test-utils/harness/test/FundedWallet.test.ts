@@ -19,6 +19,7 @@ const m = vi.hoisted(() => {
     stop,
     balanceTx,
     getCoinPublicKey: () => 'coin-pk-xyz',
+    getEncryptionPublicKey: () => 'enc-pk-xyz',
     wallet: { id: 'facade' },
   });
   const builder = {
@@ -69,7 +70,7 @@ vi.mock('@midnightntwrk/ledger-v9', () => ({
   DustSecretKey: { fromSeed: vi.fn(() => ({ kind: 'dust' })) },
 }));
 
-import { FundedWallet } from '../FundedWallet.js';
+import { FundedWallet, WALLET_SYNC_TIMEOUT_MS } from '../FundedWallet.js';
 
 const ENV = {} as never; // LocalTestConfiguration is type-only in FundedWallet
 const LOGGER = { info: vi.fn() } as never;
@@ -100,6 +101,11 @@ describe('FundedWallet.build', () => {
   it('should expose the provider coin public key', async () => {
     const wallet = await build();
     expect(wallet.coinPublicKey).toBe('coin-pk-xyz');
+  });
+
+  it('exposes the provider encryption public key', async () => {
+    const wallet = await build();
+    expect(wallet.encryptionPublicKey).toBe('enc-pk-xyz');
   });
 
   it('should delegate stop to the provider', async () => {
@@ -142,6 +148,11 @@ describe('FundedWallet.build', () => {
     // ...but a fresh sync runs first, so the tx balances against post-prior-tx
     // state (the guard against consecutive same-signer UTXO reuse).
     expect(m.syncWallet).toHaveBeenCalledTimes(1);
+    expect(m.syncWallet).toHaveBeenCalledWith(
+      { id: 'facade' },
+      undefined,
+      WALLET_SYNC_TIMEOUT_MS,
+    );
     expect(m.syncWallet.mock.invocationCallOrder[0]).toBeLessThan(
       m.balanceTx.mock.invocationCallOrder[0],
     );

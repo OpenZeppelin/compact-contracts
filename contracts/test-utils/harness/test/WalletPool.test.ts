@@ -28,6 +28,7 @@ function fakeWallet(alias: string): FakeWallet {
   return {
     provider: { alias } as unknown as PooledWallet['provider'],
     coinPublicKey: `pk-${alias}`,
+    encryptionPublicKey: `epk-${alias}`,
     stopped: false,
     stop() {
       this.stopped = true;
@@ -131,6 +132,21 @@ describe('WalletPool', () => {
       const { build } = recordingBuilder();
       expect(() => new WalletPool(SEEDS, build).walletFor('SIGNER1')).toThrow(
         /not initialized/,
+      );
+    });
+  });
+
+  describe('encryptionKeysByCoinKey', () => {
+    it('maps each pooled coin public key to its encryption public key', async () => {
+      const { build } = recordingBuilder();
+      const pool = new WalletPool(SEEDS, build);
+      await pool.ensureReady();
+      expect(pool.encryptionKeysByCoinKey()).toStrictEqual(
+        new Map([
+          ['pk-deployer', 'epk-deployer'],
+          ['pk-SIGNER1', 'epk-SIGNER1'],
+          ['pk-SIGNER2', 'epk-SIGNER2'],
+        ]),
       );
     });
   });

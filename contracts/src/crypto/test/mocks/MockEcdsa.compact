@@ -11,12 +11,13 @@ import CompactStandardLibrary;
 
 import "../../Ecdsa" prefix Ecdsa_;
 
-// Keeps assertLowS and secp256k1EcdsaVerifyLowS impure. Without a ledger
-// write the compiler promotes them to pure, and the artifact ships without
-// ZKIR or proving keys, leaving the low-s path evaluated but never proven.
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
 ledger _invocations: Counter;
 
-export pure circuit isLowS(s: Secp256k1Scalar): Boolean {
+export circuit isLowS(s: Secp256k1Scalar): Boolean {
+  _invocations.increment(1);
   return Ecdsa_isLowS(s);
 }
 

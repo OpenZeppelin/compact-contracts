@@ -2,10 +2,10 @@ import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type LocalTestConfiguration,
   type MidnightWalletProvider,
-  syncWallet,
   waitForFunds,
 } from '@midnight-ntwrk/testkit-js';
 import { UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
+import { syncLiveWallet } from './FundedWallet.js';
 
 /**
  * Deployer-funds-signer top-up for the local `undeployed` devnet.
@@ -68,7 +68,7 @@ async function transferNight(
   );
   // Spending unshielded UTXOs needs the owner's signature before finalizing.
   const signed = await from.wallet.signRecipe(recipe, (payload) =>
-    from.unshieldedKeystore.signData(payload),
+    from.unshieldedKeystore.signDataAsync(payload),
   );
   const finalized = await from.wallet.finalizeRecipe(signed);
   return from.wallet.submitTransaction(finalized);
@@ -84,10 +84,10 @@ function serialize<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function nightBalance(p: MidnightWalletProvider): Promise<bigint> {
-  return (await syncWallet(p.wallet)).unshielded.balances[nightRaw()] ?? 0n;
+  return (await syncLiveWallet(p.wallet)).unshielded.balances[nightRaw()] ?? 0n;
 }
 async function dustBalance(p: MidnightWalletProvider): Promise<bigint> {
-  return (await syncWallet(p.wallet)).dust.balance(new Date());
+  return (await syncLiveWallet(p.wallet)).dust.balance(new Date());
 }
 
 /**

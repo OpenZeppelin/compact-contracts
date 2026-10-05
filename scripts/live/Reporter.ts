@@ -35,23 +35,39 @@ export class Reporter {
   /**
    * Final verdict after round 2.
    *
+   * @param causes - deterministic cause per file, for the files that skipped
+   *   round 2 because a fresh node could not have changed their verdict
    * @returns the process exit code — 0 for a flaky-only run, so an environment
    *   artifact never turns the build red, and 1 only for a real failure
    */
-  verdict(flaky: readonly string[], real: readonly string[]): number {
+  verdict(
+    flaky: readonly string[],
+    real: readonly string[],
+    causes: ReadonlyMap<string, string> = new Map(),
+  ): number {
     const headline =
       real.length === 0
         ? `VERDICT: PASSED${flaky.length ? ` (with ${flaky.length} flaky file(s))` : ''}`
         : `VERDICT: FAILED — ${real.length} real failure(s), ${flaky.length} flaky`;
     banner(headline);
 
+    // A file with a named cause failed deterministically and never ran round 2;
+    // the others failed both rounds. The verdict line says which is which.
+    const realLine = (f: string): string => {
+      const cause = causes.get(f);
+      return cause === undefined
+        ? rel(f)
+        : `${rel(f)} — deterministic: ${cause}`;
+    };
     if (flaky.length > 0) {
       console.log(`\nFLAKY (${FLAKE_NOTE}):`);
       for (const f of flaky) console.log(`  ~ ${rel(f)}`);
     }
     if (real.length > 0) {
-      console.log('\nREAL (failed both rounds — investigate):');
-      for (const f of real) console.log(`  ✗ ${rel(f)}`);
+      console.log(
+        '\nREAL (deterministic, or failed both rounds — investigate):',
+      );
+      for (const f of real) console.log(`  ✗ ${realLine(f)}`);
       // The stack is about to be stopped, so point at what survives it.
       console.log(
         `\ncontainer logs are kept in ${rel(LOGS)}/*.log after teardown; ` +
@@ -76,8 +92,8 @@ export class Reporter {
         ...(real.length > 0
           ? [
               '',
-              'Real failures (failed both rounds — investigate):',
-              ...real.map((f) => `- ✗ \`${rel(f)}\``),
+              'Real failures (deterministic, or failed both rounds — investigate):',
+              ...real.map((f) => `- ✗ \`${realLine(f)}\``),
             ]
           : []),
       ].join('\n'),

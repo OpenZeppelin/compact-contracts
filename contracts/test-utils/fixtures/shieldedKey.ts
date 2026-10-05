@@ -36,11 +36,11 @@ const coinPkEnvVar = (alias: string): string =>
  * backend resolves `.as(alias)` to. Callers needing a bare
  * `EncodedCoinPublicKey` (not an `Either`) read `.left`.
  *
- * The `deployer` default suits a send recipient / drain parent: on live that key
- * must be one whose encryption key the node can resolve, which only the deployer
- * wallet's own key is. With the default, call AFTER `Sim.create()` (which
- * triggers the wallet sync that publishes the deployer key); pooled signer
- * aliases are published before any spec loads, so those are safe at module scope.
+ * On live, a send recipient or drain parent must be a pooled alias: the harness
+ * gives midnight-js the encryption keys of the pooled wallets only. With the
+ * default, call AFTER `Sim.create()` (which triggers the wallet sync that
+ * publishes the deployer key); pooled signer aliases are published before any
+ * spec loads, so those are safe at module scope.
  *
  * @param alias `'deployer'` (default) or a pooled signer alias like `'SIGNER1'`;
  *   must be a pooled wallet on live.

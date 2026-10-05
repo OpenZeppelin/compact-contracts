@@ -152,7 +152,7 @@ export default defineConfig({
         // Same files as `integration`, run with `MIDNIGHT_BACKEND=live` (set by
         // `test:live integration`). That turns on the `isLiveBackend()`-gated
         // blocks and skips the dry functional ones. Today the only live-gated
-        // block is the composed-deploy block-limit canary.
+        // block is the composed deploy.
         //
         // Reuses `unit-live`'s globalSetup (freshness + run lock) and setup
         // (wallet pool + backend register) verbatim.
@@ -163,8 +163,8 @@ export default defineConfig({
           include: ['test/integration/specs/**/*.spec.ts'],
           globalSetup: ['./test-utils/harness/live.globalSetup.ts'],
           setupFiles: ['./test-utils/harness/live.setup.ts'],
-          // Only the deployer wallet is in play (the canary is a single rejected
-          // deploy, no `.as(alias)` impersonation), so no wallet partition is
+          // Only the deployer wallet is in play (the live block is one deploy
+          // and a read, no `.as(alias)` impersonation), so no wallet partition is
           // needed. Widen to `unit-live`-style per-worker partitioning once
           // green functional live integration specs exist.
           maxWorkers: 1,

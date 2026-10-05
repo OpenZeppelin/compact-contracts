@@ -6,6 +6,7 @@ import {
   signerFromLabel,
 } from '#test-utils/fixtures/ecdsa.js';
 import { EcdsaSignerManagerSimulator } from './simulators/EcdsaSignerManagerSimulator.js';
+import { EcdsaSignerManagerSmallSetSimulator } from './simulators/EcdsaSignerManagerSmallSetSimulator.js';
 
 const INSTANCE_SALT = new Uint8Array(32).fill(0xaa);
 const OTHER_SALT = new Uint8Array(32).fill(0xbb);
@@ -75,26 +76,77 @@ describe('EcdsaSignerManager', () => {
       expect(await manager.getThreshold()).toEqual(2n);
     });
 
-    it('should initialize with 1-of-3 threshold', async () => {
-      const oneOfThree = await freshManager(1n);
-      expect(await oneOfThree.getThreshold()).toEqual(1n);
+    // `assertApprovals` verifies exactly 2: below that the stored threshold
+    // misreports, above it every gated call locks out. The guard fires before
+    // the signers register, so `Signer`'s zero and count guards are
+    // unreachable here (covered in Signer.test.ts).
+    it('should reject any threshold other than 2', async () => {
+      for (const threshold of [0n, 1n, 3n, 4n]) {
+        await expect(freshManager(threshold)).rejects.toThrow(
+          'EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)',
+        );
+      }
     });
 
-    it('should fail with zero threshold', async () => {
-      await expect(freshManager(0n)).rejects.toThrow(
-        'Signer: threshold must not be zero',
+    // A one-signer set can never supply the two distinct signers
+    // `assertApprovals` demands, so every gated operation would revert.
+    it('should reject a single signer', async () => {
+      await expect(
+        EcdsaSignerManagerSmallSetSimulator.create(
+          INSTANCE_SALT,
+          [COMMITMENT1, COMMITMENT2],
+          2n,
+          true,
+        ),
+      ).rejects.toThrow(
+        'EcdsaSignerManager: fewer than 2 signers (assertApprovals verifies 2 signatures)',
       );
     });
 
-    // `assertApprovals` always counts exactly 2, so any higher threshold is a
-    // permanent lockout. This fires before `Signer_initialize`, which makes the
-    // module's own signer-count guard unreachable here (covered in Signer.test.ts).
-    it('should fail with a threshold above the approval width', async () => {
-      for (const threshold of [3n, 4n]) {
-        await expect(freshManager(threshold)).rejects.toThrow(
-          'EcdsaSignerManager: threshold cannot exceed 2 (assertApprovals verifies 2 signatures)',
-        );
-      }
+    it('should initialize a two-signer set at threshold 2', async () => {
+      const twoSigners = await EcdsaSignerManagerSmallSetSimulator.create(
+        INSTANCE_SALT,
+        [COMMITMENT1, COMMITMENT2],
+        2n,
+      );
+      expect(await twoSigners.getSignerCount()).toEqual(2n);
+      expect(await twoSigners.getThreshold()).toEqual(2n);
+    });
+
+    it('should reject a two-signer set at threshold 1', async () => {
+      await expect(
+        EcdsaSignerManagerSmallSetSimulator.create(
+          INSTANCE_SALT,
+          [COMMITMENT1, COMMITMENT2],
+          1n,
+        ),
+      ).rejects.toThrow(
+        'EcdsaSignerManager: threshold must be 2 (assertApprovals verifies 2 signatures)',
+      );
+    });
+
+    it('should accept both signers of a two-signer set', async () => {
+      const twoSigners = await EcdsaSignerManagerSmallSetSimulator.create(
+        INSTANCE_SALT,
+        [COMMITMENT1, COMMITMENT2],
+        2n,
+      );
+      await twoSigners.assertApprovals(
+        DIGEST,
+        [S1.publicKey, S2.publicKey],
+        [sign(S1, DIGEST), sign(S2, DIGEST)],
+      );
+    });
+
+    it('should fail when initialized twice', async () => {
+      await expect(
+        EcdsaSignerManagerSimulator.create(
+          INSTANCE_SALT,
+          SIGNER_COMMITMENTS,
+          2n,
+          true,
+        ),
+      ).rejects.toThrow('EcdsaSignerManager: signers already registered');
     });
   });
 
@@ -108,7 +160,7 @@ describe('EcdsaSignerManager', () => {
         expect(await manager.getSignerCount()).toEqual(3n);
       });
 
-      it('getThreshold should match constructor arg', async () => {
+      it('getThreshold should return 2', async () => {
         expect(await manager.getThreshold()).toEqual(2n);
       });
 
@@ -134,11 +186,6 @@ describe('EcdsaSignerManager', () => {
 
       it('should accept two valid signatures from signers 2 and 3', async () => {
         await approve(manager, DIGEST, [S2, S3]);
-      });
-
-      it('should accept two valid signatures under a 1-of-3 threshold', async () => {
-        const oneOfThree = await freshManager(1n);
-        await approve(oneOfThree, DIGEST, [S1, S2]);
       });
 
       it('should reject duplicate signer', async () => {

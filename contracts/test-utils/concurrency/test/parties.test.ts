@@ -74,6 +74,13 @@ describe('concurrency parties: createParties', () => {
     );
   });
 
+  // Assigning that key sets the record's prototype instead of an entry.
+  it('rejects the __proto__ party name', () => {
+    expect(() => createParties(['alice', '__proto__'], factory)).toThrow(
+      "createParties: party name '__proto__' is reserved",
+    );
+  });
+
   it('should return nothing for no names', () => {
     const { parties, contracts } = createParties([], factory);
 

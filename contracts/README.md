@@ -9,6 +9,10 @@ The `src/` directory is organized by module category. Each module follows the sa
 ```
 <module>/
 ├── <Contract>.compact          # Contract source
+├── presets/                    # Curated modules composing the module's contracts
+│   └── test/                   # Preset specs, with their own mocks/ and simulators/
+├── examples/                   # <Preset>Example.compact — deployable
+│   └── test/                   # Example specs, with their own simulators/
 └── test/
     ├── <Contract>.test.ts      # Test suite
     ├── mocks/                  # Mock contracts (test-only — see warning below)
@@ -16,9 +20,18 @@ The `src/` directory is organized by module category. Each module follows the sa
     └── witnesses/              # TypeScript witness implementations (test-only)
 ```
 
+A preset is library code, so it is imported, not deployed. Each one ships a
+deployable contract under `examples/`.
+
+Tests sit next to what they cover. `presets/test/` holds the preset spec
+alongside `presets/test/mocks/Mock<Preset>.compact` and
+`presets/test/simulators/<Preset>Simulator.ts`. `examples/test/` holds the spec
+and simulator of each example that carries its own coverage; the rest of the
+`examples/` contracts are compiled but not tested.
+
 ## > ⚠️ Mock Contracts Are For Testing Only
 
-Each module's `test/mocks/` directory contains `Mock*.compact` files (e.g. `MockFungibleToken.compact`, `MockOwnable.compact`, `MockAccessControl.compact`).
+Each module's `test/mocks/` directory (and each preset's `presets/test/mocks/`) contains `Mock*.compact` files (e.g. `MockFungibleToken.compact`, `MockOwnable.compact`, `MockAccessControl.compact`).
 
 **These contracts exist solely to expose internal state and circuits for testing purposes. They must never be used in production.**
 

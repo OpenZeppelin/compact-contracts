@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (token/NativeShieldedTokenFamily.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (token/NativeShieldedTokenFamily.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -25,6 +25,10 @@ pragma language_version >= 0.26.0;
  * `NativeShieldedToken`. Both wrap `NativeShieldedTokenCore`, so they share one
  * set of core state (a single init flag and one name/symbol/decimals).
  * Pick one flavor per contract.
+ *
+ * @notice Recipients must be coin public keys: contract-addressed recipients
+ * are not supported at this layer. For a coin the contract holds itself, use
+ * `_mintToSelf`, which mints to `kernel.self()` and claims it in the same call.
  *
  * @notice This module exposes composable building blocks for minting and
  * burning native shielded coins. It does NOT include access control: consuming
@@ -97,7 +101,7 @@ module NativeShieldedTokenFamily {
   /**
    * @description Returns whether the contract has been initialized.
    *
-   * @circuitInfo k=6, rows=26
+   * @constraints k=6, rows=24
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -110,7 +114,7 @@ module NativeShieldedTokenFamily {
    * contract. Per-type identity belongs in the consumer's own state; see the
    * module notes.
    *
-   * @circuitInfo k=6, rows=28
+   * @constraints k=6, rows=26
    *
    * Requirements:
    *
@@ -126,7 +130,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the family symbol shared by all token types of this
    * contract.
    *
-   * @circuitInfo k=6, rows=28
+   * @constraints k=6, rows=26
    *
    * Requirements:
    *
@@ -142,7 +146,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the family-wide number of decimals used to get the
    * user representation.
    *
-   * @circuitInfo k=6, rows=28
+   * @constraints k=6, rows=26
    *
    * Requirements:
    *
@@ -158,7 +162,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the coin color (token type) for `domain` under this
    * contract's address, so integrators do not have to re-derive it by hand.
    *
-   * @circuitInfo k=13, rows=4248
+   * @constraints k=13, rows=4239
    *
    * Requirements:
    *
@@ -186,7 +190,7 @@ module NativeShieldedTokenFamily {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11119
+   * @constraints k=14, rows=10727
    *
    * Requirements:
    *
@@ -195,18 +199,59 @@ module NativeShieldedTokenFamily {
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator. Same domain + same
    * contract address produces the same coin color (i.e. same token type).
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {ZswapCoinPublicKey} recipient - The coin recipient.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
   export circuit _mint(
                    domain: Bytes<32>,
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                   recipient: ZswapCoinPublicKey,
                    amount: Uint<64>,
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
-    return Core__mint(domain, recipient, amount, nonce);
+    return Core__mint(
+      domain,
+      left<ZswapCoinPublicKey, ContractAddress>(recipient),
+      amount,
+      nonce
+    );
+  }
+
+  /**
+   * @description Mints `amount` of the token identified by `domain` to this
+   * contract itself, claiming the coin in the same call. Forwards to
+   * `NativeShieldedTokenCore._mint` with `right(kernel.self())`.
+   *
+   * @dev Nonce uniqueness is the caller's responsibility, as in `_mint`. Spend
+   * the coin later with `_burnFromSelf`, once it carries an `mt_index`.
+   *
+   * @notice The consumer SHOULD persist the returned coin info in its own
+   * ledger state: it is the contract's holding and is not otherwise
+   * recoverable.
+   *
+   * @constraints k=14, rows=10497
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @param {Bytes<32>} domain - 32-byte token discriminator.
+   * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
+   * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
+   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   */
+  export circuit _mintToSelf(
+                   domain: Bytes<32>,
+                   amount: Uint<64>,
+                   nonce: Bytes<32>
+                   ): ShieldedCoinInfo {
+    return Core__mint(
+      domain,
+      right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+      amount,
+      nonce
+    );
   }
 
   /**
@@ -227,7 +272,7 @@ module NativeShieldedTokenFamily {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47932
+   * @constraints k=16, rows=41603
    *
    * Requirements:
    *
@@ -240,8 +285,8 @@ module NativeShieldedTokenFamily {
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {ShieldedCoinInfo} coin - The coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
-   * route the unspent portion (`coin.value - amount`).
+   * @param {ZswapCoinPublicKey} refundTo - Where to route the unspent
+   * portion (`coin.value - amount`).
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -249,9 +294,14 @@ module NativeShieldedTokenFamily {
                    domain: Bytes<32>,
                    coin: ShieldedCoinInfo,
                    amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                   refundTo: ZswapCoinPublicKey
                    ): Maybe<ShieldedCoinInfo> {
-    return Core__burn(domain, coin, amount, refundTo);
+    return Core__burn(
+      domain,
+      coin,
+      amount,
+      left<ZswapCoinPublicKey, ContractAddress>(refundTo)
+    );
   }
 
   /**
@@ -263,7 +313,7 @@ module NativeShieldedTokenFamily {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @circuitInfo k=15, rows=23583
+   * @constraints k=15, rows=23484
    *
    * Requirements:
    *

@@ -10,13 +10,14 @@ pragma language_version >= 0.26.0;
 import CompactStandardLibrary;
 import "../../ForwarderShielded" prefix Forwarder_;
 
-export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, Either };
+export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, ShieldedSendResult, Maybe, Either };
 
 /**
  * @description Test fixture exposing the `ForwarderShielded` module's
  * underscore-prefixed circuit directly. `isInit` controls whether the
  * constructor initializes. Set it to `false` to leave the contract
- * uninitialized and exercise the not-initialized guard.
+ * uninitialized and exercise the not-initialized guard. `initialize`
+ * is exposed to exercise the already-initialized guard.
  *
  * DO NOT USE IN PRODUCTION.
  */
@@ -26,7 +27,11 @@ constructor(parent: ZswapCoinPublicKey, isInit: Boolean) {
   }
 }
 
-export circuit deposit(coin: ShieldedCoinInfo): [] {
+export circuit initialize(parent: ZswapCoinPublicKey): [] {
+  return Forwarder_initialize(parent);
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): ShieldedSendResult {
   return Forwarder__deposit(coin);
 }
 

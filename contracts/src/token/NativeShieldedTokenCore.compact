@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (token/NativeShieldedTokenCore.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (token/NativeShieldedTokenCore.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -44,6 +44,19 @@ pragma language_version >= 0.26.0;
  * compose `NativeShieldedTokenDerivedNonce` and pass its `_deriveNonce()`
  * output, at the cost of making those mints recipient-public.
  *
+ * @notice A recipient may be any coin public key, or this contract's own
+ * address. Any other contract address is rejected.
+ *
+ * @dev Recipient arm
+ * The ledger accepts a contract-addressed commitment only if the recipient
+ * contract's own call claims it as a shielded receive in the same transaction,
+ * and no primitive claims a receive on another contract's behalf. So the
+ * address arm is accepted only for `kernel.self()`, which `mintShieldedToken`
+ * and `sendShielded` claim as a receive themselves. A `receiveShielded` on top
+ * emits a duplicate output for the same commitment. The flavors do not expose
+ * the arm at all: they take a `ZswapCoinPublicKey` and offer `_mintToSelf` for
+ * contract-held coins.
+ *
  * @dev Burn variants
  * `_burn` destroys value from a coin provided within the current transaction
  * (e.g. the caller's wallet pays the contract): it receives the coin and spends
@@ -70,8 +83,18 @@ module NativeShieldedTokenCore {
    */
   export ledger _isInitialized: Boolean;
 
+  /**
+   * @description The token's human-readable name, set once at construction.
+   */
   export sealed ledger _name: Opaque<"string">;
+  /**
+   * @description The token's ticker symbol, set once at construction.
+   */
   export sealed ledger _symbol: Opaque<"string">;
+  /**
+   * @description The number of decimals used to display balances, set once at
+   * construction. Purely presentational; no circuit scales by it.
+   */
   export sealed ledger _decimals: Uint<8>;
 
   /**
@@ -130,7 +153,7 @@ module NativeShieldedTokenCore {
    * @dev Does not gate on init (it reports it), so it is safe to call before
    * `initialize`.
    *
-   * @circuitInfo k=6, rows=26
+   * @constraints k=6, rows=24
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -141,7 +164,7 @@ module NativeShieldedTokenCore {
   /**
    * @description Returns the token name.
    *
-   * @circuitInfo k=6, rows=28
+   * @constraints k=6, rows=26
    *
    * Requirements:
    *
@@ -157,7 +180,7 @@ module NativeShieldedTokenCore {
   /**
    * @description Returns the symbol of the token.
    *
-   * @circuitInfo k=6, rows=28
+   * @constraints k=6, rows=26
    *
    * Requirements:
    *
@@ -175,7 +198,7 @@ module NativeShieldedTokenCore {
    * @dev This is a display convention only. The protocol stores and operates
    * on integer values without reference to decimals.
    *
-   * @circuitInfo k=6, rows=28
+   * @constraints k=6, rows=26
    *
    * Requirements:
    *
@@ -192,7 +215,7 @@ module NativeShieldedTokenCore {
    * @description Returns the coin color for `domain` under this contract's
    * address: `tokenType(domain, kernel.self())`, computed at call time.
    *
-   * @circuitInfo k=13, rows=4248
+   * @constraints k=13, rows=4239
    *
    * Requirements:
    *
@@ -212,21 +235,26 @@ module NativeShieldedTokenCore {
    *
    * @dev The caller is fully responsible for nonce uniqueness. Reusing a
    * nonce for the same (domain, value, recipient) produces a duplicate
-   * commitment, which the protocol rejects.
+   * commitment, which the protocol rejects. A `right(kernel.self())` recipient
+   * is claimed by `mintShieldedToken` in this same call, so the consumer SHOULD
+   * persist the returned coin info: it is the contract's holding and is not
+   * otherwise recoverable.
    *
    * @notice The returned coin info is the only copy available to the
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @circuitInfo k=14, rows=11119
+   * @constraints k=14, rows=11109
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `recipient` is not zero.
+   * - `recipient`, if a contract address, is this contract's own address.
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin recipient.
+   * @param {Either<ZswapCoinPublicKey, ContractAddress>} recipient - The coin
+   * recipient: any coin public key, or this contract's own address.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
@@ -238,7 +266,9 @@ module NativeShieldedTokenCore {
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
     assertInitialized();
+    const self = kernel.self();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
+    assert(recipient.is_left || recipient.right == self, "NativeShieldedToken: recipient contract must be self");
 
     return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
   }
@@ -255,13 +285,14 @@ module NativeShieldedTokenCore {
    * @dev The coin is received by the contract and spent in the same
    * transaction, so the spend goes through `sendImmediateShielded` (the
    * transient path). For coins the contract already holds, use
-   * `_burnFromSelf` instead.
+   * `_burnFromSelf` instead. A `right(kernel.self())` refund is claimed by
+   * `sendImmediateShielded` in this same call.
    *
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @circuitInfo k=16, rows=47932
+   * @constraints k=16, rows=47764
    *
    * Requirements:
    *
@@ -270,12 +301,14 @@ module NativeShieldedTokenCore {
    * - `amount` is less than or equal to `coin.value`.
    * - `refundTo` is not zero (the zero key is the burn address; a zero
    *   `refundTo` would silently burn the change as well).
+   * - `refundTo`, if a contract address, is this contract's own address.
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {ShieldedCoinInfo} coin - The coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
-   * route the unspent portion (`coin.value - amount`).
+   * route the unspent portion (`coin.value - amount`): any coin public key, or
+   * this contract's own address.
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
@@ -286,9 +319,11 @@ module NativeShieldedTokenCore {
                    refundTo: Either<ZswapCoinPublicKey, ContractAddress>
                    ): Maybe<ShieldedCoinInfo> {
     assertInitialized();
-    assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedToken: wrong token");
+    const self = kernel.self();
+    assert(coin.color == tokenType(disclose(domain), self), "NativeShieldedToken: wrong token");
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
     assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
+    assert(refundTo.is_left || refundTo.right == self, "NativeShieldedToken: refund contract must be self");
 
     receiveShielded(disclose(coin));
     const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
@@ -313,7 +348,7 @@ module NativeShieldedTokenCore {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @circuitInfo k=15, rows=23583
+   * @constraints k=15, rows=23484
    *
    * Requirements:
    *

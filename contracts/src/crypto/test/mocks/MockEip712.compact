@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Eip712 module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Eip712" prefix Eip712_;
+
+// Keeps every circuit below impure. Without a ledger write the compiler
+// promotes them to pure, and the artifact ships without ZKIR or proving keys,
+// leaving the typed-data envelope evaluated but never proven.
+ledger _invocations: Counter;
+
+export circuit domainSeparator(
+  hashedName: Bytes<32>,
+  hashedVersion: Bytes<32>,
+  salt: Bytes<32>
+): Bytes<32> {
+  _invocations.increment(1);
+  return Eip712_domainSeparator(hashedName, hashedVersion, salt);
+}
+
+export circuit hashTypedData(
+  separator: Bytes<32>,
+  structHash: Bytes<32>
+): Bytes<32> {
+  _invocations.increment(1);
+  return Eip712_hashTypedData(separator, structHash);
+}

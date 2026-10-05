@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (security/Initializable.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (security/Initializable.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -26,12 +26,16 @@ pragma language_version >= 0.26.0;
 module Initializable {
   import CompactStandardLibrary;
 
+  /**
+   * @description Whether `initialize` has run. Guards against re-initialization
+   * and against use before initialization.
+   */
   export ledger _isInitialized: Boolean;
 
   /**
    * @description Initializes the state thus ensuring the calling circuit can only be called once.
    *
-   * @circuitInfo k=10, rows=38
+   * @constraints k=6, rows=28
    *
    * Requirements:
    *
@@ -47,7 +51,7 @@ module Initializable {
   /**
    * @description Asserts that the contract has been initialized, throwing an error if not.
    *
-   * @circuitInfo k=10, rows=31
+   * @constraints k=6, rows=25
    *
    * Requirements:
    *
@@ -62,7 +66,7 @@ module Initializable {
   /**
    * @description Asserts that the contract has not been initialized, throwing an error if it has.
    *
-   * @circuitInfo k=10, rows=35
+   * @constraints k=6, rows=28
    *
    * Requirements:
    *

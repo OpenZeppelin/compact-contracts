@@ -2,10 +2,16 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { LOGS, VERIFY_LOCK } from './paths.ts';
+
+/** How long an unreadable lock is presumed to be one still being written. A
+ * `wx` create lands the path before its stamp, and a reader in that window sees
+ * an empty file, so a young unreadable lock is a live one, not a corpse. */
+const UNREADABLE_GRACE_MS = 10_000;
 
 interface LockInfo {
   readonly pid: number;
@@ -47,6 +53,20 @@ export class RunLock {
     }
   }
 
+  /** Whether the lock on disk can be reclaimed: stamped by a dead process, or
+   * unreadable for longer than {@link UNREADABLE_GRACE_MS}. */
+  #stale(info: LockInfo | undefined): boolean {
+    if (info) return !pidAlive(info.pid);
+    try {
+      return Date.now() - statSync(this.#path).mtimeMs > UNREADABLE_GRACE_MS;
+    } catch {
+      // Gone between the failed create and here: its holder released it. The
+      // reclaim's rename then fails with ENOENT and reports it as held, which
+      // is the safe way to lose this race.
+      return true;
+    }
+  }
+
   /** The "someone else holds it" rejection, shared by both losing paths. */
   #heldBy(info: LockInfo | undefined): Error {
     const who = info ? ` (pid ${info.pid}, started ${info.startedAt})` : '';
@@ -83,7 +103,7 @@ export class RunLock {
     }
 
     const info = this.#read();
-    if (info && pidAlive(info.pid)) throw this.#heldBy(info);
+    if (!this.#stale(info)) throw this.#heldBy(info);
 
     // Stale. Claim the right to reclaim it by moving it aside, then create the
     // lock fresh under `wx` — so a third run that started in between still wins

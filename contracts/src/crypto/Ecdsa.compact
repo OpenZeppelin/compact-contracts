@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (crypto/Ecdsa.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (crypto/Ecdsa.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -21,7 +21,7 @@ module Ecdsa {
    * @description Returns whether `s` is canonical, i.e. `s <= n / 2` where `n`
    * is the secp256k1 group order.
    *
-   * @circuitInfo k=13, rows=5125
+   * @constraints k=13, rows=5125 (zkir-v3)
    *
    * @param {Secp256k1Scalar} s - The `s` component of a signature.
    * @returns {Boolean} True if `s` is in the low half.
@@ -72,7 +72,7 @@ module Ecdsa {
   /**
    * @description Rejects a signature in the high half.
    *
-   * @circuitInfo k=13, rows=5156
+   * @constraints k=13, rows=5156 (zkir-v3)
    *
    * Requirements:
    *
@@ -90,7 +90,7 @@ module Ecdsa {
    * low-s encoding. Reports the result instead of asserting, so a caller can
    * fold it into a count or a threshold.
    *
-   * @circuitInfo k=16, rows=34056
+   * @constraints k=16, rows=34056 (zkir-v3)
    *
    * @param {Bytes<32>} msgHash - The digest that was signed.
    * @param {Secp256k1EcdsaSignature} sig - The signature over `msgHash`.

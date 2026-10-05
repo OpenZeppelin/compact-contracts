@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (security/Pausable.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (security/Pausable.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -12,12 +12,16 @@ pragma language_version >= 0.26.0;
 module Pausable {
   import CompactStandardLibrary;
 
+  /**
+   * @description Whether the contract is paused. Consuming contracts gate
+   * state-changing circuits on it via `assertPaused` / `assertNotPaused`.
+   */
   export ledger _isPaused: Boolean;
 
   /**
    * @description Returns true if the contract is paused, and false otherwise.
    *
-   * @circuitInfo k=10, rows=32
+   * @constraints k=6, rows=24
    *
    * @return {Boolean} True if paused.
    */
@@ -28,7 +32,7 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is paused.
    *
-   * @circuitInfo k=10, rows=31
+   * @constraints k=6, rows=25
    *
    * Requirements:
    *
@@ -43,7 +47,7 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is not paused.
    *
-   * @circuitInfo k=10, rows=35
+   * @constraints k=6, rows=28
    *
    * Requirements:
    *
@@ -58,7 +62,7 @@ module Pausable {
   /**
    * @description Triggers a stopped state.
    *
-   * @circuitInfo k=10, rows=38
+   * @constraints k=6, rows=28
    *
    * Requirements:
    *
@@ -74,7 +78,7 @@ module Pausable {
   /**
    * @description Lifts the pause on the contract.
    *
-   * @circuitInfo k=10, rows=34
+   * @constraints k=6, rows=25
    *
    * Requirements:
    *

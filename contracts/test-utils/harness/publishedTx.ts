@@ -80,6 +80,21 @@ const POLL_INTERVAL_MS = 1_000;
  */
 export class IndexerTimeout extends Error {}
 
+/** The caller's deadline ran out before a request was sent; nothing was asked of the indexer. */
+export class DeadlinePassed extends IndexerTimeout {}
+
+/** The head is past a block the indexer cannot serve yet. Retryable. */
+export class BlockNotIndexed extends IndexerTimeout {}
+
+/** The call a spec waits for: its entry point at the contract under test. */
+export interface AwaitedCall {
+  readonly entryPoint: string;
+}
+
+/** Hex address as a comparison key: no `0x`, lower case. */
+const bare = (address: string): string =>
+  address.replace(/^0x/i, '').toLowerCase();
+
 /**
  * How long one request may take: its own ceiling, or whatever is left of the
  * caller's deadline, whichever is smaller.
@@ -93,7 +108,7 @@ function requestBudget(deadline: number | undefined): number {
   }
   const remaining = deadline - Date.now();
   if (remaining <= 0) {
-    throw new IndexerTimeout(
+    throw new DeadlinePassed(
       'indexer: deadline passed before the next request',
     );
   }
@@ -106,19 +121,25 @@ async function gql<T>(
   deadline?: number,
 ): Promise<T> {
   const budget = requestBudget(deadline);
+  // Without this a hung socket outlives any caller deadline: `fetch` has no
+  // total-response timeout, and undici's body timeout is far longer than the
+  // poll budget callers ask for.
+  const signal = AbortSignal.timeout(budget);
+  const timedOut = (cause: unknown): boolean =>
+    signal.aborted ||
+    (cause instanceof Error &&
+      (cause.name === 'TimeoutError' || cause.name === 'AbortError'));
+
   let res: Response;
   try {
     res = await fetch(url(), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ query, variables }),
-      // Without this a hung socket outlives any caller deadline: `fetch` has no
-      // total-response timeout, and undici's body timeout is far longer than the
-      // poll budget callers ask for.
-      signal: AbortSignal.timeout(budget),
+      signal,
     });
   } catch (cause) {
-    if (cause instanceof Error && cause.name === 'TimeoutError') {
+    if (timedOut(cause)) {
       throw new IndexerTimeout(`indexer ${url()}: no response in ${budget}ms`, {
         cause,
       });
@@ -128,7 +149,19 @@ async function gql<T>(
   if (!res.ok) {
     throw new Error(`indexer ${url()}: HTTP ${res.status}`);
   }
-  const body = (await res.json()) as { data?: T; errors?: unknown };
+  // The signal also cuts a body read short, so that abort is a timeout too.
+  let body: { data?: T; errors?: unknown };
+  try {
+    body = (await res.json()) as { data?: T; errors?: unknown };
+  } catch (cause) {
+    if (timedOut(cause)) {
+      throw new IndexerTimeout(
+        `indexer ${url()}: body not received in ${budget}ms`,
+        { cause },
+      );
+    }
+    throw cause;
+  }
   if (body.errors) {
     throw new Error(`indexer gql errors: ${JSON.stringify(body.errors)}`);
   }
@@ -148,19 +181,18 @@ export async function indexerHead(deadline?: number): Promise<number> {
   return data.block?.height ?? 0;
 }
 
-/** Hex address as a comparison key: no `0x`, lower case. */
-const hexKey = (address: string): string =>
-  address.replace(/^0x/i, '').toLowerCase();
-
 /**
  * Every transaction the indexer has in blocks after `height`, oldest first.
  *
  * @param height - Exclusive lower bound, normally the head captured before the
  * call under test.
  * @param contractAddress - When given, keeps only transactions carrying a
- * contract action at that address. Compared without `0x` and case-insensitively.
+ * contract action at that address.
  * @param deadline - Absolute epoch-ms bound covering EVERY request this makes,
  * one per block. Omit to bound each request individually instead.
+ * @throws {BlockNotIndexed} When a block at or below the head is missing: a
+ * partial window would read as complete.
+ * @throws When a block comes back at another height than the one asked for.
  */
 export async function publishedTxsSince(
   height: number,
@@ -178,7 +210,17 @@ export async function publishedTxsSince(
       { offset: { height: h } },
       deadline,
     );
-    for (const tx of data.block?.transactions ?? []) {
+    if (data.block === null) {
+      throw new BlockNotIndexed(
+        `indexer: block ${h} not indexed yet (head ${head})`,
+      );
+    }
+    if (data.block.height !== h) {
+      throw new Error(
+        `indexer: asked for block ${h}, got block ${data.block.height}`,
+      );
+    }
+    for (const tx of data.block.transactions) {
       const calls = tx.contractActions
         .filter((action) => action.entryPoint !== undefined)
         .map((action) => ({
@@ -187,8 +229,8 @@ export async function publishedTxsSince(
           state: action.state ?? '',
         }));
       if (contractAddress !== undefined) {
-        const wanted = hexKey(contractAddress);
-        if (!calls.some((call) => hexKey(call.address) === wanted)) {
+        const wanted = bare(contractAddress);
+        if (!calls.some((call) => bare(call.address) === wanted)) {
           continue;
         }
       }
@@ -199,38 +241,44 @@ export async function publishedTxsSince(
 }
 
 /**
- * Polls until at least `min` transactions have been indexed after `height`.
+ * Polls until a transaction after `height` carries the awaited call, and
+ * returns only the transactions carrying it.
  *
- * A call resolves once the node finalizes it, which can be a beat ahead of the
- * indexer having the block; without this a spec reads an empty window and
- * asserts nothing.
+ * `height` comes from the indexer, which can lag the node, so the window can
+ * hold calls the spec made before it read the head. Await an entry point the
+ * spec calls once on this contract.
  *
  * @param height - Exclusive lower bound, the head captured before the call.
- * @param contractAddress - Only transactions carrying a call to this address
- * count toward `min`. Required: a spec that waited on any traffic at all would
- * pass on a concurrent spec's transactions.
- * @param min - How many transactions to wait for.
+ * @param contractAddress - The contract the awaited call targets.
+ * @param want - The call under test.
  * @param timeoutMs - Give up after this long. Enforced across requests, not only
  * between polls, so a stuck indexer cannot outlive it.
- * @throws On giving up. A timed-out request is kept as `cause`.
+ * @throws On giving up, naming the entry points seen at the address. A
+ * timed-out request or a missing block is kept as `cause`.
  */
 export async function awaitPublishedTxs(
   height: number,
   contractAddress: string,
-  min = 1,
+  want: AwaitedCall,
   timeoutMs = 120_000,
 ): Promise<PublishedTx[]> {
   const deadline = Date.now() + timeoutMs;
+  const wanted = bare(contractAddress);
   let seen: PublishedTx[] = [];
   let lastTimeout: IndexerTimeout | undefined;
 
   while (Date.now() < deadline) {
     try {
       seen = await publishedTxsSince(height, contractAddress, deadline);
-      // The indexer answered, so any earlier timeout is stale: a short window
-      // from here on is a missing transaction, not a stuck indexer.
+      // The indexer answered, so any earlier timeout is stale: a window
+      // without the call is a missing transaction, not a stuck indexer.
       lastTimeout = undefined;
     } catch (cause) {
+      // The clock crossed the deadline between the loop check and the request.
+      // Nothing was asked of the indexer, so it is not a timeout to report.
+      if (cause instanceof DeadlinePassed) {
+        break;
+      }
       // Slowness is what this function exists to absorb, so keep polling while
       // time remains. A protocol failure is a real defect: surface it at once.
       if (!(cause instanceof IndexerTimeout)) {
@@ -238,8 +286,14 @@ export async function awaitPublishedTxs(
       }
       lastTimeout = cause;
     }
-    if (seen.length >= min) {
-      return seen;
+    const matching = seen.filter((tx) =>
+      tx.calls.some(
+        (call) =>
+          bare(call.address) === wanted && call.entryPoint === want.entryPoint,
+      ),
+    );
+    if (matching.length > 0) {
+      return matching;
     }
     const pause = Math.min(POLL_INTERVAL_MS, deadline - Date.now());
     if (pause <= 0) {
@@ -248,17 +302,90 @@ export async function awaitPublishedTxs(
     await new Promise((resolve) => setTimeout(resolve, pause));
   }
 
-  // A timeout and a short window are different failures: one says the indexer
-  // stopped answering, the other that it answered and the transactions are not
-  // there. Only the first has a cause worth keeping.
+  const entryPoints = seen.flatMap((tx) =>
+    tx.calls
+      .filter((call) => bare(call.address) === wanted)
+      .map((call) => call.entryPoint),
+  );
+  const awaited =
+    `a call to "${want.entryPoint}" at ${contractAddress} after block ${height} ` +
+    `(entry points seen there: ${entryPoints.join(', ') || 'none'})`;
+
+  // A timeout and a window without the call are different failures: one says
+  // the indexer stopped answering, the other that it answered and the call is
+  // not there. Only the first has a cause worth keeping.
   if (lastTimeout !== undefined) {
     throw new Error(
-      `indexer: timed out waiting for ${min} transaction(s) after block ${height} ` +
-        `(saw ${seen.length}); last request: ${lastTimeout.message}`,
+      `indexer: timed out waiting for ${awaited}; ` +
+        `last request: ${lastTimeout.message}`,
       { cause: lastTimeout },
     );
   }
-  throw new Error(
-    `indexer: expected ${min} transaction(s) after block ${height}, saw ${seen.length}`,
-  );
+  throw new Error(`indexer: expected ${awaited}`);
+}
+
+/** A shorter needle can match by chance inside a proof blob. */
+const MIN_NEEDLE_BYTES = 16;
+
+/** How the ledger serializes the needle: a byte string or a field element. */
+export interface NeedleEncoding {
+  readonly as: 'bytes' | 'field';
+}
+
+/** Minimal little-endian bytes of a non-negative integer. */
+function littleEndian(value: bigint): Uint8Array {
+  const bytes: number[] = [];
+  for (let rest = value; rest > 0n; rest >>= 8n) {
+    bytes.push(Number(rest & 0xffn));
+  }
+  return Uint8Array.from(bytes);
+}
+
+function withoutTrailingZeros(bytes: Uint8Array): Uint8Array {
+  let end = bytes.length;
+  while (end > 0 && bytes[end - 1] === 0) {
+    end--;
+  }
+  return bytes.subarray(0, end);
+}
+
+/**
+ * Whether a transaction carries `needle`; a zero-padded label is not a valid needle.
+ *
+ * The ledger strips trailing zero bytes and writes a field little-endian, so
+ * the search is for that form, which the full-width form also contains.
+ *
+ * @param needle - A `Uint8Array` for `bytes`, a `bigint` for `field`.
+ * @throws {TypeError} When the needle type does not match `options.as`.
+ * @throws {RangeError} When the needle is negative, or shorter than 16 bytes
+ * once trimmed.
+ */
+export function publishedContains(
+  txs: readonly PublishedTx[],
+  needle: Uint8Array | bigint,
+  options: NeedleEncoding,
+): boolean {
+  let encoded: Uint8Array;
+  if (options.as === 'bytes') {
+    if (!(needle instanceof Uint8Array)) {
+      throw new TypeError('publishedContains: a bytes needle is a Uint8Array');
+    }
+    encoded = withoutTrailingZeros(needle);
+  } else {
+    if (typeof needle !== 'bigint') {
+      throw new TypeError('publishedContains: a field needle is a bigint');
+    }
+    if (needle < 0n) {
+      throw new RangeError('publishedContains: a field needle is not negative');
+    }
+    encoded = littleEndian(needle);
+  }
+  if (encoded.length < MIN_NEEDLE_BYTES) {
+    throw new RangeError(
+      `publishedContains: needle is ${encoded.length} byte(s) once trimmed, ` +
+        `under the ${MIN_NEEDLE_BYTES} a match needs to be evidence`,
+    );
+  }
+  const wanted = Buffer.from(encoded).toString('hex');
+  return txs.some((tx) => tx.raw.toLowerCase().includes(wanted));
 }

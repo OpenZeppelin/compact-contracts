@@ -16,6 +16,8 @@ export interface PooledWallet {
   readonly provider: MidnightWalletProvider;
   /** Encoded coin public key, published as `MIDNIGHT_<ALIAS>_COIN_PK`. */
   readonly coinPublicKey: string;
+  /** Encoded encryption public key, which shielded coins sent to this wallet are encrypted to. */
+  readonly encryptionPublicKey: string;
   stop(): Promise<void>;
 }
 
@@ -139,6 +141,21 @@ export class WalletPool {
       );
     }
     return wallet.provider;
+  }
+
+  /**
+   * Each pooled wallet's coin public key mapped to its encryption public key
+   * (requires {@link ensureReady}). A live call needs the recipient's
+   * encryption key to send it a shielded coin, and midnight-js knows only the
+   * caller's own.
+   */
+  encryptionKeysByCoinKey(): ReadonlyMap<string, string> {
+    return new Map(
+      Array.from(this.wallets.values(), (wallet) => [
+        wallet.coinPublicKey,
+        wallet.encryptionPublicKey,
+      ]),
+    );
   }
 
   /** Stop every built wallet and clear the pool (for a `globalTeardown`). */

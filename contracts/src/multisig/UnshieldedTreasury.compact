@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/UnshieldedTreasury.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/UnshieldedTreasury.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -37,6 +37,14 @@ module UnshieldedTreasury {
 
   // ─── State ──────────────────────────────────────────────────────
 
+  /**
+   * @description The treasury's tracked balance per token color. Deposits add
+   * to it and sends subtract.
+   * @type {Bytes<32>} color - The token color.
+   * @type {Uint<128>} balance - The amount currently held of it.
+   * @type {Map<color, balance>}
+   * @type {Map<Bytes<32>, Uint<128>>} _balances
+   */
   export ledger _balances: Map<Bytes<32>, Uint<128>>;
 
   // ─── Deposit ────────────────────────────────────────────────────
@@ -82,8 +90,7 @@ module UnshieldedTreasury {
   // ─── Send ───────────────────────────────────────────────────────
 
   /**
-   * @description Sends unshielded tokens from the treasury. Zero-amount sends
-   * are permitted and are value-preserving no-ops.
+   * @description Sends unshielded tokens from the treasury.
    *
    * @warning Recipients are not validated. An unspendable recipient (such as a
    * zero address) is accepted and permanently removes the funds from the
@@ -103,6 +110,7 @@ module UnshieldedTreasury {
    *
    * Requirements:
    *
+   * - The amount must be non-zero. The ledger rejects zero-value outputs.
    * - The treasury must hold sufficient balance for the given token color.
    *
    * @param {Either<ContractAddress, UserAddress>} recipient - The recipient address.
@@ -116,6 +124,8 @@ module UnshieldedTreasury {
     color: Bytes<32>,
     amount: Uint<128>
   ): [] {
+    assert(amount != 0, "UnshieldedTreasury: zero amount");
+
     const bal = getTokenBalance(color);
     assert(bal >= amount, "UnshieldedTreasury: insufficient balance");
 

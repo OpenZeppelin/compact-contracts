@@ -215,6 +215,11 @@ yarn test:live multisig ShieldedTreasury # any file matching "ShieldedTreasury"
 yarn test:live integration ConfidentialFungibleToken # one integration spec
 ```
 
+The filter is resolved against the named target's own spec files, matched the way
+vitest matches it (a case-insensitive substring of the path), so it never reaches
+into another target's specs. In an unscoped run, a target the filter matches
+nothing under is skipped; a filter that matches nothing anywhere aborts the run.
+
 The two-round flake check still applies to a scoped run, so a green result
 means the same thing it does for the full suite.
 
@@ -244,6 +249,31 @@ Environment knobs:
 > ```
 >
 > The file stores ANSI color codes, so render them rather than reading them raw. In VS Code, an ANSI extension such as [`iliazeus.vscode-ansi`](https://marketplace.visualstudio.com/items?itemName=iliazeus.vscode-ansi) renders a `.ansi` file via **"ANSI Text: Open Preview"**. In a terminal, use `less -R logs/live-multisig.ansi`. On Linux, prefix `systemd-inhibit --why="live tests"` for a long run.
+
+#### Live tests in CI
+
+The live suite is too slow for the regular PR checks (hours, not minutes), so [`live.yml`](./.github/workflows/live.yml) runs it separately and is never a required check:
+
+* **Nightly** on `main`, as the regression safety net. A failed nightly opens (or comments on) a `live-nightly` tracking issue, which closes automatically on the next green run.
+* **On demand**: run `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `target` and `filter` inputs.
+* **On a PR**: apply a `live-tests:<target>` label (e.g. `live-tests:multisig`), or `live-tests:all` for every target. Re-apply the label for a fresh run after new pushes. The bare `live-tests` label is rejected by the plan job — with one job per spec file it would queue 60+ checks on the PR, so the full fan-out has to be spelled out.
+
+The run is one pipeline per live target. A plan job asks the runner which live targets exist (the same list `yarn test:live --list` prints) and which spec files each one holds. Each target then gets a `compile-<target>` job that builds its contract slice once with real ZK keys and uploads it, feeding a `live-<target>` matrix with one job per **spec file** that downloads that build and runs its one file on its own runner, stack, and 6-hour job budget.
+
+A pipeline per target rather than one compile matrix feeding one suite matrix, because `needs` in Actions is job-level: a single pair of matrices makes every spec file wait for the slowest compile of all targets. Measured on run 32810453735, `utils` compiled in 41s and `crypto` in 67s while `token` and `integration` ran for many minutes, so 15 spec jobs would have idled behind them. There is no per-matrix-leg dependency edge to express this with, so the pairs are literal YAML, their steps living in the `live-compile.yml` and `live-suite.yml` reusable workflows. The cost of that literalness is `KNOWN_TARGETS` in `live.yml`, which the plan job checks against what it discovers: a new `src/` category with no job pair fails the plan in seconds rather than silently never running.
+
+Per spec file rather than per target because a target is one long serial job, while the files are independent: every suite job resets its own stack, so nothing one spec leaves on the node can fail another, and a failure names the file that caused it. The compile layer is what makes that affordable, since 16 token spec jobs must not mean 16 token compiles. Legs are also budgeted at ~27 minutes of estimated duration: the plan job downloads the previous run's timing reports (best-effort) and weighs each test by its measured duration, falling back to ~55s per test when a file has no history — which reproduces the old 30-test cap exactly. A file over the budget is split by its describe blocks into several legs running the same file under a vitest test-name pattern (`scripts/ci/split.ts`), so no single big file sets the run's wall clock, and a per-test cost far above the fleet's (`MultiToken` runs ~3 min/test) splits its file finer than the count alone would. A file whose structure cannot be filtered exactly (dynamic describe names, say) simply stays one leg; the plan log prints each leg's estimated minutes.
+
+Every job runs the same `yarn test:live` entry point a local run does, so the two-round flake semantics are identical. The two flags CI adds are `--compile-only` (build the slice and stop) and `--prebuilt` (run against a downloaded build, and abort rather than compile if it is incomplete or carries a truncated key). A target whose compile fails skips its own spec jobs and no others. Each job's verdict lands in its GitHub job summary, the JSON verdict reports upload as a `live-reports-<target>-<file>` artifact on every run, and the service and worker logs as `live-logs-<target>-<file>` on failure.
+
+A `filter` input narrows the matrix as well as the run: a target the filter matches no file under gets no job, because one live target that runs nothing is an abort in the runner rather than a pass. A filter that matches nothing anywhere fails the plan job in seconds. The plan job matches it exactly as vitest does, so a filter that works locally is never rejected here.
+
+The workflow itself holds no logic: resolving that matrix and reporting the nightly both live in [`scripts/live-ci.ts`](./scripts/live-ci.ts), so both are unit tested and runnable locally.
+
+```bash
+yarn test:scripts    # dry unit tests for scripts/live and scripts/ci
+yarn types:scripts   # type-check them (also part of `yarn types`)
+```
 
 ## Styleguides
 

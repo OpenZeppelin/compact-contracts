@@ -113,25 +113,32 @@ describe('UnshieldedTreasury module', () => {
         treasury._send(RECIPIENT, COLOR, AMOUNT + 1n),
       ).rejects.toThrow('UnshieldedTreasury: insufficient balance');
     });
+
+    it('should reject a zero-amount send and keep the balance', async () => {
+      await treasury._deposit(COLOR, AMOUNT);
+      await expect(treasury._send(RECIPIENT, COLOR, 0n)).rejects.toThrow(
+        'UnshieldedTreasury: zero amount',
+      );
+      expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
+    });
+
+    it('should reject a zero-amount send on an untouched color', async () => {
+      await expect(treasury._send(RECIPIENT, OTHER_COLOR, 0n)).rejects.toThrow(
+        'UnshieldedTreasury: zero amount',
+      );
+    });
   });
 
-  // Zero-amount operations are permitted (see the protocol-behavior block for
-  // on-chain acceptance). These pin the accounting side: they must not drift.
-  describe('zero-amount operations', () => {
+  describe('zero-amount deposit', () => {
     it('should be idempotent on an untouched color', async () => {
       await treasury._deposit(OTHER_COLOR, 0n);
       await treasury._deposit(OTHER_COLOR, 0n);
-      expect(await treasury.getTokenBalance(OTHER_COLOR)).toEqual(0n);
-
-      await treasury._send(RECIPIENT, OTHER_COLOR, 0n);
-      await treasury._send(RECIPIENT, OTHER_COLOR, 0n);
       expect(await treasury.getTokenBalance(OTHER_COLOR)).toEqual(0n);
     });
 
     it('should preserve an existing balance', async () => {
       await treasury._deposit(COLOR, AMOUNT);
       await treasury._deposit(COLOR, 0n);
-      await treasury._send(RECIPIENT, COLOR, 0n);
       expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
     });
   });
@@ -156,6 +163,14 @@ describe('UnshieldedTreasury module', () => {
       await expect(
         treasury.sendTwice(COLOR, AMOUNT, AMOUNT, RECIPIENT),
       ).rejects.toThrow('UnshieldedTreasury: insufficient balance');
+    });
+
+    it('should reject a zero-amount send after a non-zero one', async () => {
+      await treasury._deposit(COLOR, AMOUNT);
+      await expect(
+        treasury.sendTwice(COLOR, AMOUNT / 2n, 0n, RECIPIENT),
+      ).rejects.toThrow('UnshieldedTreasury: zero amount');
+      expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
     });
   });
 
@@ -215,17 +230,20 @@ describe('UnshieldedTreasury module', () => {
       expect(unbacked.kind).toEqual('rejected');
     });
 
-    it('zero-amount deposit and send are permitted', async () => {
-      const d = verdict(
+    it('a zero-amount deposit is accepted', async () => {
+      const o = verdict(
         await outcomeOf(() => treasury._deposit(OTHER_COLOR, 0n)),
         'zero deposit',
       );
-      expect(d.kind).toEqual('ok');
-      const s = verdict(
-        await outcomeOf(() => treasury._send(RECIPIENT, OTHER_COLOR, 0n)),
-        'zero send',
+      expect(o.kind).toEqual('ok');
+    });
+
+    it('the ledger rejects a zero-value send', async () => {
+      const o = verdict(
+        await outcomeOf(() => treasury.sendRaw(OTHER_COLOR, 0n, RECIPIENT)),
+        'raw zero send',
       );
-      expect(s.kind).toEqual('ok');
+      expect(o.kind).toEqual('rejected');
     });
 
     // No unshielded equivalent of `shieldedBurnAddress` exists, and a zero

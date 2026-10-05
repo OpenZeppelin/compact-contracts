@@ -21,10 +21,8 @@ const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const COLOR2 = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken2;
 const AMOUNT = 1000n;
 
-// A non-zero deploy address so the change output (routed to self via
-// `selfAsRecipient()`) carries a recognizable address instead of the zero
-// `dummyContractAddress()` default — lets the tests assert change returns to
-// THIS contract, not merely to "some contract arm".
+// Dry deploy address. Non-zero, so change routed to the zero
+// `dummyContractAddress()` default fails the recipient check.
 const TREASURY_ADDRESS = '7a'.repeat(32);
 
 // Assigned in `beforeAll` after `create()` syncs the wallet: on live the harness
@@ -46,10 +44,12 @@ function makeCoin(
 
 let treasury: ShieldedTreasurySimulator;
 
-// A fresh treasury at the fixed deploy address. Mutating groups build one per
+// A fresh treasury, at `TREASURY_ADDRESS` on dry. Mutating groups build one per
 // test (`beforeEach`); the read-only `initial state` group shares one deploy.
 const freshTreasury = () =>
-  ShieldedTreasurySimulator.create({ contractAddress: TREASURY_ADDRESS });
+  ShieldedTreasurySimulator.create(
+    isLiveBackend() ? {} : { contractAddress: TREASURY_ADDRESS },
+  );
 
 describe('ShieldedTreasury', () => {
   // Z_RECIPIENT is stable (the deployer's own coin key on live, a synthetic key
@@ -213,7 +213,7 @@ describe('ShieldedTreasury', () => {
         expect(toSelf[0].coinInfo.value).toBe(250n);
         expect(toSelf[0].coinInfo).toStrictEqual(result.change.value);
         expect(bytesToHex(toSelf[0].recipient.right.bytes)).toBe(
-          TREASURY_ADDRESS,
+          treasury.contractAddress,
         );
         expect(isNonceSpent(inputs, result.change.value.nonce)).toBe(false);
       });

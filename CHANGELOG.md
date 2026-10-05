@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+## 0.4.0-alpha.5 (2026-09-29)
+
+### Changed
+
+- **Breaking:** `ShieldedMultiSigV2.execute` rejects a `Contract` recipient as `Multisig: recipient must be a coin public key`. A contract-addressed coin is unclaimable, so the node rejected every such execution. (#1034)
+- **Breaking:** `NativeShieldedTokenIssuer.burnFromSelf` binds the spent coin. The `BurnFromSelf` struct gains `coinNonce` and `coinValue`, so an approval authorizes one held coin and existing burn-from-self signatures no longer verify. (#993)
+- **Breaking:** `ForwarderShielded._deposit` returns the forward's `ShieldedSendResult` instead of `[]`, and `ForwarderShieldedExample.deposit` returns it too (#999)
+- **Breaking:** `UnshieldedTreasury._send` rejects a zero amount, which the ledger refuses as a zero-value output (#980)
+
+### Fixed
+
+- `NativeShieldedTokenIssuer.burn` and `burnFromSelf` take a `Uint<128>` amount, the shielded coin value range. Digests for amounts that fit `Uint<64>` are unchanged. (#1033)
+- Drop the duplicate `receiveShielded` on self-addressed `NativeShieldedTokenCore._mint` and `_burn` coins. `mintShieldedToken` and `sendShielded` already claim them, so the extra call emitted a second Zswap output for the same commitment. Core `_mint` drops from k=15 to k=14. (#1017)
+- `EcdsaSignerManager.initialize` rejects signer sets smaller than 2 and any threshold other than 2. `assertApprovals` always verifies two signatures, so a smaller set could never pass and a stored threshold of 1 was never honored. (#1011)
+
+## 0.4.0-alpha.4 (2026-09-25)
+
+### Changed
+
+- **Breaking:** Rename `NativeShieldedTokenIssuer.burn` to `burnFromSelf` (contract-held coin, EIP-712 struct `BurnFromSelf`). New `burn` burns a holder's coin paid into the transaction and refunds the change to `refundTo`, bound in the new `Burn` struct. `mint` takes a `ZswapCoinPublicKey` recipient and signs the new `Mint` struct (no `isContract` word); new `mintToSelf` mints to the contract itself under `MintToSelf`. The example contract exports all four. (#974)
+
+## 0.4.0-alpha.3 (2026-09-24)
+
+### Changed
+
+- **Breaking:** Change `NativeShieldedToken` / `NativeShieldedTokenFamily` `_mint` recipient and `_burn` refund recipient to `ZswapCoinPublicKey`, add `_mintToSelf`, and restrict `NativeShieldedTokenCore` contract-addressed recipients to the contract itself; `NativeShieldedTokenIssuer.mint` keeps its `Either` recipient and rejects any other contract (#965)
+- **Breaking:** Widen the CFT balance claim and ElGamal `assertDecryptsTo` to `Uint<248>`, so a balance accumulated past the per-transfer bound stays spendable. `wit_PlaintextBalance` returns `Uint<248>`. (#961)
+- **Breaking:** Domain-separate `ElGamal.secretToScalar` from the account-id hash. Every derived public key changes, so existing CFT registrations and ciphertexts are incompatible. (#964)
+- **Breaking:** `ConfidentialFungibleToken.clearMemos` takes `expectedEpoch` and reverts if a credit landed after the memos were read, so unread credits are never cleared. (#962)
+- **Breaking:** Derive the `ConfidentialFungibleToken` credit nonce from the new `_creditEpochs` counter instead of the memo count, so `clearMemos` cannot reset it. Ledger layout changes, so fresh deploys only. (#958)
+- **Breaking:** Bind the `ConfidentialFungibleToken` escrow-spend randomness to the owner, the spender, and a per-pair epoch in the new `_escrowSpendEpochs` ledger. Ledger layout changes, so fresh deploys only. (#963)
+- **Breaking:** `ConfidentialFungibleToken.sweep` and `clearMemos` require the encryption-key witness; the account secret alone no longer authorizes them. (#960)
+
+### Fixed
+
+- `NonFungibleToken._approve` reverts for a nonexistent token even with a zero `auth`. The new `_unsafeApprove` takes an `isExistenceRequired` flag. (#959)
+
+## 0.4.0-alpha.2 (2026-09-23)
+
+### Added
+
+- Add `EvmAbi` and `Eip712` modules (#906)
+- `_domainSeparator` ledger field (#906)
+  - `ShieldedMultiSigV2`
+  - `ShieldedMultiSigV3`
+
+### Changed
+
+- **Breaking:** (#906)
+  - `ShieldedMultiSigV2`
+    - Sign `execute` as EIP-712 typed data instead of
+    a `persistentHash` digest
+
+  - `ShieldedMultiSigV3`
+    - Sign `mint` and `burn` as EIP-712 typed data instead of `persistentHash` digests
+
+- **Breaking:** Refactor `ProposalManager` (#780)
+  - `Proposal.status` → `state: Uint<64>`, overlaying lifecycle and expiry
+  - `_createProposal` / `createShieldedProposal` require `expiry`
+  - `getProposalStatus` returns `Inactive` for unknown ids instead of failing
+
+- **Breaking:** Remove `Signer.initialize` and `_isInitialized`; the registry is configured through `_addSigner` / `_changeThreshold` / `_setThreshold` only. `EcdsaSignerManager_initialize` does that configuration itself instead of calling another module's `initialize`, rejects a second call while signers are registered, and `_instanceSalt` is `export sealed`. Ledger slot indices change, so fresh deploys only. (#925)
+
+- **Breaking:** Turn the `ShieldedMultiSigV2` and `ShieldedMultiSigV3` presets into modules, deployable through the new `multisig/examples/` contracts; the forwarder presets move there too. Ledger slot indices change, so fresh deploys only. (#885)
+  - Fix the `EcdsaSignerManager` double import in the examples (#928)
+- **Breaking:** Rename `ShieldedMultiSigV3` to `NativeShieldedTokenIssuer`, built on `NativeShieldedToken`. New `initialize` signature and EIP-712 domain; `mint` / `burn` return the coin; `getTokenDomain` / `getTokenType` replaced by `tokenColor`, `name`, `symbol`, `decimals`. (#887)
+
+### Removed
+
+- **Breaking:** Remove the `ShieldedMultiSig` preset. A rebuild on `EcdsaSignerManager` is tracked in #905. (#885)
+
+### Fixed
+
+- Bump `@openzeppelin/compact-cli` `^0.0.3` → `^0.1.1`, whose `compact-builder` `0.0.5` fails the build when `compact compile` fails; `0.0.4` reported every failure as `✔ Compiled`. `engines.node` follows the cli to `>=24`. Fixes #894.
+- Exclude `crypto/` and `multisig/` from the aggregate `compile` script. They need `--feature-zkir-v3` and are built by `compile:crypto` / `compile:multisig`; recompiling them on v2 emptied their artifact directories. The aggregate cannot move to v3 while `ConfidentialFungibleToken` fails key generation there. `build` passes `--feature-zkir-v3` instead: it excludes mocks, and only the `ConfidentialFungibleToken` mocks hit the v3 key-generation failure. (#899)
+
 ## 0.4.0-alpha.1 (2026-09-02)
 
 ### Added
@@ -19,9 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known issues
 
 - Compiler 0.34.0 emits ZKIR v2 by default, and this release targets v2. Only `crypto/Ecdsa`, `multisig/EcdsaSignerManager` and the `ShieldedMultiSigV2` / `ShieldedMultiSigV3` presets need `--feature-zkir-v3`, because the `Secp256k1` types live in the v3 library; `compile:crypto` and `compile:multisig` pass it.
-- Under `--feature-zkir-v3`, any impure circuit that reaches `ElGamal.encryptPoint` (notably `ConfidentialFungibleToken`) fails at key generation with `Unsupported test_eq: JubjubScalar == JubjubScalar`, because the ZKIR v3 backend has no `JubjubScalar` equality ([LFDT-Minokawa/compact#757](https://github.com/LFDT-Minokawa/compact/issues/757)). A source-level fix, comparing the derived point instead of the scalar, lands in the next release.
+- Under `--feature-zkir-v3`, any impure circuit that reaches `ElGamal.encryptPoint` (notably `ConfidentialFungibleToken`) fails at key generation with `Unsupported test_eq: JubjubScalar == JubjubScalar`, because the ZKIR v3 backend has no `JubjubScalar` equality ([LFDT-Minokawa/compact#757](https://github.com/LFDT-Minokawa/compact/issues/757)). A source-level fix, comparing the derived point instead of the scalar, is planned for the next release.
 - Under `--feature-zkir-v3`, exporting `ElGamal.derivePk` as an impure circuit panics with `ZkStdLibArch must enable jubjub` ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)). There is no source workaround.
-- `@openzeppelin/compact-cli` `0.0.3` pins `@openzeppelin/compact-builder` to `0.0.4`, which reports a failed compile as success on Linux and writes no artifact. This is fixed in `compact-builder` `0.0.5` ([OpenZeppelin/compact-tools#162](https://github.com/OpenZeppelin/compact-tools/pull/162)); a `compact-cli` patch release picking it up follows, after which this repo bumps it. Until then, check that `artifacts/<Name>/compiler/contract-info.json` exists after a compile.
+- `@openzeppelin/compact-cli` `0.0.3` pins `@openzeppelin/compact-builder` to `0.0.4`, which reports a failed compile as success on Linux and writes no artifact. Bumped in Unreleased (#899).
 
 ## 0.3.0-alpha.2 (2026-08-11)
 

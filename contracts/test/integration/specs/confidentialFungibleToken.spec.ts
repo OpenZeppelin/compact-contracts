@@ -24,13 +24,10 @@ import { ConfidentialFungibleTokenPublicSupplySimulator } from '../fixtures/conf
  * Balances stay hidden; `totalSupply` (the public aggregate) is what we assert.
  *
  * Backend split (`--project integration` vs `integration-live`), in file order:
- *   1. The LIVE block is the block-limit canary. It asserts the composed deploy
- *      is rejected, which turns "no green functional live integration coverage"
- *      into a verified claim rather than an assumption. True as of ledger v8; see
- *      the note above it.
- *   2. The functional block is DRY-ONLY, for two reasons: the deploy in (1) is
- *      rejected, and it drives confidential identities through `switchIdentity` /
- *      `cachePlaintext`, which the live backend throws on.
+ *   1. The LIVE block deploys the composition and reads its supply back.
+ *   2. The functional block is DRY-ONLY: it drives confidential identities
+ *      through `switchIdentity` / `cachePlaintext`, which the live backend
+ *      throws on.
  */
 
 // Mirrors the base suite's deterministic identity setup.
@@ -65,70 +62,24 @@ const deploy = () =>
   ConfidentialFungibleTokenPublicSupplySimulator.create(NAME, SYMBOL, DECIMALS);
 
 // ---------------------------------------------------------------------------
-// Live: block-limit canary. This block comes FIRST because it is the boundary
-// condition that explains the rest of the file — it is the reason the functional
-// suite below is dry-only.
-//
-// The base `ConfidentialFungibleToken` already bundles four k=16 circuits' IR
-// into one deploy tx, which overruns the per-tx block byte budget — its own live
-// block asserts that rejection (`src/token/test/ConfidentialFungibleToken.test.ts`).
-// This composition adds the PublicSupply extension on top, so it is strictly
-// larger and hits the same wall.
-//
-// Rather than skip and hide that, ASSERT the rejection. A green skip would let
-// the branch claim live coverage it does not have.
-//
-// Scoped to ledger v9. The budget is a ledger property, not a contract property,
-// so a ledger bump can move it. If this block goes red, the composed deploy fits
-// now: drop it and invert the guards below.
+// Live: the composed deploy.
 // ---------------------------------------------------------------------------
 
 describe.runIf(isLiveBackend())(
   'ConfidentialFungibleToken + PublicSupply composition: live deploy',
   () => {
-    it('deploy is rejected for exceeding the ledger block byte budget', async () => {
-      // Fresh funded node, well-formed tx: the only reason the deploy can be
-      // rejected here is the block byte budget. Assert it, verbatim.
-      let error: unknown;
-      try {
-        await deploy();
-      } catch (e) {
-        error = e;
-      }
-      expect(
-        error,
-        'the composed deploy SUCCEEDED, so it no longer exceeds the block budget: ' +
-          'delete this block and invert the guards in this file, to run the ' +
-          'functional suite live instead.',
-      ).toBeDefined();
-      const detail = [
-        (error as Error)?.message,
-        (error as { cause?: unknown })?.cause,
-        String(error),
-      ]
-        .map((x) => String(x ?? ''))
-        .join(' | ');
-      // The node's exact words, as of ledger v8. Asserted in full rather than a
-      // loose `/block limits/` match, which an unrelated deploy failure could
-      // satisfy and report as a false green.
-      expect(
-        detail,
-        'the deploy was rejected, but not for the block budget. Either the cause ' +
-          'is unrelated (funding, proving, a submission bounce), or a ledger bump ' +
-          'reworded the message. Re-verify against the node before relaxing this.',
-      ).toContain(
-        '1010: Invalid Transaction: Transaction would exhaust the block limits',
-      );
+    it('deploys and reads back a zero supply', async () => {
+      cft = await deploy();
+      expect(await cft.totalSupply()).toBe(0n);
     });
   },
 );
 
 // ---------------------------------------------------------------------------
-// Dry: the functional composition suite. Cannot run live on two counts — the
-// deploy above is rejected, and every flow here mutates private state mid-test
-// (`switchIdentity` / `cachePlaintext`), which the live backend throws on
-// ('private-state mutation unsupported on live backend'). Going green live needs
-// both a deploy that fits AND a deploy-seeded, memo-decrypt rewrite.
+// Dry: the functional composition suite. Every flow here mutates private state
+// mid-test (`switchIdentity` / `cachePlaintext`), which the live backend throws
+// on ('private-state mutation unsupported on live backend'). Going green live
+// needs a deploy-seeded, memo-decrypt rewrite.
 // ---------------------------------------------------------------------------
 
 describe.skipIf(isLiveBackend())(

@@ -70,6 +70,20 @@ export const eitherUserFromCoinPublicKey = (
 });
 
 /**
+ * @description Builds an `Either<ZswapCoinPublicKey, ContractAddress>` bound to a
+ * real contract address, e.g. a simulator's `contractAddress`.
+ * @param contractAddress 64-char hex contract address.
+ * @returns Defined Either object for the given ContractAddress.
+ */
+export const eitherContractFromAddress = (
+  contractAddress: string,
+): Either<ZswapCoinPublicKey, ContractAddress> => ({
+  is_left: false,
+  left: encodeToPK(''),
+  right: { bytes: encodeContractAddress(contractAddress) },
+});
+
+/**
  * @description Generates an Either object for ContractAddress for testing.
  *              For use when an Either argument is expected.
  * @param str String to hexify and encode.

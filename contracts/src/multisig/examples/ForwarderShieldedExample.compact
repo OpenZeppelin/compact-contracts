@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/examples/ForwarderShieldedExample.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @title ForwarderShieldedExample
+ * @description Public-parent forwarder for shielded coins. Receives a
+ * shielded coin and atomically forwards it to the configured parent
+ * recipient, a coin public key.
+ *
+ * The parent recipient is set at deploy time. This preset exposes no
+ * setter, so the parent is fixed for the life of the contract. Anyone
+ * may call `deposit`; the recipient is fixed, so there is no need for
+ * access control.
+ *
+ * The constructor accepts a `ZswapCoinPublicKey`: an atomic forward can
+ * only deliver to a recipient that needs no in-tx claim, and a shielded
+ * send to a non-participating contract is rejected. The parent is stored
+ * generically (`Either`) on the ledger so a future circuit upgrade can
+ * add contract-address support without a state migration.
+ */
+
+import CompactStandardLibrary;
+import "../ForwarderShielded" prefix Forwarder_;
+
+export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, ShieldedSendResult, Maybe, Either };
+
+/**
+ * @description Deploys the forwarder bound to a specific parent
+ * recipient.
+ *
+ * @param {ZswapCoinPublicKey} parent - The coin public key that receives
+ * every forwarded coin.
+ */
+constructor(parent: ZswapCoinPublicKey) {
+  Forwarder_initialize(parent);
+}
+
+/**
+ * @description Receives a shielded coin and atomically forwards it to
+ * the configured parent. The coin is claimed via `receiveShielded` and
+ * immediately re-sent via `sendImmediateShielded`.
+ *
+ * The depositor must encrypt the forwarded output to the parent's
+ * encryption public key (see the `ForwarderShielded` header).
+ *
+ * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
+ *
+ * @returns {ShieldedSendResult} The coin sent to the parent, with no change.
+ */
+export circuit deposit(coin: ShieldedCoinInfo): ShieldedSendResult {
+  return Forwarder__deposit(coin);
+}
+
+/**
+ * @description Returns the configured parent recipient as stored on the
+ * ledger (the generic `Either`; the `left` arm holds the coin public key).
+ *
+ * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The parent
+ * recipient set at deploy.
+ */
+export circuit getParent(): Either<ZswapCoinPublicKey, ContractAddress> {
+  return Forwarder__parent;
+}

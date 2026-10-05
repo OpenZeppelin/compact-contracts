@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.1 (multisig/ForwarderShielded.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/ForwarderShielded.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -41,6 +41,11 @@ pragma language_version >= 0.26.0;
  * coins. Forwarding to a key no one controls strands every deposit
  * permanently. The zero-key guard rejects only the all-zero key, not an
  * otherwise-unspendable one.
+ *
+ * @notice The depositor must encrypt the forwarded output to the parent's
+ * encryption public key, obtained off-chain. The ledger cannot check that
+ * key against `_parent`, so a wrong or missing key leaves the coin
+ * spendable by the parent but invisible to its wallet.
  */
 module ForwarderShielded {
   import CompactStandardLibrary;
@@ -103,20 +108,24 @@ module ForwarderShielded {
    * `sendImmediateShielded` to the stored parent recipient (always the
    * `left` / coin-public-key arm today).
    *
-   * @circuitInfo k=15, rows=24446
+   * @constraints k=15, rows=23197
    *
    * Requirements:
    *
    * - Contract must be initialized.
+   * - The forwarded output must be encrypted to the parent's encryption
+   *   public key (see the module header). If unsure, hand the returned
+   *   `ShieldedSendResult` to the parent so it can recover the coin.
    *
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
    *
-   * @returns {[]} Empty tuple.
+   * @returns {ShieldedSendResult} The coin sent to the parent, with no change:
+   * the whole value is forwarded.
    */
-  export circuit _deposit(coin: ShieldedCoinInfo): [] {
+  export circuit _deposit(coin: ShieldedCoinInfo): ShieldedSendResult {
     assertInitialized();
     receiveShielded(disclose(coin));
-    sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
+    return sendImmediateShielded(disclose(coin), _parent, disclose(coin.value));
   }
 
   // ─── Init guards ────────────────────────────────────────────────

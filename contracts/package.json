@@ -1,6 +1,6 @@
 {
   "name": "@openzeppelin/compact-contracts",
-  "version": "0.4.0-alpha.1",
+  "version": "0.4.0-alpha.5",
   "description": "OpenZeppelin Compact contract library",
   "keywords": [
     "openzeppelin",
@@ -24,29 +24,30 @@
     "#test-utils/*": "./test-utils/*"
   },
   "scripts": {
-    "compile": "compact-compiler --exclude '*/archive/*'",
+    "compile": "compact-compiler --exclude '*/archive/*' --exclude '*/crypto/*' --exclude '*/multisig/*'",
     "compile:access": "compact-compiler --dir access",
     "compile:archive": "compact-compiler --dir archive",
-    "compile:crypto": "compact-compiler --dir crypto --feature-zkir-v3",
+    "compile:crypto": "compact-compiler --dir crypto --feature-zkir-v3 --exclude 'MockElGamal.compact' --exclude 'MockEcdhMask.compact' --exclude 'MockCurveOps.compact' && compact-compiler --dir crypto/test/mocks --exclude 'MockEcdsa.compact' --exclude 'MockEip712.compact'",
     "compile:multisig": "compact-compiler --dir multisig --feature-zkir-v3",
     "compile:security": "compact-compiler --dir security",
     "compile:token": "compact-compiler --dir token",
     "compile:utils": "compact-compiler --dir utils",
     "compile:integration": "compact-compiler --src test/integration/_mocks",
-    "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
+    "build": "compact-builder --hierarchical --out dist --clean-dist --feature-zkir-v3 --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "vitest run --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
     "test:harness": "vitest run --project harness",
     "test:harness:live": "MIDNIGHT_BACKEND=live vitest run --project harness-live",
+    "test:scripts": "vitest run --project scripts",
     "types": "tsc -p tsconfig.json --noEmit",
     "clean": "git clean -fXd"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "dependencies": {
-    "@openzeppelin/compact-cli": "^0.0.3"
+    "@openzeppelin/compact-cli": "^0.1.1"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-js": "2.5.5-rc.8",
@@ -59,16 +60,21 @@
     "@midnight-ntwrk/midnight-js-protocol": "5.0.0-beta.7",
     "@midnight-ntwrk/midnight-js-types": "5.0.0-beta.7",
     "@midnight-ntwrk/testkit-js": "5.0.0-beta.7",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-beta.2",
     "@noble/curves": "^2.2.0",
-    "@openzeppelin/compact-simulator": "^0.4.0",
+    "@noble/hashes": "^2.4.0",
+    "@openzeppelin/compact-deployer": "^0.3.1",
+    "@openzeppelin/compact-simulator": "^0.4.1",
     "@tsconfig/node24": "^24.0.5",
-    "@types/node": "26.4.0",
-    "@vitest/coverage-v8": "^4.1.11",
-    "fast-check": "^4.9.0",
+    "@types/node": "26.6.2",
+    "@vitest/coverage-v8": "^5.0.0",
+    "ethers": "^6.17.0",
+    "fast-check": "^4.10.1",
+    "pino": "^9.7.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
   }
 }

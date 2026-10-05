@@ -24,8 +24,8 @@ import { MockShieldedTreasuryStatelessSimulator } from './simulators/MockShielde
 const COLOR = GENESIS_NATIVE_SHIELDED_TOKEN_COLORS.nativeShieldedToken1;
 const AMOUNT = 1000n;
 
-// A non-zero deploy address so the change output (routed to self) carries a
-// recognizable address rather than the zero `dummyContractAddress()` default.
+// Dry deploy address. Non-zero, so change routed to the zero
+// `dummyContractAddress()` default fails the recipient check.
 const TREASURY_ADDRESS = '5c'.repeat(32);
 
 // Assigned in `beforeEach` after `create()` syncs the wallet: on live this
@@ -48,9 +48,9 @@ let coin: EncodedQualifiedShieldedCoinInfo;
 
 describe('ShieldedTreasuryStateless', () => {
   beforeEach(async () => {
-    treasury = await MockShieldedTreasuryStatelessSimulator.create({
-      contractAddress: TREASURY_ADDRESS,
-    });
+    treasury = await MockShieldedTreasuryStatelessSimulator.create(
+      isLiveBackend() ? {} : { contractAddress: TREASURY_ADDRESS },
+    );
     Z_RECIPIENT = shieldedTestKey();
     const deposited = makeCoin(COLOR, AMOUNT);
     await treasury._deposit(deposited);
@@ -128,7 +128,7 @@ describe('ShieldedTreasuryStateless', () => {
         expect(toSelf[0].coinInfo.value).toBe(AMOUNT - 400n);
         expect(toSelf[0].coinInfo).toStrictEqual(result.change.value);
         expect(bytesToHex(toSelf[0].recipient.right.bytes)).toBe(
-          TREASURY_ADDRESS,
+          treasury.contractAddress,
         );
         expect(isNonceSpent(inputs, result.change.value.nonce)).toBe(false);
       });
