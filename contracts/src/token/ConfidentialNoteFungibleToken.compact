@@ -56,7 +56,9 @@ pragma language_version >= 0.26.0;
  *     domain-tagged and salted by `_instanceSalt`, so no other contract's
  *     identity for the same `sk` derives it.
  *   - Nonces and secret keys.
- *   - Which leaf a spend consumes.
+ *   - Which leaf a spend consumes, within the leaves present at the
+ *     disclosed root. A stale root narrows that set to older leaves, and a
+ *     rarely refreshed one fingerprints the wallet.
  *   - The link between a mint and its spend, absent the nonce.
  * - Counterparty: whoever knows a note's nonce derives its `tag` and `nf`, so
  *   sees WHEN it is minted and spent, not by whom or for how much.
@@ -127,7 +129,8 @@ pragma language_version >= 0.26.0;
  * - Throughput follows the concurrency rules above: calls on distinct notes
  *   commute.
  * - Wallets need no chain scanning, since notes arrive out of band, but must
- *   track Merkle paths, so an indexer over all leaves is required.
+ *   track Merkle paths, so an indexer over all leaves is required. Fetch the
+ *   path right before proving: the root it yields is public.
  *
  * @dev Performance:
  * - Proving cost is per call and does not grow with the tree: the path is
@@ -606,7 +609,7 @@ module ConfidentialNoteFungibleToken<#depth> {
     const input = wit_ConfidentialNoteInputNote();
 
     // The root is public, but the path stays witness, so disclosing the root
-    // does not say which leaf was consumed.
+    // does not say which leaf was consumed, only that it predates the root.
     const cm = commitOf(input, ownerPk);
     const path = wit_ConfidentialNotePath(cm);
     const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));
