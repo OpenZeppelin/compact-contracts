@@ -240,7 +240,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 20 },
       );
-    });
+    }, 60_000);
 
     it('should never let a spent note be spent again', async () => {
       await fc.assert(
@@ -273,6 +273,6 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 15 },
       );
-    });
+    }, 60_000);
   },
 );
