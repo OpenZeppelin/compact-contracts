@@ -983,3 +983,77 @@ describe('ConfidentialNoteFungibleToken: _transfer', () => {
     expect(await isSpent(input)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Value bounds
+// ---------------------------------------------------------------------------
+
+const UINT128_MAX = (1n << 128n) - 1n;
+
+// Conservation compares at full width, so outputs that wrap past 128 bits back
+// to the input value are still rejected.
+describe('ConfidentialNoteFungibleToken: value bounds', () => {
+  let input: Note;
+
+  beforeEach(async () => {
+    token = await ConfidentialNoteFungibleTokenSimulator.create();
+    input = await token._mint(ALICE, UINT128_MAX);
+    spendAs(ALICE_SK, input);
+  });
+
+  it('should mint the maximum value', async () => {
+    expect(input.value).toBe(UINT128_MAX);
+    expect(await isCommitted(input, ALICE)).toBe(true);
+  });
+
+  it('should transfer the whole maximum value', async () => {
+    const before = await commitmentCount();
+    const [out, change] = await token.transfer(BOB, UINT128_MAX);
+
+    expect(out.value).toBe(UINT128_MAX);
+    expect(change.value).toBe(0n);
+    expect(await isCommitted(out, BOB)).toBe(true);
+    expect(await isCommitted(change, ALICE)).toBe(true);
+    expect(await isSpent(input)).toBe(true);
+    expect(await commitmentCount()).toBe(before + 2n);
+  });
+
+  it('should burn the whole maximum value', async () => {
+    const change = await token.burn(UINT128_MAX);
+
+    expect(change.value).toBe(0n);
+    expect(await isCommitted(change, ALICE)).toBe(true);
+    expect(await isSpent(input)).toBe(true);
+  });
+
+  it('should not accept transfer outputs that wrap past 128 bits', async () => {
+    const small = await token._mint(ALICE, 100n);
+    spendAs(ALICE_SK, small);
+    const before = await commitmentCount();
+
+    await expectRejection(
+      token._transfer(
+        ALICE,
+        BOB,
+        { value: UINT128_MAX, nonce: 111n },
+        { value: 101n, nonce: 222n },
+      ),
+      'ConfidentialNoteFungibleToken: transfer does not conserve value',
+    );
+    expect(await isSpent(small)).toBe(false);
+    expect(await commitmentCount()).toBe(before);
+  });
+
+  it('should not accept a burn whose value and change wrap past 128 bits', async () => {
+    const small = await token._mint(ALICE, 100n);
+    spendAs(ALICE_SK, small);
+    const before = await commitmentCount();
+
+    await expectRejection(
+      token._burn(ALICE, UINT128_MAX, { value: 101n, nonce: 222n }),
+      'ConfidentialNoteFungibleToken: burn does not conserve value',
+    );
+    expect(await isSpent(small)).toBe(false);
+    expect(await commitmentCount()).toBe(before);
+  });
+});
