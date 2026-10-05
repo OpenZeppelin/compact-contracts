@@ -411,6 +411,13 @@ module ConfidentialNoteFungibleToken<#depth> {
    * A counter or the tree index would pin one shared value and serialize
    * mints. `member` pins one key.
    *
+   * @warning Predictable nonces:
+   * The reservation is first come, first served and keyed on the nonce alone. A
+   * caller-chosen nonce that others can guess, such as a counter or tx context,
+   * lets anyone reserve it first and fail the intended mint. Derive nonces from
+   * secret randomness, and on `nonce already issued` derive a fresh one rather
+   * than retrying.
+   *
    * @warning No authorization:
    * The composer gates who may call this.
    *
@@ -694,7 +701,8 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @notice Caller-built outputs:
    * Taking both notes as parameters lets a composer run its own emission
-   * policy while the core still enforces conservation.
+   * policy while the core still enforces conservation. Output nonces must be
+   * unpredictable; see `_mintNote`.
    *
    * @warning No authorization:
    * The composer gates who may call this.

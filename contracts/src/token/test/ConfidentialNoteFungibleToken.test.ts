@@ -353,12 +353,15 @@ describe('ConfidentialNoteFungibleToken: _mintNote', () => {
   });
 
   // The nonce alone is reserved, so a different owner or value does not free it.
-  it('should reject a reused nonce under a different owner', async () => {
-    await token._mintNote({ value: 42n, nonce: 12345n }, ALICE);
+  it('should let an earlier mint reserve a nonce another caller intended', async () => {
+    const intended = { value: 100n, nonce: 7n };
+    await token._mintNote({ value: 1n, nonce: 7n }, BOB);
 
-    await expect(
-      token._mintNote({ value: 7n, nonce: 12345n }, BOB),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
+    await expectRejection(
+      token._mintNote(intended, ALICE),
+      'ConfidentialNoteFungibleToken: nonce already issued',
+    );
+    expect(await isCommitted(intended, ALICE)).toBe(false);
   });
 });
 
