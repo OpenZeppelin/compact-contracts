@@ -447,6 +447,17 @@ describe('ConfidentialNoteFungibleToken: burn', () => {
       'wit_ConfidentialNotePath: commitment not found in tree',
     );
   });
+
+  it("should not let a non-owner burn with the owner's path", async () => {
+    spendAs(BOB_SK, input);
+    token.wallet.pathOverride = await pathFor(input, ALICE);
+
+    await expectRejection(
+      token.burn(30n),
+      'ConfidentialNoteFungibleToken: path does not match input commitment',
+    );
+    expect(await isSpent(input)).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -616,6 +627,16 @@ describe('ConfidentialNoteFungibleToken: _consumeNote', () => {
       token._consumeNote(BOB),
       'wit_ConfidentialNotePath: commitment not found in tree',
     );
+  });
+
+  it('should not consume a note under another owner pk even with its real path', async () => {
+    token.wallet.pathOverride = await pathFor(input, ALICE);
+
+    await expectRejection(
+      token._consumeNote(BOB),
+      'ConfidentialNoteFungibleToken: path does not match input commitment',
+    );
+    expect(await isSpent(input)).toBe(false);
   });
 
   // No authorization: whoever knows a note and its owner pk can nullify it.
@@ -808,12 +829,24 @@ describe('ConfidentialNoteFungibleToken: transfer', () => {
 
   // Ownership is enforced by the commitment: a non-owner's pk hashes to a leaf
   // that is not in the tree, so no membership proof exists.
+  // Here the wallet throws before proving; the next test reaches the circuit.
   it('should not let anyone other than the owner spend', async () => {
     spendAs(BOB_SK, input);
 
     await expectRejection(
       token.transfer(CAROL, 30n),
       'wit_ConfidentialNotePath: commitment not found in tree',
+    );
+    expect(await isSpent(input)).toBe(false);
+  });
+
+  it("should not let a non-owner spend with the owner's path", async () => {
+    spendAs(BOB_SK, input);
+    token.wallet.pathOverride = await pathFor(input, ALICE);
+
+    await expectRejection(
+      token.transfer(CAROL, 30n),
+      'ConfidentialNoteFungibleToken: path does not match input commitment',
     );
     expect(await isSpent(input)).toBe(false);
   });
