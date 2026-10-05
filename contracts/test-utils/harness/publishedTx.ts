@@ -148,13 +148,17 @@ export async function indexerHead(deadline?: number): Promise<number> {
   return data.block?.height ?? 0;
 }
 
+/** Hex address as a comparison key: no `0x`, lower case. */
+const hexKey = (address: string): string =>
+  address.replace(/^0x/i, '').toLowerCase();
+
 /**
  * Every transaction the indexer has in blocks after `height`, oldest first.
  *
  * @param height - Exclusive lower bound, normally the head captured before the
  * call under test.
  * @param contractAddress - When given, keeps only transactions carrying a
- * contract action at that address.
+ * contract action at that address. Compared without `0x` and case-insensitively.
  * @param deadline - Absolute epoch-ms bound covering EVERY request this makes,
  * one per block. Omit to bound each request individually instead.
  */
@@ -183,8 +187,8 @@ export async function publishedTxsSince(
           state: action.state ?? '',
         }));
       if (contractAddress !== undefined) {
-        const wanted = contractAddress.replace(/^0x/, '');
-        if (!calls.some((call) => call.address.replace(/^0x/, '') === wanted)) {
+        const wanted = hexKey(contractAddress);
+        if (!calls.some((call) => hexKey(call.address) === wanted)) {
           continue;
         }
       }

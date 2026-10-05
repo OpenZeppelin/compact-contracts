@@ -269,7 +269,7 @@ describe('publishedTxsSince', () => {
     ]);
   });
 
-  it('should filter by contract address, ignoring a 0x prefix', async () => {
+  it('should filter by contract address, ignoring a 0x prefix and casing', async () => {
     fetchMock.mockImplementation((_url: string, init?: unknown) => {
       const body = JSON.parse(String((init as { body?: string })?.body));
       return Promise.resolve(
@@ -284,6 +284,7 @@ describe('publishedTxsSince', () => {
     });
 
     expect(await publishedTxsSince(0, '0xabc123')).toHaveLength(1);
+    expect(await publishedTxsSince(0, '0xABC123')).toHaveLength(1);
     expect(await publishedTxsSince(0, '0xdeadbeef')).toHaveLength(0);
   });
 });
