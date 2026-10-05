@@ -320,7 +320,8 @@ describe('ZOwnableNativeShieldedToken compatibility: published surface', () => {
 
   /**
    * Keyed on `Circuits`, the generated type, so a circuit added, removed or
-   * renamed fails to compile. Argument order and result type are the call ABI.
+   * renamed fails to compile. Argument order and result type are the circuit
+   * signature.
    */
   const SURFACE: Exhaustive<
     NameOf<Circuits<never>>,
