@@ -25,6 +25,10 @@ private_state_id = "{name}-ps"
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"
 
+[contracts."src/token/examples/*"]
+signing_key_file = "deploy/local.signingkey"
+private_state_id = "{name}-ps"
+
 [contracts."test/integration/_mocks/*"]
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"
