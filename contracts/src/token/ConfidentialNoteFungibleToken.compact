@@ -79,8 +79,6 @@ pragma language_version >= 0.26.0;
  * - No authorization on `_` circuits: `_mint`, `_mintNote`, `_transfer`,
  *   `_burn`, `_consumeNote` are ungated. Re-exporting one from a deployed
  *   contract is a permissionless mint or spend. The composer gates them.
- * - Atomicity: a failed assert rejects the whole tx before any state moves,
- *   and the sender pays no fee.
  *
  * @notice Concurrency:
  * - Tree and set inserts commute; two calls collide only where they pin the
