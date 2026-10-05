@@ -21,7 +21,10 @@ import { describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
-import type { Note } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import {
+  INSTANCE_SALT,
+  type Note,
+} from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
 
 // ---------------------------------------------------------------------------
 // Identities
@@ -34,8 +37,8 @@ const secretKey = (label: string): Uint8Array => {
 };
 
 const ALICE_SK = secretKey('ALICE');
-const ALICE = core.derivePk(ALICE_SK);
-const BOB = core.derivePk(secretKey('BOB'));
+const ALICE = core.derivePk(ALICE_SK, INSTANCE_SALT);
+const BOB = core.derivePk(secretKey('BOB'), INSTANCE_SALT);
 
 // ---------------------------------------------------------------------------
 // The operations a sequence is built from

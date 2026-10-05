@@ -33,6 +33,12 @@
  * build. See OpenZeppelin/compact-contracts#750.
  */
 
+import {
+  CompactTypeBytes,
+  CompactTypeVector,
+  degradeToTransient,
+  persistentHash,
+} from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   type CircuitSurface,
@@ -49,7 +55,10 @@ import type {
 } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
 import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
-import type { Note } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import {
+  INSTANCE_SALT,
+  type Note,
+} from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -63,8 +72,12 @@ const secretKey = (label: string): Uint8Array => {
 };
 
 const ALICE_SK = secretKey('ALICE');
-const ALICE = core.derivePk(ALICE_SK);
-const BOB = core.derivePk(secretKey('BOB'));
+
+/** Every deployment here is constructed with this salt. */
+const SALT = INSTANCE_SALT;
+
+const ALICE = core.derivePk(ALICE_SK, SALT);
+const BOB = core.derivePk(secretKey('BOB'), SALT);
 
 /** Stands in for wallet randomness, the only non-deterministic mint input. */
 const FIXED_SEED = secretKey('FIXED-NONCE-SEED');
@@ -82,26 +95,45 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 
 /**
  * Domain-separated hashes. The tags are permanent parts of the format:
- * `OZ:note:commit`, `OZ:note:null`, `OZ:note:issued`, `OZ:note:nonce:core`,
- * `OZ:note:mint`, `OZ:note:out`, `OZ:note:chng`. So is each preimage's field
- * order, and the binder every derived nonce is taken over: the recipient for a
- * mint, the consumed note's nullifier for a spend.
+ * `OZ:note:pk`, `OZ:note:commit`, `OZ:note:null`, `OZ:note:issued`,
+ * `OZ:note:nonce:core`, `OZ:note:mint`, `OZ:note:out`, `OZ:note:chng`. So is
+ * each preimage's field order, and the binder every derived nonce is taken
+ * over: the recipient for a mint, the consumed note's nullifier for a spend.
  *
- * `derivePk` has no tag of its own, and is pinned because every commitment is
- * taken over its output.
+ * `derivePk` hashes `(OZ:note:pk, salt, sk)`, the circuits' salt being the
+ * deployment's `_instanceSalt`. Pinned because every commitment is taken over
+ * its output.
  */
 describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
   // Pure circuits: no deployment, so these run on either backend.
 
-  it('should derive the pinned pk from a known secret', () => {
-    expect(core.derivePk(ALICE_SK)).toBe(
-      327106606165982063573363806696144765309444401206486966729313816924943346449n,
+  it('should derive the pinned pk from a known secret and salt', () => {
+    expect(core.derivePk(ALICE_SK, SALT)).toBe(
+      404079673548458092994380058248597846216344394093932603328224206768657321132n,
+    );
+  });
+
+  // The public modules publish `computeAccountId(sk) = H([sk])` as a ledger
+  // key, so an untagged `pk` would be one field reduction away from it.
+  it('should not collide with computeAccountId for the same secret', () => {
+    const accountId = persistentHash(
+      new CompactTypeVector(1, new CompactTypeBytes(32)),
+      [ALICE_SK],
+    );
+    expect(core.derivePk(ALICE_SK, SALT)).not.toBe(
+      degradeToTransient(accountId),
+    );
+  });
+
+  it('should derive distinct pks for one secret under distinct salts', () => {
+    expect(core.derivePk(ALICE_SK, SALT)).not.toBe(
+      core.derivePk(ALICE_SK, secretKey('OTHER-SALT')),
     );
   });
 
   it('should commit a known note to the pinned digest', () => {
     expect(hex(core.commitOf(NOTE, ALICE))).toBe(
-      '0x7ef9ff74353b2baa237f53d015dde72177fa05beb954226d2d290dbffebdc772',
+      '0xbd8de8666508c3414f6476ba17734b6e408b315d7694afddf081b285b37472a5',
     );
   });
 
@@ -142,14 +174,14 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     const minted = await token._mint(ALICE, 100n);
 
     expect(minted.nonce).toBe(
-      241275227332301908586666142629960350353134460898077164612759783949584485693n,
+      175043109306300762329028251661519816384523072696833120721788531167794284186n,
     );
   });
 
   it('should derive the pinned nonce for a change note', async () => {
-    const minted = await token._mint(ALICE, 100n);
+    await token._mintNote(NOTE, ALICE);
     token.wallet.secretKey = ALICE_SK;
-    token.wallet.inputNote = minted;
+    token.wallet.inputNote = NOTE;
     token.wallet.pathOverride = undefined;
     token.wallet.nonceSeed = FIXED_SEED;
 
@@ -157,9 +189,9 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
 
     // A different slot tag from the output note, which is why one reused seed
     // still yields two distinct nonces. The vector also covers the spend
-    // binder: it is taken over the minted note's nullifier.
+    // binder: it is taken over `NOTE`'s nullifier.
     expect(change.nonce).toBe(
-      96849518524355951410940220432437154467392508675487786283505373914998635393n,
+      8152819341088759731288825067977169974517950477747020773559273934289734179n,
     );
   });
 });
@@ -185,8 +217,22 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
   it('should keep the pinned ledger layout', () => {
     expect(ledgerSlots(contractInfo())).toStrictEqual([
       {
-        name: '_commitments',
+        name: '_isInitialized',
         index: 0,
+        exported: true,
+        storage: 'Cell',
+        type: { 'type-name': 'Boolean' },
+      },
+      {
+        name: '_instanceSalt',
+        index: 1,
+        exported: true,
+        storage: 'Cell',
+        type: { 'type-name': 'Bytes', length: 32 },
+      },
+      {
+        name: '_commitments',
+        index: 2,
         exported: true,
         storage: 'HistoricMerkleTree',
         depth: 32,
@@ -194,14 +240,14 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
       },
       {
         name: '_nullifiers',
-        index: 1,
+        index: 3,
         exported: true,
         storage: 'Set',
         type: { 'type-name': 'Bytes', length: 32 },
       },
       {
         name: '_issuedNonces',
-        index: 2,
+        index: 4,
         exported: true,
         storage: 'Set',
         type: { 'type-name': 'Bytes', length: 32 },
@@ -212,8 +258,8 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
   /**
    * `proof` is the load-bearing flag: a circuit touching no ledger state has an
    * empty public transcript, gets no verifier key, and cannot be called on a
-   * deployed instance. `_spenderPk` and `_inputNote` are in that class, which is
-   * why the functional suite skips them on live. Flipping one changes what a
+   * deployed instance. `_inputNote` is in that class, which is why the
+   * functional suite skips it on live. Flipping one changes what a
    * client may do without changing any behaviour a test would notice.
    *
    * Keyed on `Circuits`, the generated type, so TS rejects this table if a circuit
@@ -228,7 +274,7 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
     _inputNote: { pure: false, proof: false },
     _mint: { pure: false, proof: true },
     _mintNote: { pure: false, proof: true },
-    _spenderPk: { pure: false, proof: false },
+    _spenderPk: { pure: false, proof: true },
     _transfer: { pure: false, proof: true },
     burn: { pure: false, proof: true },
     commitOf: { pure: true, proof: false },
@@ -261,6 +307,7 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
       _consumeNote: true,
       _mint: true,
       _mintNote: true,
+      _spenderPk: true,
       _transfer: true,
       burn: true,
       transfer: true,
@@ -283,6 +330,8 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
 
     const declared: Exhaustive<NameOf<Ledger>> = {
       Core__commitments: true,
+      Core__instanceSalt: true,
+      Core__isInitialized: true,
       Core__issuedNonces: true,
       Core__nullifiers: true,
     };

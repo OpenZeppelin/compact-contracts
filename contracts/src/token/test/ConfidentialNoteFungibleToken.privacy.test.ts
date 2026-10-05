@@ -56,6 +56,7 @@ import { ConfidentialNoteFungibleTokenSimulator } from './simulators/Confidentia
 import {
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,
+  INSTANCE_SALT,
   type Note,
   type NoteWallet,
 } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
@@ -72,8 +73,8 @@ const secretKey = (label: string): Uint8Array => {
 
 const ALICE_SK = secretKey('ALICE');
 const BOB_SK = secretKey('BOB');
-const ALICE = core.derivePk(ALICE_SK);
-const BOB = core.derivePk(BOB_SK);
+const ALICE = core.derivePk(ALICE_SK, INSTANCE_SALT);
+const BOB = core.derivePk(BOB_SK, INSTANCE_SALT);
 
 // Planted so two probes derive byte-identical notes; the differential tests
 // need every input equal except the one secret under study.
@@ -107,6 +108,7 @@ class Probe {
     '0'.repeat(64),
     dummyContractAddress(),
     PROBE_TIME,
+    INSTANCE_SALT,
   );
 
   private constructor() {
@@ -444,7 +446,7 @@ describe.skipIf(isLiveBackend())(
     const anyRecipientPk = () =>
       fc
         .uint8Array({ minLength: 32, maxLength: 32 })
-        .map((sk) => core.derivePk(sk));
+        .map((sk) => core.derivePk(sk, INSTANCE_SALT));
 
     it('should mint with the same transcript shape for any amount', async () => {
       await fc.assert(
@@ -670,6 +672,7 @@ describe.skipIf(isLiveBackend())(
     // catch it. Update this list only with a reviewed justification.
     const EXPECTED_DISCLOSURES = [
       // to public state
+      '_instanceSalt = disclose(instanceSalt);',
       '_commitments.insert(disclose(commitOf(note, ownerPk)));',
       'assert(!_issuedNonces.member(disclose(tag)),',
       '_issuedNonces.insert(disclose(tag));',
@@ -696,12 +699,14 @@ describe.skipIf(isLiveBackend())(
       expect(CORE_SOURCE).not.toMatch(/disclose\(\s*wit_/);
     });
 
-    it('should write no public state outside the tree and the two sets', async () => {
+    it('should write no public state outside the init flag, the salt, the tree and the two sets', async () => {
       const ledgerFields = CORE_SOURCE.split('\n')
-        .filter((line) => line.trim().startsWith('export ledger'))
-        .map((line) => line.trim());
+        .map((line) => line.trim())
+        .filter((line) => /^export (sealed )?ledger /.test(line));
 
       expect(ledgerFields).toStrictEqual([
+        'export sealed ledger _isInitialized: Boolean;',
+        'export sealed ledger _instanceSalt: Bytes<32>;',
         'export ledger _commitments: HistoricMerkleTree<depth, Bytes<32>>;',
         'export ledger _nullifiers: Set<Bytes<32>>;',
         'export ledger _issuedNonces: Set<Bytes<32>>;',
@@ -824,7 +829,7 @@ describe.runIf(isLiveBackend())(
 
     it('should not publish the amount, the nonce, or the owner in the transaction', async () => {
       const ownerSk = liveSecret();
-      const ownerPk = core.derivePk(ownerSk);
+      const ownerPk = core.derivePk(ownerSk, INSTANCE_SALT);
       const amount = liveAmount();
 
       const from = await indexerHead();
@@ -854,8 +859,8 @@ describe.runIf(isLiveBackend())(
 
     it('should not publish the spend secret of a transfer', async () => {
       const senderSk = liveSecret();
-      const senderPk = core.derivePk(senderSk);
-      const recipientPk = core.derivePk(liveSecret());
+      const senderPk = core.derivePk(senderSk, INSTANCE_SALT);
+      const recipientPk = core.derivePk(liveSecret(), INSTANCE_SALT);
       const amount = liveAmount();
 
       const note = await token._mint(senderPk, amount);
@@ -884,7 +889,7 @@ describe.runIf(isLiveBackend())(
 
     it('should publish the nullifier of the spent note', async () => {
       const ownerSk = liveSecret();
-      const ownerPk = core.derivePk(ownerSk);
+      const ownerPk = core.derivePk(ownerSk, INSTANCE_SALT);
       const amount = liveAmount();
 
       const note = await token._mint(ownerPk, amount);
@@ -906,12 +911,12 @@ describe.runIf(isLiveBackend())(
 
     it('should leave only the tree and the nullifier set in the published state', async () => {
       const ownerSk = liveSecret();
-      const ownerPk = core.derivePk(ownerSk);
+      const ownerPk = core.derivePk(ownerSk, INSTANCE_SALT);
 
       const note = await token._mint(ownerPk, liveAmount());
       token.wallet.secretKey = ownerSk;
       token.wallet.inputNote = note;
-      await token.transfer(core.derivePk(liveSecret()), 1n);
+      await token.transfer(core.derivePk(liveSecret(), INSTANCE_SALT), 1n);
 
       const state = await token.getPublicState();
       expect(Object.keys(state).sort()).toStrictEqual([
@@ -929,7 +934,7 @@ describe.runIf(isLiveBackend())(
     // an observer learns a transfer happened, just not its amount or parties.
     it('should publish the entry point, making the operation type public', async () => {
       const ownerSk = liveSecret();
-      const ownerPk = core.derivePk(ownerSk);
+      const ownerPk = core.derivePk(ownerSk, INSTANCE_SALT);
 
       const note = await token._mint(ownerPk, liveAmount());
       token.wallet.secretKey = ownerSk;

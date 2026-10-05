@@ -14,7 +14,11 @@ import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
 
 export { Core_Note }
 
-export { Core__commitments, Core__nullifiers, Core__issuedNonces };
+export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces };
+
+constructor(instanceSalt: Bytes<32>) {
+  Core_initialize(instanceSalt);
+}
 
 export circuit _mint(recipientPk: Field, value: Uint<128>): Core_Note {
   return Core__mint(recipientPk, value);
@@ -37,8 +41,8 @@ export circuit _spenderPk(): Field {
   return disclose(Core__spenderPk());
 }
 
-export pure circuit derivePk(sk: Bytes<32>): Field {
-  return Core_derivePk(sk);
+export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+  return Core_derivePk(sk, salt);
 }
 
 export circuit _inputNote(): Core_Note {

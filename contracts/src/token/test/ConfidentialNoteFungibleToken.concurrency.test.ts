@@ -52,6 +52,7 @@ import {
 import {
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,
+  INSTANCE_SALT,
   type Note,
   type NoteWallet,
 } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
@@ -78,8 +79,8 @@ const noteParties = () =>
       new MockCore(ConfidentialNoteFungibleTokenWitnesses(wallet)),
   });
 
-const ALICE = core.derivePk(labelledSecret('alice'));
-const BOB = core.derivePk(labelledSecret('bob'));
+const ALICE = core.derivePk(labelledSecret('alice'), INSTANCE_SALT);
+const BOB = core.derivePk(labelledSecret('bob'), INSTANCE_SALT);
 
 const NOTE_VALUE = 100n;
 const SPEND_VALUE = 30n;
@@ -202,6 +203,7 @@ describe.skipIf(isLiveBackend())(
       harness = await createConcurrencyHarness({
         contracts,
         privateState: {},
+        constructorArgs: [INSTANCE_SALT],
       });
     });
 
@@ -311,6 +313,7 @@ describe.skipIf(isLiveBackend())(
       harness = await createConcurrencyHarness({
         contracts,
         privateState: {},
+        constructorArgs: [INSTANCE_SALT],
       });
     });
 

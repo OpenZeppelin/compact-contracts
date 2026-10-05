@@ -1,0 +1,20 @@
+// TEST-ONLY. Drives the ConfidentialNoteFungibleToken core's `initialize`
+// guards, which only a constructor can reach. `misuse` picks the violation:
+// 1 mints before `initialize`, 2 spends before it, anything else runs
+// `initialize` twice. Every deployment fails by design. DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+
+export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces };
+
+constructor(instanceSalt: Bytes<32>, misuse: Uint<8>) {
+  if (disclose(misuse) == 1) {
+    Core__mint(1 as Field, 1 as Uint<128>);
+  } else if (disclose(misuse) == 2) {
+    Core__consumeNote(1 as Field);
+  } else {
+    Core_initialize(instanceSalt);
+  }
+  Core_initialize(instanceSalt);
+}

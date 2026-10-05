@@ -11,6 +11,13 @@ import type { Ledger } from '../../../../artifacts/MockConfidentialNoteFungibleT
 /** A note as the circuits see it: value plus a field-typed nonce. */
 export type Note = { value: bigint; nonce: bigint };
 
+/** The `_instanceSalt` every test deployment is initialized with. */
+export const INSTANCE_SALT: Uint8Array = (() => {
+  const salt = new Uint8Array(32);
+  salt.set(new TextEncoder().encode('SALT'));
+  return salt;
+})();
+
 /**
  * The private inputs the circuits ask for, held in a plain object the spec
  * mutates between calls.
@@ -21,7 +28,7 @@ export type Note = { value: bigint; nonce: bigint };
  * wallet instead keeps one spec file runnable on both backends.
  */
 export type NoteWallet = {
-  /** Owner spend secret; `pk = Hf(sk)`. */
+  /** Owner spend secret; `pk = derivePk(sk, _instanceSalt)`. */
   secretKey: Uint8Array;
   /** The input note consumed by the next transfer / burn / consume. */
   inputNote: Note;

@@ -27,14 +27,15 @@ import {
 import {
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,
+  INSTANCE_SALT,
   type Note,
   type NoteWallet,
 } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
 
 type PrivateState = Record<string, never>;
 
-const ALICE = core.derivePk(labelledSecret('alice'));
-const BOB = core.derivePk(labelledSecret('bob'));
+const ALICE = core.derivePk(labelledSecret('alice'), INSTANCE_SALT);
+const BOB = core.derivePk(labelledSecret('bob'), INSTANCE_SALT);
 
 const NOTE_VALUE = 100n;
 
@@ -56,7 +57,11 @@ describe('DryReplayHarness against real state', () => {
   beforeEach(async () => {
     const { parties, contracts } = noteParties();
     wallets = { alice: parties.alice.wallet, bob: parties.bob.wallet };
-    harness = await createDryHarness({ contracts, privateState: {} });
+    harness = await createDryHarness({
+      contracts,
+      privateState: {},
+      constructorArgs: [INSTANCE_SALT],
+    });
   });
 
   /** Mints a note to `ownerPk` and arms `actor` to spend it. */

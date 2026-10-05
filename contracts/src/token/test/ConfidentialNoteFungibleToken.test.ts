@@ -1,9 +1,19 @@
-import { isLiveBackend } from '@openzeppelin/compact-simulator';
+import { dummyContractAddress } from '@midnight-ntwrk/compact-runtime';
+import {
+  CircuitContextManager,
+  isLiveBackend,
+} from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+import { Contract as MockInit } from '../../../artifacts/MockConfidentialNoteFungibleTokenInit/contract/index.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
-import type { Note } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import {
+  ConfidentialNoteFungibleTokenWitnesses,
+  createNoteWallet,
+  INSTANCE_SALT,
+  type Note,
+} from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,11 +30,12 @@ const ALICE_SK = secretKey('ALICE');
 const BOB_SK = secretKey('BOB');
 const CAROL_SK = secretKey('CAROL');
 
-// `pk = Hf(sk)`, computed off-circuit through the module's own pure circuit —
-// the same derivation a wallet or auditor would run.
-const ALICE = core.derivePk(ALICE_SK);
-const BOB = core.derivePk(BOB_SK);
-const CAROL = core.derivePk(CAROL_SK);
+// `pk = derivePk(sk, salt)`, computed off-circuit through the module's own pure
+// circuit, the same derivation a wallet or auditor would run. Every deployment
+// below is constructed with `INSTANCE_SALT`.
+const ALICE = core.derivePk(ALICE_SK, INSTANCE_SALT);
+const BOB = core.derivePk(BOB_SK, INSTANCE_SALT);
+const CAROL = core.derivePk(CAROL_SK, INSTANCE_SALT);
 
 const FIXED_SEED = secretKey('FIXED-NONCE-SEED');
 
@@ -94,11 +105,71 @@ describe('ConfidentialNoteFungibleToken: initial state', () => {
     expect(ledger.Core__nullifiers.size()).toBe(0n);
   });
 
-  // The core holds no roles and no init flag: value creation is available on a
-  // fresh deployment, and the composing contract is what gates it.
-  it('should mint on a fresh deployment with no initialization', async () => {
+  it('should be initialized with the constructor salt', async () => {
+    const ledger = await publicState();
+    expect(ledger.Core__isInitialized).toBe(true);
+    expect(ledger.Core__instanceSalt).toStrictEqual(INSTANCE_SALT);
+  });
+
+  // The core holds no roles: value creation is available on a fresh
+  // deployment, and the composing contract is what gates it.
+  it('should mint on a fresh deployment', async () => {
     const note = await token._mint(ALICE, 100n);
     expect(await isCommitted(note, ALICE)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// initialize
+// ---------------------------------------------------------------------------
+
+describe('ConfidentialNoteFungibleToken: initialize', () => {
+  it('should not accept a zero salt', async () => {
+    await expectRejection(
+      ConfidentialNoteFungibleTokenSimulator.create({
+        instanceSalt: new Uint8Array(32),
+      }),
+      'ConfidentialNoteFungibleToken: instance salt must not be zero',
+    );
+  });
+
+  // The remaining guards are reachable only from a constructor, so a mock
+  // built to fail construction drives them. Dry only: nothing to deploy.
+  describe.skipIf(isLiveBackend())('constructor misuse', () => {
+    const TWICE = 0n;
+    const MINT_FIRST = 1n;
+    const SPEND_FIRST = 2n;
+
+    const construct = (misuse: bigint): Promise<void> =>
+      new CircuitContextManager(
+        new MockInit(
+          ConfidentialNoteFungibleTokenWitnesses(createNoteWallet()),
+        ),
+        {},
+        '0'.repeat(64),
+        dummyContractAddress(),
+        0,
+        INSTANCE_SALT,
+        misuse,
+      ).init();
+
+    it('should not initialize twice', async () => {
+      await expect(construct(TWICE)).rejects.toThrow(
+        'ConfidentialNoteFungibleToken: contract already initialized',
+      );
+    });
+
+    it('should not mint before initialize', async () => {
+      await expect(construct(MINT_FIRST)).rejects.toThrow(
+        'ConfidentialNoteFungibleToken: contract not initialized',
+      );
+    });
+
+    it('should not spend before initialize', async () => {
+      await expect(construct(SPEND_FIRST)).rejects.toThrow(
+        'ConfidentialNoteFungibleToken: contract not initialized',
+      );
+    });
   });
 });
 
@@ -382,28 +453,30 @@ describe('ConfidentialNoteFungibleToken: burn', () => {
 // _spenderPk
 // ---------------------------------------------------------------------------
 
-// Impure but NOT provable: each reads a witness yet touches no ledger state, so
-// its public transcript is empty, compactc registers no on-chain operation and
-// emits no verifier key (`ProvableCircuits` in the generated artifact lists 7 of
-// the 9 impure circuits). Callable in-circuit only, which is how `burn` and
-// `transfer` use them, so the live backend has no transaction to submit.
-describe.skipIf(isLiveBackend())(
-  'ConfidentialNoteFungibleToken: _spenderPk',
-  () => {
-    let input: Note;
+// Reads `_instanceSalt`, so unlike `_inputNote` it has a public transcript and
+// runs on live too.
+describe('ConfidentialNoteFungibleToken: _spenderPk', () => {
+  beforeEach(async () => {
+    token = await ConfidentialNoteFungibleTokenSimulator.create();
+    token.wallet.secretKey = ALICE_SK;
+  });
 
-    beforeEach(async () => {
-      token = await ConfidentialNoteFungibleTokenSimulator.create();
-      input = await token._mint(ALICE, 100n);
-      spendAs(ALICE_SK, input);
+  it('should derive the caller pk in-circuit exactly as derivePk does', async () => {
+    expect(await token._spenderPk()).toEqual(ALICE);
+  });
+
+  it('should derive a different pk for the same secret under another salt', async () => {
+    const other = await ConfidentialNoteFungibleTokenSimulator.create({
+      instanceSalt: secretKey('OTHER-SALT'),
+      wallet: token.wallet,
     });
 
-    it('should derive the caller pk in-circuit exactly as derivePk does', async () => {
-      token.wallet.secretKey = ALICE_SK;
-      expect(await token._spenderPk()).toEqual(ALICE);
-    });
-  },
-);
+    expect(await other._spenderPk()).toEqual(
+      core.derivePk(ALICE_SK, secretKey('OTHER-SALT')),
+    );
+    expect(await other._spenderPk()).not.toEqual(ALICE);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // derivePk
@@ -411,11 +484,15 @@ describe.skipIf(isLiveBackend())(
 
 describe('ConfidentialNoteFungibleToken: derivePk', () => {
   it('should derive the same pk for the same secret', () => {
-    expect(core.derivePk(ALICE_SK)).toEqual(ALICE);
+    expect(core.derivePk(ALICE_SK, INSTANCE_SALT)).toEqual(ALICE);
   });
 
   it('should derive distinct pks for distinct secrets', () => {
     expect(new Set([ALICE, BOB, CAROL]).size).toBe(3);
+  });
+
+  it('should derive distinct pks for one secret under distinct salts', () => {
+    expect(core.derivePk(ALICE_SK, secretKey('OTHER-SALT'))).not.toEqual(ALICE);
   });
 });
 
@@ -423,11 +500,11 @@ describe('ConfidentialNoteFungibleToken: derivePk', () => {
 // _inputNote
 // ---------------------------------------------------------------------------
 
-// Impure but NOT provable: each reads a witness yet touches no ledger state, so
+// Impure but NOT provable: it reads a witness yet touches no ledger state, so
 // its public transcript is empty, compactc registers no on-chain operation and
-// emits no verifier key (`ProvableCircuits` in the generated artifact lists 7 of
+// emits no verifier key (`ProvableCircuits` in the generated artifact lists 8 of
 // the 9 impure circuits). Callable in-circuit only, which is how `burn` and
-// `transfer` use them, so the live backend has no transaction to submit.
+// `transfer` use it, so the live backend has no transaction to submit.
 describe.skipIf(isLiveBackend())(
   'ConfidentialNoteFungibleToken: _inputNote',
   () => {

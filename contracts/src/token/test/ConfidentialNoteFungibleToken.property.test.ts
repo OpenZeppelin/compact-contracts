@@ -38,8 +38,12 @@ const secret = () => fc.uint8Array({ minLength: 32, maxLength: 32 });
 
 const note = () => fc.record({ value: value(), nonce: nonce() });
 
+/** `Bytes<32>`, the declared width of a `derivePk` salt. */
+const salt = secret;
+
 /** An owner pk, derived rather than generated, so it is a valid `Field`. */
-const ownerPk = () => secret().map((sk) => core.derivePk(sk));
+const ownerPk = () =>
+  fc.tuple(secret(), salt()).map(([sk, s]) => core.derivePk(sk, s));
 
 const hex = (bytes: Uint8Array): string =>
   `0x${Buffer.from(bytes).toString('hex')}`;
@@ -78,19 +82,28 @@ describe('ConfidentialNoteFungibleToken property: nullifierOf', () => {
 // ---------------------------------------------------------------------------
 
 describe('ConfidentialNoteFungibleToken property: derivePk', () => {
-  it('should be deterministic for any secret', () => {
+  it('should be deterministic for any secret and salt', () => {
     fc.assert(
-      fc.property(secret(), (sk) => {
-        expect(core.derivePk(sk)).toBe(core.derivePk(sk));
+      fc.property(secret(), salt(), (sk, s) => {
+        expect(core.derivePk(sk, s)).toBe(core.derivePk(sk, s));
       }),
     );
   });
 
-  it('should be injective across any two distinct secrets', () => {
+  it('should be injective across any two distinct secrets under one salt', () => {
     fc.assert(
-      fc.property(secret(), secret(), (a, b) => {
+      fc.property(secret(), secret(), salt(), (a, b, s) => {
         fc.pre(hex(a) !== hex(b));
-        expect(core.derivePk(a)).not.toBe(core.derivePk(b));
+        expect(core.derivePk(a, s)).not.toBe(core.derivePk(b, s));
+      }),
+    );
+  });
+
+  it('should be injective across any two distinct salts under one secret', () => {
+    fc.assert(
+      fc.property(secret(), salt(), salt(), (sk, a, b) => {
+        fc.pre(hex(a) !== hex(b));
+        expect(core.derivePk(sk, a)).not.toBe(core.derivePk(sk, b));
       }),
     );
   });

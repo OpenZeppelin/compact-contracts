@@ -10,6 +10,7 @@ import {
   type ConfidentialNoteFungibleTokenPrivateState,
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,
+  INSTANCE_SALT,
   type Note,
   type NoteWallet,
   ConfidentialNoteFungibleTokenPrivateState as PrivateState,
@@ -32,12 +33,12 @@ const ConfidentialNoteFungibleTokenSimulatorBase = createSimulator<
   ReturnType<typeof ledger>,
   ReturnType<typeof ConfidentialNoteFungibleTokenWitnesses>,
   MockCore<ConfidentialNoteFungibleTokenPrivateState>,
-  readonly []
+  readonly [instanceSalt: Uint8Array]
 >({
   contractFactory: (witnesses) =>
     new MockCore<ConfidentialNoteFungibleTokenPrivateState>(witnesses),
   defaultPrivateState: () => PrivateState.generate(),
-  contractArgs: () => [],
+  contractArgs: (instanceSalt) => [instanceSalt],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => ConfidentialNoteFungibleTokenWitnesses(pendingWallet),
   artifactName: 'MockConfidentialNoteFungibleToken',
@@ -56,18 +57,21 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
 
   /**
    * @param options Standard simulator options, plus a `wallet` to reuse across
-   * deployments. Passing `options.witnesses` takes over witness wiring entirely
-   * and leaves {@link wallet} disconnected.
+   * deployments and the `instanceSalt` to construct with (default
+   * {@link INSTANCE_SALT}). Passing `options.witnesses` takes over witness
+   * wiring entirely and leaves {@link wallet} disconnected.
    */
   static async create(
-    options: Options & { wallet?: NoteWallet } = {},
+    options: Options & { wallet?: NoteWallet; instanceSalt?: Uint8Array } = {},
   ): Promise<ConfidentialNoteFungibleTokenSimulator> {
-    const wallet = options.wallet ?? createNoteWallet();
+    const { wallet: givenWallet, instanceSalt, ...rest } = options;
+    const wallet = givenWallet ?? createNoteWallet();
+    const salt = instanceSalt ?? INSTANCE_SALT;
     pendingWallet = wallet;
     // biome-ignore lint/complexity/noThisInStatic: super.create keeps subclass `this`
     const simulator = (await super.create(
-      [],
-      options,
+      [salt],
+      rest,
     )) as ConfidentialNoteFungibleTokenSimulator;
     simulator.wallet = wallet;
     return simulator;
@@ -88,7 +92,7 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
     return this.circuits.impure.burn(value);
   }
 
-  /** The caller's spend identity, `Hf(wit_ConfidentialNoteSK())`. */
+  /** The caller's spend identity under this deployment's salt. */
   public _spenderPk(): Promise<bigint> {
     return this.circuits.impure._spenderPk();
   }
