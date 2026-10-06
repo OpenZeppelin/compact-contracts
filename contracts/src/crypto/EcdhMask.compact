@@ -31,7 +31,8 @@ pragma language_version >= 0.26.0;
  *
  * Uniqueness: the mask is a one-time pad, so a repeated `e` repeats `S` and
  * `mask`, and reusing a pad is catastrophic (subtracting two ciphertexts recovers
- * both values).
+ * both values). Padding two values under the same `(S, domain)` reuses the pad
+ * the same way (see `kdf`).
  *
  * Secrecy: `recipientPk` is public, so anyone who learns `e` recomputes
  * `S = recipientPk^e`, hence the mask, and opens the ciphertext. A unique but
@@ -130,12 +131,12 @@ module EcdhMask {
   }
 
   /**
-   * @description Derives the field mask from the ECDH shared secret point,
-   * domain-separated by a caller-supplied `domain` tag. Hashes the point to
-   * `Bytes<32>`, then re-hashes it with the domain tag and truncates into the
-   * field via `degradeToTransient`. The consumer chooses `domain` (so this
-   * module is not tied to any one protocol) and MUST use the same value on
-   * encrypt and decrypt.
+   * @description Derives the field mask from the ECDH shared secret point and
+   * a caller-supplied `domain` tag: hashes the point to `Bytes<32>`, re-hashes
+   * it with the tag, and truncates into the field via `degradeToTransient`.
+   * The mask is a pure function of `(sShared, domain)`, so the pair MUST match
+   * on encrypt and decrypt, and MUST be distinct for every value it pads. Two
+   * values padded under one pair share the pad and leak their difference.
    *
    * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
    * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.

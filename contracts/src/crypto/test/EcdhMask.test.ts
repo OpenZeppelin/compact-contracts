@@ -161,6 +161,15 @@ describe('EcdhMask', () => {
       const c2 = await contract.encrypt(PK, 250n, e, DOMAIN);
       expect(c1.ct - c2.ct).toBe(1000n - 250n);
     });
+
+    it('should leak the plaintext difference when two masks share S and domain', async () => {
+      // A fresh `e` does not help on the decomposed path: two kdf calls under
+      // one `S` and one domain return the same pad.
+      const shared = ecdh.deriveShared(PK, 7n);
+      const ct1 = (1000n + (await contract.kdf(shared.sShared, DOMAIN))) % P;
+      const ct2 = (250n + (await contract.kdf(shared.sShared, DOMAIN))) % P;
+      expect(ct1 - ct2).toBe(1000n - 250n);
+    });
   });
 
   describe('weak-input guards', () => {
