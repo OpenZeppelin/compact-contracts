@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/presets/ShieldedMultiSigV2.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (multisig/presets/ShieldedMultiSigV2.compact)
 
 pragma language_version >= 0.26.0;
 
