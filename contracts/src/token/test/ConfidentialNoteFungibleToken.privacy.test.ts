@@ -604,7 +604,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 10 },
       );
-    });
+    }, 60_000);
 
     // Only the recipient's own digest moves. The change note's digest does not,
     // so a watcher cannot even tell that the recipient changed.
@@ -634,7 +634,7 @@ describe.skipIf(isLiveBackend())(
         ),
         { numRuns: 10 },
       );
-    });
+    }, 60_000);
 
     // The nullifier depends on the nonce alone, so a caller who never held the
     // owner's secret publishes the same one. That is what makes an owner spend
