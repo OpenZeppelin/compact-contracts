@@ -837,6 +837,7 @@ describe.runIf(isLiveBackend())(
       const published = await awaitPublishedTxs(
         from,
         token._backend.contractAddress,
+        { entryPoint: '_mint' },
       );
 
       expect(published.length).toBeGreaterThan(0);
@@ -872,6 +873,7 @@ describe.runIf(isLiveBackend())(
       const published = await awaitPublishedTxs(
         from,
         token._backend.contractAddress,
+        { entryPoint: 'transfer' },
       );
       const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
 
@@ -901,6 +903,7 @@ describe.runIf(isLiveBackend())(
       const published = await awaitPublishedTxs(
         from,
         token._backend.contractAddress,
+        { entryPoint: 'burn' },
       );
       const wire = published.map((tx) => tx.raw.toLowerCase()).join('');
 
@@ -921,6 +924,8 @@ describe.runIf(isLiveBackend())(
       const state = await token.getPublicState();
       expect(Object.keys(state).sort()).toStrictEqual([
         'Core__commitments',
+        'Core__instanceSalt',
+        'Core__isInitialized',
         'Core__issuedNonces',
         'Core__nullifiers',
       ]);
@@ -945,6 +950,7 @@ describe.runIf(isLiveBackend())(
       const published = await awaitPublishedTxs(
         from,
         token._backend.contractAddress,
+        { entryPoint: 'burn' },
       );
 
       const entryPoints = published.flatMap((tx) =>
