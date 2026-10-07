@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
 import { Contract as MockInit } from '../../../artifacts/MockConfidentialNoteFungibleTokenInit/contract/index.js';
+import { ConfidentialNoteFungibleTokenCtorMintSimulator } from './simulators/ConfidentialNoteFungibleTokenCtorMintSimulator.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
 import {
   ConfidentialNoteFungibleTokenWitnesses,
@@ -362,6 +363,83 @@ describe('ConfidentialNoteFungibleToken: _mintNote', () => {
       'ConfidentialNoteFungibleToken: nonce already issued',
     );
     expect(await isCommitted(intended, ALICE)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// constructor mint
+// ---------------------------------------------------------------------------
+
+// A constructor cannot return, so a composer without on-chain delivery mints a
+// deployer-built note through `_mintNote`. Public state after that mint looks
+// like any other, so only a spend proves the note is live.
+describe('ConfidentialNoteFungibleToken: constructor mint', () => {
+  const GENESIS: Note = { value: 100n, nonce: 987654321n };
+  let genesis: ConfidentialNoteFungibleTokenCtorMintSimulator;
+
+  const genesisState = () => genesis.getPublicState();
+
+  const spendGenesisAs = (sk: Uint8Array, note: Note): void => {
+    genesis.wallet.secretKey = sk;
+    genesis.wallet.inputNote = note;
+  };
+
+  beforeEach(async () => {
+    genesis = await ConfidentialNoteFungibleTokenCtorMintSimulator.create({
+      note: GENESIS,
+      ownerPk: ALICE,
+    });
+  });
+
+  it('should commit the deployer-built note to its owner at deployment', async () => {
+    const ledger = await genesisState();
+
+    expect(
+      ledger.Core__commitments.findPathForLeaf(core.commitOf(GENESIS, ALICE)),
+    ).toBeDefined();
+    expect(ledger.Core__commitments.firstFree()).toBe(1n);
+    expect(ledger.Core__issuedNonces.member(core.issuedTagOf(GENESIS))).toBe(
+      true,
+    );
+    expect(ledger.Core__nullifiers.isEmpty()).toBe(true);
+  });
+
+  it('should let the owner burn the constructor note', async () => {
+    spendGenesisAs(ALICE_SK, GENESIS);
+    const change = await genesis.burn(30n);
+
+    const ledger = await genesisState();
+    expect(change.value).toBe(70n);
+    expect(ledger.Core__nullifiers.member(core.nullifierOf(GENESIS))).toBe(
+      true,
+    );
+    expect(
+      ledger.Core__commitments.findPathForLeaf(core.commitOf(change, ALICE)),
+    ).toBeDefined();
+  });
+
+  it('should let the recipient spend what the constructor note transfers', async () => {
+    spendGenesisAs(ALICE_SK, GENESIS);
+    const [out] = await genesis.transfer(BOB, 40n);
+
+    spendGenesisAs(BOB_SK, out);
+    const change = await genesis.burn(40n);
+
+    const ledger = await genesisState();
+    expect(change.value).toBe(0n);
+    expect(ledger.Core__nullifiers.member(core.nullifierOf(out))).toBe(true);
+    expect(ledger.Core__nullifiers.size()).toBe(2n);
+  });
+
+  it('should not deploy when the constructor mints the same note twice', async () => {
+    await expectRejection(
+      ConfidentialNoteFungibleTokenCtorMintSimulator.create({
+        note: GENESIS,
+        ownerPk: ALICE,
+        twice: true,
+      }),
+      'ConfidentialNoteFungibleToken: nonce already issued',
+    );
   });
 });
 

@@ -25,7 +25,8 @@ pragma language_version >= 0.26.0;
  * and `issuedTagOf` are exported pure circuits, and the compatibility suite
  * pins their vectors. `derivePk` takes the deployment's `_instanceSalt` as
  * `salt`. A wrong derivation yields notes that cannot be found and identities
- * that cannot spend.
+ * that cannot spend. No pure circuit covers `_mint`'s nonce derivation:
+ * the caller receives the note, so nothing off-chain recomputes it.
  *
  * @dev Parameterization:
  * `#depth` is the commitment tree's depth, fixed at import time
@@ -142,7 +143,9 @@ pragma language_version >= 0.26.0;
  * Value creation has no default gate. `_mint` / `_mintNote` are ungated, and
  * the composer decides who may create value. The `_` circuits accept
  * caller-built notes so a composer can run its own nonce policy; `_mint` uses
- * the core default.
+ * the core default. A constructor cannot return, so a constructor-time mint
+ * is `_mintNote` with a deployer-built note unless the same constructor
+ * records the note on chain.
  */
 module ConfidentialNoteFungibleToken<#depth> {
   import CompactStandardLibrary;
@@ -348,6 +351,11 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @warning No authorization:
    * The composer gates who may call this.
    *
+   * @warning Constructor use:
+   * A constructor cannot return, so a note minted from one is unreachable
+   * unless the same constructor records it on chain. Otherwise build the
+   * note off-chain and call `_mintNote`.
+   *
    * @dev Recipient-bound nonce:
    * With no note consumed, the nonce binds `recipientPk` in place of a
    * nullifier. A composer wanting its own nonce policy calls `_mintNote`.
@@ -410,6 +418,10 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @dev Why a set:
    * A counter or the tree index would pin one shared value and serialize
    * mints. `member` pins one key.
+   *
+   * @dev Constructor mints:
+   * The deployer builds the note and keeps its nonce, so this is the
+   * constructor path when the composer does not record it on chain.
    *
    * @warning Predictable nonces:
    * The reservation is first come, first served and keyed on the nonce alone. A
