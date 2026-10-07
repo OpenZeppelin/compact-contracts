@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `ShieldedAccessControl`: re-granting an active `(role, accountId)` pairing is a no-op. Granted nullifiers are tracked in `_grantedRoleNullifiers`, so one pairing can never consume more than one `_operatorRoles` slot (#1071)
 - **Breaking:** Rename `EcdsaSignerManager` to `Secp256k1EcdsaMultisig<#t>`, with the threshold `t` as the import generic and errors prefixed `Secp256k1EcdsaMultisig:` (#1052, #1058)
   - `initialize<#n>(instanceSalt, signerCommitments)` drops the threshold argument
   - `assertApprovals` verifies exactly `t` distinct registered approvals
