@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `ShieldedAccessControl`: re-granting an active `(role, accountId)` pairing is a no-op. Granted nullifiers are tracked in `_grantedRoleNullifiers`, so one pairing can never consume more than one `_operatorRoles` slot (#1072)
 - Widen the CFT balance claim and ElGamal `assertDecryptsTo` to `Uint<248>`, so a balance accumulated past the per-transfer bound stays spendable (#831)
 - Change `NativeShieldedToken` / `NativeShieldedTokenFamily` `_mint` recipient and `_burn` refund recipient to `ZswapCoinPublicKey`, add `_mintToSelf`, and restrict `NativeShieldedTokenCore` contract-addressed recipients to the contract itself (#833)
 - Remove the initialization guard from `Signer`'s `assertSigner`, `assertThresholdMet`, `getSignerCount`, and `getThreshold` (#761)

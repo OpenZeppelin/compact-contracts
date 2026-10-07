@@ -108,8 +108,8 @@ pragma language_version >= 0.23.0;
  *   depends on the number of plausible `(role, accountId)` pairings. Since role identifiers
  *   are public, the anonymity set is effectively the number of plausible account IDs per role.
  * - Outside observers will know when roles are granted and revoked.
- * - Outside observers can infer the total number of role grants made across all roles—not per-role counts,
- *   but the cumulative total.
+ * - Outside observers can infer the total number of distinct `(role, accountId)` pairings granted
+ *   across all roles, not per-role counts.
  * - Outside observers can link calls made by the same role instance across time.
  * - Users can be retroactively deanonymized if their secret key is exposed.
  * - Outside observers will NOT be able to identify the holder of any role
@@ -133,12 +133,8 @@ pragma language_version >= 0.23.0;
  * - It's strongly recommended to use cryptographically secure random values for the `_instanceSalt`.
  *   Failure to do so may weaken privacy guarantees.
  * - The `_instanceSalt` is immutable and used to differentiate deployments.
- * - The `_operatorRoles` Merkle tree has a fixed capacity of 2^20 leaf slots.
- *   Deployers should monitor slot consumption off-chain. A careless admin can exhaust
- *   capacity through repeated grants of the same active (role, accountId) pairing.
- *   Duplicate grants are benign from a security perspective. They produce identical
- *   commitments and a single nullifier invalidates all copies; however, they waste tree capacity.
- *   Implementing contracts are responsible for mitigating tree exhaustion risk.
+ * - The `_operatorRoles` Merkle tree has a fixed capacity of 2^20 leaf slots. Each distinct
+ *   `(role, accountId)` pairing consumes one slot; re-granting an active pairing is a no-op.
  * - A single `secretKey` compromise exposes all roles held by that user within the contract
  *   instance, since all roles share the same `accountId`. Users requiring compartmentalization
  *   between roles should use separate keys per role and accept the additional key management overhead.
@@ -155,7 +151,8 @@ pragma language_version >= 0.23.0;
  * - The Merkle tree capacity of 2^20 leaf slots is a permanent, irrecoverable resource.
  *   There is no mechanism to reclaim slots after revocation, no upgrade path, and no emergency
  *   recovery. Once exhausted, the contract is permanently unable to grant new roles. Deployers
- *   must monitor slot consumption off-chain and plan capacity accordingly.
+ *   must monitor slot consumption off-chain and plan capacity accordingly. The exported tree
+ *   reports occupancy via `firstFree()` (TypeScript) and `isFull()` (circuit).
  *
  * @notice Using the SHA256 hashing function comes at a significant performance cost. In the future, we
  * plan on migrating to a ZK-friendly hashing function when an implementation is available.
@@ -208,6 +205,13 @@ module ShieldedAccessControl {
    * @type {Set<RoleNullifier>} _roleCommitmentNullifiers
    */
   export ledger _roleCommitmentNullifiers: Set<RoleNullifier>;
+
+  /**
+   * @description Nullifiers of every pairing ever granted. Makes a repeated grant a no-op so
+   * one pairing can never consume more than one `_operatorRoles` slot.
+   * @type {Set<RoleNullifier>} _grantedRoleNullifiers
+   */
+  export ledger _grantedRoleNullifiers: Set<RoleNullifier>;
 
   /**
    * @sealed @ledger _instanceSalt
@@ -387,9 +391,8 @@ module ShieldedAccessControl {
 
   /**
    * @description Grants `role` to `accountId` by inserting a role commitment unique to the
-   * `(role, accountId)` pairing into the `_operatorRoles` Merkle tree. Duplicate role commitments can be issued
-   * so long as they remain unrevoked. This does not yield any additional authority and simply wastes
-   * limited Merkle tree storage slots. Once revoked, a role cannot be re-granted to the same `accountId`. A new
+   * `(role, accountId)` pairing into the `_operatorRoles` Merkle tree. Granting an already active
+   * pairing is a no-op. Once revoked, a role cannot be re-granted to the same `accountId`. A new
    * `accountId` must be generated to be re-authorized for a revoked `role`.
    *
    * Requirements:
@@ -419,9 +422,8 @@ module ShieldedAccessControl {
 
   /**
    * @description Grants `role` to `accountId` by inserting a role commitment unique to the
-   * `(role, accountId)` pairing into the `_operatorRoles` Merkle tree. Duplicate role commitments can be issued
-   * so long as they remain unrevoked. This does not yield any additional authority and simply wastes
-   * limited Merkle tree storage slots. Once revoked, a role cannot be re-granted to the same `accountId`. A new
+   * `(role, accountId)` pairing into the `_operatorRoles` Merkle tree. Granting an already active
+   * pairing is a no-op. Once revoked, a role cannot be re-granted to the same `accountId`. A new
    * `accountId` must be generated to be re-authorized for a revoked `role`.
    *
    * Internal circuit without access restriction.
@@ -429,10 +431,8 @@ module ShieldedAccessControl {
    * @warning Exposing this circuit directly in an implementing contract would allow anyone to grant
    * roles without authorization. It must be wrapped with appropriate access control.
    *
-   * @warning The `_operatorRoles` Merkle tree has a fixed capacity of 2^20 leaf slots.
-   * Deployers should monitor slot consumption off-chain. Duplicate grants waste tree capacity
-   * but are otherwise benign. A single nullifier invalidates all duplicate commitments.
-   * Implementing contracts are responsible for mitigating tree exhaustion risk.
+   * @warning The `_operatorRoles` Merkle tree has a fixed capacity of 2^20 leaf slots, one per
+   * distinct pairing. Deployers should monitor slot consumption off-chain.
    *
    * Requirements:
    *
@@ -555,13 +555,14 @@ module ShieldedAccessControl {
   /**
    * @description Core business logic for the grant/revoke role circuits. Asserts that the
    * `(role, accountId)` pairing has not already been revoked. On success, dispatches on
-   * `updateType`: a `Grant` inserts the role commitment into `_operatorRoles`, and
-   * a `Revoke` inserts the nullifier into `_roleCommitmentNullifiers`.
+   * `updateType`: a `Grant` inserts the role commitment into `_operatorRoles` unless the
+   * nullifier is already in `_grantedRoleNullifiers`, and a `Revoke` inserts the nullifier
+   * into `_roleCommitmentNullifiers`.
    *
    * Disclosures:
    *
    * - A nullifier for the respective role commitment.
-   * - A role commitment (on Grant only).
+   * - A role commitment (on first Grant only).
    *
    * @notice The nullifier is disclosed via `_roleCommitmentNullifiers.member` on every call,
    * regardless of the update type. Since `Set.member` publicly reveals its argument, the
@@ -585,7 +586,10 @@ module ShieldedAccessControl {
     assert(!isRevoked, "ShieldedAccessControl: role is already revoked");
 
     if (updateType == UpdateType.Grant) {
-      _operatorRoles.insert(disclose(roleCommitment));
+      if (!_grantedRoleNullifiers.member(disclose(roleNullifier))) {
+        _grantedRoleNullifiers.insert(disclose(roleNullifier));
+        _operatorRoles.insert(disclose(roleCommitment));
+      }
     } else {
       _roleCommitmentNullifiers.insert(disclose(roleNullifier));
     }
