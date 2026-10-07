@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (access/ZOwnablePK.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (access/ZOwnablePK.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -35,10 +35,17 @@ pragma language_version >= 0.26.0;
  * providing unlinkability across ownership changes.
  *
  * @dev Security Considerations:
- * - The `secretNonce` must be kept private. Loss of the nonce prevents the
- *   owner from proving ownership or transferring it.
+ * - `ownPublicKey()` is a witness: it returns the caller's Zswap coin public
+ *   key, and nothing proves the caller holds the matching private key. See
+ *   https://docs.midnight.network/compact/smart-contract-security#ownpublickey-is-a-witness-function.
+ * - The `secretNonce` is therefore the owner credential: the nonce and the
+ *   owner's public key are enough to pass `assertOnlyOwner`. Generate it as
+ *   32 bytes from a CSPRNG and keep it private. Losing it prevents the owner
+ *   from proving ownership or transferring it.
  * - Ownership validation is entirely circuit-based using witness-provided values.
  * - The `_instanceSalt` is immutable and used to differentiate deployments.
+ *   Use a fresh random value per deployment; a reused salt links the same
+ *   owner across deployments.
  *
  * @notice Best used for single-admin contracts with privacy requirements.
  * It is not designed for multi-owner or role-based access control.
@@ -99,12 +106,13 @@ module ZOwnablePK {
    * @warning The `ownerId` must be calculated prior to contract deployment using the SHA256 hashing algorithm.
    * Using any other algorithm will result in a permanent loss of contract access.
    *
-   * @constraints k=14, rows=14933
+   * @constraints k=13, rows=6765
    *
    * Requirements:
    *
    * - Contract is not initialized.
    * - `ownerId` is not zero.
+   * - `instanceSalt` is not zero.
    *
    * @param {Bytes<32>} ownerId - The owner's unique identifier SHA256(pk, nonce).
    * @param {Bytes<32>} instanceSalt - Contract salt to prevent duplicate commitments if
@@ -116,6 +124,7 @@ module ZOwnablePK {
     _isInitialized = true;
 
     assert(ownerId != default<Bytes<32>>, "ZOwnablePK: invalid id");
+    assert(instanceSalt != default<Bytes<32>>, "ZOwnablePK: invalid salt");
     _instanceSalt = disclose(instanceSalt);
     _transferOwnership(ownerId);
   }

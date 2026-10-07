@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Secp256k1EcdsaMultisig"<2> prefix Two_;
+import "../../Secp256k1EcdsaMultisig"<3> prefix Three_;
+
+/**
+ * @description Widths 2 and 3 in one contract share one `Signer` registry.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>,
+  initializeThree: Boolean
+) {
+  Two_initialize<3>(instanceSalt, signerCommitments);
+  if (disclose(initializeThree)) {
+    Three_initialize<3>(instanceSalt, signerCommitments);
+  }
+}
+
+export circuit assertApprovals2Approvals(
+  msgHash: Bytes<32>,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): [] {
+  return Two_assertApprovals(msgHash, pubkeys, signatures);
+}
+
+export circuit assertApprovals3Approvals(
+  msgHash: Bytes<32>,
+  pubkeys: Vector<3, Secp256k1Point>,
+  signatures: Vector<3, Secp256k1EcdsaSignature>
+): [] {
+  return Three_assertApprovals(msgHash, pubkeys, signatures);
+}
+
+export circuit getThreshold2(): Uint<8> {
+  return Two_getThreshold();
+}
+
+export circuit getThreshold3(): Uint<8> {
+  return Three_getThreshold();
+}

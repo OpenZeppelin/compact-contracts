@@ -14,14 +14,13 @@ import type { CompileScope } from './targets.ts';
  * paying for every other target's key generation. See `compileScope` in
  * `targets.ts` for how a plan resolves to one.
  *
- * A killed compile (or machine crash) can poison the turbo cache so every later
- * cache hit re-extracts a truncated key, and a concurrent compile racing over the
- * shared `artifacts/` tree can truncate keys directly
- * (OpenZeppelin/compact-contracts#675). A 0-byte `.prover` makes the deploy fail
- * in `beforeAll`, which vitest turns into a silent whole-suite skip — the failure
- * mode this check exists to prevent. Both repairs are mechanical, so self-heal
- * once (drain the cache, recompile serially — a parallel recompile can re-poison
- * it) and only abort if keys are still truncated afterwards.
+ * A killed compile (or machine crash) can leave a truncated key on disk, and a
+ * concurrent compile racing over the shared `artifacts/` tree can truncate keys
+ * directly (OpenZeppelin/compact-contracts#675). A 0-byte `.prover` makes the
+ * deploy fail in `beforeAll`, which vitest turns into a silent whole-suite skip
+ * — the failure mode this check exists to prevent. The repair is mechanical, so
+ * self-heal once (recompile serially — a parallel recompile can re-truncate
+ * them) and only abort if keys are still truncated afterwards.
  *
  * In `prebuilt` mode the tree was built somewhere else and arrives ready — a CI
  * compile job builds it once and every suite job for that target downloads it.
@@ -58,9 +57,8 @@ export class ArtifactCompiler {
     );
     for (const k of empty) console.log(`  ✗ ${rel(k)}`);
     console.log(
-      '\nPoisoned turbo cache or artifact tree ' +
-        '(OpenZeppelin/compact-contracts#675) — draining the cache and ' +
-        'recompiling serially...',
+      '\nPoisoned artifact tree ' +
+        '(OpenZeppelin/compact-contracts#675) — recompiling serially...',
     );
     rmSync(TURBO_CACHE, { recursive: true, force: true });
     if (!(await this.#compileAll(['--concurrency=1']))) {
@@ -85,8 +83,7 @@ export class ArtifactCompiler {
    * Every compile clears `SKIP_ZK` rather than trusting the ambient value: a live
    * run always needs real proving keys, and the dry `test:integration` path
    * exports `SKIP_ZK=true`. Clearing it here means an ambient value can never
-   * hand the live path keyless artifacts, whatever turbo's env mode does. turbo
-   * keys the compile tasks on `SKIP_ZK`, so dry and full-key builds cache apart.
+   * hand the live path keyless artifacts, whatever turbo's env mode does.
    *
    * Artifact directories are keyed on the source basename, so basenames must stay
    * unique across `src/` and `test/integration/_mocks/` — two files sharing one

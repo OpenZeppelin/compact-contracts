@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Secp256k1EcdsaMultisig"<1> prefix Secp256k1EcdsaMultisig_;
+
+/**
+ * @description One signer at threshold 1, `assertApprovals` at width 1: the
+ * set the 2-of-3 mock's fixed `Vector<3>` cannot reach.
+ */
+constructor(instanceSalt: Bytes<32>, signerCommitment: Bytes<32>) {
+  Secp256k1EcdsaMultisig_initialize<1>(instanceSalt, [signerCommitment]);
+}
+
+export circuit assertApprovals(
+  msgHash: Bytes<32>,
+  pubkeys: Vector<1, Secp256k1Point>,
+  signatures: Vector<1, Secp256k1EcdsaSignature>
+): [] {
+  return Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return Secp256k1EcdsaMultisig_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return Secp256k1EcdsaMultisig_getThreshold();
+}

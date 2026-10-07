@@ -6,55 +6,48 @@ import {
 import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
-  Contract as MockEcdsaSignerManagerSmallSet,
-} from '../../../../artifacts/MockEcdsaSignerManagerSmallSet/contract/index.js';
+  Contract as MockSecp256k1EcdsaMultisig3To3,
+} from '../../../../artifacts/MockSecp256k1EcdsaMultisig3To3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
-type EcdsaSignerManagerSmallSetArgs = readonly [
+type Secp256k1EcdsaMultisig3To3Args = readonly [
   instanceSalt: Uint8Array,
   signerCommitments: Uint8Array[],
-  threshold: bigint,
-  soloSigner: boolean,
 ];
 
-const EcdsaSignerManagerSmallSetSimulatorBase = createSimulator<
+const Secp256k1EcdsaMultisig3To3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockEcdsaSignerManagerSmallSet<EmptyPrivateState>,
-  EcdsaSignerManagerSmallSetArgs
+  MockSecp256k1EcdsaMultisig3To3<EmptyPrivateState>,
+  Secp256k1EcdsaMultisig3To3Args
 >({
   contractFactory: (witnesses) =>
-    new MockEcdsaSignerManagerSmallSet<EmptyPrivateState>(witnesses),
+    new MockSecp256k1EcdsaMultisig3To3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, threshold, soloSigner) => [
+  contractArgs: (instanceSalt, signerCommitments) => [
     instanceSalt,
     signerCommitments,
-    threshold,
-    soloSigner,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockEcdsaSignerManagerSmallSet',
+  artifactName: 'MockSecp256k1EcdsaMultisig3To3',
 });
 
-/** One- or two-signer deploys; the main mock's `Vector<3>` cannot reach them. */
-export class EcdsaSignerManagerSmallSetSimulator extends EcdsaSignerManagerSmallSetSimulatorBase {
+export class Secp256k1EcdsaMultisig3To3Simulator extends Secp256k1EcdsaMultisig3To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     signerCommitments: Uint8Array[],
-    threshold: bigint,
-    soloSigner = false,
     options: SimulatorOptions<
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<EcdsaSignerManagerSmallSetSimulator> {
+  ): Promise<Secp256k1EcdsaMultisig3To3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
-      [instanceSalt, signerCommitments, threshold, soloSigner],
+      [instanceSalt, signerCommitments],
       options,
-    ) as Promise<EcdsaSignerManagerSmallSetSimulator>;
+    ) as Promise<Secp256k1EcdsaMultisig3To3Simulator>;
   }
 
   public assertApprovals(

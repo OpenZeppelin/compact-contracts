@@ -191,7 +191,7 @@ Overall progress [====================] 14/14
 
 ZKIR v3: the library targets ZKIR v2, the compiler 0.34.0 default.
 Pass `--feature-zkir-v3` only when the contract reaches a module that needs it:
-the secp256k1-based `crypto/Ecdsa` and `multisig/EcdsaSignerManager`,
+the secp256k1-based `crypto/Ecdsa` and `multisig/Secp256k1EcdsaMultisig`,
 or the `keccak256`-based `crypto/Eip712`.
 `multisig/presets/ShieldedMultiSigV2`, `multisig/presets/NativeShieldedTokenIssuer`
 and the `multisig/examples/` contracts reach both.

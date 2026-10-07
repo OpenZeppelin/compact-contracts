@@ -7,12 +7,12 @@ import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
   type Maybe,
-  Contract as MockNativeShieldedTokenIssuer,
+  Contract as MockNativeShieldedTokenIssuer2To3,
   pureCircuits,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/MockNativeShieldedTokenIssuer/contract/index.js';
+} from '../../../../../artifacts/MockNativeShieldedTokenIssuer2To3/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
@@ -28,15 +28,15 @@ type NativeShieldedTokenIssuerArgs = readonly [
   isInit: boolean,
 ];
 
-const NativeShieldedTokenIssuerSimulatorBase = createSimulator<
+const NativeShieldedTokenIssuer2To3SimulatorBase = createSimulator<
   EmptyPrivateState,
   ReturnType<typeof ledger>,
   ReturnType<typeof emptyWitnesses>,
-  MockNativeShieldedTokenIssuer<EmptyPrivateState>,
+  MockNativeShieldedTokenIssuer2To3<EmptyPrivateState>,
   NativeShieldedTokenIssuerArgs
 >({
   contractFactory: (witnesses) =>
-    new MockNativeShieldedTokenIssuer<EmptyPrivateState>(witnesses),
+    new MockNativeShieldedTokenIssuer2To3<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
   contractArgs: (
     instanceSalt,
@@ -57,10 +57,10 @@ const NativeShieldedTokenIssuerSimulatorBase = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'MockNativeShieldedTokenIssuer',
+  artifactName: 'MockNativeShieldedTokenIssuer2To3',
 });
 
-export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssuerSimulatorBase {
+export class NativeShieldedTokenIssuer2To3Simulator extends NativeShieldedTokenIssuer2To3SimulatorBase {
   static async create(
     instanceSalt: Uint8Array,
     tokenDomain: Uint8Array,
@@ -73,7 +73,7 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
       EmptyPrivateState,
       ReturnType<typeof emptyWitnesses>
     > = {},
-  ): Promise<NativeShieldedTokenIssuerSimulator> {
+  ): Promise<NativeShieldedTokenIssuer2To3Simulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create(
       [
@@ -86,7 +86,7 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
         isInit,
       ],
       options,
-    ) as Promise<NativeShieldedTokenIssuerSimulator>;
+    ) as Promise<NativeShieldedTokenIssuer2To3Simulator>;
   }
 
   public _calculateSignerId(
@@ -172,7 +172,7 @@ export class NativeShieldedTokenIssuerSimulator extends NativeShieldedTokenIssue
 }
 
 // Computes signer commitment from `pk`, `salt`, and
-// domain ("multisig:signer:"). Pure standalone circuit so commitments can be
+// domain ("Secp256k1EcdsaMultisig:signer"). Pure standalone circuit so commitments can be
 // calculated before contract instantiation.
 export function calculateSignerId(
   pk: Secp256k1Point,

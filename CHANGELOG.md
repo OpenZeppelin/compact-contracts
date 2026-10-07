@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `ZOwnableNativeShieldedToken` preset and example: a native shielded token that a single `ZOwnablePK` owner mints and burns, with a public minted total and no burned total (#1022)
+
+### Changed
+
+- **Breaking:** Rename `EcdsaSignerManager` to `Secp256k1EcdsaMultisig<#t>`, with the threshold `t` as the import generic and errors prefixed `Secp256k1EcdsaMultisig:` (#1052, #1058)
+  - `initialize<#n>(instanceSalt, signerCommitments)` drops the threshold argument
+  - `assertApprovals` verifies exactly `t` distinct registered approvals
+  - The signer commitment domain is `Secp256k1EcdsaMultisig:signer`, so every signer commitment changes
+- **Breaking:** `ShieldedMultiSigV2<#t>` and `NativeShieldedTokenIssuer<#t>` take the threshold as a module generic, and the examples fix 2-of-3 (#1052)
+  - `initialize` drops the threshold argument
+  - `execute`, `mint`, `mintToSelf`, `burn` and `burnFromSelf` take `Vector<t>` keys and signatures
+  - `execute`'s recipient error reads `ShieldedMultiSigV2: recipient must be a coin public key`
+- **Breaking:** `ZOwnablePK.initialize` rejects a zero `instanceSalt` as `ZOwnablePK: invalid salt`. A zero salt gave deployments that share an owner id the same public owner commitment. (#1054)
+
 ## 0.4.0-alpha.5 (2026-09-29)
 
 ### Changed

@@ -36,12 +36,12 @@ function collectEmptyKeys(dir: string, out: string[]): void {
 /**
  * Find 0-byte ZK key files (`*.verifier` / `*.prover`) under `artifactsRoot`.
  *
- * Compile can report success (a turbo cache hit, or a compiler that exits 0)
- * while leaving a truncated key on disk — an interrupted/killed compile, or a
- * turbo cache-restore racing a concurrent compile over the shared `artifacts/`
- * tree (OpenZeppelin/compact-contracts#675). A 0-byte `_deposit.verifier` makes a
- * real deploy fail in `beforeAll`, which vitest turns into a silent whole-suite
- * skip. Callers check this before starting the live stack.
+ * Compile can exit 0 while leaving a truncated key on disk — an
+ * interrupted/killed compile, or a concurrent compile racing over the shared
+ * `artifacts/` tree (OpenZeppelin/compact-contracts#675). A 0-byte
+ * `_deposit.verifier` makes a real deploy fail in `beforeAll`, which vitest
+ * turns into a silent whole-suite skip. Callers check this before starting the
+ * live stack.
  *
  * When `sourceRoots` are given, only contracts that still have a `.compact`
  * source under one of them are checked, so stale orphan artifact dirs (source
@@ -158,9 +158,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === selfPath) {
     console.log('Truncated (0-byte) ZK key(s) found:');
     for (const k of bad) console.log(`  ✗ ${path.relative(repoRoot, k)}`);
     console.log(
-      '\nDrain the turbo cache and recompile serially — a parallel recompile ' +
-        'can re-poison the cache (OpenZeppelin/compact-contracts#675):\n' +
-        '  rm -rf .turbo/cache && yarn compile --concurrency=1',
+      '\nRecompile serially — a parallel recompile over the shared ' +
+        '`artifacts/` tree can re-truncate them ' +
+        '(OpenZeppelin/compact-contracts#675):\n' +
+        '  yarn compile --concurrency=1',
     );
   }
   process.exit(bad.length === 0 ? 0 : 1);

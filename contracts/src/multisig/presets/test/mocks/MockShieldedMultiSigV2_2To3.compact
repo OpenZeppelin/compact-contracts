@@ -9,12 +9,12 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../../ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
+import "../../ShieldedMultiSigV2"<2> prefix ShieldedMultiSigV2_;
 
 export { ZswapCoinPublicKey, ContractAddress, Either, Maybe };
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
-import { _domainSeparator } from "../../ShieldedMultiSigV2";
+import { _domainSeparator } from "../../ShieldedMultiSigV2"<2>;
 export { _domainSeparator };
 
 /**
@@ -27,11 +27,10 @@ export { _domainSeparator };
 constructor(
   instanceSalt: Bytes<32>,
   signerCommitments: Vector<3, Bytes<32>>,
-  thresh: Uint<8>,
   isInit: Boolean
 ) {
   if (disclose(isInit)) {
-    ShieldedMultiSigV2_initialize(instanceSalt, signerCommitments, thresh);
+    ShieldedMultiSigV2_initialize<3>(instanceSalt, signerCommitments);
   }
 }
 

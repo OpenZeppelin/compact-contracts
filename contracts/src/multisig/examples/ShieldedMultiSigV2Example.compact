@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.5 (multisig/examples/ShieldedMultiSigV2Example.compact)
+// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (multisig/examples/ShieldedMultiSigV2Example.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -15,28 +15,26 @@ pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
-import "../presets/ShieldedMultiSigV2" prefix ShieldedMultiSigV2_;
+import "../presets/ShieldedMultiSigV2"<2> prefix ShieldedMultiSigV2_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 
 // Surface the preset's domain separator unprefixed so `ledger()` readers see
 // the key name the preset published.
-import { _domainSeparator } from "../presets/ShieldedMultiSigV2";
+import { _domainSeparator } from "../presets/ShieldedMultiSigV2"<2>;
 export { _domainSeparator };
 
 /**
- * @description Deploys the wallet with 3 signer commitments and a threshold.
+ * @description Deploys the wallet with 3 signer commitments.
  *
  * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
  * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
- * @param {Uint<8>} thresh - Approvals required. Must be 2.
  */
 constructor(
   instanceSalt: Bytes<32>,
-  signerCommitments: Vector<3, Bytes<32>>,
-  thresh: Uint<8>,
+  signerCommitments: Vector<3, Bytes<32>>
 ) {
-  ShieldedMultiSigV2_initialize(instanceSalt, signerCommitments, thresh);
+  ShieldedMultiSigV2_initialize<3>(instanceSalt, signerCommitments);
 }
 
 export circuit deposit(coin: ShieldedCoinInfo): [] {

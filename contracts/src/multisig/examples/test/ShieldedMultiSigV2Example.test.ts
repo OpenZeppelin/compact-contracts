@@ -18,7 +18,7 @@ import {
   Contract as Example,
   ledger,
 } from '../../../../artifacts/ShieldedMultiSigV2Example/contract/index.js';
-import { ShieldedMultiSigV2Simulator } from '../../presets/test/simulators/ShieldedMultiSigV2Simulator.js';
+import { ShieldedMultiSigV2_2To3Simulator } from '../../presets/test/simulators/ShieldedMultiSigV2_2To3Simulator.js';
 import { executeMsgHash } from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
@@ -36,7 +36,10 @@ const S2 = signerFromLabel('v2-example-signer-2');
 const S3 = signerFromLabel('v2-example-signer-3');
 
 const commitmentOf = (s: Signer) =>
-  ShieldedMultiSigV2Simulator.calculateSignerId(s.publicKey, INSTANCE_SALT);
+  ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
+    s.publicKey,
+    INSTANCE_SALT,
+  );
 const SIGNER_COMMITMENTS = [
   commitmentOf(S1),
   commitmentOf(S2),
@@ -48,7 +51,7 @@ const makeRecipient = (address: Uint8Array) => ({
   address,
 });
 
-type ExampleArgs = readonly [Uint8Array, Uint8Array[], bigint];
+type ExampleArgs = readonly [Uint8Array, Uint8Array[]];
 
 const ExampleSimulator = createSimulator<
   EmptyPrivateState,
@@ -59,10 +62,9 @@ const ExampleSimulator = createSimulator<
 >({
   contractFactory: (witnesses) => new Example<EmptyPrivateState>(witnesses),
   defaultPrivateState: () => EmptyPrivateState,
-  contractArgs: (instanceSalt, signerCommitments, thresh) => [
+  contractArgs: (instanceSalt, signerCommitments) => [
     instanceSalt,
     signerCommitments,
-    thresh,
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
@@ -74,7 +76,7 @@ describe('ShieldedMultiSigV2Example', () => {
 
   beforeEach(async () => {
     example = await ExampleSimulator.create(
-      [INSTANCE_SALT, SIGNER_COMMITMENTS, THRESHOLD],
+      [INSTANCE_SALT, SIGNER_COMMITMENTS],
       {},
     );
   });
