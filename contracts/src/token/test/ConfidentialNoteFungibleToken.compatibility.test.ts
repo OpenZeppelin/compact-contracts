@@ -15,14 +15,14 @@
  *
  *   1. Revert. Most failures are accidental.
  *   2. Accept deliberately. Pre-release nothing is deployed to break, as with the
- *      `OZ:cnt:` to `OZ:note:` rename. Regenerate in the same commit and say so.
+ *      `OZ:note:` to `CNFT:` rename. Regenerate in the same commit and say so.
  *   3. Post-release, it is a breaking change needing a migration.
  *
  * Never regenerate a value without deciding which of the three it is.
  *
- * PROVENANCE. Every value below is byte-identical under compiler 0.31.0 (CI) and
- * 0.31.1 (current local), on language 0.23.0 and runtime 0.16.0. Digests, layout,
- * and circuit surface alike.
+ * PROVENANCE. Every value below is byte-identical under compiler 0.34.0 (CI,
+ * language 0.26.0) and 0.31.1 (language 0.23.0), on runtime 0.19.0. Digests,
+ * layout, and circuit surface alike.
  *
  * Recorded, not asserted. Those compilers differ in name and agree on every byte,
  * so a pinned `compiler-version` would fail with nothing broken. The enforceable
@@ -95,12 +95,12 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 
 /**
  * Domain-separated hashes. The tags are permanent parts of the format:
- * `OZ:note:pk`, `OZ:note:commit`, `OZ:note:null`, `OZ:note:issued`,
- * `OZ:note:nonce:core`, `OZ:note:mint`, `OZ:note:out`, `OZ:note:chng`. So is
+ * `CNFT:pk`, `CNFT:commitment`, `CNFT:nullifier`, `CNFT:issued`,
+ * `CNFT:nonce:core`, `CNFT:mint`, `CNFT:out`, `CNFT:change`. So is
  * each preimage's field order, and the binder every derived nonce is taken
  * over: the recipient for a mint, the consumed note's nullifier for a spend.
  *
- * `derivePk` hashes `(OZ:note:pk, salt, sk)`, the circuits' salt being the
+ * `derivePk` hashes `(CNFT:pk, salt, sk)`, the circuits' salt being the
  * deployment's `_instanceSalt`. Pinned because every commitment is taken over
  * its output.
  */
@@ -109,7 +109,7 @@ describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
 
   it('should derive the pinned pk from a known secret and salt', () => {
     expect(core.derivePk(ALICE_SK, SALT)).toBe(
-      404079673548458092994380058248597846216344394093932603328224206768657321132n,
+      262435359501940701077170570879675701887870845687505442111448399011781289948n,
     );
   });
 
@@ -133,13 +133,13 @@ describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
 
   it('should commit a known note to the pinned digest', () => {
     expect(hex(core.commitOf(NOTE, ALICE))).toBe(
-      '0xbd8de8666508c3414f6476ba17734b6e408b315d7694afddf081b285b37472a5',
+      '0xcbdb241e72e5c22f54c848203b2f525ae67dc6822fc0f350af92d9921742bd00',
     );
   });
 
   it('should nullify a known note to the pinned digest', () => {
     expect(hex(core.nullifierOf(NOTE))).toBe(
-      '0xeea890f67c3c07ea1850ba30f4059f45313d9294dcd7fbffce5a393dd69ceff9',
+      '0xfb3222fcc782cf98276a6d821788f1b81a78aa14aca248290de1fda823c30f17',
     );
   });
 
@@ -147,7 +147,7 @@ describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
   // pins that the two tags cannot be read as one another.
   it('should tag a known note to the pinned digest', () => {
     expect(hex(core.issuedTagOf(NOTE))).toBe(
-      '0x20d63e4db2f5590754068c9cb78d7357944e203ccab2de1b48477d677fc7a87c',
+      '0x27eaf0b7591acabab03a7b8f370edb87ced140a090678267592a272a812ae9e1',
     );
     expect(core.issuedTagOf(NOTE)).not.toEqual(core.nullifierOf(NOTE));
   });
@@ -174,7 +174,7 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     const minted = await token._mint(ALICE, 100n);
 
     expect(minted.nonce).toBe(
-      175043109306300762329028251661519816384523072696833120721788531167794284186n,
+      83773517281668237013701764967495064806186604495330812658612081094756733863n,
     );
   });
 
@@ -191,7 +191,7 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     // still yields two distinct nonces. The vector also covers the spend
     // binder: it is taken over `NOTE`'s nullifier.
     expect(change.nonce).toBe(
-      8152819341088759731288825067977169974517950477747020773559273934289734179n,
+      77824219952240050540805526813721639986822092098692714850076464499317872093n,
     );
   });
 });
