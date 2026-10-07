@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add Confidential Note Fungible Token core (#723)
 - `ZOwnableNativeShieldedToken` preset and example: a native shielded token that a single `ZOwnablePK` owner mints and burns, with a public minted total and no burned total (#1022)
 
 ### Changed
@@ -135,7 +136,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Confidential Fungible Token (#653)
 - Add EcdhMask (#655)
-- Add Confidential Note Fungible Token core (#723)
 
 ### Changed
 
