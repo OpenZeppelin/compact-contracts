@@ -117,8 +117,6 @@ module Ownable {
    * @description Initializes the contract by setting the `initialOwner`.
    * This must be called in the contract's constructor.
    *
-   * @constraints k=10, rows=626
-   *
    * Requirements:
    *
    * - Contract is not already initialized.

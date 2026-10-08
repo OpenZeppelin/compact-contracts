@@ -176,8 +176,6 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
-   * @constraints k=6, rows=31
-   *
    * Requirements:
    *
    * - Must be called in the contract's constructor.
