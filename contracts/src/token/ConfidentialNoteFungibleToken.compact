@@ -145,7 +145,7 @@ pragma language_version >= 0.26.0;
  * caller-built notes so a composer can run its own nonce policy; `_mint` uses
  * the core default. A constructor cannot return, so a constructor-time mint
  * is `_mintNote` with a deployer-built note unless the same constructor
- * records the note on chain.
+ * records the note on chain encrypted to its owner.
  */
 module ConfidentialNoteFungibleToken<#depth> {
   import CompactStandardLibrary;
