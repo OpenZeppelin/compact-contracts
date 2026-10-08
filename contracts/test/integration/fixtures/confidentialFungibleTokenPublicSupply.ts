@@ -98,7 +98,7 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
     return this.circuits.impure.sweep();
   }
 
-  public clearMemos(expectedEpoch: bigint): Promise<[]> {
+  public clearMemos(expectedEpoch: bigint): Promise<Uint8Array> {
     return this.circuits.impure.clearMemos(expectedEpoch);
   }
 
