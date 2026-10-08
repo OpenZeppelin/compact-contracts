@@ -262,9 +262,11 @@ pragma language_version >= 0.26.0;
  * credits from churning a victim's spendable ciphertext, but every `_credit`
  * still appends a memo, and only the recipient can `clearMemos`. An attacker
  * can spam value-1 credits to grow a victim's memo list without bound; the
- * victim pays the storage, the wallet scan cost, and the clear gas. Rejecting
- * value == 0 does not help (dust at value == 1 defeats it). A real fix is
- * architectural (event-based delivery, a memo cap, or a bond) and is deferred.
+ * victim pays the storage, the wallet scan cost, and the clear gas. Clearing is
+ * itself hazardous for memos not yet folded into a durable cache (see the
+ * `clearMemos` warning). Rejecting value == 0 does not help (dust at value == 1
+ * defeats it). A real fix is architectural (event-based delivery, a memo cap, or
+ * a bond) and is deferred.
  *
  * EOA-only. Contract-to-contract (c2c) is out of scope. Accounts here are
  * externally-owned: identity is `accountId = persistentHash(SK)` and spending
@@ -1044,6 +1046,10 @@ module ConfidentialFungibleToken {
    * @constraints k=16, rows=42938
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
+   *
+   * @notice `approve(spender, 0)` revokes: a zero-valued entry replaces the
+   * refunded one. The entry is not deleted and stays callable at value 0, which
+   * transfers nothing but still appends a memo (see "Residual griefing").
    *
    * @dev Also stores an owner-readable `ownerMemo` (ECDH one-time pad; see
    * `crypto/EcdhMask`) in the escrow entry, carrying the current remaining
