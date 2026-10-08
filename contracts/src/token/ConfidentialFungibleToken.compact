@@ -200,12 +200,11 @@ pragma language_version >= 0.23.0;
  * return a different secret than the one this module authenticates with,
  * letting a frozen account slip a clean id past the gate. To make caller-side
  * gates sound, every caller-authenticating circuit (`register`, `_burn`,
- * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_burnFrom`)
- * RETURNS the caller's `accountId`, the principal it authenticated from the
- * witness. A
- * wrapper gates on that returned value; since an assert failing anywhere in a
- * Compact circuit invalidates the whole transaction, a post-call check still
- * prevents the operation.
+ * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_burnFrom`,
+ * `clearMemos`) RETURNS the caller's `accountId`, the principal it
+ * authenticated from the witness. A wrapper gates on that returned value; since
+ * an assert failing anywhere in a Compact circuit invalidates the whole
+ * transaction, a post-call check still prevents the operation.
  *
  * Invariant: the returned id is ALWAYS the caller (the sender / approver /
  * spender / registrant, depending on the circuit); it is never the recipient
@@ -1084,7 +1083,7 @@ module ConfidentialFungibleToken {
    * therefore reads its memo list and its epoch together, folds the memos into
    * its cache, and passes that epoch back here.
    *
-   * @circuitInfo k=13, rows=7053
+   * @circuitInfo k=13, rows=7075
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -1106,9 +1105,9 @@ module ConfidentialFungibleToken {
    * - The caller has a memo list.
    * - `expectedEpoch` equals the caller's current credit epoch.
    *
-   * @return {[]} - Empty tuple.
+   * @return {Bytes<32>} - The caller's accountId.
    */
-  export circuit clearMemos(expectedEpoch: Uint<64>): [] {
+  export circuit clearMemos(expectedEpoch: Uint<64>): Bytes<32> {
     assertInitialized();
     const accountId = _computeAccountId();
     _assertOwnsEncryptionKey(accountId);
@@ -1121,6 +1120,7 @@ module ConfidentialFungibleToken {
            "ConfidentialFungibleToken: memo list changed");
 
     _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
+    return disclose(accountId);
   }
 
   // ---------------------------------------------------------------------------

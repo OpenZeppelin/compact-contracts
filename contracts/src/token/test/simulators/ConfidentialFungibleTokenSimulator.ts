@@ -208,7 +208,7 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     return this.circuits.impure._burnFrom(fromAddress, value);
   }
 
-  public clearMemos(expectedEpoch: bigint) {
+  public clearMemos(expectedEpoch: bigint): Promise<Uint8Array> {
     return this.circuits.impure.clearMemos(expectedEpoch);
   }
 

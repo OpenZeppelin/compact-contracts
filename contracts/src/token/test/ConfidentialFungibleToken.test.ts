@@ -1092,6 +1092,16 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
     ).toBe(0n);
   });
 
+  it('clearMemos returns the authenticated caller id', async () => {
+    await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
+    await cft.register();
+    await cft._mint(ALICE.accountId, 10n);
+
+    const returned = await cft.clearMemos(await currentEpoch(ALICE.accountId));
+
+    expect(returned).toEqual(ALICE.accountId);
+  });
+
   it('rejects a clearMemos whose epoch is stale', async () => {
     await cft.privateState.switchIdentity(ALICE.secretKey, ALICE.encryptionKey);
     await cft.register();
