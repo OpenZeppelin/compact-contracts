@@ -1002,6 +1002,13 @@ describe.skipIf(isLiveBackend())(
         cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 1n),
       ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
     });
+
+    it('does not produce the sentinel memo for approve', async () => {
+      await approveBob(100n, 40n);
+
+      const entry = await cft.allowance(ALICE.accountId, BOB.accountId);
+      expect(entry.ownerMemo.ephemeralPk).not.toEqual(identityPoint());
+    });
   },
 );
 
@@ -1038,8 +1045,15 @@ describe.skipIf(isLiveBackend())(
       expect(bal).toEqual(await cft.balanceOf(BOB.accountId));
     });
 
-    it('allowance returns the default entry when no escrow exists', async () => {
-      expect(await cft.allowance(ALICE.accountId, BOB.accountId)).toEqual(
+    it('returns the absent-allowance placeholder when no escrow exists', async () => {
+      const entry = await cft.allowance(ALICE.accountId, BOB.accountId);
+
+      // `ownerMemo` is a sentinel, not an encrypted zero. Wallets branch on
+      // this shape, so pin it rather than only comparing two absent entries.
+      expect(entry.ownerMemo.ephemeralPk).toEqual(identityPoint());
+      expect(entry.ownerMemo.ct).toBe(0n);
+
+      expect(entry).toEqual(
         await cft.allowance(BOB.accountId, CHARLIE.accountId),
       );
     });

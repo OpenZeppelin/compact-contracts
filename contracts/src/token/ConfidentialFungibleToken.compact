@@ -530,23 +530,30 @@ module ConfidentialFungibleToken {
 
   /**
    * @description Returns the escrow entry (the encrypted allowance) that `owner`
-   * granted `spender`. When no allowance exists, returns a well-formed
-   * encrypted-zero entry (its encrypted amounts decrypt to 0, analogous to an
-   * ERC-20 zero allowance) rather than `default<EscrowEntry>`: the returned
-   * Jubjub points are on-curve, so the view is safe to prove (e.g. through a
-   * contract-to-contract call) and safe for a wallet to decrypt, whereas a zeroed
-   * default holds off-curve points. The cap is encrypted, not public.
+   * granted `spender`. When no allowance exists, returns a placeholder entry
+   * rather than `default<EscrowEntry>`: the returned Jubjub points are on-curve,
+   * so the view is safe to prove (e.g. through a contract-to-contract call),
+   * whereas a zeroed default holds off-curve points. The cap is encrypted, not
+   * public.
    *
-   * @notice "No allowance" and "an allowance of 0" both read as encrypted-zero;
-   * a caller that must distinguish them reads `_escrow` membership off-chain. This
-   * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
-   * `_escrow` membership independently, so a non-existent allowance is unspendable.
+   * @notice The placeholder's `spenderCt` and `ownerCt` are genuine encryptions
+   * of 0. Its `ownerMemo` is not: it is a sentinel for an absent allowance,
+   * recognised by `ephemeralPk == identity`, which `EcdhMask_encrypt` never
+   * produces and `EcdhMask_decrypt` rejects. A wallet must test for the
+   * sentinel rather than decrypt and narrow it.
+   *
+   * @notice "No allowance" and "an allowance of 0" both read as encrypted-zero in
+   * the amount fields; the memo sentinel tells them apart, since `approve` stores
+   * a real memo even for 0. This getter grants nothing, the spend path
+   * (`transferFrom`/`burnFrom`) gates on `_escrow` membership independently, so a
+   * non-existent allowance is unspendable.
    *
    * @circuitInfo k=10, rows=938
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
-   * @return {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
+   * @return {EscrowEntry} - The encrypted escrow entry (a placeholder with the
+   * absent-allowance sentinel if none).
    */
   export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
     if (!_escrow.member(disclose(owner)) ||
