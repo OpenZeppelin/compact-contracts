@@ -13,12 +13,24 @@ pragma language_version >= 0.26.0;
  * homomorphic `crypto/ElGamal`: use ElGamal to accumulate ciphertexts, use this
  * to hand a recipient the plaintext.
  *
- * Construction (recipient key `pk = g^ek`, ephemeral scalar `e` fresh per call):
- *   E    = g^e                      (ephemeral public key)
- *   S    = pk^e = g^{ek*e}          (ECDH shared secret point, `crypto/Ecdh`)
- *   mask = KDF(S)                   (domain-separated Field, see `kdf`)
- *   ct   = value + mask             (field one-time-pad)
- * Recipient recovers: S = E^ek, mask = KDF(S), value = ct - mask.
+ * @see https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_6.pdf#page=461 Boneh and Shoup, A Graduate Course in Applied Cryptography v0.6, §11.5 ElGamal encryption (E_EG), Remark 11.1 (E'_EG), Theorem 11.4
+ * @see https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_6.pdf#page=495 Boneh and Shoup, §12.4 CCA-secure ElGamal encryption, Theorem 12.4
+ * @see https://www.shoup.net/papers/twindh.pdf Cash, Kiltz and Shoup, The Twin Diffie-Hellman Problem and Applications, §1.1 Hashed ElGamal Encryption
+ * @see https://cseweb.ucsd.edu/~mihir/papers/dhies.pdf Abdalla, Bellare and Rogaway, DHIES, §8 ODH and SDH
+ * @see https://www.secg.org/sec1-v2.pdf#page=58 SEC 1 v2.0 §5.1.3, Encryption Operation
+ * @see https://www.secg.org/sec1-v2.pdf#page=59 SEC 1 v2.0 §5.1.4, Decryption Operation, action 3
+ *
+ * @dev Construction and notation. Boneh and Shoup's E'_EG symbol follows in
+ * brackets (§11.5, Remark 11.1).
+ * - `pk = g^ek`: the recipient's public key [`u = g^α`].
+ * - `e`: the ephemeral scalar, fresh per call [`β`].
+ * - `E = g^e`: the ephemeral public key [`v = g^β`].
+ * - `S = pk^e = g^{ek*e}`: the shared point, from `crypto/Ecdh` [`w = u^β`].
+ * - `mask = KDF(S, domain)`: the domain-separated field mask, see `kdf`
+ *   [`k = H(w)`]. E_EG hashes `(v, w)`; E'_EG hashes `w` alone, as here.
+ * - `ct = value + mask`: the field one-time pad [`c = E_s(k, m)`].
+ * - `Ciphertext { ephemeralPk: E, ct }`: the ciphertext [`(v, c)`].
+ * - Recipient recovers `S = E^ek`, `mask = KDF(S, domain)`, `value = ct - mask`.
  *
  * @dev Key agreement. `deriveShared`, `recoverShared` and the `SharedSecret`
  * struct live in `crypto/Ecdh` and are not re-exported here; a consumer that
@@ -95,11 +107,18 @@ module EcdhMask {
   import "./Ecdh" prefix Ecdh_;
 
   /**
-   * @description An ECDH one-time-pad ciphertext: the ephemeral public key and
-   * the field-masked value.
+   * @description An ECDH one-time-pad ciphertext, `(v, c)` in Boneh and Shoup.
+   * Public once written; neither field is secret on its own.
+   *
+   * @notice `ephemeralPk` is never the identity for a ciphertext `encrypt`
+   * produced, and `decrypt` rejects one that is. A consumer that hand-builds a
+   * placeholder with an identity `ephemeralPk` must document it as a sentinel.
    */
   export struct Ciphertext {
+    /** `E = g^e`, the sender's ephemeral public key. Never the identity. */
     ephemeralPk: JubjubPoint;
+
+    /** `value + KDF(S, domain)`, the field one-time pad over the value. */
     ct: Field;
   }
 

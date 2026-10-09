@@ -12,9 +12,24 @@ pragma language_version >= 0.26.0;
  * agrees on a point and nothing more: deriving keys, masks or nonces from it
  * belongs to the consumer (`crypto/EcdhMask` for hybrid encryption).
  *
- * Construction (recipient key `pk = g^ek`, ephemeral scalar `e` fresh per call):
- *   E = g^e                        (ephemeral public key, published)
- *   S = pk^e = g^{ek*e} = E^ek     (shared secret point, never published)
+ * @see https://www.secg.org/sec1-v2.pdf#page=33 SEC 1 v2.0 §3.3.1, Elliptic Curve Diffie-Hellman Primitive
+ * @see https://www.secg.org/sec1-v2.pdf#page=30 SEC 1 v2.0 §3.2.2.1, Elliptic Curve Public Key Validation Primitive
+ * @see https://www.secg.org/sec1-v2.pdf#page=29 SEC 1 v2.0 §3.2.1, Elliptic Curve Key Pair Generation Primitive
+ *
+ * @dev Construction and notation. SEC 1's symbol follows in brackets.
+ * - `g`: the Jubjub prime-order subgroup generator, of order `ℓ` [`G`, `n`].
+ * - `ek`: the recipient's secret scalar in `[1, ℓ-1]` [`d`, §3.2.1].
+ * - `e`: the sender's ephemeral scalar in `[1, ℓ-1]`, fresh per call [`d`, §3.2.1].
+ * - `pk = g^ek`: the recipient's public key [`Q`, §3.2.1].
+ * - `E = g^e`: the ephemeral public key, published [`Q`, §3.2.1].
+ * - `S = pk^e = g^{ek*e} = E^ek`: the shared secret point, never published
+ *   [`P = d * Q`, §3.3.1]. §3.3.1 outputs `z = x_P`; this module returns `P`
+ *   itself and leaves the KDF to the consumer.
+ * - `identity`: the point at infinity, `ecMulGenerator(0)` [`O`]. §3.2.2.1
+ *   action 1 rejects it as a key; §3.3.1 action 2 rejects it as `P`.
+ *   `deriveShared` does the first; the second cannot fire in a prime-order
+ *   group once the first holds and `e ≢ 0 (mod ℓ)`.
+ * - Jubjub only. A second curve gets its own module with the same circuit names.
  *
  * @dev Future APIs.
  * - `deriveEphemeral(seed: Bytes<32>, nonce: Field): JubjubScalar` — a canonical
@@ -81,7 +96,10 @@ module Ecdh {
    * everything derived from it.
    */
   export struct SharedSecret {
+    /** `E = g^e`, public. The recipient recovers `S = E^ek` from it. */
     ephemeralPk: JubjubPoint;
+
+    /** `S = pk^e`, secret. Never disclose; derive from it in-circuit. */
     sShared: JubjubPoint;
   }
 
