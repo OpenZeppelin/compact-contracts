@@ -59,10 +59,13 @@ pragma language_version >= 0.26.0;
  * enable theft. Consumers with a different threat model (mutable storage,
  * in-transit tampering) MUST add their own authentication.
  *
- * @dev Security. This is hashed ElGamal (ECIES without a MAC) over Jubjub and
- * inherits its guarantees: IND-CPA under the Oracle Diffie-Hellman assumption in
- * the random-oracle model (the `persistentHash` KDF keyed by the secret point
- * `S`). It is NOT IND-CCA: the additive pad is malleable (see Integrity), which
+ * @dev Security. This is hashed ElGamal over Jubjub: Boneh and Shoup, *A
+ * Graduate Course in Applied Cryptography* v0.6, §11.5, in the Remark 11.1
+ * form that keys the KDF on the shared point alone. It inherits that scheme's
+ * guarantee: IND-CPA under CDH in the random-oracle model (Theorem 11.4, the
+ * `persistentHash` KDF keyed by the secret point `S`), and so also under the
+ * stronger Oracle Diffie-Hellman assumption. It is NOT IND-CCA: Theorem 12.4
+ * needs a MAC, and the additive pad is malleable (see Integrity), which
  * is acceptable here only because the on-chain ciphertext is bound in-circuit to
  * the value it commits to elsewhere. Hiding carries a large margin: `kdf` returns
  * a `degradeToTransient` output in `[0, 2^248)` while `value < 2^128`, so even
@@ -71,9 +74,9 @@ pragma language_version >= 0.26.0;
  * is PRF-like. Confidentiality relies on the runtime constraining every
  * `JubjubPoint` into the prime-order subgroup (see `crypto/ElGamal`), so `S`
  * cannot be a low-order point that leaks `ek`. Binding the ephemeral `E` into the
- * KDF is deliberately omitted: for a fixed `recipientPk`, `E = g^e` and
- * `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E` and
- * folding it in buys nothing.
+ * KDF is deliberately omitted (Remark 11.1): for a fixed `recipientPk`, `E = g^e`
+ * and `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E`;
+ * folding it in only serves the CCA proof this module does not claim.
  *
  * @dev Shared key with `crypto/ElGamal` (in scope). A consumer MAY use the same
  * recipient Jubjub key for both these memos (hashed ElGamal) and exponential-
