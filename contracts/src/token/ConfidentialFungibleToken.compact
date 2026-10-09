@@ -127,6 +127,12 @@ pragma language_version >= 0.26.0;
  *  - Per-account lifetime credit count is public and permanent
  *    (`_creditEpochs`); unlike the memo list, it does not reset on
  *    `clearMemos`.
+ *  - A slot still holding the deterministic `ElGamal_encryptZero` sentinel is
+ *    publicly recognizable, disclosing that it is zero by construction rather
+ *    than by arithmetic: `register` seeds both maps with it and `sweep` writes
+ *    it back to `_pending`, so a recognizable `_pending` means no credit has
+ *    arrived since registration or the most recent sweep. A zero reached by
+ *    spending is randomized and not recognizable.
  *
  * @dev Per-transfer value bound. Value-bearing circuits check
  * `value <= MAX_TRANSFER_VALUE()`, which is now the `Uint<128>` maximum: the ECDH
