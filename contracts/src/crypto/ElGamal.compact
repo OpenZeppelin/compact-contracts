@@ -87,7 +87,7 @@ pragma language_version >= 0.26.0;
  * result is persisted and must stay decryptable, `pk` MUST come from a source
  * the importing contract controls (e.g. a lookup in its own registration map),
  * never a caller-supplied or mutable value. Possession CAN be checked by a
- * holder of the `ek` — see `assertKeyPair`/`assertDecryptsTo`.
+ * holder of the `ek` (see `assertKeyPair`/`assertDecryptsTo`).
  *
  * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
  * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
