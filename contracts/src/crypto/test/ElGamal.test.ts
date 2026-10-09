@@ -207,26 +207,26 @@ describe('ElGamal', () => {
       // encryptZero().c1 is g^0 = the curve identity, a valid subgroup point.
       const idPk = (await contract.encryptZero()).c1;
       await expect(contract.encryptPoint(idPk, m1, R1)).rejects.toThrow(
-        'ElGamal: identity pk',
+        'Ecdh: identity pk',
       );
       // The lifted path routes through encryptPoint, so it is guarded too.
       await expect(contract.encrypt(idPk, 100n, R1)).rejects.toThrow(
-        'ElGamal: identity pk',
+        'Ecdh: identity pk',
       );
     });
 
     it('rejects zero randomness (mask vanishes, non-hiding)', async () => {
       await expect(contract.encryptPoint(pkA, m1, 0n)).rejects.toThrow(
-        'ElGamal: zero randomness',
+        'Ecdh: zero ephemeral',
       );
       await expect(contract.encrypt(pkA, 100n, 0n)).rejects.toThrow(
-        'ElGamal: zero randomness',
+        'Ecdh: zero ephemeral',
       );
       // rerandomize routes through encryptPoint, so r=0 hard-fails (no longer a
       // silent no-op).
       const ct = await contract.encrypt(pkA, 40n, R1);
       await expect(contract.rerandomize(ct, pkA, 0n)).rejects.toThrow(
-        'ElGamal: zero randomness',
+        'Ecdh: zero ephemeral',
       );
     });
 

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `crypto/curves/bls12-381/Fq`, the BLS12-381 scalar field that Compact's `Field` is: `truncatedLEOS2IP` and `truncatedI2LEOSP`, the standard library's `degradeToTransient` and `upgradeFromTransient` under their RFC 8017 names, and `fromUniformBytes`, `LEOS2IP_512(tv) mod q`. (#922, #913)
 - Add `Sha256.hashToField`, RFC 9380 `hash_to_field` with `count = 1`, `m = 1`, `L = 64`. The expander is RFC 8017 MGF1, since `expand_message_xmd` needs an XOR Compact lacks. Verified against an independent Python implementation. (#923, #913)
 - Add `fieldKdf`, `encryptField` and `decryptField` to `crypto/EcdhMask`: a mask uniform over the whole `Field` through `Sha256.hashToField`, within `2^-257` of uniform, so `encryptField` hides a plaintext with no range or entropy precondition. A `Field` masked with the 248-bit `kdf` leaks its top bits, which the spec now demonstrates. `kdf`'s output is unchanged. (#735, #913)
+- `ElGamal.encryptPoint` takes its ephemeral and mask from `Ecdh.deriveShared`, so its weak-input guards now read `Ecdh: identity pk` / `Ecdh: zero ephemeral` instead of `ElGamal: identity pk` / `ElGamal: zero randomness`. Ciphertexts are unchanged.
 
 ### Changed
 
