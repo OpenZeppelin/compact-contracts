@@ -64,16 +64,17 @@ pragma language_version >= 0.26.0;
  * @dev Weak keys. Encrypting under the identity point yields `c2 = m` with no
  * masking (the plaintext is exposed), and the identity is a valid subgroup
  * point so the runtime subgroup guarantee does NOT catch it. `encryptPoint`
- * therefore asserts `pk != identity`, and every encryption path routes through
- * it, so confidentiality is protected regardless of the importer. An importing
+ * therefore takes its mask from `crypto/Ecdh`'s `deriveShared`, which rejects
+ * an identity `pk`, and every encryption path routes through it, so
+ * confidentiality is protected regardless of the importer. An importing
  * module MAY additionally reject an identity `pk` where keys enter the system
  * (e.g. at registration) to fail fast with a clear error rather than at first
  * encryption — a UX nicety, not a confidentiality requirement.
  *
- * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
- * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
- * the unique mask-zeroing randomness, so the two asserts together guarantee a
- * non-trivial mask. The remaining obligations the circuit CANNOT enforce:
+ * @dev Randomness. `r = 0` zeros the mask (`r*pk = O`), yielding the
+ * non-hiding `(O, m)`; `deriveShared` rejects it as a zero ephemeral, so
+ * together with the identity-`pk` guard the mask is always non-trivial. The
+ * remaining obligations the circuit CANNOT enforce:
  * every `r` MUST be a valid Jubjub scalar (`< ℓ`, the subgroup order; larger
  * values fault `ecMul`), and MUST be fresh and secret. Reusing an `r` under the
  * same `pk` leaks the difference of the two plaintexts (`c1` collides, so
@@ -82,6 +83,7 @@ pragma language_version >= 0.26.0;
  */
 module ElGamal {
   import CompactStandardLibrary;
+  import "./Ecdh" prefix Ecdh_;
 
   // ---------------------------------------------------------------------------
   // Types
@@ -185,12 +187,10 @@ module ElGamal {
    * @return The ciphertext `(g^r, pk^r * m)`.
    */
   export pure circuit encryptPoint(pk: JubjubPoint, m: JubjubPoint, r: JubjubScalar): Ciphertext {
-    assert(pk != ecMulGenerator(0 as JubjubScalar), "ElGamal: identity pk");
-    assert(r != 0 as JubjubScalar, "ElGamal: zero randomness");
-    const c1 = ecMulGenerator(r);
-    const mask = ecMul(pk, r);
-    const c2 = ecAdd(mask, m);
-    return Ciphertext { c1: c1, c2: c2 };
+    // The weak-input guards come from `deriveShared`, not repeated here.
+    const shared = Ecdh_deriveShared(pk, r);
+    const c2 = ecAdd(shared.sShared, m);
+    return Ciphertext { c1: shared.ephemeralPk, c2: c2 };
   }
 
   /**
