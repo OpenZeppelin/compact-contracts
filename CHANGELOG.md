@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **Breaking:** `ShieldedAccessControl`: revoking or renouncing a `(role, accountId)` pairing that was never granted reverts with `role was never granted`, so a nullifier can only exist for a granted pairing (#1116)
+
 ## 0.4.0-alpha.6 (2026-10-06)
 
 ### Added

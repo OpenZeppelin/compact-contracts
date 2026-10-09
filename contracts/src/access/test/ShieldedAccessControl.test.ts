@@ -799,6 +799,29 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
         });
 
+        it('when revoking a role that was never granted', async () => {
+          await expect(
+            contract.revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
+          ).rejects.toThrow('ShieldedAccessControl: role was never granted');
+        });
+
+        it('when revoking a role from an accountId that never held it', async () => {
+          await expect(
+            contract.revokeRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID),
+          ).rejects.toThrow('ShieldedAccessControl: role was never granted');
+        });
+
+        it('when revoking a never-granted role should not update nullifier set', async () => {
+          await expect(
+            contract.revokeRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID),
+          ).rejects.toThrow();
+          expect(
+            (
+              await contract.getPublicState()
+            ).ShieldedAccessControl__roleCommitmentNullifiers.size(),
+          ).toBe(0n);
+        });
+
         it('when admin provides wrong secret key', async () => {
           await contract.privateState.injectSecretKey(BAD_SK);
           await expect(
@@ -867,25 +890,14 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
-        it('when revoking a role that was never granted', async () => {
-          await contract.revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID);
-          expect(await contract.canProveRole(ROLE_NONEXISTENT)).toBe(false);
-        });
-
-        it('when revoking a role from an unauthorized accountId that was never granted', async () => {
-          await contract.revokeRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID);
-
+        it('when granting a pairing whose revocation was rejected', async () => {
           await expect(
-            contract._grantRole(ROLE_OP1, UNAUTHORIZED_ACCOUNT_ID),
-          ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
-        });
+            contract.revokeRole(ROLE_OP2, OP2_ACCOUNT_ID),
+          ).rejects.toThrow('ShieldedAccessControl: role was never granted');
 
-        it('when revoking a never-granted role should permanently block future grants', async () => {
-          await contract.revokeRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID);
-
-          await expect(
-            contract._grantRole(ROLE_NONEXISTENT, OP2_ACCOUNT_ID),
-          ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
+          await contract.grantRole(ROLE_OP2, OP2_ACCOUNT_ID);
+          await contract.privateState.injectSecretKey(OPERATOR_2_SK);
+          expect(await contract.canProveRole(ROLE_OP2)).toBe(true);
         });
 
         it('when admin role is revoked and re-issued then can revoke again', async () => {
@@ -953,8 +965,31 @@ describe('ShieldedAccessControl', () => {
         expect(sizeBefore).toEqual(sizeAfter);
       });
 
-      it('should allow revoking a role that was never granted', async () => {
-        await contract._revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID);
+      it('should throw when revoking a role that was never granted', async () => {
+        await expect(
+          contract._revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: role was never granted');
+      });
+
+      it('should not update nullifier set when revoking a never-granted pairing', async () => {
+        await expect(
+          contract._revokeRole(ROLE_NONEXISTENT, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow();
+        expect(
+          (
+            await contract.getPublicState()
+          ).ShieldedAccessControl__roleCommitmentNullifiers.size(),
+        ).toBe(0n);
+      });
+
+      it('should allow granting a pairing whose revocation was rejected', async () => {
+        await expect(
+          contract._revokeRole(ROLE_OP1, OP1_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: role was never granted');
+
+        await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+        await contract.privateState.injectSecretKey(OPERATOR_1_SK);
+        expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
       });
     });
 
@@ -1038,24 +1073,35 @@ describe('ShieldedAccessControl', () => {
         expect(await contract.canProveRole(ROLE_OP2)).toBe(true);
       });
 
-      // Pre-burn scenario: a user can burn a nullifier for a (role, accountId) pairing
-      // that was never granted. This permanently blocks future grants to that accountId
-      // for the specified role, but does not affect other accountIds holding the same role
-      it('should allow renouncing a role never granted to this accountId', async () => {
-        // OP1 has ROLE_OP1, but ADMIN does not
+      it('should throw when renouncing a role never granted to this accountId', async () => {
         await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
 
-        // ADMIN renounces ROLE_OP1 despite never holding it
-        await contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID);
+        await expect(
+          contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: role was never granted');
 
-        // OP1's grant is unaffected — different accountId, different nullifier
         await contract.privateState.injectSecretKey(OPERATOR_1_SK);
         expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
+      });
 
-        // ADMIN's accountId is now burned for ROLE_OP1
+      it('should not update nullifier set when renouncing a never-granted role', async () => {
         await expect(
-          contract._grantRole(ROLE_OP1, ADMIN_ACCOUNT_ID),
-        ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
+          contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow();
+        expect(
+          (
+            await contract.getPublicState()
+          ).ShieldedAccessControl__roleCommitmentNullifiers.size(),
+        ).toBe(0n);
+      });
+
+      it('should allow granting a role whose renunciation was rejected', async () => {
+        await expect(
+          contract.renounceRole(ROLE_OP1, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: role was never granted');
+
+        await contract._grantRole(ROLE_OP1, ADMIN_ACCOUNT_ID);
+        expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
       });
     });
 

@@ -140,14 +140,8 @@ pragma language_version >= 0.26.0;
  *   between roles should use separate keys per role and accept the additional key management overhead.
  *   In the event of key compromise, the user should coordinate with admins to revoke all roles
  *   under the compromised `accountId` and re-grant under a new identity.
- * - Admins can revoke `(role, accountId)` pairings that were never granted, since on-chain
- *   non-membership proofs are not available for the Merkle tree. This permanently burns the
- *   nullifier for that pairing, blocking any future grant. Admin trust is a fundamental
- *   assumption of this system. Off-chain validation should confirm that a pairing was actually
- *   granted before submitting a revocation transaction.
- * - `renounceRole` allows burning nullifiers for roles the caller does not currently hold,
- *   provided they possess the correct `secretKey`. This requires knowledge of the secret key,
- *   at which point the `accountId` should be considered fully compromised regardless.
+ * - A `(role, accountId)` pairing can only be revoked after it was granted, so the nullifier
+ *   set holds at most one entry per granted pairing.
  * - The Merkle tree capacity of 2^20 leaf slots is a permanent, irrecoverable resource.
  *   There is no mechanism to reclaim slots after revocation, no upgrade path, and no emergency
  *   recovery. Once exhausted, the contract is permanently unable to grant new roles. Deployers
@@ -212,7 +206,8 @@ module ShieldedAccessControl {
 
   /**
    * @description Nullifiers of every pairing ever granted. Makes a repeated grant a no-op so
-   * one pairing can never consume more than one `_operatorRoles` slot.
+   * one pairing can never consume more than one `_operatorRoles` slot, and gates revocation
+   * so a nullifier can only exist for a granted pairing.
    * @type {Set<RoleNullifier>} _grantedRoleNullifiers
    */
   export ledger _grantedRoleNullifiers: Set<RoleNullifier>;
@@ -474,15 +469,17 @@ module ShieldedAccessControl {
    * @notice Roles are often managed via {grantRole} and {revokeRole}: this circuit's
    * purpose is to provide a mechanism for accounts to lose their privileges
    * if they are compromised (such as when a trusted device is misplaced).
+   * Consumers with no need for self-revocation should not export this circuit.
    *
    * @warning Outside observers may be able to use timing and pattern analysis to weaken pseudonymity
    * guarantees if renounceRole is used in tandem with other on-chain actions.
    *
-   * @constraints k=14, rows=14440
+   * @constraints k=14, rows=14442
    *
    * Requirements:
    *
    * - The caller must provide a valid `accountId` for the role.
+   * - The `(role, accountId)` pairing must have been granted.
    * - The `(role, accountId)` pairing must not be already revoked.
    * - Contract is initialized.
    *
@@ -508,15 +505,15 @@ module ShieldedAccessControl {
   /**
    * @description Permanently revokes `role` from `accountId` by inserting a role nullifier into the
    * `_roleCommitmentNullifiers` set. Once revoked, a new `accountId` must be generated to be re-authorized for
-   * `role`. At this time, proofs of non-membership on values in the Merkle tree LDT are not possible
-   * so a `(role, accountId)` pairing that does not exist can still be revoked.
+   * `role`.
    *
-   * @constraints k=15, rows=27005
+   * @constraints k=15, rows=27007
    *
    * Requirements:
    *
    * - caller must prove they're an admin for `role`.
    * - caller must not provide valid Merkle tree path for a different `(role, accountId)` pairing.
+   * - The `(role, accountId)` pairing must have been granted.
    * - The `(role, accountId)` pairing must not be already revoked.
    * - Contract is initialized.
    *
@@ -541,18 +538,18 @@ module ShieldedAccessControl {
   /**
    * @description Permanently revokes `role` from `accountId` by inserting a role nullifier into the
    * `_roleCommitmentNullifiers` set. Once revoked, a new `accountId` must be generated to be re-authorized for
-   * `role`. At this time, proofs of non-membership on values in the Merkle tree LDT are not possible
-   * so a `(role, accountId)` pairing that does not exist can still be revoked.
+   * `role`.
    *
    * Internal circuit without access restriction.
    *
    * @warning Exposing this circuit directly in an implementing contract would allow anyone to revoke
    * roles without authorization. It must be wrapped with appropriate access control.
    *
-   * @constraints k=14, rows=10260
+   * @constraints k=14, rows=10262
    *
    * Requirements:
    *
+   * - The `(role, accountId)` pairing must have been granted.
    * - The `(role, accountId)` pairing must not be already revoked.
    * - Contract is initialized.
    *
@@ -574,8 +571,8 @@ module ShieldedAccessControl {
    * @description Core business logic for the grant/revoke role circuits. Asserts that the
    * `(role, accountId)` pairing has not already been revoked. On success, dispatches on
    * `updateType`: a `Grant` inserts the role commitment into `_operatorRoles` unless the
-   * nullifier is already in `_grantedRoleNullifiers`, and a `Revoke` inserts the nullifier
-   * into `_roleCommitmentNullifiers`.
+   * nullifier is already in `_grantedRoleNullifiers`, and a `Revoke` asserts the nullifier
+   * is in `_grantedRoleNullifiers` before inserting it into `_roleCommitmentNullifiers`.
    *
    * Disclosures:
    *
@@ -603,12 +600,14 @@ module ShieldedAccessControl {
     const isRevoked = _roleCommitmentNullifiers.member(disclose(roleNullifier));
     assert(!isRevoked, "ShieldedAccessControl: role is already revoked");
 
+    const isGranted = _grantedRoleNullifiers.member(disclose(roleNullifier));
     if (updateType == UpdateType.Grant) {
-      if (!_grantedRoleNullifiers.member(disclose(roleNullifier))) {
+      if (!isGranted) {
         _grantedRoleNullifiers.insert(disclose(roleNullifier));
         _operatorRoles.insert(disclose(roleCommitment));
       }
     } else {
+      assert(isGranted, "ShieldedAccessControl: role was never granted");
       _roleCommitmentNullifiers.insert(disclose(roleNullifier));
     }
   }
