@@ -159,7 +159,11 @@ module EcdhMask {
    * @description Recovers the value from a ciphertext using the recipient's
    * secret scalar. Pure and off-chain (no proof needed to read a received value).
    *
-   * @constraints k=14, rows=8315
+   * @notice Rejects a ciphertext whose `ephemeralPk` is the identity point
+   * (SEC 1 §5.1.4, action 3). `encrypt` cannot produce one, so a wallet that
+   * meets one holds a placeholder, not an encryption.
+   *
+   * @constraints k=14, rows=8976
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
@@ -169,6 +173,10 @@ module EcdhMask {
    *         which is `< 2^128`).
    */
   export pure circuit decrypt(ciphertext: Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+    // `encrypt` never emits an identity ephemeral; one here is a malformed
+    // ciphertext whose mask is a public constant, so refuse rather than decrypt.
+    assert(ciphertext.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
+           "EcdhMask: identity ephemeral");
     const sShared = Ecdh_recoverShared(ciphertext.ephemeralPk, ekScalar);
     const mask = kdf(sShared, domain);
     return ciphertext.ct - mask;

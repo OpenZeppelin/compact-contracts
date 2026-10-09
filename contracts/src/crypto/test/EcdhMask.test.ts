@@ -187,6 +187,16 @@ describe('EcdhMask', () => {
         'zero ephemeral',
       );
     });
+
+    it('rejects an identity ephemeral on decrypt', async () => {
+      // The shape encrypt can never emit. Its mask is kdf(identity, domain), a
+      // public constant, and ct - mask lands just under the field modulus, far
+      // above any Uint<128> value.
+      const placeholder = { ephemeralPk: ecMulGenerator(0n), ct: 0n };
+      await expect(contract.decrypt(placeholder, EK, DOMAIN)).rejects.toThrow(
+        'EcdhMask: identity ephemeral',
+      );
+    });
   });
 
   describe('confidentiality / correctness properties', () => {
