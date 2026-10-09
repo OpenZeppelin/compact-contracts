@@ -6,18 +6,36 @@ pragma language_version >= 0.26.0;
 /**
  * @module EcdhMask
  * @description Stateless ECDH hybrid encryption of a single field element to a
- * Jubjub public key. Delivers a value to whoever holds the secret behind a
- * Jubjub public key WITHOUT encoding it in the exponent, so recovery needs no
- * discrete-log search and the value is unbounded within `Uint<128>`. This is the
- * direct-decrypt counterpart to the homomorphic `crypto/ElGamal`: use ElGamal to
- * accumulate ciphertexts, use this to hand a recipient the plaintext.
+ * Jubjub public key, built on the key agreement in `crypto/Ecdh`. Delivers a
+ * value to whoever holds the secret behind a Jubjub public key WITHOUT encoding
+ * it in the exponent, so recovery needs no discrete-log search and the value is
+ * unbounded within `Uint<128>`. This is the direct-decrypt counterpart to the
+ * homomorphic `crypto/ElGamal`: use ElGamal to accumulate ciphertexts, use this
+ * to hand a recipient the plaintext.
  *
- * Construction (recipient key `pk = g^ek`, ephemeral scalar `e` fresh per call):
- *   E    = g^e                      (ephemeral public key)
- *   S    = pk^e = g^{ek*e}          (ECDH shared secret point)
- *   mask = KDF(S)                   (domain-separated Field, see `kdf`)
- *   ct   = value + mask             (field one-time-pad)
- * Recipient recovers: S = E^ek, mask = KDF(S), value = ct - mask.
+ * @see https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_6.pdf#page=461 Boneh and Shoup, A Graduate Course in Applied Cryptography v0.6, §11.5 ElGamal encryption (E_EG), Remark 11.1 (E'_EG), Theorem 11.4
+ * @see https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_6.pdf#page=495 Boneh and Shoup, §12.4 CCA-secure ElGamal encryption, Theorem 12.4
+ * @see https://www.shoup.net/papers/twindh.pdf Cash, Kiltz and Shoup, The Twin Diffie-Hellman Problem and Applications, §1.1 Hashed ElGamal Encryption
+ * @see https://cseweb.ucsd.edu/~mihir/papers/dhies.pdf Abdalla, Bellare and Rogaway, DHIES, §8 ODH and SDH
+ * @see https://www.secg.org/sec1-v2.pdf#page=58 SEC 1 v2.0 §5.1.3, Encryption Operation
+ * @see https://www.secg.org/sec1-v2.pdf#page=59 SEC 1 v2.0 §5.1.4, Decryption Operation, action 3
+ *
+ * @dev Construction and notation. Boneh and Shoup's E'_EG symbol follows in
+ * brackets (§11.5, Remark 11.1).
+ * - `pk = g^ek`: the recipient's public key [`u = g^α`].
+ * - `e`: the ephemeral scalar, fresh per call [`β`].
+ * - `E = g^e`: the ephemeral public key [`v = g^β`].
+ * - `S = pk^e = g^{ek*e}`: the shared point, from `crypto/Ecdh` [`w = u^β`].
+ * - `mask = KDF(S, domain)`: the domain-separated field mask, see `kdf`
+ *   [`k = H(w)`]. E_EG hashes `(v, w)`; E'_EG hashes `w` alone, as here.
+ * - `ct = value + mask`: the field one-time pad [`c = E_s(k, m)`].
+ * - `Ciphertext { ephemeralPk: E, ct }`: the ciphertext [`(v, c)`].
+ * - Recipient recovers `S = E^ek`, `mask = KDF(S, domain)`, `value = ct - mask`.
+ *
+ * @dev Key agreement. `deriveShared`, `recoverShared` and the `SharedSecret`
+ * struct live in `crypto/Ecdh` and are not re-exported here; a consumer that
+ * needs them imports that module directly. It owns the weak-input guards every
+ * sender path here inherits.
  *
  * @dev Freshness and secrecy precondition (CRITICAL). `e` MUST be both unique per
  * call to the same recipient AND secret (unpredictable to observers), even across
@@ -25,7 +43,8 @@ pragma language_version >= 0.26.0;
  *
  * Uniqueness: the mask is a one-time pad, so a repeated `e` repeats `S` and
  * `mask`, and reusing a pad is catastrophic (subtracting two ciphertexts recovers
- * both values).
+ * both values). Padding two values under the same `(S, domain)` reuses the pad
+ * the same way (see `kdf`).
  *
  * Secrecy: `recipientPk` is public, so anyone who learns `e` recomputes
  * `S = recipientPk^e`, hence the mask, and opens the ciphertext. A unique but
@@ -38,19 +57,11 @@ pragma language_version >= 0.26.0;
  * This is stronger than exponential ElGamal's uniqueness requirement (there,
  * reuse merely leaks plaintext equality); do not treat `e` as "any randomness."
  *
- * @dev Weak inputs. Two degenerate inputs zero the shared secret and expose the
- * value: `recipientPk = identity` gives `S = identity` for any `e`, and `e = 0`
- * gives `S = identity` for any key. Both yield `mask = KDF(identity, domain)`, a
- * value any observer can recompute, so `ct = value + mask` opens trivially. The
- * identity is a valid subgroup point, so the runtime subgroup guarantee does NOT
- * catch it; `encrypt` therefore asserts `recipientPk != identity` and
- * `ephemeralPk (= g^e) != identity`. Guarding the ephemeral POINT rather than the
- * scalar subsumes `e != 0` and stays correct regardless of how the runtime treats
- * an out-of-range scalar: `g^e = identity` captures both `e = 0` and any
- * `e ≡ 0 (mod ℓ)`. (Guarding `e != 0` directly would instead lean on the runtime
- * faulting `ecMul` for scalars `≥ ℓ`; the point guard removes that dependency.)
- * These are the only weak inputs (for a subgroup key, `S = identity` iff the
- * ephemeral point is the identity).
+ * @dev Weak inputs. An identity `recipientPk` or a zero `e` collapses `S` to the
+ * identity point, giving `mask = KDF(identity, domain)`, a value any observer can
+ * recompute, so `ct = value + mask` opens trivially. `crypto/Ecdh.deriveShared`
+ * rejects both, and `encrypt` reaches them only through it; that module's
+ * weak-inputs note carries the full argument.
  *
  * @dev Integrity. The pad is malleable and NO authentication is added here. This
  * is safe in the intended on-chain use, where the ciphertext is computed
@@ -60,10 +71,13 @@ pragma language_version >= 0.26.0;
  * enable theft. Consumers with a different threat model (mutable storage,
  * in-transit tampering) MUST add their own authentication.
  *
- * @dev Security. This is hashed ElGamal (ECIES without a MAC) over Jubjub and
- * inherits its guarantees: IND-CPA under the Oracle Diffie-Hellman assumption in
- * the random-oracle model (the `persistentHash` KDF keyed by the secret point
- * `S`). It is NOT IND-CCA: the additive pad is malleable (see Integrity), which
+ * @dev Security. This is hashed ElGamal over Jubjub: Boneh and Shoup, *A
+ * Graduate Course in Applied Cryptography* v0.6, §11.5, in the Remark 11.1
+ * form that keys the KDF on the shared point alone. It inherits that scheme's
+ * guarantee: IND-CPA under CDH in the random-oracle model (Theorem 11.4, the
+ * `persistentHash` KDF keyed by the secret point `S`), and so also under the
+ * stronger Oracle Diffie-Hellman assumption. It is NOT IND-CCA: Theorem 12.4
+ * needs a MAC, and the additive pad is malleable (see Integrity), which
  * is acceptable here only because the on-chain ciphertext is bound in-circuit to
  * the value it commits to elsewhere. Hiding carries a large margin: `kdf` returns
  * a `degradeToTransient` output in `[0, 2^248)` while `value < 2^128`, so even
@@ -72,9 +86,9 @@ pragma language_version >= 0.26.0;
  * is PRF-like. Confidentiality relies on the runtime constraining every
  * `JubjubPoint` into the prime-order subgroup (see `crypto/ElGamal`), so `S`
  * cannot be a low-order point that leaks `ek`. Binding the ephemeral `E` into the
- * KDF is deliberately omitted: for a fixed `recipientPk`, `E = g^e` and
- * `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E` and
- * folding it in buys nothing.
+ * KDF is deliberately omitted (Remark 11.1): for a fixed `recipientPk`, `E = g^e`
+ * and `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E`;
+ * folding it in only serves the CCA proof this module does not claim.
  *
  * @dev Shared key with `crypto/ElGamal` (in scope). A consumer MAY use the same
  * recipient Jubjub key for both these memos (hashed ElGamal) and exponential-
@@ -90,43 +104,30 @@ pragma language_version >= 0.26.0;
  */
 module EcdhMask {
   import CompactStandardLibrary;
+  import "./Ecdh" prefix Ecdh_;
 
   /**
-   * @description An ECDH one-time-pad ciphertext: the ephemeral public key and
-   * the field-masked value.
+   * @description An ECDH one-time-pad ciphertext, `(v, c)` in Boneh and Shoup.
+   * Public once written; neither field is secret on its own.
+   *
+   * @notice `ephemeralPk` is never the identity for a ciphertext `encrypt`
+   * produced, and `decrypt` rejects one that is. A consumer that hand-builds a
+   * placeholder with an identity `ephemeralPk` must document it as a sentinel.
    */
   export struct Ciphertext {
+    /** `E = g^e`, the sender's ephemeral public key. Never the identity. */
     ephemeralPk: JubjubPoint;
-    ct: Field;
-  }
 
-  /**
-   * @description Derives the field mask from the ECDH shared secret point,
-   * domain-separated by a caller-supplied `domain` tag. Hashes the point to
-   * `Bytes<32>`, then re-hashes it with the domain tag and truncates into the
-   * field via `degradeToTransient`. The consumer chooses `domain` (so this
-   * module is not tied to any one protocol) and MUST use the same value on
-   * encrypt and decrypt.
-   *
-   * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
-   * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
-   *
-   * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
-   *                  `E^ek` for the recipient; equal by construction).
-   * @param domain - The consumer's domain-separation tag.
-   * @return The field mask.
-   */
-  export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
-    const pointHash = persistentHash<JubjubPoint>(sShared);
-    return degradeToTransient(
-      persistentHash<Vector<2, Bytes<32>>>([pointHash, domain])
-    );
+    /** `value + KDF(S, domain)`, the field one-time pad over the value. */
+    ct: Field;
   }
 
   /**
    * @description Encrypts `value` to `recipientPk` under ephemeral scalar `e`.
    *
    * @notice `e` MUST be fresh per call (see the module freshness precondition).
+   *
+   * @constraints k=14, rows=9269
    *
    * Requirements:
    *
@@ -145,22 +146,46 @@ module EcdhMask {
                         e: JubjubScalar,
                         domain: Bytes<32>
                         ): Ciphertext {
-    const identity = ecMulGenerator(0 as JubjubScalar);
-    assert(recipientPk != identity, "EcdhMask: identity pk");
-    const ephemeralPk = ecMulGenerator(e);
-    // Guard the ephemeral POINT, not the scalar: `ephemeralPk == identity`
-    // captures `e == 0` and any `e` that reduces to 0 mod l, so the guard is
-    // correct regardless of how the runtime treats an out-of-range scalar. This
-    // subsumes `e != 0` (see the weak-inputs note).
-    assert(ephemeralPk != identity, "EcdhMask: zero ephemeral");
-    const sShared = ecMul(recipientPk, e);
-    const mask = kdf(sShared, domain);
-    return Ciphertext { ephemeralPk: ephemeralPk, ct: (value as Field) + mask };
+    // The weak-input guards come from `deriveShared`, not repeated here.
+    const shared = Ecdh_deriveShared(recipientPk, e);
+    const mask = kdf(shared.sShared, domain);
+    return Ciphertext { ephemeralPk: shared.ephemeralPk, ct: (value as Field) + mask };
+  }
+
+  /**
+   * @description Derives the field mask from the ECDH shared secret point and
+   * a caller-supplied `domain` tag: hashes the point to `Bytes<32>`, re-hashes
+   * it with the tag, and truncates into the field via `degradeToTransient`.
+   * The mask is a pure function of `(sShared, domain)`, so the pair MUST match
+   * on encrypt and decrypt, and MUST be distinct for every value it pads. Two
+   * values padded under one pair share the pad and leak their difference.
+   *
+   * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
+   * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
+   *
+   * @constraints k=13, rows=7917
+   *
+   * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
+   *                  `E^ek` for the recipient; equal by construction).
+   * @param domain - The consumer's domain-separation tag.
+   * @return The field mask.
+   */
+  export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
+    const pointHash = persistentHash<JubjubPoint>(sShared);
+    return degradeToTransient(
+      persistentHash<Vector<2, Bytes<32>>>([pointHash, domain])
+    );
   }
 
   /**
    * @description Recovers the value from a ciphertext using the recipient's
    * secret scalar. Pure and off-chain (no proof needed to read a received value).
+   *
+   * @notice Rejects a ciphertext whose `ephemeralPk` is the identity point
+   * (SEC 1 §5.1.4, action 3). `encrypt` cannot produce one, so a wallet that
+   * meets one holds a placeholder, not an encryption.
+   *
+   * @constraints k=14, rows=8976
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
@@ -170,7 +195,11 @@ module EcdhMask {
    *         which is `< 2^128`).
    */
   export pure circuit decrypt(ciphertext: Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
-    const sShared = ecMul(ciphertext.ephemeralPk, ekScalar);
+    // `encrypt` never emits an identity ephemeral; one here is a malformed
+    // ciphertext whose mask is a public constant, so refuse rather than decrypt.
+    assert(ciphertext.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
+           "EcdhMask: identity ephemeral");
+    const sShared = Ecdh_recoverShared(ciphertext.ephemeralPk, ekScalar);
     const mask = kdf(sShared, domain);
     return ciphertext.ct - mask;
   }

@@ -2,6 +2,7 @@ import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { pureCircuits as ecdh } from '../../../artifacts/MockEcdh/contract/index.js';
 import { EcdhMaskSimulator } from './simulators/EcdhMaskSimulator.js';
 import { ElGamalSimulator } from './simulators/ElGamalSimulator.js';
 
@@ -10,6 +11,10 @@ import { ElGamalSimulator } from './simulators/ElGamalSimulator.js';
 // valid scalar.
 const L =
   6554484396890773809930967563523245729705921265872317281365359162392183254199n;
+
+// Compact `Field` modulus (BLS12-381 scalar field).
+const P =
+  52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
 // A recipient's secret scalar and their derived public key g^ek.
 const EK = 111222333444555n;
@@ -27,11 +32,45 @@ const DOMAIN = domain('ecdh_mask_test');
 // handful of cases there and keeps its full sample space dry.
 const PROPERTY_RUNS = isLiveBackend() ? 3 : 100;
 
+// A fixed encrypt input/output pair, recorded before encrypt delegated to
+// crypto/Ecdh, under its own tag so a change to the tests above cannot move it.
+const GOLDEN_VALUE = (1n << 127n) + 12345n;
+const GOLDEN_E = 424242n;
+const GOLDEN_DOMAIN = domain('ecdh_mask_golden');
+const GOLDEN_CIPHERTEXT = {
+  ephemeralPk: {
+    x: 29744007854499136538279777804045376227924513599493318762246204369493933045815n,
+    y: 2604409624680019572520314011984821445135836579833696274586703556773097648664n,
+  },
+  ct: 92943607126214901997092911019500281461782473933829915198787051090573790098n,
+};
+
 let contract: EcdhMaskSimulator;
 
 describe('EcdhMask', () => {
   beforeAll(async () => {
     contract = await EcdhMaskSimulator.create();
+  });
+
+  describe('encrypt golden vector', () => {
+    it('reproduces the pinned ciphertext bit for bit', async () => {
+      // encrypt's output is part of its API, so an importer that recompiles
+      // still decrypts what it wrote before the split.
+      expect(
+        await contract.encrypt(PK, GOLDEN_VALUE, GOLDEN_E, GOLDEN_DOMAIN),
+      ).toStrictEqual(GOLDEN_CIPHERTEXT);
+    });
+  });
+
+  describe('composition with crypto/Ecdh', () => {
+    it('encrypt equals deriveShared then kdf then add', async () => {
+      const shared = ecdh.deriveShared(PK, 42n);
+      const mask = await contract.kdf(shared.sShared, DOMAIN);
+      expect(await contract.encrypt(PK, 1000n, 42n, DOMAIN)).toStrictEqual({
+        ephemeralPk: shared.ephemeralPk,
+        ct: (1000n + mask) % P,
+      });
+    });
   });
 
   describe('encrypt / decrypt round-trip', () => {
@@ -122,9 +161,20 @@ describe('EcdhMask', () => {
       const c2 = await contract.encrypt(PK, 250n, e, DOMAIN);
       expect(c1.ct - c2.ct).toBe(1000n - 250n);
     });
+
+    it('should leak the plaintext difference when two masks share S and domain', async () => {
+      // A fresh `e` does not help on the decomposed path: two kdf calls under
+      // one `S` and one domain return the same pad.
+      const shared = ecdh.deriveShared(PK, 7n);
+      const ct1 = (1000n + (await contract.kdf(shared.sShared, DOMAIN))) % P;
+      const ct2 = (250n + (await contract.kdf(shared.sShared, DOMAIN))) % P;
+      expect(ct1 - ct2).toBe(1000n - 250n);
+    });
   });
 
   describe('weak-input guards', () => {
+    // Both guards live in crypto/Ecdh and are covered in Ecdh.test.ts; encrypt
+    // raises that module's messages.
     it('rejects encryption to the identity public key', async () => {
       const identity = ecMulGenerator(0n);
       await expect(
@@ -135,6 +185,16 @@ describe('EcdhMask', () => {
     it('rejects a zero ephemeral', async () => {
       await expect(contract.encrypt(PK, 1000n, 0n, DOMAIN)).rejects.toThrow(
         'zero ephemeral',
+      );
+    });
+
+    it('rejects an identity ephemeral on decrypt', async () => {
+      // The shape encrypt can never emit. Its mask is kdf(identity, domain), a
+      // public constant, and ct - mask lands just under the field modulus, far
+      // above any Uint<128> value.
+      const placeholder = { ephemeralPk: ecMulGenerator(0n), ct: 0n };
+      await expect(contract.decrypt(placeholder, EK, DOMAIN)).rejects.toThrow(
+        'EcdhMask: identity ephemeral',
       );
     });
   });
