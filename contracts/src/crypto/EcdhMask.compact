@@ -97,6 +97,9 @@ pragma language_version >= 0.26.0;
  * safe: the two schemes share only the public key, this KDF is domain-separated
  * and keyed by the secret DH point, and neither exposes a decryption oracle, so
  * under CPA / ODH a ciphertext of one scheme does not help attack the other.
+ * The per-encryption scalars MUST be independent (e.g. distinct
+ * `expandRandomness` tags over one seed): a shared scalar shares `S`, so the
+ * memo becomes a plaintext-check oracle for the ElGamal ciphertext.
  *
  * @dev No ledger state, no witnesses. Every circuit is pure and takes its keys,
  * value, and randomness as explicit arguments. `decrypt` is exposed as a pure
