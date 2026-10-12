@@ -88,7 +88,8 @@ pragma language_version >= 0.26.0;
  * cannot be a low-order point that leaks `ek`. Binding the ephemeral `E` into the
  * KDF is deliberately omitted (Remark 11.1): for a fixed `recipientPk`, `E = g^e`
  * and `S = pk^e` are both determined by `e`, so `KDF(S)` already varies with `E`;
- * folding it in only serves the CCA proof this module does not claim.
+ * folding it in only tightens the CCA reduction (Remark 12.2)
+ * which this module does not claim.
  *
  * @dev Shared key with `crypto/ElGamal` (in scope). A consumer MAY use the same
  * recipient Jubjub key for both these memos (hashed ElGamal) and exponential-
