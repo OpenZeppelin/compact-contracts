@@ -14,6 +14,12 @@ pragma language_version >= 0.26.0;
  * single fixed key (the paired contract has exactly one token type), so the
  * accounting logic and guarantees live in the shared core.
  *
+ * @notice A contract MUST NOT import both `NativeShieldedTokenPublicSupply` and
+ * `NativeShieldedTokenFamilyPublicSupply`. Both wrap
+ * `NativeShieldedTokenPublicSupplyCore`, so they share one `_totalMinted` /
+ * `_totalBurned` pair, and this flavor's fixed key is a domain the family
+ * flavor also accepts. Pick one flavor per contract, matching the token flavor.
+ *
  * @notice Pairs with `NativeShieldedToken`. The consuming contract composes the
  * pieces, calling the accounting block alongside the matching token op:
  *
