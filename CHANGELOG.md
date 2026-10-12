@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ZOwnableNativeShieldedToken` preset and example: a native shielded token that a single `ZOwnablePK` owner mints and burns, with a public minted total and no burned total (#1022)
 - Add the `crypto/Ecdh` module, the Jubjub key agreement that `crypto/EcdhMask` used to carry inline: `deriveShared` (sender side, owns the identity-key and zero-ephemeral guards), `recoverShared` (recipient side, never asserts), and the `SharedSecret` struct. `EcdhMask.encrypt` and `decrypt` delegate to it and produce the same ciphertexts as before; the guard messages now read `Ecdh: identity pk` / `Ecdh: zero ephemeral`. (#866)
-- `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the identity point as `EcdhMask: identity ephemeral`. `encrypt` never emits one; decrypting it returned a public constant far above any `Uint<128>`. (#866)
 
 ### Changed
 
+- `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the identity point as `EcdhMask: identity ephemeral`. `encrypt` never emits one; decrypting it returned a public constant far above any `Uint<128>`. (#866)
 - **Breaking:** Rename `EcdsaSignerManager` to `Secp256k1EcdsaMultisig<#t>`, with the threshold `t` as the import generic and errors prefixed `Secp256k1EcdsaMultisig:` (#1052, #1058)
   - `initialize<#n>(instanceSalt, signerCommitments)` drops the threshold argument
   - `assertApprovals` verifies exactly `t` distinct registered approvals
