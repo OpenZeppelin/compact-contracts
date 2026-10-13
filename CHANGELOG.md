@@ -7,18 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 0.4.0-alpha.6 (2026-10-06)
+## 0.5.0-alpha.1 (2026-10-13)
 
 ### Added
 
 - Add Confidential Note Fungible Token core (#723)
-- `ZOwnableNativeShieldedToken` preset and example: a native shielded token that a single `ZOwnablePK` owner mints and burns, with a public minted total and no burned total (#1022)
 - Add the `crypto/Ecdh` module, the Jubjub key agreement that `crypto/EcdhMask` used to carry inline: `deriveShared` (sender side, owns the identity-key and zero-ephemeral guards), `recoverShared` (recipient side, never asserts), and the `SharedSecret` struct. `EcdhMask.encrypt` and `decrypt` delegate to it and produce the same ciphertexts as before; the guard messages now read `Ecdh: identity pk` / `Ecdh: zero ephemeral`. (#866)
 
 ### Changed
 
 - `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the identity point as `EcdhMask: identity ephemeral`. `encrypt` never emits one; decrypting it returned a public constant far above any `Uint<128>`. (#866)
 - `ShieldedAccessControl`: re-granting an active `(role, accountId)` pairing is a no-op. Granted nullifiers are tracked in `_grantedRoleNullifiers`, so one pairing can never consume more than one `_operatorRoles` slot (#1071)
+
+## 0.4.0-alpha.6 (2026-10-06)
+
+### Added
+
+- `ZOwnableNativeShieldedToken` preset and example: a native shielded token that a single `ZOwnablePK` owner mints and burns, with a public minted total and no burned total (#1022)
+
+### Changed
+
 - **Breaking:** Rename `EcdsaSignerManager` to `Secp256k1EcdsaMultisig<#t>`, with the threshold `t` as the import generic and errors prefixed `Secp256k1EcdsaMultisig:` (#1052, #1058)
   - `initialize<#n>(instanceSalt, signerCommitments)` drops the threshold argument
   - `assertApprovals` verifies exactly `t` distinct registered approvals
